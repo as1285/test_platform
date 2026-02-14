@@ -85,7 +85,7 @@ class TestService:
             for case_id in test_data.case_ids:
                 # 构建测试请求
                 test_request = TestRunRequest(
-                    case_id=case_id,
+                    case_ids=[case_id],
                     parameters=test_data.parameters
                 )
                 # 执行测试

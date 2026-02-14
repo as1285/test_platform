@@ -34,7 +34,7 @@
             @node-contextmenu="handleNodeContextMenu"
             v-loading="groupLoading"
           >
-            <template #default="{ node, data }">
+            <template #default="{ data }">
               <span class="tree-node">
                 <el-icon>
                   <i-ep-folder />

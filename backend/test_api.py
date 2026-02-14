@@ -8,14 +8,17 @@ API接口测试脚本
 import requests
 import json
 import sys
+import time
 
-BASE_URL = "http://127.0.0.1:5000/api/v1"
+BASE_URL = "http://127.0.0.1:8081/api/v1"
 
 class APITester:
     def __init__(self):
         self.session = requests.Session()
         self.token = None
         self.results = []
+        self.case_group_id = None
+        self.case_id = None
         
     def log(self, message, level="INFO"):
         """记录测试结果"""
@@ -27,11 +30,17 @@ class APITester:
         """测试用户注册接口"""
         self.log("\n=== 测试用户注册接口 ===")
         try:
+            # 使用时间戳生成唯一用户，避免重复注册失败
+            timestamp = int(time.time())
             data = {
-                "username": "testuser123",
-                "email": "test123@example.com",
+                "username": f"testuser{timestamp}",
+                "email": f"test{timestamp}@example.com",
                 "password": "password123"
             }
+            # 保存用于登录
+            self.test_email = data["email"]
+            self.test_password = data["password"]
+            
             response = self.session.post(f"{BASE_URL}/user/register", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
@@ -41,6 +50,8 @@ class APITester:
                 return True
             elif response.status_code == 400 and "已存在" in response.text:
                 self.log("用户已存在，跳过注册", "WARN")
+                # 如果注册失败，尝试使用默认测试账号
+                self.test_email = "test123@example.com"
                 return True
             else:
                 self.log(f"用户注册失败: {response.text}", "ERROR")
@@ -54,8 +65,8 @@ class APITester:
         self.log("\n=== 测试用户登录接口 ===")
         try:
             data = {
-                "username": "testuser123",
-                "password": "password123"
+                "email": getattr(self, "test_email", "test123@example.com"),
+                "password": getattr(self, "test_password", "password123")
             }
             response = self.session.post(f"{BASE_URL}/user/login", json=data)
             self.log(f"状态码: {response.status_code}")
@@ -100,12 +111,15 @@ class APITester:
                 "name": "测试分组",
                 "parent_id": None
             }
-            response = self.session.post(f"{BASE_URL}/api/cases/groups", json=data)
+            # URL修正: /api/cases/groups -> /case/group
+            response = self.session.post(f"{BASE_URL}/case/group", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
             if response.status_code == 201:
-                self.log("创建用例分组成功", "SUCCESS")
+                result = response.json()
+                self.case_group_id = result.get("data", {}).get("id")
+                self.log(f"创建用例分组成功, ID: {self.case_group_id}", "SUCCESS")
                 return True
             else:
                 self.log(f"创建用例分组失败: {response.text}", "ERROR")
@@ -118,7 +132,8 @@ class APITester:
         """测试获取用例分组列表接口"""
         self.log("\n=== 测试获取用例分组列表接口 ===")
         try:
-            response = self.session.get(f"{BASE_URL}/api/cases/groups")
+            # URL修正: /api/cases/groups -> /case/group
+            response = self.session.get(f"{BASE_URL}/case/group")
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
@@ -135,25 +150,32 @@ class APITester:
     def test_case_create(self):
         """测试创建测试用例接口"""
         self.log("\n=== 测试创建测试用例接口 ===")
+        if not self.case_group_id:
+            self.log("缺少分组ID，跳过创建用例测试", "WARN")
+            return False
+            
         try:
             data = {
                 "name": "测试用例1",
                 "description": "这是一个测试用例",
-                "group_id": 1,
+                "group_id": self.case_group_id,
                 "method": "GET",
                 "url": "https://api.example.com/test",
-                "headers": json.dumps({"Content-Type": "application/json"}),
+                "headers": {"Content-Type": "application/json"},
                 "body": "{}",
-                "extract": json.dumps([]),
-                "validate": json.dumps([{"eq": ["status_code", 200]}]),
-                "variables": json.dumps({})
+                "extract": [],
+                "validate": [{"eq": ["status_code", 200]}],
+                "variables": {}
             }
-            response = self.session.post(f"{BASE_URL}/api/cases", json=data)
+            # URL修正: /api/cases -> /case
+            response = self.session.post(f"{BASE_URL}/case", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
             if response.status_code == 201:
-                self.log("创建测试用例成功", "SUCCESS")
+                result = response.json()
+                self.case_id = result.get("data", {}).get("id")
+                self.log(f"创建测试用例成功, ID: {self.case_id}", "SUCCESS")
                 return True
             else:
                 self.log(f"创建测试用例失败: {response.text}", "ERROR")
@@ -166,7 +188,8 @@ class APITester:
         """测试获取测试用例列表接口"""
         self.log("\n=== 测试获取测试用例列表接口 ===")
         try:
-            response = self.session.get(f"{BASE_URL}/api/cases")
+            # URL修正: /api/cases -> /case
+            response = self.session.get(f"{BASE_URL}/case")
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
@@ -183,14 +206,19 @@ class APITester:
     def test_execute_automation_test(self):
         """测试执行自动化测试接口"""
         self.log("\n=== 测试执行自动化测试接口 ===")
+        if not self.case_id:
+            self.log("缺少用例ID，跳过自动化测试", "WARN")
+            return False
+            
         try:
+            # 修正Payload和URL
             data = {
-                "case_ids": [1],
-                "environment": "test",
-                "concurrent": False,
-                "timeout": 60
+                "case_ids": [self.case_id],
+                "parameters": None
             }
-            response = self.session.post(f"{BASE_URL}/api/tests/execute", json=data)
+            
+            # URL修正: /api/tests/execute -> /test/run/batch
+            response = self.session.post(f"{BASE_URL}/test/run/batch", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
@@ -207,15 +235,20 @@ class APITester:
     def test_execute_performance_test(self):
         """测试执行性能测试接口"""
         self.log("\n=== 测试执行性能测试接口 ===")
+        if not self.case_id:
+            self.log("缺少用例ID，跳过性能测试", "WARN")
+            return False
+            
         try:
+            # 修正Payload和URL
             data = {
-                "target_url": "https://api.example.com/test",
-                "method": "GET",
-                "concurrency": 10,
-                "duration": 10,
-                "timeout": 30
+                "case_id": self.case_id,
+                "concurrency": 2,
+                "duration": 5,
+                "ramp_up_config": None
             }
-            response = self.session.post(f"{BASE_URL}/api/tests/performance", json=data)
+            # URL修正: /api/tests/performance -> /test/performance
+            response = self.session.post(f"{BASE_URL}/test/performance", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
@@ -232,17 +265,18 @@ class APITester:
     def test_execute_robustness_test(self):
         """测试执行鲁棒性测试接口"""
         self.log("\n=== 测试执行鲁棒性测试接口 ===")
+        if not self.case_id:
+            self.log("缺少用例ID，跳过鲁棒性测试", "WARN")
+            return False
+            
         try:
+            # 修正Payload和URL
             data = {
-                "target_url": "https://api.example.com/test",
-                "method": "GET",
-                "injection_types": ["boundary"],
-                "circuit_breaker_test": True,
-                "degradation_test": True,
-                "error_format_test": True,
-                "recovery_test": True
+                "case_id": self.case_id,
+                "fault_injection_config": "boundary"
             }
-            response = self.session.post(f"{BASE_URL}/api/tests/robustness", json=data)
+            # URL修正: /api/tests/robustness -> /test/robustness
+            response = self.session.post(f"{BASE_URL}/test/robustness", json=data)
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             
@@ -260,7 +294,8 @@ class APITester:
         """测试获取报告列表接口"""
         self.log("\n=== 测试获取报告列表接口 ===")
         try:
-            response = self.session.get(f"{BASE_URL}/api/reports")
+            # URL修正: /api/reports -> /report
+            response = self.session.get(f"{BASE_URL}/report")
             self.log(f"状态码: {response.status_code}")
             self.log(f"响应: {response.text[:200]}")
             

@@ -117,6 +117,22 @@ class UserService:
             if not user:
                 return False, 'User not found'
             
+            # 级联删除相关数据
+            from app.models import TestCase, CaseGroup, TestExecution, Report
+            
+            # 1. 删除用户的报告
+            Report.query.filter_by(user_id=user_id).delete()
+            
+            # 2. 删除用户的执行记录
+            TestExecution.query.filter_by(user_id=user_id).delete()
+            
+            # 3. 删除用户创建的测试用例
+            TestCase.query.filter_by(user_id=user_id).delete()
+            
+            # 4. 删除用户创建的分组
+            CaseGroup.query.filter_by(user_id=user_id).delete()
+            
+            # 5. 删除用户
             db.session.delete(user)
             db.session.commit()
             
