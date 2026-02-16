@@ -148,3 +148,15 @@ def get_test_results(execution_id):
         return jsonify(BaseResponse(data=results_data).dict()), 200
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/dashboard/overview', methods=['GET'])
+@jwt_required()
+def get_dashboard_overview():
+    try:
+        user_id = get_jwt_identity()
+        success, result = test_service.get_dashboard_overview(user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        return jsonify(BaseResponse(data=result).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500

@@ -167,10 +167,27 @@ class ReportService:
             execution_id = report_data.get('execution_id')
             
             if execution_id:
-                # 获取执行记录
                 execution = TestExecution.query.get(execution_id)
                 if execution:
-                    # 构建报告数据
+                    from app.models import TestResult, TestCase, PerformanceTest
+                    results = TestResult.query.filter_by(execution_id=execution.id).all()
+                    total_results = len(results)
+                    success_results = len([r for r in results if r.status == 'success'])
+                    failed_results = len([r for r in results if r.status != 'success'])
+                    avg_response_time = 0
+                    if total_results > 0:
+                        times = [r.response_time or 0 for r in results]
+                        avg_response_time = sum(times) / len(times) if times else 0
+                    total_cases = TestCase.query.count()
+                    covered_cases = len(set([execution.case_id])) if total_cases > 0 else 0
+                    case_coverage = (covered_cases / total_cases) * 100 if total_cases > 0 else 0
+                    performance = PerformanceTest.query.filter_by(execution_id=execution.id).first()
+                    performance_metrics = {}
+                    if performance and performance.metrics:
+                        try:
+                            performance_metrics = json.loads(performance.metrics)
+                        except Exception:
+                            performance_metrics = {}
                     report_content = {
                         'report_name': report_data.get('name', f'Execution_Report_{execution_id}'),
                         'execution_id': execution.id,
@@ -179,9 +196,20 @@ class ReportService:
                         'start_time': execution.start_time.isoformat() if execution.start_time else None,
                         'end_time': execution.end_time.isoformat() if execution.end_time else None,
                         'execution_log': json.loads(execution.execution_log) if execution.execution_log else [],
-                        'created_at': datetime.utcnow().isoformat()
+                        'created_at': datetime.utcnow().isoformat(),
+                        'metrics': {
+                            'total_results': total_results,
+                            'success_results': success_results,
+                            'failed_results': failed_results,
+                            'avg_response_time': avg_response_time,
+                            'performance': performance_metrics
+                        },
+                        'coverage': {
+                            'total_cases': total_cases,
+                            'covered_cases': covered_cases,
+                            'case_coverage': case_coverage
+                        }
                     }
-                    
                     if report_type == 'json':
                         return json.dumps(report_content, indent=2)
                     elif report_type == 'html':
@@ -245,6 +273,15 @@ class ReportService:
                 <p><strong>Start Time:</strong> {report_data.get('start_time')}</p>
                 <p><strong>End Time:</strong> {report_data.get('end_time')}</p>
                 <p><strong>Generated At:</strong> {report_data.get('created_at')}</p>
+                <h3>Coverage</h3>
+                <p><strong>Total Cases:</strong> {report_data.get('coverage', {{}}).get('total_cases')}</p>
+                <p><strong>Covered Cases:</strong> {report_data.get('coverage', {{}}).get('covered_cases')}</p>
+                <p><strong>Case Coverage:</strong> {report_data.get('coverage', {{}}).get('case_coverage')}%</p>
+                <h3>Metrics</h3>
+                <p><strong>Total Results:</strong> {report_data.get('metrics', {{}}).get('total_results')}</p>
+                <p><strong>Success Results:</strong> {report_data.get('metrics', {{}}).get('success_results')}</p>
+                <p><strong>Failed Results:</strong> {report_data.get('metrics', {{}}).get('failed_results')}</p>
+                <p><strong>Average Response Time:</strong> {report_data.get('metrics', {{}}).get('avg_response_time')}s</p>
             </div>
             <h2>Execution Log</h2>
             <div class="log">

@@ -65,6 +65,20 @@
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
           </el-breadcrumb>
+          <div class="header-stats">
+            <span class="header-stat-item">
+              <span class="header-stat-label">用例</span>
+              <span class="header-stat-value">{{ headerStats.totalCases }}</span>
+            </span>
+            <span class="header-stat-item">
+              <span class="header-stat-label">执行</span>
+              <span class="header-stat-value">{{ headerStats.totalExecutions }}</span>
+            </span>
+            <span class="header-stat-item">
+              <span class="header-stat-label">成功率</span>
+              <span class="header-stat-value">{{ headerStats.successRate }}%</span>
+            </span>
+          </div>
         </div>
         <div class="header-right">
           <el-dropdown>
@@ -95,16 +109,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
 
-// 响应式数据
 const activeMenu = ref('/dashboard')
 const userName = ref('管理员')
+const headerStats = reactive({
+  totalCases: 0,
+  totalExecutions: 0,
+  successRate: 0
+})
 
 // 计算属性
 const currentRouteName = computed(() => {
@@ -120,7 +139,6 @@ const currentRouteName = computed(() => {
   return routeMap[route.path] || '首页'
 })
 
-// 方法
 const handleMenuSelect = (key: string) => {
   activeMenu.value = key
 }
@@ -132,12 +150,23 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+const loadHeaderStats = async () => {
+  try {
+    const response = await axios.get('/api/v1/dashboard/overview')
+    if (response.data.code === 200) {
+      const data = response.data.data || {}
+      const stats = data.stats || {}
+      headerStats.totalCases = stats.total_cases || 0
+      headerStats.totalExecutions = stats.total_executions || 0
+      headerStats.successRate = stats.success_rate || 0
+    }
+  } catch {
+  }
+}
+
 // 生命周期
 onMounted(() => {
-  // 初始化菜单激活状态
   activeMenu.value = route.path || '/dashboard'
-  
-  // 从本地存储获取用户信息
   const userStr = localStorage.getItem('user')
   if (userStr) {
     try {
@@ -147,6 +176,7 @@ onMounted(() => {
       console.error('Failed to parse user info:', e)
     }
   }
+  loadHeaderStats()
 })
 </script>
 
@@ -207,6 +237,27 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
+}
+
+.header-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.header-stat-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.header-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .user-info {

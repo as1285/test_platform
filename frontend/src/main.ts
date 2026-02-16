@@ -13,7 +13,6 @@ const pinia = createPinia()
 axios.defaults.baseURL = ''
 axios.interceptors.request.use(
   config => {
-    // 添加认证token
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -21,6 +20,25 @@ axios.interceptors.request.use(
     return config
   },
   error => {
+    return Promise.reject(error)
+  }
+)
+
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    const response = error.response
+    if (response && response.data) {
+      const data = response.data as any
+      const msg = (data.msg || data.message || '').toString()
+      if (msg === 'Token has expired' || response.status === 401) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        if (router.currentRoute.value.path !== '/login') {
+          router.push('/login')
+        }
+      }
+    }
     return Promise.reject(error)
   }
 )

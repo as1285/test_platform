@@ -102,63 +102,74 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import * as echarts from 'echarts'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
-// 响应式数据
-const stats = reactive({
-  totalCases: 128,
-  totalExecutions: 567,
-  successRate: 92.5,
-  averageResponseTime: 156
+interface DashboardStats {
+  totalCases: number
+  totalExecutions: number
+  successRate: number
+  averageResponseTime: number
+}
+
+interface RecentExecution {
+  id: number
+  caseName: string
+  status: string
+  responseTime: number
+  createdAt: string
+}
+
+interface PerformancePoint {
+  date: string
+  avg_response_time_ms: number
+  success_rate: number
+}
+
+interface TestTypeDistribution {
+  automation: number
+  performance: number
+  robustness: number
+}
+
+interface RobustnessScores {
+  current_score: number
+  history_scores: number[]
+}
+
+const stats = reactive<DashboardStats>({
+  totalCases: 0,
+  totalExecutions: 0,
+  successRate: 0,
+  averageResponseTime: 0
 })
 
-const recentExecutions = reactive([
-  {
-    id: 1001,
-    caseName: '用户登录接口',
-    status: 'success',
-    responseTime: 120,
-    createdAt: '2024-01-15 14:30:00'
-  },
-  {
-    id: 1002,
-    caseName: '商品列表接口',
-    status: 'success',
-    responseTime: 180,
-    createdAt: '2024-01-15 14:25:00'
-  },
-  {
-    id: 1003,
-    caseName: '订单创建接口',
-    status: 'failed',
-    responseTime: 250,
-    createdAt: '2024-01-15 14:20:00'
-  },
-  {
-    id: 1004,
-    caseName: '用户信息接口',
-    status: 'success',
-    responseTime: 90,
-    createdAt: '2024-01-15 14:15:00'
-  },
-  {
-    id: 1005,
-    caseName: '支付接口',
-    status: 'success',
-    responseTime: 320,
-    createdAt: '2024-01-15 14:10:00'
-  }
-])
+const recentExecutions = ref<RecentExecution[]>([])
+const performanceTrend = ref<PerformancePoint[]>([])
+const testTypeDistribution = ref<TestTypeDistribution | null>(null)
+const robustnessScores = ref<RobustnessScores | null>(null)
 
-// 图表引用
-const performanceChart = ref(null)
-const testTypeChart = ref(null)
-const robustnessChart = ref(null)
+const performanceChart = ref<HTMLDivElement | null>(null)
+const testTypeChart = ref<HTMLDivElement | null>(null)
+const robustnessChart = ref<HTMLDivElement | null>(null)
 
-// 初始化图表
+const formatDateTime = (value: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN')
+}
+
 const initCharts = () => {
-  // 性能趋势图
   if (performanceChart.value) {
     const chart = echarts.init(performanceChart.value)
+    const dates = performanceTrend.value.map(item => item.date)
+    const responseTimes = performanceTrend.value.map(item =>
+      Math.round((item.avg_response_time_ms || 0) as number)
+    )
+    const successRates = performanceTrend.value.map(item =>
+      Number(((item.success_rate || 0) as number).toFixed(2))
+    )
     const option = {
       tooltip: {
         trigger: 'axis'
@@ -175,7 +186,7 @@ const initCharts = () => {
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: ['1月10日', '1月11日', '1月12日', '1月13日', '1月14日', '1月15日']
+        data: dates
       },
       yAxis: [
         {
@@ -194,14 +205,14 @@ const initCharts = () => {
         {
           name: '响应时间',
           type: 'line',
-          data: [180, 165, 172, 158, 162, 156],
+          data: responseTimes,
           smooth: true
         },
         {
           name: '成功率',
           type: 'line',
           yAxisIndex: 1,
-          data: [88, 90, 91, 93, 92, 92.5],
+          data: successRates,
           smooth: true
         }
       ]
@@ -209,9 +220,13 @@ const initCharts = () => {
     chart.setOption(option)
   }
 
-  // 测试类型分布图
   if (testTypeChart.value) {
     const chart = echarts.init(testTypeChart.value)
+    const dist = testTypeDistribution.value || {
+      automation: 0,
+      performance: 0,
+      robustness: 0
+    }
     const option = {
       tooltip: {
         trigger: 'item'
@@ -226,9 +241,9 @@ const initCharts = () => {
           type: 'pie',
           radius: '50%',
           data: [
-            { value: 60, name: '自动化测试' },
-            { value: 25, name: '性能测试' },
-            { value: 15, name: '鲁棒性测试' }
+            { value: dist.automation, name: '自动化测试' },
+            { value: dist.performance, name: '性能测试' },
+            { value: dist.robustness, name: '鲁棒性测试' }
           ],
           emphasis: {
             itemStyle: {
@@ -243,9 +258,17 @@ const initCharts = () => {
     chart.setOption(option)
   }
 
-  // 鲁棒性评分雷达图
   if (robustnessChart.value) {
     const chart = echarts.init(robustnessChart.value)
+    const scores = robustnessScores.value
+    const current = scores ? scores.current_score || 0 : 0
+    const history = scores ? scores.history_scores || [] : []
+    const historyAvg =
+      history.length > 0
+        ? history.reduce((sum, value) => sum + value, 0) / history.length
+        : current
+    const currentValues = [current, current, current, current, current]
+    const historyValues = [historyAvg, historyAvg, historyAvg, historyAvg, historyAvg]
     const option = {
       tooltip: {
         trigger: 'item'
@@ -265,11 +288,11 @@ const initCharts = () => {
           type: 'radar',
           data: [
             {
-              value: [85, 90, 75, 80, 88],
+              value: currentValues,
               name: '当前评分'
             },
             {
-              value: [70, 75, 65, 70, 75],
+              value: historyValues,
               name: '历史评分'
             }
           ]
@@ -280,11 +303,41 @@ const initCharts = () => {
   }
 }
 
-// 生命周期
+const loadDashboardData = async () => {
+  try {
+    const response = await axios.get('/api/v1/dashboard/overview')
+    if (response.data.code === 200) {
+      const data = response.data.data || {}
+      const statsData = data.stats || {}
+      stats.totalCases = statsData.total_cases || 0
+      stats.totalExecutions = statsData.total_executions || 0
+      stats.successRate = statsData.success_rate || 0
+      stats.averageResponseTime = statsData.average_response_time_ms || 0
+
+      const executions = data.recent_executions || []
+      recentExecutions.value = executions.map((item: any) => ({
+        id: item.id,
+        caseName: item.case_name,
+        status: item.status,
+        responseTime: Math.round(item.response_time_ms || 0),
+        createdAt: formatDateTime(item.created_at)
+      }))
+
+      performanceTrend.value = data.performance_trend || []
+      testTypeDistribution.value = data.test_type_distribution || null
+      robustnessScores.value = data.robustness_scores || null
+
+      initCharts()
+    } else {
+      ElMessage.error(response.data.message || '加载仪表盘数据失败')
+    }
+  } catch (error) {
+    ElMessage.error('加载仪表盘数据失败')
+  }
+}
+
 onMounted(() => {
-  initCharts()
-  
-  // 监听窗口大小变化
+  loadDashboardData()
   window.addEventListener('resize', () => {
     if (performanceChart.value) {
       echarts.getInstanceByDom(performanceChart.value)?.resize()

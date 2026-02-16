@@ -1,13 +1,14 @@
-from app.models import TestExecution, TestResult, PerformanceTest, RobustnessTest, db
+from app.models import TestExecution, TestResult, PerformanceTest, RobustnessTest, db, TestCase
 from app.schemas.test import TestRunRequest, TestRunBatchRequest, TestRunPerformanceRequest, TestRunRobustnessRequest
 from app.utils.redis import redis_util
 from app.utils.validator import Validator
 import json
 import time
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from gevent.pool import Pool
 import psutil
+from sqlalchemy import func
 
 class TestService:
     """测试服务"""
@@ -105,6 +106,7 @@ class TestService:
         try:
             log = []
             start_time = time.time()
+            self._prepare_test_data(case, parameters, log)
             
             # 直接使用case的字段
             url = case.url
@@ -188,6 +190,11 @@ class TestService:
                 'error': str(e),
                 'response_time': time.time() - start_time
             }
+        finally:
+            try:
+                self._cleanup_test_data(case, parameters, log)
+            except Exception as cleanup_error:
+                log.append(f"Cleanup error: {cleanup_error}")
     
     def _replace_parameters(self, value, params):
         """替换参数"""
@@ -381,6 +388,52 @@ class TestService:
             else:
                 return None
         return value
+    
+    def _prepare_test_data(self, case, parameters, log):
+        """测试前的数据准备钩子"""
+        try:
+            variables = getattr(case, 'variables', None)
+            if not variables:
+                return
+            if isinstance(variables, str):
+                try:
+                    variables = json.loads(variables)
+                except Exception:
+                    return
+            if not isinstance(variables, dict):
+                return
+            setup_actions = variables.get('setup')
+            if not setup_actions:
+                return
+            if isinstance(setup_actions, list):
+                for action in setup_actions:
+                    if isinstance(action, str):
+                        log.append(f"Setup: {action}")
+        except Exception as e:
+            log.append(f"Setup error: {e}")
+    
+    def _cleanup_test_data(self, case, parameters, log):
+        """测试后的数据清理钩子"""
+        try:
+            variables = getattr(case, 'variables', None)
+            if not variables:
+                return
+            if isinstance(variables, str):
+                try:
+                    variables = json.loads(variables)
+                except Exception:
+                    return
+            if not isinstance(variables, dict):
+                return
+            teardown_actions = variables.get('teardown')
+            if not teardown_actions:
+                return
+            if isinstance(teardown_actions, list):
+                for action in teardown_actions:
+                    if isinstance(action, str):
+                        log.append(f"Teardown: {action}")
+        except Exception as e:
+            log.append(f"Teardown error: {e}")
     
     # 性能测试相关
     def run_performance_test(self, test_data: TestRunPerformanceRequest, user_id: int):
@@ -780,3 +833,143 @@ class TestService:
             return TestResult.query.filter_by(execution_id=execution_id).all()
         except Exception:
             return []
+
+    def get_dashboard_overview(self, user_id: int):
+        try:
+            now = datetime.utcnow()
+            days = 7
+            since = now - timedelta(days=days)
+
+            total_cases = TestCase.query.filter_by(user_id=user_id).count()
+
+            executions_query = TestExecution.query.filter_by(user_id=user_id)
+            total_executions = executions_query.count()
+            success_executions = executions_query.filter_by(status='success').count()
+            success_rate = (success_executions / total_executions * 100) if total_executions > 0 else 0
+
+            results_query = TestResult.query.join(
+                TestExecution, TestResult.execution_id == TestExecution.id
+            ).filter(TestExecution.user_id == user_id)
+            avg_seconds = results_query.with_entities(func.avg(TestResult.response_time)).scalar()
+            if avg_seconds is None:
+                avg_seconds = 0
+            avg_response_time_ms = avg_seconds * 1000
+
+            recent_executions_data = []
+            recent_executions = executions_query.order_by(TestExecution.created_at.desc()).limit(10).all()
+            for execution in recent_executions:
+                latest_result = (
+                    TestResult.query.filter_by(execution_id=execution.id)
+                    .order_by(TestResult.created_at.desc())
+                    .first()
+                )
+                response_time_ms = 0
+                if latest_result and latest_result.response_time is not None:
+                    response_time_ms = latest_result.response_time * 1000
+                created_at = execution.created_at or execution.start_time or execution.end_time
+                created_at_str = created_at.isoformat() if created_at else None
+                case_name = execution.case.name if hasattr(execution, "case") and execution.case else ''
+                recent_executions_data.append(
+                    {
+                        'id': execution.id,
+                        'case_name': case_name,
+                        'status': execution.status,
+                        'response_time_ms': response_time_ms,
+                        'created_at': created_at_str,
+                    }
+                )
+
+            since_results = results_query.filter(TestResult.created_at >= since).all()
+            stats_by_date = {}
+            for result in since_results:
+                if not result.created_at:
+                    continue
+                date_key = result.created_at.date().isoformat()
+                bucket = stats_by_date.get(date_key)
+                if not bucket:
+                    bucket = {'total': 0, 'success': 0, 'response_times': []}
+                    stats_by_date[date_key] = bucket
+                bucket['total'] += 1
+                if result.status == 'success':
+                    bucket['success'] += 1
+                if result.response_time is not None:
+                    bucket['response_times'].append(result.response_time)
+
+            performance_trend = []
+            for i in range(days - 1, -1, -1):
+                day = (now - timedelta(days=i)).date()
+                key = day.isoformat()
+                bucket = stats_by_date.get(key, {'total': 0, 'success': 0, 'response_times': []})
+                total = bucket['total']
+                success = bucket['success']
+                response_times = bucket['response_times']
+                day_success_rate = (success / total * 100) if total > 0 else 0
+                if response_times:
+                    avg_day_ms = sum(response_times) / len(response_times) * 1000
+                else:
+                    avg_day_ms = 0
+                performance_trend.append(
+                    {
+                        'date': key,
+                        'avg_response_time_ms': avg_day_ms,
+                        'success_rate': day_success_rate,
+                    }
+                )
+
+            performance_count = (
+                PerformanceTest.query.join(
+                    TestExecution, PerformanceTest.execution_id == TestExecution.id
+                )
+                .filter(TestExecution.user_id == user_id)
+                .count()
+            )
+            robustness_count = (
+                RobustnessTest.query.join(
+                    TestExecution, RobustnessTest.execution_id == TestExecution.id
+                )
+                .filter(TestExecution.user_id == user_id)
+                .count()
+            )
+            automation_count = total_executions - performance_count - robustness_count
+            if automation_count < 0:
+                automation_count = 0
+
+            test_type_distribution = {
+                'automation': automation_count,
+                'performance': performance_count,
+                'robustness': robustness_count,
+            }
+
+            robustness_query = (
+                RobustnessTest.query.join(
+                    TestExecution, RobustnessTest.execution_id == TestExecution.id
+                )
+                .filter(TestExecution.user_id == user_id)
+                .order_by(RobustnessTest.created_at.desc())
+            )
+            robustness_records = robustness_query.limit(6).all()
+            current_score = 0
+            history_scores = []
+            if robustness_records:
+                current_score = robustness_records[0].score or 0
+                history_scores = [r.score or 0 for r in robustness_records[1:]]
+
+            robustness_scores = {
+                'current_score': current_score,
+                'history_scores': history_scores,
+            }
+
+            return True, {
+                'stats': {
+                    'total_cases': total_cases,
+                    'total_executions': total_executions,
+                    'success_rate': round(success_rate, 2),
+                    'average_response_time_ms': round(avg_response_time_ms, 2),
+                },
+                'recent_executions': recent_executions_data,
+                'performance_trend': performance_trend,
+                'test_type_distribution': test_type_distribution,
+                'robustness_scores': robustness_scores,
+            }
+        except Exception as e:
+            return False, str(e)
