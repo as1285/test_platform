@@ -179,8 +179,12 @@ class ReportService:
                         times = [r.response_time or 0 for r in results]
                         avg_response_time = sum(times) / len(times) if times else 0
                     total_cases = TestCase.query.count()
-                    covered_cases = len(set([execution.case_id])) if total_cases > 0 else 0
-                    case_coverage = (covered_cases / total_cases) * 100 if total_cases > 0 else 0
+                    if total_cases > 0:
+                        covered_cases = 1 if getattr(execution, 'case_id', None) is not None else 0
+                        case_coverage = (covered_cases / total_cases) * 100
+                    else:
+                        covered_cases = 0
+                        case_coverage = 0
                     performance = PerformanceTest.query.filter_by(execution_id=execution.id).first()
                     performance_metrics = {}
                     if performance and performance.metrics:
@@ -226,14 +230,14 @@ class ReportService:
         """生成HTML格式报告"""
         html_template = f"""
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="zh-CN">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{report_data.get('report_name', 'Test Report')}</title>
+            <title>{report_data.get('report_name', '测试报告')}</title>
             <style>
                 body {{
-                    font-family: Arial, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
                     line-height: 1.6;
                     color: #333;
                     max-width: 1200px;
@@ -264,26 +268,26 @@ class ReportService:
             </style>
         </head>
         <body>
-            <h1>{report_data.get('report_name', 'Test Report')}</h1>
+            <h1>{report_data.get('report_name', '测试报告')}</h1>
             <div class="summary">
-                <h2>Summary</h2>
-                <p><strong>Execution ID:</strong> {report_data.get('execution_id')}</p>
-                <p><strong>Case ID:</strong> {report_data.get('case_id')}</p>
-                <p><strong>Status:</strong> <span class="{report_data.get('status').lower()}">{report_data.get('status')}</span></p>
-                <p><strong>Start Time:</strong> {report_data.get('start_time')}</p>
-                <p><strong>End Time:</strong> {report_data.get('end_time')}</p>
-                <p><strong>Generated At:</strong> {report_data.get('created_at')}</p>
-                <h3>Coverage</h3>
-                <p><strong>Total Cases:</strong> {report_data.get('coverage', {{}}).get('total_cases')}</p>
-                <p><strong>Covered Cases:</strong> {report_data.get('coverage', {{}}).get('covered_cases')}</p>
-                <p><strong>Case Coverage:</strong> {report_data.get('coverage', {{}}).get('case_coverage')}%</p>
-                <h3>Metrics</h3>
-                <p><strong>Total Results:</strong> {report_data.get('metrics', {{}}).get('total_results')}</p>
-                <p><strong>Success Results:</strong> {report_data.get('metrics', {{}}).get('success_results')}</p>
-                <p><strong>Failed Results:</strong> {report_data.get('metrics', {{}}).get('failed_results')}</p>
-                <p><strong>Average Response Time:</strong> {report_data.get('metrics', {{}}).get('avg_response_time')}s</p>
+                <h2>概要</h2>
+                <p><strong>执行ID：</strong> {report_data.get('execution_id')}</p>
+                <p><strong>用例ID：</strong> {report_data.get('case_id')}</p>
+                <p><strong>状态：</strong> <span class="{report_data.get('status').lower()}">{report_data.get('status')}</span></p>
+                <p><strong>开始时间：</strong> {report_data.get('start_time')}</p>
+                <p><strong>结束时间：</strong> {report_data.get('end_time')}</p>
+                <p><strong>生成时间：</strong> {report_data.get('created_at')}</p>
+                <h3>覆盖率</h3>
+                <p><strong>用例总数：</strong> {report_data.get('coverage', {}).get('total_cases')}</p>
+                <p><strong>已覆盖用例数：</strong> {report_data.get('coverage', {}).get('covered_cases')}</p>
+                <p><strong>用例覆盖率：</strong> {report_data.get('coverage', {}).get('case_coverage')}%</p>
+                <h3>指标</h3>
+                <p><strong>结果总数：</strong> {report_data.get('metrics', {}).get('total_results')}</p>
+                <p><strong>成功数量：</strong> {report_data.get('metrics', {}).get('success_results')}</p>
+                <p><strong>失败数量：</strong> {report_data.get('metrics', {}).get('failed_results')}</p>
+                <p><strong>平均响应时间：</strong> {report_data.get('metrics', {}).get('avg_response_time')}s</p>
             </div>
-            <h2>Execution Log</h2>
+            <h2>执行日志</h2>
             <div class="log">
                 {chr(10).join(report_data.get('execution_log', []))}
             </div>
@@ -295,18 +299,31 @@ class ReportService:
     def _generate_markdown_report(self, report_data):
         """生成Markdown格式报告"""
         markdown_content = f"""
-# {report_data.get('report_name', 'Test Report')}
+# {report_data.get('report_name', '测试报告')}
 
-## Summary
+## 概要
 
-- **Execution ID:** {report_data.get('execution_id')}
-- **Case ID:** {report_data.get('case_id')}
-- **Status:** {report_data.get('status')}
-- **Start Time:** {report_data.get('start_time')}
-- **End Time:** {report_data.get('end_time')}
-- **Generated At:** {report_data.get('created_at')}
+- **执行ID：** {report_data.get('execution_id')}
+- **用例ID：** {report_data.get('case_id')}
+- **状态：** {report_data.get('status')}
+- **开始时间：** {report_data.get('start_time')}
+- **结束时间：** {report_data.get('end_time')}
+- **生成时间：** {report_data.get('created_at')}
 
-## Execution Log
+## 覆盖率
+
+- **用例总数：** {report_data.get('coverage', {}).get('total_cases')}
+- **已覆盖用例数：** {report_data.get('coverage', {}).get('covered_cases')}
+- **用例覆盖率：** {report_data.get('coverage', {}).get('case_coverage')}%
+
+## 指标
+
+- **结果总数：** {report_data.get('metrics', {}).get('total_results')}
+- **成功数量：** {report_data.get('metrics', {}).get('success_results')}
+- **失败数量：** {report_data.get('metrics', {}).get('failed_results')}
+- **平均响应时间：** {report_data.get('metrics', {}).get('avg_response_time')}s
+
+## 执行日志
 
 ```
 {chr(10).join(report_data.get('execution_log', []))}
@@ -322,16 +339,11 @@ class ReportService:
             if not os.path.exists(report_dir):
                 os.makedirs(report_dir)
             
-            # 生成文件名
             file_name = f"report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{report_type}"
             file_path = os.path.join(report_dir, file_name)
-            
-            # 写入文件
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            
-            # 返回相对路径
-            return file_path
+            return f"/api/v1/report/file/{file_name}"
         except Exception as e:
             raise Exception(f"Save report file error: {e}")
     

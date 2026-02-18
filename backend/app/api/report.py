@@ -1,9 +1,10 @@
-from flask import request, jsonify
+from flask import request, jsonify, send_from_directory, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.api import api_bp
 from app.services import report_service
 from app.schemas.report import ReportCreate, ReportResponse
 from app.schemas import BaseResponse, PaginatedResponse
+import os
 
 @api_bp.route('/report', methods=['POST'])
 @jwt_required()
@@ -113,3 +114,13 @@ def compare_reports():
         return jsonify(BaseResponse(data=report_data).dict()), 201
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/report/file/<path:filename>', methods=['GET'])
+def get_report_file(filename):
+    try:
+        directory = os.path.join(os.getcwd(), 'reports')
+        if not os.path.exists(os.path.join(directory, filename)):
+            return abort(404)
+        return send_from_directory(directory, filename)
+    except Exception:
+        return abort(404)
