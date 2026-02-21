@@ -8,3 +8,4 @@ from .user import *
 from .case import *
 from .test import *
 from .report import *
+from .docs import *

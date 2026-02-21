@@ -47,6 +47,12 @@
           </template>
           报告管理
         </el-menu-item>
+        <el-menu-item index="/docs">
+          <template #icon>
+            <el-icon><i-ep-document-checked /></el-icon>
+          </template>
+          接口文档
+        </el-menu-item>
         <el-menu-item index="/user">
           <template #icon>
             <el-icon><i-ep-user /></el-icon>
@@ -134,6 +140,7 @@ const currentRouteName = computed(() => {
     '/performance': '性能测试',
     '/robustness': '鲁棒性测试',
     '/report': '报告管理',
+    '/docs': '接口文档',
     '/user': '用户管理'
   }
   return routeMap[route.path] || '首页'

@@ -70,6 +70,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/docs',
+    name: 'ApiDocs',
+    component: () => import('../views/docs/ApiDocs.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '接口文档'
+    }
+  },
+  {
     path: '/user',
     name: 'User',
     component: () => import('../views/user/User.vue'),
