@@ -2,7 +2,13 @@ from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.api import api_bp
 from app.services import test_service
-from app.schemas.test import TestRunRequest, TestRunBatchRequest, TestRunPerformanceRequest, TestRunRobustnessRequest
+from app.schemas.test import (
+    TestRunRequest,
+    TestRunBatchRequest,
+    TestRunPerformanceRequest,
+    TestRunRobustnessRequest,
+    TestRunPerformanceCustomRequest,
+)
 from app.schemas import BaseResponse
 
 # 自动化测试相关接口
@@ -51,6 +57,23 @@ def run_performance_test():
         test_data = TestRunPerformanceRequest(**data)
         
         success, result = test_service.run_performance_test(test_data, user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        return jsonify(BaseResponse(data=result).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/test/performance/custom', methods=['POST'])
+@jwt_required()
+def run_performance_test_custom():
+    """执行自定义目标的性能测试"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.json
+        test_data = TestRunPerformanceCustomRequest(**data)
+        
+        success, result = test_service.run_performance_test_custom(test_data, user_id)
         if not success:
             return jsonify(BaseResponse(code=400, message=result).dict()), 400
         

@@ -22,6 +22,26 @@
         <el-collapse v-model="activeCollapse">
           <el-collapse-item title="基本配置" name="basic">
             <el-form :model="testConfig" label-width="120px">
+              <el-form-item label="压测目标">
+                <el-radio-group v-model="targetType">
+                  <el-radio label="case">按测试用例</el-radio>
+                  <el-radio label="custom">自定义URL</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item v-if="targetType === 'case'" label="测试用例">
+                <el-select
+                  v-model="selectedCaseId"
+                  placeholder="选择要压测的用例"
+                  @change="handleCaseChange"
+                >
+                  <el-option
+                    v-for="item in cases"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
               <el-form-item label="测试名称">
                 <el-input v-model="testConfig.name" placeholder="输入测试名称" />
               </el-form-item>
@@ -47,8 +67,16 @@
               <el-form-item label="请求头">
                 <el-button type="primary" size="small" @click="addHeader">添加请求头</el-button>
                 <el-table :data="testConfig.headers" style="margin-top: 10px">
-                  <el-table-column prop="key" label="Key" width="120" />
-                  <el-table-column prop="value" label="Value" />
+                  <el-table-column label="Key" width="180">
+                    <template #default="{ row }">
+                      <el-input v-model="row.key" placeholder="Header 名" />
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="Value">
+                    <template #default="{ row }">
+                      <el-input v-model="row.value" placeholder="Header 值" />
+                    </template>
+                  </el-table-column>
                   <el-table-column label="操作" width="100">
                     <template #default="{ $index }">
                       <el-button type="danger" size="small" @click="removeHeader($index)">删除</el-button>
@@ -188,12 +216,12 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import axios from 'axios'
 
-// 响应式数据
 const activeCollapse = ref(['basic', 'pressure'])
 const testConfig = ref({
   name: '性能测试',
-  targetUrl: 'https://api.example.com/test',
+  targetUrl: '',
   method: 'GET',
   body: '{}',
   headers: [
@@ -214,12 +242,16 @@ const testConfig = ref({
   saveResponse: false
 })
 
+const cases = ref<any[]>([])
+const selectedCaseId = ref<number | null>(null)
+const loading = ref(false)
+const targetType = ref('case')
+
 const testResult = ref<any>(null)
 const responseTimeChart = ref<HTMLElement | null>(null)
 const tpsQpsChart = ref<HTMLElement | null>(null)
 const resourceChart = ref<HTMLElement | null>(null)
 
-// 方法
 const addHeader = () => {
   testConfig.value.headers.push({ key: '', value: '' })
 }
@@ -228,62 +260,195 @@ const removeHeader = (index: number) => {
   testConfig.value.headers.splice(index, 1)
 }
 
-const startPerformanceTest = () => {
-  // 验证配置
-  if (!testConfig.value.targetUrl) {
-    ElMessage.warning('请输入测试目标URL')
+const loadCases = async () => {
+  try {
+    const response = await axios.get('/api/v1/case')
+    if (response.data.code !== 200) {
+      ElMessage.error(response.data.message || '获取用例列表失败')
+      return
+    }
+    cases.value = response.data.data || []
+  } catch (error) {
+    console.error('获取用例列表失败:', error)
+    ElMessage.error('获取用例列表失败')
+  }
+}
+
+const handleCaseChange = async (caseId: number) => {
+  if (!caseId) {
     return
   }
-  
-  // 模拟测试执行
-  ElMessage.info('开始性能测试...')
-  
-  // 模拟测试结果
-  setTimeout(() => {
-    testResult.value = {
-      tps: 125,
-      qps: 125,
-      avgResponseTime: 80,
-      maxResponseTime: 250,
-      minResponseTime: 20,
-      errorRate: 0.5,
-      analysis: [
-        {
-          type: 'info',
-          content: 'TPS达到125次/秒，性能表现良好'
-        },
-        {
-          type: 'warning',
-          content: '最大响应时间250ms，建议优化接口响应速度'
-        },
-        {
-          type: 'info',
-          content: '错误率仅0.5%，接口稳定性良好'
-        }
-      ]
+  try {
+    const response = await axios.get(`/api/v1/case/${caseId}`)
+    if (response.data.code !== 200) {
+      ElMessage.error(response.data.message || '获取用例详情失败')
+      return
     }
-    
-    // 渲染图表
-    nextTick(() => {
-      renderCharts()
+    const data = response.data.data || {}
+    testConfig.value.targetUrl = data.url || ''
+    testConfig.value.method = data.method || 'GET'
+    testConfig.value.body = data.body || ''
+    const headers = data.headers || {}
+    const headerList: { key: string; value: string }[] = []
+    Object.keys(headers || {}).forEach(key => {
+      headerList.push({
+        key,
+        value: String(headers[key])
+      })
     })
-    
+    testConfig.value.headers = headerList.length
+      ? headerList
+      : [{ key: 'Content-Type', value: 'application/json' }]
+    if (!testConfig.value.name) {
+      testConfig.value.name = data.name || '性能测试'
+    }
+  } catch (error) {
+    console.error('获取用例详情失败:', error)
+    ElMessage.error('获取用例详情失败')
+  }
+}
+
+const startPerformanceTest = async () => {
+  if (targetType.value === 'case') {
+    if (!selectedCaseId.value) {
+      ElMessage.warning('请选择测试用例')
+      return
+    }
+  } else {
+    if (!testConfig.value.targetUrl) {
+      ElMessage.warning('请输入测试目标URL')
+      return
+    }
+  }
+  loading.value = true
+  try {
+    const concurrency =
+      testConfig.value.concurrencyType === '固定并发'
+        ? testConfig.value.concurrency
+        : testConfig.value.targetConcurrency
+    const rampUpConfig =
+      testConfig.value.concurrencyType === '阶梯加压'
+        ? JSON.stringify({
+            type: 'step',
+            initialConcurrency: testConfig.value.initialConcurrency,
+            targetConcurrency: testConfig.value.targetConcurrency,
+            stepCount: testConfig.value.stepCount,
+            stepDuration: testConfig.value.stepDuration
+          })
+        : null
+    let response
+    if (targetType.value === 'case') {
+      response = await axios.post('/api/v1/test/performance', {
+        case_id: selectedCaseId.value,
+        concurrency,
+        duration: testConfig.value.duration,
+        ramp_up_config: rampUpConfig
+      })
+    } else {
+      const headersObject: Record<string, string> = {}
+      testConfig.value.headers.forEach(item => {
+        if (item.key) {
+          headersObject[item.key] = item.value
+        }
+      })
+      response = await axios.post('/api/v1/test/performance/custom', {
+        target_url: testConfig.value.targetUrl,
+        method: testConfig.value.method,
+        headers: headersObject,
+        body: testConfig.value.body,
+        concurrency,
+        duration: testConfig.value.duration,
+        ramp_up_config: rampUpConfig,
+        timeout: testConfig.value.timeout
+      })
+    }
+    if (response.data.code !== 200) {
+      ElMessage.error(response.data.message || '性能测试执行失败')
+      return
+    }
+    const data = response.data.data || {}
+    const metrics = data.metrics || {}
+    const avgMs = Number((metrics.avg_response_time || 0) * 1000)
+    const maxMs = Number((metrics.max_response_time || 0) * 1000)
+    const minMs = Number((metrics.min_response_time || 0) * 1000)
+    const tps = Number(metrics.tps || 0)
+    const qps = Number(metrics.qps || 0)
+    const errorRate = Number(metrics.error_rate || 0)
+    const responseTimes = (metrics.response_times || []).map(
+      (v: number) => v * 1000
+    )
+    const serverMetrics = metrics.server_metrics || {}
+    const analysis: { type: string; content: string }[] = []
+    if (tps > 0) {
+      analysis.push({
+        type: 'success',
+        content: `TPS约为${tps.toFixed(2)}次/秒`
+      })
+    }
+    if (avgMs > 0) {
+      analysis.push({
+        type: avgMs > 1000 ? 'warning' : 'info',
+        content: `平均响应时间约${avgMs.toFixed(2)}ms`
+      })
+    }
+    if (errorRate > 0) {
+      analysis.push({
+        type: errorRate > 1 ? 'warning' : 'info',
+        content: `错误率约${errorRate.toFixed(2)}%`
+      })
+    }
+    if (serverMetrics.cpu_percent != null) {
+      analysis.push({
+        type: serverMetrics.cpu_percent > 80 ? 'warning' : 'info',
+        content: `压测期间CPU约${serverMetrics.cpu_percent}%`
+      })
+    }
+    testResult.value = {
+      tps: Number(tps.toFixed(2)),
+      qps: Number(qps.toFixed(2)),
+      avgResponseTime: Number(avgMs.toFixed(2)),
+      maxResponseTime: Number(maxMs.toFixed(2)),
+      minResponseTime: Number(minMs.toFixed(2)),
+      errorRate: Number(errorRate.toFixed(2)),
+      metrics: {
+        responseTimes,
+        cpu: Number(serverMetrics.cpu_percent || 0),
+        memory: Number(serverMetrics.memory_percent || 0),
+        disk: Number(serverMetrics.disk_percent || 0)
+      },
+      analysis
+    }
+    await nextTick()
+    renderCharts()
     ElMessage.success('性能测试完成')
-  }, 3000)
+  } catch (error) {
+    console.error('性能测试执行失败:', error)
+    ElMessage.error('性能测试执行失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const renderCharts = () => {
-  // 渲染响应时间趋势图
+  if (!testResult.value) {
+    return
+  }
+  const metrics = testResult.value.metrics || {}
+  const responseTimes: number[] = metrics.responseTimes || []
+  const xLabels =
+    responseTimes.length > 0
+      ? responseTimes.map((_, index) => `${index + 1}`)
+      : []
   if (responseTimeChart.value) {
     const chart = echarts.init(responseTimeChart.value)
     const option = {
       title: {
-        text: '响应时间趋势',
+        text: '响应时间分布',
         left: 'center'
       },
       xAxis: {
         type: 'category',
-        data: ['0s', '30s', '60s', '90s', '120s', '150s', '180s', '210s', '240s', '270s', '300s']
+        data: xLabels
       },
       yAxis: {
         type: 'value',
@@ -291,15 +456,9 @@ const renderCharts = () => {
       },
       series: [
         {
-          name: '平均响应时间',
+          name: '响应时间',
           type: 'line',
-          data: [50, 60, 70, 80, 90, 85, 80, 75, 70, 65, 60],
-          smooth: true
-        },
-        {
-          name: '最大响应时间',
-          type: 'line',
-          data: [100, 150, 180, 220, 250, 240, 230, 210, 190, 170, 150],
+          data: responseTimes,
           smooth: true
         }
       ]
@@ -307,17 +466,20 @@ const renderCharts = () => {
     chart.setOption(option)
   }
   
-  // 渲染TPS/QPS趋势图
   if (tpsQpsChart.value) {
     const chart = echarts.init(tpsQpsChart.value)
+    const count = xLabels.length || 10
+    const xData = Array.from({ length: count }, (_, index) => `${index + 1}`)
+    const tpsList = xData.map(() => testResult.value.tps)
+    const qpsList = xData.map(() => testResult.value.qps)
     const option = {
       title: {
-        text: 'TPS/QPS趋势',
+        text: 'TPS/QPS',
         left: 'center'
       },
       xAxis: {
         type: 'category',
-        data: ['0s', '30s', '60s', '90s', '120s', '150s', '180s', '210s', '240s', '270s', '300s']
+        data: xData
       },
       yAxis: {
         type: 'value',
@@ -327,13 +489,13 @@ const renderCharts = () => {
         {
           name: 'TPS',
           type: 'line',
-          data: [100, 110, 120, 125, 130, 128, 125, 122, 120, 118, 115],
+          data: tpsList,
           smooth: true
         },
         {
           name: 'QPS',
           type: 'line',
-          data: [100, 110, 120, 125, 130, 128, 125, 122, 120, 118, 115],
+          data: qpsList,
           smooth: true
         }
       ]
@@ -341,9 +503,12 @@ const renderCharts = () => {
     chart.setOption(option)
   }
   
-  // 渲染服务器资源占用图
   if (resourceChart.value) {
     const chart = echarts.init(resourceChart.value)
+    const xData = ['CPU', '内存', '磁盘']
+    const cpu = metrics.cpu || 0
+    const memory = metrics.memory || 0
+    const disk = metrics.disk || 0
     const option = {
       title: {
         text: '服务器资源占用',
@@ -351,7 +516,7 @@ const renderCharts = () => {
       },
       xAxis: {
         type: 'category',
-        data: ['0s', '30s', '60s', '90s', '120s', '150s', '180s', '210s', '240s', '270s', '300s']
+        data: xData
       },
       yAxis: {
         type: 'value',
@@ -359,16 +524,9 @@ const renderCharts = () => {
       },
       series: [
         {
-          name: 'CPU',
-          type: 'line',
-          data: [20, 30, 40, 45, 50, 48, 45, 42, 40, 38, 35],
-          smooth: true
-        },
-        {
-          name: '内存',
-          type: 'line',
-          data: [40, 45, 50, 55, 60, 58, 56, 54, 52, 50, 48],
-          smooth: true
+          name: '资源占用',
+          type: 'bar',
+          data: [cpu, memory, disk]
         }
       ]
     }
@@ -392,10 +550,8 @@ const compareResult = () => {
   ElMessage.info('对比历史结果功能开发中')
 }
 
-// 生命周期
 onMounted(() => {
-  // 初始化数据
-  console.log('性能测试页面初始化完成')
+  loadCases()
 })
 </script>
 

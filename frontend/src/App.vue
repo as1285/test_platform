@@ -213,6 +213,28 @@ onMounted(() => {
 
 .sidebar-menu {
   margin-top: 20px;
+  border-right: none;
+}
+
+.sidebar-menu :deep(.el-menu-item) {
+  margin: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  background-color: #ffffff;
+  color: #303133;
+  font-weight: 600;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active) {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: #ffffff;
+}
+
+.sidebar-menu :deep(.el-menu-item:hover) {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+  color: #1890ff;
 }
 
 .main-content {

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class TestExecutionBase(BaseModel):
@@ -92,3 +92,13 @@ class TestRunPerformanceRequest(BaseModel):
 class TestRunRobustnessRequest(BaseModel):
     case_id: int
     fault_injection_config: str
+
+class TestRunPerformanceCustomRequest(BaseModel):
+    target_url: str
+    method: str = "GET"
+    headers: Optional[Dict[str, Any]] = None
+    body: Optional[str] = None
+    concurrency: int
+    duration: int
+    ramp_up_config: Optional[str] = None
+    timeout: Optional[int] = 30

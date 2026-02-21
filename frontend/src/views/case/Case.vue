@@ -91,21 +91,13 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180">
+            <el-table-column prop="create_time" label="创建时间" width="180">
               <template #default="scope">
-                {{ formatDate(scope.row.created_at) }}
+                {{ formatDate(scope.row.create_time) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right">
+            <el-table-column label="操作" width="160" fixed="right">
               <template #default="scope">
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="handleRunTestCase(scope.row)"
-                >
-                  <el-icon><i-ep-refresh /></el-icon>
-                  执行
-                </el-button>
                 <el-button
                   type="info"
                   size="small"
@@ -357,6 +349,13 @@ const caseRules = {
   group_id: [{ required: true, message: '请选择所属分组', trigger: 'change' }],
   url: [{ required: true, message: '请输入请求URL', trigger: 'blur' }],
   method: [{ required: true, message: '请选择请求方法', trigger: 'change' }]
+}
+
+const caseFieldLabels: Record<string, string> = {
+  name: '用例名称',
+  group_id: '所属分组',
+  url: '请求URL',
+  method: '请求方法'
 }
 
 // 格式化日期
@@ -620,29 +619,20 @@ const handleSaveTestCase = async () => {
         ElMessage.error(response.data.message || '用例添加失败')
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('保存用例失败:', error)
+    const fields = (error && (error.fields || error)) as Record<string, unknown> | undefined
+    if (fields && typeof fields === 'object') {
+      const missing = Object.keys(fields)
+        .map((key) => caseFieldLabels[key] || key)
+      if (missing.length) {
+        ElMessage.error(`请填写必填项：${missing.join('、')}`)
+        return
+      }
+    }
     ElMessage.error('保存用例失败')
   } finally {
     saving.value = false
-  }
-}
-
-// 执行用例
-const handleRunTestCase = async (caseItem: any) => {
-  try {
-    const response = await axios.post('/api/v1/test/run', {
-      case_ids: [caseItem.id]
-    })
-    
-    if (response.data.code === 200) {
-      ElMessage.success('测试执行成功')
-    } else {
-      ElMessage.error(response.data.message || '测试执行失败')
-    }
-  } catch (error) {
-    console.error('测试执行失败:', error)
-    ElMessage.error('测试执行失败')
   }
 }
 

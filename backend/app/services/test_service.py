@@ -1,5 +1,11 @@
 from app.models import TestExecution, TestResult, PerformanceTest, RobustnessTest, db, TestCase
-from app.schemas.test import TestRunRequest, TestRunBatchRequest, TestRunPerformanceRequest, TestRunRobustnessRequest
+from app.schemas.test import (
+    TestRunRequest,
+    TestRunBatchRequest,
+    TestRunPerformanceRequest,
+    TestRunRobustnessRequest,
+    TestRunPerformanceCustomRequest,
+)
 from app.utils.redis import redis_util
 from app.utils.validator import Validator
 import json
@@ -490,6 +496,33 @@ class TestService:
             db.session.rollback()
             return False, str(e)
     
+    def run_performance_test_custom(self, test_data: TestRunPerformanceCustomRequest, user_id: int):
+        """执行自定义目标的性能测试（不依赖用例与执行记录）"""
+        from config import Config
+        
+        try:
+            concurrency = max(1, min(test_data.concurrency, Config.MAX_CONCURRENCY))
+            duration = max(1, min(test_data.duration, Config.MAX_DURATION))
+            
+            success, result = self._execute_performance_custom(
+                target_url=test_data.target_url,
+                method=test_data.method or "GET",
+                headers=test_data.headers or {},
+                body=test_data.body,
+                concurrency=concurrency,
+                duration=duration,
+                timeout=test_data.timeout or 30,
+                ramp_up_config=test_data.ramp_up_config,
+            )
+            if not success:
+                return False, result
+            return True, {
+                "metrics": result.get("metrics", {}),
+                "log": result.get("log", []),
+            }
+        except Exception as e:
+            return False, str(e)
+    
     def _execute_performance_test(self, case, concurrency, duration, ramp_up_config=None):
         """执行性能测试的核心逻辑"""
         try:
@@ -570,6 +603,103 @@ class TestService:
             }
             
             log.append(f"Performance test completed: {metrics['requests']} requests in {total_time:.2f}s")
+            log.append(f"TPS: {metrics['tps']:.2f}, Error rate: {metrics['error_rate']:.2f}%")
+            log.append(f"Response times: avg={metrics['avg_response_time']:.2f}s, max={metrics['max_response_time']:.2f}s, min={metrics['min_response_time']:.2f}s")
+            
+            return True, {
+                'log': log,
+                'metrics': metrics
+            }
+        except Exception as e:
+            return False, {
+                'log': [f"Performance test error: {e}"],
+                'error': str(e)
+            }
+    
+    def _execute_performance_custom(self, target_url, method, headers, body, concurrency, duration, timeout, ramp_up_config=None):
+        """执行自定义URL的性能测试"""
+        try:
+            log = []
+            metrics = {
+                'concurrency': concurrency,
+                'duration': duration,
+                'requests': 0,
+                'successes': 0,
+                'failures': 0,
+                'response_times': [],
+                'tps': 0,
+                'qps': 0,
+                'error_rate': 0,
+                'avg_response_time': 0,
+                'max_response_time': 0,
+                'min_response_time': float('inf'),
+                'server_metrics': {}
+            }
+            
+            start_time = time.time()
+            end_time = start_time + duration
+            
+            pool = Pool(concurrency)
+            
+            def send_request():
+                nonlocal metrics
+                try:
+                    request_start = time.time()
+                    data = None
+                    if body:
+                        try:
+                            data = json.loads(body)
+                        except Exception:
+                            data = body
+                    response = requests.request(
+                        method=method,
+                        url=target_url,
+                        headers=headers or {},
+                        json=data if isinstance(data, (dict, list)) else None,
+                        data=data if isinstance(data, str) else None,
+                        timeout=timeout
+                    )
+                    request_end = time.time()
+                    elapsed = request_end - request_start
+                    metrics['requests'] += 1
+                    if 200 <= response.status_code < 400:
+                        metrics['successes'] += 1
+                        metrics['response_times'].append(elapsed)
+                        if elapsed > metrics['max_response_time']:
+                            metrics['max_response_time'] = elapsed
+                        if elapsed < metrics['min_response_time']:
+                            metrics['min_response_time'] = elapsed
+                    else:
+                        metrics['failures'] += 1
+                except Exception:
+                    metrics['requests'] += 1
+                    metrics['failures'] += 1
+            
+            while time.time() < end_time:
+                pool.spawn(send_request)
+                time.sleep(0.01)
+            
+            pool.join()
+            
+            total_time = time.time() - start_time
+            metrics['tps'] = metrics['requests'] / total_time if total_time > 0 else 0
+            metrics['qps'] = metrics['tps']
+            metrics['error_rate'] = metrics['failures'] / metrics['requests'] * 100 if metrics['requests'] > 0 else 0
+            
+            if metrics['response_times']:
+                metrics['avg_response_time'] = sum(metrics['response_times']) / len(metrics['response_times'])
+            else:
+                metrics['avg_response_time'] = 0
+                metrics['max_response_time'] = 0
+                metrics['min_response_time'] = 0
+            
+            metrics['server_metrics'] = {
+                'cpu_percent': psutil.cpu_percent(),
+                'memory_percent': psutil.virtual_memory().percent,
+                'disk_percent': psutil.disk_usage('/').percent
+            }
+            
+            log.append(f"Custom performance test completed: {metrics['requests']} requests in {total_time:.2f}s")
             log.append(f"TPS: {metrics['tps']:.2f}, Error rate: {metrics['error_rate']:.2f}%")
             log.append(f"Response times: avg={metrics['avg_response_time']:.2f}s, max={metrics['max_response_time']:.2f}s, min={metrics['min_response_time']:.2f}s")
             
