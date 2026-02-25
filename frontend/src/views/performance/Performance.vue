@@ -9,7 +9,7 @@
               <el-icon><i-ep-play /></el-icon>
               开始压测
             </el-button>
-            <el-button @click="saveConfig">
+            <el-button @click="saveConfig" :loading="savingConfig">
               <el-icon><i-ep-document-save /></el-icon>
               保存配置
             </el-button>
@@ -245,6 +245,7 @@ const testConfig = ref({
 const cases = ref<any[]>([])
 const selectedCaseId = ref<number | null>(null)
 const loading = ref(false)
+const savingConfig = ref(false)
 const targetType = ref('case')
 
 const testResult = ref<any>(null)
@@ -534,8 +535,55 @@ const renderCharts = () => {
   }
 }
 
-const saveConfig = () => {
-  ElMessage.info('保存配置功能开发中')
+const saveConfig = async () => {
+  if (targetType.value === 'custom' && !testConfig.value.targetUrl) {
+    ElMessage.warning('请输入测试目标URL')
+    return
+  }
+  if (!testConfig.value.name) {
+    ElMessage.warning('请输入测试名称')
+    return
+  }
+
+  savingConfig.value = true
+  try {
+    const headersObject: Record<string, string> = {}
+    testConfig.value.headers.forEach(item => {
+      if (item.key) {
+        headersObject[item.key] = item.value
+      }
+    })
+
+    const configData = {
+      name: testConfig.value.name,
+      case_id: targetType.value === 'case' ? selectedCaseId.value : null,
+      target_url: targetType.value === 'custom' ? testConfig.value.targetUrl : null,
+      method: testConfig.value.method,
+      headers: headersObject,
+      body: testConfig.value.body,
+      concurrency_type: testConfig.value.concurrencyType,
+      concurrency: testConfig.value.concurrency,
+      initial_concurrency: testConfig.value.initialConcurrency,
+      target_concurrency: testConfig.value.targetConcurrency,
+      step_count: testConfig.value.stepCount,
+      step_duration: testConfig.value.stepDuration,
+      duration: testConfig.value.duration,
+      interval: testConfig.value.interval,
+      timeout: testConfig.value.timeout
+    }
+
+    const response = await axios.post('/api/v1/test/performance/config', configData)
+    if (response.data.code === 201) {
+      ElMessage.success('配置保存成功')
+    } else {
+      ElMessage.error(response.data.message || '配置保存失败')
+    }
+  } catch (error: any) {
+    console.error('保存配置失败:', error)
+    ElMessage.error(error.response?.data?.message || '保存配置失败')
+  } finally {
+    savingConfig.value = false
+  }
 }
 
 const exportResult = () => {

@@ -36,10 +36,32 @@
           >
             <template #default="{ data }">
               <span class="tree-node">
-                <el-icon>
-                  <i-ep-folder />
-                </el-icon>
-                <span>{{ data.name }}</span>
+                <span class="node-label">
+                  <el-icon><i-ep-folder /></el-icon>
+                  <span>{{ data.name }}</span>
+                </span>
+                <span class="node-actions">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    circle
+                    @click.stop="handleEditGroup(data)"
+                    title="编辑分组"
+                    style="color: #409eff; background: white; border: 1px solid #409eff;"
+                  >
+                    <el-icon><i-ep-edit /></el-icon>
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    circle
+                    @click.stop="handleDeleteCaseGroup(data)"
+                    title="删除分组"
+                    style="color: black; background: #ff4d4f; border: 1px solid black;"
+                  >
+                    <el-icon><i-ep-delete /></el-icon>
+                  </el-button>
+                </span>
               </span>
             </template>
           </el-tree>
@@ -72,6 +94,13 @@
             </el-select>
             <el-button type="primary" @click="handleSearch">查询</el-button>
             <el-button @click="resetSearch">重置</el-button>
+            <el-button
+              type="danger"
+              :disabled="!multipleSelection.length"
+              @click="handleBatchDeleteTestCases"
+            >
+              批量删除
+            </el-button>
           </div>
 
           <el-table
@@ -80,7 +109,9 @@
             style="width: 100%"
             border
             v-loading="loading"
+            @selection-change="handleSelectionChange"
           >
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="name" label="用例名称" min-width="200" />
             <el-table-column prop="description" label="描述" min-width="300" />
@@ -295,6 +326,7 @@ const caseList = ref<any[]>([])
 const loading = ref(false)
 const groupLoading = ref(false)
 const saving = ref(false)
+const multipleSelection = ref<any[]>([])
 
 const treeProps = {
   children: 'children',
@@ -439,7 +471,45 @@ const resetSearch = () => {
   searchKeyword.value = ''
   caseStatus.value = ''
   selectedGroupId.value = null
+  multipleSelection.value = []
   handleSearch()
+}
+
+// 选择
+const handleSelectionChange = (val: any[]) => {
+  multipleSelection.value = val
+}
+
+// 批量删除用例
+const handleBatchDeleteTestCases = () => {
+  if (!multipleSelection.value.length) return
+  
+  const ids = multipleSelection.value.map(item => item.id)
+  ElMessageBox.confirm(
+    `确定要删除选中的 ${ids.length} 条测试用例吗？`,
+    '批量删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      const response = await axios.delete('/api/v1/case/batch', {
+        data: { case_ids: ids }
+      })
+      if (response.data.code === 200) {
+        ElMessage.success('批量删除成功')
+        multipleSelection.value = []
+        loadCases()
+      } else {
+        ElMessage.error(response.data.message || '批量删除失败')
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    }
+  }).catch(() => {})
 }
 
 // 分页
@@ -473,6 +543,45 @@ const handleAddCaseGroup = () => {
   groupForm.name = ''
   groupForm.parent_id = null
   showGroupDialog.value = true
+}
+
+// 编辑分组
+const handleEditGroup = (data: any) => {
+  isEditGroup.value = true
+  groupForm.id = data.id
+  groupForm.name = data.name
+  groupForm.parent_id = data.parent_id
+  showGroupDialog.value = true
+}
+
+// 删除分组
+const handleDeleteCaseGroup = (data: any) => {
+  ElMessageBox.confirm(
+    `确定要删除分组 "${data.name}" 吗？删除分组将同时删除该分组下的所有子分组和测试用例。`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      const response = await axios.delete(`/api/v1/case/group/${data.id}`)
+      if (response.data.code === 200) {
+        ElMessage.success('分组删除成功')
+        if (selectedGroupId.value === data.id) {
+          selectedGroupId.value = null
+          handleSearch()
+        }
+        loadGroups()
+      } else {
+        ElMessage.error(response.data.message || '分组删除失败')
+      }
+    } catch (error) {
+      console.error('分组删除失败:', error)
+      ElMessage.error('分组删除失败')
+    }
+  }).catch(() => {})
 }
 
 // 保存分组
@@ -721,13 +830,41 @@ onMounted(() => {
 }
 
 .tree-node {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.node-label {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-right: auto;
+}
+
+.node-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .tree-node .el-icon {
   font-size: 16px;
+}
+
+.node-actions .el-button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node-actions .el-button .el-icon {
+  font-size: 12px;
+  margin: 0;
 }
 
 @media screen and (max-width: 1200px) {

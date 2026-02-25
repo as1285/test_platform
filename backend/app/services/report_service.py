@@ -13,6 +13,8 @@ class ReportService:
     def create_report(self, report_data: dict, user_id: int):
         """创建报告"""
         try:
+            execution_id = report_data.get('execution_id')
+            
             # 生成报告内容
             report_content = self._generate_report_content(report_data)
             
@@ -23,6 +25,7 @@ class ReportService:
             report = Report(
                 name=report_data.get('name', f'Report_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}'),
                 user_id=user_id,
+                execution_id=execution_id,
                 type=report_data.get('type', 'html'),
                 report_url=report_url
             )
@@ -37,26 +40,62 @@ class ReportService:
     def get_report_by_id(self, report_id: int):
         """根据ID获取报告"""
         try:
-            # 检查缓存
-            cache_key = f'report:{report_id}'
-            cached_report = redis_util.get(cache_key)
-            if cached_report:
-                return cached_report
-            
             # 从数据库获取
             report = Report.query.get(report_id)
             if report:
-                # 更新缓存
+                # 获取执行记录和统计信息
+                execution = report.execution
+                total_cases = 0
+                passed_cases = 0
+                failed_cases = 0
+                pass_rate = '0%'
+                duration = 0
+                status = '未知'
+                details = []
+                
+                if execution:
+                    from app.models import TestResult, TestCase
+                    results = TestResult.query.filter_by(execution_id=execution.id).all()
+                    total_cases = len(results)
+                    passed_cases = len([r for r in results if r.status == 'success'])
+                    failed_cases = total_cases - passed_cases
+                    if total_cases > 0:
+                        pass_rate = f"{int(passed_cases / total_cases * 100)}%"
+                    
+                    if execution.start_time and execution.end_time:
+                        duration = int((execution.end_time - execution.start_time).total_seconds())
+                    
+                    status = '通过' if execution.status == 'success' else '失败'
+                    if total_cases > 0 and passed_cases < total_cases and passed_cases > 0:
+                        status = '部分通过'
+                    
+                    # 获取详情
+                    for r in results:
+                        case = TestCase.query.get(execution.case_id) if execution.case_id else None
+                        details.append({
+                            'caseId': execution.case_id,
+                            'caseName': case.name if case else '未知用例',
+                            'status': '通过' if r.status == 'success' else '失败',
+                            'responseTime': r.response_time,
+                            'message': r.error_message or '测试通过'
+                        })
+
                 report_data = {
-                    'id': report.id,
+                    'id': f"R{report.created_at.strftime('%Y%m%d')}{report.id:04d}",
+                    'real_id': report.id,
                     'name': report.name,
-                    'user_id': report.user_id,
                     'type': report.type,
+                    'status': status,
+                    'totalCases': total_cases,
+                    'passedCases': passed_cases,
+                    'failedCases': failed_cases,
+                    'passRate': pass_rate,
+                    'duration': duration,
+                    'createTime': report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else None,
                     'report_url': report.report_url,
-                    'created_at': report.created_at.isoformat() if report.created_at else None
+                    'details': details
                 }
-                redis_util.set(cache_key, report_data, 3600)
-                return report
+                return report_data
             return None
         except Exception as e:
             print(f"Get report error: {e}")
@@ -75,11 +114,43 @@ class ReportService:
             # 构建响应
             report_list = []
             for report in reports:
+                # 获取执行记录和统计信息
+                execution = report.execution
+                total_cases = 0
+                passed_cases = 0
+                failed_cases = 0
+                pass_rate = '0%'
+                duration = 0
+                status = '未知'
+                
+                if execution:
+                    from app.models import TestResult
+                    results = TestResult.query.filter_by(execution_id=execution.id).all()
+                    total_cases = len(results)
+                    passed_cases = len([r for r in results if r.status == 'success'])
+                    failed_cases = total_cases - passed_cases
+                    if total_cases > 0:
+                        pass_rate = f"{int(passed_cases / total_cases * 100)}%"
+                    
+                    if execution.start_time and execution.end_time:
+                        duration = int((execution.end_time - execution.start_time).total_seconds())
+                    
+                    status = '通过' if execution.status == 'success' else '失败'
+                    if total_cases > 0 and passed_cases < total_cases and passed_cases > 0:
+                        status = '部分通过'
+
                 report_list.append({
-                    'id': report.id,
+                    'id': f"R{report.created_at.strftime('%Y%m%d')}{report.id:04d}",
+                    'real_id': report.id,
                     'name': report.name,
                     'type': report.type,
-                    'created_at': report.created_at.isoformat() if report.created_at else None
+                    'status': status,
+                    'totalCases': total_cases,
+                    'passedCases': passed_cases,
+                    'failedCases': failed_cases,
+                    'passRate': pass_rate,
+                    'duration': duration,
+                    'createTime': report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else None
                 })
             
             return {

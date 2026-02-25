@@ -172,6 +172,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 
 // 响应式数据
 const filterForm = ref({
@@ -217,13 +218,27 @@ const getStatusTagType = (status: string) => {
   return statusMap[status] || 'info'
 }
 
-const searchReports = () => {
+const searchReports = async () => {
   loading.value = true
-  // 模拟搜索请求
-  setTimeout(() => {
-    loadReports()
+  try {
+    const params: any = {
+      page: currentPage.value,
+      page_size: pageSize.value
+    }
+    if (filterForm.value.type) params.type = filterForm.value.type
+    if (filterForm.value.status !== 'all') params.status = filterForm.value.status
+    if (filterForm.value.keyword) params.keyword = filterForm.value.keyword
+    
+    const response = await axios.get('/api/v1/report', { params })
+    if (response.data.code === 200) {
+      reportsData.value = response.data.data.reports
+      total.value = response.data.pagination.total
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '获取报告列表失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const resetFilter = () => {
@@ -250,122 +265,49 @@ const handleCurrentChange = (current: number) => {
   searchReports()
 }
 
-const loadReports = () => {
-  // 模拟报告数据
-  reportsData.value = [
-    {
-      id: 'R20240101001',
-      name: '自动化测试报告-用户模块',
-      type: 'automation',
-      status: '通过',
-      totalCases: 10,
-      passedCases: 10,
-      failedCases: 0,
-      passRate: '100%',
-      duration: 15,
-      createTime: '2024-01-01 10:00:00'
-    },
-    {
-      id: 'R20240101002',
-      name: '性能测试报告-商品接口',
-      type: 'performance',
-      status: '通过',
-      totalCases: 1,
-      passedCases: 1,
-      failedCases: 0,
-      passRate: '100%',
-      duration: 300,
-      createTime: '2024-01-01 11:00:00'
-    },
-    {
-      id: 'R20240101003',
-      name: '鲁棒性测试报告-订单接口',
-      type: 'robustness',
-      status: '部分通过',
-      totalCases: 5,
-      passedCases: 4,
-      failedCases: 1,
-      passRate: '80%',
-      duration: 60,
-      createTime: '2024-01-01 12:00:00'
-    },
-    {
-      id: 'R20240101004',
-      name: '自动化测试报告-支付模块',
-      type: 'automation',
-      status: '失败',
-      totalCases: 8,
-      passedCases: 6,
-      failedCases: 2,
-      passRate: '75%',
-      duration: 20,
-      createTime: '2024-01-01 13:00:00'
+const viewReport = async (reportId: any) => {
+  // 查找真实的 ID (real_id)
+  const report = reportsData.value.find(r => r.id === reportId)
+  if (!report) return
+  
+  try {
+    const response = await axios.get(`/api/v1/report/${report.real_id}`)
+    if (response.data.code === 200) {
+      currentReport.value = response.data.data
+      reportDialogVisible.value = true
     }
-  ]
-  total.value = reportsData.value.length
-}
-
-const viewReport = (reportId: string) => {
-  // 模拟获取报告详情
-  currentReport.value = {
-    id: reportId,
-    name: '测试报告详情',
-    type: 'automation',
-    status: '部分通过',
-    totalCases: 10,
-    passedCases: 8,
-    failedCases: 2,
-    passRate: '80%',
-    duration: 15,
-    createTime: '2024-01-01 10:00:00',
-    details: [
-      {
-        caseId: '101',
-        caseName: '登录接口',
-        status: '通过',
-        responseTime: 50,
-        message: '测试通过'
-      },
-      {
-        caseId: '102',
-        caseName: '注册接口',
-        status: '通过',
-        responseTime: 60,
-        message: '测试通过'
-      },
-      {
-        caseId: '103',
-        caseName: '获取用户信息',
-        status: '失败',
-        responseTime: 80,
-        message: '返回数据格式错误'
-      },
-      {
-        caseId: '104',
-        caseName: '更新用户信息',
-        status: '失败',
-        responseTime: 70,
-        message: '参数验证失败'
-      }
-    ]
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '获取报告详情失败')
   }
-  reportDialogVisible.value = true
 }
 
-const exportReport = (_reportId: string) => {
-  ElMessage.info('导出报告功能开发中')
+const exportReport = (reportId: string) => {
+  const report = reportsData.value.find(r => r.id === reportId)
+  if (report && report.report_url) {
+    window.open(report.report_url, '_blank')
+  } else {
+    ElMessage.info('该报告暂无可用的下载链接')
+  }
 }
 
 const deleteReport = (reportId: string) => {
+  const report = reportsData.value.find(r => r.id === reportId)
+  if (!report) return
+
   ElMessageBox.confirm('确定要删除此报告吗？', '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    // 模拟删除操作
-    reportsData.value = reportsData.value.filter(item => item.id !== reportId)
-    total.value = reportsData.value.length
-    ElMessage.success('报告删除成功')
+  }).then(async () => {
+    try {
+      const response = await axios.delete(`/api/v1/report/${report.real_id}`)
+      if (response.data.code === 200) {
+        ElMessage.success('报告删除成功')
+        searchReports()
+      }
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || '删除报告失败')
+    }
   }).catch(() => {
     // 取消删除
   })

@@ -168,6 +168,24 @@ class CaseService:
             db.session.rollback()
             return False, str(e)
     
+    def delete_test_cases(self, case_ids: list, user_id: int):
+        """批量删除测试用例"""
+        try:
+            cases = TestCase.query.filter(TestCase.id.in_(case_ids), TestCase.user_id == user_id).all()
+            if not cases:
+                return False, 'No matching test cases found'
+            
+            count = 0
+            for case in cases:
+                db.session.delete(case)
+                count += 1
+            
+            db.session.commit()
+            return True, f'Successfully deleted {count} test cases'
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
+    
     # 测试步骤相关
     def create_test_step(self, step_data: TestStepCreate):
         """创建测试步骤"""

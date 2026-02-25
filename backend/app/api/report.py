@@ -59,18 +59,9 @@ def get_reports():
 def get_report(report_id):
     """获取报告详情"""
     try:
-        report = report_service.get_report_by_id(report_id)
-        if not report:
+        report_data = report_service.get_report_by_id(report_id)
+        if not report_data:
             return jsonify(BaseResponse(code=404, message='Report not found').dict()), 404
-        
-        report_data = {
-            'id': report.id,
-            'name': report.name,
-            'user_id': report.user_id,
-            'type': report.type,
-            'report_url': report.report_url,
-            'created_at': report.created_at.isoformat() if report.created_at else None
-        }
         
         return jsonify(BaseResponse(data=report_data).dict()), 200
     except Exception as e:

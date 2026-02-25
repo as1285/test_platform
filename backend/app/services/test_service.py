@@ -1,4 +1,4 @@
-from app.models import TestExecution, TestResult, PerformanceTest, RobustnessTest, db, TestCase
+from app.models import TestExecution, TestResult, PerformanceTest, RobustnessTest, PerformanceConfig, db, TestCase
 from app.schemas.test import (
     TestRunRequest,
     TestRunBatchRequest,
@@ -66,6 +66,14 @@ class TestService:
                 )
                 db.session.add(test_result)
                 db.session.commit()
+                
+                # 创建报告记录
+                from app.services import report_service
+                report_service.create_report({
+                    'name': f"自动化测试报告-{case.name}",
+                    'execution_id': execution.id,
+                    'type': 'automation'
+                }, user_id)
                 
                 results.append({
                     'case_id': case_id,
@@ -486,6 +494,14 @@ class TestService:
             )
             db.session.add(performance_test)
             db.session.commit()
+            
+            # 创建报告记录
+            from app.services import report_service
+            report_service.create_report({
+                'name': f"性能测试报告-{case.name}",
+                'execution_id': execution.id,
+                'type': 'performance'
+            }, user_id)
             
             return True, {
                 'execution_id': execution.id,
@@ -919,28 +935,88 @@ class TestService:
     def _check_circuit_breaker(self, case):
         """检查是否有熔断机制"""
         # 简化实现，检查响应断言中是否有熔断相关配置
-        if case.response_assert:
+        if case.validate:
             try:
-                assert_config = json.loads(case.response_assert)
-                for assertion in assert_config:
+                validate_config = case.validate if isinstance(case.validate, list) else json.loads(case.validate)
+                for assertion in validate_config:
                     if 'circuit' in str(assertion).lower() or 'breaker' in str(assertion).lower():
                         return True
             except Exception:
                 pass
         return False
-    
+
     def _check_standard_error(self, case):
         """检查异常提示是否规范"""
-        # 简化实现，检查响应断言中是否有错误码相关配置
-        if case.response_assert:
+        # 简化实现，检查响应断言中是否有错误码规范
+        if case.validate:
             try:
-                assert_config = json.loads(case.response_assert)
-                for assertion in assert_config:
-                    if 'code' in str(assertion).lower() or 'error' in str(assertion).lower():
+                validate_config = case.validate if isinstance(case.validate, list) else json.loads(case.validate)
+                for assertion in validate_config:
+                    if 'code' in str(assertion).lower() or 'message' in str(assertion).lower():
                         return True
             except Exception:
                 pass
         return False
+
+    # 性能测试配置相关
+    def save_performance_config(self, config_data, user_id):
+        """保存性能测试配置"""
+        try:
+            config = PerformanceConfig(
+                name=config_data.get('name'),
+                user_id=user_id,
+                case_id=config_data.get('case_id'),
+                target_url=config_data.get('target_url'),
+                method=config_data.get('method', 'GET'),
+                headers=config_data.get('headers'),
+                body=config_data.get('body'),
+                concurrency_type=config_data.get('concurrency_type', '固定并发'),
+                concurrency=config_data.get('concurrency'),
+                initial_concurrency=config_data.get('initial_concurrency'),
+                target_concurrency=config_data.get('target_concurrency'),
+                step_count=config_data.get('step_count'),
+                step_duration=config_data.get('step_duration'),
+                duration=config_data.get('duration', 300),
+                interval=config_data.get('interval', 0),
+                timeout=config_data.get('timeout', 30)
+            )
+            db.session.add(config)
+            db.session.commit()
+            return True, config
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
+
+    def get_performance_configs(self, user_id):
+        """获取用户的性能测试配置列表"""
+        try:
+            configs = PerformanceConfig.query.filter_by(user_id=user_id).order_by(PerformanceConfig.created_at.desc()).all()
+            return True, configs
+        except Exception as e:
+            return False, str(e)
+
+    def get_performance_config_by_id(self, config_id, user_id):
+        """根据ID获取性能测试配置"""
+        try:
+            config = PerformanceConfig.query.filter_by(id=config_id, user_id=user_id).first()
+            if not config:
+                return False, "Configuration not found"
+            return True, config
+        except Exception as e:
+            return False, str(e)
+
+    def delete_performance_config(self, config_id, user_id):
+        """删除性能测试配置"""
+        try:
+            config = PerformanceConfig.query.filter_by(id=config_id, user_id=user_id).first()
+            if not config:
+                return False, "Configuration not found"
+            db.session.delete(config)
+            db.session.commit()
+            return True, "Configuration deleted successfully"
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
     
     # 获取测试结果
     def get_test_execution(self, execution_id: int):

@@ -8,6 +8,7 @@ from app.schemas.test import (
     TestRunPerformanceRequest,
     TestRunRobustnessRequest,
     TestRunPerformanceCustomRequest,
+    PerformanceConfigCreate,
 )
 from app.schemas import BaseResponse
 
@@ -96,6 +97,110 @@ def run_robustness_test():
             return jsonify(BaseResponse(code=400, message=result).dict()), 400
         
         return jsonify(BaseResponse(data=result).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+# 性能测试配置相关接口
+@api_bp.route('/test/performance/config', methods=['POST'])
+@jwt_required()
+def save_performance_config():
+    """保存性能测试配置"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.json
+        success, result = test_service.save_performance_config(data, user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        return jsonify(BaseResponse(data={
+            "id": result.id,
+            "name": result.name,
+            "created_at": result.created_at.isoformat()
+        }).dict()), 201
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/test/performance/config', methods=['GET'])
+@jwt_required()
+def get_performance_configs():
+    """获取用户的性能测试配置列表"""
+    try:
+        user_id = get_jwt_identity()
+        success, result = test_service.get_performance_configs(user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        configs = []
+        for config in result:
+            configs.append({
+                "id": config.id,
+                "name": config.name,
+                "case_id": config.case_id,
+                "target_url": config.target_url,
+                "method": config.method,
+                "headers": config.headers,
+                "body": config.body,
+                "concurrency_type": config.concurrency_type,
+                "concurrency": config.concurrency,
+                "initial_concurrency": config.initial_concurrency,
+                "target_concurrency": config.target_concurrency,
+                "step_count": config.step_count,
+                "step_duration": config.step_duration,
+                "duration": config.duration,
+                "interval": config.interval,
+                "timeout": config.timeout,
+                "created_at": config.created_at.isoformat(),
+                "updated_at": config.updated_at.isoformat()
+            })
+        
+        return jsonify(BaseResponse(data=configs).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/test/performance/config/<int:config_id>', methods=['GET'])
+@jwt_required()
+def get_performance_config(config_id):
+    """根据ID获取性能测试配置"""
+    try:
+        user_id = get_jwt_identity()
+        success, result = test_service.get_performance_config_by_id(config_id, user_id)
+        if not success:
+            return jsonify(BaseResponse(code=404, message=result).dict()), 404
+        
+        return jsonify(BaseResponse(data={
+            "id": result.id,
+            "name": result.name,
+            "case_id": result.case_id,
+            "target_url": result.target_url,
+            "method": result.method,
+            "headers": result.headers,
+            "body": result.body,
+            "concurrency_type": result.concurrency_type,
+            "concurrency": result.concurrency,
+            "initial_concurrency": result.initial_concurrency,
+            "target_concurrency": result.target_concurrency,
+            "step_count": result.step_count,
+            "step_duration": result.step_duration,
+            "duration": result.duration,
+            "interval": result.interval,
+            "timeout": result.timeout,
+            "created_at": result.created_at.isoformat(),
+            "updated_at": result.updated_at.isoformat()
+        }).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/test/performance/config/<int:config_id>', methods=['DELETE'])
+@jwt_required()
+def delete_performance_config(config_id):
+    """删除性能测试配置"""
+    try:
+        user_id = get_jwt_identity()
+        success, result = test_service.delete_performance_config(config_id, user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        return jsonify(BaseResponse(message=result).dict()), 200
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
 

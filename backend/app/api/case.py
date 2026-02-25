@@ -240,6 +240,26 @@ def delete_test_case(case_id):
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
 
+@api_bp.route('/case/batch', methods=['DELETE'])
+@jwt_required()
+def delete_test_cases():
+    """批量删除测试用例"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.json
+        case_ids = data.get('case_ids', [])
+        
+        if not case_ids:
+            return jsonify(BaseResponse(code=400, message='Case IDs are required').dict()), 400
+            
+        success, result = case_service.delete_test_cases(case_ids, user_id)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        return jsonify(BaseResponse(message=result).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
 # 测试步骤相关接口
 @api_bp.route('/case/step', methods=['POST'])
 @jwt_required()

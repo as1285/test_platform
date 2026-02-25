@@ -98,6 +98,39 @@ class TestRunPerformanceCustomRequest(BaseModel):
     method: str = "GET"
     headers: Optional[Dict[str, Any]] = None
     body: Optional[str] = None
+    concurrency: int = 10
+    duration: int = 300
+    ramp_up_config: Optional[str] = None
+    timeout: int = 30
+
+class PerformanceConfigBase(BaseModel):
+    name: str
+    case_id: Optional[int] = None
+    target_url: Optional[str] = None
+    method: str = "GET"
+    headers: Optional[Dict[str, Any]] = None
+    body: Optional[str] = None
+    concurrency_type: str = "固定并发"
+    concurrency: Optional[int] = None
+    initial_concurrency: Optional[int] = None
+    target_concurrency: Optional[int] = None
+    step_count: Optional[int] = None
+    step_duration: Optional[int] = None
+    duration: int = 300
+    interval: int = 0
+    timeout: int = 30
+
+class PerformanceConfigCreate(PerformanceConfigBase):
+    pass
+
+class PerformanceConfigResponse(PerformanceConfigBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        orm_mode = True
     concurrency: int
     duration: int
     ramp_up_config: Optional[str] = None
