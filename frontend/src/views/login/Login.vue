@@ -100,12 +100,10 @@ const loginForm = reactive({
 // 登录表单验证规则
 const loginRules = {
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { required: true, message: '请输入账号', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ]
 }
 
@@ -123,12 +121,10 @@ const registerRules = {
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { required: true, message: '请输入账号', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -163,11 +159,9 @@ const handleLogin = async () => {
       
       ElMessage.success('登录成功')
       router.push('/dashboard')
-    } else {
-      ElMessage.error(response.data.message || '登录失败')
     }
   } catch (error) {
-    ElMessage.error('登录失败，请检查网络或账号密码')
+    // 错误已在拦截器中统一处理
   } finally {
     isLoading.value = false
   }
@@ -185,11 +179,9 @@ const handleRegister = async () => {
     if (response.data.code === 200) {
       ElMessage.success('注册成功，请登录')
       showRegister.value = false
-    } else {
-      ElMessage.error(response.data.message || '注册失败')
     }
   } catch (error) {
-    ElMessage.error('注册失败，请检查网络')
+    // 错误已在拦截器中统一处理
   }
 }
 </script>

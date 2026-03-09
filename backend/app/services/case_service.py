@@ -28,7 +28,7 @@ class CaseService:
     def get_case_groups(self, user_id: int):
         """获取用户的用例分组"""
         try:
-            groups = CaseGroup.query.filter_by(user_id=user_id).all()
+            groups = CaseGroup.query.all()
             return groups
         except Exception as e:
             print(f"Get case groups error: {e}")
@@ -100,7 +100,7 @@ class CaseService:
     def get_test_cases(self, user_id: int, group_id: int = None):
         """获取测试用例"""
         try:
-            query = TestCase.query.filter_by(user_id=user_id)
+            query = TestCase.query
             if group_id:
                 query = query.filter_by(group_id=group_id)
             cases = query.all()
@@ -171,7 +171,7 @@ class CaseService:
     def delete_test_cases(self, case_ids: list, user_id: int):
         """批量删除测试用例"""
         try:
-            cases = TestCase.query.filter(TestCase.id.in_(case_ids), TestCase.user_id == user_id).all()
+            cases = TestCase.query.filter(TestCase.id.in_(case_ids)).all()
             if not cases:
                 return False, 'No matching test cases found'
             

@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import axios from 'axios'
 
@@ -27,17 +27,25 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   response => response,
   error => {
-    const response = error.response
-    if (response && response.data) {
-      const data = response.data as any
-      const msg = (data.msg || data.message || '').toString()
-      if (msg === 'Token has expired' || response.status === 401) {
+    if (error.response) {
+      const data = error.response.data || {}
+      const status = error.response.status
+      const msg = data.message || data.msg
+
+      if (status === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         if (router.currentRoute.value.path !== '/login') {
           router.push('/login')
+          ElMessage.error(msg || '认证失败或登录已过期，请重新登录。')
         }
+      } else if (msg) {
+        ElMessage.error(msg)
       }
+    } else if (error.request) {
+      ElMessage.error('网络错误，无法连接到服务器')
+    } else {
+      ElMessage.error(error.message || '请求失败')
     }
     return Promise.reject(error)
   }

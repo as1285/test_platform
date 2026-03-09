@@ -10,13 +10,13 @@ class UserService:
     def create_user(self, user_data: UserCreate):
         """创建用户"""
         try:
-            # 验证邮箱格式
-            if not Validator.validate_email(user_data.email):
-                return False, 'Invalid email format'
+            # # 验证邮箱格式
+            # if not Validator.validate_email(user_data.email):
+            #     return False, 'Invalid email format'
             
-            # 验证密码强度
-            if not Validator.validate_password(user_data.password):
-                return False, 'Password must be at least 8 characters and contain letters and numbers'
+            # # 验证密码强度
+            # if not Validator.validate_password(user_data.password):
+            #     return False, 'Password must be at least 8 characters and contain letters and numbers'
             
             # 检查邮箱是否已存在
             existing_user = User.query.filter_by(email=user_data.email).first()

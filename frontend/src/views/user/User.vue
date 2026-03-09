@@ -171,7 +171,7 @@ const userForm = reactive({
 
 const userRules = reactive({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }, { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }],
+  email: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 })
@@ -302,8 +302,6 @@ const saveUser = async () => {
         ElMessage.success('用户编辑成功')
         userDialogVisible.value = false
         loadUsers()
-      } else {
-        ElMessage.error(response.data.message || '用户编辑失败')
       }
     } else {
       // 新增用户
@@ -318,13 +316,10 @@ const saveUser = async () => {
         ElMessage.success('用户新增成功')
         userDialogVisible.value = false
         loadUsers()
-      } else {
-        ElMessage.error(response.data.message || '用户新增失败')
       }
     }
   } catch (error) {
-    console.error('保存用户失败:', error)
-    ElMessage.error('保存用户失败')
+    // 错误已在拦截器中统一处理
   } finally {
     saving.value = false
   }
@@ -342,12 +337,9 @@ const deleteUser = (userId: number) => {
       if (response.data.code === 200) {
         ElMessage.success('用户删除成功')
         loadUsers()
-      } else {
-        ElMessage.error(response.data.message || '用户删除失败')
       }
     } catch (error) {
-      console.error('删除用户失败:', error)
-      ElMessage.error('删除用户失败')
+      // 错误已在拦截器中统一处理
     }
   }).catch(() => {
     // 取消删除

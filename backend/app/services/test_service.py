@@ -990,7 +990,7 @@ class TestService:
     def get_performance_configs(self, user_id):
         """获取用户的性能测试配置列表"""
         try:
-            configs = PerformanceConfig.query.filter_by(user_id=user_id).order_by(PerformanceConfig.created_at.desc()).all()
+            configs = PerformanceConfig.query.order_by(PerformanceConfig.created_at.desc()).all()
             return True, configs
         except Exception as e:
             return False, str(e)
@@ -998,7 +998,7 @@ class TestService:
     def get_performance_config_by_id(self, config_id, user_id):
         """根据ID获取性能测试配置"""
         try:
-            config = PerformanceConfig.query.filter_by(id=config_id, user_id=user_id).first()
+            config = PerformanceConfig.query.filter_by(id=config_id).first()
             if not config:
                 return False, "Configuration not found"
             return True, config
@@ -1029,7 +1029,7 @@ class TestService:
     def get_test_executions(self, user_id: int):
         """获取用户的测试执行记录列表"""
         try:
-            return TestExecution.query.filter_by(user_id=user_id).order_by(TestExecution.created_at.desc()).all()
+            return TestExecution.query.order_by(TestExecution.created_at.desc()).all()
         except Exception:
             return []
     
@@ -1046,16 +1046,16 @@ class TestService:
             days = 7
             since = now - timedelta(days=days)
 
-            total_cases = TestCase.query.filter_by(user_id=user_id).count()
+            total_cases = TestCase.query.count()
 
-            executions_query = TestExecution.query.filter_by(user_id=user_id)
+            executions_query = TestExecution.query
             total_executions = executions_query.count()
             success_executions = executions_query.filter_by(status='success').count()
             success_rate = (success_executions / total_executions * 100) if total_executions > 0 else 0
 
             results_query = TestResult.query.join(
                 TestExecution, TestResult.execution_id == TestExecution.id
-            ).filter(TestExecution.user_id == user_id)
+            )
             avg_seconds = results_query.with_entities(func.avg(TestResult.response_time)).scalar()
             if avg_seconds is None:
                 avg_seconds = 0
