@@ -587,7 +587,51 @@ const saveConfig = async () => {
 }
 
 const exportResult = () => {
-  ElMessage.info('导出结果功能开发中')
+  if (!testResult.value) {
+    ElMessage.warning('没有可导出的测试结果')
+    return
+  }
+
+  // 准备CSV数据
+  const headers = [
+    '指标名称', '数值', '单位'
+  ]
+  
+  const data = [
+    ['TPS', testResult.value.tps, '次/秒'],
+    ['QPS', testResult.value.qps, '次/秒'],
+    ['平均响应时间', testResult.value.avgResponseTime, 'ms'],
+    ['最大响应时间', testResult.value.maxResponseTime, 'ms'],
+    ['最小响应时间', testResult.value.minResponseTime, 'ms'],
+    ['错误率', testResult.value.errorRate, '%'],
+    ['CPU占用率', testResult.value.metrics.cpu, '%'],
+    ['内存占用率', testResult.value.metrics.memory, '%'],
+    ['磁盘占用率', testResult.value.metrics.disk, '%']
+  ]
+
+  // 生成CSV内容
+  let csvContent = headers.join(',') + '\n'
+  data.forEach(row => {
+    csvContent += row.map(item => {
+      // 处理包含逗号或引号的数据
+      if (typeof item === 'string' && (item.includes(',') || item.includes('"'))) {
+        return `"${item.replace(/"/g, '""')}"`
+      }
+      return item
+    }).join(',') + '\n'
+  })
+
+  // 创建下载链接
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `性能测试结果_${new Date().toISOString().slice(0, 10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  ElMessage.success('测试结果已导出')
 }
 
 const saveResult = () => {

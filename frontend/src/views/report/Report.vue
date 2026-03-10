@@ -21,14 +21,14 @@
       <div class="report-filter">
         <el-form :inline="true" :model="filterForm" class="filter-form">
           <el-form-item label="报告类型">
-            <el-select v-model="filterForm.type" placeholder="选择类型">
+            <el-select v-model="filterForm.type" placeholder="选择类型" :style="{ width: '200px' }">
               <el-option label="自动化测试" value="automation" />
               <el-option label="性能测试" value="performance" />
               <el-option label="鲁棒性测试" value="robustness" />
             </el-select>
           </el-form-item>
           <el-form-item label="测试状态">
-            <el-select v-model="filterForm.status" placeholder="选择状态">
+            <el-select v-model="filterForm.status" placeholder="选择状态" :style="{ width: '200px' }">
               <el-option label="全部" value="all" />
               <el-option label="通过" value="passed" />
               <el-option label="失败" value="failed" />
