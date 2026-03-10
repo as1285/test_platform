@@ -74,6 +74,10 @@
                 <el-icon><i-ep-edit /></el-icon>
                 编辑
               </el-button>
+              <el-button size="small" type="warning" @click="changePassword(row)">
+                <el-icon><i-ep-key /></el-icon>
+                改密
+              </el-button>
               <el-button size="small" type="danger" @click="deleteUser(row.id)">
                 <el-icon><i-ep-delete /></el-icon>
                 删除
@@ -135,6 +139,28 @@
         </span>
       </template>
     </el-dialog>
+    
+    <!-- 修改密码对话框 -->
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改密码"
+      width="500px"
+    >
+      <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
+        <el-form-item label="新密码" prop="password">
+          <el-input v-model="passwordForm.password" type="password" placeholder="输入新密码" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="passwordDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="savePassword" :loading="saving">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -174,6 +200,31 @@ const userRules = reactive({
   email: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
+})
+
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref()
+const passwordForm = reactive({
+  userId: '',
+  password: '',
+  confirmPassword: ''
+})
+
+const passwordRules = reactive({
+  password: [{ required: true, message: '请输入新密码', trigger: 'blur' }],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule: any, value: any, callback: any) => {
+        if (value !== passwordForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
 })
 
 // 方法
@@ -280,6 +331,35 @@ const editUser = (user: any) => {
     status: user.status
   })
   userDialogVisible.value = true
+}
+
+const changePassword = (user: any) => {
+  passwordForm.userId = user.id
+  passwordForm.password = ''
+  passwordForm.confirmPassword = ''
+  passwordDialogVisible.value = true
+}
+
+const savePassword = async () => {
+  if (!passwordFormRef.value) return
+  
+  try {
+    await passwordFormRef.value.validate()
+    saving.value = true
+    
+    const response = await axios.put(`/api/v1/user/${passwordForm.userId}/password`, {
+      password: passwordForm.password
+    })
+    
+    if (response.data.code === 200) {
+      ElMessage.success('密码修改成功')
+      passwordDialogVisible.value = false
+    }
+  } catch (error) {
+    // 错误已在拦截器中统一处理
+  } finally {
+    saving.value = false
+  }
 }
 
 const saveUser = async () => {

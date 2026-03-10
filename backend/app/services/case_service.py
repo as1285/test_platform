@@ -52,19 +52,31 @@ class CaseService:
             db.session.rollback()
             return False, str(e)
     
-    def delete_case_group(self, group_id: int):
-        """删除用例分组"""
+    def delete_case_group(self, group_id: int, commit: bool = True):
+        """删除用例分组（递归，支持事务）"""
         try:
             group = CaseGroup.query.get(group_id)
             if not group:
                 return False, 'Case group not found'
+
+            # 递归删除子分组
+            for subgroup in CaseGroup.query.filter_by(parent_id=group_id).all():
+                self.delete_case_group(subgroup.id, commit=False)
+
+            # 逐个删除用例以触发级联删除
+            for case in TestCase.query.filter_by(group_id=group_id).all():
+                db.session.delete(case)
             
             db.session.delete(group)
-            db.session.commit()
+            
+            if commit:
+                db.session.commit()
+            
             return True, 'Case group deleted successfully'
         except Exception as e:
-            db.session.rollback()
-            return False, str(e)
+            if commit:
+                db.session.rollback()
+            raise e
     
     # 测试用例相关
     def create_test_case(self, case_data: TestCaseCreate, user_id: int):

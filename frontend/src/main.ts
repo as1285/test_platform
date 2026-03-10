@@ -33,11 +33,11 @@ axios.interceptors.response.use(
       const msg = data.message || data.msg
 
       if (status === 401) {
+        ElMessage.error(msg || '认证失败或登录已过期，请重新登录。')
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         if (router.currentRoute.value.path !== '/login') {
           router.push('/login')
-          ElMessage.error(msg || '认证失败或登录已过期，请重新登录。')
         }
       } else if (msg) {
         ElMessage.error(msg)

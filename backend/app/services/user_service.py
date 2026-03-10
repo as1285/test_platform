@@ -150,6 +150,21 @@ class UserService:
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         return user.password_hash == hashed_password
     
+    def update_user_password(self, user_id: int, password: str):
+        """更新用户密码"""
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                return False, 'User not found'
+            
+            user.password_hash = hashlib.sha256(password.encode()).hexdigest()
+            db.session.commit()
+            
+            return True, 'Password updated successfully'
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
+    
     def get_users(self, page=1, size=10, username=None, role=None, status=None):
         """获取用户列表"""
         try:

@@ -1,8 +1,9 @@
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from pydantic import ValidationError
 from app.api import api_bp
 from app.services import user_service
-from app.schemas.user import UserCreate, UserLogin, UserUpdate, UserResponse, TokenResponse
+from app.schemas.user import UserCreate, UserLogin, UserUpdate, UserPasswordUpdate, UserResponse, TokenResponse
 from app.schemas import BaseResponse
 
 @api_bp.route('/user/register', methods=['POST'])
@@ -20,6 +21,8 @@ def register():
         user_response = UserResponse.from_orm(user)
         
         return jsonify(BaseResponse(data=user_response.dict()).dict()), 201
+    except ValidationError as e:
+        return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
 
@@ -51,6 +54,8 @@ def login():
         )
         
         return jsonify(BaseResponse(data=token_response.dict()).dict()), 200
+    except ValidationError as e:
+        return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
 
@@ -130,6 +135,24 @@ def delete_user(user_id):
             return jsonify(BaseResponse(code=400, message=result).dict()), 400
         
         return jsonify(BaseResponse(message=result).dict()), 200
+    except Exception as e:
+        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+
+@api_bp.route('/user/<int:user_id>/password', methods=['PUT'])
+@jwt_required()
+def update_user_password(user_id):
+    """更新用户密码"""
+    try:
+        data = request.json
+        password_data = UserPasswordUpdate(**data)
+        
+        success, result = user_service.update_user_password(user_id, password_data.password)
+        if not success:
+            return jsonify(BaseResponse(code=400, message=result).dict()), 400
+        
+        return jsonify(BaseResponse(message=result).dict()), 200
+    except ValidationError as e:
+        return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
     except Exception as e:
         return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
 

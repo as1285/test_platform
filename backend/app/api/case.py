@@ -93,7 +93,7 @@ def delete_case_group(group_id):
         
         return jsonify(BaseResponse(message=result).dict()), 200
     except Exception as e:
-        return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+        return jsonify(BaseResponse(code=500, message=f"An unexpected error occurred: {str(e)}").dict()), 500
 
 # 测试用例相关接口
 @api_bp.route('/case', methods=['POST'])
