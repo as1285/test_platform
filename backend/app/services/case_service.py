@@ -52,16 +52,27 @@ class CaseService:
             db.session.rollback()
             return False, str(e)
     
-    def delete_case_group(self, group_id: int, commit: bool = True):
+    def delete_case_group(self, group_id: int, commit: bool = True, processed_groups: set = None):
         """删除用例分组（递归，支持事务）"""
         try:
+            # 初始化已处理分组集合
+            if processed_groups is None:
+                processed_groups = set()
+            
+            # 避免循环引用导致的无限递归
+            if group_id in processed_groups:
+                return True, 'Case group already processed'
+            
+            # 添加到已处理集合
+            processed_groups.add(group_id)
+            
             group = CaseGroup.query.get(group_id)
             if not group:
                 return False, 'Case group not found'
 
             # 递归删除子分组
             for subgroup in CaseGroup.query.filter_by(parent_id=group_id).all():
-                self.delete_case_group(subgroup.id, commit=False)
+                self.delete_case_group(subgroup.id, commit=False, processed_groups=processed_groups)
 
             # 逐个删除用例以触发级联删除
             for case in TestCase.query.filter_by(group_id=group_id).all():

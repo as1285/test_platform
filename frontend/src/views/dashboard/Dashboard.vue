@@ -70,7 +70,7 @@
           </div>
         </template>
         <div class="chart-container">
-          <div ref="performanceChart" class="chart" style="width: 100%; height: 300px;"></div>
+          <PerformanceChart v-if="showCharts" :data="performanceTrend" />
         </div>
       </el-card>
 
@@ -81,7 +81,7 @@
           </div>
         </template>
         <div class="chart-container">
-          <div ref="testTypeChart" class="chart" style="width: 100%; height: 300px;"></div>
+          <TestTypeChart v-if="showCharts" :data="testTypeDistribution" />
         </div>
       </el-card>
 
@@ -92,7 +92,7 @@
           </div>
         </template>
         <div class="chart-container">
-          <div ref="robustnessChart" class="chart" style="width: 100%; height: 300px;"></div>
+          <RobustnessChart v-if="showCharts" :data="robustnessScores" />
         </div>
       </el-card>
     </div>
@@ -101,9 +101,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import * as echarts from 'echarts'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+
+// 动态导入图表组件
+const PerformanceChart = () => import('@/components/chart/PerformanceChart.vue')
+const TestTypeChart = () => import('@/components/chart/TestTypeChart.vue')
+const RobustnessChart = () => import('@/components/chart/RobustnessChart.vue')
 
 interface DashboardStats {
   totalCases: number
@@ -148,159 +152,13 @@ const recentExecutions = ref<RecentExecution[]>([])
 const performanceTrend = ref<PerformancePoint[]>([])
 const testTypeDistribution = ref<TestTypeDistribution | null>(null)
 const robustnessScores = ref<RobustnessScores | null>(null)
-
-const performanceChart = ref<HTMLDivElement | null>(null)
-const testTypeChart = ref<HTMLDivElement | null>(null)
-const robustnessChart = ref<HTMLDivElement | null>(null)
+const showCharts = ref(false)
 
 const formatDateTime = (value: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString('zh-CN')
-}
-
-const initCharts = () => {
-  if (performanceChart.value) {
-    const chart = echarts.init(performanceChart.value)
-    const dates = performanceTrend.value.map(item => item.date)
-    const responseTimes = performanceTrend.value.map(item =>
-      Math.round((item.avg_response_time_ms || 0) as number)
-    )
-    const successRates = performanceTrend.value.map(item =>
-      Number(((item.success_rate || 0) as number).toFixed(2))
-    )
-    const option = {
-      tooltip: {
-        trigger: 'axis'
-      },
-      legend: {
-        data: ['响应时间', '成功率']
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        boundaryGap: false,
-        data: dates
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: '响应时间(ms)',
-          position: 'left'
-        },
-        {
-          type: 'value',
-          name: '成功率(%)',
-          position: 'right',
-          max: 100
-        }
-      ],
-      series: [
-        {
-          name: '响应时间',
-          type: 'line',
-          data: responseTimes,
-          smooth: true
-        },
-        {
-          name: '成功率',
-          type: 'line',
-          yAxisIndex: 1,
-          data: successRates,
-          smooth: true
-        }
-      ]
-    }
-    chart.setOption(option)
-  }
-
-  if (testTypeChart.value) {
-    const chart = echarts.init(testTypeChart.value)
-    const dist = testTypeDistribution.value || {
-      automation: 0,
-      performance: 0,
-      robustness: 0
-    }
-    const option = {
-      tooltip: {
-        trigger: 'item'
-      },
-      legend: {
-        orient: 'vertical',
-        left: 'left'
-      },
-      series: [
-        {
-          name: '测试类型',
-          type: 'pie',
-          radius: '50%',
-          data: [
-            { value: dist.automation, name: '自动化测试' },
-            { value: dist.performance, name: '性能测试' },
-            { value: dist.robustness, name: '鲁棒性测试' }
-          ],
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
-            }
-          }
-        }
-      ]
-    }
-    chart.setOption(option)
-  }
-
-  if (robustnessChart.value) {
-    const chart = echarts.init(robustnessChart.value)
-    const scores = robustnessScores.value
-    const current = scores ? scores.current_score || 0 : 0
-    const history = scores ? scores.history_scores || [] : []
-    const historyAvg =
-      history.length > 0
-        ? history.reduce((sum, value) => sum + value, 0) / history.length
-        : current
-    const currentValues = [current, current, current, current, current]
-    const historyValues = [historyAvg, historyAvg, historyAvg, historyAvg, historyAvg]
-    const option = {
-      tooltip: {
-        trigger: 'item'
-      },
-      radar: {
-        indicator: [
-          { name: '容错率', max: 100 },
-          { name: '异常提示', max: 100 },
-          { name: '恢复速度', max: 100 },
-          { name: '边界处理', max: 100 },
-          { name: '安全防护', max: 100 }
-        ]
-      },
-      series: [
-        {
-          name: '鲁棒性评分',
-          type: 'radar',
-          data: [
-            {
-              value: currentValues,
-              name: '当前评分'
-            },
-            {
-              value: historyValues,
-              name: '历史评分'
-            }
-          ]
-        }
-      ]
-    }
-    chart.setOption(option)
-  }
 }
 
 const loadDashboardData = async () => {
@@ -327,7 +185,8 @@ const loadDashboardData = async () => {
       testTypeDistribution.value = data.test_type_distribution || null
       robustnessScores.value = data.robustness_scores || null
 
-      initCharts()
+      // 数据加载完成后显示图表
+      showCharts.value = true
     } else {
       ElMessage.error(response.data.message || '加载仪表盘数据失败')
     }
@@ -338,17 +197,6 @@ const loadDashboardData = async () => {
 
 onMounted(() => {
   loadDashboardData()
-  window.addEventListener('resize', () => {
-    if (performanceChart.value) {
-      echarts.getInstanceByDom(performanceChart.value)?.resize()
-    }
-    if (testTypeChart.value) {
-      echarts.getInstanceByDom(testTypeChart.value)?.resize()
-    }
-    if (robustnessChart.value) {
-      echarts.getInstanceByDom(robustnessChart.value)?.resize()
-    }
-  })
 })
 </script>
 
