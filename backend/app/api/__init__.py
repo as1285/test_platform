@@ -1,8 +1,18 @@
 from flask import Blueprint
 from flask_jwt_extended import JWTManager
+from flask_restx import Api
 
-api_bp = Blueprint('api', __name__)
+api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 jwt = JWTManager()
+
+# 创建API对象，用于生成Swagger文档
+api = Api(
+    api_bp,
+    version='1.0',
+    title='测试平台API',
+    description='测试平台后端API文档',
+    doc='/swagger'
+)
 
 from .user import *
 from .case import *

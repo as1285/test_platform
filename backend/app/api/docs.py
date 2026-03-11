@@ -1,7 +1,11 @@
 from flask import jsonify
 from flask_jwt_extended import jwt_required
-from app.api import api_bp
+from flask_restx import Resource
+from app.api import api_bp, api
 from app.schemas import BaseResponse
+
+# 创建文档命名空间
+docs_ns = api.namespace('docs', description='API文档相关接口')
 
 
 API_DOCS = [
@@ -333,9 +337,12 @@ API_DOCS = [
 ]
 
 
-@api_bp.route("/docs", methods=["GET"])
-@jwt_required()
-def get_api_docs():
-    response = BaseResponse(data={"categories": API_DOCS})
-    return jsonify(response.dict()), 200
+@docs_ns.route("/")
+class ApiDocs(Resource):
+    @docs_ns.doc('get_api_docs')
+    @jwt_required()
+    def get(self):
+        """获取API文档"""
+        response = BaseResponse(data={"categories": API_DOCS})
+        return jsonify(response.dict()), 200
 

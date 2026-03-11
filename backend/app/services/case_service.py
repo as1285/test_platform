@@ -351,3 +351,72 @@ class CaseService:
         except Exception as e:
             print(f"Get case tags error: {e}")
             return []
+    
+    def import_cases_from_docs(self, api_docs: list, group_id: int, user_id: int):
+        """从接口文档导入测试用例"""
+        try:
+            imported_cases = []
+            
+            for api in api_docs:
+                # 提取API信息
+                name = api.get('name', '')
+                method = api.get('method', 'GET')
+                path = api.get('path', '')
+                description = api.get('description', '')
+                
+                # 构建请求头
+                headers = {}
+                if api.get('request') and api.get('request').get('headers'):
+                    for header in api.get('request').get('headers'):
+                        headers[header.get('name')] = ''
+                
+                # 构建请求体
+                body = ''
+                if api.get('request') and api.get('request').get('body'):
+                    body_data = {}
+                    for param in api.get('request').get('body'):
+                        body_data[param.get('name')] = ''
+                    body = str(body_data)
+                
+                # 构建断言
+                validate = []
+                if api.get('response') and api.get('response').get('fields'):
+                    for field in api.get('response').get('fields'):
+                        if field.get('required'):
+                            validate.append({
+                                'type': 'contains',
+                                'actual': field.get('name'),
+                                'expected': '',
+                                'message': f'Expected {field.get("name")} to be present'
+                            })
+                
+                # 创建测试用例
+                test_case = TestCase(
+                    name=name,
+                    group_id=group_id,
+                    user_id=user_id,
+                    description=description,
+                    status='enabled',
+                    method=method,
+                    url=path,
+                    headers=headers,
+                    body=body,
+                    validate=validate,
+                    extract=[],
+                    variables={}
+                )
+                db.session.add(test_case)
+                
+                imported_cases.append({
+                    'id': test_case.id,
+                    'name': test_case.name,
+                    'method': test_case.method,
+                    'url': test_case.url,
+                    'description': test_case.description
+                })
+            
+            db.session.commit()
+            return True, {'imported_count': len(imported_cases), 'cases': imported_cases}
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)

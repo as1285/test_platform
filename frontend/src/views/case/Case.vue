@@ -13,6 +13,10 @@
               <el-icon><i-ep-document-add /></el-icon>
               添加用例
             </el-button>
+            <el-button type="primary" size="small" @click="handleImportCases" :loading="loading">
+              <el-icon><i-ep-download /></el-icon>
+              导入用例
+            </el-button>
             <el-button size="small" @click="loadData" :loading="loading">
               <el-icon><i-ep-refresh /></el-icon>
               刷新
@@ -312,6 +316,48 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 导入用例对话框 -->
+    <el-dialog
+      v-model="showImportDialog"
+      title="从接口文档导入用例"
+      width="600px"
+    >
+      <el-form
+        ref="importFormRef"
+        :model="importForm"
+        :rules="importRules"
+        label-width="100px"
+      >
+        <el-form-item label="所属分组" prop="group_id">
+          <el-select v-model="importForm.group_id" placeholder="请选择所属分组">
+            <el-option
+              v-for="group in caseGroups"
+              :key="group.id"
+              :label="group.name"
+              :value="group.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="接口文档" prop="api_docs">
+          <el-input
+            v-model="importForm.api_docs"
+            placeholder='请输入接口文档（JSON格式），例如：[{"name": "用户登录", "method": "POST", "path": "/user/login", ...}]'
+            type="textarea"
+            :rows="10"
+          />
+          <el-button type="primary" size="small" @click="loadApiDocs" style="margin-top: 10px">
+            加载默认API文档
+          </el-button>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showImportDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleImportCasesSubmit" :loading="importing">导入</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -381,6 +427,20 @@ const caseRules = {
   group_id: [{ required: true, message: '请选择所属分组', trigger: 'change' }],
   url: [{ required: true, message: '请输入请求URL', trigger: 'blur' }],
   method: [{ required: true, message: '请选择请求方法', trigger: 'change' }]
+}
+
+// 导入相关
+const showImportDialog = ref(false)
+const importing = ref(false)
+const importFormRef = ref()
+const importForm = reactive({
+  group_id: null as number | null,
+  api_docs: ''
+})
+
+const importRules = {
+  group_id: [{ required: true, message: '请选择所属分组', trigger: 'change' }],
+  api_docs: [{ required: true, message: '请输入接口文档', trigger: 'blur' }]
 }
 
 const caseFieldLabels: Record<string, string> = {
@@ -768,6 +828,76 @@ const handleDeleteTestCase = (caseItem: any) => {
   }).catch(() => {
     // 取消删除
   })
+}
+
+// 导入用例
+const handleImportCases = () => {
+  importForm.group_id = selectedGroupId.value || null
+  importForm.api_docs = ''
+  showImportDialog.value = true
+}
+
+// 加载默认API文档
+const loadApiDocs = async () => {
+  try {
+    const response = await axios.get('/api/v1/docs')
+    if (response.data.code === 200) {
+      const categories = response.data.data?.categories || []
+      const apiDocs: any[] = []
+      
+      // 提取所有API文档
+      categories.forEach((category: any) => {
+        if (category.apis) {
+          apiDocs.push(...category.apis)
+        }
+      })
+      
+      importForm.api_docs = JSON.stringify(apiDocs, null, 2)
+      ElMessage.success('加载默认API文档成功')
+    } else {
+      ElMessage.error('加载API文档失败')
+    }
+  } catch (error) {
+    console.error('加载API文档失败:', error)
+    ElMessage.error('加载API文档失败')
+  }
+}
+
+// 提交导入请求
+const handleImportCasesSubmit = async () => {
+  if (!importFormRef.value) return
+  
+  try {
+    await importFormRef.value.validate()
+    importing.value = true
+    
+    // 解析API文档
+    let apiDocs = []
+    try {
+      apiDocs = JSON.parse(importForm.api_docs)
+    } catch (e) {
+      ElMessage.error('API文档格式错误，请检查JSON格式')
+      return
+    }
+    
+    const response = await axios.post('/api/v1/case/import', {
+      group_id: importForm.group_id,
+      api_docs: apiDocs
+    })
+    
+    if (response.data.code === 200) {
+      ElMessage.success(`成功导入 ${response.data.data?.imported_count || 0} 个用例`)
+      showImportDialog.value = false
+      loadCases()
+    } else {
+      ElMessage.error(response.data.message || '导入失败')
+    }
+  } catch (error) {
+    console.error('导入用例失败:', error)
+    ElMessage.error('导入用例失败')
+  } finally {
+    importing.value = false
+  }
 }
 
 // 生命周期
