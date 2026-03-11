@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
@@ -30,11 +30,11 @@ class TestRun(Resource):
             
             success, result = test_service.run_test(test_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @test_ns.route('/run/batch')
 class TestBatchRun(Resource):
@@ -49,11 +49,11 @@ class TestBatchRun(Resource):
             
             success, result = test_service.run_batch_tests(test_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 性能测试相关接口
 @test_ns.route('/performance')
@@ -69,11 +69,11 @@ class TestPerformance(Resource):
             
             success, result = test_service.run_performance_test(test_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @test_ns.route('/performance/custom')
 class TestCustomPerformance(Resource):
@@ -88,11 +88,11 @@ class TestCustomPerformance(Resource):
             
             success, result = test_service.run_performance_test_custom(test_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 鲁棒性测试相关接口
 @test_ns.route('/robustness')
@@ -108,11 +108,11 @@ class TestRobustness(Resource):
             
             success, result = test_service.run_robustness_test(test_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 性能测试配置相关接口
 @test_ns.route('/performance/config')
@@ -126,15 +126,15 @@ class PerformanceConfigList(Resource):
             data = request.json
             success, result = test_service.save_performance_config(data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data={
+            return BaseResponse(data={
                 "id": result.id,
                 "name": result.name,
                 "created_at": result.created_at.isoformat()
-            }).dict()), 201
+            }).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('get_performance_configs')
     @jwt_required()
@@ -144,7 +144,7 @@ class PerformanceConfigList(Resource):
             user_id = get_jwt_identity()
             success, result = test_service.get_performance_configs(user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             configs = []
             for config in result:
@@ -169,9 +169,9 @@ class PerformanceConfigList(Resource):
                     "updated_at": config.updated_at.isoformat()
                 })
             
-            return jsonify(BaseResponse(data=configs).dict()), 200
+            return BaseResponse(data=configs).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @test_ns.route('/performance/config/<int:config_id>')
 class PerformanceConfig(Resource):
@@ -183,9 +183,9 @@ class PerformanceConfig(Resource):
             user_id = get_jwt_identity()
             success, result = test_service.get_performance_config_by_id(config_id, user_id)
             if not success:
-                return jsonify(BaseResponse(code=404, message=result).dict()), 404
+                return BaseResponse(code=404, message=result).dict(), 404
             
-            return jsonify(BaseResponse(data={
+            return BaseResponse(data={
                 "id": result.id,
                 "name": result.name,
                 "case_id": result.case_id,
@@ -204,9 +204,9 @@ class PerformanceConfig(Resource):
                 "timeout": result.timeout,
                 "created_at": result.created_at.isoformat(),
                 "updated_at": result.updated_at.isoformat()
-            }).dict()), 200
+            }).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('delete_performance_config')
     @jwt_required()
@@ -216,11 +216,11 @@ class PerformanceConfig(Resource):
             user_id = get_jwt_identity()
             success, result = test_service.delete_performance_config(config_id, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 测试执行记录相关接口
 @test_ns.route('/execution')
@@ -246,9 +246,9 @@ class TestExecutionList(Resource):
                     'created_at': execution.created_at.isoformat()
                 })
             
-            return jsonify(BaseResponse(data=executions_data).dict()), 200
+            return BaseResponse(data=executions_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @test_ns.route('/execution/<int:execution_id>')
 class TestExecution(Resource):
@@ -259,7 +259,7 @@ class TestExecution(Resource):
         try:
             execution = test_service.get_test_execution(execution_id)
             if not execution:
-                return jsonify(BaseResponse(code=404, message='Execution not found').dict()), 404
+                return BaseResponse(code=404, message='Execution not found').dict(), 404
             
             execution_data = {
                 'id': execution.id,
@@ -272,9 +272,9 @@ class TestExecution(Resource):
                 'created_at': execution.created_at.isoformat()
             }
             
-            return jsonify(BaseResponse(data=execution_data).dict()), 200
+            return BaseResponse(data=execution_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @test_ns.route('/execution/<int:execution_id>/result')
 class TestResult(Resource):
@@ -297,9 +297,9 @@ class TestResult(Resource):
                     'created_at': result.created_at.isoformat()
                 })
             
-            return jsonify(BaseResponse(data=results_data).dict()), 200
+            return BaseResponse(data=results_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 创建仪表板命名空间
 dashboard_ns = api.namespace('dashboard', description='仪表板相关接口')
@@ -314,7 +314,7 @@ class DashboardOverview(Resource):
             user_id = get_jwt_identity()
             success, result = test_service.get_dashboard_overview(user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
-            return jsonify(BaseResponse(data=result).dict()), 200
+                return BaseResponse(code=400, message=result).dict(), 400
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500

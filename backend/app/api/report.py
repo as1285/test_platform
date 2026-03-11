@@ -1,4 +1,4 @@
-from flask import request, jsonify, send_from_directory, abort
+from flask import request, send_from_directory, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
@@ -22,7 +22,7 @@ class ReportList(Resource):
             
             success, result = report_service.create_report(data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             report = result
             report_data = {
@@ -34,9 +34,9 @@ class ReportList(Resource):
                 'created_at': report.created_at.isoformat() if report.created_at else None
             }
             
-            return jsonify(BaseResponse(data=report_data).dict()), 201
+            return BaseResponse(data=report_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @report_ns.doc('get_reports')
     @jwt_required()
@@ -49,16 +49,16 @@ class ReportList(Resource):
             
             result = report_service.get_reports(user_id, page, page_size)
             
-            return jsonify(PaginatedResponse(
+            return PaginatedResponse(
                 data={'reports': result['reports']},
                 pagination={
                     'page': result['page'],
                     'page_size': result['page_size'],
                     'total': result['total']
                 }
-            ).dict()), 200
+            ).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @report_ns.route('/<int:report_id>')
 class Report(Resource):
@@ -69,11 +69,11 @@ class Report(Resource):
         try:
             report_data = report_service.get_report_by_id(report_id)
             if not report_data:
-                return jsonify(BaseResponse(code=404, message='Report not found').dict()), 404
+                return BaseResponse(code=404, message='Report not found').dict(), 404
             
-            return jsonify(BaseResponse(data=report_data).dict()), 200
+            return BaseResponse(data=report_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @report_ns.doc('delete_report')
     @jwt_required()
@@ -82,11 +82,11 @@ class Report(Resource):
         try:
             success, result = report_service.delete_report(report_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @report_ns.route('/compare')
 class ReportCompare(Resource):
@@ -100,7 +100,7 @@ class ReportCompare(Resource):
             
             success, result = report_service.compare_reports(report_ids)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             report = result
             report_data = {
@@ -112,9 +112,9 @@ class ReportCompare(Resource):
                 'created_at': report.created_at.isoformat() if report.created_at else None
             }
             
-            return jsonify(BaseResponse(data=report_data).dict()), 201
+            return BaseResponse(data=report_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @report_ns.route('/file/<path:filename>')
 class ReportFile(Resource):

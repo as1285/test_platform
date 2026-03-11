@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
@@ -23,7 +23,7 @@ class CaseGroupList(Resource):
             
             success, result = case_service.create_case_group(group_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             group_data = {
@@ -35,9 +35,9 @@ class CaseGroupList(Resource):
                 'update_time': result.update_time.isoformat() if result.update_time else None
             }
             
-            return jsonify(BaseResponse(data=group_data).dict()), 201
+            return BaseResponse(data=group_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_case_groups')
     @jwt_required()
@@ -58,9 +58,9 @@ class CaseGroupList(Resource):
                     'update_time': group.update_time.isoformat() if group.update_time else None
                 })
             
-            return jsonify(BaseResponse(data=groups_data).dict()), 200
+            return BaseResponse(data=groups_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/group/<int:group_id>')
 class CaseGroup(Resource):
@@ -74,7 +74,7 @@ class CaseGroup(Resource):
             
             success, result = case_service.update_case_group(group_id, group_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             group_data = {
@@ -86,9 +86,9 @@ class CaseGroup(Resource):
                 'update_time': result.update_time.isoformat() if result.update_time else None
             }
             
-            return jsonify(BaseResponse(data=group_data).dict()), 200
+            return BaseResponse(data=group_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_case_group')
     @jwt_required()
@@ -97,11 +97,11 @@ class CaseGroup(Resource):
         try:
             success, result = case_service.delete_case_group(group_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=f"An unexpected error occurred: {str(e)}").dict()), 500
+            return BaseResponse(code=500, message=f"An unexpected error occurred: {str(e)}").dict(), 500
 
 # 测试用例相关接口
 @case_ns.route('/')
@@ -117,7 +117,7 @@ class TestCaseList(Resource):
             
             success, result = case_service.create_test_case(case_data, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             case_data = {
@@ -138,9 +138,9 @@ class TestCaseList(Resource):
                 'update_time': result.update_time.isoformat() if result.update_time else None
             }
             
-            return jsonify(BaseResponse(data=case_data).dict()), 201
+            return BaseResponse(data=case_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_test_cases')
     @jwt_required()
@@ -167,9 +167,9 @@ class TestCaseList(Resource):
                     'update_time': case.update_time.isoformat() if case.update_time else None
                 })
             
-            return jsonify(BaseResponse(data=cases_data).dict()), 200
+            return BaseResponse(data=cases_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/<int:case_id>')
 class TestCase(Resource):
@@ -180,7 +180,7 @@ class TestCase(Resource):
         try:
             case = case_service.get_test_case_by_id(case_id)
             if not case:
-                return jsonify(BaseResponse(code=404, message='Test case not found').dict()), 404
+                return BaseResponse(code=404, message='Test case not found').dict(), 404
             
             case_data = {
                 'id': case.id,
@@ -200,9 +200,9 @@ class TestCase(Resource):
                 'update_time': case.update_time.isoformat() if case.update_time else None
             }
             
-            return jsonify(BaseResponse(data=case_data).dict()), 200
+            return BaseResponse(data=case_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('update_test_case')
     @jwt_required()
@@ -214,7 +214,7 @@ class TestCase(Resource):
             
             success, result = case_service.update_test_case(case_id, case_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             case_data = {
@@ -235,9 +235,9 @@ class TestCase(Resource):
                 'update_time': result.update_time.isoformat() if result.update_time else None
             }
             
-            return jsonify(BaseResponse(data=case_data).dict()), 200
+            return BaseResponse(data=case_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_case')
     @jwt_required()
@@ -246,11 +246,11 @@ class TestCase(Resource):
         try:
             success, result = case_service.delete_test_case(case_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/batch')
 class TestCaseBatch(Resource):
@@ -264,15 +264,15 @@ class TestCaseBatch(Resource):
             case_ids = data.get('case_ids', [])
             
             if not case_ids:
-                return jsonify(BaseResponse(code=400, message='Case IDs are required').dict()), 400
+                return BaseResponse(code=400, message='Case IDs are required').dict(), 400
                 
             success, result = case_service.delete_test_cases(case_ids, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 测试步骤相关接口
 @case_ns.route('/step')
@@ -287,7 +287,7 @@ class TestStepCreator(Resource):
             
             success, result = case_service.create_test_step(step_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             step_data = {
@@ -304,9 +304,9 @@ class TestStepCreator(Resource):
                 'create_time': result.create_time.isoformat() if result.create_time else None
             }
             
-            return jsonify(BaseResponse(data=step_data).dict()), 201
+            return BaseResponse(data=step_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/step/<int:case_id>')
 class TestStepList(Resource):
@@ -333,9 +333,9 @@ class TestStepList(Resource):
                     'create_time': step.create_time.isoformat() if step.create_time else None
                 })
             
-            return jsonify(BaseResponse(data=steps_data).dict()), 200
+            return BaseResponse(data=steps_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/step/<int:step_id>')
 class TestStep(Resource):
@@ -349,7 +349,7 @@ class TestStep(Resource):
             
             success, result = case_service.update_test_step(step_id, step_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             step_data = {
@@ -366,9 +366,9 @@ class TestStep(Resource):
                 'create_time': result.create_time.isoformat() if result.create_time else None
             }
             
-            return jsonify(BaseResponse(data=step_data).dict()), 200
+            return BaseResponse(data=step_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_step')
     @jwt_required()
@@ -377,11 +377,11 @@ class TestStep(Resource):
         try:
             success, result = case_service.delete_test_step(step_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 # 标签相关接口
 @case_ns.route('/tag')
@@ -396,7 +396,7 @@ class TagList(Resource):
             
             success, result = case_service.create_tag(tag_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 构建返回数据
             tag_data = {
@@ -405,9 +405,9 @@ class TagList(Resource):
                 'create_time': result.create_time.isoformat() if result.create_time else None
             }
             
-            return jsonify(BaseResponse(data=tag_data).dict()), 201
+            return BaseResponse(data=tag_data).dict(), 201
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_tags')
     @jwt_required()
@@ -424,9 +424,9 @@ class TagList(Resource):
                     'create_time': tag.create_time.isoformat() if tag.create_time else None
                 })
             
-            return jsonify(BaseResponse(data=tags_data).dict()), 200
+            return BaseResponse(data=tags_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/<int:case_id>/tag/<int:tag_id>')
 class CaseTag(Resource):
@@ -437,11 +437,11 @@ class CaseTag(Resource):
         try:
             success, result = case_service.add_tag_to_case(case_id, tag_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('remove_tag_from_case')
     @jwt_required()
@@ -450,11 +450,11 @@ class CaseTag(Resource):
         try:
             success, result = case_service.remove_tag_from_case(case_id, tag_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/<int:case_id>/tag')
 class CaseTagList(Resource):
@@ -473,9 +473,9 @@ class CaseTagList(Resource):
                     'create_time': tag.create_time.isoformat() if tag.create_time else None
                 })
             
-            return jsonify(BaseResponse(data=tags_data).dict()), 200
+            return BaseResponse(data=tags_data).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @case_ns.route('/import')
 class CaseImport(Resource):
@@ -488,20 +488,20 @@ class CaseImport(Resource):
             data = request.json
             
             if not data:
-                return jsonify(BaseResponse(code=400, message='Import data is required').dict()), 400
+                return BaseResponse(code=400, message='Import data is required').dict(), 400
             
             group_id = data.get('group_id')
             if not group_id:
-                return jsonify(BaseResponse(code=400, message='Group ID is required').dict()), 400
+                return BaseResponse(code=400, message='Group ID is required').dict(), 400
             
             api_docs = data.get('api_docs')
             if not api_docs:
-                return jsonify(BaseResponse(code=400, message='API docs are required').dict()), 400
+                return BaseResponse(code=400, message='API docs are required').dict(), 400
             
             success, result = case_service.import_cases_from_docs(api_docs, group_id, user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(data=result).dict()), 200
+            return BaseResponse(data=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500

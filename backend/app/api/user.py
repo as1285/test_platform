@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic import ValidationError
 from flask_restx import Resource
@@ -21,16 +21,16 @@ class Register(Resource):
             
             success, result = user_service.create_user(user_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             user = result
             user_response = UserResponse.from_orm(user)
             
-            return jsonify(BaseResponse(data=user_response.dict()).dict()), 201
+            return BaseResponse(data=user_response.dict()).dict(), 201
         except ValidationError as e:
-            return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
+            return BaseResponse(code=400, message=str(e)).dict(), 400
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @user_ns.route('/login')
 class Login(Resource):
@@ -44,11 +44,11 @@ class Login(Resource):
             # 获取用户
             user = user_service.get_user_by_email(user_data.email)
             if not user:
-                return jsonify(BaseResponse(code=401, message='Invalid email or password').dict()), 401
+                return BaseResponse(code=401, message='Invalid email or password').dict(), 401
             
             # 验证密码
             if not user_service.verify_password(user, user_data.password):
-                return jsonify(BaseResponse(code=401, message='Invalid email or password').dict()), 401
+                return BaseResponse(code=401, message='Invalid email or password').dict(), 401
             
             # 生成token
             from app.utils.jwt import JWTUtil
@@ -61,11 +61,11 @@ class Login(Resource):
                 user=user_response
             )
             
-            return jsonify(BaseResponse(data=token_response.dict()).dict()), 200
+            return BaseResponse(data=token_response.dict()).dict(), 200
         except ValidationError as e:
-            return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
+            return BaseResponse(code=400, message=str(e)).dict(), 400
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @user_ns.route('/me')
 class CurrentUser(Resource):
@@ -77,12 +77,12 @@ class CurrentUser(Resource):
             user_id = get_jwt_identity()
             user = user_service.get_user_by_id(user_id)
             if not user:
-                return jsonify(BaseResponse(code=404, message='User not found').dict()), 404
+                return BaseResponse(code=404, message='User not found').dict(), 404
             
             user_response = UserResponse.from_orm(user)
-            return jsonify(BaseResponse(data=user_response.dict()).dict()), 200
+            return BaseResponse(data=user_response.dict()).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @user_ns.doc('update_current_user')
     @jwt_required()
@@ -95,13 +95,13 @@ class CurrentUser(Resource):
             
             success, result = user_service.update_user(user_id, user_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             user = result
             user_response = UserResponse.from_orm(user)
-            return jsonify(BaseResponse(data=user_response.dict()).dict()), 200
+            return BaseResponse(data=user_response.dict()).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @user_ns.route('/<int:user_id>')
 class User(Resource):
@@ -112,12 +112,12 @@ class User(Resource):
         try:
             user = user_service.get_user_by_id(user_id)
             if not user:
-                return jsonify(BaseResponse(code=404, message='User not found').dict()), 404
+                return BaseResponse(code=404, message='User not found').dict(), 404
             
             user_response = UserResponse.from_orm(user)
-            return jsonify(BaseResponse(data=user_response.dict()).dict()), 200
+            return BaseResponse(data=user_response.dict()).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @user_ns.doc('update_user')
     @jwt_required()
@@ -129,13 +129,13 @@ class User(Resource):
             
             success, result = user_service.update_user(user_id, user_data)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             user = result
             user_response = UserResponse.from_orm(user)
-            return jsonify(BaseResponse(data=user_response.dict()).dict()), 200
+            return BaseResponse(data=user_response.dict()).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @user_ns.doc('delete_user')
     @jwt_required()
@@ -144,11 +144,11 @@ class User(Resource):
         try:
             success, result = user_service.delete_user(user_id)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @user_ns.route('/<int:user_id>/password')
 class UserPassword(Resource):
@@ -162,13 +162,13 @@ class UserPassword(Resource):
             
             success, result = user_service.update_user_password(user_id, password_data.password)
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
-            return jsonify(BaseResponse(message=result).dict()), 200
+            return BaseResponse(message=result).dict(), 200
         except ValidationError as e:
-            return jsonify(BaseResponse(code=400, message=str(e)).dict()), 400
+            return BaseResponse(code=400, message=str(e)).dict(), 400
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500
 
 @user_ns.route('/')
 class UserList(Resource):
@@ -188,7 +188,7 @@ class UserList(Resource):
             success, result = user_service.get_users(page, size, username, role, status)
             
             if not success:
-                return jsonify(BaseResponse(code=400, message=result).dict()), 400
+                return BaseResponse(code=400, message=result).dict(), 400
             
             # 转换用户数据
             users = result['items']
@@ -196,11 +196,11 @@ class UserList(Resource):
             
             user_responses = [UserResponse.from_orm(user).dict() for user in users]
             
-            return jsonify(BaseResponse(data={
+            return BaseResponse(data={
                 'items': user_responses,
                 'total': total,
                 'page': page,
                 'size': size
-            }).dict()), 200
+            }).dict(), 200
         except Exception as e:
-            return jsonify(BaseResponse(code=500, message=str(e)).dict()), 500
+            return BaseResponse(code=500, message=str(e)).dict(), 500

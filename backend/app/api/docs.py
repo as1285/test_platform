@@ -1,4 +1,3 @@
-from flask import jsonify
 from flask_jwt_extended import jwt_required
 from flask_restx import Resource
 from app.api import api_bp, api
@@ -344,5 +343,5 @@ class ApiDocs(Resource):
     def get(self):
         """获取API文档"""
         response = BaseResponse(data={"categories": API_DOCS})
-        return jsonify(response.dict()), 200
+        return response.dict(), 200
 
