@@ -53,6 +53,18 @@
           </template>
           接口文档
         </el-menu-item>
+        <el-menu-item index="/swagger">
+          <template #icon>
+            <el-icon><i-ep-link /></el-icon>
+          </template>
+          Swagger文档
+        </el-menu-item>
+        <el-menu-item index="/tools">
+          <template #icon>
+            <el-icon><i-ep-tools /></el-icon>
+          </template>
+          测试工具
+        </el-menu-item>
         <el-menu-item index="/user">
           <template #icon>
             <el-icon><i-ep-user /></el-icon>
@@ -141,6 +153,8 @@ const currentRouteName = computed(() => {
     '/robustness': '鲁棒性测试',
     '/report': '报告管理',
     '/docs': '接口文档',
+    '/swagger': 'Swagger文档',
+    '/tools': '测试工具',
     '/user': '用户管理'
   }
   return routeMap[route.path] || '首页'

@@ -5,6 +5,7 @@ from app.api import api_bp, api
 from app.services import case_service
 from app.schemas.case import CaseGroupCreate, CaseGroupUpdate, TestCaseCreate, TestCaseUpdate, TestStepCreate, TestStepUpdate, TagCreate
 from app.schemas import BaseResponse, PaginatedResponse
+from app.models.user import User
 
 # 创建用例命名空间
 case_ns = api.namespace('case', description='用例管理相关接口')
@@ -119,12 +120,17 @@ class TestCaseList(Resource):
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
             
+            # 获取创建人信息
+            creator = User.query.filter_by(id=user_id).first()
+            creator_name = creator.username if creator else '未知用户'
+            
             # 构建返回数据
             case_data = {
                 'id': result.id,
                 'name': result.name,
                 'group_id': result.group_id,
                 'user_id': result.user_id,
+                'creator': creator_name,
                 'description': result.description,
                 'status': result.status,
                 'method': result.method,
@@ -154,11 +160,16 @@ class TestCaseList(Resource):
             
             cases_data = []
             for case in cases:
+                # 获取创建人信息
+                creator = User.query.filter_by(id=case.user_id).first()
+                creator_name = creator.username if creator else '未知用户'
+                
                 cases_data.append({
                     'id': case.id,
                     'name': case.name,
                     'group_id': case.group_id,
                     'user_id': case.user_id,
+                    'creator': creator_name,
                     'description': case.description,
                     'status': case.status,
                     'method': case.method,
@@ -182,11 +193,16 @@ class TestCase(Resource):
             if not case:
                 return BaseResponse(code=404, message='Test case not found').dict(), 404
             
+            # 获取创建人信息
+            creator = User.query.filter_by(id=case.user_id).first()
+            creator_name = creator.username if creator else '未知用户'
+            
             case_data = {
                 'id': case.id,
                 'name': case.name,
                 'group_id': case.group_id,
                 'user_id': case.user_id,
+                'creator': creator_name,
                 'description': case.description,
                 'status': case.status,
                 'method': case.method,
@@ -216,12 +232,17 @@ class TestCase(Resource):
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
             
+            # 获取创建人信息
+            creator = User.query.filter_by(id=result.user_id).first()
+            creator_name = creator.username if creator else '未知用户'
+            
             # 构建返回数据
             case_data = {
                 'id': result.id,
                 'name': result.name,
                 'group_id': result.group_id,
                 'user_id': result.user_id,
+                'creator': creator_name,
                 'description': result.description,
                 'status': result.status,
                 'method': result.method,

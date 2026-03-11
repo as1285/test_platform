@@ -79,12 +79,30 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/swagger',
+    name: 'SwaggerDocs',
+    component: () => import('../views/docs/SwaggerDocs.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Swagger文档'
+    }
+  },
+  {
     path: '/user',
     name: 'User',
     component: () => import('../views/user/User.vue'),
     meta: {
       requiresAuth: true,
       title: '用户管理'
+    }
+  },
+  {
+    path: '/tools',
+    name: 'Tools',
+    component: () => import('../views/tools/TestTool.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '测试工具'
     }
   },
   {

@@ -126,6 +126,11 @@
                 </el-tag>
               </template>
             </el-table-column>
+            <el-table-column prop="creator" label="创建人" width="120">
+              <template #default="scope">
+                {{ scope.row.creator || '-' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="create_time" label="创建时间" width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.create_time) }}
