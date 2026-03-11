@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional
 from datetime import datetime
 
@@ -24,12 +24,18 @@ class UserResponse(UserBase):
     id: int
     role: Optional[str] = None
     status: Optional[str] = None
-    create_time: Optional[datetime] = None
-    update_time: Optional[datetime] = None
-    last_login_time: Optional[datetime] = None
+    create_time: Optional[str] = None
+    update_time: Optional[str] = None
+    last_login_time: Optional[str] = None
     
     class Config:
         from_attributes = True
+    
+    @validator('create_time', 'update_time', 'last_login_time', pre=True)
+    def parse_datetime(cls, v):
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
 
 class TokenResponse(BaseModel):
     access_token: str
