@@ -7,20 +7,10 @@ const routes: Array<RouteRecordRaw> = [
     redirect: '/dashboard'
   },
   {
-    path: '/login',
-    name: 'Login',
-    component: () => import('../views/login/Login.vue'),
-    meta: {
-      requiresAuth: false,
-      title: '登录'
-    }
-  },
-  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/dashboard/Dashboard.vue'),
     meta: {
-      requiresAuth: true,
       title: '仪表盘'
     }
   },
@@ -29,7 +19,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Case',
     component: () => import('../views/case/Case.vue'),
     meta: {
-      requiresAuth: true,
       title: '用例管理'
     }
   },
@@ -38,7 +27,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Test',
     component: () => import('../views/test/Test.vue'),
     meta: {
-      requiresAuth: true,
       title: '测试执行'
     }
   },
@@ -47,26 +35,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Performance',
     component: () => import('../views/performance/Performance.vue'),
     meta: {
-      requiresAuth: true,
       title: '性能测试'
-    }
-  },
-  {
-    path: '/robustness',
-    name: 'Robustness',
-    component: () => import('../views/robustness/Robustness.vue'),
-    meta: {
-      requiresAuth: true,
-      title: '鲁棒性测试'
-    }
-  },
-  {
-    path: '/report',
-    name: 'Report',
-    component: () => import('../views/report/Report.vue'),
-    meta: {
-      requiresAuth: true,
-      title: '报告管理'
     }
   },
   {
@@ -74,7 +43,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'ApiDocs',
     component: () => import('../views/docs/ApiDocs.vue'),
     meta: {
-      requiresAuth: true,
       title: '接口文档'
     }
   },
@@ -83,17 +51,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'SwaggerDocs',
     component: () => import('../views/docs/SwaggerDocs.vue'),
     meta: {
-      requiresAuth: true,
       title: 'Swagger文档'
-    }
-  },
-  {
-    path: '/user',
-    name: 'User',
-    component: () => import('../views/user/User.vue'),
-    meta: {
-      requiresAuth: true,
-      title: '用户管理'
     }
   },
   {
@@ -101,7 +59,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Tools',
     component: () => import('../views/tools/TestTool.vue'),
     meta: {
-      requiresAuth: true,
       title: '测试工具'
     }
   },
@@ -110,7 +67,6 @@ const routes: Array<RouteRecordRaw> = [
     name: 'NotFound',
     component: () => import('../views/404/404.vue'),
     meta: {
-      requiresAuth: false,
       title: '页面不存在'
     }
   }
@@ -127,17 +83,7 @@ router.beforeEach((to, _from, next) => {
   // 设置页面标题
   document.title = `${to.meta.title || '接口测试平台'} - 企业级接口测试平台`
   
-  // 检查是否需要认证
-  if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('token')
-    if (token) {
-      next()
-    } else {
-      next('/login')
-    }
-  } else {
-    next()
-  }
+  next()
 })
 
 export default router

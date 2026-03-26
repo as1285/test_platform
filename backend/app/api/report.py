@@ -1,5 +1,4 @@
 from flask import request, send_from_directory, abort
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
 from app.services import report_service
@@ -13,11 +12,10 @@ report_ns = api.namespace('report', description='报告管理相关接口')
 @report_ns.route('/')
 class ReportList(Resource):
     @report_ns.doc('create_report')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """创建报告"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             
             success, result = report_service.create_report(data, user_id)
@@ -39,11 +37,10 @@ class ReportList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @report_ns.doc('get_reports')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取报告列表"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             page = request.args.get('page', 1, type=int)
             page_size = request.args.get('page_size', 10, type=int)
             
@@ -63,8 +60,7 @@ class ReportList(Resource):
 @report_ns.route('/<int:report_id>')
 class Report(Resource):
     @report_ns.doc('get_report')
-    @jwt_required()
-    def get(self, report_id):
+        def get(self, report_id):
         """获取报告详情"""
         try:
             report_data = report_service.get_report_by_id(report_id)
@@ -76,8 +72,7 @@ class Report(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @report_ns.doc('delete_report')
-    @jwt_required()
-    def delete(self, report_id):
+        def delete(self, report_id):
         """删除报告"""
         try:
             success, result = report_service.delete_report(report_id)
@@ -91,8 +86,7 @@ class Report(Resource):
 @report_ns.route('/compare')
 class ReportCompare(Resource):
     @report_ns.doc('compare_reports')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """对比报告"""
         try:
             data = request.json

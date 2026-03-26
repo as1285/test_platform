@@ -1,5 +1,4 @@
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
 from app.services import test_service
@@ -20,11 +19,10 @@ test_ns = api.namespace('test', description='测试执行相关接口')
 @test_ns.route('/run')
 class TestRun(Resource):
     @test_ns.doc('run_test')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """执行单个测试用例"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             test_data = TestRunRequest(**data)
             
@@ -39,11 +37,10 @@ class TestRun(Resource):
 @test_ns.route('/run/batch')
 class TestBatchRun(Resource):
     @test_ns.doc('run_batch_tests')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """批量执行测试用例"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             test_data = TestRunBatchRequest(**data)
             
@@ -59,11 +56,10 @@ class TestBatchRun(Resource):
 @test_ns.route('/performance')
 class TestPerformance(Resource):
     @test_ns.doc('run_performance_test')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """执行性能测试"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             test_data = TestRunPerformanceRequest(**data)
             
@@ -78,11 +74,10 @@ class TestPerformance(Resource):
 @test_ns.route('/performance/custom')
 class TestCustomPerformance(Resource):
     @test_ns.doc('run_performance_test_custom')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """执行自定义目标的性能测试"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             test_data = TestRunPerformanceCustomRequest(**data)
             
@@ -98,11 +93,10 @@ class TestCustomPerformance(Resource):
 @test_ns.route('/robustness')
 class TestRobustness(Resource):
     @test_ns.doc('run_robustness_test')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """执行鲁棒性测试"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             test_data = TestRunRobustnessRequest(**data)
             
@@ -118,11 +112,10 @@ class TestRobustness(Resource):
 @test_ns.route('/performance/config')
 class PerformanceConfigList(Resource):
     @test_ns.doc('save_performance_config')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """保存性能测试配置"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             success, result = test_service.save_performance_config(data, user_id)
             if not success:
@@ -137,11 +130,10 @@ class PerformanceConfigList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('get_performance_configs')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取用户的性能测试配置列表"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             success, result = test_service.get_performance_configs(user_id)
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
@@ -176,11 +168,10 @@ class PerformanceConfigList(Resource):
 @test_ns.route('/performance/config/<int:config_id>')
 class PerformanceConfig(Resource):
     @test_ns.doc('get_performance_config')
-    @jwt_required()
-    def get(self, config_id):
+        def get(self, config_id):
         """根据ID获取性能测试配置"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             success, result = test_service.get_performance_config_by_id(config_id, user_id)
             if not success:
                 return BaseResponse(code=404, message=result).dict(), 404
@@ -209,11 +200,10 @@ class PerformanceConfig(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('delete_performance_config')
-    @jwt_required()
-    def delete(self, config_id):
+        def delete(self, config_id):
         """删除性能测试配置"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             success, result = test_service.delete_performance_config(config_id, user_id)
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
@@ -226,11 +216,10 @@ class PerformanceConfig(Resource):
 @test_ns.route('/execution')
 class TestExecutionList(Resource):
     @test_ns.doc('get_test_executions')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取测试执行记录列表"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             executions = test_service.get_test_executions(user_id)
             
             executions_data = []
@@ -253,8 +242,7 @@ class TestExecutionList(Resource):
 @test_ns.route('/execution/<int:execution_id>')
 class TestExecution(Resource):
     @test_ns.doc('get_test_execution')
-    @jwt_required()
-    def get(self, execution_id):
+        def get(self, execution_id):
         """获取测试执行记录"""
         try:
             execution = test_service.get_test_execution(execution_id)
@@ -279,8 +267,7 @@ class TestExecution(Resource):
 @test_ns.route('/execution/<int:execution_id>/result')
 class TestResult(Resource):
     @test_ns.doc('get_test_results')
-    @jwt_required()
-    def get(self, execution_id):
+        def get(self, execution_id):
         """获取测试结果"""
         try:
             results = test_service.get_test_results(execution_id)
@@ -307,11 +294,10 @@ dashboard_ns = api.namespace('dashboard', description='仪表板相关接口')
 @dashboard_ns.route('/overview')
 class DashboardOverview(Resource):
     @dashboard_ns.doc('get_dashboard_overview')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取仪表盘概览"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             success, result = test_service.get_dashboard_overview(user_id)
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400

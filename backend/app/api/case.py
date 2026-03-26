@@ -1,5 +1,4 @@
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restx import Resource
 from app.api import api_bp, api
 from app.services import case_service
@@ -14,11 +13,10 @@ case_ns = api.namespace('case', description='用例管理相关接口')
 @case_ns.route('/group')
 class CaseGroupList(Resource):
     @case_ns.doc('create_case_group')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """创建用例分组"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             group_data = CaseGroupCreate(**data)
             
@@ -41,11 +39,10 @@ class CaseGroupList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_case_groups')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取用例分组列表"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             groups = case_service.get_case_groups(user_id)
             
             groups_data = []
@@ -66,8 +63,7 @@ class CaseGroupList(Resource):
 @case_ns.route('/group/<int:group_id>')
 class CaseGroup(Resource):
     @case_ns.doc('update_case_group')
-    @jwt_required()
-    def put(self, group_id):
+        def put(self, group_id):
         """更新用例分组"""
         try:
             data = request.json
@@ -92,8 +88,7 @@ class CaseGroup(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_case_group')
-    @jwt_required()
-    def delete(self, group_id):
+        def delete(self, group_id):
         """删除用例分组"""
         try:
             success, result = case_service.delete_case_group(group_id)
@@ -108,11 +103,10 @@ class CaseGroup(Resource):
 @case_ns.route('/')
 class TestCaseList(Resource):
     @case_ns.doc('create_test_case')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """创建测试用例"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             case_data = TestCaseCreate(**data)
             
@@ -149,11 +143,10 @@ class TestCaseList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_test_cases')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取测试用例列表"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             group_id = request.args.get('group_id', type=int)
             
             cases = case_service.get_test_cases(user_id, group_id)
@@ -185,8 +178,7 @@ class TestCaseList(Resource):
 @case_ns.route('/<int:case_id>')
 class TestCase(Resource):
     @case_ns.doc('get_test_case')
-    @jwt_required()
-    def get(self, case_id):
+        def get(self, case_id):
         """获取测试用例详情"""
         try:
             case = case_service.get_test_case_by_id(case_id)
@@ -221,8 +213,7 @@ class TestCase(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('update_test_case')
-    @jwt_required()
-    def put(self, case_id):
+        def put(self, case_id):
         """更新测试用例"""
         try:
             data = request.json
@@ -261,8 +252,7 @@ class TestCase(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_case')
-    @jwt_required()
-    def delete(self, case_id):
+        def delete(self, case_id):
         """删除测试用例"""
         try:
             success, result = case_service.delete_test_case(case_id)
@@ -276,11 +266,10 @@ class TestCase(Resource):
 @case_ns.route('/batch')
 class TestCaseBatch(Resource):
     @case_ns.doc('delete_test_cases')
-    @jwt_required()
-    def delete(self):
+        def delete(self):
         """批量删除测试用例"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             case_ids = data.get('case_ids', [])
             
@@ -299,8 +288,7 @@ class TestCaseBatch(Resource):
 @case_ns.route('/step')
 class TestStepCreator(Resource):
     @case_ns.doc('create_test_step')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """创建测试步骤"""
         try:
             data = request.json
@@ -332,8 +320,7 @@ class TestStepCreator(Resource):
 @case_ns.route('/step/<int:case_id>')
 class TestStepList(Resource):
     @case_ns.doc('get_test_steps')
-    @jwt_required()
-    def get(self, case_id):
+        def get(self, case_id):
         """获取测试步骤列表"""
         try:
             steps = case_service.get_test_steps(case_id)
@@ -361,8 +348,7 @@ class TestStepList(Resource):
 @case_ns.route('/step/<int:step_id>')
 class TestStep(Resource):
     @case_ns.doc('update_test_step')
-    @jwt_required()
-    def put(self, step_id):
+        def put(self, step_id):
         """更新测试步骤"""
         try:
             data = request.json
@@ -392,8 +378,7 @@ class TestStep(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_step')
-    @jwt_required()
-    def delete(self, step_id):
+        def delete(self, step_id):
         """删除测试步骤"""
         try:
             success, result = case_service.delete_test_step(step_id)
@@ -408,8 +393,7 @@ class TestStep(Resource):
 @case_ns.route('/tag')
 class TagList(Resource):
     @case_ns.doc('create_tag')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """创建标签"""
         try:
             data = request.json
@@ -431,8 +415,7 @@ class TagList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_tags')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取标签列表"""
         try:
             tags = case_service.get_tags()
@@ -452,8 +435,7 @@ class TagList(Resource):
 @case_ns.route('/<int:case_id>/tag/<int:tag_id>')
 class CaseTag(Resource):
     @case_ns.doc('add_tag_to_case')
-    @jwt_required()
-    def post(self, case_id, tag_id):
+        def post(self, case_id, tag_id):
         """给用例添加标签"""
         try:
             success, result = case_service.add_tag_to_case(case_id, tag_id)
@@ -465,8 +447,7 @@ class CaseTag(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('remove_tag_from_case')
-    @jwt_required()
-    def delete(self, case_id, tag_id):
+        def delete(self, case_id, tag_id):
         """从用例移除标签"""
         try:
             success, result = case_service.remove_tag_from_case(case_id, tag_id)
@@ -480,8 +461,7 @@ class CaseTag(Resource):
 @case_ns.route('/<int:case_id>/tag')
 class CaseTagList(Resource):
     @case_ns.doc('get_case_tags')
-    @jwt_required()
-    def get(self, case_id):
+        def get(self, case_id):
         """获取用例的标签"""
         try:
             tags = case_service.get_case_tags(case_id)
@@ -501,11 +481,10 @@ class CaseTagList(Resource):
 @case_ns.route('/import')
 class CaseImport(Resource):
     @case_ns.doc('import_case_from_doc')
-    @jwt_required()
-    def post(self):
+        def post(self):
         """从接口文档导入测试用例"""
         try:
-            user_id = get_jwt_identity()
+            user_id = 1
             data = request.json
             
             if not data:

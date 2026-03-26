@@ -13,10 +13,6 @@ const pinia = createPinia()
 axios.defaults.baseURL = ''
 axios.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
     return config
   },
   error => {
@@ -29,17 +25,9 @@ axios.interceptors.response.use(
   error => {
     if (error.response) {
       const data = error.response.data || {}
-      const status = error.response.status
       const msg = data.message || data.msg
 
-      if (status === 401) {
-        ElMessage.error(msg || '认证失败或登录已过期，请重新登录。')
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        if (router.currentRoute.value.path !== '/login') {
-          router.push('/login')
-        }
-      } else if (msg) {
+      if (msg) {
         ElMessage.error(msg)
       }
     } else if (error.request) {

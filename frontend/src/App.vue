@@ -88,18 +88,10 @@
           </div>
         </div>
         <div class="header-right">
-          <el-dropdown>
-            <span class="user-info">
-              <el-avatar>{{ userName }}</el-avatar>
-              <span class="user-name">{{ userName }}</span>
-              <el-icon class="el-icon--right"><i-ep-arrow-down /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <span class="user-info">
+            <el-avatar>管理员</el-avatar>
+            <span class="user-name">管理员</span>
+          </span>
         </div>
       </el-header>
       
@@ -117,15 +109,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 
-const router = useRouter()
 const route = useRoute()
 
 const activeMenu = ref('/dashboard')
-const userName = ref('管理员')
 const headerStats = reactive({
   totalCases: 0,
   totalExecutions: 0,
@@ -151,13 +140,6 @@ const handleMenuSelect = (key: string) => {
   activeMenu.value = key
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  ElMessage.success('退出登录成功')
-  router.push('/login')
-}
-
 const loadHeaderStats = async () => {
   try {
     const response = await axios.get('/api/v1/dashboard/overview')
@@ -175,15 +157,6 @@ const loadHeaderStats = async () => {
 // 生命周期
 onMounted(() => {
   activeMenu.value = route.path || '/dashboard'
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr)
-      userName.value = user.username
-    } catch (e) {
-      console.error('Failed to parse user info:', e)
-    }
-  }
   loadHeaderStats()
 })
 </script>

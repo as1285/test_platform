@@ -339,8 +339,7 @@ API_DOCS = [
 @docs_ns.route("/")
 class ApiDocs(Resource):
     @docs_ns.doc('get_api_docs')
-    @jwt_required()
-    def get(self):
+        def get(self):
         """获取API文档"""
         response = BaseResponse(data={"categories": API_DOCS})
         return response.dict(), 200
