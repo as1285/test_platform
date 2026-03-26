@@ -10,6 +10,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=prod-secret-key
       - JWT_SECRET_KEY=prod-jwt-secret-key
+      - JWT_ACCESS_TOKEN_EXPIRES=31536000
     depends_on:
       - db
       - redis

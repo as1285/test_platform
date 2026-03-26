@@ -35,30 +35,19 @@
           </template>
           性能测试
         </el-menu-item>
-        <el-menu-item index="/robustness">
-          <template #icon>
-            <el-icon><i-ep-warning /></el-icon>
-          </template>
-          鲁棒性测试
-        </el-menu-item>
-        <el-menu-item index="/report">
-          <template #icon>
-            <el-icon><i-ep-finished /></el-icon>
-          </template>
-          报告管理
-        </el-menu-item>
-        <el-menu-item index="/docs">
-          <template #icon>
+
+        <el-sub-menu index="/docs">
+          <template #title>
             <el-icon><i-ep-document-checked /></el-icon>
+            <span>接口文档</span>
           </template>
-          接口文档
-        </el-menu-item>
-        <el-menu-item index="/swagger">
-          <template #icon>
-            <el-icon><i-ep-link /></el-icon>
-          </template>
-          Swagger文档
-        </el-menu-item>
+          <el-menu-item index="/docs">
+            接口文档
+          </el-menu-item>
+          <el-menu-item index="/swagger">
+            Swagger文档
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/tools">
           <template #icon>
             <el-icon><i-ep-tools /></el-icon>
@@ -150,8 +139,6 @@ const currentRouteName = computed(() => {
     '/case': '用例管理',
     '/test': '测试执行',
     '/performance': '性能测试',
-    '/robustness': '鲁棒性测试',
-    '/report': '报告管理',
     '/docs': '接口文档',
     '/swagger': 'Swagger文档',
     '/tools': '测试工具',

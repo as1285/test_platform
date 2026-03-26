@@ -15,7 +15,7 @@ class Config:
     
     # JWT配置
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'dev-jwt-secret-key'
-    JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1小时
+    JWT_ACCESS_TOKEN_EXPIRES = 31536000  # 365天（1年），token不过期
     
     # 性能测试配置
     MAX_CONCURRENCY = 1000
