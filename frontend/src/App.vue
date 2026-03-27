@@ -1,8 +1,9 @@
 <template>
   <div class="app-container">
     <!-- 侧边栏 -->
-    <el-aside width="200px" class="sidebar">
+    <el-aside width="220px" class="sidebar">
       <div class="logo">
+        <el-icon :size="24" color="#409EFF"><i-ep-connection /></el-icon>
         <h1>接口测试平台</h1>
       </div>
       <el-menu
@@ -15,31 +16,31 @@
           <template #icon>
             <el-icon><i-ep-data-analysis /></el-icon>
           </template>
-          仪表盘
+          <span>仪表盘</span>
         </el-menu-item>
         <el-menu-item index="/case">
           <template #icon>
             <el-icon><i-ep-document /></el-icon>
           </template>
-          用例管理
+          <span>用例管理</span>
         </el-menu-item>
         <el-menu-item index="/test">
           <template #icon>
-            <el-icon><i-ep-refresh /></el-icon>
+            <el-icon><i-ep-refresh-right /></el-icon>
           </template>
-          测试执行
+          <span>测试执行</span>
         </el-menu-item>
         <el-menu-item index="/performance">
           <template #icon>
             <el-icon><i-ep-speed /></el-icon>
           </template>
-          性能测试
+          <span>性能测试</span>
         </el-menu-item>
         <el-menu-item index="/tools">
           <template #icon>
             <el-icon><i-ep-tools /></el-icon>
           </template>
-          测试工具
+          <span>测试工具</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -47,30 +48,36 @@
     <!-- 主内容区 -->
     <el-container class="main-content">
       <!-- 顶部导航栏 -->
-      <el-header height="60px" class="header">
+      <el-header height="56px" class="header">
         <div class="header-left">
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/' }">
+              <el-icon><i-ep-house /></el-icon>
+              首页
+            </el-breadcrumb-item>
             <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
           </el-breadcrumb>
-          <div class="header-stats">
-            <span class="header-stat-item">
-              <span class="header-stat-label">用例</span>
-              <span class="header-stat-value">{{ headerStats.totalCases }}</span>
-            </span>
-            <span class="header-stat-item">
-              <span class="header-stat-label">执行</span>
-              <span class="header-stat-value">{{ headerStats.totalExecutions }}</span>
-            </span>
-            <span class="header-stat-item">
-              <span class="header-stat-label">成功率</span>
-              <span class="header-stat-value">{{ headerStats.successRate }}%</span>
-            </span>
-          </div>
         </div>
         <div class="header-right">
+          <div class="header-stats">
+            <el-tag size="small" type="info" effect="plain">
+              <el-icon><i-ep-document /></el-icon>
+              用例 {{ headerStats.totalCases }}
+            </el-tag>
+            <el-tag size="small" type="warning" effect="plain">
+              <el-icon><i-ep-refresh /></el-icon>
+              执行 {{ headerStats.totalExecutions }}
+            </el-tag>
+            <el-tag size="small" :type="headerStats.successRate >= 80 ? 'success' : 'danger'" effect="plain">
+              <el-icon><i-ep-circle-check /></el-icon>
+              成功率 {{ headerStats.successRate }}%
+            </el-tag>
+          </div>
+          <el-divider direction="vertical" />
           <span class="user-info">
-            <el-avatar>管理员</el-avatar>
+            <el-avatar :size="32" style="background-color: #409EFF">
+              <el-icon><i-ep-user /></el-icon>
+            </el-avatar>
             <span class="user-name">管理员</span>
           </span>
         </div>
