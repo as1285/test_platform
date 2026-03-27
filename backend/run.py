@@ -1,25 +1,22 @@
 from flask import Flask
 from flask_cors import CORS
-from app.api import api_bp, jwt
+from app.api import api_bp
 from app.models import db
 from app.utils.redis import RedisUtil
 from config import config
 
 def create_app(config_name='default'):
-    """创建Flask应用"""
+    """创建 Flask 应用"""
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     
-    # 初始化CORS
+    # 初始化 CORS
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     
     # 初始化数据库
     db.init_app(app)
     
-    # 初始化JWT
-    jwt.init_app(app)
-    
-    # 初始化Redis
+    # 初始化 Redis
     redis_util = RedisUtil()
     
     # 注册蓝图

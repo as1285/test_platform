@@ -39,22 +39,6 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/docs',
-    name: 'ApiDocs',
-    component: () => import('../views/docs/ApiDocs.vue'),
-    meta: {
-      title: '接口文档'
-    }
-  },
-  {
-    path: '/swagger',
-    name: 'SwaggerDocs',
-    component: () => import('../views/docs/SwaggerDocs.vue'),
-    meta: {
-      title: 'Swagger文档'
-    }
-  },
-  {
     path: '/tools',
     name: 'Tools',
     component: () => import('../views/tools/TestTool.vue'),

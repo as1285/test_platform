@@ -35,30 +35,11 @@
           </template>
           性能测试
         </el-menu-item>
-
-        <el-sub-menu index="/docs">
-          <template #title>
-            <el-icon><i-ep-document-checked /></el-icon>
-            <span>接口文档</span>
-          </template>
-          <el-menu-item index="/docs">
-            接口文档
-          </el-menu-item>
-          <el-menu-item index="/swagger">
-            Swagger文档
-          </el-menu-item>
-        </el-sub-menu>
         <el-menu-item index="/tools">
           <template #icon>
             <el-icon><i-ep-tools /></el-icon>
           </template>
           测试工具
-        </el-menu-item>
-        <el-menu-item index="/user">
-          <template #icon>
-            <el-icon><i-ep-user /></el-icon>
-          </template>
-          用户管理
         </el-menu-item>
       </el-menu>
     </el-aside>

@@ -4,7 +4,6 @@ from app.api import api_bp, api
 from app.services import case_service
 from app.schemas.case import CaseGroupCreate, CaseGroupUpdate, TestCaseCreate, TestCaseUpdate, TestStepCreate, TestStepUpdate, TagCreate
 from app.schemas import BaseResponse, PaginatedResponse
-from app.models.user import User
 
 # 创建用例命名空间
 case_ns = api.namespace('case', description='用例管理相关接口')
@@ -13,7 +12,7 @@ case_ns = api.namespace('case', description='用例管理相关接口')
 @case_ns.route('/group')
 class CaseGroupList(Resource):
     @case_ns.doc('create_case_group')
-        def post(self):
+    def post(self):
         """创建用例分组"""
         try:
             user_id = 1
@@ -39,7 +38,7 @@ class CaseGroupList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_case_groups')
-        def get(self):
+    def get(self):
         """获取用例分组列表"""
         try:
             user_id = 1
@@ -63,7 +62,7 @@ class CaseGroupList(Resource):
 @case_ns.route('/group/<int:group_id>')
 class CaseGroup(Resource):
     @case_ns.doc('update_case_group')
-        def put(self, group_id):
+    def put(self, group_id):
         """更新用例分组"""
         try:
             data = request.json
@@ -88,7 +87,7 @@ class CaseGroup(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_case_group')
-        def delete(self, group_id):
+    def delete(self, group_id):
         """删除用例分组"""
         try:
             success, result = case_service.delete_case_group(group_id)
@@ -103,7 +102,7 @@ class CaseGroup(Resource):
 @case_ns.route('/')
 class TestCaseList(Resource):
     @case_ns.doc('create_test_case')
-        def post(self):
+    def post(self):
         """创建测试用例"""
         try:
             user_id = 1
@@ -114,17 +113,13 @@ class TestCaseList(Resource):
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
             
-            # 获取创建人信息
-            creator = User.query.filter_by(id=user_id).first()
-            creator_name = creator.username if creator else '未知用户'
-            
             # 构建返回数据
             case_data = {
                 'id': result.id,
                 'name': result.name,
                 'group_id': result.group_id,
                 'user_id': result.user_id,
-                'creator': creator_name,
+                'creator': '系统用户',
                 'description': result.description,
                 'status': result.status,
                 'method': result.method,
@@ -143,7 +138,7 @@ class TestCaseList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_test_cases')
-        def get(self):
+    def get(self):
         """获取测试用例列表"""
         try:
             user_id = 1
@@ -154,8 +149,7 @@ class TestCaseList(Resource):
             cases_data = []
             for case in cases:
                 # 获取创建人信息
-                creator = User.query.filter_by(id=case.user_id).first()
-                creator_name = creator.username if creator else '未知用户'
+                creator_name = '系统用户'
                 
                 cases_data.append({
                     'id': case.id,
@@ -178,7 +172,7 @@ class TestCaseList(Resource):
 @case_ns.route('/<int:case_id>')
 class TestCase(Resource):
     @case_ns.doc('get_test_case')
-        def get(self, case_id):
+    def get(self, case_id):
         """获取测试用例详情"""
         try:
             case = case_service.get_test_case_by_id(case_id)
@@ -186,8 +180,7 @@ class TestCase(Resource):
                 return BaseResponse(code=404, message='Test case not found').dict(), 404
             
             # 获取创建人信息
-            creator = User.query.filter_by(id=case.user_id).first()
-            creator_name = creator.username if creator else '未知用户'
+            creator_name = '系统用户'
             
             case_data = {
                 'id': case.id,
@@ -213,7 +206,7 @@ class TestCase(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('update_test_case')
-        def put(self, case_id):
+    def put(self, case_id):
         """更新测试用例"""
         try:
             data = request.json
@@ -223,17 +216,13 @@ class TestCase(Resource):
             if not success:
                 return BaseResponse(code=400, message=result).dict(), 400
             
-            # 获取创建人信息
-            creator = User.query.filter_by(id=result.user_id).first()
-            creator_name = creator.username if creator else '未知用户'
-            
             # 构建返回数据
             case_data = {
                 'id': result.id,
                 'name': result.name,
                 'group_id': result.group_id,
                 'user_id': result.user_id,
-                'creator': creator_name,
+                'creator': '系统用户',
                 'description': result.description,
                 'status': result.status,
                 'method': result.method,
@@ -252,7 +241,7 @@ class TestCase(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_case')
-        def delete(self, case_id):
+    def delete(self, case_id):
         """删除测试用例"""
         try:
             success, result = case_service.delete_test_case(case_id)
@@ -266,7 +255,7 @@ class TestCase(Resource):
 @case_ns.route('/batch')
 class TestCaseBatch(Resource):
     @case_ns.doc('delete_test_cases')
-        def delete(self):
+    def delete(self):
         """批量删除测试用例"""
         try:
             user_id = 1
@@ -288,7 +277,7 @@ class TestCaseBatch(Resource):
 @case_ns.route('/step')
 class TestStepCreator(Resource):
     @case_ns.doc('create_test_step')
-        def post(self):
+    def post(self):
         """创建测试步骤"""
         try:
             data = request.json
@@ -320,7 +309,7 @@ class TestStepCreator(Resource):
 @case_ns.route('/step/<int:case_id>')
 class TestStepList(Resource):
     @case_ns.doc('get_test_steps')
-        def get(self, case_id):
+    def get(self, case_id):
         """获取测试步骤列表"""
         try:
             steps = case_service.get_test_steps(case_id)
@@ -348,7 +337,7 @@ class TestStepList(Resource):
 @case_ns.route('/step/<int:step_id>')
 class TestStep(Resource):
     @case_ns.doc('update_test_step')
-        def put(self, step_id):
+    def put(self, step_id):
         """更新测试步骤"""
         try:
             data = request.json
@@ -378,7 +367,7 @@ class TestStep(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('delete_test_step')
-        def delete(self, step_id):
+    def delete(self, step_id):
         """删除测试步骤"""
         try:
             success, result = case_service.delete_test_step(step_id)
@@ -393,7 +382,7 @@ class TestStep(Resource):
 @case_ns.route('/tag')
 class TagList(Resource):
     @case_ns.doc('create_tag')
-        def post(self):
+    def post(self):
         """创建标签"""
         try:
             data = request.json
@@ -415,7 +404,7 @@ class TagList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('get_tags')
-        def get(self):
+    def get(self):
         """获取标签列表"""
         try:
             tags = case_service.get_tags()
@@ -435,7 +424,7 @@ class TagList(Resource):
 @case_ns.route('/<int:case_id>/tag/<int:tag_id>')
 class CaseTag(Resource):
     @case_ns.doc('add_tag_to_case')
-        def post(self, case_id, tag_id):
+    def post(self, case_id, tag_id):
         """给用例添加标签"""
         try:
             success, result = case_service.add_tag_to_case(case_id, tag_id)
@@ -447,7 +436,7 @@ class CaseTag(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @case_ns.doc('remove_tag_from_case')
-        def delete(self, case_id, tag_id):
+    def delete(self, case_id, tag_id):
         """从用例移除标签"""
         try:
             success, result = case_service.remove_tag_from_case(case_id, tag_id)
@@ -461,7 +450,7 @@ class CaseTag(Resource):
 @case_ns.route('/<int:case_id>/tag')
 class CaseTagList(Resource):
     @case_ns.doc('get_case_tags')
-        def get(self, case_id):
+    def get(self, case_id):
         """获取用例的标签"""
         try:
             tags = case_service.get_case_tags(case_id)
@@ -481,7 +470,7 @@ class CaseTagList(Resource):
 @case_ns.route('/import')
 class CaseImport(Resource):
     @case_ns.doc('import_case_from_doc')
-        def post(self):
+    def post(self):
         """从接口文档导入测试用例"""
         try:
             user_id = 1

@@ -19,7 +19,7 @@ test_ns = api.namespace('test', description='测试执行相关接口')
 @test_ns.route('/run')
 class TestRun(Resource):
     @test_ns.doc('run_test')
-        def post(self):
+    def post(self):
         """执行单个测试用例"""
         try:
             user_id = 1
@@ -37,7 +37,7 @@ class TestRun(Resource):
 @test_ns.route('/run/batch')
 class TestBatchRun(Resource):
     @test_ns.doc('run_batch_tests')
-        def post(self):
+    def post(self):
         """批量执行测试用例"""
         try:
             user_id = 1
@@ -56,7 +56,7 @@ class TestBatchRun(Resource):
 @test_ns.route('/performance')
 class TestPerformance(Resource):
     @test_ns.doc('run_performance_test')
-        def post(self):
+    def post(self):
         """执行性能测试"""
         try:
             user_id = 1
@@ -74,7 +74,7 @@ class TestPerformance(Resource):
 @test_ns.route('/performance/custom')
 class TestCustomPerformance(Resource):
     @test_ns.doc('run_performance_test_custom')
-        def post(self):
+    def post(self):
         """执行自定义目标的性能测试"""
         try:
             user_id = 1
@@ -93,7 +93,7 @@ class TestCustomPerformance(Resource):
 @test_ns.route('/robustness')
 class TestRobustness(Resource):
     @test_ns.doc('run_robustness_test')
-        def post(self):
+    def post(self):
         """执行鲁棒性测试"""
         try:
             user_id = 1
@@ -112,7 +112,7 @@ class TestRobustness(Resource):
 @test_ns.route('/performance/config')
 class PerformanceConfigList(Resource):
     @test_ns.doc('save_performance_config')
-        def post(self):
+    def post(self):
         """保存性能测试配置"""
         try:
             user_id = 1
@@ -130,7 +130,7 @@ class PerformanceConfigList(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('get_performance_configs')
-        def get(self):
+    def get(self):
         """获取用户的性能测试配置列表"""
         try:
             user_id = 1
@@ -168,7 +168,7 @@ class PerformanceConfigList(Resource):
 @test_ns.route('/performance/config/<int:config_id>')
 class PerformanceConfig(Resource):
     @test_ns.doc('get_performance_config')
-        def get(self, config_id):
+    def get(self, config_id):
         """根据ID获取性能测试配置"""
         try:
             user_id = 1
@@ -200,7 +200,7 @@ class PerformanceConfig(Resource):
             return BaseResponse(code=500, message=str(e)).dict(), 500
     
     @test_ns.doc('delete_performance_config')
-        def delete(self, config_id):
+    def delete(self, config_id):
         """删除性能测试配置"""
         try:
             user_id = 1
@@ -216,7 +216,7 @@ class PerformanceConfig(Resource):
 @test_ns.route('/execution')
 class TestExecutionList(Resource):
     @test_ns.doc('get_test_executions')
-        def get(self):
+    def get(self):
         """获取测试执行记录列表"""
         try:
             user_id = 1
@@ -242,7 +242,7 @@ class TestExecutionList(Resource):
 @test_ns.route('/execution/<int:execution_id>')
 class TestExecution(Resource):
     @test_ns.doc('get_test_execution')
-        def get(self, execution_id):
+    def get(self, execution_id):
         """获取测试执行记录"""
         try:
             execution = test_service.get_test_execution(execution_id)
@@ -267,7 +267,7 @@ class TestExecution(Resource):
 @test_ns.route('/execution/<int:execution_id>/result')
 class TestResult(Resource):
     @test_ns.doc('get_test_results')
-        def get(self, execution_id):
+    def get(self, execution_id):
         """获取测试结果"""
         try:
             results = test_service.get_test_results(execution_id)
@@ -294,7 +294,7 @@ dashboard_ns = api.namespace('dashboard', description='仪表板相关接口')
 @dashboard_ns.route('/overview')
 class DashboardOverview(Resource):
     @dashboard_ns.doc('get_dashboard_overview')
-        def get(self):
+    def get(self):
         """获取仪表盘概览"""
         try:
             user_id = 1
