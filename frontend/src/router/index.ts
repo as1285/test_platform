@@ -4,39 +4,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    redirect: '/dashboard'
-  },
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('../views/dashboard/Dashboard.vue'),
-    meta: {
-      title: '仪表盘'
-    }
-  },
-  {
-    path: '/case',
-    name: 'Case',
-    component: () => import('../views/case/Case.vue'),
-    meta: {
-      title: '用例管理'
-    }
-  },
-  {
-    path: '/test',
-    name: 'Test',
-    component: () => import('../views/test/Test.vue'),
-    meta: {
-      title: '测试执行'
-    }
-  },
-  {
-    path: '/performance',
-    name: 'Performance',
-    component: () => import('../views/performance/Performance.vue'),
-    meta: {
-      title: '性能测试'
-    }
+    redirect: '/tools'
   },
   {
     path: '/tools',

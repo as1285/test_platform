@@ -12,30 +12,6 @@
         router
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/dashboard">
-          <template #icon>
-            <el-icon><i-ep-data-analysis /></el-icon>
-          </template>
-          <span>仪表盘</span>
-        </el-menu-item>
-        <el-menu-item index="/case">
-          <template #icon>
-            <el-icon><i-ep-document /></el-icon>
-          </template>
-          <span>用例管理</span>
-        </el-menu-item>
-        <el-menu-item index="/test">
-          <template #icon>
-            <el-icon><i-ep-refresh-right /></el-icon>
-          </template>
-          <span>测试执行</span>
-        </el-menu-item>
-        <el-menu-item index="/performance">
-          <template #icon>
-            <el-icon><i-ep-speed /></el-icon>
-          </template>
-          <span>性能测试</span>
-        </el-menu-item>
         <el-menu-item index="/tools">
           <template #icon>
             <el-icon><i-ep-tools /></el-icon>
@@ -59,21 +35,6 @@
           </el-breadcrumb>
         </div>
         <div class="header-right">
-          <div class="header-stats">
-            <el-tag size="small" type="info" effect="plain">
-              <el-icon><i-ep-document /></el-icon>
-              用例 {{ headerStats.totalCases }}
-            </el-tag>
-            <el-tag size="small" type="warning" effect="plain">
-              <el-icon><i-ep-refresh /></el-icon>
-              执行 {{ headerStats.totalExecutions }}
-            </el-tag>
-            <el-tag size="small" :type="headerStats.successRate >= 80 ? 'success' : 'danger'" effect="plain">
-              <el-icon><i-ep-circle-check /></el-icon>
-              成功率 {{ headerStats.successRate }}%
-            </el-tag>
-          </div>
-          <el-divider direction="vertical" />
           <span class="user-info">
             <el-avatar :size="32" style="background-color: #409EFF">
               <el-icon><i-ep-user /></el-icon>
@@ -96,56 +57,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
 
 const route = useRoute()
 
-const activeMenu = ref('/dashboard')
-const headerStats = reactive({
-  totalCases: 0,
-  totalExecutions: 0,
-  successRate: 0
-})
+const activeMenu = ref('/tools')
 
 // 计算属性
 const currentRouteName = computed(() => {
   const routeMap: Record<string, string> = {
-    '/dashboard': '仪表盘',
-    '/case': '用例管理',
-    '/test': '测试执行',
-    '/performance': '性能测试',
-    '/docs': '接口文档',
-    '/swagger': 'Swagger文档',
-    '/tools': '测试工具',
-    '/user': '用户管理'
+    '/tools': '测试工具'
   }
-  return routeMap[route.path] || '首页'
+  return routeMap[route.path] || '测试工具'
 })
 
 const handleMenuSelect = (key: string) => {
   activeMenu.value = key
 }
 
-const loadHeaderStats = async () => {
-  try {
-    const response = await axios.get('/api/v1/dashboard/overview')
-    if (response.data.code === 200) {
-      const data = response.data.data || {}
-      const stats = data.stats || {}
-      headerStats.totalCases = stats.total_cases || 0
-      headerStats.totalExecutions = stats.total_executions || 0
-      headerStats.successRate = stats.success_rate || 0
-    }
-  } catch {
-  }
-}
-
 // 生命周期
 onMounted(() => {
-  activeMenu.value = route.path || '/dashboard'
-  loadHeaderStats()
+  activeMenu.value = route.path || '/tools'
 })
 </script>
 
