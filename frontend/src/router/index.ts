@@ -7,6 +7,10 @@ const routes: Array<RouteRecordRaw> = [
     redirect: '/tools'
   },
   {
+    path: '/login',
+    redirect: '/tools'
+  },
+  {
     path: '/tools',
     name: 'Tools',
     component: () => import('../views/tools/TestTool.vue'),
@@ -33,7 +37,7 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   // 设置页面标题
-  document.title = `${to.meta.title || '接口测试平台'} - 企业级接口测试平台`
+  document.title = `${to.meta.title || '工具'}`
   
   next()
 })

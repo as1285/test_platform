@@ -4,7 +4,7 @@
     <el-aside width="220px" class="sidebar">
       <div class="logo">
         <el-icon :size="24" color="#409EFF"><i-ep-connection /></el-icon>
-        <h1>接口测试平台</h1>
+        <h1>工具</h1>
       </div>
       <el-menu
         :default-active="activeMenu"
