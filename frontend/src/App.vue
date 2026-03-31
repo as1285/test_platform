@@ -34,14 +34,6 @@
             <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
-        <div class="header-right">
-          <span class="user-info">
-            <el-avatar :size="32" style="background-color: #409EFF">
-              <el-icon><i-ep-user /></el-icon>
-            </el-avatar>
-            <span class="user-name">管理员</span>
-          </span>
-        </div>
       </el-header>
       
       <!-- 内容区域 -->
@@ -158,42 +150,7 @@ onMounted(() => {
   flex: 1;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-}
 
-.header-stats {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 6px;
-}
-
-.header-stat-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.header-stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.user-name {
-  margin-left: 10px;
-  margin-right: 5px;
-}
 
 .el-main {
   padding: 20px;
