@@ -1,172 +1,170 @@
 <template>
   <div class="app-container">
-    <!-- 侧边栏 -->
-    <el-aside width="220px" class="sidebar">
-      <div class="logo">
-        <el-icon :size="24" color="#409EFF"><i-ep-connection /></el-icon>
-        <h1>工具</h1>
+    <div class="login-container">
+      <div class="login-header">
+        <el-button type="text" @click="goBack" class="back-button">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </el-button>
+        <h1 class="login-title">个人所得税</h1>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        class="sidebar-menu"
-        router
-        @select="handleMenuSelect"
-      >
-        <el-menu-item index="/tools">
-          <template #icon>
-            <el-icon><i-ep-tools /></el-icon>
-          </template>
-          <span>测试工具</span>
-        </el-menu-item>
-      </el-menu>
-    </el-aside>
-    
-    <!-- 主内容区 -->
-    <el-container class="main-content">
-      <!-- 顶部导航栏 -->
-      <el-header height="56px" class="header">
-        <div class="header-left">
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">
-              <el-icon><i-ep-house /></el-icon>
-              首页
-            </el-breadcrumb-item>
-            <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
-          </el-breadcrumb>
-        </div>
-      </el-header>
       
-      <!-- 内容区域 -->
-      <el-main>
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </el-main>
-    </el-container>
+      <div class="login-form">
+        <div class="avatar-container">
+          <div class="avatar">
+            <el-icon><User /></el-icon>
+          </div>
+        </div>
+        
+        <el-form :model="loginForm" class="form-content">
+          <el-form-item label="账号">
+            <el-input 
+              v-model="loginForm.username" 
+              placeholder="手机号码/证件号码"
+              prefix-icon="Phone"
+            >
+              <template #append>
+                <el-icon class="el-input__icon"><QuestionFilled /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+          
+          <el-form-item label="密码">
+            <el-input 
+              v-model="loginForm.password" 
+              type="password" 
+              placeholder="请输入密码"
+              prefix-icon="Lock"
+            />
+          </el-form-item>
+          
+          <div class="forgot-password">
+            <el-button type="text" @click="forgotPassword">找回密码</el-button>
+          </div>
+          
+          <el-button type="primary" class="login-button" @click="login">登录</el-button>
+          
+          <el-button type="default" class="register-button" @click="register">注册</el-button>
+        </el-form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref } from 'vue'
+import { ArrowLeft, User, QuestionFilled } from '@element-plus/icons-vue'
 
-const route = useRoute()
-
-const activeMenu = ref('/tools')
-
-// 计算属性
-const currentRouteName = computed(() => {
-  const routeMap: Record<string, string> = {
-    '/tools': '测试工具'
-  }
-  return routeMap[route.path] || '测试工具'
+const loginForm = ref({
+  username: '',
+  password: ''
 })
 
-const handleMenuSelect = (key: string) => {
-  activeMenu.value = key
+const goBack = () => {
+  // 实现返回功能
+  console.log('返回')
 }
 
-// 生命周期
-onMounted(() => {
-  activeMenu.value = route.path || '/tools'
-})
+const forgotPassword = () => {
+  // 实现找回密码功能
+  console.log('找回密码')
+}
+
+const login = () => {
+  // 实现登录功能
+  console.log('登录', loginForm.value)
+}
+
+const register = () => {
+  // 实现注册功能
+  console.log('注册')
+}
 </script>
 
 <style scoped>
 .app-container {
+  min-height: 100vh;
+  background-color: #f5f7fa;
   display: flex;
-  height: 100vh;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  width: 400px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.sidebar {
-  background-color: #001529;
-  color: #fff;
-  height: 100vh;
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 100;
-}
-
-.logo {
-  height: 60px;
+.login-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid #002140;
-}
-
-.logo h1 {
-  font-size: 18px;
-  margin: 0;
-  color: #fff;
-}
-
-.sidebar-menu {
-  margin-top: 20px;
-  border-right: none;
-}
-
-.sidebar-menu :deep(.el-menu-item) {
-  margin: 4px 12px;
-  border-radius: 6px;
-  border: 1px solid #d9d9d9;
-  background-color: #ffffff;
-  color: #303133;
-  font-weight: 600;
-}
-
-.sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: #1890ff;
-  border-color: #1890ff;
-  color: #ffffff;
-}
-
-.sidebar-menu :deep(.el-menu-item:hover) {
-  background-color: #e6f7ff;
-  border-color: #1890ff;
-  color: #1890ff;
-}
-
-.main-content {
-  margin-left: 200px;
-  width: calc(100% - 200px);
-  height: 100vh;
-}
-
-.header {
-  background-color: #fff;
-  border-bottom: 1px solid #eaeef1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-}
-
-.header-left {
-  flex: 1;
-}
-
-
-
-.el-main {
   padding: 20px;
-  background-color: #f0f2f5;
-  overflow-y: auto;
-  height: calc(100vh - 60px);
+  border-bottom: 1px solid #e4e7ed;
 }
 
-/* 过渡动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
+.back-button {
+  margin-right: 20px;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.login-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+  margin: 0;
+}
+
+.login-form {
+  padding: 40px 30px;
+}
+
+.avatar-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #ecf5ff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  color: #409eff;
+}
+
+.form-content {
+  width: 100%;
+}
+
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.el-form-item__label {
+  font-weight: 500;
+  color: #606266;
+}
+
+.forgot-password {
+  text-align: right;
+  margin-bottom: 30px;
+}
+
+.login-button {
+  width: 100%;
+  height: 40px;
+  font-size: 16px;
+  margin-bottom: 15px;
+}
+
+.register-button {
+  width: 100%;
+  height: 40px;
+  font-size: 16px;
 }
 </style>
