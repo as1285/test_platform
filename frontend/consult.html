@@ -1,336 +1,354 @@
-<!DOCTYPE html> 
- <html lang="zh-CN"> 
- <head> 
-     <meta charset="UTF-8"> 
-     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
-     <title>我要咨询</title> 
-     <style> 
-         * { 
-             margin: 0; 
-             padding: 0; 
-             box-sizing: border-box; 
-         } 
-         
-         body { 
-             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; 
-             background: #f5f6fa; 
-             min-height: 100vh; 
-             padding-bottom: 80px; 
-         } 
-         
-         .header { 
-             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%); 
-             color: #fff; 
-             padding: 40px 16px 20px; 
-             text-align: center; 
-             position: relative; 
-         } 
-         
-         .header h1 { 
-             font-size: 18px; 
-             font-weight: 500; 
-         } 
-         
-         .header .user-info { 
-             margin-top: 16px; 
-         } 
-         
-         .header .user-name { 
-             font-size: 16px; 
-             font-weight: 500; 
-             margin-bottom: 8px; 
-         } 
-         
-         .header .tax-id { 
-             font-size: 14px; 
-             opacity: 0.9; 
-         } 
-         
-         .back-link { 
-             display: inline-flex; 
-             align-items: center; 
-             color: #fff; 
-             text-decoration: none; 
-             font-size: 14px; 
-             position: absolute; 
-             left: 16px; 
-             top: 40px; 
-         } 
-         
-         .container { 
-             padding: 16px; 
-         } 
-         
-         /* 咨询表单 */ 
-         .card { 
-             background: #fff; 
-             border-radius: 12px; 
-             padding: 20px; 
-             margin-bottom: 16px; 
-             box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
-         } 
-         
-         .card-title { 
-             font-size: 16px; 
-             font-weight: 600; 
-             color: #333; 
-             margin-bottom: 16px; 
-             padding-bottom: 12px; 
-             border-bottom: 1px solid #f0f0f0; 
-         } 
-         
-         .form-group { 
-             margin-bottom: 16px; 
-         } 
-         
-         .form-group label { 
-             display: block; 
-             font-size: 14px; 
-             color: #666; 
-             margin-bottom: 8px; 
-         } 
-         
-         .form-group input, 
-         .form-group select, 
-         .form-group textarea { 
-             width: 100%; 
-             padding: 12px; 
-             border: 1px solid #e0e0e0; 
-             border-radius: 8px; 
-             font-size: 14px; 
-             background: #fafafa; 
-         } 
-         
-         .form-group input:focus, 
-         .form-group select:focus, 
-         .form-group textarea:focus { 
-             outline: none; 
-             border-color: #1e6fff; 
-             background: #fff; 
-         } 
-         
-         .form-group textarea { 
-             resize: none; 
-             min-height: 120px; 
-         } 
-         
-         .btn { 
-             display: inline-block; 
-             padding: 12px 24px; 
-             border: none; 
-             border-radius: 8px; 
-             font-size: 14px; 
-             cursor: pointer; 
-             text-decoration: none; 
-             text-align: center; 
-         } 
-         
-         .btn-primary { 
-             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%); 
-             color: #fff; 
-             width: 100%; 
-         } 
-         
-         /* 底部导航栏 */ 
-         .bottom-nav { 
-             position: fixed; 
-             bottom: 0; 
-             left: 0; 
-             right: 0; 
-             background: #fff; 
-             display: flex; 
-             justify-content: space-around; 
-             align-items: center; 
-             padding: 8px 0; 
-             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05); 
-             z-index: 100; 
-         } 
-         
-         .nav-item { 
-             display: flex; 
-             flex-direction: column; 
-             align-items: center; 
-             gap: 4px; 
-             color: #999; 
-             text-decoration: none; 
-         } 
-         
-         .nav-item.active { 
-             color: #1e6fff; 
-         } 
-         
-         .nav-icon { 
-             width: 24px; 
-             height: 24px; 
-         } 
-         
-         .nav-text { 
-             font-size: 12px; 
-         } 
-         
-         /* 标签页 */ 
-         .nav-tabs { 
-             display: flex; 
-             border-bottom: 1px solid #f0f0f0; 
-             margin-bottom: 16px; 
-         } 
-         
-         .nav-tab { 
-             flex: 1; 
-             text-align: center; 
-             padding: 12px 0; 
-             font-size: 15px; 
-             color: #666; 
-             border-bottom: 2px solid transparent; 
-             cursor: pointer; 
-         } 
-         
-         .nav-tab.active { 
-             color: #1e6fff; 
-             border-bottom-color: #1e6fff; 
-         } 
-         
-         .tab-content { 
-             display: none; 
-         } 
-         
-         .tab-content.active { 
-             display: block; 
-         } 
-         
-         /* 历史记录 */ 
-         .history-item { 
-             padding: 16px 0; 
-             border-bottom: 1px solid #f0f0f0; 
-         } 
-         
-         .history-item:last-child { 
-             border-bottom: none; 
-         } 
-         
-         .history-title { 
-             font-size: 15px; 
-             color: #333; 
-             margin-bottom: 8px; 
-         } 
-         
-         .history-time { 
-             font-size: 12px; 
-             color: #999; 
-         } 
-         
-     </style> 
- </head> 
- <body> 
-     <div class="header"> 
-         <a href="mine.html" class="back-link">← 返回个人中心</a> 
-         <h1>我要咨询</h1> 
-     </div> 
-     
-     <div class="container"> 
-         <div class="card"> 
-             <div class="nav-tabs"> 
-                 <div class="nav-tab active" onclick="switchTab('new')">新咨询</div> 
-                 <div class="nav-tab" onclick="switchTab('history')">咨询历史</div> 
-             </div> 
-             
-             <div id="new-tab" class="tab-content active"> 
-                 <div class="form-group"> 
-                     <label>咨询类型</label> 
-                     <select> 
-                         <option value="">请选择咨询类型</option> 
-                         <option value="tax">税务政策</option> 
-                         <option value="operation">操作问题</option> 
-                         <option value="other">其他问题</option> 
-                     </select> 
-                 </div> 
-                 
-                 <div class="form-group"> 
-                     <label>咨询内容</label> 
-                     <textarea placeholder="请详细描述您的问题..."></textarea> 
-                 </div> 
-                 
-                 <div class="form-group"> 
-                     <button class="btn btn-primary" onclick="submitConsult()">提交咨询</button> 
-                 </div> 
-             </div> 
-             
-             <div id="history-tab" class="tab-content"> 
-                 <div class="history-item"> 
-                     <div class="history-title">如何申报个人所得税？</div> 
-                     <div class="history-time">2026-03-30 14:30</div> 
-                 </div> 
-                 <div class="history-item"> 
-                     <div class="history-title">专项附加扣除如何填写？</div> 
-                     <div class="history-time">2026-03-25 10:15</div> 
-                 </div> 
-             </div> 
-         </div> 
-     </div> 
-     
-     <!-- 底部导航栏 --> 
-     <div class="bottom-nav"> 
-         <a href="#" class="nav-item"> 
-             <div class="nav-icon"> 
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"> 
-                     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="#999"/> 
-                 </svg> 
-             </div> 
-             <div class="nav-text">首页</div> 
-         </a> 
-         <a href="#" class="nav-item"> 
-             <div class="nav-icon"> 
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"> 
-                     <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V9h14v10zM7 10h5v5H7z" fill="#999"/> 
-                 </svg> 
-             </div> 
-             <div class="nav-text">待办</div> 
-         </a> 
-         <a href="#" class="nav-item"> 
-             <div class="nav-icon"> 
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"> 
-                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#999"/> 
-                 </svg> 
-             </div> 
-             <div class="nav-text">办&查</div> 
-         </a> 
-         <a href="#" class="nav-item"> 
-             <div class="nav-icon"> 
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"> 
-                     <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" fill="#999"/> 
-                 </svg> 
-             </div> 
-             <div class="nav-text">消息</div> 
-         </a> 
-         <a href="#" class="nav-item active"> 
-             <div class="nav-icon"> 
-                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"> 
-                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#1e6fff"/> 
-                 </svg> 
-             </div> 
-             <div class="nav-text">我的</div> 
-         </a> 
-     </div> 
-     
-     <script> 
-         function switchTab(tab) { 
-             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active')); 
-             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); 
-             event.target.classList.add('active'); 
-             document.getElementById(tab + '-tab').classList.add('active'); 
-         } 
-         
-         function submitConsult() { 
-             const type = document.querySelector('select').value; 
-             const content = document.querySelector('textarea').value; 
-             if (!type || !content) { 
-                 alert('请填写完整的咨询信息'); 
-                 return; 
-             } 
-             alert('咨询提交成功！我们会尽快回复您。'); 
-             document.querySelector('select').value = ''; 
-             document.querySelector('textarea').value = ''; 
-         } 
-     </script> 
- </body> 
- </html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            padding: 40px 16px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .header .user-info {
+            margin-top: 16px;
+        }
+        
+        .header .user-name {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .header .tax-id {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            position: absolute;
+            left: 16px;
+            top: 40px;
+        }
+        
+        .container {
+            padding: 16px;
+        }
+        
+        /* 标签页 */
+        .nav-tabs {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 16px;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px 8px;
+            font-size: 14px;
+            color: #666;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .nav-tab.active {
+            color: #1e6fff;
+            border-bottom-color: #1e6fff;
+        }
+        
+        /* 表单 */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fafafa;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1e6fff;
+            background: #fff;
+        }
+        
+        .form-group input:disabled {
+            background: #f0f0f0;
+            color: #999;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            width: 100%;
+        }
+        
+        /* 底部导航栏 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #999;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #1e6fff;
+        }
+        
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .nav-text {
+            font-size: 12px;
+        }
+        
+        /* 标签内容 */
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="mine.html" class="back-link">← 返回个人中心</a>
+        <h1>个人中心</h1>
+        <div class="user-info">
+            <div class="user-name">翟佳羽 (13265678468)</div>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="#" class="nav-tab active" onclick="switchTab('profile')">个人信息</a>
+        <a href="#" class="nav-tab" onclick="switchTab('employers')">任职受雇</a>
+        <a href="#" class="nav-tab" onclick="switchTab('messages')">消息管理</a>
+        <a href="#" class="nav-tab" onclick="switchTab('records')">税务记录</a>
+        <a href="#" class="nav-tab" onclick="switchTab('batch')">批量录入</a>
+    </div>
+    
+    <div class="container">
+        <div id="profile-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-title">修改个人信息</div>
+                
+                <div class="form-group">
+                    <label>账号（不可修改）</label>
+                    <input type="text" value="13265678468" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label>真实姓名</label>
+                    <input type="text" value="翟佳羽">
+                </div>
+                
+                <div class="form-group">
+                    <label>纳税人识别号</label>
+                    <input type="text" value="410304199601262014">
+                </div>
+                
+                <div class="form-group">
+                    <label>性别</label>
+                    <select>
+                        <option value="male" selected>男</option>
+                        <option value="female">女</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>任职受雇数量</label>
+                    <input type="text" value="1">
+                </div>
+                
+                <div class="form-group">
+                    <label>家庭成员数量</label>
+                    <input type="text" value="2">
+                </div>
+                
+                <div class="form-group">
+                    <label>银行卡数量</label>
+                    <input type="text" value="1">
+                </div>
+                
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="saveProfile()">保存修改</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="employers-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">任职受雇信息</div>
+                <!-- 任职受雇内容 -->
+            </div>
+        </div>
+        
+        <div id="messages-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">消息管理</div>
+                <!-- 消息管理内容 -->
+            </div>
+        </div>
+        
+        <div id="records-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">税务记录</div>
+                <!-- 税务记录内容 -->
+            </div>
+        </div>
+        
+        <div id="batch-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">批量录入</div>
+                <!-- 批量录入内容 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 底部导航栏 -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <div class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="#1e6fff"/>
+                </svg>
+            </div>
+            <div class="nav-text">首页</div>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V9h14v10zM7 10h5v5H7z" fill="#999"/>
+                </svg>
+            </div>
+            <div class="nav-text">待办</div>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#999"/>
+                </svg>
+            </div>
+            <div class="nav-text">办&查</div>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" fill="#999"/>
+                </svg>
+            </div>
+            <div class="nav-text">消息</div>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#999"/>
+                </svg>
+            </div>
+            <div class="nav-text">我的</div>
+        </a>
+    </div>
+    
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+        
+        function saveProfile() {
+            alert('个人信息保存成功！');
+        }
+    </script>
+</body>
+</html>
