@@ -11,6 +11,7 @@ FROM nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY mine.html /usr/share/nginx/html/
 COPY consult.html /usr/share/nginx/html/
+COPY shouye.html /usr/share/nginx/html/
 COPY caidan /usr/share/nginx/html/caidan/
 COPY grdb.jpg /usr/share/nginx/html/
 COPY jtcy.jpg /usr/share/nginx/html/
