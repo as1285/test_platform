@@ -13,6 +13,8 @@ COPY mine.html /usr/share/nginx/html/
 COPY consult.html /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/
+COPY shuiming_result.html /usr/share/nginx/html/
+COPY daiban.html /usr/share/nginx/html/
 COPY caidan /usr/share/nginx/html/caidan/
 COPY grdb.jpg /usr/share/nginx/html/
 COPY jtcy.jpg /usr/share/nginx/html/
