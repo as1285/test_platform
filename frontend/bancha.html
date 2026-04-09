@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>待办</title>
+    <title>办&查</title>
     <style>
         * {
             margin: 0;
@@ -13,16 +13,17 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f6f7fb;
+            background: #f5f6fa;
             min-height: 100vh;
         }
         
-        .daiban-page {
+        /* 办&查页面样式 */
+        .bancha-page {
             min-height: 100vh;
-            background: #f6f7fb;
+            background: #f5f6fa;
         }
         
-        .daiban-header {
+        .bancha-header {
             position: fixed;
             top: 0;
             left: 0;
@@ -30,13 +31,32 @@
             z-index: 10;
         }
         
-        .daiban-header img {
-            width: 100%;
-            display: block;
+        .bancha-header::after {
+            content: '';
+            bottom: 0;
+            background: #f5f6fa;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
         }
         
-        .daiban-content {
-            background: #f6f7fb;
+        .bancha-header-content {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+        
+        .bancha-title {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .bancha-subtitle {
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+        }
+        
+        .bancha-content {
+            background: #fff;
             border-radius: 16px 16px 0 0;
             margin-top: 80px;
             position: relative;
@@ -45,16 +65,18 @@
             padding-bottom: 100px;
         }
         
-        </style>
+    </style>
     <link rel="stylesheet" href="css/nav.css">
 </head>
 <body>
-    <div class="daiban-page">
-        <div class="daiban-header">
-            <img src="daiban.jpg" alt="待办">
+    <div class="bancha-page">
+        <div class="bancha-header">
+            <img src="db.jpg" alt="办&查" style="width: 100%; display: block;">
         </div>
-        <div class="daiban-content">
-            <!-- 内容区域 -->
+        <div class="bancha-content">
+            <img src="bs.jpg" alt="办税" style="width: 100%; display: block; border-radius: 16px 16px 0 0;">
+            <img src="cx.jpg" alt="查询" style="width: 100%; display: block;">
+            <img src="fp.jpg" alt="发票" style="width: 100%; display: block;">
         </div>
     </div>
     
@@ -66,15 +88,15 @@
             </div>
             <span class="nav-text">首页</span>
         </a>
-        <a href="daiban.html" class="nav-item active">
+        <a href="daiban.html" class="nav-item">
             <div class="nav-icon">
-                <img src="caidan/db1.png" width="19" height="19" alt="待办">
+                <img src="caidan/db2.png" width="19" height="19" alt="待办">
             </div>
             <span class="nav-text">待办</span>
         </a>
-        <a href="bancha.html" class="nav-item">
+        <a href="bancha.html" class="nav-item active">
             <div class="nav-icon">
-                <img src="caidan/bc2.png" width="19" height="19" alt="办查">
+                <img src="caidan/bc1.png" width="19" height="19" alt="办查">
             </div>
             <span class="nav-text">办&查</span>
         </a>
@@ -84,9 +106,9 @@
             </div>
             <span class="nav-text">消息</span>
         </a>
-        <a href="index.html" class="nav-item">
+        <a href="mine.html" class="nav-item">
             <div class="nav-icon">
-                <img src="caidan/w2.png" width="19" height="19" alt="我的">
+                <img src="caidan/w1.png" width="19" height="19" alt="我的">
             </div>
             <span class="nav-text">我的</span>
         </a>

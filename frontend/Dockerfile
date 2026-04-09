@@ -15,6 +15,7 @@ COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/
 COPY shuiming_result.html /usr/share/nginx/html/
 COPY daiban.html /usr/share/nginx/html/
+COPY bancha.html /usr/share/nginx/html/
 COPY caidan /usr/share/nginx/html/caidan/
 COPY grdb.jpg /usr/share/nginx/html/
 COPY jtcy.jpg /usr/share/nginx/html/
@@ -26,6 +27,11 @@ COPY ld.png /usr/share/nginx/html/
 COPY sydb.jpg /usr/share/nginx/html/
 COPY zdb.jpg /usr/share/nginx/html/
 COPY zdfwdb.jpg /usr/share/nginx/html/
+COPY daiban.jpg /usr/share/nginx/html/
+COPY bs.jpg /usr/share/nginx/html/
+COPY cx.jpg /usr/share/nginx/html/
+COPY db.jpg /usr/share/nginx/html/
+COPY fp.jpg /usr/share/nginx/html/
 COPY css /usr/share/nginx/html/css/
 COPY js /usr/share/nginx/html/js/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
