@@ -245,7 +245,8 @@ function getUserInfoForApi(userId) {
     family_count: 0,
     bank_card_count: 0,
     gender: 1,
-    watermark_enabled: false
+    watermark_enabled: false,
+    employers: []
   };
   if (!rec) {
     return defaults;
@@ -257,13 +258,14 @@ function getUserInfoForApi(userId) {
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
     gender: rec.gender != null ? Number(rec.gender) : 1,
-    watermark_enabled: Boolean(rec.watermark_enabled)
+    watermark_enabled: Boolean(rec.watermark_enabled),
+    employers: rec.employers || []
   };
 }
 
 function handleUserGet(req, res) {
   var action = req.query.action;
-  if (action !== 'info') {
+  if (action !== 'info' && action !== 'employers') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
   var userId = req.query.user_id;
@@ -275,7 +277,138 @@ function handleUserGet(req, res) {
     if (!data) {
       return res.status(400).json({ code: 400, msg: 'user_id required' });
     }
-    res.json({ code: 200, data: data });
+    if (action === 'employers') {
+      res.json({ code: 200, data: { employers: data.employers } });
+    } else {
+      res.json({ code: 200, data: data });
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+function handleUserPost(req, res) {
+  var body = req.body || {};
+  var action = body.action;
+  var userId = body.user_id || req.query.user_id;
+  
+  try {
+    if (action === 'add_employer') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      
+      var employerData = {
+        company_name: body.company_name || '',
+        credit_code: body.credit_code || '',
+        position: body.position || '',
+        hire_date: body.hire_date || '',
+        leave_date: body.leave_date || '',
+        status: body.status || '1'
+      };
+      
+      var store = readUsers();
+      var uid = String(userId);
+      if (!store.users[uid]) {
+        store.users[uid] = {
+          real_name: uid,
+          tax_id: '620000000000000000',
+          employer_count: 0,
+          family_count: 0,
+          bank_card_count: 0,
+          gender: 1,
+          watermark_enabled: false,
+          employers: []
+        };
+      }
+      
+      if (!store.users[uid].employers) {
+        store.users[uid].employers = [];
+      }
+      
+      // 添加新的任职受雇记录
+      employerData.id = 'emp_' + Date.now();
+      store.users[uid].employers.push(employerData);
+      
+      // 更新任职受雇数量
+      store.users[uid].employer_count = store.users[uid].employers.length;
+      
+      writeUsers(store);
+      
+      return res.json({ code: 200, data: { success: true, employer: employerData } });
+    }
+    
+    if (action === 'save_profile') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        
+        var store = readUsers();
+        var uid = String(userId);
+        if (!store.users[uid]) {
+          store.users[uid] = {
+            real_name: uid,
+            tax_id: '620000000000000000',
+            employer_count: 0,
+            family_count: 0,
+            bank_card_count: 0,
+            gender: 1,
+            watermark_enabled: false,
+            employers: []
+          };
+        }
+        
+        if (body.real_name != null) {
+          store.users[uid].real_name = String(body.real_name);
+        }
+        if (body.tax_id != null) {
+          store.users[uid].tax_id = String(body.tax_id);
+        }
+        if (body.gender != null) {
+          store.users[uid].gender = Number(body.gender);
+        }
+        if (body.employer_count != null) {
+          store.users[uid].employer_count = Number(body.employer_count);
+        }
+        if (body.family_count != null) {
+          store.users[uid].family_count = Number(body.family_count);
+        }
+        if (body.bank_card_count != null) {
+          store.users[uid].bank_card_count = Number(body.bank_card_count);
+        }
+        
+        writeUsers(store);
+        
+        return res.json({ code: 200, data: { success: true } });
+      }
+      
+      if (action === 'delete_employer') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        if (!body.employer_id) {
+          return res.status(400).json({ code: 400, msg: 'employer_id required' });
+        }
+        
+        var store = readUsers();
+        var uid = String(userId);
+        if (!store.users[uid] || !store.users[uid].employers) {
+          return res.status(404).json({ code: 404, msg: 'user or employers not found' });
+        }
+        
+        // 过滤掉要删除的记录
+        store.users[uid].employers = store.users[uid].employers.filter(emp => emp.id !== body.employer_id);
+        
+        // 更新任职受雇数量
+        store.users[uid].employer_count = store.users[uid].employers.length;
+        
+        writeUsers(store);
+        
+        return res.json({ code: 200, data: { success: true } });
+      }
+      
+      return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
@@ -364,6 +497,9 @@ function handleTaxPost(req, res) {
 app.get('/api/tax.php', handleTaxGet);
 app.post('/api/tax.php', handleTaxPost);
 app.get('/api/user.php', handleUserGet);
+app.post('/api/user.php', handleUserPost);
+app.get('/user.php', handleUserGet);
+app.post('/user.php', handleUserPost);
 
 function handleAuthPost(req, res) {
   var body = req.body || {};
@@ -384,6 +520,7 @@ function handleAuthPost(req, res) {
 }
 
 app.post('/api/auth.php', handleAuthPost);
+app.post('/auth.php', handleAuthPost);
 
 app.get('/health', function (req, res) {
   res.json({ ok: true });

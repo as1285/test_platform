@@ -219,6 +219,8 @@
                         </div>
                     </div>
                 </div>
+                <!-- 收入纳税明细点击区域 -->
+                <a href="shuiming.html?reset=1" style="position: absolute; top: 380px; left: 50%; transform: translateX(-50%); width: 180px; height: 120px; background: transparent; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
                 <script>
                 (function() {
                     var row0 = document.getElementById('noticeRow0');
@@ -312,31 +314,31 @@
     
     <!-- 底部导航 -->
     <div class="bottom-nav">
-        <a href="shouye.html" class="nav-item active">
+        <a href="shouye.html" class="nav-item active" data-icon="sy">
             <div class="nav-icon">
                 <img src="caidan/sy1.png" width="19" height="19" alt="首页">
             </div>
             <span class="nav-text">首页</span>
         </a>
-        <a href="daiban.html" class="nav-item">
+        <a href="daiban.html" class="nav-item" data-icon="db">
             <div class="nav-icon">
                 <img src="caidan/db2.png" width="19" height="19" alt="待办">
             </div>
             <span class="nav-text">待办</span>
         </a>
-        <a href="bancha.html" class="nav-item">
+        <a href="bancha.html" class="nav-item" data-icon="bc">
             <div class="nav-icon">
                 <img src="caidan/bc2.png" width="19" height="19" alt="办查">
             </div>
             <span class="nav-text">办&查</span>
         </a>
-        <a href="message.html" class="nav-item">
+        <a href="message.html" class="nav-item" data-icon="xx">
             <div class="nav-icon">
                 <img src="caidan/xx2.png" width="19" height="19" alt="消息">
             </div>
             <span class="nav-text">消息</span>
         </a>
-        <a href="index.html" class="nav-item">
+        <a href="index.html" class="nav-item" data-icon="w">
             <div class="nav-icon">
                 <img src="caidan/w2.png" width="19" height="19" alt="我的">
             </div>
@@ -355,6 +357,23 @@
             var opacity = Math.min(scrollY / scrollThreshold, 1);
             searchWrapper.style.background = 'rgba(44, 128, 244, ' + opacity + ')';
         });
+        
+        // 更新底部导航图标状态
+        function updateNavIcons() {
+            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+            navItems.forEach(function(item) {
+                var icon = item.getAttribute('data-icon');
+                var img = item.querySelector('.nav-icon img');
+                if (item.classList.contains('active')) {
+                    img.src = 'caidan/' + icon + '1.png';
+                } else {
+                    img.src = 'caidan/' + icon + '2.png';
+                }
+            });
+        }
+        
+        // 初始化时更新图标
+        updateNavIcons();
         
         // iOS设备检测，底部导航上移
         (function() {

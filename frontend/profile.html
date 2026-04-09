@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人中心 - 杰瑞</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            padding: 40px 16px 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 18px; font-weight: 500; }
+        .header .user-name { font-size: 14px; opacity: 0.9; margin-top: 8px; }
+        
+        .tabs {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            overflow-x: auto;
+        }
+        .tab {
+            flex: 1;
+            min-width: 80px;
+            padding: 14px 8px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            color: #1e6fff;
+            border-bottom-color: #1e6fff;
+        }
+        
+        .container { padding: 16px; }
+        
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fafafa;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #1e6fff;
+            background: #fff;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        @media (max-width: 480px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+        }
+        .btn-danger {
+            background: #ff4444;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        .btn-block { width: 100%; display: block; }
+        
+        .msg {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .msg-success { background: #e8f5e9; color: #2e7d32; }
+        .msg-error { background: #ffebee; color: #c62828; }
+        
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-content { flex: 1; }
+        .list-item-title { font-size: 14px; color: #333; font-weight: 500; }
+        .list-item-desc { font-size: 12px; color: #999; margin-top: 4px; }
+        .list-item-actions { display: flex; gap: 8px; }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            position: absolute;
+            left: 16px;
+            top: 40px;
+        }
+        .header { position: relative; }
+        
+        .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+        
+        .record-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .record-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .record-card-title { font-size: 14px; font-weight: 500; color: #333; }
+        .record-card-date { font-size: 12px; color: #999; }
+        .record-card-info { font-size: 12px; color: #666; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-link">← 返回</a>
+        <h1>个人中心</h1>
+        <div class="user-name">杰瑞 (1)</div>
+    </div>
+    
+    <div class="tabs">
+        <a href="?user_id=64&tab=profile" class="tab">个人信息</a>
+        <a href="?user_id=64&tab=employers" class="tab active">任职受雇</a>
+        <a href="?user_id=64&tab=messages" class="tab">消息管理</a>
+        <a href="?user_id=64&tab=records" class="tab">税务记录</a>
+        <a href="?user_id=64&tab=batch_records" class="tab">批量录入</a>
+    </div>
+    
+    <div class="container">
+        <!-- 任职受雇表单 -->
+        <div class="card">
+            <h2 class="card-title">添加任职受雇</h2>
+            <form id="employerForm">
+                <div class="form-group">
+                    <label for="companyName">公司名称</label>
+                    <input type="text" id="companyName" name="companyName" placeholder="请输入公司名称">
+                </div>
+                <div class="form-group">
+                    <label for="socialCreditCode">统一社会信用代码</label>
+                    <input type="text" id="socialCreditCode" name="socialCreditCode" placeholder="请输入统一社会信用代码">
+                </div>
+                <div class="form-group">
+                    <label for="position">职务</label>
+                    <input type="text" id="position" name="position" placeholder="请输入职务">
+                </div>
+                <div class="form-group">
+                    <label for="hireDate">入职日期</label>
+                    <input type="date" id="hireDate" name="hireDate" value="2026-04-09">
+                </div>
+                <div class="form-group">
+                    <label for="resignDate">离职日期（留空表示在职）</label>
+                    <input type="date" id="resignDate" name="resignDate" placeholder="yyyy/mm/dd">
+                </div>
+                <div class="form-group">
+                    <label for="status">状态</label>
+                    <select id="status" name="status">
+                        <option value="在职">在职</option>
+                        <option value="离职">离职</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">添加任职受雇</button>
+            </form>
+        </div>
+        
+        <!-- 任职受雇列表 -->
+        <div class="card">
+            <h2 class="card-title">任职受雇列表</h2>
+            <div class="empty">暂无任职受雇记录</div>
+        </div>
+    </div>
+    
+    <script>
+        // 加载用户信息
+        function loadUserInfo() {
+            var userId = localStorage.getItem('user_id');
+            if (!userId) {
+                userId = '64'; // 默认用户ID
+            }
+            
+            // 加载任职受雇列表
+            loadEmployers(userId);
+        }
+        
+        // 加载任职受雇列表
+        function loadEmployers(userId) {
+            fetch(`api/user.php?action=employers&user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        const employers = data.data.employers;
+                        const listContainer = document.querySelector('.card:last-child');
+                        
+                        if (employers.length > 0) {
+                            listContainer.innerHTML = `
+                                <h2 class="card-title">任职受雇列表</h2>
+                                ${employers.map(employer => `
+                                    <div class="record-card">
+                                        <div class="record-card-header">
+                                            <div class="record-card-title">${employer.company_name}</div>
+                                            <div class="record-card-date">${employer.status === '1' ? '在职' : '离职'}</div>
+                                        </div>
+                                        <div class="record-card-info">
+                                            统一社会信用代码：${employer.credit_code}<br>
+                                            职务：${employer.position}<br>
+                                            入职日期：${employer.hire_date} | 离职日期：${employer.leave_date || '在职'}
+                                        </div>
+                                        <div class="list-item-actions">
+                                            <button class="btn btn-sm btn-primary" onclick="editEmployer('${employer.id}')">编辑</button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteEmployer('${employer.id}')">删除</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            `;
+                        } else {
+                            listContainer.innerHTML = `
+                                <h2 class="card-title">任职受雇列表</h2>
+                                <div class="empty">暂无任职受雇记录</div>
+                            `;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('获取任职受雇列表失败:', error);
+                });
+        }
+        
+        // 表单提交处理
+        document.getElementById('employerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var userId = localStorage.getItem('user_id');
+            if (!userId) {
+                userId = '64'; // 默认用户ID
+            }
+            
+            // 获取表单数据
+            const formData = new FormData(this);
+            const employerData = {
+                action: 'add_employer',
+                user_id: userId,
+                company_name: formData.get('companyName'),
+                credit_code: formData.get('socialCreditCode'),
+                position: formData.get('position'),
+                hire_date: formData.get('hireDate'),
+                leave_date: formData.get('resignDate'),
+                status: formData.get('status') === '在职' ? '1' : '0'
+            };
+            
+            // 提交到后端
+            fetch('api/user.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(employerData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    // 显示成功消息
+                    const container = document.querySelector('.container');
+                    const msg = document.createElement('div');
+                    msg.className = 'msg msg-success';
+                    msg.textContent = '添加任职受雇成功！';
+                    container.insertBefore(msg, container.firstChild);
+                    
+                    // 3秒后移除消息
+                    setTimeout(() => {
+                        msg.remove();
+                    }, 3000);
+                    
+                    // 重置表单
+                    this.reset();
+                    
+                    // 重新加载任职受雇列表
+                    loadEmployers(userId);
+                } else {
+                    // 显示错误消息
+                    const container = document.querySelector('.container');
+                    const msg = document.createElement('div');
+                    msg.className = 'msg msg-error';
+                    msg.textContent = '添加任职受雇失败：' + (data.msg || '未知错误');
+                    container.insertBefore(msg, container.firstChild);
+                    
+                    // 3秒后移除消息
+                    setTimeout(() => {
+                        msg.remove();
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('提交任职受雇信息失败:', error);
+                
+                // 显示错误消息
+                const container = document.querySelector('.container');
+                const msg = document.createElement('div');
+                msg.className = 'msg msg-error';
+                msg.textContent = '添加任职受雇失败：网络错误';
+                container.insertBefore(msg, container.firstChild);
+                
+                // 3秒后移除消息
+                setTimeout(() => {
+                    msg.remove();
+                }, 3000);
+            });
+        });
+        
+        // 编辑任职受雇记录
+        function editEmployer(id) {
+            var userId = localStorage.getItem('user_id') || '64';
+            
+            // 这里可以实现编辑功能，例如弹出编辑表单
+            // 暂时使用 alert 提示
+            alert('编辑功能开发中，记录ID：' + id);
+        }
+        
+        // 删除任职受雇记录
+        function deleteEmployer(id) {
+            var userId = localStorage.getItem('user_id') || '64';
+            
+            if (confirm('确定要删除这条任职受雇记录吗？')) {
+                fetch('api/user.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        action: 'delete_employer',
+                        user_id: userId,
+                        employer_id: id
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        // 显示成功消息
+                        const container = document.querySelector('.container');
+                        const msg = document.createElement('div');
+                        msg.className = 'msg msg-success';
+                        msg.textContent = '删除任职受雇成功！';
+                        container.insertBefore(msg, container.firstChild);
+                        
+                        // 3秒后移除消息
+                        setTimeout(() => {
+                            msg.remove();
+                        }, 3000);
+                        
+                        // 重新加载任职受雇列表
+                        loadEmployers(userId);
+                    } else {
+                        // 显示错误消息
+                        const container = document.querySelector('.container');
+                        const msg = document.createElement('div');
+                        msg.className = 'msg msg-error';
+                        msg.textContent = '删除任职受雇失败：' + (data.msg || '未知错误');
+                        container.insertBefore(msg, container.firstChild);
+                        
+                        // 3秒后移除消息
+                        setTimeout(() => {
+                            msg.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('删除任职受雇记录失败:', error);
+                    
+                    // 显示错误消息
+                    const container = document.querySelector('.container');
+                    const msg = document.createElement('div');
+                    msg.className = 'msg msg-error';
+                    msg.textContent = '删除任职受雇失败：网络错误';
+                    container.insertBefore(msg, container.firstChild);
+                    
+                    // 3秒后移除消息
+                    setTimeout(() => {
+                        msg.remove();
+                    }, 3000);
+                });
+            }
+        }
+        
+        // 页面加载时执行
+        window.onload = function() {
+            loadUserInfo();
+        };
+    </script>
+</body>
+</html>

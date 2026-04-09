@@ -1,0 +1,88 @@
+{
+  "users": {
+    "64": {
+      "real_name": "64",
+      "tax_id": "620000000000000000",
+      "employer_count": 1,
+      "family_count": 0,
+      "bank_card_count": 0,
+      "gender": 1,
+      "watermark_enabled": false,
+      "employers": [
+        {
+          "company_name": "北京明科标准咨询服务有限公司",
+          "credit_code": "123123",
+          "position": "12312412",
+          "hire_date": "2026-04-09",
+          "leave_date": "2026-04-01",
+          "status": "1",
+          "id": "emp_1775748339505"
+        }
+      ]
+    },
+    "123": {
+      "salt": "b0b048267825c921bf888c46be1f6d03",
+      "hash": "93e27e7ec5451caa6785e789a96ae84cb1c3c4789be170d82806591e447ca7efdef7f6afab65a0ee15e5ea5ef5011ca76ec0fd91765602924354b1d24fa5c3a0",
+      "real_name": "真实姓名",
+      "user_id": "123",
+      "created_at": "2026-04-09T15:42:55.429Z",
+      "tax_id": "987654321",
+      "gender": 1,
+      "employer_count": 3,
+      "family_count": 1,
+      "bank_card_count": -3,
+      "employers": [
+        {
+          "company_name": "北京明科标准咨询服务有限公司",
+          "credit_code": "统一社会信用代码",
+          "position": "职务",
+          "hire_date": "2026-04-01",
+          "leave_date": "2026-04-11",
+          "status": "1",
+          "id": "emp_1775753279336"
+        },
+        {
+          "company_name": "123",
+          "credit_code": "12312",
+          "position": "",
+          "hire_date": "",
+          "leave_date": "",
+          "status": "1",
+          "id": "emp_1775753304150"
+        },
+        {
+          "company_name": "123123",
+          "credit_code": "",
+          "position": "",
+          "hire_date": "",
+          "leave_date": "",
+          "status": "1",
+          "id": "emp_1775753435815"
+        }
+      ]
+    },
+    "1234": {
+      "salt": "a182284bf1285726da0db26c1ad7e7d3",
+      "hash": "40603e08054a92c8f85b7c670114ac099da94f70c22438bded3c058c49fb94c97e505a98943187b56e5b01990d9d562849985e8d6ffeb30ae0a66448902af61f",
+      "real_name": "984984123",
+      "user_id": "1234",
+      "created_at": "2026-04-09T16:22:26.494Z",
+      "tax_id": "shfenz",
+      "gender": 2,
+      "employer_count": 1,
+      "family_count": 3,
+      "bank_card_count": 65,
+      "employers": [
+        {
+          "company_name": "北京明科标准咨询服务有限公司",
+          "credit_code": "123123",
+          "position": "12312412",
+          "hire_date": "2026-04-08",
+          "leave_date": "2026-04-11",
+          "status": "0",
+          "id": "emp_1775752326705"
+        }
+      ]
+    }
+  }
+}

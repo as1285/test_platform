@@ -20,8 +20,13 @@ COPY daiban.html /usr/share/nginx/html/
 COPY bancha.html /usr/share/nginx/html/
 COPY message.html /usr/share/nginx/html/
 COPY register.html /usr/share/nginx/html/
+COPY profile.html /usr/share/nginx/html/
+COPY zonghe.html /usr/share/nginx/html/
+COPY najilu.html /usr/share/nginx/html/
 COPY index.html /usr/share/nginx/html/login.html
 COPY caidan /usr/share/nginx/html/caidan/
+COPY erji.jpg /usr/share/nginx/html/
+COPY hk.jpg /usr/share/nginx/html/
 COPY grdb.jpg /usr/share/nginx/html/
 COPY jtcy.jpg /usr/share/nginx/html/
 COPY rzsp.jpg /usr/share/nginx/html/

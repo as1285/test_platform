@@ -224,14 +224,61 @@
                         <option value="2">女</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>任职受雇数量</label>
+                    <input type="number" id="pf_employer_count" min="0">
+                </div>
+                <div class="form-group">
+                    <label>家庭成员数量</label>
+                    <input type="number" id="pf_family_count" min="0">
+                </div>
+                <div class="form-group">
+                    <label>银行卡数量</label>
+                    <input type="number" id="pf_bank_card_count" min="0">
+                </div>
                 <button type="button" class="btn btn-primary btn-block" onclick="saveProfile()">保存修改</button>
             </div>
         </div>
 
         <div id="panel-employers" class="tab-panel">
             <div class="card">
-                <div class="card-title">任职受雇信息</div>
-                <p style="color:#999;font-size:14px;">请在任职受雇模块维护扣缴义务人等信息。</p>
+                <div class="card-title">添加任职受雇</div>
+                <form id="employerForm" onsubmit="onSubmitEmployer(event)">
+                    <div class="form-group">
+                        <label>公司名称</label>
+                        <input type="text" name="company_name" id="ef_company_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>统一社会信用代码</label>
+                        <input type="text" name="credit_code" id="ef_credit_code">
+                    </div>
+                    <div class="form-group">
+                        <label>职务</label>
+                        <input type="text" name="position" id="ef_position">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>入职日期</label>
+                            <input type="date" name="hire_date" id="ef_hire_date">
+                        </div>
+                        <div class="form-group">
+                            <label>离职日期（留空表示在职）</label>
+                            <input type="date" name="leave_date" id="ef_leave_date">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>状态</label>
+                        <select name="status" id="ef_status">
+                            <option value="1">在职</option>
+                            <option value="0">离职</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">添加任职受雇</button>
+                </form>
+            </div>
+            <div class="card">
+                <div class="card-title">任职受雇列表</div>
+                <div id="employerListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
         </div>
 
@@ -468,6 +515,57 @@
             switchTab(tab, false);
         }
 
+        function loadUserInfoFromApi() {
+            var userId = currentUserId();
+            
+            if (!userId) {
+                return;
+            }
+            
+            fetch('api/user.php?action=info&user_id=' + encodeURIComponent(userId))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        var user = data.data;
+                        
+                        localStorage.setItem('real_name', user.real_name);
+                        localStorage.setItem('tax_id', user.tax_id);
+                        localStorage.setItem('employer_count', user.employer_count);
+                        localStorage.setItem('family_count', user.family_count);
+                        localStorage.setItem('bank_card_count', user.bank_card_count);
+                        localStorage.setItem('gender', user.gender);
+                        
+                        updateProfileForm(user);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('loadUserInfoFromApi', err);
+                });
+        }
+        
+        function updateProfileForm(user) {
+            var hn = document.getElementById('headerUserName');
+            var uid = localStorage.getItem('user_id') || '1';
+            if (hn) hn.textContent = (user.real_name || '杰瑞') + ' (' + uid + ')';
+            document.title = '个人中心 - ' + (user.real_name || '杰瑞');
+
+            var pfAccount = document.getElementById('pf_account');
+            if (pfAccount) pfAccount.value = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
+            var pfName = document.getElementById('pf_real_name');
+            if (pfName) pfName.value = user.real_name || '';
+            var pfTax = document.getElementById('pf_tax_id');
+            if (pfTax) pfTax.value = user.tax_id || '';
+            var pfGender = document.getElementById('pf_gender');
+            if (pfGender) pfGender.value = user.gender != null ? user.gender : '1';
+            
+            var pfEmployerCount = document.getElementById('pf_employer_count');
+            if (pfEmployerCount) pfEmployerCount.value = user.employer_count != null ? user.employer_count : '';
+            var pfFamilyCount = document.getElementById('pf_family_count');
+            if (pfFamilyCount) pfFamilyCount.value = user.family_count != null ? user.family_count : '';
+            var pfBankCardCount = document.getElementById('pf_bank_card_count');
+            if (pfBankCardCount) pfBankCardCount.value = user.bank_card_count != null ? user.bank_card_count : '';
+        }
+        
         function initHeader() {
             try {
                 var name = localStorage.getItem('real_name') || '杰瑞';
@@ -485,11 +583,20 @@
                 var pfGender = document.getElementById('pf_gender');
                 var g = localStorage.getItem('gender');
                 if (pfGender && g) pfGender.value = g;
+                
+                var pfEmployerCount = document.getElementById('pf_employer_count');
+                if (pfEmployerCount) pfEmployerCount.value = localStorage.getItem('employer_count') || '';
+                var pfFamilyCount = document.getElementById('pf_family_count');
+                if (pfFamilyCount) pfFamilyCount.value = localStorage.getItem('family_count') || '';
+                var pfBankCardCount = document.getElementById('pf_bank_card_count');
+                if (pfBankCardCount) pfBankCardCount.value = localStorage.getItem('bank_card_count') || '';
 
                 var d = new Date();
                 var ds = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
                 var fd = document.getElementById('f_report_date');
                 if (fd && !fd.value) fd.value = ds;
+                
+                loadUserInfoFromApi();
             } catch (err) {
                 console.error('initHeader', err);
             }
@@ -499,11 +606,51 @@
             var realName = document.getElementById('pf_real_name').value.trim();
             var taxId = document.getElementById('pf_tax_id').value.trim();
             var gender = document.getElementById('pf_gender').value;
+            var employerCount = document.getElementById('pf_employer_count').value;
+            var familyCount = document.getElementById('pf_family_count').value;
+            var bankCardCount = document.getElementById('pf_bank_card_count').value;
+            
             if (realName) localStorage.setItem('real_name', realName);
             if (taxId) localStorage.setItem('tax_id', taxId);
             localStorage.setItem('gender', gender);
-            initHeader();
-            showMsg('个人信息已保存', true);
+            if (employerCount !== '') localStorage.setItem('employer_count', employerCount);
+            if (familyCount !== '') localStorage.setItem('family_count', familyCount);
+            if (bankCardCount !== '') localStorage.setItem('bank_card_count', bankCardCount);
+            
+            var userId = currentUserId();
+            if (userId) {
+                fetch('api/user.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_profile',
+                        user_id: userId,
+                        real_name: realName,
+                        tax_id: taxId,
+                        gender: gender,
+                        employer_count: employerCount,
+                        family_count: familyCount,
+                        bank_card_count: bankCardCount
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            initHeader();
+                            showMsg('个人信息已保存', true);
+                        } else {
+                            showMsg('保存失败：' + (data.msg || '未知错误'), false);
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('saveProfile', err);
+                        initHeader();
+                        showMsg('个人信息已保存（本地）', true);
+                    });
+            } else {
+                initHeader();
+                showMsg('个人信息已保存（本地）', true);
+            }
         }
 
         /** 从服务端拉取当前用户全部税务记录（收入纳税明细同源数据） */
@@ -691,10 +838,87 @@
             if (eid) editRecord(eid);
         }
 
+        function apiFetchEmployers() {
+            var uid = currentUserId();
+            return fetch('api/user.php?action=employers&user_id=' + encodeURIComponent(uid))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data && data.data.employers) {
+                        return data.data.employers;
+                    }
+                    return [];
+                })
+                .catch(function () {
+                    return [];
+                });
+        }
+
+        function onSubmitEmployer(e) {
+            e.preventDefault();
+            var data = {
+                action: 'add_employer',
+                user_id: currentUserId(),
+                company_name: document.getElementById('ef_company_name').value,
+                credit_code: document.getElementById('ef_credit_code').value,
+                position: document.getElementById('ef_position').value,
+                hire_date: document.getElementById('ef_hire_date').value,
+                leave_date: document.getElementById('ef_leave_date').value,
+                status: document.getElementById('ef_status').value
+            };
+            fetch('api/user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(data)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.code === 200) {
+                        document.getElementById('employerForm').reset();
+                        showMsg('添加成功', true);
+                        return refreshEmployerList();
+                    }
+                    throw new Error(res.msg || '添加失败');
+                })
+                .catch(function (err) {
+                    showMsg('添加失败：' + (err.message || ''), false);
+                });
+        }
+
+        function refreshEmployerList() {
+            return apiFetchEmployers().then(function (list) {
+                renderEmployerListFromArray(list);
+            });
+        }
+
+        function renderEmployerListFromArray(list) {
+            var mount = document.getElementById('employerListMount');
+            if (!mount) return;
+            if (!list.length) {
+                mount.innerHTML = '<div class="empty">暂无任职受雇信息</div>';
+                return;
+            }
+            var html = '';
+            list.forEach(function(e) {
+                html += '<div class="list-item">';
+                html += '<div class="list-item-content">';
+                html += '<div class="list-item-title">' + (e.company_name || '') + '</div>';
+                html += '<div class="list-item-desc">';
+                if (e.position) html += '职务：' + e.position + ' | ';
+                html += '状态：' + (e.status == '1' ? '在职' : '离职');
+                if (e.hire_date) html += ' | 入职：' + e.hire_date;
+                if (e.leave_date) html += ' | 离职：' + e.leave_date;
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            mount.innerHTML = html;
+        }
+
         function boot() {
             initHeader();
             initTabs();
             refreshRecordList();
+            refreshEmployerList();
             tryEditFromUrl();
         }
 

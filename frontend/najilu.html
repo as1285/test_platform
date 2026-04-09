@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>纳税记录开具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #fff;
+            padding: 15px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid #eee;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 16px;
+            color: #1e6fff;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .content {
+            width: 100%;
+            padding: 16px;
+        }
+
+        .tips {
+            background: #f0f9ff;
+            border: 1px solid #e0f2fe;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+
+        .tips-title {
+            font-weight: 500;
+            color: #1e6fff;
+            margin-bottom: 8px;
+        }
+
+        .tips-content {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .form-row:last-child {
+            border-bottom: none;
+        }
+
+        .form-label {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .form-value {
+            font-size: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .arrow {
+            width: 16px;
+            height: 16px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23999"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>') no-repeat center;
+            background-size: contain;
+        }
+
+        .slider-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .slider {
+            position: relative;
+            width: 100%;
+            height: 40px;
+            background: #f5f5f5;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .slider-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: #1e6fff;
+            border-radius: 20px;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        .slider-handle {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: url('hk.jpg') no-repeat center;
+            background-size: cover;
+            border: 2px solid #1e6fff;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .slider-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: #666;
+            pointer-events: none;
+        }
+
+        .btn-primary {
+            display: block;
+            width: 100%;
+            height: 48px;
+            background: #1e6fff;
+            color: #fff;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .btn-primary:hover {
+            background: #1858d8;
+        }
+
+        .view-records {
+            display: block;
+            text-align: center;
+            color: #1e6fff;
+            font-size: 14px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="javascript:history.back()" class="back-btn">&lt; 返回</a>
+        <h1 class="header-title">纳税记录开具</h1>
+    </div>
+    
+    <div class="content">
+        <div class="tips">
+            <div class="tips-title">温馨提示：</div>
+            <div class="tips-content">
+                1.根据《国家税务局公告2018年第55号》的规定，您可申请开具2019年1月及以后的纳税记录；<br>
+                2.每人每天最多可开具三次纳税记录；<br>
+                3.您可以选择注册时所使用的证件或已添加的其他身份证件来开具纳税记录。<a href="#" style="color: #1e6fff;">去添加其他身份证件</a><br>
+                4.若您对纳税记录的内容有疑问，请<a href="#" style="color: #1e6fff;">点此帮助</a>。
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <div class="form-row">
+                <span class="form-label">证件类型</span>
+                <span class="form-value">居民身份证 <span class="arrow"></span></span>
+            </div>
+            <div class="form-row">
+                <span class="form-label">证件号码</span>
+                <span class="form-value">6**************9</span>
+            </div>
+            <div class="form-row">
+                <span class="form-label">开具年月起</span>
+                <span class="form-value">2026-01 <span class="arrow"></span></span>
+            </div>
+            <div class="form-row">
+                <span class="form-label">开具年月止</span>
+                <span class="form-value">2026-03 <span class="arrow"></span></span>
+            </div>
+        </div>
+        
+        <div class="slider-container">
+            <div class="slider">
+                <div class="slider-track" id="sliderTrack"></div>
+                <div class="slider-handle" id="sliderHandle"></div>
+                <div class="slider-text" id="sliderText">请按住滑块，拖动到最右边</div>
+            </div>
+        </div>
+        
+        <button class="btn-primary" id="generateBtn" disabled>生成纳税记录</button>
+        <a href="#" class="view-records">查看申请记录</a>
+    </div>
+    
+    <script>
+        // 滑块验证功能
+        const slider = document.querySelector('.slider');
+        const sliderTrack = document.getElementById('sliderTrack');
+        const sliderHandle = document.getElementById('sliderHandle');
+        const sliderText = document.getElementById('sliderText');
+        const generateBtn = document.getElementById('generateBtn');
+        
+        let isDragging = false;
+        let startX = 0;
+        
+        sliderHandle.addEventListener('mousedown', startDrag);
+        sliderHandle.addEventListener('touchstart', startDrag, { passive: false });
+        
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX || e.touches[0].clientX;
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const currentX = e.clientX || e.touches[0].clientX;
+            const sliderWidth = slider.offsetWidth;
+            const handleWidth = sliderHandle.offsetWidth;
+            
+            let moveX = currentX - slider.getBoundingClientRect().left;
+            moveX = Math.max(0, Math.min(moveX, sliderWidth - handleWidth / 2));
+            
+            const percentage = (moveX / (sliderWidth - handleWidth)) * 100;
+            sliderTrack.style.width = percentage + '%';
+            sliderHandle.style.left = moveX + 'px';
+        }
+        
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const sliderWidth = slider.offsetWidth;
+            const handleWidth = sliderHandle.offsetWidth;
+            const currentLeft = parseInt(sliderHandle.style.left) || 0;
+            
+            if (currentLeft >= sliderWidth - handleWidth) {
+                // 验证成功
+                sliderText.textContent = '验证成功';
+                sliderText.style.color = '#1e6fff';
+                generateBtn.disabled = false;
+            } else {
+                // 验证失败，重置
+                sliderTrack.style.width = '0%';
+                sliderHandle.style.left = '0';
+                sliderText.textContent = '请按住滑块，拖动到最右边';
+                sliderText.style.color = '#666';
+                generateBtn.disabled = true;
+            }
+        }
+        
+        // 生成纳税记录按钮点击事件
+        generateBtn.addEventListener('click', function() {
+            alert('生成纳税记录功能开发中');
+        });
+        
+        // 查看申请记录链接点击事件
+        document.querySelector('.view-records').addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('查看申请记录功能开发中');
+        });
+    </script>
+</body>
+</html>

@@ -287,7 +287,7 @@
             </div>
             <div class="menu-item">
                 <div class="menu-icon">
-                    <img src="caidan/w1.png" alt="关于&更新" style="width: 19px;">
+                    <img src="caidan/gy.png" alt="关于&更新" style="width: 19px;">
                 </div>
                 <span class="menu-text">关于&更新</span>
                 <span class="menu-arrow">></span>
@@ -303,31 +303,31 @@
     
     <!-- 底部导航 -->
     <div class="bottom-nav">
-        <a href="shouye.html" class="nav-item">
+        <a href="shouye.html" class="nav-item" data-icon="sy">
             <div class="nav-icon">
                 <img src="caidan/sy2.png" width="19" height="19" alt="首页">
             </div>
             <span class="nav-text">首页</span>
         </a>
-        <a href="daiban.html" class="nav-item">
+        <a href="daiban.html" class="nav-item" data-icon="db">
             <div class="nav-icon">
                 <img src="caidan/db2.png" width="19" height="19" alt="待办">
             </div>
             <span class="nav-text">待办</span>
         </a>
-        <a href="bancha.html" class="nav-item">
+        <a href="bancha.html" class="nav-item" data-icon="bc">
             <div class="nav-icon">
                 <img src="caidan/bc2.png" width="19" height="19" alt="办查">
             </div>
             <span class="nav-text">办&查</span>
         </a>
-        <a href="message.html" class="nav-item">
+        <a href="message.html" class="nav-item" data-icon="xx">
             <div class="nav-icon">
                 <img src="caidan/xx2.png" width="19" height="19" alt="消息">
             </div>
             <span class="nav-text">消息</span>
         </a>
-        <a href="mine.html" class="nav-item active">
+        <a href="mine.html" class="nav-item active" data-icon="w">
             <div class="nav-icon">
                 <img src="caidan/w1.png" width="19" height="19" alt="我的">
             </div>
@@ -336,6 +336,23 @@
     </div>
     
     <script>
+        // 更新底部导航图标状态
+        function updateNavIcons() {
+            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+            navItems.forEach(function(item) {
+                var icon = item.getAttribute('data-icon');
+                var img = item.querySelector('.nav-icon img');
+                if (item.classList.contains('active')) {
+                    img.src = 'caidan/' + icon + '1.png';
+                } else {
+                    img.src = 'caidan/' + icon + '2.png';
+                }
+            });
+        }
+        
+        // 初始化时更新图标
+        updateNavIcons();
+        
         // 纳税人识别号显示状态
         var taxIdVisible = false;
         
@@ -519,7 +536,7 @@
         function goEmployer() {
             var userId = localStorage.getItem('user_id');
             if (userId) {
-                window.location.href = 'renzhi.html';
+                window.location.href = 'profile.html';
             } else {
                 window.location.href = 'login.html';
             }
