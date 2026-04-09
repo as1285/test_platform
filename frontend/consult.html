@@ -5,94 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
-        
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: 40px 16px 20px;
+            padding: calc(40px + env(safe-area-inset-top, 0px)) 16px 20px;
             text-align: center;
             position: relative;
         }
-        
-        .header h1 {
-            font-size: 18px;
-            font-weight: 500;
-        }
-        
-        .header .user-info {
-            margin-top: 16px;
-        }
-        
-        .header .user-name {
-            font-size: 16px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        .header .tax-id {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            color: #fff;
-            text-decoration: none;
-            font-size: 14px;
-            position: absolute;
-            left: 16px;
-            top: 40px;
-        }
-        
-        .container {
-            padding: 16px;
-        }
-        
-        /* 标签页 */
-        .nav-tabs {
+        .header h1 { font-size: 18px; font-weight: 500; }
+        .header .user-name { font-size: 14px; opacity: 0.9; margin-top: 8px; }
+
+        .tabs {
             display: flex;
             background: #fff;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 16px;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
-        
-        .nav-tab {
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
             flex: 1;
-            text-align: center;
+            min-width: 72px;
             padding: 14px 8px;
+            text-align: center;
             font-size: 14px;
             color: #666;
             text-decoration: none;
             border-bottom: 2px solid transparent;
+            white-space: nowrap;
         }
-        
-        .nav-tab.active {
+        .tab.active {
             color: #1e6fff;
             border-bottom-color: #1e6fff;
         }
-        
-        /* 表单 */
+        .tab.tab-batch {
+            color: #17a2b8;
+            font-weight: 600;
+        }
+        .tab.tab-batch.active {
+            color: #1e6fff;
+            border-bottom-color: #1e6fff;
+        }
+
+        .container { padding: 16px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
         .card {
             background: #fff;
             border-radius: 12px;
-            padding: 20px;
+            padding: 16px;
             margin-bottom: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        
         .card-title {
             font-size: 16px;
             font-weight: 600;
@@ -101,20 +74,15 @@
             padding-bottom: 12px;
             border-bottom: 1px solid #f0f0f0;
         }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
+
+        .form-group { margin-bottom: 16px; }
         .form-group label {
             display: block;
             font-size: 14px;
             color: #666;
             margin-bottom: 8px;
         }
-        
-        .form-group input,
-        .form-group select {
+        .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 12px;
             border: 1px solid #e0e0e0;
@@ -122,19 +90,21 @@
             font-size: 14px;
             background: #fafafa;
         }
-        
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
             border-color: #1e6fff;
             background: #fff;
         }
-        
-        .form-group input:disabled {
-            background: #f0f0f0;
-            color: #999;
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
-        
+        @media (max-width: 480px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+
         .btn {
             display: inline-block;
             padding: 12px 24px;
@@ -145,200 +115,603 @@
             text-decoration: none;
             text-align: center;
         }
-        
         .btn-primary {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            width: 100%;
         }
-        
-        /* 底部导航栏 */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #fff;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 8px 0;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-            z-index: 100;
-        }
-        
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: #999;
-            text-decoration: none;
-        }
-        
-        .nav-item.active {
-            color: #1e6fff;
-        }
-        
-        .nav-icon {
-            width: 24px;
-            height: 24px;
-        }
-        
-        .nav-text {
+        .btn-danger {
+            background: #ff4444;
+            color: #fff;
+            padding: 8px 12px;
             font-size: 12px;
         }
-        
-        /* 标签内容 */
-        .tab-content {
-            display: none;
+        .btn-sm { padding: 8px 16px; font-size: 12px; }
+        .btn-block { width: 100%; display: block; }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
         }
-        
-        .tab-content.active {
-            display: block;
+        .msg-success { background: #e8f5e9; color: #2e7d32; }
+        .msg-error { background: #ffebee; color: #c62828; }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
         }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-content { flex: 1; }
+        .list-item-title { font-size: 14px; color: #333; font-weight: 500; }
+        .list-item-desc { font-size: 12px; color: #999; margin-top: 4px; }
+        .list-item-actions { display: flex; gap: 8px; }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            position: absolute;
+            left: 16px;
+            top: calc(40px + env(safe-area-inset-top, 0px));
+        }
+
+        .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+
+        .record-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .record-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .record-card-title { font-size: 14px; font-weight: 500; color: #333; }
+        .record-card-date { font-size: 12px; color: #999; }
+        .record-card-info { font-size: 12px; color: #666; line-height: 1.8; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
     </style>
+    <link rel="stylesheet" href="css/nav.css">
 </head>
 <body>
     <div class="header">
         <a href="mine.html" class="back-link">← 返回个人中心</a>
         <h1>个人中心</h1>
-        <div class="user-info">
-            <div class="user-name">翟佳羽 (13265678468)</div>
-        </div>
+        <div class="user-name" id="headerUserName">杰瑞 (1)</div>
     </div>
-    
-    <div class="nav-tabs">
-        <a href="#" class="nav-tab active" onclick="switchTab('profile')">个人信息</a>
-        <a href="#" class="nav-tab" onclick="switchTab('employers')">任职受雇</a>
-        <a href="#" class="nav-tab" onclick="switchTab('messages')">消息管理</a>
-        <a href="#" class="nav-tab" onclick="switchTab('records')">税务记录</a>
-        <a href="#" class="nav-tab" onclick="switchTab('batch')">批量录入</a>
+
+    <div class="tabs" id="topTabs">
+        <a href="#" class="tab" data-tab="profile">个人信息</a>
+        <a href="#" class="tab" data-tab="employers">任职受雇</a>
+        <a href="#" class="tab" data-tab="messages">消息管理</a>
+        <a href="#" class="tab active" data-tab="records">税务记录</a>
+        <a href="#" class="tab tab-batch" data-tab="batch_records">批量录入</a>
     </div>
-    
+
     <div class="container">
-        <div id="profile-tab" class="tab-content active">
+        <div id="msgBar"></div>
+
+        <div id="panel-profile" class="tab-panel">
             <div class="card">
                 <div class="card-title">修改个人信息</div>
-                
                 <div class="form-group">
                     <label>账号（不可修改）</label>
-                    <input type="text" value="13265678468" disabled>
+                    <input type="text" id="pf_account" disabled>
                 </div>
-                
                 <div class="form-group">
                     <label>真实姓名</label>
-                    <input type="text" value="翟佳羽">
+                    <input type="text" id="pf_real_name">
                 </div>
-                
                 <div class="form-group">
                     <label>纳税人识别号</label>
-                    <input type="text" value="410304199601262014">
+                    <input type="text" id="pf_tax_id">
                 </div>
-                
                 <div class="form-group">
                     <label>性别</label>
-                    <select>
-                        <option value="male" selected>男</option>
-                        <option value="female">女</option>
+                    <select id="pf_gender">
+                        <option value="1">男</option>
+                        <option value="2">女</option>
                     </select>
                 </div>
-                
-                <div class="form-group">
-                    <label>任职受雇数量</label>
-                    <input type="text" value="1">
-                </div>
-                
-                <div class="form-group">
-                    <label>家庭成员数量</label>
-                    <input type="text" value="2">
-                </div>
-                
-                <div class="form-group">
-                    <label>银行卡数量</label>
-                    <input type="text" value="1">
-                </div>
-                
-                <div class="form-group">
-                    <button class="btn btn-primary" onclick="saveProfile()">保存修改</button>
-                </div>
+                <button type="button" class="btn btn-primary btn-block" onclick="saveProfile()">保存修改</button>
             </div>
         </div>
-        
-        <div id="employers-tab" class="tab-content">
+
+        <div id="panel-employers" class="tab-panel">
             <div class="card">
                 <div class="card-title">任职受雇信息</div>
-                <!-- 任职受雇内容 -->
+                <p style="color:#999;font-size:14px;">请在任职受雇模块维护扣缴义务人等信息。</p>
             </div>
         </div>
-        
-        <div id="messages-tab" class="tab-content">
+
+        <div id="panel-messages" class="tab-panel">
             <div class="card">
                 <div class="card-title">消息管理</div>
-                <!-- 消息管理内容 -->
+                <p style="color:#999;font-size:14px;">前往 <a href="message.html" style="color:#1e6fff;">消息</a> 查看。</p>
             </div>
         </div>
-        
-        <div id="records-tab" class="tab-content">
+
+        <div id="panel-records" class="tab-panel active">
             <div class="card">
-                <div class="card-title">税务记录</div>
-                <!-- 税务记录内容 -->
+                <div class="card-title">添加税务记录</div>
+                <form id="recordForm" onsubmit="onSubmitRecord(event)">
+                    <input type="hidden" name="editing_id" id="editing_id" value="">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>年份</label>
+                            <input type="number" name="year" id="f_year" value="2026" required>
+                        </div>
+                        <div class="form-group">
+                            <label>月份</label>
+                            <input type="number" name="month" id="f_month" value="4" min="1" max="12" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>所得项目</label>
+                            <input type="text" name="income_type" id="f_income_type" value="工资薪金">
+                        </div>
+                        <div class="form-group">
+                            <label>所得子项目</label>
+                            <input type="text" name="income_subtype" id="f_income_subtype" value="正常工资薪金">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>扣缴义务人名称</label>
+                        <input type="text" name="company_name" id="f_company_name" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label>扣缴义务人纳税人识别号</label>
+                        <input type="text" name="company_tax_id" id="f_company_tax_id" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label>主管税务机关</label>
+                        <input type="text" name="tax_authority" id="f_tax_authority" value="">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>申报渠道</label>
+                            <input type="text" name="report_channel" id="f_report_channel" value="其他">
+                        </div>
+                        <div class="form-group">
+                            <label>申报日期</label>
+                            <input type="date" name="report_date" id="f_report_date" value="">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>税款所属期</label>
+                        <input type="text" name="tax_period" id="f_tax_period" value="2026-04">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>收入</label>
+                            <input type="number" step="0.01" name="income" id="f_income" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>已申报税额</label>
+                            <input type="number" step="0.01" name="tax_reported" id="f_tax_reported" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>本期收入</label>
+                            <input type="number" step="0.01" name="income_this_period" id="f_income_this_period" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>本期免税收入</label>
+                            <input type="number" step="0.01" name="tax_free_income" id="f_tax_free_income" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>本期减除费用</label>
+                            <input type="number" step="0.01" name="deduction_fee" id="f_deduction_fee" value="5000.00">
+                        </div>
+                        <div class="form-group">
+                            <label>本期专项扣除</label>
+                            <input type="number" step="0.01" name="special_deduction" id="f_special_deduction" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>基本养老保险</label>
+                            <input type="number" step="0.01" name="pension_insurance" id="f_pension_insurance" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>基本医疗保险</label>
+                            <input type="number" step="0.01" name="medical_insurance" id="f_medical_insurance" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>失业保险</label>
+                            <input type="number" step="0.01" name="unemployment_insurance" id="f_unemployment_insurance" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>住房公积金</label>
+                            <input type="number" step="0.01" name="housing_fund" id="f_housing_fund" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>本期其他扣除</label>
+                            <input type="number" step="0.01" name="other_deduction" id="f_other_deduction" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>捐赠扣除</label>
+                            <input type="number" step="0.01" name="donation_deduction" id="f_donation_deduction" value="0.00">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="recordSubmitBtn">添加记录</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">税务记录列表</div>
+                <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
         </div>
-        
-        <div id="batch-tab" class="tab-content">
+
+        <div id="panel-batch_records" class="tab-panel">
             <div class="card">
                 <div class="card-title">批量录入</div>
-                <!-- 批量录入内容 -->
+                <p style="color:#999;font-size:14px;">请使用「税务记录」单条录入；批量功能可后续对接导入。</p>
             </div>
         </div>
     </div>
-    
-    <!-- 底部导航栏 -->
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item">
-            <div class="nav-icon">
-                <img src="caidan/sy2.png" width="19" height="19" alt="首页">
-            </div>
+            <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt="首页"></div>
             <span class="nav-text">首页</span>
         </a>
         <a href="daiban.html" class="nav-item">
-            <div class="nav-icon">
-                <img src="caidan/db2.png" width="19" height="19" alt="待办">
-            </div>
+            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt="待办"></div>
             <span class="nav-text">待办</span>
         </a>
         <a href="bancha.html" class="nav-item">
-            <div class="nav-icon">
-                <img src="caidan/bc2.png" width="19" height="19" alt="办查">
-            </div>
+            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
             <span class="nav-text">办&查</span>
         </a>
         <a href="message.html" class="nav-item">
-            <div class="nav-icon">
-                <img src="caidan/xx2.png" width="19" height="19" alt="消息">
-            </div>
+            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
             <span class="nav-text">消息</span>
         </a>
         <a href="mine.html" class="nav-item active">
-            <div class="nav-icon">
-                <img src="caidan/w1.png" width="19" height="19" alt="我的">
-            </div>
+            <div class="nav-icon"><img src="caidan/w1.png" width="19" height="19" alt="我的"></div>
             <span class="nav-text">我的</span>
         </a>
     </div>
-    
+
     <script>
-        function switchTab(tab) {
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById(tab + '-tab').classList.add('active');
+        function pad2(n) {
+            n = parseInt(n, 10);
+            return (n < 10 ? '0' : '') + n;
         }
-        
+
+        function getUrlParam(name) {
+            var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return decodeURIComponent(r[2]);
+            return null;
+        }
+
+        function currentUserId() {
+            return localStorage.getItem('user_id') || '64';
+        }
+
+        function tabHref(tab) {
+            return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
+        }
+
+        function showMsg(text, ok) {
+            var el = document.getElementById('msgBar');
+            el.innerHTML = '<div class="msg ' + (ok ? 'msg-success' : 'msg-error') + '">' + text + '</div>';
+            setTimeout(function() { el.innerHTML = ''; }, 3000);
+        }
+
+        function switchTab(tab, pushHistory) {
+            document.querySelectorAll('.tabs .tab').forEach(function(a) {
+                a.classList.toggle('active', a.getAttribute('data-tab') === tab);
+            });
+            document.querySelectorAll('.tab-panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            var panelId = 'panel-' + tab;
+            var pane = document.getElementById(panelId);
+            if (pane) pane.classList.add('active');
+            if (pushHistory !== false && history.replaceState) {
+                var u = new URL(window.location.href);
+                u.searchParams.set('user_id', currentUserId());
+                u.searchParams.set('tab', tab);
+                history.replaceState({}, '', u);
+            }
+        }
+
+        function initTabs() {
+            document.querySelectorAll('.tabs .tab').forEach(function(a) {
+                a.href = tabHref(a.getAttribute('data-tab'));
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    switchTab(a.getAttribute('data-tab'), true);
+                });
+            });
+            var tab = getUrlParam('tab') || 'records';
+            if (tab === 'batch') tab = 'batch_records';
+            var valid = ['profile', 'employers', 'messages', 'records', 'batch_records'];
+            if (valid.indexOf(tab) < 0) tab = 'records';
+            switchTab(tab, false);
+        }
+
+        function initHeader() {
+            try {
+                var name = localStorage.getItem('real_name') || '杰瑞';
+                var uid = localStorage.getItem('user_id') || '1';
+                var hn = document.getElementById('headerUserName');
+                if (hn) hn.textContent = name + ' (' + uid + ')';
+                document.title = '个人中心 - ' + name;
+
+                var pfAccount = document.getElementById('pf_account');
+                if (pfAccount) pfAccount.value = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
+                var pfName = document.getElementById('pf_real_name');
+                if (pfName) pfName.value = localStorage.getItem('real_name') || name;
+                var pfTax = document.getElementById('pf_tax_id');
+                if (pfTax) pfTax.value = localStorage.getItem('tax_id') || '';
+                var pfGender = document.getElementById('pf_gender');
+                var g = localStorage.getItem('gender');
+                if (pfGender && g) pfGender.value = g;
+
+                var d = new Date();
+                var ds = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+                var fd = document.getElementById('f_report_date');
+                if (fd && !fd.value) fd.value = ds;
+            } catch (err) {
+                console.error('initHeader', err);
+            }
+        }
+
         function saveProfile() {
-            alert('个人信息保存成功！');
+            var realName = document.getElementById('pf_real_name').value.trim();
+            var taxId = document.getElementById('pf_tax_id').value.trim();
+            var gender = document.getElementById('pf_gender').value;
+            if (realName) localStorage.setItem('real_name', realName);
+            if (taxId) localStorage.setItem('tax_id', taxId);
+            localStorage.setItem('gender', gender);
+            initHeader();
+            showMsg('个人信息已保存', true);
         }
+
+        /** 从服务端拉取当前用户全部税务记录（收入纳税明细同源数据） */
+        function apiFetchRecords() {
+            var uid = currentUserId();
+            return fetch('api/tax.php?action=records&user_id=' + encodeURIComponent(uid))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
+                        return data.data.records;
+                    }
+                    return [];
+                })
+                .catch(function () {
+                    return [];
+                });
+        }
+
+        function formObjectFromInputs() {
+            return {
+                id: document.getElementById('editing_id').value || ('tr_' + Date.now()),
+                year: parseInt(document.getElementById('f_year').value, 10),
+                month: parseInt(document.getElementById('f_month').value, 10),
+                income_type: document.getElementById('f_income_type').value,
+                income_subtype: document.getElementById('f_income_subtype').value,
+                company_name: document.getElementById('f_company_name').value,
+                company_tax_id: document.getElementById('f_company_tax_id').value,
+                tax_authority: document.getElementById('f_tax_authority').value,
+                report_channel: document.getElementById('f_report_channel').value,
+                report_date: document.getElementById('f_report_date').value,
+                tax_period: document.getElementById('f_tax_period').value,
+                income: document.getElementById('f_income').value,
+                tax_reported: document.getElementById('f_tax_reported').value,
+                income_this_period: document.getElementById('f_income_this_period').value,
+                tax_free_income: document.getElementById('f_tax_free_income').value,
+                deduction_fee: document.getElementById('f_deduction_fee').value,
+                special_deduction: document.getElementById('f_special_deduction').value,
+                pension_insurance: document.getElementById('f_pension_insurance').value,
+                medical_insurance: document.getElementById('f_medical_insurance').value,
+                unemployment_insurance: document.getElementById('f_unemployment_insurance').value,
+                housing_fund: document.getElementById('f_housing_fund').value,
+                other_deduction: document.getElementById('f_other_deduction').value,
+                donation_deduction: document.getElementById('f_donation_deduction').value
+            };
+        }
+
+        function applyToForm(r) {
+            document.getElementById('editing_id').value = r.id || '';
+            document.getElementById('recordSubmitBtn').textContent = r.id ? '更新记录' : '添加记录';
+            document.getElementById('f_year').value = r.year;
+            document.getElementById('f_month').value = r.month;
+            document.getElementById('f_income_type').value = r.income_type || '工资薪金';
+            document.getElementById('f_income_subtype').value = r.income_subtype || '';
+            document.getElementById('f_company_name').value = r.company_name || '';
+            document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
+            document.getElementById('f_tax_authority').value = r.tax_authority || '';
+            document.getElementById('f_report_channel').value = r.report_channel || '其他';
+            document.getElementById('f_report_date').value = r.report_date || '';
+            document.getElementById('f_tax_period').value = r.tax_period || '';
+            document.getElementById('f_income').value = r.income != null ? r.income : '0.00';
+            document.getElementById('f_tax_reported').value = r.tax_reported != null ? r.tax_reported : '0.00';
+            document.getElementById('f_income_this_period').value = r.income_this_period != null ? r.income_this_period : '0.00';
+            document.getElementById('f_tax_free_income').value = r.tax_free_income != null ? r.tax_free_income : '0.00';
+            document.getElementById('f_deduction_fee').value = r.deduction_fee != null ? r.deduction_fee : '5000.00';
+            document.getElementById('f_special_deduction').value = r.special_deduction != null ? r.special_deduction : '0.00';
+            document.getElementById('f_pension_insurance').value = r.pension_insurance != null ? r.pension_insurance : '0.00';
+            document.getElementById('f_medical_insurance').value = r.medical_insurance != null ? r.medical_insurance : '0.00';
+            document.getElementById('f_unemployment_insurance').value = r.unemployment_insurance != null ? r.unemployment_insurance : '0.00';
+            document.getElementById('f_housing_fund').value = r.housing_fund != null ? r.housing_fund : '0.00';
+            document.getElementById('f_other_deduction').value = r.other_deduction != null ? r.other_deduction : '0.00';
+            document.getElementById('f_donation_deduction').value = r.donation_deduction != null ? r.donation_deduction : '0.00';
+        }
+
+        function clearForm() {
+            document.getElementById('editing_id').value = '';
+            document.getElementById('recordSubmitBtn').textContent = '添加记录';
+            document.getElementById('recordForm').reset();
+            initHeader();
+        }
+
+        function onSubmitRecord(e) {
+            e.preventDefault();
+            var o = formObjectFromInputs();
+            var editId = document.getElementById('editing_id').value;
+            if (!editId) {
+                o.id = 'tr_' + Date.now();
+            } else {
+                o.id = editId;
+            }
+            fetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'save_record',
+                    user_id: currentUserId(),
+                    record: o
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        clearForm();
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '保存失败');
+                })
+                .then(function () {
+                    showMsg(editId ? '记录已更新' : '记录已添加', true);
+                })
+                .catch(function (err) {
+                    showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
+                });
+        }
+
+        function refreshRecordList() {
+            return apiFetchRecords().then(function (list) {
+                renderListFromArray(list);
+            });
+        }
+
+        function renderListFromArray(list) {
+            var mount = document.getElementById('recordListMount');
+            if (!mount) return;
+            if (!list.length) {
+                mount.innerHTML = '<div class="empty">暂无税务记录</div>';
+                return;
+            }
+            var html = '';
+            list.forEach(function(r) {
+                html += '<div class="record-card">';
+                html += '<div class="record-card-header">';
+                html += '<div class="record-card-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
+                html += '<div class="record-card-date">' + (r.report_date || '') + '</div>';
+                html += '</div>';
+                html += '<div class="record-card-info">';
+                html += '扣缴单位：' + (r.company_name || '') + '<br>';
+                html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
+                html += '</div>';
+                html += '<div style="margin-top:10px;display:flex;gap:8px;">';
+                html += '<button type="button" class="btn btn-primary btn-sm" onclick="editRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">编辑</button>';
+                html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">删除</button>';
+                html += '</div></div>';
+            });
+            mount.innerHTML = html;
+        }
+
+        function editRecord(id) {
+            apiFetchRecords().then(function (list) {
+                var r = list.find(function (x) { return String(x.id) === String(id); });
+                if (!r) return;
+                applyToForm(r);
+                switchTab('records', true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        function deleteRecord(id) {
+            if (!confirm('确定删除？')) return;
+            fetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_record',
+                    user_id: currentUserId(),
+                    id: id
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .then(function () {
+                    showMsg('已删除', true);
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function tryEditFromUrl() {
+            var eid = getUrlParam('edit_id');
+            if (eid) editRecord(eid);
+        }
+
+        function boot() {
+            initHeader();
+            initTabs();
+            refreshRecordList();
+            tryEditFromUrl();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot);
+        } else {
+            boot();
+        }
+
+        (function() {
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS) {
+                var n = document.querySelector('.bottom-nav');
+                if (n) n.classList.add('ios-device');
+            }
+        })();
     </script>
+    <script src="js/watermark.js"></script>
 </body>
 </html>

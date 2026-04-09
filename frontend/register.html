@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>注册账号</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(180deg, #e8f2ff 0%, #f5f6fa 35%, #f5f6fa 100%);
+            min-height: 100vh;
+            padding-bottom: 32px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 28px;
+            text-align: center;
+            position: relative;
+            border-radius: 0 0 24px 24px;
+        }
+        .back-btn {
+            position: absolute;
+            left: 16px;
+            top: calc(14px + env(safe-area-inset-top, 0px));
+            color: #fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        .card {
+            background: #fff;
+            margin: -18px 16px 0;
+            border-radius: 16px;
+            padding: 22px 20px 8px;
+            box-shadow: 0 8px 24px rgba(30, 111, 255, 0.08);
+        }
+        .field { margin-bottom: 18px; }
+        .field label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .field label .req { color: #ff4d4f; }
+        .field input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #fafafa;
+        }
+        .field input:focus {
+            outline: none;
+            border-color: #1e6fff;
+            background: #fff;
+        }
+        .hint { font-size: 12px; color: #999; margin-top: 6px; }
+        .btn-submit {
+            width: 100%;
+            margin-top: 8px;
+            padding: 14px;
+            border: none;
+            border-radius: 24px;
+            font-size: 17px;
+            font-weight: 500;
+            color: #fff;
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            cursor: pointer;
+        }
+        .btn-submit:disabled { opacity: 0.6; }
+        .footer-link {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 15px;
+            color: #666;
+        }
+        .footer-link a { color: #1e6fff; text-decoration: none; }
+        .err {
+            display: none;
+            padding: 10px 12px;
+            background: #fff2f0;
+            border: 1px solid #ffccc7;
+            border-radius: 8px;
+            color: #cf1322;
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+        .err.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="login.html" class="back-btn">← 返回</a>
+        <h1>注册账号</h1>
+        <p>个人所得税服务平台</p>
+    </div>
+
+    <div class="card">
+        <div id="errBox" class="err"></div>
+        <form id="regForm" onsubmit="return false;">
+            <div class="field">
+                <label>账号 <span class="req">*</span></label>
+                <input type="text" id="username" name="username" placeholder="手机号或自定义账号（3～32位）" maxlength="32" autocomplete="username" required>
+                <div class="hint">支持数字、字母及 . _ - @</div>
+            </div>
+            <div class="field">
+                <label>登录密码 <span class="req">*</span></label>
+                <input type="password" id="password" name="password" placeholder="至少 6 位" minlength="6" maxlength="64" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+                <label>确认密码 <span class="req">*</span></label>
+                <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="6" maxlength="64" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+                <label>真实姓名</label>
+                <input type="text" id="real_name" name="real_name" placeholder="选填，用于个人中心展示" maxlength="32">
+            </div>
+            <button type="button" class="btn-submit" id="btnSubmit">注 册</button>
+        </form>
+        <p class="footer-link">已有账号？<a href="login.html">去登录</a></p>
+    </div>
+
+    <script>
+        function showErr(msg) {
+            var el = document.getElementById('errBox');
+            if (!msg) {
+                el.classList.remove('show');
+                el.textContent = '';
+                return;
+            }
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        document.getElementById('btnSubmit').addEventListener('click', function () {
+            var username = document.getElementById('username').value.trim();
+            var password = document.getElementById('password').value;
+            var password2 = document.getElementById('password2').value;
+            var real_name = document.getElementById('real_name').value.trim();
+            showErr('');
+
+            if (!username || !password) {
+                showErr('请填写账号和密码');
+                return;
+            }
+            if (password !== password2) {
+                showErr('两次输入的密码不一致');
+                return;
+            }
+
+            var btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+
+            fetch('api/auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'register',
+                    username: username,
+                    password: password,
+                    real_name: real_name || undefined
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        alert('注册成功，请登录');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    showErr(data.msg || '注册失败');
+                })
+                .catch(function () {
+                    showErr('网络错误，请稍后重试');
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                });
+        });
+    </script>
+</body>
+</html>

@@ -139,6 +139,9 @@
         }
         
         .register-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
             height: 48px;
             background: #fff;
@@ -147,6 +150,9 @@
             font-size: 17px;
             color: #1e6fff;
             cursor: pointer;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -154,7 +160,7 @@
     <!-- 顶部导航 -->
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">
-            <img src="http://www.geshui665.com/jt.png" style="width: 9px; vertical-align: middle;">
+            <img src="jt.png" alt="" width="9" height="15" style="width: 9px; height: auto; vertical-align: middle;">
             <span>返回</span>
         </a>
         <span class="header-title">个人所得税</span>
@@ -178,7 +184,7 @@
     <div class="form-section">
         <div class="form-item">
             <span class="form-label">账号</span>
-            <input type="text" class="form-input" placeholder="手机号码/证件号码">
+            <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username">
             <svg class="form-icon" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2"/>
                 <text x="12" y="16" font-size="12" fill="#ccc" text-anchor="middle">?</text>
@@ -186,7 +192,7 @@
         </div>
         <div class="form-item">
             <span class="form-label">密码</span>
-            <input type="password" class="form-input" placeholder="请输入密码">
+            <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password">
         </div>
         
         <!-- 找回密码 -->
@@ -197,33 +203,48 @@
     
     <!-- 按钮区域 -->
     <div class="btn-section">
-        <button class="login-btn" onclick="doLogin()">登录</button>
-        <button class="register-btn">注册</button>
+        <button type="button" class="login-btn" onclick="doLogin()">登录</button>
+        <a href="register.html" class="register-btn">注册</a>
     </div>
     
     <script>
         function doLogin() {
-            var username = document.querySelector('input[placeholder="手机号码/证件号码"]').value.trim();
-            var password = document.querySelector('input[placeholder="请输入密码"]').value.trim();
-            
+            var username = document.getElementById('loginUsername').value.trim();
+            var password = document.getElementById('loginPassword').value;
+
             if (!username) {
                 alert('请输入账号');
                 return;
             }
-            
             if (!password) {
                 alert('请输入密码');
                 return;
             }
-            
-            // 这里可以添加登录逻辑，例如发送请求到后端
-            console.log('登录信息:', { username, password });
-            
-            // 存储用户名到本地存储
-            localStorage.setItem('userName', username);
-            
-            // 登录成功后跳转到个人中心
-            window.location.href = 'mine.html';
+
+            fetch('api/auth.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    username: username,
+                    password: password
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        var d = data.data;
+                        localStorage.setItem('userName', d.username || username);
+                        localStorage.setItem('user_id', d.user_id || username);
+                        localStorage.setItem('real_name', d.real_name || username);
+                        window.location.href = 'mine.html';
+                        return;
+                    }
+                    alert(data.msg || '登录失败');
+                })
+                .catch(function () {
+                    alert('网络错误，请检查服务是否可用');
+                });
         }
     </script>
 </body>

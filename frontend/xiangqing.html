@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>收入纳税明细详情</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-top: 45px;
+            padding-bottom: 30px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 10px 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 16px;
+            color: #1e6fff;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .header-right {
+            position: absolute;
+            right: 16px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+        }
+
+        .section-title {
+            padding: 10px 16px 12px;
+            font-size: 15px;
+            color: #333;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+
+        .info-card {
+            background: #fff;
+            margin: 0 0px;
+            border-radius: 8px;
+            padding: 0 16px;
+            padding-top: 5px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 7px 0;
+        }
+
+        .info-label {
+            font-size: 15px;
+            color: #999;
+            flex-shrink: 0;
+            width: 100px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #333;
+            text-align: right;
+            flex: 1;
+        }
+
+        .info-link {
+            font-size: 14px;
+            color: #1e6fff;
+            text-align: right;
+            flex: 1;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        .tips {
+            background: #e6f6ff;
+            margin: 0px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #494747;
+            line-height: 1.6;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .tips-link {
+            color: #1e6fff;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        .detail-card {
+            background: #fff;
+            margin: 0 0px;
+            border-radius: 8px;
+            padding-top: 5px;
+            padding-left: 15px;
+            padding-right: 25px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .detail-label {
+            font-size: 15px;
+            color: #999;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .load-err {
+            padding: 16px;
+            color: #c00;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="shuiming_result.html" class="back-btn" id="backLink">
+            <img src="jt.png" alt="" width="9" height="15" style="width: 9px; height: auto; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">收入纳税明细详情</span>
+        <a href="#" class="header-right" onclick="return false;">申诉</a>
+    </div>
+
+    <div class="section-title" style="border-bottom: 1px solid #cccccc59;">纳税明细信息</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">收入:</span>
+            <span class="info-value" id="income">0.00元</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">已申报税额:</span>
+            <span class="info-value" id="taxReported">0.00元</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label"></span>
+            <a href="javascript:goTaxCalculation()" class="info-link">查看税款计算 &gt;</a>
+        </div>
+    </div>
+
+    <div class="section-title" style="margin-top: 10px; border-bottom: 1px solid #cccccc59;">纳税明细-基础情况</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">所得项目小类:</span>
+            <span class="info-value" id="incomeSubtype">正常工资薪金</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">扣缴义务人名称:</span>
+            <span class="info-value" id="companyName">--</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">扣缴义务人纳税人识别号:</span>
+            <span class="info-value" id="companyTaxId">--</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">主管税务机关:</span>
+            <span class="info-value" id="taxAuthority">--</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">申报渠道:</span>
+            <span class="info-value" id="reportChannel">其他</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">申报日期:</span>
+            <span class="info-value" id="reportDate">--</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">税款所属期:</span>
+            <span class="info-value" id="taxPeriod">--</span>
+        </div>
+    </div>
+
+    <div class="tips">
+        温馨提示：专项附加扣除和个人养老金已体现在税款计算过程中，在本期数据中不予显示。您可在"税款计算-累计收入与扣除详情"中查看。<a href="javascript:goTaxCalculation()" class="tips-link">查看税款计算</a>
+    </div>
+
+    <div class="section-title" style="border-bottom: 1px solid #cccccc59;">本期收入与扣除详情</div>
+    <div class="detail-card">
+        <div class="detail-row">
+            <span class="detail-label">本期收入:</span>
+            <span class="detail-value" id="incomeThisPeriod">0.00元</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">本期免税收入:</span>
+            <span class="detail-value" id="taxFreeIncome">0.00元</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">本期减除费用:</span>
+            <span class="detail-value" id="deductionFee">5000.00元</span>
+        </div>
+        <div class="detail-row" style="position: relative; cursor: pointer;" onclick="toggleSpecialDeduction()">
+            <span class="detail-label">本期专项扣除:</span>
+            <span class="detail-value" id="specialDeduction">0.00元</span>
+            <svg id="specialDeductionArrow" viewBox="0 0 1024 1024" width="12" height="12" style="position: absolute;right: -17px;top: 10px;transform: rotate(0deg);"><path d="M1024 255.996 511.971 767.909 0 255.996 1024 255.996z" fill="#272636"></path></svg>
+        </div>
+        <div id="specialDeductionDetail" style="display: none; padding-left: 20px; background: #fafafa;">
+            <div class="detail-row">
+                <span class="detail-label">基本养老保险:</span>
+                <span class="detail-value" id="pensionInsurance">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">基本医疗保险:</span>
+                <span class="detail-value" id="medicalInsurance">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">失业保险:</span>
+                <span class="detail-value" id="unemploymentInsurance">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">住房公积金:</span>
+                <span class="detail-value" id="housingFund">0.00元</span>
+            </div>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">本期其他扣除:</span>
+            <span class="detail-value" id="otherDeduction">0.00元</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">本期准予扣除的捐赠项目:</span>
+            <span class="detail-value" id="donationDeduction">0.00元</span>
+        </div>
+    </div>
+
+    <div id="loadErr" class="load-err" style="display:none;"></div>
+
+    <script>
+        var specialDeductionExpanded = false;
+
+        function toggleSpecialDeduction() {
+            specialDeductionExpanded = !specialDeductionExpanded;
+            var detail = document.getElementById('specialDeductionDetail');
+            var arrow = document.getElementById('specialDeductionArrow');
+            if (specialDeductionExpanded) {
+                detail.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                detail.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function getUrlParam(name) {
+            var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return decodeURIComponent(r[2]);
+            return null;
+        }
+
+        function initBackLink() {
+            var y = getUrlParam('year');
+            var el = document.getElementById('backLink');
+            if (el) {
+                el.href = y ? ('shuiming_result.html?year=' + encodeURIComponent(y)) : 'shuiming_result.html';
+            }
+        }
+
+        function loadData() {
+            var id = getUrlParam('id');
+            var errEl = document.getElementById('loadErr');
+            if (!id) {
+                errEl.style.display = 'block';
+                errEl.textContent = '缺少记录 id';
+                return;
+            }
+            var userId = localStorage.getItem('user_id') || '';
+
+            fetch('api/tax.php?action=detail&id=' + encodeURIComponent(id) + '&user_id=' + encodeURIComponent(userId))
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        var record = data.data;
+                        document.getElementById('income').textContent = record.income + '元';
+                        document.getElementById('taxReported').textContent = record.tax_reported + '元';
+                        document.getElementById('incomeSubtype').textContent = record.income_subtype || '--';
+                        document.getElementById('companyName').textContent = record.company_name || '--';
+                        document.getElementById('companyTaxId').textContent = record.company_tax_id || '--';
+                        document.getElementById('taxAuthority').textContent = record.tax_authority || '--';
+                        document.getElementById('reportChannel').textContent = record.report_channel || '其他';
+                        document.getElementById('reportDate').textContent = record.report_date || '--';
+                        document.getElementById('taxPeriod').textContent = record.tax_period || '--';
+                        document.getElementById('incomeThisPeriod').textContent = record.income_this_period + '元';
+                        document.getElementById('taxFreeIncome').textContent = record.tax_free_income + '元';
+                        document.getElementById('deductionFee').textContent = record.deduction_fee + '元';
+                        document.getElementById('specialDeduction').textContent = record.special_deduction + '元';
+                        if (record.pension_insurance !== undefined) {
+                            document.getElementById('pensionInsurance').textContent = record.pension_insurance + '元';
+                        }
+                        if (record.medical_insurance !== undefined) {
+                            document.getElementById('medicalInsurance').textContent = record.medical_insurance + '元';
+                        }
+                        if (record.unemployment_insurance !== undefined) {
+                            document.getElementById('unemploymentInsurance').textContent = record.unemployment_insurance + '元';
+                        }
+                        if (record.housing_fund !== undefined) {
+                            document.getElementById('housingFund').textContent = record.housing_fund + '元';
+                        }
+                        document.getElementById('otherDeduction').textContent = record.other_deduction + '元';
+                        document.getElementById('donationDeduction').textContent = record.donation_deduction + '元';
+                        return;
+                    }
+                    errEl.style.display = 'block';
+                    errEl.textContent = data.msg || '加载失败';
+                })
+                .catch(function () {
+                    errEl.style.display = 'block';
+                    errEl.textContent = '网络错误';
+                });
+        }
+
+        function goTaxCalculation() {
+            var id = getUrlParam('id');
+            if (id) {
+                window.location.href = 'shuikuanjisuan.html?id=' + encodeURIComponent(id);
+            }
+        }
+
+        initBackLink();
+        loadData();
+    </script>
+    <script src="js/watermark.js"></script>
+</body>
+</html>

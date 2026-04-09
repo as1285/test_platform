@@ -1,11 +1,24 @@
-version: '3.8'
-
 services:
+  api:
+    build: ./backend
+    container_name: personal-tax-api
+    restart: always
+    volumes:
+      - tax_data:/data
+    environment:
+      - DATA_FILE=/data/tax_data.json
+      - USERS_FILE=/data/users.json
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    depends_on:
+      - api
     restart: always
     container_name: personal-tax-frontend
+
+volumes:
+  tax_data:

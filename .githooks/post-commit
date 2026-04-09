@@ -1,0 +1,4 @@
+#!/bin/sh
+# commit 成功后自动部署（需先执行 scripts/enable-git-hooks.sh）
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+exec "$ROOT/scripts/deploy.sh"

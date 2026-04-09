@@ -17,17 +17,21 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     left: 0;
     right: 0;
     width: 100%;
+    max-width: 100%;
     background: #fff;
     display: flex;
     justify-content: space-around;
+    align-items: center;
     padding: 10px 0;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
     z-index: 100;
+    box-sizing: border-box;
 }
 
-/* iOS设备底部导航位置 */
+/* iOS 不再整体上移；安全区已由 .bottom-nav 的 padding-bottom 统一处理 */
 .bottom-nav.ios-device {
-    bottom: 15px;
+    bottom: 0;
 }
 
 /* iOS设备未选中状态文字和图标颜色 */

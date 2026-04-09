@@ -1,0 +1,16 @@
+---
+description: 修改可部署代码后自动执行 Docker 部署脚本
+alwaysApply: true
+---
+
+# 自动部署（test_platform）
+
+在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），在结束任务前从仓库根目录执行：
+
+```bash
+./scripts/deploy.sh
+```
+
+若用户明确表示本次不要部署、或仅改文档/注释，可跳过。
+
+若因环境限制无法执行 Docker，向用户说明并已准备好脚本即可。

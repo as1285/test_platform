@@ -14,8 +14,13 @@ COPY consult.html /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/
 COPY shuiming_result.html /usr/share/nginx/html/
+COPY xiangqing.html /usr/share/nginx/html/
+COPY shuikuanjisuan.html /usr/share/nginx/html/
 COPY daiban.html /usr/share/nginx/html/
 COPY bancha.html /usr/share/nginx/html/
+COPY message.html /usr/share/nginx/html/
+COPY register.html /usr/share/nginx/html/
+COPY index.html /usr/share/nginx/html/login.html
 COPY caidan /usr/share/nginx/html/caidan/
 COPY grdb.jpg /usr/share/nginx/html/
 COPY jtcy.jpg /usr/share/nginx/html/
@@ -24,6 +29,7 @@ COPY yhk.jpg /usr/share/nginx/html/
 COPY nx.jpg /usr/share/nginx/html/
 COPY lb.jpg /usr/share/nginx/html/
 COPY ld.png /usr/share/nginx/html/
+COPY jt.png /usr/share/nginx/html/
 COPY sydb.jpg /usr/share/nginx/html/
 COPY zdb.jpg /usr/share/nginx/html/
 COPY zdfwdb.jpg /usr/share/nginx/html/
