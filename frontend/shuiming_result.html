@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>收入纳税明细</title>
     <style>
@@ -283,9 +284,8 @@
 
         function loadData() {
             var year = getUrlParam('year') || new Date().getFullYear();
-            var userId = localStorage.getItem('user_id') || '';
 
-            fetch('api/tax.php?action=records&year=' + encodeURIComponent(year) + '&user_id=' + encodeURIComponent(userId))
+            authFetch('api/tax.php?action=records&year=' + encodeURIComponent(year))
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
                     if (data.code === 200 && data.data && data.data.records) {
@@ -307,6 +307,6 @@
 
         loadData();
     </script>
-    <script src="js/watermark.js"></script>
+    <script src="/js/watermark.js"></script>
 </body>
 </html>

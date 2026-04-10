@@ -1,0 +1,14 @@
+{
+  "name": "test-platform-cordova",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cordova 壳：WebView 加载线上站点，便于打包 APK",
+  "devDependencies": {
+    "cordova": "^12.0.0",
+    "cordova-android": "^13.0.0"
+  },
+  "cordova": {
+    "plugins": {},
+    "platforms": []
+  }
+}

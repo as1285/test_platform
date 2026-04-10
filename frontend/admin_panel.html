@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/admin_auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>管理控制台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: 40px;
+        }
+        .top {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: #fff;
+            padding: 20px 20px 28px;
+        }
+        .top-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .top h1 { font-size: 20px; font-weight: 600; }
+        .top .btn-logout {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.35);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .wrap { max-width: 1100px; margin: -16px auto 0; padding: 0 16px; position: relative; z-index: 1; }
+        section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        section h2 { font-size: 16px; margin-bottom: 14px; color: #1e3a5f; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+        .form-row label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
+        .form-row input, .form-row textarea {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        .form-row textarea { min-height: 36px; resize: vertical; min-width: 200px; }
+        .btn-primary {
+            background: #1e6fff;
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary:disabled { opacity: 0.6; }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-ban { background: #e53935; color: #fff; }
+        .btn-unban { background: #43a047; color: #fff; }
+        .btn-copy { background: #5c6bc0; color: #fff; white-space: nowrap; }
+        .hint { font-size: 12px; color: #888; margin-top: 8px; }
+        .code-result {
+            margin-top: 12px;
+            padding: 12px;
+            background: #e8f4ff;
+            border-radius: 8px;
+            font-family: ui-monospace, monospace;
+            font-size: 14px;
+            word-break: break-all;
+            display: none;
+        }
+        .code-result.show { display: block; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #eee; padding: 8px 10px; text-align: left; }
+        th { background: #f8f9fa; font-weight: 600; }
+        tr:nth-child(even) { background: #fafafa; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-yes { background: #e8f5e9; color: #2e7d32; }
+        .badge-no { background: #fce4ec; color: #c62828; }
+        .badge-type-test { background: #fff3e0; color: #e65100; }
+        .scroll-x { overflow-x: auto; }
+        .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="top">
+        <div class="top-inner">
+            <h1>管理控制台</h1>
+            <button type="button" class="btn-logout" onclick="adminLogout()">退出管理</button>
+        </div>
+    </div>
+    <div class="wrap">
+        <section>
+            <h2>生成激活码</h2>
+            <div class="form-row">
+                <div>
+                    <label>可激活次数</label>
+                    <input type="number" id="issueMax" value="1" min="1" max="99999">
+                </div>
+                <div>
+                    <label>过期时间（可选，如 2027-12-31 23:59:59）</label>
+                    <input type="text" id="issueExp" placeholder="留空表示不过期">
+                </div>
+                <div style="flex:1; min-width:200px;">
+                    <label>备注</label>
+                    <input type="text" id="issueNote" placeholder="用途说明">
+                </div>
+                <button type="button" class="btn-primary" id="btnIssue">生成</button>
+            </div>
+            <div class="code-result" id="issueOut"></div>
+            <p class="hint">生成后请复制保存；同一码可多次使用直至次数用尽（按 max_uses）。</p>
+        </section>
+
+        <section>
+            <h2>注册用户</h2>
+            <p class="stat" id="userStat">加载中…</p>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>账号</th>
+                            <th>姓名</th>
+                            <th>用户类型</th>
+                            <th>激活</th>
+                            <th>封禁</th>
+                            <th>任职/家庭/卡</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>激活码列表</h2>
+            <button type="button" class="btn-primary" id="btnRefreshCodes" style="margin-bottom:12px;">刷新列表</button>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>激活码</th>
+                            <th>复制</th>
+                            <th>次数</th>
+                            <th>已用</th>
+                            <th>使用时间</th>
+                            <th>过期</th>
+                            <th>备注</th>
+                            <th>创建时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="codeTbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <script>
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function formatDt(iso) {
+            if (iso == null || String(iso).trim() === '') return '—';
+            return esc(String(iso).replace('T', ' ').slice(0, 19));
+        }
+
+        function copyCode(text) {
+            var t = String(text || '');
+            if (!t) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(t).then(function () {
+                    alert('已复制到剪贴板');
+                }).catch(function () {
+                    copyFallback(t);
+                });
+            } else {
+                copyFallback(t);
+            }
+        }
+        function copyFallback(t) {
+            var ta = document.createElement('textarea');
+            ta.value = t;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                alert('已复制到剪贴板');
+            } catch (e) {
+                alert('复制失败，请手动复制');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function loadUsers() {
+            adminFetch('api/admin/users')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) return;
+                    var list = data.data.users || [];
+                    document.getElementById('userStat').textContent = '共 ' + (data.data.total || list.length) + ' 个账号';
+                    var html = '';
+                    list.forEach(function (u) {
+                        var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
+                        var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
+                        var typeBadge = u.is_test_account
+                            ? '<span class="badge badge-type-test">测试账号</span>'
+                            : '<span class="badge badge-yes">普通账号</span>';
+                        var typeBtn = u.is_test_account
+                            ? '<button type="button" class="btn-sm btn-unban btn-user-type" data-u="' + esc(u.username) + '" data-t="0">设为普通</button>'
+                            : '<button type="button" class="btn-sm btn-copy btn-user-type" data-u="' + esc(u.username) + '" data-t="1">设为测试</button>';
+                        var ops = (u.banned
+                            ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
+                            : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn;
+                        html += '<tr>';
+                        html += '<td>' + esc(u.id) + '</td>';
+                        html += '<td>' + esc(u.username) + '</td>';
+                        html += '<td>' + esc(u.real_name) + '</td>';
+                        html += '<td>' + typeBadge + '</td>';
+                        html += '<td>' + act + '</td>';
+                        html += '<td>' + ban + '</td>';
+                        html += '<td>' + esc(u.employer_count) + ' / ' + esc(u.family_count) + ' / ' + esc(u.bank_card_count) + '</td>';
+                        html += '<td>' + esc(u.created_at && u.created_at.replace ? u.created_at.replace('T', ' ').slice(0, 19) : u.created_at) + '</td>';
+                        html += '<td>' + ops + '</td>';
+                        html += '</tr>';
+                    });
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
+                    document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var name = btn.getAttribute('data-u');
+                            var b = btn.getAttribute('data-b') === '1';
+                            var tip = b ? '确定封禁「' + name + '」？' : '确定解封「' + name + '」？';
+                            if (!confirm(tip)) return;
+                            adminFetch('api/admin/ban', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, banned: b ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        });
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-type').forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var name = btn.getAttribute('data-u');
+                            var t = parseInt(btn.getAttribute('data-t'), 10);
+                            var tip = t === 1
+                                ? '将「' + name + '」设为测试账号？任职受雇中的公司名称将统一为固定文案。'
+                                : '将「' + name + '」设为普通账号？';
+                            if (!confirm(tip)) return;
+                            adminFetch('api/admin/user-type', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, user_type: t })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        });
+                    });
+                })
+                .catch(function () {
+                    document.getElementById('userStat').textContent = '加载失败';
+                });
+        }
+
+        function loadCodes() {
+            adminFetch('api/admin/codes')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) return;
+                    var list = data.data.codes || [];
+                    var html = '';
+                    list.forEach(function (c) {
+                        var exp = c.expires_at ? formatDt(c.expires_at) : '—';
+                        var usedAt =
+                            c.last_used_at && (Number(c.used_count) > 0)
+                                ? formatDt(c.last_used_at)
+                                : '—';
+                        html += '<tr>';
+                        html += '<td>' + esc(c.id) + '</td>';
+                        html += '<td>' + esc(c.code) + '</td>';
+                        html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                        html += '<td>' + esc(c.max_uses) + '</td>';
+                        html += '<td>' + esc(c.used_count) + '</td>';
+                        html += '<td>' + usedAt + '</td>';
+                        html += '<td>' + exp + '</td>';
+                        html += '<td>' + esc(c.note) + '</td>';
+                        html += '<td>' + formatDt(c.created_at) + '</td>';
+                        html += '</tr>';
+                    });
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="9">暂无激活码</td></tr>';
+                })
+                .catch(function () {});
+        }
+
+        document.getElementById('codeTbody').addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-copy-code');
+            if (!btn) return;
+            var code = btn.getAttribute('data-code');
+            if (code) copyCode(code);
+        });
+
+        document.getElementById('btnIssue').addEventListener('click', function () {
+            var maxUses = parseInt(document.getElementById('issueMax').value, 10) || 1;
+            var exp = document.getElementById('issueExp').value.trim();
+            var note = document.getElementById('issueNote').value.trim();
+            var btn = document.getElementById('btnIssue');
+            btn.disabled = true;
+            adminFetch('api/admin/issue-code', {
+                method: 'POST',
+                body: JSON.stringify({
+                    max_uses: maxUses,
+                    expires_at: exp || null,
+                    note: note || null
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data && data.data.code) {
+                        var el = document.getElementById('issueOut');
+                        el.textContent = '激活码：' + data.data.code + '（max_uses=' + data.data.max_uses + '）';
+                        el.classList.add('show');
+                        loadCodes();
+                    } else {
+                        alert(data.msg || '生成失败');
+                    }
+                })
+                .catch(function () { alert('网络错误'); })
+                .finally(function () { btn.disabled = false; });
+        });
+
+        document.getElementById('btnRefreshCodes').addEventListener('click', loadCodes);
+
+        loadUsers();
+        loadCodes();
+    </script>
+</body>
+</html>

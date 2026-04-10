@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -48,15 +49,6 @@
             color: #1e6fff;
             border-bottom-color: #1e6fff;
         }
-        .tab.tab-batch {
-            color: #17a2b8;
-            font-weight: 600;
-        }
-        .tab.tab-batch.active {
-            color: #1e6fff;
-            border-bottom-color: #1e6fff;
-        }
-
         .container { padding: 16px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 
         .card {
@@ -126,6 +118,20 @@
             font-size: 12px;
         }
         .btn-sm { padding: 8px 16px; font-size: 12px; }
+        .btn-default {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #1e6fff;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        .btn-secondary {
+            background: #f5f6fa;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
         .btn-block { width: 100%; display: block; }
 
         .msg {
@@ -148,7 +154,8 @@
         .list-item-content { flex: 1; }
         .list-item-title { font-size: 14px; color: #333; font-weight: 500; }
         .list-item-desc { font-size: 12px; color: #999; margin-top: 4px; }
-        .list-item-actions { display: flex; gap: 8px; }
+        .list-item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .record-card .list-item-actions { margin-top: 10px; }
 
         .back-link {
             display: inline-flex;
@@ -179,6 +186,81 @@
         .record-card-date { font-size: 12px; color: #999; }
         .record-card-info { font-size: 12px; color: #666; line-height: 1.8; }
 
+        /* 税务记录 tab：整体紧凑 */
+        #panel-records .card {
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+        #panel-records .card-title {
+            font-size: 14px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+        }
+        #panel-records .card-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        #panel-records .card-title-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        #panel-records .card-title-actions .btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+        #panel-records .form-group { margin-bottom: 8px; }
+        #panel-records .form-group label {
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        #panel-records .form-group input,
+        #panel-records .form-group select,
+        #panel-records .form-group textarea {
+            padding: 7px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+        #panel-records .form-row { gap: 8px; }
+        #panel-records .btn-block {
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        #panel-records .record-card {
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+        #panel-records .record-card-header { margin-bottom: 4px; }
+        #panel-records .record-card-title { font-size: 12px; }
+        #panel-records .record-card-date { font-size: 11px; }
+        #panel-records .record-card-info {
+            font-size: 11px;
+            line-height: 1.45;
+        }
+        #panel-records .record-card .list-item-actions { margin-top: 6px; }
+        #panel-records .record-card .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+        #panel-records #recordListMount .empty {
+            padding: 20px;
+            font-size: 12px;
+        }
+
+        #panel-records .batch-hint {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+            margin: -4px 0 10px;
+        }
+
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
     </style>
@@ -196,7 +278,6 @@
         <a href="#" class="tab" data-tab="employers">任职受雇</a>
         <a href="#" class="tab" data-tab="messages">消息管理</a>
         <a href="#" class="tab active" data-tab="records">税务记录</a>
-        <a href="#" class="tab tab-batch" data-tab="batch_records">批量录入</a>
     </div>
 
     <div class="container">
@@ -212,6 +293,7 @@
                 <div class="form-group">
                     <label>真实姓名</label>
                     <input type="text" id="pf_real_name">
+                    <p id="pf_test_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号不可修改真实姓名。</p>
                 </div>
                 <div class="form-group">
                     <label>纳税人识别号</label>
@@ -247,6 +329,7 @@
                     <div class="form-group">
                         <label>公司名称</label>
                         <input type="text" name="company_name" id="ef_company_name" required>
+                        <p id="ef_test_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号公司名称固定，不可修改。</p>
                     </div>
                     <div class="form-group">
                         <label>统一社会信用代码</label>
@@ -284,8 +367,32 @@
 
         <div id="panel-messages" class="tab-panel">
             <div class="card">
-                <div class="card-title">消息管理</div>
-                <p style="color:#999;font-size:14px;">前往 <a href="message.html" style="color:#1e6fff;">消息</a> 查看。</p>
+                <div class="card-title">添加消息</div>
+                <form id="msgForm" onsubmit="onSubmitMessage(event)">
+                    <div class="form-group">
+                        <label for="mf_title">消息标题</label>
+                        <input type="text" id="mf_title" name="title" value="扣缴申报温馨提示" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf_content">消息内容</label>
+                        <input type="text" id="mf_content" name="content" placeholder="来自XXX公司扣缴申报...">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mf_company_name">公司名称</label>
+                            <input type="text" id="mf_company_name" name="company_name">
+                        </div>
+                        <div class="form-group">
+                            <label for="mf_msg_date">消息日期</label>
+                            <input type="date" id="mf_msg_date" name="msg_date" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">添加消息</button>
+                </form>
+            </div>
+            <div class="card">
+                <div class="card-title">消息列表</div>
+                <div id="messageListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
         </div>
 
@@ -320,6 +427,7 @@
                     <div class="form-group">
                         <label>扣缴义务人名称</label>
                         <input type="text" name="company_name" id="f_company_name" value="">
+                        <p id="f_tax_company_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号此项固定，不可修改。</p>
                     </div>
 
                     <div class="form-group">
@@ -418,16 +526,49 @@
                 </form>
             </div>
 
-            <div class="card">
-                <div class="card-title">税务记录列表</div>
-                <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+            <div class="card" id="batchTaxCard">
+                <div class="card-title">批量添加（累计预扣计税）</div>
+                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 − 5000（减除费用）− 社保 − 公积金 − 专项附加扣除；按月累计后套七级税率表计算应预扣税额。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），税额与 12 月工资预扣税合并写入<strong>12 月</strong>记录。下方扣缴单位等信息取自上方表单。</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="batch_year">计税年度</label>
+                        <input type="number" id="batch_year" min="1990" max="2100" value="2026">
+                    </div>
+                    <div class="form-group">
+                        <label for="batch_monthly_salary">固定月薪（元）</label>
+                        <input type="number" step="0.01" id="batch_monthly_salary" value="10000" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="batch_social">社保扣费（月，元）</label>
+                        <input type="number" step="0.01" id="batch_social" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="batch_fund">公积金扣费（月，元）</label>
+                        <input type="number" step="0.01" id="batch_fund" value="0" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="batch_special">专项附加扣除（月，元，可填 0）</label>
+                    <input type="number" step="0.01" id="batch_special" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并入 12 月）</label>
+                    <input type="number" step="0.01" id="batch_year_end_bonus" value="0" min="0" placeholder="无则填 0">
+                </div>
+                <button type="button" class="btn btn-primary btn-block" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
             </div>
-        </div>
 
-        <div id="panel-batch_records" class="tab-panel">
             <div class="card">
-                <div class="card-title">批量录入</div>
-                <p style="color:#999;font-size:14px;">请使用「税务记录」单条录入；批量功能可后续对接导入。</p>
+                <div class="card-title card-title-row">
+                    <span>税务记录列表</span>
+                    <div class="card-title-actions">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
+                        <button type="button" class="btn btn-default btn-sm" onclick="document.getElementById('batchTaxCard').scrollIntoView({ behavior: 'smooth', block: 'start' })">批量添加信息</button>
+                    </div>
+                </div>
+                <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
         </div>
     </div>
@@ -472,6 +613,47 @@
             return localStorage.getItem('user_id') || '64';
         }
 
+        var CONSULT_TEST_COMPANY_NAME = '测试公司不能修改需要请购买';
+        window.consultUserFlags = { is_test_account: false };
+
+        function applyConsultTestRestrictions(user) {
+            var isTest = !!(user && user.is_test_account);
+            window.consultUserFlags = { is_test_account: isTest };
+            var pfName = document.getElementById('pf_real_name');
+            if (pfName) {
+                pfName.readOnly = isTest;
+                pfName.style.background = isTest ? '#f0f0f0' : '';
+            }
+            var ph = document.getElementById('pf_test_hint');
+            if (ph) ph.style.display = isTest ? 'block' : 'none';
+            var ef = document.getElementById('ef_company_name');
+            var eh = document.getElementById('ef_test_hint');
+            if (ef) {
+                if (isTest) {
+                    ef.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    ef.readOnly = true;
+                    ef.style.background = '#f0f0f0';
+                } else {
+                    ef.readOnly = false;
+                    ef.style.background = '';
+                }
+            }
+            if (eh) eh.style.display = isTest ? 'block' : 'none';
+            var fcn = document.getElementById('f_company_name');
+            var fth = document.getElementById('f_tax_company_hint');
+            if (fcn) {
+                if (isTest) {
+                    fcn.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    fcn.readOnly = true;
+                    fcn.style.background = '#f0f0f0';
+                } else {
+                    fcn.readOnly = false;
+                    fcn.style.background = '';
+                }
+            }
+            if (fth) fth.style.display = isTest ? 'block' : 'none';
+        }
+
         function tabHref(tab) {
             return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
         }
@@ -509,8 +691,8 @@
                 });
             });
             var tab = getUrlParam('tab') || 'records';
-            if (tab === 'batch') tab = 'batch_records';
-            var valid = ['profile', 'employers', 'messages', 'records', 'batch_records'];
+            if (tab === 'batch' || tab === 'batch_records') tab = 'records';
+            var valid = ['profile', 'employers', 'messages', 'records'];
             if (valid.indexOf(tab) < 0) tab = 'records';
             switchTab(tab, false);
         }
@@ -522,7 +704,7 @@
                 return;
             }
             
-            fetch('api/user.php?action=info&user_id=' + encodeURIComponent(userId))
+            authFetch('api/user.php?action=info')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
@@ -564,6 +746,7 @@
             if (pfFamilyCount) pfFamilyCount.value = user.family_count != null ? user.family_count : '';
             var pfBankCardCount = document.getElementById('pf_bank_card_count');
             if (pfBankCardCount) pfBankCardCount.value = user.bank_card_count != null ? user.bank_card_count : '';
+            applyConsultTestRestrictions(user);
         }
         
         function initHeader() {
@@ -595,6 +778,9 @@
                 var ds = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
                 var fd = document.getElementById('f_report_date');
                 if (fd && !fd.value) fd.value = ds;
+                var batchYear = document.getElementById('batch_year');
+                var fYear = document.getElementById('f_year');
+                if (batchYear && fYear && fYear.value) batchYear.value = fYear.value;
                 
                 loadUserInfoFromApi();
             } catch (err) {
@@ -619,19 +805,22 @@
             
             var userId = currentUserId();
             if (userId) {
-                fetch('api/user.php', {
+                var payload = {
+                    action: 'save_profile',
+                    user_id: userId,
+                    tax_id: taxId,
+                    gender: gender,
+                    employer_count: employerCount,
+                    family_count: familyCount,
+                    bank_card_count: bankCardCount
+                };
+                if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
+                    payload.real_name = realName;
+                }
+                authFetch('api/user.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'save_profile',
-                        user_id: userId,
-                        real_name: realName,
-                        tax_id: taxId,
-                        gender: gender,
-                        employer_count: employerCount,
-                        family_count: familyCount,
-                        bank_card_count: bankCardCount
-                    })
+                    body: JSON.stringify(payload)
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
@@ -656,7 +845,7 @@
         /** 从服务端拉取当前用户全部税务记录（收入纳税明细同源数据） */
         function apiFetchRecords() {
             var uid = currentUserId();
-            return fetch('api/tax.php?action=records&user_id=' + encodeURIComponent(uid))
+            return authFetch('api/tax.php?action=records')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
@@ -676,7 +865,9 @@
                 month: parseInt(document.getElementById('f_month').value, 10),
                 income_type: document.getElementById('f_income_type').value,
                 income_subtype: document.getElementById('f_income_subtype').value,
-                company_name: document.getElementById('f_company_name').value,
+                company_name: (window.consultUserFlags && window.consultUserFlags.is_test_account)
+                    ? CONSULT_TEST_COMPANY_NAME
+                    : document.getElementById('f_company_name').value,
                 company_tax_id: document.getElementById('f_company_tax_id').value,
                 tax_authority: document.getElementById('f_tax_authority').value,
                 report_channel: document.getElementById('f_report_channel').value,
@@ -705,6 +896,9 @@
             document.getElementById('f_income_type').value = r.income_type || '工资薪金';
             document.getElementById('f_income_subtype').value = r.income_subtype || '';
             document.getElementById('f_company_name').value = r.company_name || '';
+            if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
+                document.getElementById('f_company_name').value = CONSULT_TEST_COMPANY_NAME;
+            }
             document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
             document.getElementById('f_tax_authority').value = r.tax_authority || '';
             document.getElementById('f_report_channel').value = r.report_channel || '其他';
@@ -728,6 +922,14 @@
             document.getElementById('editing_id').value = '';
             document.getElementById('recordSubmitBtn').textContent = '添加记录';
             document.getElementById('recordForm').reset();
+            if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
+                var fcn = document.getElementById('f_company_name');
+                if (fcn) {
+                    fcn.value = CONSULT_TEST_COMPANY_NAME;
+                    fcn.readOnly = true;
+                    fcn.style.background = '#f0f0f0';
+                }
+            }
             initHeader();
         }
 
@@ -740,7 +942,7 @@
             } else {
                 o.id = editId;
             }
-            fetch('api/tax.php', {
+            authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -789,7 +991,7 @@
                 html += '扣缴单位：' + (r.company_name || '') + '<br>';
                 html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
                 html += '</div>';
-                html += '<div style="margin-top:10px;display:flex;gap:8px;">';
+                html += '<div class="list-item-actions">';
                 html += '<button type="button" class="btn btn-primary btn-sm" onclick="editRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">编辑</button>';
                 html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">删除</button>';
                 html += '</div></div>';
@@ -809,7 +1011,7 @@
 
         function deleteRecord(id) {
             if (!confirm('确定删除？')) return;
-            fetch('api/tax.php', {
+            authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -833,6 +1035,198 @@
                 });
         }
 
+        function deleteAllTaxRecords() {
+            if (!confirm('确定删除当前账号下全部税务记录？此操作不可恢复。')) return;
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_all_records',
+                    user_id: currentUserId()
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        showMsg('已全部删除', true);
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function round2(n) {
+            var x = Number(n);
+            if (Number.isNaN(x)) return 0;
+            return Math.round(x * 100) / 100;
+        }
+
+        /**
+         * 工资薪金累计预扣：累计应纳税所得额 T（元）对应的累计应预扣税额
+         * 税率表：国税函〔2018〕164 号附件 综合所得七级超额累进
+         */
+        function cumulativeTaxPayableFromCumulativeTaxable(T) {
+            var t = Math.max(0, Number(T));
+            if (t <= 0) return 0;
+            var brackets = [
+                { max: 36000, rate: 0.03, qd: 0 },
+                { max: 144000, rate: 0.10, qd: 2520 },
+                { max: 300000, rate: 0.20, qd: 16920 },
+                { max: 420000, rate: 0.25, qd: 31920 },
+                { max: 660000, rate: 0.30, qd: 52920 },
+                { max: 960000, rate: 0.35, qd: 85920 },
+                { max: Infinity, rate: 0.45, qd: 181920 }
+            ];
+            for (var i = 0; i < brackets.length; i++) {
+                if (t <= brackets[i].max) {
+                    return t * brackets[i].rate - brackets[i].qd;
+                }
+            }
+            return 0;
+        }
+
+        /**
+         * 全年一次性奖金单独计税：应纳税额 = 奖金 × 税率 − 速算扣除数
+         * 税率按 奖金÷12 对照月度换算表（国税相关口径）
+         */
+        function yearEndBonusTaxSeparate(bonus) {
+            var b = Number(bonus);
+            if (!b || b <= 0) return 0;
+            var monthlyEq = b / 12;
+            var brackets = [
+                { max: 3000, rate: 0.03, qd: 0 },
+                { max: 12000, rate: 0.10, qd: 210 },
+                { max: 25000, rate: 0.20, qd: 1410 },
+                { max: 35000, rate: 0.25, qd: 2660 },
+                { max: 55000, rate: 0.30, qd: 4410 },
+                { max: 80000, rate: 0.35, qd: 7160 },
+                { max: Infinity, rate: 0.45, qd: 15160 }
+            ];
+            for (var i = 0; i < brackets.length; i++) {
+                if (monthlyEq <= brackets[i].max) {
+                    return round2(b * brackets[i].rate - brackets[i].qd);
+                }
+            }
+            return 0;
+        }
+
+        /** 社保合计拆入三险字段（展示用） */
+        function splitSocialThree(social) {
+            var s = Math.max(0, Number(social) || 0);
+            if (s === 0) return { p: 0, m: 0, u: 0 };
+            var a = round2(s / 3);
+            var b = round2((s - a) / 2);
+            var c = round2(s - a - b);
+            return { p: a, m: b, u: c };
+        }
+
+        function batchAddYearTaxRecords() {
+            var year = parseInt(document.getElementById('batch_year').value, 10);
+            var salary = parseFloat(document.getElementById('batch_monthly_salary').value);
+            var social = parseFloat(document.getElementById('batch_social').value) || 0;
+            var fund = parseFloat(document.getElementById('batch_fund').value) || 0;
+            var special = parseFloat(document.getElementById('batch_special').value) || 0;
+            var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
+            if (yearEndBonus < 0) yearEndBonus = 0;
+
+            if (!year || year < 1990 || year > 2100) {
+                showMsg('请填写合法计税年度', false);
+                return;
+            }
+            if (Number.isNaN(salary) || salary < 0) {
+                showMsg('请填写固定月薪', false);
+                return;
+            }
+
+            var monthlyTaxable = round2(Math.max(0, salary - 5000 - social - fund - special));
+            var uid = currentUserId();
+            var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
+            var soc = splitSocialThree(social);
+
+            var base = formObjectFromInputs();
+            delete base.id;
+
+            var taxesPreview = [];
+            var m;
+            for (m = 1; m <= 12; m++) {
+                var cumPrev = (m - 1) * monthlyTaxable;
+                var cumCur = m * monthlyTaxable;
+                var taxM = round2(
+                    cumulativeTaxPayableFromCumulativeTaxable(cumCur) -
+                    cumulativeTaxPayableFromCumulativeTaxable(cumPrev)
+                );
+                if (taxM < 0) taxM = 0;
+                taxesPreview.push(taxM);
+            }
+
+            var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
+            var totalTax = round2(taxesPreview.reduce(function (a, b) { return a + b; }, 0) + bonusTax);
+            var bonusLine = yearEndBonus > 0
+                ? '\n年终奖 ' + yearEndBonus + ' 元（单独计税约 ' + bonusTax + ' 元，并入 12 月）。'
+                : '';
+            if (!confirm(
+                '将为 ' + year + ' 年 1～12 月生成记录。\n月薪 ' + salary +
+                ' 元；月应纳税所得额 ' + monthlyTaxable + ' 元（已扣 5000、社保、公积金、专项附加）。\n' +
+                '工资薪金预扣税额合计约 ' + round2(taxesPreview.reduce(function (a, b) { return a + b; }, 0)) + ' 元。' + bonusLine +
+                '\n税额总计约 ' + totalTax + ' 元（同编号记录将覆盖）。是否写入？'
+            )) return;
+
+            var chain = Promise.resolve();
+            for (m = 1; m <= 12; m++) {
+                (function (month, taxMonth) {
+                    chain = chain.then(function () {
+                        var o = JSON.parse(JSON.stringify(base));
+                        o.year = year;
+                        o.month = month;
+                        o.tax_period = year + '-' + pad2(month);
+                        o.report_date = year + '-' + pad2(month) + '-15';
+                        o.id = 'tr_' + uidKey + '_' + year + '_' + month;
+                        var inc = month === 12 && yearEndBonus > 0 ? round2(salary + yearEndBonus) : round2(salary);
+                        var taxStr = month === 12 && yearEndBonus > 0
+                            ? String(round2(taxMonth + bonusTax))
+                            : String(taxMonth);
+                        o.income = String(inc);
+                        o.income_this_period = String(inc);
+                        o.tax_reported = taxStr;
+                        o.deduction_fee = '5000.00';
+                        o.special_deduction = String(round2(special));
+                        o.pension_insurance = String(soc.p);
+                        o.medical_insurance = String(soc.m);
+                        o.unemployment_insurance = String(soc.u);
+                        o.housing_fund = String(round2(fund));
+                        o.tax_free_income = '0.00';
+                        return authFetch('api/tax.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'save_record',
+                                user_id: uid,
+                                record: o
+                            })
+                        })
+                            .then(function (r) { return r.json(); })
+                            .then(function (data) {
+                                if (data.code !== 200) throw new Error(data.msg || '保存失败');
+                            });
+                    });
+                })(m, taxesPreview[m - 1]);
+            }
+            chain
+                .then(function () {
+                    var tip = '已按累计预扣生成 ' + year + ' 年全年 12 个月';
+                    if (yearEndBonus > 0) tip += '（12 月含年终奖及单独计税）';
+                    showMsg(tip, true);
+                    return refreshRecordList();
+                })
+                .catch(function (err) {
+                    showMsg('批量添加中断：' + (err.message || ''), false);
+                    return refreshRecordList();
+                });
+        }
+
         function tryEditFromUrl() {
             var eid = getUrlParam('edit_id');
             if (eid) editRecord(eid);
@@ -840,7 +1234,7 @@
 
         function apiFetchEmployers() {
             var uid = currentUserId();
-            return fetch('api/user.php?action=employers&user_id=' + encodeURIComponent(uid))
+            return authFetch('api/user.php?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.employers) {
@@ -865,7 +1259,7 @@
                 leave_date: document.getElementById('ef_leave_date').value,
                 status: document.getElementById('ef_status').value
             };
-            fetch('api/user.php', {
+            authFetch('api/user.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(data)
@@ -890,6 +1284,10 @@
             });
         }
 
+        function escAttr(s) {
+            return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
         function renderEmployerListFromArray(list) {
             var mount = document.getElementById('employerListMount');
             if (!mount) return;
@@ -899,26 +1297,184 @@
             }
             var html = '';
             list.forEach(function(e) {
-                html += '<div class="list-item">';
-                html += '<div class="list-item-content">';
-                html += '<div class="list-item-title">' + (e.company_name || '') + '</div>';
-                html += '<div class="list-item-desc">';
-                if (e.position) html += '职务：' + e.position + ' | ';
-                html += '状态：' + (e.status == '1' ? '在职' : '离职');
-                if (e.hire_date) html += ' | 入职：' + e.hire_date;
-                if (e.leave_date) html += ' | 离职：' + e.leave_date;
+                var id = escAttr(e.id);
+                html += '<div class="record-card">';
+                html += '<div class="record-card-header">';
+                html += '<div class="record-card-title">' + (e.company_name || '') + '</div>';
+                html += '<div class="record-card-date">' + (e.status == '1' || e.status === '在职' ? '在职' : '离职') + '</div>';
                 html += '</div>';
+                html += '<div class="record-card-info">';
+                html += '统一社会信用代码：' + (e.credit_code || '') + '<br>';
+                html += '职务：' + (e.position || '') + '<br>';
+                html += '入职日期：' + (e.hire_date || '') + ' | 离职日期：' + (e.leave_date || '在职');
                 html += '</div>';
-                html += '</div>';
+                html += '<div class="list-item-actions">';
+                html += '<button type="button" class="btn btn-sm btn-primary" onclick="editEmployer(\'' + id + '\')">编辑</button>';
+                html += '<button type="button" class="btn btn-sm btn-danger" onclick="deleteEmployer(\'' + id + '\')">删除</button>';
+                html += '<button type="button" class="btn btn-sm btn-default" onclick="viewEmployerDetail(\'' + id + '\')">详情</button>';
+                html += '<button type="button" class="btn btn-sm btn-secondary" onclick="copyEmployer(\'' + id + '\')">复制</button>';
+                html += '</div></div>';
             });
             mount.innerHTML = html;
+        }
+
+        function editEmployer(id) {
+            showMsg('编辑功能开发中，记录 ID：' + id, true);
+        }
+
+        function deleteEmployer(id) {
+            if (!confirm('确定要删除这条任职受雇记录吗？')) return;
+            authFetch('api/user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_employer',
+                    user_id: currentUserId(),
+                    employer_id: id
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        showMsg('已删除', true);
+                        return refreshEmployerList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function viewEmployerDetail(id) {
+            showMsg('详情功能开发中，记录 ID：' + id, true);
+        }
+
+        function copyEmployer(id) {
+            showMsg('复制功能开发中，记录 ID：' + id, true);
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function apiFetchMessages() {
+            var uid = currentUserId();
+            return authFetch('api/message.php?action=list')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && Array.isArray(data.data)) {
+                        return data.data;
+                    }
+                    return [];
+                })
+                .catch(function () { return []; });
+        }
+
+        function renderMessageListFromArray(list) {
+            var mount = document.getElementById('messageListMount');
+            if (!mount) return;
+            if (!list.length) {
+                mount.innerHTML = '<div class="empty">暂无消息</div>';
+                return;
+            }
+            var html = '';
+            list.forEach(function (m) {
+                var line = (m.company_name || '').trim();
+                if (!line) line = (m.content || '').trim() || '—';
+                var datePart = (m.msg_date || '').trim();
+                var desc = datePart ? (line + ' · ' + datePart) : line;
+                var id = escAttr(m.id);
+                html += '<div class="list-item">';
+                html += '<div class="list-item-content">';
+                html += '<div class="list-item-title">' + escapeHtml(m.title || '') + '</div>';
+                html += '<div class="list-item-desc">' + escapeHtml(desc) + '</div>';
+                html += '</div>';
+                html += '<div class="list-item-actions">';
+                html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteMessage(\'' + id + '\')">删除</button>';
+                html += '</div></div>';
+            });
+            mount.innerHTML = html;
+        }
+
+        function refreshMessageList() {
+            return apiFetchMessages().then(function (list) {
+                renderMessageListFromArray(list);
+            });
+        }
+
+        function onSubmitMessage(e) {
+            e.preventDefault();
+            var payload = {
+                action: 'add_message',
+                user_id: currentUserId(),
+                title: document.getElementById('mf_title').value.trim(),
+                content: document.getElementById('mf_content').value.trim(),
+                company_name: document.getElementById('mf_company_name').value.trim(),
+                msg_date: document.getElementById('mf_msg_date').value
+            };
+            authFetch('api/message.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.code === 200) {
+                        document.getElementById('mf_content').value = '';
+                        document.getElementById('mf_company_name').value = '';
+                        showMsg('添加成功', true);
+                        return refreshMessageList();
+                    }
+                    throw new Error(res.msg || '添加失败');
+                })
+                .catch(function (err) {
+                    showMsg('添加失败：' + (err.message || ''), false);
+                });
+        }
+
+        function deleteMessage(id) {
+            if (!confirm('确定删除？')) return;
+            authFetch('api/message.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_message',
+                    user_id: currentUserId(),
+                    id: id
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        showMsg('已删除', true);
+                        return refreshMessageList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function setDefaultMsgDate() {
+            var el = document.getElementById('mf_msg_date');
+            if (!el || el.value) return;
+            var d = new Date();
+            el.value = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
         }
 
         function boot() {
             initHeader();
             initTabs();
+            setDefaultMsgDate();
             refreshRecordList();
             refreshEmployerList();
+            refreshMessageList();
             tryEditFromUrl();
         }
 
@@ -936,6 +1492,6 @@
             }
         })();
     </script>
-    <script src="js/watermark.js"></script>
+    <script src="/js/watermark.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
     <style>
@@ -234,10 +235,15 @@
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
+                        if (d.token) {
+                            localStorage.setItem('token', d.token);
+                        }
                         localStorage.setItem('userName', d.username || username);
                         localStorage.setItem('user_id', d.user_id || username);
                         localStorage.setItem('real_name', d.real_name || username);
-                        window.location.href = 'mine.html';
+                        var act = d.account_active === true || d.account_active === 1;
+                        localStorage.setItem('account_active', act ? '1' : '0');
+                        window.location.href = act ? 'mine.html' : 'activate.html';
                         return;
                     }
                     alert(data.msg || '登录失败');

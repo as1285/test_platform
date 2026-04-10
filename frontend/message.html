@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>消息</title>
     <style>
@@ -223,16 +224,9 @@
         // 初始化时更新图标
         updateNavIcons();
         
-        // 加载消息列表（未登录仅展示「暂无消息」，不强制跳转登录页）
+        // 加载消息列表（需登录，由 auth.js 保证）
         function loadMessages() {
-            var userId = localStorage.getItem('user_id') || '';
-            if (!userId) {
-                document.getElementById('messageList').innerHTML =
-                    '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
-                return;
-            }
-
-            fetch('api/message.php?action=list&user_id=' + userId)
+            authFetch('api/message.php?action=list')
             .then(response => response.json())
             .then(data => {
                 if (data.code === 200) {
@@ -282,6 +276,6 @@
             }
         })();
     </script>
-    <script src="js/watermark.js"></script>
+    <script src="/js/watermark.js"></script>
 </body>
 </html>

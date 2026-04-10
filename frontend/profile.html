@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心 - 杰瑞</title>
     <style>
@@ -15,11 +16,11 @@
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: 40px 16px 20px;
+            padding: 12px 16px 10px;
             text-align: center;
         }
-        .header h1 { font-size: 18px; font-weight: 500; }
-        .header .user-name { font-size: 14px; opacity: 0.9; margin-top: 8px; }
+        .header h1 { font-size: 15px; font-weight: 500; }
+        .header .user-name { font-size: 12px; opacity: 0.9; margin-top: 4px; }
         
         .tabs {
             display: flex;
@@ -118,6 +119,20 @@
             padding: 8px 16px;
             font-size: 12px;
         }
+        .btn-default {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #1e6fff;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        .btn-secondary {
+            background: #f5f6fa;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
         .btn-block { width: 100%; display: block; }
         
         .msg {
@@ -140,17 +155,18 @@
         .list-item-content { flex: 1; }
         .list-item-title { font-size: 14px; color: #333; font-weight: 500; }
         .list-item-desc { font-size: 12px; color: #999; margin-top: 4px; }
-        .list-item-actions { display: flex; gap: 8px; }
+        .list-item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .record-card .list-item-actions { margin-top: 10px; }
         
         .back-link {
             display: inline-flex;
             align-items: center;
             color: #fff;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 12px;
             position: absolute;
             left: 16px;
-            top: 40px;
+            top: 14px;
         }
         .header { position: relative; }
         
@@ -185,7 +201,6 @@
         <a href="?user_id=64&tab=employers" class="tab active">任职受雇</a>
         <a href="?user_id=64&tab=messages" class="tab">消息管理</a>
         <a href="?user_id=64&tab=records" class="tab">税务记录</a>
-        <a href="?user_id=64&tab=batch_records" class="tab">批量录入</a>
     </div>
     
     <div class="container">
@@ -245,7 +260,7 @@
         
         // 加载任职受雇列表
         function loadEmployers(userId) {
-            fetch(`api/user.php?action=employers&user_id=${userId}`)
+            authFetch('api/user.php?action=employers')
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 200) {
@@ -267,8 +282,10 @@
                                             入职日期：${employer.hire_date} | 离职日期：${employer.leave_date || '在职'}
                                         </div>
                                         <div class="list-item-actions">
-                                            <button class="btn btn-sm btn-primary" onclick="editEmployer('${employer.id}')">编辑</button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteEmployer('${employer.id}')">删除</button>
+                                            <button type="button" class="btn btn-sm btn-primary" onclick="editEmployer('${employer.id}')">编辑</button>
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteEmployer('${employer.id}')">删除</button>
+                                            <button type="button" class="btn btn-sm btn-default" onclick="viewEmployerDetail('${employer.id}')">详情</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="copyEmployer('${employer.id}')">复制</button>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -309,7 +326,7 @@
             };
             
             // 提交到后端
-            fetch('api/user.php', {
+            authFetch('api/user.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -375,13 +392,21 @@
             // 暂时使用 alert 提示
             alert('编辑功能开发中，记录ID：' + id);
         }
+
+        function viewEmployerDetail(id) {
+            alert('详情功能开发中，记录ID：' + id);
+        }
+
+        function copyEmployer(id) {
+            alert('复制功能开发中，记录ID：' + id);
+        }
         
         // 删除任职受雇记录
         function deleteEmployer(id) {
             var userId = localStorage.getItem('user_id') || '64';
             
             if (confirm('确定要删除这条任职受雇记录吗？')) {
-                fetch('api/user.php', {
+                authFetch('api/user.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'

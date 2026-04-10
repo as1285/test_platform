@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>加载中</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 24px; text-align: center; color: #666; }
+    </style>
+    <script>
+        (function () {
+            var APP_ORIGIN = 'http://139.199.191.204/';
+            if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
+                document.body.innerHTML = '<p>请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 为实际站点 URL 后重新打包 APK。</p>';
+                return;
+            }
+            window.location.replace(APP_ORIGIN);
+        })();
+    </script>
+</head>
+<body>
+    <p>正在打开应用…</p>
+</body>
+</html>

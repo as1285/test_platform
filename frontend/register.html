@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -107,16 +108,16 @@
         <form id="regForm" onsubmit="return false;">
             <div class="field">
                 <label>账号 <span class="req">*</span></label>
-                <input type="text" id="username" name="username" placeholder="手机号或自定义账号（3～32位）" maxlength="32" autocomplete="username" required>
+                <input type="text" id="username" name="username" placeholder="手机号或自定义账号（1～32位）" maxlength="32" autocomplete="username" required>
                 <div class="hint">支持数字、字母及 . _ - @</div>
             </div>
             <div class="field">
                 <label>登录密码 <span class="req">*</span></label>
-                <input type="password" id="password" name="password" placeholder="至少 6 位" minlength="6" maxlength="64" autocomplete="new-password" required>
+                <input type="password" id="password" name="password" placeholder="至少 1 位" minlength="1" maxlength="64" autocomplete="new-password" required>
             </div>
             <div class="field">
                 <label>确认密码 <span class="req">*</span></label>
-                <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="6" maxlength="64" autocomplete="new-password" required>
+                <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
             </div>
             <div class="field">
                 <label>真实姓名</label>
@@ -170,9 +171,16 @@
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.code === 200) {
-                        alert('注册成功，请登录');
-                        window.location.href = 'login.html';
+                    if (data.code === 200 && data.data) {
+                        var d = data.data;
+                        if (d.token) {
+                            localStorage.setItem('token', d.token);
+                        }
+                        localStorage.setItem('userName', d.username || '');
+                        localStorage.setItem('user_id', d.user_id || '');
+                        localStorage.setItem('real_name', d.real_name || d.username || '');
+                        localStorage.setItem('account_active', '0');
+                        window.location.href = 'activate.html';
                         return;
                     }
                     showErr(data.msg || '注册失败');

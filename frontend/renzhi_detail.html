@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>任职受雇详情</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .detail-card {
+            background: #fff;
+            border-radius: 8px;
+            margin: 12px;
+            padding: 16px;
+        }
+        .company-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 14px; }
+        .info-item { display: flex; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
+        .info-label { color: #999; flex-shrink: 0; width: 130px; }
+        .info-value { color: #333; word-break: break-all; flex: 1; }
+        .empty-state { text-align: center; padding: 48px 20px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="renzhi.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">任职受雇详情</span>
+    </div>
+    <div id="detailMount"></div>
+    <script>
+        function getParam(name) {
+            var m = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function row(label, val) {
+            return '<div class="info-item"><span class="info-label">' + escapeHtml(label) + '</span><span class="info-value">' + escapeHtml(val) + '</span></div>';
+        }
+        (function () {
+            var id = getParam('id');
+            var userId = localStorage.getItem('user_id');
+            var mount = document.getElementById('detailMount');
+            if (!userId) {
+                window.location.href = 'index.html';
+                return;
+            }
+            if (!id) {
+                mount.innerHTML = '<div class="empty-state">缺少记录参数</div>';
+                return;
+            }
+            authFetch('api/user.php?action=employers')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data || !data.data.employers) {
+                        mount.innerHTML = '<div class="empty-state">加载失败</div>';
+                        return;
+                    }
+                    var item = data.data.employers.find(function (x) { return String(x.id) === String(id); });
+                    if (!item) {
+                        mount.innerHTML = '<div class="empty-state">未找到该任职受雇记录</div>';
+                        return;
+                    }
+                    var leaveVal = item.leave_date;
+                    if (!leaveVal && (item.status === '1' || item.status === 1)) {
+                        leaveVal = '在职';
+                    }
+                    var statusText = (item.status === '1' || item.status === 1 || item.status === '在职') ? '在职' : '离职';
+                    mount.innerHTML =
+                        '<div class="detail-card">' +
+                        '<div class="company-name">' + escapeHtml(item.company_name || '-') + '</div>' +
+                        row('统一社会信用代码', item.credit_code || '-') +
+                        row('职务', item.position || '-') +
+                        row('任职受雇日期', item.hire_date || '-') +
+                        row('离职日期', leaveVal || '-') +
+                        row('状态', statusText) +
+                        '</div>';
+                })
+                .catch(function () {
+                    mount.innerHTML = '<div class="empty-state">加载失败</div>';
+                });
+        })();
+    </script>
+    <script src="/js/watermark.js"></script>
+</body>
+</html>

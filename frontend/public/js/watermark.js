@@ -1,6 +1,5 @@
 (function () {
     var WM_KEY = 'watermark_enabled';
-    var WM_USER_KEY = 'user_id';
     var WM_CACHE_KEY = 'wm_cache';
     var WM_CACHE_TIME_KEY = 'wm_cache_time';
     var CACHE_TTL = 60000; // 1分钟缓存
@@ -70,8 +69,8 @@
     }
 
     function fetchAndApply() {
-        var userId = localStorage.getItem(WM_USER_KEY);
-        if (!userId) {
+        var token = localStorage.getItem('token');
+        if (!token) {
             removeWatermarkLayer();
             return;
         }
@@ -84,9 +83,11 @@
             return;
         }
 
-        // 从 API 获取最新状态
+        // 从 API 获取最新状态（与 /api/user.php 一致，需 JWT，不再使用 URL 上的 user_id）
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', (typeof WM_API_BASE !== 'undefined' ? WM_API_BASE : '') + 'api/user.php?action=info&user_id=' + userId, true);
+        var base = typeof WM_API_BASE !== 'undefined' ? WM_API_BASE : '';
+        xhr.open('GET', base + 'api/user.php?action=info', true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 try {

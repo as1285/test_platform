@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>收入纳税明细详情</title>
     <style>
@@ -324,9 +325,7 @@
                 errEl.textContent = '缺少记录 id';
                 return;
             }
-            var userId = localStorage.getItem('user_id') || '';
-
-            fetch('api/tax.php?action=detail&id=' + encodeURIComponent(id) + '&user_id=' + encodeURIComponent(userId))
+            authFetch('api/tax.php?action=detail&id=' + encodeURIComponent(id))
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
@@ -371,14 +370,16 @@
 
         function goTaxCalculation() {
             var id = getUrlParam('id');
-            if (id) {
-                window.location.href = 'shuikuanjisuan.html?id=' + encodeURIComponent(id);
-            }
+            var y = getUrlParam('year');
+            if (!id) return;
+            var u = 'shuikuanjisuan.html?id=' + encodeURIComponent(id);
+            if (y) u += '&year=' + encodeURIComponent(y);
+            window.location.href = u;
         }
 
         initBackLink();
         loadData();
     </script>
-    <script src="js/watermark.js"></script>
+    <script src="/js/watermark.js"></script>
 </body>
 </html>

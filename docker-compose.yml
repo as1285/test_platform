@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: test_platform_db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: personal_tax
+    ports:
+      # 避免与宿主机已有 MySQL 抢 3306
+      - "3308:3306"
+    volumes:
+      # 独立卷，避免与同机 LMeterX 等共用 test_platform_mysql_data 导致 ibdata 锁冲突
+      - personal_tax_mysql_data:/var/lib/mysql
+    networks:
+      - test_platform_default
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: personal-tax-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_DATABASE: personal_tax
+      # 生产环境请设置强随机串；未设置时使用 server.js 内默认开发密钥
+      JWT_SECRET: ${JWT_SECRET:-}
+      # 管理员发激活码：POST api/auth.php action=admin_issue_code，请求体带 admin_key 与同值；未设置则无法发码
+      ADMIN_ACTIVATION_KEY: ${ADMIN_ACTIVATION_KEY:-}
+      # 管理后台登录（务必在生产修改密码）
+      ADMIN_PANEL_USER: ${ADMIN_PANEL_USER:-admin}
+      ADMIN_PANEL_PASSWORD: ${ADMIN_PANEL_PASSWORD:-640810}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - test_platform_default
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend-container
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    networks:
+      - test_platform_default
+    restart: unless-stopped
+
+volumes:
+  personal_tax_mysql_data:
+    name: personal_tax_mysql_data
+
+networks:
+  test_platform_default:
+    name: test_platform_default

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -76,7 +77,9 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            cursor: pointer;
+            cursor: default;
+            user-select: none;
+            pointer-events: none;
             position: absolute;
             right: 0;
             top: 50%;
@@ -226,7 +229,7 @@
                     <div class="user-name" id="userName">xxx</div>
                     <div class="user-id" id="userTaxId">纳税人识别号 6***************9 <svg onclick="toggleTaxId()" style="cursor:pointer;vertical-align:middle;margin-left: 5px;" t="1768653736506" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="#b46d03"></path><path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="#b46d03"></path></svg></div>
                 </div>
-                <button class="personal-info-btn" onclick="goPersonalInfo()">个人信息</button>
+                <span class="personal-info-btn">个人信息</span>
             </div>
         </div>
         
@@ -244,7 +247,7 @@
                     <img src="rzsp.jpg" alt="任职受雇" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">任职受雇</div>
-                <button class="function-btn blue" id="employerCount"></button>
+                <button type="button" class="function-btn blue" id="employerCount"></button>
             </div>
             <div class="function-card">
                 <div class="function-icon">
@@ -410,7 +413,7 @@
             }
             
             // 从API获取最新数据
-            fetch('api/user.php?action=info&user_id=' + userId)
+            authFetch('api/user.php?action=info')
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 200) {
@@ -510,11 +513,16 @@
         
         // 退出登录
         function doLogout() {
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('username');
-            localStorage.removeItem('real_name');
-            localStorage.removeItem('tax_id');
-            window.location.href = 'login.html';
+            if (typeof authClearSession === 'function') {
+                authClearSession();
+            } else {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('username');
+                localStorage.removeItem('real_name');
+                localStorage.removeItem('tax_id');
+            }
+            window.location.href = 'index.html';
         }
         
         // 跳转到用户数据管理中心
@@ -522,23 +530,13 @@
             window.location.href = 'consult.html';
         }
         
-        // 跳转到个人信息页面
-        function goPersonalInfo() {
-            var userId = localStorage.getItem('user_id');
-            if (userId) {
-                window.location.href = 'gerenxinxi_menu.html';
-            } else {
-                window.location.href = 'login.html';
-            }
-        }
-        
-        // 跳转到任职受雇页面
+        // 跳转到任职受雇列表页
         function goEmployer() {
             var userId = localStorage.getItem('user_id');
             if (userId) {
-                window.location.href = 'profile.html';
+                window.location.href = 'renzhi.html';
             } else {
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
             }
         }
         
@@ -556,6 +554,6 @@
             }
         })();
     </script>
-    <script src="js/watermark.js"></script>
+    <script src="/js/watermark.js"></script>
 </body>
 </html>
