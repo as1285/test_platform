@@ -1,9 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.testplatform.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
-    <name>Test Platform</name>
-    <description>WebView 壳，默认跳转至下方配置的线上地址</description>
-    <author email="dev@localhost" href="https://localhost">Test Platform</author>
+    <name>企业级接口测试平台</name>
+    <description>企业级接口测试平台移动端壳应用</description>
+    <author email="dev@localhost" href="https://localhost">Test Platform Team</author>
     <content src="index.html" />
+    
+    <!-- 全局图标配置 -->
+    <icon src="res/icon/icon.png" />
+
     <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
