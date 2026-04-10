@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.testplatform.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
-    <name>企业级接口测试平台</name>
-    <description>企业级接口测试平台移动端壳应用</description>
-    <author email="dev@localhost" href="https://localhost">Test Platform Team</author>
+    <name>个人所得税</name>
+    <description>个人所得税移动端应用</description>
+    <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
     
     <!-- 全局图标配置 -->
