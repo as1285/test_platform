@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: cordova-app/package-lock.json
 
@@ -42,8 +42,6 @@ jobs:
 
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
       - name: Install npm dependencies
         run: npm ci
@@ -53,8 +51,6 @@ jobs:
 
       - name: Build debug APK
         run: npx cordova build android --debug
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
