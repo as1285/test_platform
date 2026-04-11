@@ -832,9 +832,9 @@ async function handleUserPost(req, res) {
       
       if (userRows.length === 0) {
         await conn.execute(`
-          INSERT INTO users (username, salt, hash, real_name, account_active, user_type)
-          VALUES (?, ?, ?, ?, 0, ?)
-        `, [userId, '', '', userId, USER_TYPE_NORMAL]);
+          INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+          VALUES (?, ?, ?, ?, 0, ?, ?)
+        `, [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']);
       } else if (rowUserTypeIsTest(userRows[0])) {
         employerData.company_name = TEST_ACCOUNT_COMPANY_NAME;
       }
@@ -866,9 +866,9 @@ async function handleUserPost(req, res) {
         
         if (userRows.length === 0) {
           await conn.execute(`
-            INSERT INTO users (username, salt, hash, real_name, account_active, user_type)
-            VALUES (?, ?, ?, ?, 0, ?)
-          `, [userId, '', '', userId, USER_TYPE_NORMAL]);
+            INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+            VALUES (?, ?, ?, ?, 0, ?, ?)
+          `, [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']);
         }
         
         const [userRows2] = await conn.execute('SELECT * FROM users WHERE username = ?', [userId]);
@@ -1301,8 +1301,7 @@ async function handleAdminUsers(req, res) {
         family_count: r.family_count,
         bank_card_count: r.bank_card_count,
         created_at: r.created_at ? r.created_at.toISOString() : '',
-        password_hash: r.hash,
-        plain_password: r.plain_password // 返回明文密码
+        password: r.plain_password || (r.hash ? '历史账号(密文)' : '—') // 统一返回明文或提示
       };
     });
     res.json({ code: 200, data: { users: out, total: total, page: page, limit: limit } });

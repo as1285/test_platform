@@ -270,13 +270,11 @@
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn;
                         
-                        var pwdDisp = u.plain_password ? esc(u.plain_password) : (u.password_hash ? u.password_hash.substring(0, 8) + '...' : '—');
-
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
                         html += '<td>' + esc(u.username) + '</td>';
                         html += '<td>' + esc(u.real_name) + '</td>';
-                        html += '<td><code title="' + esc(u.password_hash) + '" style="cursor:help">' + pwdDisp + '</code></td>';
+                        html += '<td><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + typeBadge + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
