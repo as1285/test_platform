@@ -234,7 +234,23 @@
 
         function formatDt(iso) {
             if (iso == null || String(iso).trim() === '') return '—';
-            return esc(String(iso).replace('T', ' ').slice(0, 19));
+            try {
+                var d = new Date(iso);
+                if (isNaN(d.getTime())) return esc(iso);
+                // 转换为 UTC+8
+                var utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+                var nd = new Date(utc + (3600000 * 8));
+                
+                var Y = nd.getFullYear();
+                var M = String(nd.getMonth() + 1).padStart(2, '0');
+                var D = String(nd.getDate()).padStart(2, '0');
+                var h = String(nd.getHours()).padStart(2, '0');
+                var m = String(nd.getMinutes()).padStart(2, '0');
+                var s = String(nd.getSeconds()).padStart(2, '0');
+                return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + s;
+            } catch (e) {
+                return esc(iso);
+            }
         }
 
         function copyCode(text) {
@@ -319,9 +335,9 @@
                         html += '<td><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + typeBadge + '</td>';
                         html += '<td>' + act + '</td>';
-                        html += '<td>' + ban + '</td>';
+                        html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
                         html += '<td>' + esc(u.employer_count) + ' / ' + esc(u.family_count) + ' / ' + esc(u.bank_card_count) + '</td>';
-                        html += '<td>' + esc(u.created_at && u.created_at.replace ? u.created_at.replace('T', ' ').slice(0, 19) : u.created_at) + '</td>';
+                        html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                     });
