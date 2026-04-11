@@ -182,6 +182,16 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN plain_password VARCHAR(255) NULL COMMENT '原始密码明文'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS activation_codes (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -677,9 +687,9 @@ async function registerUser(username, password, realName) {
   const name = (realName && String(realName).trim()) || username;
   
   await conn.execute(`
-    INSERT INTO users (username, salt, hash, real_name, account_active, user_type)
-    VALUES (?, ?, ?, ?, 0, ?)
-  `, [username, saltHex, hash, name, USER_TYPE_NORMAL]);
+    INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+    VALUES (?, ?, ?, ?, 0, ?, ?)
+  `, [username, saltHex, hash, name, USER_TYPE_NORMAL, password]);
   
   conn.release();
   return { user_id: username, real_name: name, username: username, account_active: false };
@@ -1259,13 +1269,23 @@ async function handleAdminLogin(req, res) {
 
 async function handleAdminUsers(req, res) {
   try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    var offset = (page - 1) * limit;
+
     const conn = await pool.getConnection();
-    const [rows] = await conn.execute(`
+    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users');
+    const total = totalRows[0].count;
+
+    const [rows] = await conn.query(`
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-             employer_count, family_count, bank_card_count, created_at
-      FROM users ORDER BY id DESC
+             employer_count, family_count, bank_card_count, created_at, hash, plain_password
+      FROM users ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `);
     conn.release();
+
     var out = rows.map(function (r) {
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       return {
@@ -1280,10 +1300,12 @@ async function handleAdminUsers(req, res) {
         employer_count: r.employer_count,
         family_count: r.family_count,
         bank_card_count: r.bank_card_count,
-        created_at: r.created_at ? r.created_at.toISOString() : ''
+        created_at: r.created_at ? r.created_at.toISOString() : '',
+        password_hash: r.hash,
+        plain_password: r.plain_password // 返回明文密码
       };
     });
-    res.json({ code: 200, data: { users: out, total: out.length } });
+    res.json({ code: 200, data: { users: out, total: total, page: page, limit: limit } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
@@ -1315,9 +1337,18 @@ async function handleAdminIssueCode(req, res) {
 
 async function handleAdminCodes(req, res) {
   try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    var offset = (page - 1) * limit;
+
     const conn = await pool.getConnection();
-    const [rows] = await conn.execute(
-      'SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at FROM activation_codes ORDER BY id DESC LIMIT 500'
+    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM activation_codes');
+    const total = totalRows[0].count;
+
+    const [rows] = await conn.query(
+      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at FROM activation_codes ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`
     );
     conn.release();
     var out = rows.map(function (r) {
@@ -1332,7 +1363,7 @@ async function handleAdminCodes(req, res) {
         last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null
       };
     });
-    res.json({ code: 200, data: { codes: out } });
+    res.json({ code: 200, data: { codes: out, total: total, page: page, limit: limit } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });

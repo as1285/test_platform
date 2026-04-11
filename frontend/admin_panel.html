@@ -91,6 +91,23 @@
         .badge-type-test { background: #fff3e0; color: #e65100; }
         .scroll-x { overflow-x: auto; }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .pagination span { font-size: 14px; color: #666; }
+        .btn-page {
+            padding: 5px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+        }
+        .btn-page:disabled { background: #f5f5f5; color: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -132,6 +149,7 @@
                             <th>ID</th>
                             <th>账号</th>
                             <th>姓名</th>
+                            <th>密码</th>
                             <th>用户类型</th>
                             <th>激活</th>
                             <th>封禁</th>
@@ -142,6 +160,11 @@
                     </thead>
                     <tbody id="userTbody"></tbody>
                 </table>
+            </div>
+            <div class="pagination" id="userPagination">
+                <button type="button" class="btn-page" id="userPrev">上一页</button>
+                <span id="userPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="userNext">下一页</button>
             </div>
         </section>
 
@@ -165,6 +188,11 @@
                     </thead>
                     <tbody id="codeTbody"></tbody>
                 </table>
+            </div>
+            <div class="pagination" id="codePagination">
+                <button type="button" class="btn-page" id="codePrev">上一页</button>
+                <span id="codePageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="codeNext">下一页</button>
             </div>
         </section>
     </div>
@@ -208,13 +236,26 @@
             document.body.removeChild(ta);
         }
 
-        function loadUsers() {
-            adminFetch('api/admin/users')
+        var userPage = 1;
+        var userLimit = 10;
+        var codePage = 1;
+        var codeLimit = 10;
+
+        function loadUsers(p) {
+            if (p != null) userPage = p;
+            adminFetch('api/admin/users?page=' + userPage + '&limit=' + userLimit)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
-                    document.getElementById('userStat').textContent = '共 ' + (data.data.total || list.length) + ' 个账号';
+                    var total = data.data.total || 0;
+                    document.getElementById('userStat').textContent = '共 ' + total + ' 个账号';
+                    
+                    var totalPages = Math.ceil(total / userLimit) || 1;
+                    document.getElementById('userPageInfo').textContent = '第 ' + userPage + ' 页 / 共 ' + totalPages + ' 页';
+                    document.getElementById('userPrev').disabled = userPage <= 1;
+                    document.getElementById('userNext').disabled = userPage >= totalPages;
+
                     var html = '';
                     list.forEach(function (u) {
                         var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
@@ -228,10 +269,14 @@
                         var ops = (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn;
+                        
+                        var pwdDisp = u.plain_password ? esc(u.plain_password) : (u.password_hash ? u.password_hash.substring(0, 8) + '...' : '—');
+
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
                         html += '<td>' + esc(u.username) + '</td>';
                         html += '<td>' + esc(u.real_name) + '</td>';
+                        html += '<td><code title="' + esc(u.password_hash) + '" style="cursor:help">' + pwdDisp + '</code></td>';
                         html += '<td>' + typeBadge + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
@@ -240,9 +285,11 @@
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
+                    
+                    // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
-                        btn.addEventListener('click', function () {
+                        btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var b = btn.getAttribute('data-b') === '1';
                             var tip = b ? '确定封禁「' + name + '」？' : '确定解封「' + name + '」？';
@@ -260,10 +307,10 @@
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
-                        });
+                        };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-type').forEach(function (btn) {
-                        btn.addEventListener('click', function () {
+                        btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var t = parseInt(btn.getAttribute('data-t'), 10);
                             var tip = t === 1
@@ -283,7 +330,7 @@
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
-                        });
+                        };
                     });
                 })
                 .catch(function () {
@@ -291,12 +338,20 @@
                 });
         }
 
-        function loadCodes() {
-            adminFetch('api/admin/codes')
+        function loadCodes(p) {
+            if (p != null) codePage = p;
+            adminFetch('api/admin/codes?page=' + codePage + '&limit=' + codeLimit)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.codes || [];
+                    var total = data.data.total || 0;
+                    
+                    var totalPages = Math.ceil(total / codeLimit) || 1;
+                    document.getElementById('codePageInfo').textContent = '第 ' + codePage + ' 页 / 共 ' + totalPages + ' 页';
+                    document.getElementById('codePrev').disabled = codePage <= 1;
+                    document.getElementById('codeNext').disabled = codePage >= totalPages;
+
                     var html = '';
                     list.forEach(function (c) {
                         var exp = c.expires_at ? formatDt(c.expires_at) : '—';
@@ -320,6 +375,11 @@
                 })
                 .catch(function () {});
         }
+
+        document.getElementById('userPrev').onclick = function() { if (userPage > 1) loadUsers(userPage - 1); };
+        document.getElementById('userNext').onclick = function() { loadUsers(userPage + 1); };
+        document.getElementById('codePrev').onclick = function() { if (codePage > 1) loadCodes(codePage - 1); };
+        document.getElementById('codeNext').onclick = function() { loadCodes(codePage + 1); };
 
         document.getElementById('codeTbody').addEventListener('click', function (e) {
             var btn = e.target.closest('.btn-copy-code');
@@ -348,7 +408,7 @@
                         var el = document.getElementById('issueOut');
                         el.textContent = '激活码：' + data.data.code + '（max_uses=' + data.data.max_uses + '）';
                         el.classList.add('show');
-                        loadCodes();
+                        loadCodes(1);
                     } else {
                         alert(data.msg || '生成失败');
                     }
@@ -357,10 +417,10 @@
                 .finally(function () { btn.disabled = false; });
         });
 
-        document.getElementById('btnRefreshCodes').addEventListener('click', loadCodes);
+        document.getElementById('btnRefreshCodes').addEventListener('click', function() { loadCodes(1); });
 
-        loadUsers();
-        loadCodes();
+        loadUsers(1);
+        loadCodes(1);
     </script>
 </body>
 </html>
