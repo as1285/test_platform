@@ -141,6 +141,36 @@
 
         <section>
             <h2>注册用户</h2>
+            <div class="form-row" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+                <div>
+                    <label>账号</label>
+                    <input type="text" id="filterUsername" placeholder="搜索账号" style="width: 140px;">
+                </div>
+                <div>
+                    <label>姓名</label>
+                    <input type="text" id="filterRealName" placeholder="搜索姓名" style="width: 140px;">
+                </div>
+                <div>
+                    <label>激活状态</label>
+                    <select id="filterActive" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px; background: white;">
+                        <option value="">全部</option>
+                        <option value="1">已激活</option>
+                        <option value="0">未激活</option>
+                    </select>
+                </div>
+                <div>
+                    <label>封禁状态</label>
+                    <select id="filterBanned" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px; background: white;">
+                        <option value="">全部</option>
+                        <option value="1">已封禁</option>
+                        <option value="0">正常</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
+                    <button type="button" class="btn-page" id="btnResetUsers">重置</button>
+                </div>
+            </div>
             <p class="stat" id="userStat">加载中…</p>
             <div class="scroll-x">
                 <table>
@@ -243,7 +273,19 @@
 
         function loadUsers(p) {
             if (p != null) userPage = p;
-            adminFetch('api/admin/users?page=' + userPage + '&limit=' + userLimit)
+            
+            var username = document.getElementById('filterUsername').value.trim();
+            var realName = document.getElementById('filterRealName').value.trim();
+            var active = document.getElementById('filterActive').value;
+            var banned = document.getElementById('filterBanned').value;
+
+            var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (realName) url += '&real_name=' + encodeURIComponent(realName);
+            if (active !== '') url += '&active=' + active;
+            if (banned !== '') url += '&banned=' + banned;
+
+            adminFetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
@@ -376,6 +418,16 @@
 
         document.getElementById('userPrev').onclick = function() { if (userPage > 1) loadUsers(userPage - 1); };
         document.getElementById('userNext').onclick = function() { loadUsers(userPage + 1); };
+        
+        document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
+        document.getElementById('btnResetUsers').onclick = function() {
+            document.getElementById('filterUsername').value = '';
+            document.getElementById('filterRealName').value = '';
+            document.getElementById('filterActive').value = '';
+            document.getElementById('filterBanned').value = '';
+            loadUsers(1);
+        };
+
         document.getElementById('codePrev').onclick = function() { if (codePage > 1) loadCodes(codePage - 1); };
         document.getElementById('codeNext').onclick = function() { loadCodes(codePage + 1); };
 

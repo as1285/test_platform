@@ -1275,15 +1275,43 @@ async function handleAdminUsers(req, res) {
     if (limit < 1) limit = 10;
     var offset = (page - 1) * limit;
 
+    // 筛选参数
+    var qUsername = req.query.username || '';
+    var qRealName = req.query.real_name || '';
+    var qActive = req.query.active; // '1' or '0'
+    var qBanned = req.query.banned; // '1' or '0'
+
+    let whereClauses = [];
+    let params = [];
+
+    if (qUsername) {
+      whereClauses.push('username LIKE ?');
+      params.push(`%${qUsername}%`);
+    }
+    if (qRealName) {
+      whereClauses.push('real_name LIKE ?');
+      params.push(`%${qRealName}%`);
+    }
+    if (qActive === '1' || qActive === '0') {
+      whereClauses.push('account_active = ?');
+      params.push(qActive === '1' ? 1 : 0);
+    }
+    if (qBanned === '1' || qBanned === '0') {
+      whereClauses.push('banned = ?');
+      params.push(qBanned === '1' ? 1 : 0);
+    }
+
+    let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
+
     const conn = await pool.getConnection();
-    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users');
+    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
     const total = totalRows[0].count;
 
     const [rows] = await conn.query(`
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
              employer_count, family_count, bank_card_count, created_at, hash, plain_password
-      FROM users ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
-    `);
+      FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
+    `, params);
     conn.release();
 
     var out = rows.map(function (r) {
