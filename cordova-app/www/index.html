@@ -2,23 +2,38 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
     <title>加载中</title>
     <style>
-        body { font-family: system-ui, sans-serif; padding: 24px; text-align: center; color: #666; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+        #app-frame { border: 0; width: 100%; height: 100%; display: block; }
     </style>
     <script>
         (function () {
+            // 远程站点 URL。若可配置 HTTPS，建议改用 https://，iframe 内子页面也会更「干净」。
             var APP_ORIGIN = 'http://139.199.191.204/';
             if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
-                document.body.innerHTML = '<p>请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 为实际站点 URL 后重新打包 APK。</p>';
+                document.body.innerHTML = '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 为实际站点 URL 后重新打包 APK。</p>';
                 return;
             }
-            window.location.replace(APP_ORIGIN);
+            // 使用全屏 iframe 嵌入远程页，主文档仍停留在壳内资源，避免「整页跳转到 http」时
+            // WebView 在顶部对主框架显示「不安全」等系统级连接提示（与用 location.replace 打开不同）。
+            function mount() {
+                var f = document.createElement('iframe');
+                f.id = 'app-frame';
+                f.setAttribute('title', '应用');
+                f.setAttribute('importance', 'high');
+                f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+                f.src = APP_ORIGIN;
+                document.body.appendChild(f);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', mount);
+            } else {
+                mount();
+            }
         })();
     </script>
 </head>
-<body>
-    <p>正在打开应用…</p>
-</body>
+<body></body>
 </html>
