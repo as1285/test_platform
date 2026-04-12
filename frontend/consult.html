@@ -16,12 +16,12 @@
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: calc(40px + env(safe-area-inset-top, 0px)) 16px 20px;
+            padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 10px;
             text-align: center;
             position: relative;
         }
-        .header h1 { font-size: 18px; font-weight: 500; }
-        .header .user-name { font-size: 14px; opacity: 0.9; margin-top: 8px; }
+        .header h1 { font-size: 14px; font-weight: 500; line-height: 1.25; }
+        .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 4px; line-height: 1.25; }
 
         .tabs {
             display: flex;
@@ -162,10 +162,12 @@
             align-items: center;
             color: #fff;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 12px;
             position: absolute;
-            left: 16px;
-            top: calc(40px + env(safe-area-inset-top, 0px));
+            left: 12px;
+            top: calc(20px + env(safe-area-inset-top, 0px));
+            max-width: 46%;
+            line-height: 1.2;
         }
 
         .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }

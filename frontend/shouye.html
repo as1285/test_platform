@@ -177,7 +177,30 @@
             transform: translateY(-100%);
         }
 
-        
+        /* 置顶服务三卡片：按图比例铺热区，覆盖「去申报 / 去查询 / 去开具」等（避免固定 px + 小圆区点不中） */
+        .svc-cards-wrap {
+            position: relative;
+            display: block;
+        }
+        .svc-cards-wrap > img {
+            width: 100%;
+            display: block;
+            vertical-align: top;
+        }
+        .svc-hot {
+            position: absolute;
+            z-index: 4;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+            background: transparent;
+            top: 40%;
+            bottom: 1%;
+        }
+        .svc-hot-left { left: 0; width: 33.33%; }
+        .svc-hot-mid { left: 33.33%; width: 33.33%; }
+        .svc-hot-right { left: 66.66%; width: 33.34%; }
+
         </style>
     <link rel="stylesheet" href="css/nav.css">
 </head>
@@ -220,8 +243,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- 收入纳税明细点击区域 -->
-                <a href="shuiming.html?reset=1" style="position: absolute; top: 380px; left: 50%; transform: translateX(-50%); width: 180px; height: 120px; background: transparent; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
                 <script>
                 (function() {
                     var row0 = document.getElementById('noticeRow0');
@@ -300,11 +321,11 @@
                 })();
                 </script>
             </div>
-            <div style="position: relative;">
-                <img src="zdfwdb.jpg" alt="置顶服务" style="width: 100%; display: block;">
-                <a href="zonghe.html" style="position: absolute; top: 250px; left: calc(50% - 120px); transform: translateX(-50%); width: 100px; height: 100px; background: transparent; border-radius: 50%; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
-                <a href="shuiming.html?reset=1" style="position: absolute; top: 250px; left: 50%; transform: translateX(-50%); width: 100px; height: 100px; background: transparent; border-radius: 50%; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
-                <a href="najilu.html" style="position: absolute; top: 250px; left: calc(50% + 120px); transform: translateX(-50%); width: 100px; height: 100px; background: transparent; border-radius: 50%; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
+            <div class="svc-cards-wrap">
+                <img src="zdfwdb.jpg" alt="置顶服务">
+                <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
+                <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
+                <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
             </div>
         </div>
         <div class="shouye-content">
