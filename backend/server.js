@@ -1309,7 +1309,7 @@ async function handleAdminUsers(req, res) {
 
     const [rows] = await conn.query(`
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-             employer_count, family_count, bank_card_count, created_at, hash, plain_password
+             created_at, hash, plain_password
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `, params);
     conn.release();
@@ -1325,9 +1325,6 @@ async function handleAdminUsers(req, res) {
         banned: r.banned === 1 || r.banned === true,
         user_type: ut,
         is_test_account: ut === USER_TYPE_TEST,
-        employer_count: r.employer_count,
-        family_count: r.family_count,
-        bank_card_count: r.bank_card_count,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password: r.plain_password || (r.hash ? '历史账号(密文)' : '—') // 统一返回明文或提示
       };
@@ -1453,12 +1450,50 @@ async function handleAdminUserType(req, res) {
   }
 }
 
+/** 永久删除用户及其任职受雇、税务记录、消息（不可恢复） */
+async function handleAdminDeleteUser(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能删除保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute('SELECT id FROM users WHERE username = ?', [target]);
+    if (urows.length === 0) {
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    await conn.beginTransaction();
+    await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [target]);
+    await conn.execute('DELETE FROM employers WHERE user_id = ?', [target]);
+    await conn.execute('DELETE FROM messages WHERE user_id = ?', [target]);
+    await conn.execute('DELETE FROM users WHERE username = ?', [target]);
+    await conn.commit();
+    conn.release();
+    return res.json({ code: 200, data: { username: target, deleted: true } });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rbErr) {
+      console.error(rbErr);
+    }
+    conn.release();
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
 app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);
 app.get('/api/admin/codes', requireAdminAuth, handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, handleAdminBan);
 app.post('/api/admin/user-type', requireAdminAuth, handleAdminUserType);
+app.post('/api/admin/user-delete', requireAdminAuth, handleAdminDeleteUser);
 
 function healthHandler(req, res) {
   res.json({ ok: true });

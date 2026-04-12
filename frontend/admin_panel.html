@@ -69,6 +69,7 @@
         .btn-ban { background: #e53935; color: #fff; }
         .btn-unban { background: #43a047; color: #fff; }
         .btn-copy { background: #5c6bc0; color: #fff; white-space: nowrap; }
+        .btn-del-user { background: #8d6e63; color: #fff; white-space: nowrap; }
         .hint { font-size: 12px; color: #888; margin-top: 8px; }
         .code-result {
             margin-top: 12px;
@@ -183,7 +184,6 @@
                             <th>用户类型</th>
                             <th>激活</th>
                             <th>封禁</th>
-                            <th>任职/家庭/卡</th>
                             <th>注册时间</th>
                             <th>操作</th>
                         </tr>
@@ -326,7 +326,8 @@
                             : '<button type="button" class="btn-sm btn-copy btn-user-type" data-u="' + esc(u.username) + '" data-t="1">设为测试</button>';
                         var ops = (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
-                            : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn;
+                            : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn
+                            + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除账号</button>';
                         
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
@@ -336,12 +337,11 @@
                         html += '<td>' + typeBadge + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
-                        html += '<td>' + esc(u.employer_count) + ' / ' + esc(u.family_count) + ' / ' + esc(u.bank_card_count) + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
@@ -383,6 +383,25 @@
                                         loadUsers();
                                     } else {
                                         alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-delete-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            if (!confirm('确定永久删除账号「' + name + '」？\n将同时删除其任职受雇、税务记录、消息等数据，且不可恢复。')) return;
+                            adminFetch('api/admin/user-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '删除失败');
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
