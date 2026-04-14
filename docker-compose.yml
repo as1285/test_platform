@@ -50,7 +50,7 @@ services:
       context: ./frontend
     container_name: frontend-container
     ports:
-      - "8081:80"
+      - "80:80"
     depends_on:
       - backend
     networks:
