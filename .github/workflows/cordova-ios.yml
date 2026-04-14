@@ -1,0 +1,67 @@
+# 构建 iOS Debug APK（供自测 / 内部分发）
+# 产物：Artifacts → ios-debug-ipa → app-debug.ipa
+# 本地：cd cordova-app && npx cordova build ios --debug
+name: Cordova iOS Debug Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+    paths:
+      - "cordova-app/**"
+      - ".github/workflows/cordova-ios.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: cordova-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: cordova-app/package-lock.json
+
+      - name: Setup Xcode
+        uses: maxim-loburkov/setup-xcode@v2
+        with:
+          xcode-version: "15.3"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx cordova telemetry off
+
+      - name: Add iOS platform
+        run: npx cordova platform add ios@13 --no-interactive
+
+      - name: Build debug IPA
+        run: npx cordova build ios --debug
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-debug-ipa
+          path: cordova-app/platforms/ios/build/device/*.ipa
+          if-no-files-found: error
+
+      - name: Create GitHub Release and upload IPA
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        with:
+          tag_name: v${{ github.run_number }}-ios
+          name: Debug iOS Build ${{ github.run_number }}
+          body: Automatically generated debug iOS build
+          draft: false
+          prerelease: true
+          files: cordova-app/platforms/ios/build/device/*.ipa
