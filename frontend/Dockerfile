@@ -28,6 +28,10 @@ COPY zonghe.html /usr/share/nginx/html/
 COPY najilu.html /usr/share/nginx/html/
 COPY renzhi.html /usr/share/nginx/html/
 COPY renzhi_detail.html /usr/share/nginx/html/
+COPY personal_info.html /usr/share/nginx/html/
+COPY gerenxinxi.html /usr/share/nginx/html/
+COPY tax_benefit.html /usr/share/nginx/html/
+COPY other_id.html /usr/share/nginx/html/
 COPY index.html /usr/share/nginx/html/index.html
 COPY index.html /usr/share/nginx/html/login.html
 COPY caidan /usr/share/nginx/html/caidan/
@@ -41,6 +45,7 @@ COPY nx.jpg /usr/share/nginx/html/
 COPY lb.jpg /usr/share/nginx/html/
 COPY ld.png /usr/share/nginx/html/
 COPY jt.png /usr/share/nginx/html/
+COPY message_item_icon.png /usr/share/nginx/html/
 COPY sydb.jpg /usr/share/nginx/html/
 COPY zdb.jpg /usr/share/nginx/html/
 COPY zdfwdb.jpg /usr/share/nginx/html/

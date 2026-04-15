@@ -122,22 +122,10 @@
         <section>
             <h2>生成激活码</h2>
             <div class="form-row">
-                <div>
-                    <label>可激活次数</label>
-                    <input type="number" id="issueMax" value="1" min="1" max="99999">
-                </div>
-                <div>
-                    <label>过期时间（可选，如 2027-12-31 23:59:59）</label>
-                    <input type="text" id="issueExp" placeholder="留空表示不过期">
-                </div>
-                <div style="flex:1; min-width:200px;">
-                    <label>备注</label>
-                    <input type="text" id="issueNote" placeholder="用途说明">
-                </div>
                 <button type="button" class="btn-primary" id="btnIssue">生成</button>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">生成后请复制保存；同一码可多次使用直至次数用尽（按 max_uses）。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；生成后请复制保存。</p>
         </section>
 
         <section>
@@ -208,11 +196,8 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
-                            <th>次数</th>
-                            <th>已用</th>
+                            <th>已用次数</th>
                             <th>使用时间</th>
-                            <th>过期</th>
-                            <th>备注</th>
                             <th>创建时间</th>
                         </tr>
                     </thead>
@@ -429,7 +414,6 @@
 
                     var html = '';
                     list.forEach(function (c) {
-                        var exp = c.expires_at ? formatDt(c.expires_at) : '—';
                         var usedAt =
                             c.last_used_at && (Number(c.used_count) > 0)
                                 ? formatDt(c.last_used_at)
@@ -438,15 +422,12 @@
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
-                        html += '<td>' + esc(c.max_uses) + '</td>';
                         html += '<td>' + esc(c.used_count) + '</td>';
                         html += '<td>' + usedAt + '</td>';
-                        html += '<td>' + exp + '</td>';
-                        html += '<td>' + esc(c.note) + '</td>';
                         html += '<td>' + formatDt(c.created_at) + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="9">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }
@@ -474,24 +455,17 @@
         });
 
         document.getElementById('btnIssue').addEventListener('click', function () {
-            var maxUses = parseInt(document.getElementById('issueMax').value, 10) || 1;
-            var exp = document.getElementById('issueExp').value.trim();
-            var note = document.getElementById('issueNote').value.trim();
             var btn = document.getElementById('btnIssue');
             btn.disabled = true;
             adminFetch('api/admin/issue-code', {
                 method: 'POST',
-                body: JSON.stringify({
-                    max_uses: maxUses,
-                    expires_at: exp || null,
-                    note: note || null
-                })
+                body: JSON.stringify({})
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.code) {
                         var el = document.getElementById('issueOut');
-                        el.textContent = '激活码：' + data.data.code + '（max_uses=' + data.data.max_uses + '）';
+                        el.textContent = '激活码：' + data.data.code + '（单次有效，仅可激活一个账号）';
                         el.classList.add('show');
                         loadCodes(1);
                     } else {

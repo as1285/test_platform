@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人信息</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        html::-webkit-scrollbar, body::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        .back-btn span:first-child {
+            font-size: 23px;
+            margin-right: 2px;
+        }
+
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .section-title {
+            padding: 20px 16px 12px;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 15px;
+            background: #1e6fff;
+            border-radius: 1.5px;
+        }
+
+        .info-card {
+            background: #fff;
+            margin: 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            min-height: 50px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-size: 16px;
+            color: #333;
+            flex-shrink: 0;
+            width: 120px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            text-align: left;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            margin-left: -5px;
+        }
+
+        .info-value.placeholder span {
+            color: #c0c0c0;
+        }
+
+        .info-arrow {
+            color: #ccc;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .info-link {
+            color: #1e6fff;
+            font-size: 14px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="personal_info.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">个人信息</span>
+    </div>
+
+    <div class="section-title">用户基础信息</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">姓名</span>
+            <div class="info-value">
+                <span id="realName">--</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">证件类型</span>
+            <div class="info-value">
+                <span id="idType">居民身份证</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">证件号码</span>
+            <div class="info-value">
+                <span id="idNumber">--</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">纳税人识别号</span>
+            <div class="info-value">
+                <span id="taxId">--</span>
+                <a href="javascript:;" class="info-link" onclick="viewTaxId()">查看</a>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">出生日期</span>
+            <div class="info-value">
+                <span id="birthDate">--</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">性别</span>
+            <div class="info-value">
+                <span id="gender">--</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">国籍(地区)</span>
+            <div class="info-value">
+                <span id="nationality">中华人民共和国</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">户籍所在地</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">所在地区</span>
+            <div class="info-value" id="hujiFullWrap">
+                <span id="hujiFull">--</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">详细地址</span>
+            <div class="info-value placeholder" id="hujiDetailWrap">
+                <span id="hujiDetail">请填写小区、楼栋、单元室等</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">经常居住地</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">所在地区</span>
+            <div class="info-value placeholder" id="livingAreaWrap">
+                <span id="livingArea">请选择</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">详细地址</span>
+            <div class="info-value placeholder" id="livingDetailWrap">
+                <span id="livingDetail">请填写小区、楼栋、单元室等</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">联系地址</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">所在地区</span>
+            <div class="info-value placeholder" id="contactAreaWrap">
+                <span id="contactArea">请选择</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">详细地址</span>
+            <div class="info-value placeholder" id="contactDetailWrap">
+                <span id="contactDetail">请填写小区、楼栋、单元室等</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">其他</div>
+    <div class="info-card">
+        <div class="info-row">
+            <span class="info-label">学历</span>
+            <div class="info-value placeholder" id="educationWrap">
+                <span id="education">请选择</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">民族</span>
+            <div class="info-value placeholder" id="ethnicityWrap">
+                <span id="ethnicity">请选择</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+        <div class="info-row">
+            <span class="info-label">电子邮箱</span>
+            <div class="info-value placeholder" id="emailWrap">
+                <span id="email">请填写</span>
+                <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var lastTaxId = '';
+
+        function maskId(num) {
+            if (!num || String(num).length < 2) {
+                return '--';
+            }
+            var s = String(num);
+            return s.substring(0, 1) + '***************' + s.substring(s.length - 1);
+        }
+
+        function birthFromId18(idStr) {
+            if (!idStr || String(idStr).length !== 18) {
+                return '';
+            }
+            var d = String(idStr).substring(6, 14);
+            if (!/^\d{8}$/.test(d)) {
+                return '';
+            }
+            return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
+        }
+
+        function viewTaxId() {
+            var taxId = lastTaxId || localStorage.getItem('tax_id');
+            if (taxId) {
+                alert('纳税人识别号: ' + taxId);
+            } else {
+                alert('暂无纳税人识别号');
+            }
+        }
+
+        function setPlaceholder(wrapId, spanId, value, emptyPlaceholder) {
+            var span = document.getElementById(spanId);
+            var wrap = document.getElementById(wrapId);
+            if (!span || !wrap) {
+                return;
+            }
+            var v = value != null ? String(value).trim() : '';
+            if (v) {
+                span.textContent = v;
+                wrap.classList.remove('placeholder');
+            } else {
+                span.textContent = emptyPlaceholder;
+                wrap.classList.add('placeholder');
+            }
+        }
+
+        function loadUserInfo() {
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            authFetch('api/user.php?action=info')
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        return;
+                    }
+                    var user = data.data;
+                    lastTaxId = user.tax_id || '';
+
+                    document.getElementById('realName').textContent = user.real_name || '--';
+                    document.getElementById('idType').textContent = user.id_type || '居民身份证';
+
+                    if (user.tax_id) {
+                        document.getElementById('idNumber').textContent = maskId(user.tax_id);
+                        document.getElementById('taxId').textContent = maskId(user.tax_id);
+                    }
+
+                    var birth = user.birth_date || '';
+                    if (!birth && user.tax_id) {
+                        birth = birthFromId18(user.tax_id);
+                    }
+                    document.getElementById('birthDate').textContent = birth || '--';
+
+                    var genderText = '--';
+                    if (user.gender == 1) {
+                        genderText = '男性';
+                    } else if (user.gender == 2) {
+                        genderText = '女性';
+                    }
+                    document.getElementById('gender').textContent = genderText;
+
+                    document.getElementById('nationality').textContent = user.nationality || '中华人民共和国';
+
+                    if (user.huji_area) {
+                        document.getElementById('hujiFull').textContent = user.huji_area;
+                        document.getElementById('hujiFullWrap').classList.remove('placeholder');
+                    }
+                    setPlaceholder('hujiDetailWrap', 'hujiDetail', user.huji_detail, '请填写小区、楼栋、单元室等');
+
+                    setPlaceholder('livingAreaWrap', 'livingArea', user.living_area, '请选择');
+                    setPlaceholder('livingDetailWrap', 'livingDetail', user.living_detail, '请填写小区、楼栋、单元室等');
+
+                    setPlaceholder('contactAreaWrap', 'contactArea', user.contact_area, '请选择');
+                    setPlaceholder('contactDetailWrap', 'contactDetail', user.contact_detail, '请填写小区、楼栋、单元室等');
+
+                    setPlaceholder('educationWrap', 'education', user.education, '请选择');
+                    setPlaceholder('ethnicityWrap', 'ethnicity', user.ethnicity, '请选择');
+                    setPlaceholder('emailWrap', 'email', user.email, '请填写');
+
+                    try {
+                        if (user.tax_id) {
+                            localStorage.setItem('tax_id', user.tax_id);
+                        }
+                    } catch (e) {}
+                })
+                .catch(function (error) {
+                    console.error('加载用户信息失败:', error);
+                });
+        }
+
+        loadUserInfo();
+    </script>
+    <script src="/js/watermark.js"></script>
+</body>
+</html>

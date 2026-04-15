@@ -216,6 +216,30 @@ async function createTables() {
     }
   }
 
+  var profileCols = [
+    "ALTER TABLE users ADD COLUMN id_type VARCHAR(64) NULL COMMENT '证件类型'",
+    "ALTER TABLE users ADD COLUMN birth_date VARCHAR(32) NULL COMMENT '出生日期'",
+    "ALTER TABLE users ADD COLUMN nationality VARCHAR(128) NULL COMMENT '国籍'",
+    "ALTER TABLE users ADD COLUMN huji_area VARCHAR(255) NULL COMMENT '户籍所在地区'",
+    "ALTER TABLE users ADD COLUMN huji_detail VARCHAR(512) NULL COMMENT '户籍详细地址'",
+    "ALTER TABLE users ADD COLUMN living_area VARCHAR(255) NULL COMMENT '经常居住地地区'",
+    "ALTER TABLE users ADD COLUMN living_detail VARCHAR(512) NULL COMMENT '经常居住地详细'",
+    "ALTER TABLE users ADD COLUMN contact_area VARCHAR(255) NULL COMMENT '联系地址地区'",
+    "ALTER TABLE users ADD COLUMN contact_detail VARCHAR(512) NULL COMMENT '联系地址详细'",
+    "ALTER TABLE users ADD COLUMN education VARCHAR(64) NULL COMMENT '学历'",
+    "ALTER TABLE users ADD COLUMN ethnicity VARCHAR(64) NULL COMMENT '民族'",
+    "ALTER TABLE users ADD COLUMN email VARCHAR(255) NULL COMMENT '电子邮箱'"
+  ];
+  for (var pi = 0; pi < profileCols.length; pi++) {
+    try {
+      await conn.execute(profileCols[pi]);
+    } catch (e) {
+      if (e.errno !== 1060) {
+        throw e;
+      }
+    }
+  }
+
   conn.release();
 }
 
@@ -758,6 +782,18 @@ async function getUserInfoForApi(userId) {
     user_type: USER_TYPE_NORMAL,
     is_test_account: false,
     test_company_locked_name: TEST_ACCOUNT_COMPANY_NAME,
+    id_type: '居民身份证',
+    birth_date: '',
+    nationality: '中华人民共和国',
+    huji_area: '',
+    huji_detail: '',
+    living_area: '',
+    living_detail: '',
+    contact_area: '',
+    contact_detail: '',
+    education: '',
+    ethnicity: '',
+    email: '',
     employers: []
   };
   
@@ -767,6 +803,13 @@ async function getUserInfoForApi(userId) {
   
   const rec = rows[0];
   var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
+  function profileStr(field, fallback) {
+    var v = rec[field];
+    if (v == null || String(v).trim() === '') {
+      return fallback != null ? fallback : '';
+    }
+    return String(v);
+  }
   return {
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
     tax_id: rec.tax_id != null ? String(rec.tax_id) : defaults.tax_id,
@@ -778,6 +821,18 @@ async function getUserInfoForApi(userId) {
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
     test_company_locked_name: TEST_ACCOUNT_COMPANY_NAME,
+    id_type: profileStr('id_type', '居民身份证'),
+    birth_date: profileStr('birth_date', ''),
+    nationality: profileStr('nationality', '中华人民共和国'),
+    huji_area: profileStr('huji_area', ''),
+    huji_detail: profileStr('huji_detail', ''),
+    living_area: profileStr('living_area', ''),
+    living_detail: profileStr('living_detail', ''),
+    contact_area: profileStr('contact_area', ''),
+    contact_detail: profileStr('contact_detail', ''),
+    education: profileStr('education', ''),
+    ethnicity: profileStr('ethnicity', ''),
+    email: profileStr('email', ''),
     employers: employerRows
   };
 }
@@ -1208,19 +1263,17 @@ async function handleAuthPost(req, res) {
       if (!ADMIN_ACTIVATION_KEY || adm !== ADMIN_ACTIVATION_KEY) {
         return res.status(403).json({ code: 403, msg: '无权限发码（需配置 ADMIN_ACTIVATION_KEY）' });
       }
-      var maxUses = Math.max(1, parseInt(body.max_uses, 10) || 1);
-      var note = body.note != null ? String(body.note).slice(0, 255) : null;
-      var expiresAt = body.expires_at != null && String(body.expires_at).trim() !== '' ? String(body.expires_at).trim() : null;
+      var maxUses = 1;
       var plainCode = crypto.randomBytes(16).toString('hex').toUpperCase();
       const conn = await pool.getConnection();
       await conn.execute(
         'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note) VALUES (?, ?, 0, ?, ?)',
-        [plainCode, maxUses, expiresAt, note]
+        [plainCode, maxUses, null, null]
       );
       conn.release();
       return res.json({
         code: 200,
-        data: { code: plainCode, max_uses: maxUses, expires_at: expiresAt, note: note }
+        data: { code: plainCode, max_uses: maxUses }
       });
     }
     if (action === 'register') {
@@ -1337,21 +1390,18 @@ async function handleAdminUsers(req, res) {
 }
 
 async function handleAdminIssueCode(req, res) {
-  var body = req.body || {};
   try {
-    var maxUses = Math.max(1, parseInt(body.max_uses, 10) || 1);
-    var note = body.note != null ? String(body.note).slice(0, 255) : null;
-    var expiresAt = body.expires_at != null && String(body.expires_at).trim() !== '' ? String(body.expires_at).trim() : null;
+    var maxUses = 1;
     var plainCode = crypto.randomBytes(16).toString('hex').toUpperCase();
     const conn = await pool.getConnection();
     await conn.execute(
       'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note) VALUES (?, ?, 0, ?, ?)',
-      [plainCode, maxUses, expiresAt, note]
+      [plainCode, maxUses, null, null]
     );
     conn.release();
     return res.json({
       code: 200,
-      data: { code: plainCode, max_uses: maxUses, expires_at: expiresAt, note: note }
+      data: { code: plainCode, max_uses: maxUses }
     });
   } catch (e) {
     console.error(e);
