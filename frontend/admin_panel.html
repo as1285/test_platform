@@ -169,7 +169,7 @@
                             <th>账号</th>
                             <th>姓名</th>
                             <th>密码</th>
-                            <th>用户类型</th>
+                            <th>用户登录的城市</th>
                             <th>激活</th>
                             <th>封禁</th>
                             <th>注册时间</th>
@@ -303,9 +303,9 @@
                     list.forEach(function (u) {
                         var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
-                        var typeBadge = u.is_test_account
-                            ? '<span class="badge badge-type-test">测试账号</span>'
-                            : '<span class="badge badge-yes">普通账号</span>';
+                        var loginCity = u.last_login_city
+                            ? esc(u.last_login_city)
+                            : '<span style="color:#999">—</span>';
                         var typeBtn = u.is_test_account
                             ? '<button type="button" class="btn-sm btn-unban btn-user-type" data-u="' + esc(u.username) + '" data-t="0">设为普通</button>'
                             : '<button type="button" class="btn-sm btn-copy btn-user-type" data-u="' + esc(u.username) + '" data-t="1">设为测试</button>';
@@ -319,7 +319,7 @@
                         html += '<td>' + esc(u.username) + '</td>';
                         html += '<td>' + esc(u.real_name) + '</td>';
                         html += '<td><code>' + esc(u.password) + '</code></td>';
-                        html += '<td>' + typeBadge + '</td>';
+                        html += '<td>' + loginCity + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';

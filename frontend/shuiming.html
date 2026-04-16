@@ -72,38 +72,48 @@
             border-radius: 2px;
         }
         
-        /* 年度选择 */
+        /* 年度选择：三栏 flex，左右箭头用 SVG，避免系统字体 > 粗细不一 */
         .year-select {
             background: #fff;
             margin: 0 16px;
             border-radius: 8px;
-            padding: 14px 16px;
+            padding: 14px 12px 14px 16px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            position: relative;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 48px;
         }
         
         .year-label {
             font-size: 15px;
             color: #333;
-            position: absolute;
-            left: 32px;
+            flex: 0 0 auto;
         }
         
         .year-value {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #000000;
+            flex: 1;
+            text-align: center;
+            color: #000;
             font-size: 15px;
+            font-weight: 400;
         }
         
-        .year-value .arrow {
-            color: #ccc;
-            font-size: 17px;
-            position: absolute;
-            right: 10px;
+        .year-chevron-wrap {
+            flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .year-chevron {
+            width: 18px;
+            height: 18px;
+            color: #c8c8c8;
+            flex-shrink: 0;
         }
         
         /* 所得类型列表 */
@@ -140,26 +150,57 @@
             height: 14px;
         }
         
+        /* 未选中的空心圆（与参考图一致） */
+        .check-icon.check-off {
+            background: transparent;
+            border: 2px solid #ccc;
+            box-sizing: border-box;
+        }
+        .check-icon.check-off svg {
+            display: none;
+        }
+        
         .type-text {
             font-size: 15px;
             color: #333;
         }
         
-        /* 其他类型 */
-        .other-types {
+        .income-types-extra {
+            display: none;
+        }
+        .income-types-extra.is-open {
+            display: block;
+        }
+        
+        /* 展开 / 收起：SVG 双箭头，避免 ︾ 等 Unicode 在各机型基线/字号不一致 */
+        .type-toggle {
             text-align: center;
-            padding: 16px;
+            padding: 14px 16px 16px;
             color: #1e6fff;
             font-size: 14px;
+            line-height: 1.25;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 8px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-        
-        .other-types svg {
+        .type-toggle.hidden {
+            display: none;
+        }
+        .type-toggle-text {
+            flex: 0 0 auto;
+        }
+        .type-toggle-icon {
             width: 18px;
             height: 18px;
+            flex-shrink: 0;
+            display: block;
+            color: currentColor;
+            margin-top: 0;
+            align-self: center;
         }
         
         /* 查询按钮 */
@@ -347,10 +388,12 @@
         <div class="section-title">请选择纳税年度</div>
         <div class="year-select" id="yearSelect">
             <span class="year-label">年度</span>
-            <div class="year-value">
-                <span id="yearDisplay">2026</span>
-                <span class="arrow">&gt;</span>
-            </div>
+            <span class="year-value" id="yearDisplay">2026</span>
+            <span class="year-chevron-wrap" aria-hidden="true">
+                <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
         </div>
         
         <!-- 请选择所得类型 -->
@@ -388,12 +431,43 @@
                 </div>
                 <span class="type-text">特许权使用费</span>
             </div>
+            <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
+                <div class="type-item">
+                    <div class="check-icon check-off"></div>
+                    <span class="type-text">经营所得</span>
+                </div>
+                <div class="type-item">
+                    <div class="check-icon check-off"></div>
+                    <span class="type-text">利息、股息、红利</span>
+                </div>
+                <div class="type-item">
+                    <div class="check-icon check-off"></div>
+                    <span class="type-text">财产租赁</span>
+                </div>
+                <div class="type-item">
+                    <div class="check-icon check-off"></div>
+                    <span class="type-text">财产转让</span>
+                </div>
+                <div class="type-item">
+                    <div class="check-icon check-off"></div>
+                    <span class="type-text">偶然所得</span>
+                </div>
+            </div>
         </div>
         
-        <!-- 其他类型 -->
-        <div class="other-types">
-            <span>其他类型</span>
-            <svg viewBox="0 0 1024 1024" width="28" height="28" style="transform: rotate(90deg);"><path d="M759.466667 533.333333L469.333333 243.2l29.866667-29.866667 320 320-320 320-29.866667-29.866666 290.133334-290.133334z m-298.666667 0L170.666667 243.2l29.866666-29.866667 320 320L200.533333 853.333333l-29.866666-29.866666 290.133333-290.133334z" fill="#1e6fff"></path></svg>
+        <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
+            <span class="type-toggle-text">其他类型</span>
+            <svg class="type-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 5l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="type-toggle hidden" id="btnCollapseTypes" role="button" tabindex="0" aria-expanded="false">
+            <span class="type-toggle-text">收起</span>
+            <svg class="type-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 19l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
         
         <!-- 查询按钮 -->
@@ -554,6 +628,24 @@
             localStorage.setItem('selected_year', selectedYear);
             window.location.href = 'shuiming_result.html?year=' + selectedYear;
         }
+        
+        // 所得类型：默认四项，点击「其他类型」展开全部，「收起」还原
+        (function () {
+            var extra = document.getElementById('incomeTypesExtra');
+            var btnExpand = document.getElementById('btnExpandTypes');
+            var btnCollapse = document.getElementById('btnCollapseTypes');
+            if (!extra || !btnExpand || !btnCollapse) return;
+            function setExpanded(open) {
+                extra.classList.toggle('is-open', open);
+                extra.setAttribute('aria-hidden', open ? 'false' : 'true');
+                btnExpand.classList.toggle('hidden', open);
+                btnCollapse.classList.toggle('hidden', !open);
+                btnExpand.setAttribute('aria-expanded', open ? 'true' : 'false');
+                btnCollapse.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+            btnExpand.addEventListener('click', function () { setExpanded(true); });
+            btnCollapse.addEventListener('click', function () { setExpanded(false); });
+        })();
     </script>
     <script src="/js/watermark.js"></script>
 </body>

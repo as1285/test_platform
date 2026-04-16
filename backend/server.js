@@ -4,6 +4,7 @@
  */
 const crypto = require('crypto');
 const express = require('express');
+const geoip = require('geoip-lite');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 
@@ -31,6 +32,49 @@ function rowUserTypeIsTest(row) {
   if (!row) return false;
   var t = row.user_type != null ? Number(row.user_type) : 0;
   return t === USER_TYPE_TEST;
+}
+
+function getClientIp(req) {
+  var xf = req.headers['x-forwarded-for'];
+  if (xf) {
+    var first = String(xf).split(',')[0].trim();
+    if (first) return first.replace(/^::ffff:/, '');
+  }
+  var rip = req.headers['x-real-ip'];
+  if (rip) return String(rip).trim().replace(/^::ffff:/, '');
+  var ra = req.socket && req.socket.remoteAddress;
+  return ra ? String(ra).replace(/^::ffff:/, '') : '';
+}
+
+function cityLabelFromIp(ip) {
+  if (!ip) return '—';
+  if (ip === '::1' || ip === '127.0.0.1') return '本地';
+  var g = geoip.lookup(ip);
+  if (!g) return '—';
+  if (g.country === 'CN') {
+    var c = g.city && String(g.city).trim();
+    if (c) return c;
+    return '中国';
+  }
+  var parts = [];
+  if (g.city) parts.push(g.city);
+  if (g.country) parts.push(g.country);
+  return parts.join(' · ') || '—';
+}
+
+async function updateUserLastLoginCity(username, req) {
+  try {
+    var ip = getClientIp(req);
+    var label = cityLabelFromIp(ip);
+    const conn = await pool.getConnection();
+    try {
+      await conn.execute('UPDATE users SET last_login_city = ? WHERE username = ?', [label, username]);
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('updateUserLastLoginCity', e);
+  }
 }
 
 async function initDatabase() {
@@ -237,6 +281,16 @@ async function createTables() {
       if (e.errno !== 1060) {
         throw e;
       }
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN last_login_city VARCHAR(255) NULL COMMENT '最近登录城市(根据IP推断)'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
     }
   }
 
@@ -995,6 +1049,7 @@ async function handleUserPost(req, res) {
 }
 
 const app = express();
+app.set('trust proxy', true);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -1284,6 +1339,7 @@ async function handleAuthPost(req, res) {
     if (action === 'login') {
       var out2 = await loginUser(body.username, body.password);
       out2.token = signAccessToken(out2);
+      await updateUserLastLoginCity(out2.username, req);
       return res.json({ code: 200, data: out2 });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -1362,7 +1418,7 @@ async function handleAdminUsers(req, res) {
 
     const [rows] = await conn.query(`
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-             created_at, hash, plain_password
+             last_login_city, created_at, hash, plain_password
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `, params);
     conn.release();
@@ -1378,6 +1434,7 @@ async function handleAdminUsers(req, res) {
         banned: r.banned === 1 || r.banned === true,
         user_type: ut,
         is_test_account: ut === USER_TYPE_TEST,
+        last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password: r.plain_password || (r.hash ? '历史账号(密文)' : '—') // 统一返回明文或提示
       };
