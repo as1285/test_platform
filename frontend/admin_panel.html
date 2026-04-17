@@ -196,9 +196,7 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
-                            <th>已用次数</th>
                             <th>使用时间</th>
-                            <th>创建时间</th>
                         </tr>
                     </thead>
                     <tbody id="codeTbody"></tbody>
@@ -422,12 +420,10 @@
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
-                        html += '<td>' + esc(c.used_count) + '</td>';
                         html += '<td>' + usedAt + '</td>';
-                        html += '<td>' + formatDt(c.created_at) + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="4">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }

@@ -13,9 +13,11 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         /* 顶部导航 */
@@ -129,6 +131,8 @@
             align-items: center;
             gap: 12px;
             border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .type-item:last-child {
@@ -399,57 +403,77 @@
         <!-- 请选择所得类型 -->
         <div class="section-title">请选择所得类型</div>
         <div class="type-list">
-            <div class="type-item">
+            <div class="type-item" role="checkbox" aria-checked="true" tabindex="0">
                 <div class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
                 <span class="type-text">工资薪金</span>
             </div>
-            <div class="type-item">
+            <div class="type-item" role="checkbox" aria-checked="true" tabindex="0">
                 <div class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
                 <span class="type-text">劳务报酬</span>
             </div>
-            <div class="type-item">
+            <div class="type-item" role="checkbox" aria-checked="true" tabindex="0">
                 <div class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
                 <span class="type-text">稿酬</span>
             </div>
-            <div class="type-item">
+            <div class="type-item" role="checkbox" aria-checked="true" tabindex="0">
                 <div class="check-icon">
-                    <svg viewBox="0 0 24 24" fill="none">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
                 <span class="type-text">特许权使用费</span>
             </div>
             <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
-                <div class="type-item">
-                    <div class="check-icon check-off"></div>
+                <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
+                    <div class="check-icon check-off">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
                     <span class="type-text">经营所得</span>
                 </div>
-                <div class="type-item">
-                    <div class="check-icon check-off"></div>
+                <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
+                    <div class="check-icon check-off">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
                     <span class="type-text">利息、股息、红利</span>
                 </div>
-                <div class="type-item">
-                    <div class="check-icon check-off"></div>
+                <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
+                    <div class="check-icon check-off">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
                     <span class="type-text">财产租赁</span>
                 </div>
-                <div class="type-item">
-                    <div class="check-icon check-off"></div>
+                <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
+                    <div class="check-icon check-off">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
                     <span class="type-text">财产转让</span>
                 </div>
-                <div class="type-item">
-                    <div class="check-icon check-off"></div>
+                <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
+                    <div class="check-icon check-off">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
                     <span class="type-text">偶然所得</span>
                 </div>
             </div>
@@ -645,6 +669,40 @@
             }
             btnExpand.addEventListener('click', function () { setExpanded(true); });
             btnCollapse.addEventListener('click', function () { setExpanded(false); });
+        })();
+
+        // 所得类型：多选，点击行切换勾选
+        (function () {
+            var list = document.querySelector('.type-list');
+            if (!list) return;
+
+            function syncAria(item) {
+                var icon = item.querySelector('.check-icon');
+                if (!icon) return;
+                var on = !icon.classList.contains('check-off');
+                item.setAttribute('aria-checked', on ? 'true' : 'false');
+            }
+
+            function toggleItem(item) {
+                var icon = item.querySelector('.check-icon');
+                if (!icon) return;
+                icon.classList.toggle('check-off');
+                syncAria(item);
+            }
+
+            list.addEventListener('click', function (e) {
+                var item = e.target.closest('.type-item');
+                if (!item || !list.contains(item)) return;
+                toggleItem(item);
+            });
+
+            list.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                var item = e.target.closest('.type-item');
+                if (!item || !list.contains(item)) return;
+                e.preventDefault();
+                toggleItem(item);
+            });
         })();
     </script>
     <script src="/js/watermark.js"></script>

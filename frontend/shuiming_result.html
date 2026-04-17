@@ -19,9 +19,11 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .top-fixed {
@@ -113,7 +115,6 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
         .summary-label .icon {
@@ -171,12 +172,18 @@
             font-size: 16px;
             font-weight: 500;
             color: #333;
+            letter-spacing: 0.01em;
         }
 
+        /* 年月：与官方端一致，用系统 UI 数字（避免 tnum 导致偏窄偏高），对比度用中灰+medium */
         .list-date {
-            font-size: 17px;
-            color: #999;
+            flex-shrink: 0;
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
             margin-right: 8px;
+            letter-spacing: 0;
         }
 
         .list-row {
