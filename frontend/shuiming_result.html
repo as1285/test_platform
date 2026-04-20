@@ -26,6 +26,15 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* 高于 watermark.js 全屏层（z-index:99999），避免「未激活」水印叠在内容上导致插画/文字发灰、不清晰 */
+        .page-root {
+            position: relative;
+            z-index: 100000;
+            min-height: 100vh;
+            background: #f5f6fa;
+            isolation: isolate;
+        }
+
         .top-fixed {
             position: fixed;
             top: 0;
@@ -75,6 +84,7 @@
         }
 
         .header-right {
+            display: none;
             position: absolute;
             right: 16px;
             color: #1e6fff;
@@ -232,9 +242,35 @@
             color: #999;
             font-size: 14px;
         }
+
+        /* 无纳税记录时的空状态（与产品参考一致：插画 + 文案） */
+        .list-empty-state {
+            text-align: center;
+            padding: 36px 20px 56px;
+            background: #f5f6fa;
+        }
+
+        .list-empty-illustration {
+            margin: 0 auto;
+            max-width: 280px;
+        }
+
+        .list-empty-illustration img {
+            width: 100%;
+            max-width: 260px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            opacity: 1;
+            filter: none;
+            -webkit-user-select: none;
+            user-select: none;
+            transform: translateZ(0);
+        }
     </style>
 </head>
 <body>
+    <div class="page-root">
     <div class="top-fixed">
         <div class="header">
             <a href="shuiming.html" class="back-btn" aria-label="返回">
@@ -251,12 +287,12 @@
             <div class="summary-item">
                 <span class="summary-label">
                     收入合计
-                    <span class="icon">?</span>:
+                    <span class="icon" title="说明">?</span>
                 </span>
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">已申报税额合计:</span>
+                <span class="summary-label">已申报税额合计：</span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
         </div>
@@ -264,6 +300,7 @@
 
     <div class="list" id="recordList">
         <div class="list-empty">加载中…</div>
+    </div>
     </div>
 
     <script>
@@ -289,6 +326,16 @@
                 .replace(/"/g, '&quot;');
         }
 
+        /** 无记录时的空状态（与产品图一致：shuiming_empty.png 内含插画与「页面空空如也」文案） */
+        function getNoRecordsHtml() {
+            return (
+                '<div class="list-empty-state" role="status">' +
+                '<div class="list-empty-illustration">' +
+                '<img src="shuiming_empty.png" alt="页面空空如也" width="229" height="227" loading="lazy" decoding="async">' +
+                '</div></div>'
+            );
+        }
+
         function renderList(records, listYear) {
             var listHtml = '';
             records.forEach(function(record) {
@@ -312,12 +359,17 @@
                 listHtml += '<div class="list-row"><span class="list-label">已申报税额：' + escapeHtml(String(record.tax_reported)) + '元</span></div>';
                 listHtml += '</a>';
             });
-            document.getElementById('recordList').innerHTML = listHtml || '<div class="list-empty">暂无该年度纳税明细</div>';
+            document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
+        }
+
+        function formatYuanField(v) {
+            if (v == null || v === '') return '0.00';
+            return String(v);
         }
 
         function applyTotals(data) {
-            document.getElementById('incomeTotal').textContent = data.income_total + '元';
-            document.getElementById('taxTotal').textContent = data.tax_total + '元';
+            document.getElementById('incomeTotal').textContent = formatYuanField(data.income_total) + '元';
+            document.getElementById('taxTotal').textContent = formatYuanField(data.tax_total) + '元';
         }
 
         function loadData() {
@@ -326,12 +378,14 @@
             authFetch('api/tax.php?action=records&year=' + encodeURIComponent(year))
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
-                    if (data.code === 200 && data.data && data.data.records) {
+                    if (data.code === 200 && data.data) {
+                        var records = data.data.records;
+                        if (!Array.isArray(records)) records = [];
                         applyTotals({
                             income_total: data.data.income_total,
                             tax_total: data.data.tax_total
                         });
-                        renderList(data.data.records, year);
+                        renderList(records, year);
                         return;
                     }
                     throw new Error('api_not_ok');

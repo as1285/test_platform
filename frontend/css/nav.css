@@ -10,28 +10,68 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 
-/* 底部导航公共样式 */
+/* 主内容底部留白参考（悬浮栏 + 下边距 + 安全区），可按页微调 */
+:root {
+    --bottom-nav-clearance: calc(100px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 底部导航：悬浮胶囊 + 内容从下方滑入（页面滚动时内容从栏下穿过） */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 100%;
-    background: #fff;
+    left: 12px;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: min(680px, calc(100% - 24px));
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.94);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(180%) blur(18px);
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.12),
+        0 4px 14px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 10px 0;
+    padding: 10px 6px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
     z-index: 100;
     box-sizing: border-box;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    animation: bottomNavSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* iOS 不再整体上移；安全区已由 .bottom-nav 的 padding-bottom 统一处理 */
+@keyframes bottomNavSlideUp {
+    from {
+        transform: translate3d(0, calc(100% + 28px), 0);
+        opacity: 0.88;
+    }
+    to {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bottom-nav {
+        animation: none;
+    }
+}
+
+/* 不支持毛玻璃时仍保持白底可读 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .bottom-nav {
+        background: #fff;
+    }
+}
+
+/* iOS：与悬浮底栏一致，安全区已在 bottom / padding 中处理 */
 .bottom-nav.ios-device {
-    bottom: 0;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 
 /* iOS设备未选中状态文字和图标颜色 */
@@ -75,6 +115,12 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     -webkit-tap-highlight-color: transparent;
     outline: none;
     flex: 1;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-item:active {
+    transform: scale(0.96);
+    opacity: 0.92;
 }
 
 .nav-icon {

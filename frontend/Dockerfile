@@ -14,6 +14,7 @@ COPY consult.html /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/
 COPY shuiming_result.html /usr/share/nginx/html/
+COPY shuiming_empty.png /usr/share/nginx/html/
 COPY xiangqing.html /usr/share/nginx/html/
 COPY shuikuanjisuan.html /usr/share/nginx/html/
 COPY daiban.html /usr/share/nginx/html/

@@ -1,6 +1,10 @@
-# 仅构建 Debug APK（供自测 / 内部分发），不包含上架、Release 签名。
-# 产物：Artifacts → android-debug-apk → app-debug.apk
-# 本地：cd cordova-app && npx cordova build android --debug
+# 在 GitHub Actions 云端打包 Cordova Android Debug APK（无需本地 Android SDK）。
+#
+# 如何取包：仓库 → Actions → 本工作流 → 选一次成功运行 → Artifacts → android-debug-apk → 下载 zip（内含 app-debug.apk）
+# 手动触发：Actions → Cordova Android Debug APK → Run workflow
+#
+# 仅 Debug 包（自测 / 内部分发）；上架需另行配置 Release 签名与 Play 流程。
+# 本地等价命令：cd cordova-app && npx cordova build android --debug
 name: Cordova Android Debug APK
 
 on:
@@ -12,7 +16,6 @@ on:
       - ".github/workflows/cordova-android.yml"
 
 env:
-  # 按照 GitHub Actions 警告建议，强制使用 Node.js 24 运行 Action 以避免弃用警告
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -38,6 +41,17 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-cordova-${{ hashFiles('cordova-app/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-cordova-
+            ${{ runner.os }}-gradle-
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
