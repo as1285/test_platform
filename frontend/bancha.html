@@ -65,6 +65,19 @@
             min-height: calc(100vh - 120px);
             padding-bottom: 100px;
         }
+
+        /* 整张切片图作为入口，跳转收入纳税明细 */
+        .bancha-tile-link {
+            display: block;
+            line-height: 0;
+            -webkit-tap-highlight-color: transparent;
+            text-decoration: none;
+            color: inherit;
+        }
+        .bancha-tile-link img {
+            width: 100%;
+            display: block;
+        }
         
     </style>
     <link rel="stylesheet" href="css/nav.css">
@@ -75,9 +88,15 @@
             <img src="db.jpg" alt="办&查" style="width: 100%; display: block;">
         </div>
         <div class="bancha-content">
-            <img src="bs.jpg" alt="办税" style="width: 100%; display: block; border-radius: 16px 16px 0 0;">
-            <img src="cx.jpg" alt="查询" style="width: 100%; display: block;">
-            <img src="fp.jpg" alt="发票" style="width: 100%; display: block;">
+            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
+                <img src="bs.jpg" alt="办税" style="border-radius: 16px 16px 0 0;">
+            </a>
+            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
+                <img src="cx.jpg" alt="查询">
+            </a>
+            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
+                <img src="fp.jpg" alt="发票">
+            </a>
         </div>
     </div>
     

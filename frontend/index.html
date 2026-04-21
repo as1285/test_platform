@@ -110,16 +110,24 @@
             flex-shrink: 0;
         }
         
-        /* 找回密码 */
-        .forgot-password {
+        /* 测试体验（一键填入测试账号并登录） */
+        .trial-row {
             text-align: right;
             padding: 16px 0;
         }
-        
-        .forgot-password a {
+
+        .trial-btn {
+            border: none;
+            background: none;
+            padding: 0;
             color: #1e6fff;
             font-size: 14px;
-            text-decoration: none;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .trial-btn:active {
+            opacity: 0.75;
         }
         
         /* 按钮区域 */
@@ -196,9 +204,8 @@
             <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password">
         </div>
         
-        <!-- 找回密码 -->
-        <div class="forgot-password">
-            <a href="#">找回密码</a>
+        <div class="trial-row">
+            <button type="button" class="trial-btn" onclick="doTestLogin()">测试体验</button>
         </div>
     </div>
     
@@ -209,6 +216,13 @@
     </div>
     
     <script>
+        /** 测试账号一键登录：账号 1 / 密码 1 */
+        function doTestLogin() {
+            document.getElementById('loginUsername').value = '1';
+            document.getElementById('loginPassword').value = '1';
+            doLogin();
+        }
+
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;

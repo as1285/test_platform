@@ -24,10 +24,18 @@
     <preference name="ShowTitle" value="false" />
     <!-- 关闭 WebView 远程调试（避免 Debug 包默认开启调试相关行为） -->
     <preference name="InspectableWebview" value="false" />
+    <!-- 启动屏：cordova-android 11+ 使用 Android 12+ SplashScreen API（见下方 Android 专用 preference） -->
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="SplashScreenDelay" value="2500" />
+    <preference name="FadeSplashScreen" value="true" />
+    <preference name="FadeSplashScreenDuration" value="400" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
+        <!-- Android 12+ 系统启动屏：白底 + 中间图标（勿再用已弃用的 <splash> 标签） -->
+        <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/icon/icon.png" />
     </platform>
 </widget>

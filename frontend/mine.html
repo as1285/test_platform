@@ -107,6 +107,22 @@
             padding: 7px 10px;
             text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            position: relative;
+            min-width: 0;
+        }
+
+        /* 三张卡片各自独立可点，避免中间整张 div 抢点导致误跳任职受雇 */
+        a.function-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        a.function-card-link:active {
+            transform: scale(0.97);
+            opacity: 0.92;
         }
         
         .function-icon {
@@ -162,6 +178,21 @@
         
         .menu-item:last-child {
             border-bottom: none;
+        }
+
+        .menu-item.tappable {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .menu-item.tappable:active {
+            background: #f0f2f5;
+        }
+
+        a.menu-item.tappable {
+            text-decoration: none;
+            color: inherit;
         }
         
         .menu-icon {
@@ -233,68 +264,68 @@
             </div>
         </div>
         
-        <!-- 功能入口 -->
+        <!-- 功能入口：家庭成员/银行卡 → 个人中心「个人信息」tab；任职受雇 → renzhi -->
         <div class="function-cards">
-            <div class="function-card">
+            <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="家庭成员">
                 <div class="function-icon">
-                    <img src="jtcy.jpg" alt="家庭成员" style="width: 38px; border-radius: 8px;">
+                    <img src="jtcy.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">家庭成员</div>
-                <button class="function-btn orange" id="familyCount">添加</button>
-            </div>
-            <div class="function-card" onclick="goEmployer()" style="cursor:pointer;">
+                <span class="function-btn orange" id="familyCount" aria-hidden="true">添加</span>
+            </a>
+            <a href="renzhi.html" class="function-card function-card-link" aria-label="任职受雇">
                 <div class="function-icon">
-                    <img src="rzsp.jpg" alt="任职受雇" style="width: 38px; border-radius: 8px;">
+                    <img src="rzsp.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">任职受雇</div>
-                <button type="button" class="function-btn blue" id="employerCount"></button>
-            </div>
-            <div class="function-card">
+                <span class="function-btn blue" id="employerCount" aria-hidden="true"></span>
+            </a>
+            <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="银行卡">
                 <div class="function-icon">
-                    <img src="yhk.jpg" alt="银行卡" style="width: 38px; border-radius: 8px;">
+                    <img src="yhk.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">银行卡</div>
-                <button class="function-btn orange" id="bankCardCount">添加</button>
-            </div>
+                <span class="function-btn orange" id="bankCardCount" aria-hidden="true">添加</span>
+            </a>
         </div>
         
         <!-- 菜单列表 -->
         <div class="menu-list">
-            <div class="menu-item">
+            <a href="shuiming.html" class="menu-item tappable">
                 <div class="menu-icon">
-                    <img src="caidan/gh.png" alt="切换关怀版" style="width: 20px; height: auto;">
+                    <img src="caidan/gh.png" alt="" style="width: 20px; height: auto;">
                 </div>
                 <span class="menu-text">切换关怀版</span>
                 <span class="menu-arrow">></span>
-            </div>
-            <div class="menu-item">
+            </a>
+            <div class="menu-item tappable" onclick="goConsultTab('messages')" role="button" tabindex="0">
                 <div class="menu-icon">
-                    <img src="caidan/aq.png" alt="安全中心" style="width: 19px; height: auto;">
+                    <img src="caidan/aq.png" alt="" style="width: 19px; height: auto;">
                 </div>
                 <span class="menu-text">安全中心</span>
                 <span class="menu-arrow">></span>
             </div>
-            <div class="menu-item">
+            <a href="shuiming.html" class="menu-item tappable">
                 <div class="menu-icon">
-                    <img src="caidan/bz.png" alt="帮助中心" style="width: 19px; height: auto;">
+                    <img src="caidan/bz.png" alt="" style="width: 19px; height: auto;">
                 </div>
                 <span class="menu-text">帮助中心</span>
                 <span class="menu-arrow">></span>
-            </div>
-            <div class="menu-item" onclick="goUserCenter()">
+            </a>
+            <div class="menu-item tappable" onclick="goUserCenter()" role="button" tabindex="0">
                 <div class="menu-icon">
-                    <img src="caidan/zx.png" alt="我要咨询" style="width: 19px; height: auto;">
+                    <img src="caidan/zx.png" alt="" style="width: 19px; height: auto;">
                 </div>
                 <span class="menu-text">我要咨询</span>
                 <span class="menu-arrow">></span>
             </div>
-            <div class="menu-item">
+            <a href="shuiming.html" class="menu-item tappable">
                 <div class="menu-icon">
-                    <img src="caidan/gy.png" alt="关于&更新" style="width: 19px;">
+                    <img src="caidan/gy.png" alt="" style="width: 19px;">
                 </div>
                 <span class="menu-text">关于&更新</span>
                 <span class="menu-arrow">></span>
-            </div>
+            </a>
         </div>
         
         <!-- 退出登录 -->
@@ -529,23 +560,30 @@
             window.location.href = 'personal_info.html';
         }
 
-        // 跳转到用户数据管理中心
+        /** 个人中心 consult 指定 tab：profile | employers | messages | records */
+        function goConsultTab(tab) {
+            window.location.href = 'consult.html?tab=' + encodeURIComponent(tab);
+        }
+
+        // 跳转到用户数据管理中心（默认打开税务记录，与 consult 首页一致）
         function goUserCenter() {
-            window.location.href = 'consult.html';
+            goConsultTab('records');
         }
-        
-        // 跳转到任职受雇列表页
-        function goEmployer() {
-            var userId = localStorage.getItem('user_id');
-            if (userId) {
-                window.location.href = 'renzhi.html';
-            } else {
-                window.location.href = 'index.html';
-            }
+
+        function initMineMenuA11y() {
+            document.querySelectorAll('.menu-item.tappable').forEach(function (el) {
+                el.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        el.click();
+                    }
+                });
+            });
         }
-        
+
         // 页面加载时执行
         loadUserInfo();
+        initMineMenuA11y();
         
         // iOS设备检测，底部导航上移
         (function() {

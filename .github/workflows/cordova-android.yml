@@ -66,6 +66,11 @@ jobs:
           npm ci
           npx cordova telemetry off
 
+      - name: Generate splash & icon assets
+        run: |
+          python3 -m pip install --user --quiet Pillow
+          npm run generate-assets
+
       - name: Add Android platform
         run: npx cordova platform add android@13 --no-interactive
 

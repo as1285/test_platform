@@ -3,12 +3,17 @@
   "private": true,
   "version": "1.0.0",
   "description": "Cordova 壳：WebView 加载线上站点，便于打包 APK",
+  "scripts": {
+    "generate-assets": "python3 scripts/generate_splash_assets.py"
+  },
   "devDependencies": {
     "cordova": "^12.0.0",
     "cordova-android": "^13.0.0"
   },
   "cordova": {
     "plugins": {},
-    "platforms": []
+    "platforms": [
+      "android"
+    ]
   }
 }
