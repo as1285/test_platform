@@ -23,7 +23,7 @@
         /* 顶部导航 */
         .header {
             background: #fff;
-            padding: 15px 16px;
+            padding: calc(15px + env(safe-area-inset-top, 0px)) 16px 15px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -117,6 +117,13 @@
             color: #c8c8c8;
             flex-shrink: 0;
         }
+        .year-chevron path {
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
         
         /* 所得类型列表 */
         .type-list {
@@ -126,7 +133,7 @@
         }
         
         .type-item {
-            padding: 16px;
+            padding: 13px 16px;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -136,6 +143,11 @@
         }
         
         .type-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 第四项与「其他类型」之间只保留一条分隔线（由 .type-toggle 的 border-top 承担） */
+        .type-list > .type-item:nth-child(4) {
             border-bottom: none;
         }
         
@@ -176,20 +188,21 @@
             display: block;
         }
         
-        /* 展开 / 收起：SVG 双箭头，避免 ︾ 等 Unicode 在各机型基线/字号不一致 */
+        /* 展开 / 收起：官方态 — 白卡片内一行，文案+双箭头整体居中，无右侧「>」 */
         .type-toggle {
-            text-align: center;
-            padding: 14px 16px 16px;
-            color: #1e6fff;
-            font-size: 14px;
-            line-height: 1.25;
+            padding: 12px 16px 14px;
+            color: #4d94ff;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 1.4;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
+            border-top: 1px solid #ebebeb;
         }
         .type-toggle.hidden {
             display: none;
@@ -203,22 +216,28 @@
             flex-shrink: 0;
             display: block;
             color: currentColor;
-            margin-top: 0;
-            align-self: center;
+        }
+        .type-toggle-icon path {
+            stroke: currentColor;
+            stroke-width: 1.65;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
         }
         
-        /* 查询按钮 */
+        /* 查询按钮：左右留白更接近官方 */
         .query-btn-wrapper {
-            padding: 30px 16px;
+            padding: 28px 28px 36px;
         }
         
         .query-btn {
             width: 100%;
+            max-width: 100%;
             background: #1e6fff;
             color: #fff;
             border: none;
             border-radius: 8px;
-            padding: 14px;
+            padding: 13px 16px;
             font-size: 16px;
             cursor: pointer;
         }
@@ -395,7 +414,7 @@
             <span class="year-value" id="yearDisplay">2026</span>
             <span class="year-chevron-wrap" aria-hidden="true">
                 <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </span>
         </div>
@@ -435,6 +454,15 @@
                 </div>
                 <span class="type-text">特许权使用费</span>
             </div>
+
+        <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
+            <span class="type-toggle-text">其他类型</span>
+            <svg class="type-toggle-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 9l6 6 6-6"/>
+                <path d="M6 5l6 6 6-6"/>
+            </svg>
+        </div>
+
             <div id="incomeTypesExtra" class="income-types-extra" aria-hidden="true">
                 <div class="type-item" role="checkbox" aria-checked="false" tabindex="0">
                     <div class="check-icon check-off">
@@ -477,21 +505,14 @@
                     <span class="type-text">偶然所得</span>
                 </div>
             </div>
-        </div>
-        
-        <div class="type-toggle" id="btnExpandTypes" role="button" tabindex="0" aria-expanded="false">
-            <span class="type-toggle-text">其他类型</span>
-            <svg class="type-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M6 5l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>
+
         <div class="type-toggle hidden" id="btnCollapseTypes" role="button" tabindex="0" aria-expanded="false">
             <span class="type-toggle-text">收起</span>
-            <svg class="type-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M6 19l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg class="type-toggle-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 15l6-6 6 6"/>
+                <path d="M6 19l6-6 6 6"/>
             </svg>
+        </div>
         </div>
         
         <!-- 查询按钮 -->

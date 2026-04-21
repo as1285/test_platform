@@ -15,7 +15,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     --bottom-nav-clearance: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
-/* 底部导航：悬浮胶囊 + 内容从下方滑入（页面滚动时内容从栏下穿过） */
+/* 底部导航：悬浮大圆弧胶囊 + 高透毛玻璃（对齐官方：能透出背后内容、圆角更圆） */
 .bottom-nav {
     position: fixed;
     left: 12px;
@@ -24,15 +24,17 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     width: auto;
     max-width: min(680px, calc(100% - 24px));
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.94);
-    -webkit-backdrop-filter: saturate(180%) blur(18px);
-    backdrop-filter: saturate(180%) blur(18px);
-    border-radius: 28px;
-    border: 1px solid rgba(255, 255, 255, 0.85);
-    box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.12),
-        0 4px 14px rgba(0, 0, 0, 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    /* 半透明底 + 强模糊，避免整块死白；无 backdrop 时由 @supports 回退 */
+    background: rgba(255, 255, 255, 0.62);
+    -webkit-backdrop-filter: saturate(200%) blur(26px);
+    backdrop-filter: saturate(200%) blur(26px);
+    /* 更大的圆角，接近官方「大圆弧」胶囊态 */
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    /* 单层柔和外阴影，去掉过重 inset，减少 WebView 圆角处灰边/杂圈 */
+    box-shadow: 0 10px 36px rgba(15, 40, 90, 0.1);
+    overflow: hidden;
+    isolation: isolate;
     display: flex;
     justify-content: space-around;
     align-items: center;
@@ -62,10 +64,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     }
 }
 
-/* 不支持毛玻璃时仍保持白底可读 */
+/* 不支持毛玻璃时略提高不透明度，保证可读 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .bottom-nav {
-        background: #fff;
+        background: rgba(255, 255, 255, 0.92);
     }
 }
 
