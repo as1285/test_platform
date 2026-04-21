@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-生成 Cordova Android 所需应用图标（1024 PNG），供：
-- config.xml <icon src="res/icon/icon.png" />
-- Android 12+ SplashScreen 中心图（AndroidWindowSplashScreenAnimatedIcon）
+若仓库中尚无 res/icon/icon.png，则用程序绘制一张默认图标并保存。
+桌面启动器图标已在 config.xml 中为 ldpi～xxxhdpi 各声明同一文件，
+由 cordova-android 复制到各 mipmap-*（避免仅 mdpi 生效、其它密度仍为默认「i」图标）。
 
-替换品牌时：直接覆盖 res/icon/icon.png 后重新打包 APK 即可。
+启动屏中心图同样使用 res/icon/icon.png（AndroidWindowSplashScreenAnimatedIcon）。
+
 依赖：pip install Pillow
 """
 from __future__ import annotations
@@ -18,7 +19,7 @@ BLUE = (30, 111, 255)
 WHITE = (255, 255, 255)
 
 
-def render_icon(size: int = 1024) -> Image.Image:
+def render_icon(size: int) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     pad = int(size * 0.18)
@@ -26,11 +27,11 @@ def render_icon(size: int = 1024) -> Image.Image:
     cx, cy = size // 2, size // 2
     r = int(size * 0.22)
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=WHITE)
-    bw = max(3, size // 40)
+    bw = max(1, size // 40)
     bh = int(r * 1.15)
     draw.rounded_rectangle(
         [cx - bw // 2, cy - bh // 2, cx + bw // 2, cy + bh // 2],
-        radius=bw // 2,
+        radius=max(1, bw // 2),
         fill=BLUE,
     )
     return img
@@ -41,6 +42,9 @@ def main() -> int:
     icon_dir = os.path.join(root, "res", "icon")
     os.makedirs(icon_dir, exist_ok=True)
     icon_path = os.path.join(icon_dir, "icon.png")
+    if os.path.isfile(icon_path):
+        print("keep existing", icon_path)
+        return 0
     render_icon(1024).save(icon_path, "PNG", optimize=True)
     print("wrote", icon_path)
     return 0

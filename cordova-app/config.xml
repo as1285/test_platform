@@ -4,9 +4,6 @@
     <description>个人所得税移动端应用</description>
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
-    
-    <!-- 全局图标配置 -->
-    <icon src="res/icon/icon.png" />
 
     <access origin="*" />
     <!-- 允许 WebView 在 iframe 或跳转中加载远程 http(s)，与壳内白名单一致 -->
@@ -31,6 +28,13 @@
     <preference name="FadeSplashScreenDuration" value="400" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
+        <!-- 桌面图标：同一 PNG 须为每个 density 各写一条，否则只会写入 mdpi，其它密度仍为模板默认「i」图标 -->
+        <icon density="ldpi" src="res/icon/icon.png" />
+        <icon density="mdpi" src="res/icon/icon.png" />
+        <icon density="hdpi" src="res/icon/icon.png" />
+        <icon density="xhdpi" src="res/icon/icon.png" />
+        <icon density="xxhdpi" src="res/icon/icon.png" />
+        <icon density="xxxhdpi" src="res/icon/icon.png" />
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
