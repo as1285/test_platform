@@ -144,8 +144,9 @@
             color: #333;
         }
 
+        /* 仅顶开固定头高度；汇总区已有 border-bottom 10px 灰缝，勿再加 padding 以免与首条间距变成双倍 */
         .list {
-            padding: calc(var(--top-fixed-height, 154px) + 12px) 0 24px;
+            padding: var(--top-fixed-height, 154px) 0 24px;
             background: #f5f6fa;
             position: relative;
             isolation: isolate;
@@ -325,6 +326,14 @@
                 .replace(/"/g, '&quot;');
         }
 
+        /** 超过 10 个 Unicode 字符（中文等）时截断并加省略号，与列表展示规则一致 */
+        function truncateZh10(s) {
+            if (s == null || s === '') return '';
+            var chars = Array.from(String(s));
+            if (chars.length <= 10) return String(s);
+            return chars.slice(0, 10).join('') + '...';
+        }
+
         /** 无记录时的空状态（与产品图一致：shuiming_empty.png 内含插画与「页面空空如也」文案） */
         function getNoRecordsHtml() {
             return (
@@ -341,16 +350,18 @@
                 var month = record.month < 10 ? '0' + record.month : record.month;
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
+                var subtypeShow = truncateZh10(subtype);
+                var companyShow = truncateZh10(company);
                 var id = record.id != null ? record.id : '';
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
                 listHtml += '<span class="list-date">' + record.year + '-' + month + '</span>';
                 listHtml += '</div>';
-                listHtml += '<div class="list-row"><span class="list-label">所得项目小类：' + escapeHtml(subtype) + '</span></div>';
+                listHtml += '<div class="list-row"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
-                listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(company) + '</span></div>';
+                listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
                 listHtml += '<div class="list-row"><span class="list-label">收入：' + escapeHtml(String(record.income)) + '元</span></div>';
                 listHtml += '</div>';
                 listHtml += '<svg class="list-arrow" viewBox="0 0 8 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
