@@ -577,13 +577,17 @@
 
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 − 5000（减除费用）− 社保 − 公积金 − 专项附加扣除；按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），税额与 12 月工资预扣税合并写入<strong>12 月</strong>记录。下方扣缴单位等信息取自上方表单。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 − 5000（减除费用）− 社保 − 公积金 − 专项附加扣除；按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），税额与 12 月工资预扣税合并写入<strong>12 月</strong>记录。扣缴义务人名称可在下方单独填写；未填时与上方「添加记录」表单中的扣缴义务人一致，其他税务字段仍取自上方表单。</p>
                 <div class="form-group batch-salary-mode-group">
                     <label class="batch-salary-mode-title">工资填写方式</label>
                     <div class="batch-salary-mode-options">
                         <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_uniform" value="uniform" checked onchange="onBatchSalaryModeChange()"> 1–12 月每月工资相同（填一个固定月薪）</label>
                         <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_variable" value="variable" onchange="onBatchSalaryModeChange()"> 每月工资不同（分别填写 1–12 月）</label>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label for="batch_company_name">扣缴义务人名称</label>
+                    <input type="text" id="batch_company_name" autocomplete="organization" placeholder="选填；不填则使用上方单条表单中的名称">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -727,6 +731,17 @@
                 }
             }
             if (fth) fth.style.display = isTest ? 'block' : 'none';
+            var bcn = document.getElementById('batch_company_name');
+            if (bcn) {
+                if (isTest) {
+                    bcn.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    bcn.readOnly = true;
+                    bcn.style.background = '#f0f0f0';
+                } else {
+                    bcn.readOnly = false;
+                    bcn.style.background = '';
+                }
+            }
         }
 
         function tabHref(tab) {
@@ -974,6 +989,10 @@
             if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
                 document.getElementById('f_company_name').value = CONSULT_TEST_COMPANY_NAME;
             }
+            var bcnField = document.getElementById('batch_company_name');
+            if (bcnField && !(window.consultUserFlags && window.consultUserFlags.is_test_account)) {
+                bcnField.value = r.company_name || '';
+            }
             document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
             document.getElementById('f_tax_authority').value = r.tax_authority || '';
             document.getElementById('f_report_channel').value = r.report_channel || '其他';
@@ -1004,6 +1023,9 @@
                     fcn.readOnly = true;
                     fcn.style.background = '#f0f0f0';
                 }
+            } else {
+                var bcnClear = document.getElementById('batch_company_name');
+                if (bcnClear) bcnClear.value = '';
             }
             initHeader();
         }
@@ -1272,6 +1294,14 @@
             var base = formObjectFromInputs();
             delete base.id;
 
+            var batchCompanyEl = document.getElementById('batch_company_name');
+            var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
+            var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
+            if (!companyForBatch) {
+                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在上方单条表单中填写）', false);
+                return;
+            }
+
             function monthlyTaxableFor(salaryMonth) {
                 return round2(Math.max(0, salaryMonth - 5000 - social - fund - special));
             }
@@ -1319,6 +1349,7 @@
                 (function (month, taxMonth) {
                     chain = chain.then(function () {
                         var o = JSON.parse(JSON.stringify(base));
+                        o.company_name = companyForBatch;
                         var salM = salaries[month - 1];
                         o.year = year;
                         o.month = month;
