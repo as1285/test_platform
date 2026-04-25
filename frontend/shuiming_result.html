@@ -41,7 +41,7 @@
             left: 0;
             right: 0;
             z-index: 100;
-            background: #f5f6fa;
+            background: #fff;
             isolation: isolate;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
@@ -51,8 +51,8 @@
         }
 
         .header {
-            /* 与个税一致：顶栏灰底；底部分割线+阴影仅此处，下方区块不再叠阴影 */
-            background: #f5f6fa;
+            /* 顶栏纯白底 */
+            background: #fff;
             padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
             display: flex;
             align-items: center;
@@ -103,12 +103,30 @@
             position: relative;
             border-top: none;
             padding: 8px 16px 2px;
-            border-bottom: 8px solid #f5f6fa;
-            overflow: hidden;
+            border-bottom: none;
+            overflow: visible;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+        }
+
+        /* 顶部汇总区的上下灰底条：与列表卡片间灰缝一致宽度 */
+        .summary::before,
+        .summary::after {
+            content: '';
+            display: block;
+            height: 12px;
+            width: calc(100% + 32px);
+            margin-left: -16px;
+            background: #f5f6fa;
+        }
+        .summary::before {
+            margin-top: -8px;
+            margin-bottom: 8px;
+        }
+        .summary::after {
+            margin-top: 8px;
         }
 
         .summary-item {
@@ -130,7 +148,7 @@
         }
 
         .summary-label {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 400;
             color: #000;
             display: flex;
@@ -159,7 +177,7 @@
         }
 
         .summary-value {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 400;
             font-variant-numeric: tabular-nums;
             color: #000;

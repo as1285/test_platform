@@ -105,6 +105,30 @@
         .badge-type-test { background: #fff3e0; color: #e65100; }
         .scroll-x { overflow-x: auto; }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .user-detail-wrap {
+            background: #f8fbff;
+            border: 1px solid #dbe7ff;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+        }
+        .user-detail-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e3a5f;
+        }
+        .user-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .user-detail-table th, .user-detail-table td {
+            border: 1px solid #e6edf8;
+            padding: 6px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .btn-detail { background: #546e7a; color: #fff; }
         .pagination {
             display: flex;
             align-items: center;
@@ -292,6 +316,37 @@
             document.body.removeChild(ta);
         }
 
+        function keyForUser(username) {
+            return encodeURIComponent(String(username || '')).replace(/%/g, '_');
+        }
+
+        function formatMoneyLike(v) {
+            if (v == null || String(v).trim() === '') return '0.00';
+            return esc(String(v));
+        }
+
+        function buildTaxRecordsHtml(username, records) {
+            if (!records || !records.length) {
+                return '<div class="user-detail-wrap"><div class="user-detail-title">账号「' + esc(username) + '」个税记录</div><div style="color:#888;">暂无个税记录</div></div>';
+            }
+            var html = '<div class="user-detail-wrap">';
+            html += '<div class="user-detail-title">账号「' + esc(username) + '」个税记录（' + records.length + ' 条）</div>';
+            html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>税款所属期</th><th>所得项目</th><th>所得小类</th><th>扣缴义务人</th><th>收入</th><th>已申报税额</th></tr></thead><tbody>';
+            records.forEach(function (r) {
+                var period = r.tax_period || ((r.year || '') + '-' + String(r.month || '').padStart(2, '0'));
+                html += '<tr>';
+                html += '<td>' + esc(period || '—') + '</td>';
+                html += '<td>' + esc(r.income_type || '—') + '</td>';
+                html += '<td>' + esc(r.income_subtype || '—') + '</td>';
+                html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
+                html += '<td>' + formatMoneyLike(r.income) + '</td>';
+                html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
         var userPage = 1;
         var userLimit = 10;
         var codePage = 1;
@@ -334,11 +389,14 @@
                         var typeBtn = u.is_test_account
                             ? '<button type="button" class="btn-sm btn-unban btn-user-type" data-u="' + esc(u.username) + '" data-t="0">设为普通</button>'
                             : '<button type="button" class="btn-sm btn-copy btn-user-type" data-u="' + esc(u.username) + '" data-t="1">设为测试</button>';
+                        var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn
+                            + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除账号</button>';
                         
+                        var detailKey = keyForUser(u.username);
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
@@ -349,6 +407,9 @@
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + ops + '</td>';
+                        html += '</tr>';
+                        html += '<tr id="user_detail_row_' + detailKey + '" style="display:none;">';
+                        html += '<td colspan="9"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载个税记录…</div></td>';
                         html += '</tr>';
                     });
                     document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
@@ -415,6 +476,39 @@
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-detail').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var key = btn.getAttribute('data-k');
+                            var row = document.getElementById('user_detail_row_' + key);
+                            var box = document.getElementById('user_detail_box_' + key);
+                            if (!row || !box) return;
+                            var opening = row.style.display === 'none';
+                            if (!opening) {
+                                row.style.display = 'none';
+                                btn.textContent = '详情';
+                                return;
+                            }
+                            row.style.display = '';
+                            btn.textContent = '收起';
+                            if (box.getAttribute('data-loaded') === '1') return;
+                            box.textContent = '加载中…';
+                            adminFetch('api/admin/user-tax-records?username=' + encodeURIComponent(name))
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        box.textContent = d.msg || '加载失败';
+                                        return;
+                                    }
+                                    var records = d.data && Array.isArray(d.data.records) ? d.data.records : [];
+                                    box.innerHTML = buildTaxRecordsHtml(name, records);
+                                    box.setAttribute('data-loaded', '1');
+                                })
+                                .catch(function () {
+                                    box.textContent = '网络错误，加载失败';
+                                });
                         };
                     });
                 })

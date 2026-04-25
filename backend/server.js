@@ -1653,6 +1653,44 @@ async function handleAdminSettingsPost(req, res) {
   }
 }
 
+async function handleAdminUserTaxRecords(req, res) {
+  var username = req.query.username != null ? String(req.query.username).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute(
+      `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at
+       FROM tax_records
+       WHERE user_id = ?
+       ORDER BY year DESC, month DESC, id DESC
+       LIMIT 200`,
+      [username]
+    );
+    conn.release();
+    var out = rows.map(function (r) {
+      return {
+        id: r.id,
+        year: r.year != null ? Number(r.year) : null,
+        month: r.month != null ? Number(r.month) : null,
+        income_type: r.income_type != null ? String(r.income_type) : '',
+        income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
+        company_name: r.company_name != null ? String(r.company_name) : '',
+        income: r.income != null ? String(r.income) : '0.00',
+        tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0.00',
+        tax_period: r.tax_period != null ? String(r.tax_period) : '',
+        report_date: r.report_date != null ? String(r.report_date) : '',
+        created_at: r.created_at ? r.created_at.toISOString() : ''
+      };
+    });
+    return res.json({ code: 200, data: { records: out } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 永久删除用户及其任职受雇、税务记录、消息（不可恢复） */
 async function handleAdminDeleteUser(req, res) {
   var body = req.body || {};
@@ -1694,6 +1732,7 @@ app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
 app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
+app.get('/api/admin/user-tax-records', requireAdminAuth, handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);
 app.get('/api/admin/codes', requireAdminAuth, handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, handleAdminBan);
