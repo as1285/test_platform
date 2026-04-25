@@ -24,9 +24,42 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
 const USER_TYPE_TEST = 1;
-const TEST_ACCOUNT_COMPANY_NAME = '测试公司不能修改需要请购买';
+/** 环境变量或内置默认；首次写入 app_settings 及库中无配置时使用 */
+const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
+  process.env.TEST_ACCOUNT_COMPANY_NAME || '购买+Tangdong 购买++V : Tangdong6832';
+const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
 
 let pool;
+/** @type {{ v: string, t: number }|null} */
+var _testCompanyNameCache = null;
+var TEST_COMPANY_CACHE_MS = 3000;
+
+async function getTestAccountCompanyName() {
+  var now = Date.now();
+  if (_testCompanyNameCache && now - _testCompanyNameCache.t < TEST_COMPANY_CACHE_MS) {
+    return _testCompanyNameCache.v;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [SETTING_KEY_TEST_COMPANY]
+    );
+    var v = TEST_ACCOUNT_COMPANY_NAME_DEFAULT;
+    if (rows.length > 0 && rows[0].setting_value != null) {
+      var s = String(rows[0].setting_value).trim();
+      if (s !== '') v = s;
+    }
+    _testCompanyNameCache = { v: v, t: now };
+    return v;
+  } finally {
+    conn.release();
+  }
+}
+
+function invalidateTestCompanyNameCache() {
+  _testCompanyNameCache = null;
+}
 
 function rowUserTypeIsTest(row) {
   if (!row) return false;
@@ -54,7 +87,10 @@ function cityLabelFromIp(ip) {
   if (g.country === 'CN') {
     var c = g.city && String(g.city).trim();
     if (c) return c;
-    return '中国';
+    /* geoip-lite 对大量国内 IP 只有国家、无 city；避免误读成「用户城市就是中国」 */
+    var r = g.region && String(g.region).trim();
+    if (r) return '中国（' + r + '）';
+    return '中国（IP 库无城市）';
   }
   var parts = [];
   if (g.city) parts.push(g.city);
@@ -293,6 +329,18 @@ async function createTables() {
       throw e;
     }
   }
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+      setting_value TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await conn.execute(
+    `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
+    [SETTING_KEY_TEST_COMPANY, TEST_ACCOUNT_COMPANY_NAME_DEFAULT]
+  );
 
   conn.release();
 }
@@ -818,13 +866,20 @@ async function getUserInfoForApi(userId) {
     return null;
   }
   const uid = String(userId).trim();
-  
+
+  var lockedCompany = TEST_ACCOUNT_COMPANY_NAME_DEFAULT;
+  try {
+    lockedCompany = await getTestAccountCompanyName();
+  } catch (e) {
+    console.error('getTestAccountCompanyName', e);
+  }
+
   const conn = await pool.getConnection();
   const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [uid]);
-  
+
   const [employerRows] = await conn.execute('SELECT * FROM employers WHERE user_id = ?', [uid]);
   conn.release();
-  
+
   const defaults = {
     real_name: uid,
     tax_id: '620000000000000000',
@@ -835,7 +890,7 @@ async function getUserInfoForApi(userId) {
     watermark_enabled: false,
     user_type: USER_TYPE_NORMAL,
     is_test_account: false,
-    test_company_locked_name: TEST_ACCOUNT_COMPANY_NAME,
+    test_company_locked_name: '',
     id_type: '居民身份证',
     birth_date: '',
     nationality: '中华人民共和国',
@@ -874,7 +929,7 @@ async function getUserInfoForApi(userId) {
     watermark_enabled: Boolean(rec.watermark_enabled),
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
-    test_company_locked_name: TEST_ACCOUNT_COMPANY_NAME,
+    test_company_locked_name: ut === USER_TYPE_TEST ? lockedCompany : '',
     id_type: profileStr('id_type', '居民身份证'),
     birth_date: profileStr('birth_date', ''),
     nationality: profileStr('nationality', '中华人民共和国'),
@@ -945,7 +1000,7 @@ async function handleUserPost(req, res) {
           VALUES (?, ?, ?, ?, 0, ?, ?)
         `, [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']);
       } else if (rowUserTypeIsTest(userRows[0])) {
-        employerData.company_name = TEST_ACCOUNT_COMPANY_NAME;
+        employerData.company_name = await getTestAccountCompanyName();
       }
       
       employerData.id = 'emp_' + Date.now();
@@ -1195,7 +1250,7 @@ async function handleTaxPost(req, res) {
       }
       var urow = await getUserRowByUsername(userId);
       if (urow && rowUserTypeIsTest(urow)) {
-        record = Object.assign({}, record, { company_name: TEST_ACCOUNT_COMPANY_NAME });
+        record = Object.assign({}, record, { company_name: await getTestAccountCompanyName() });
       }
       var out = await saveRecord(userId, record);
       return res.json({ code: 200, data: out });
@@ -1547,13 +1602,54 @@ async function handleAdminUserType(req, res) {
     }
     await conn.execute('UPDATE users SET user_type = ? WHERE username = ?', [ut, target]);
     if (ut === USER_TYPE_TEST) {
-      await conn.execute('UPDATE employers SET company_name = ? WHERE user_id = ?', [TEST_ACCOUNT_COMPANY_NAME, target]);
+      var testCo = await getTestAccountCompanyName();
+      await conn.execute('UPDATE employers SET company_name = ? WHERE user_id = ?', [testCo, target]);
     }
     conn.release();
     return res.json({ code: 200, data: { username: target, user_type: ut } });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminSettingsGet(req, res) {
+  try {
+    var name = await getTestAccountCompanyName();
+    return res.json({ code: 200, data: { test_account_company_name: name } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminSettingsPost(req, res) {
+  var body = req.body || {};
+  var name = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
+  if (!name) {
+    return res.status(400).json({ code: 400, msg: '测试账号公司名称不能为空' });
+  }
+  if (name.length > 500) {
+    return res.status(400).json({ code: 400, msg: '名称过长（最多 500 字）' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [SETTING_KEY_TEST_COMPANY, name]
+    );
+    await conn.execute(
+      'UPDATE employers e INNER JOIN users u ON e.user_id = u.username SET e.company_name = ? WHERE u.user_type = ?',
+      [name, USER_TYPE_TEST]
+    );
+    invalidateTestCompanyNameCache();
+    return res.json({ code: 200, data: { test_account_company_name: name } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  } finally {
+    conn.release();
   }
 }
 
@@ -1595,6 +1691,8 @@ async function handleAdminDeleteUser(req, res) {
 }
 
 app.post('/api/admin/login', handleAdminLogin);
+app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
+app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
 app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);
 app.get('/api/admin/codes', requireAdminAuth, handleAdminCodes);

@@ -602,19 +602,20 @@
                 <div id="batch_variable_salary_wrap" style="display:none;">
                     <div class="form-group">
                         <label>各月月薪（元）</label>
+                        <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">留空表示该月不生成记录；只为您填写了金额的月份创建数据。未填月份在累计预扣中按 0 元月薪参与累算。</p>
                         <div class="salary-month-grid">
-                            <div class="form-group salary-month-cell"><label for="batch_salary_1">1月</label><input type="number" step="0.01" id="batch_salary_1" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_2">2月</label><input type="number" step="0.01" id="batch_salary_2" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_3">3月</label><input type="number" step="0.01" id="batch_salary_3" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_4">4月</label><input type="number" step="0.01" id="batch_salary_4" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_5">5月</label><input type="number" step="0.01" id="batch_salary_5" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_6">6月</label><input type="number" step="0.01" id="batch_salary_6" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_7">7月</label><input type="number" step="0.01" id="batch_salary_7" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_8">8月</label><input type="number" step="0.01" id="batch_salary_8" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_9">9月</label><input type="number" step="0.01" id="batch_salary_9" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_10">10月</label><input type="number" step="0.01" id="batch_salary_10" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_11">11月</label><input type="number" step="0.01" id="batch_salary_11" value="10000" min="0"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_12">12月</label><input type="number" step="0.01" id="batch_salary_12" value="10000" min="0"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_1">1月</label><input type="number" step="0.01" id="batch_salary_1" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_2">2月</label><input type="number" step="0.01" id="batch_salary_2" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_3">3月</label><input type="number" step="0.01" id="batch_salary_3" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_4">4月</label><input type="number" step="0.01" id="batch_salary_4" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_5">5月</label><input type="number" step="0.01" id="batch_salary_5" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_6">6月</label><input type="number" step="0.01" id="batch_salary_6" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_7">7月</label><input type="number" step="0.01" id="batch_salary_7" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_8">8月</label><input type="number" step="0.01" id="batch_salary_8" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_9">9月</label><input type="number" step="0.01" id="batch_salary_9" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_10">10月</label><input type="number" step="0.01" id="batch_salary_10" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_11">11月</label><input type="number" step="0.01" id="batch_salary_11" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_12">12月</label><input type="number" step="0.01" id="batch_salary_12" value="" min="0" placeholder="选填"></div>
                         </div>
                     </div>
                 </div>
@@ -636,7 +637,7 @@
                     <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并入 12 月）</label>
                     <input type="number" step="0.01" id="batch_year_end_bonus" value="0" min="0" placeholder="无则填 0">
                 </div>
-                <button type="button" class="btn btn-primary btn-block" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
+                <button type="button" class="btn btn-primary btn-block" id="batch_generate_year_btn" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
             </div>
 
             <div class="card">
@@ -692,12 +693,17 @@
             return localStorage.getItem('user_id') || '64';
         }
 
-        var CONSULT_TEST_COMPANY_NAME = '测试公司不能修改需要请购买';
+        /** 由服务端 user.info 的 test_company_locked_name 写入；管理后台可改库中配置 */
+        window.consultTestCompanyName = '';
         window.consultUserFlags = { is_test_account: false };
 
         function applyConsultTestRestrictions(user) {
             var isTest = !!(user && user.is_test_account);
             window.consultUserFlags = { is_test_account: isTest };
+            var locked = isTest && user && user.test_company_locked_name
+                ? String(user.test_company_locked_name).trim()
+                : '';
+            window.consultTestCompanyName = locked;
             var pfName = document.getElementById('pf_real_name');
             if (pfName) {
                 pfName.readOnly = isTest;
@@ -709,7 +715,7 @@
             var eh = document.getElementById('ef_test_hint');
             if (ef) {
                 if (isTest) {
-                    ef.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    ef.value = locked;
                     ef.readOnly = true;
                     ef.style.background = '#f0f0f0';
                 } else {
@@ -722,7 +728,7 @@
             var fth = document.getElementById('f_tax_company_hint');
             if (fcn) {
                 if (isTest) {
-                    fcn.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    fcn.value = locked;
                     fcn.readOnly = true;
                     fcn.style.background = '#f0f0f0';
                 } else {
@@ -734,7 +740,7 @@
             var bcn = document.getElementById('batch_company_name');
             if (bcn) {
                 if (isTest) {
-                    bcn.value = (user && user.test_company_locked_name) ? user.test_company_locked_name : CONSULT_TEST_COMPANY_NAME;
+                    bcn.value = locked;
                     bcn.readOnly = true;
                     bcn.style.background = '#f0f0f0';
                 } else {
@@ -956,7 +962,7 @@
                 income_type: document.getElementById('f_income_type').value,
                 income_subtype: document.getElementById('f_income_subtype').value,
                 company_name: (window.consultUserFlags && window.consultUserFlags.is_test_account)
-                    ? CONSULT_TEST_COMPANY_NAME
+                    ? (document.getElementById('f_company_name') && document.getElementById('f_company_name').value) || window.consultTestCompanyName || ''
                     : document.getElementById('f_company_name').value,
                 company_tax_id: document.getElementById('f_company_tax_id').value,
                 tax_authority: document.getElementById('f_tax_authority').value,
@@ -987,7 +993,7 @@
             document.getElementById('f_income_subtype').value = r.income_subtype || '';
             document.getElementById('f_company_name').value = r.company_name || '';
             if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
-                document.getElementById('f_company_name').value = CONSULT_TEST_COMPANY_NAME;
+                document.getElementById('f_company_name').value = window.consultTestCompanyName || r.company_name || '';
             }
             var bcnField = document.getElementById('batch_company_name');
             if (bcnField && !(window.consultUserFlags && window.consultUserFlags.is_test_account)) {
@@ -1019,7 +1025,7 @@
             if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
                 var fcn = document.getElementById('f_company_name');
                 if (fcn) {
-                    fcn.value = CONSULT_TEST_COMPANY_NAME;
+                    fcn.value = window.consultTestCompanyName || '';
                     fcn.readOnly = true;
                     fcn.style.background = '#f0f0f0';
                 }
@@ -1225,23 +1231,23 @@
             var mode = el ? el.value : 'uniform';
             var uniformField = document.getElementById('batch_uniform_salary_field_wrap');
             var variableWrap = document.getElementById('batch_variable_salary_wrap');
+            var genBtn = document.getElementById('batch_generate_year_btn');
             if (mode === 'uniform') {
                 uniformField.style.display = '';
                 variableWrap.style.display = 'none';
+                if (genBtn) genBtn.textContent = '生成全年 12 个月记录';
             } else {
                 uniformField.style.display = 'none';
                 variableWrap.style.display = '';
-                var base = parseFloat(document.getElementById('batch_monthly_salary').value);
-                if (!Number.isNaN(base) && base >= 0) {
-                    var i;
-                    for (i = 1; i <= 12; i++) {
-                        document.getElementById('batch_salary_' + i).value = String(base);
-                    }
-                }
+                if (genBtn) genBtn.textContent = '生成已填写月份的记录';
             }
         }
 
-        /** @returns {number[]|null} 长度 12 的月薪数组，失败返回 null */
+        /**
+         * uniform: salaries 为 12 个相同数字
+         * variable: salaries[i] 为 null 表示该月不填、不生成记录；非 null 为当月月薪
+         * 失败返回 null
+         */
         function getBatchSalaries12() {
             var el = document.querySelector('input[name="batch_salary_mode"]:checked');
             var mode = el ? el.value : 'uniform';
@@ -1256,17 +1262,29 @@
                 for (i = 0; i < 12; i++) {
                     arr.push(s);
                 }
-                return arr;
+                return { mode: 'uniform', salaries: arr };
             }
             for (i = 1; i <= 12; i++) {
-                var v = parseFloat(document.getElementById('batch_salary_' + i).value);
+                var raw = document.getElementById('batch_salary_' + i).value;
+                var trimmed = raw != null ? String(raw).trim() : '';
+                if (trimmed === '') {
+                    arr.push(null);
+                    continue;
+                }
+                var v = parseFloat(trimmed);
                 if (Number.isNaN(v) || v < 0) {
-                    showMsg('请填写合法的第 ' + i + ' 月薪（元）', false);
+                    showMsg('第 ' + i + ' 月薪金额不合法（请留空或填非负数字）', false);
                     return null;
                 }
                 arr.push(v);
             }
-            return arr;
+            for (i = 0; i < 12; i++) {
+                if (arr[i] !== null) {
+                    return { mode: 'variable', salaries: arr };
+                }
+            }
+            showMsg('请至少填写一个月份的月薪，或改选「1–12 月同一月薪」', false);
+            return null;
         }
 
         function batchAddYearTaxRecords() {
@@ -1282,10 +1300,12 @@
                 return;
             }
 
-            var salaries = getBatchSalaries12();
-            if (!salaries) {
+            var spack = getBatchSalaries12();
+            if (!spack) {
                 return;
             }
+            var salaryMode = spack.mode;
+            var salaries = spack.salaries;
 
             var uid = currentUserId();
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1306,10 +1326,17 @@
                 return round2(Math.max(0, salaryMonth - 5000 - social - fund - special));
             }
 
+            /** variable 模式：未填月按 0 元月薪参与当年累计；uniform 为 12 个数字 */
+            function effectiveSalaryForCum(mIdx) {
+                var v = salaries[mIdx];
+                if (salaryMode === 'uniform') return v;
+                return v === null ? 0 : v;
+            }
+
             var prefix = [0];
             var m;
             for (m = 0; m < 12; m++) {
-                prefix[m + 1] = round2(prefix[m] + monthlyTaxableFor(salaries[m]));
+                prefix[m + 1] = round2(prefix[m] + monthlyTaxableFor(effectiveSalaryForCum(m)));
             }
 
             var taxesPreview = [];
@@ -1324,8 +1351,6 @@
                 taxesPreview.push(taxM);
             }
 
-            var modeEl = document.querySelector('input[name="batch_salary_mode"]:checked');
-            var salaryMode = modeEl ? modeEl.value : 'uniform';
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             var totalTax = round2(taxesPreview.reduce(function (a, b) { return a + b; }, 0) + bonusTax);
             var bonusLine = yearEndBonus > 0
@@ -1336,21 +1361,52 @@
                 var mt0 = monthlyTaxableFor(salaries[0]);
                 salarySummary = '每月月薪 ' + salaries[0] + ' 元；月应纳税所得额 ' + mt0 + ' 元（已扣 5000、社保、公积金、专项附加）。';
             } else {
-                salarySummary = '已按 1–12 月分别填写月薪；累计预扣按各月应纳税所得额逐月累加计算。';
+                var filled = [];
+                for (m = 0; m < 12; m++) {
+                    if (salaries[m] !== null) {
+                        filled.push(m + 1);
+                    }
+                }
+                var genLine = '将为 ' + year + ' 年已填月薪的 ' + filled.length + ' 个月份生成记录（' + (filled.length ? filled.join('、') + ' 月' : '无单月薪') + '）';
+                if (yearEndBonus > 0 && salaries[11] === null) {
+                    genLine += '，并因年终奖单独为 12 月生成记录';
+                }
+                genLine += '。';
+                salarySummary = '已选「每月工资不同」：' + genLine + '未填月不写库，累计预扣时未填月按 0 元月薪参与当月至当年累算。';
             }
-            if (!confirm(
-                '将为 ' + year + ' 年 1～12 月生成记录。\n' + salarySummary + '\n' +
-                '工资薪金预扣税额合计约 ' + round2(taxesPreview.reduce(function (a, b) { return a + b; }, 0)) + ' 元。' + bonusLine +
-                '\n税额总计约 ' + totalTax + ' 元（同编号记录将覆盖）。是否写入？'
-            )) return;
+
+            var taxSumSalary = round2(taxesPreview.reduce(function (a, b) { return a + b; }, 0));
+            var msgParts = [];
+            if (salaryMode === 'uniform') {
+                msgParts.push('将为 ' + year + ' 年 1～12 月各生成一条记录。');
+            }
+            msgParts.push(salarySummary);
+            msgParts.push('工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。' + (bonusLine ? bonusLine : ''));
+            msgParts.push('税额总计约 ' + totalTax + ' 元（同编号记录将覆盖）。是否写入？');
+            if (!confirm(msgParts.join('\n'))) return;
+
+            var monthsToWrite = [];
+            if (salaryMode === 'uniform') {
+                for (m = 1; m <= 12; m++) {
+                    monthsToWrite.push(m);
+                }
+            } else {
+                for (m = 1; m <= 12; m++) {
+                    if (salaries[m - 1] !== null) {
+                        monthsToWrite.push(m);
+                    }
+                }
+                if (yearEndBonus > 0 && salaries[11] === null && monthsToWrite.indexOf(12) < 0) {
+                    monthsToWrite.push(12);
+                }
+            }
 
             var chain = Promise.resolve();
-            for (m = 1; m <= 12; m++) {
-                (function (month, taxMonth) {
+            monthsToWrite.forEach(function (month) {
+                (function (month, taxMonth, salM) {
                     chain = chain.then(function () {
                         var o = JSON.parse(JSON.stringify(base));
                         o.company_name = companyForBatch;
-                        var salM = salaries[month - 1];
                         o.year = year;
                         o.month = month;
                         o.tax_period = year + '-' + pad2(month);
@@ -1384,11 +1440,18 @@
                                 if (data.code !== 200) throw new Error(data.msg || '保存失败');
                             });
                     });
-                })(m, taxesPreview[m - 1]);
-            }
+                })(month, taxesPreview[month - 1], (salaryMode === 'variable' && salaries[month - 1] == null) ? 0 : salaries[month - 1]);
+            });
+
+            var nWritten = monthsToWrite.length;
             chain
                 .then(function () {
-                    var tip = '已按累计预扣生成 ' + year + ' 年全年 12 个月';
+                    var tip;
+                    if (salaryMode === 'uniform') {
+                        tip = '已按累计预扣生成 ' + year + ' 年全年 12 个月';
+                    } else {
+                        tip = '已按累计预扣为 ' + year + ' 年生成 ' + nWritten + ' 条月薪记录';
+                    }
                     if (yearEndBonus > 0) tip += '（12 月含年终奖及单独计税）';
                     showMsg(tip, true);
                     return refreshRecordList();

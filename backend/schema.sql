@@ -87,6 +87,13 @@ CREATE TABLE IF NOT EXISTS messages (
     INDEX idx_msg_date (msg_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 全局配置（如测试账号固定公司名称，管理后台可改）
+CREATE TABLE IF NOT EXISTS app_settings (
+    setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    setting_value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 激活码（管理员发放，注册用户使用 action=activate 兑换）
 CREATE TABLE IF NOT EXISTS activation_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,

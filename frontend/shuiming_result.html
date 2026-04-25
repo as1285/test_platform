@@ -47,15 +47,20 @@
             -webkit-transform: translateZ(0);
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+            box-sizing: border-box;
         }
 
         .header {
-            background: #fff;
-            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 15px;
+            /* 与个税一致：顶栏灰底；底部分割线+阴影仅此处，下方区块不再叠阴影 */
+            background: #f5f6fa;
+            padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            border-bottom: 1px solid #dcdce3;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.045);
+            z-index: 2;
         }
 
         .back-btn {
@@ -63,6 +68,7 @@
             left: 16px;
             color: #1e6fff;
             font-size: 16px;
+            font-weight: 400;
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -79,7 +85,7 @@
 
         .header-title {
             font-size: 17px;
-            font-weight: 500;
+            font-weight: 400;
             color: #333;
         }
 
@@ -88,15 +94,16 @@
             right: 16px;
             color: #1e6fff;
             font-size: 15px;
+            font-weight: 400;
             text-decoration: none;
         }
 
         .summary {
             background: #fff;
             position: relative;
-            border-top: 10px solid #f5f6fa;
-            padding: 10px 16px 2px;
-            border-bottom: 10px solid #f5f6fa;
+            border-top: none;
+            padding: 8px 16px 2px;
+            border-bottom: 8px solid #f5f6fa;
             overflow: hidden;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
@@ -110,7 +117,12 @@
             align-items: center;
             padding: 6px 0 9px;
             margin-bottom: 3px;
-            border-bottom: 1px solid #e5e5e5;
+            position: relative;
+            border-bottom: none;
+        }
+
+        .summary-item:not(:last-child) {
+            border-bottom: 0.5px solid #dcdce3;
         }
 
         .summary-item:last-child {
@@ -119,8 +131,8 @@
 
         .summary-label {
             font-size: 16px;
-            font-weight: 500;
-            color: #333;
+            font-weight: 400;
+            color: #000;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -135,16 +147,25 @@
             align-items: center;
             justify-content: center;
             font-size: 12px;
+            font-weight: 400;
             color: #0e60f1;
+        }
+
+        /* 问号与冒号之间无 flex gap，标点紧贴图标 */
+        .summary-help-with-colon {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
         }
 
         .summary-value {
             font-size: 16px;
             font-weight: 400;
-            color: #666;
+            font-variant-numeric: tabular-nums;
+            color: #000;
         }
 
-        /* 仅顶开固定头高度；汇总区已有 border-bottom 10px 灰缝，勿再加 padding 以免与首条间距变成双倍 */
+        /* 顶开固定头高度；与个税一致白底通栏无左右灰边 */
         .list {
             padding: var(--top-fixed-height, 154px) 0 24px;
             background: #f5f6fa;
@@ -157,42 +178,59 @@
             width: 100%;
             background: #fff;
             border-radius: 0;
-            padding: 14px 16px;
+            --list-inline-pad: 16px;
+            padding: 18px var(--list-inline-pad) 14px;
             margin: 0;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             color: inherit;
             position: relative;
             z-index: 1;
-            border-top: 10px solid #f5f6fa;
+            border-top: none;
         }
 
-        .list-item:first-child {
-            border-top-width: 0;
+        /*
+         * 卡片间灰缝须通栏：::before 在 padding 内的 content box 里，width:100% 会短一截。
+         * 用负 margin 拉齐到与白底卡片同宽（抵消左右 padding）。
+         */
+        .list-item:not(:first-child) {
+            padding-top: 0;
+        }
+
+        .list-item:not(:first-child)::before {
+            content: '';
+            display: block;
+            height: 12px;
+            width: calc(100% + 2 * var(--list-inline-pad));
+            margin-left: calc(-1 * var(--list-inline-pad));
+            margin-bottom: 16px;
+            background: #f5f6fa;
         }
 
         .list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            min-height: 24px;
             margin-bottom: 3px;
         }
 
         .list-title {
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 17px;
+            font-weight: 400;
             color: #333;
             letter-spacing: 0.01em;
         }
 
-        /* 年月：与官方端一致，用系统 UI 数字（避免 tnum 导致偏窄偏高），对比度用中灰+medium */
+        /* 年月：略大、常规字重；与金额区小数点对齐留右间距 */
         .list-date {
             flex-shrink: 0;
             font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            font-size: 16px;
-            font-weight: 500;
-            color: #666;
-            margin-right: 8px;
+            font-size: 17px;
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+            color: #333;
+            margin-right: 34px;
             letter-spacing: 0;
         }
 
@@ -222,8 +260,6 @@
             font-size: 15px;
             color: #999;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             display: block;
             max-width: 100%;
         }
@@ -277,7 +313,7 @@
         <div class="header">
             <a href="shuiming.html" class="back-btn" aria-label="返回">
                 <svg viewBox="0 0 8 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M7 1L1 7l6 6" stroke="#1e6fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 1L1 7l6 6" stroke="#1e6fff" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span>返回</span>
             </a>
@@ -288,8 +324,7 @@
         <div class="summary">
             <div class="summary-item">
                 <span class="summary-label">
-                    收入合计
-                    <span class="icon" title="说明">?</span>
+                    <span>收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明">?</span>：</span>
                 </span>
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
@@ -328,12 +363,45 @@
                 .replace(/"/g, '&quot;');
         }
 
-        /** 超过 10 个 Unicode 字符（中文等）时截断并加省略号，与列表展示规则一致 */
+        /**
+         * 单字符在列表中的「显示宽度」：全角/中日韩等计 2，半角字母数字标点计 1（与常见「10 个汉字宽度」一致）。
+         */
+        function charDisplayWidth(ch) {
+            var c = ch.codePointAt(0);
+            if (
+                (c >= 0x1100 && c <= 0x115f) ||
+                (c >= 0x2e80 && c <= 0x9fff) ||
+                (c >= 0xa960 && c <= 0xa97f) ||
+                (c >= 0xac00 && c <= 0xd7af) ||
+                (c >= 0xf900 && c <= 0xfaff) ||
+                (c >= 0xfe10 && c <= 0xfe19) ||
+                (c >= 0xfe30 && c <= 0xfe6f) ||
+                (c >= 0xff00 && c <= 0xff60) ||
+                (c >= 0xffe0 && c <= 0xffe6) ||
+                (c >= 0x20000 && c <= 0x2fffd) ||
+                (c >= 0x30000 && c <= 0x3fffd)
+            ) {
+                return 2;
+            }
+            return 1;
+        }
+
+        /** 超过「10 个中文字符」显示宽度（累计宽度 20）后截断并加省略号，不是简单数 10 个码点 */
         function truncateZh10(s) {
             if (s == null || s === '') return '';
-            var chars = Array.from(String(s));
-            if (chars.length <= 10) return String(s);
-            return chars.slice(0, 10).join('') + '...';
+            var str = String(s);
+            var maxW = 20;
+            var w = 0;
+            var out = '';
+            for (var ch of str) {
+                var cw = charDisplayWidth(ch);
+                if (w + cw > maxW) {
+                    return out + '...';
+                }
+                out += ch;
+                w += cw;
+            }
+            return out;
         }
 
         /** 无记录时的空状态（与产品图一致：shuiming_empty.png 内含插画与「页面空空如也」文案） */

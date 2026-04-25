@@ -86,6 +86,19 @@
         th, td { border: 1px solid #eee; padding: 8px 10px; text-align: left; }
         th { background: #f8f9fa; font-weight: 600; }
         tr:nth-child(even) { background: #fafafa; }
+        .cell-break {
+            max-width: 260px;
+            white-space: normal;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            line-height: 1.45;
+        }
+        .cell-break code {
+            white-space: inherit;
+            word-break: inherit;
+            overflow-wrap: inherit;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
         .badge-yes { background: #e8f5e9; color: #2e7d32; }
         .badge-no { background: #fce4ec; color: #c62828; }
@@ -119,6 +132,20 @@
         </div>
     </div>
     <div class="wrap">
+        <section>
+            <h2>系统设置</h2>
+            <div class="form-row" style="flex-direction: column; align-items: stretch;">
+                <div style="width:100%;max-width:640px;">
+                    <label for="testCompanyName">测试账号固定「扣缴义务人名称」</label>
+                    <input type="text" id="testCompanyName" maxlength="500" placeholder="加载中…" style="width:100%;max-width:640px;">
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+                    <button type="button" class="btn-primary" id="btnSaveTestCompany">保存</button>
+                </div>
+            </div>
+            <p class="hint">测试账号在「个人中心」添加税务记录、任职受雇、批量添加时，扣缴义务人名称均强制为此处配置；保存后会同步更新所有测试账号任职受雇中的公司名称（不自动改历史税务记录）。</p>
+        </section>
+
         <section>
             <h2>生成激活码</h2>
             <div class="form-row">
@@ -314,9 +341,9 @@
                         
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
-                        html += '<td>' + esc(u.username) + '</td>';
-                        html += '<td>' + esc(u.real_name) + '</td>';
-                        html += '<td><code>' + esc(u.password) + '</code></td>';
+                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
+                        html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + loginCity + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
@@ -353,7 +380,7 @@
                             var name = btn.getAttribute('data-u');
                             var t = parseInt(btn.getAttribute('data-t'), 10);
                             var tip = t === 1
-                                ? '将「' + name + '」设为测试账号？任职受雇中的公司名称将统一为固定文案。'
+                                ? '将「' + name + '」设为测试账号？任职受雇中的公司名称将统一为「系统设置」中的测试公司名称。'
                                 : '将「' + name + '」设为普通账号？';
                             if (!confirm(tip)) return;
                             adminFetch('api/admin/user-type', {
@@ -474,6 +501,46 @@
 
         document.getElementById('btnRefreshCodes').addEventListener('click', function() { loadCodes(1); });
 
+        function loadAdminSettings() {
+            adminFetch('api/admin/settings')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data && data.data.test_account_company_name != null) {
+                        document.getElementById('testCompanyName').value = data.data.test_account_company_name;
+                        document.getElementById('testCompanyName').placeholder = '';
+                    }
+                })
+                .catch(function () {
+                    document.getElementById('testCompanyName').placeholder = '加载失败';
+                });
+        }
+
+        document.getElementById('btnSaveTestCompany').addEventListener('click', function () {
+            var btn = document.getElementById('btnSaveTestCompany');
+            var name = document.getElementById('testCompanyName').value.trim();
+            if (!name) {
+                alert('名称不能为空');
+                return;
+            }
+            btn.disabled = true;
+            adminFetch('api/admin/settings', {
+                method: 'POST',
+                body: JSON.stringify({ test_account_company_name: name })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        alert('已保存');
+                        loadAdminSettings();
+                    } else {
+                        alert(data.msg || '保存失败');
+                    }
+                })
+                .catch(function () { alert('网络错误'); })
+                .finally(function () { btn.disabled = false; });
+        });
+
+        loadAdminSettings();
         loadUsers(1);
         loadCodes(1);
     </script>
