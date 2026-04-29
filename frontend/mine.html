@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-app-theme="blue">
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth.js"></script>
@@ -12,6 +12,24 @@
             box-sizing: border-box;
         }
         
+        html[data-app-theme="blue"] {
+            --mine-user-card-bg: #eed3aa;
+            --mine-tax-id: #b46d03;
+            --mine-info-btn-bg: #edaa66;
+            --mine-outline: #0050fd;
+            --mine-btn-grad: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
+            --mine-logout: #1e6fff;
+        }
+
+        html[data-app-theme="yellow"] {
+            --mine-user-card-bg: #fff8e6;
+            --mine-tax-id: #8a6a00;
+            --mine-info-btn-bg: #e8b018;
+            --mine-outline: #c9920a;
+            --mine-btn-grad: linear-gradient(135deg, #f2c43d 0%, #e2a10c 100%);
+            --mine-logout: #b8860b;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background-color: #f5f6fa;
@@ -41,7 +59,7 @@
         
         /* 用户信息卡片 */
         .user-card {
-            background: #eed3aa;
+            background: var(--mine-user-card-bg, #eed3aa);
             margin: -70px 16px 9px;
             border-radius: 12px 12px 0 0;
             padding: 14px;
@@ -64,11 +82,11 @@
         
         .user-id {
             font-size: 12px;
-            color: #b46d03;
+            color: var(--mine-tax-id, #b46d03);
         }
         
         .personal-info-btn {
-            background: #edaa66;
+            background: var(--mine-info-btn-bg, #edaa66);
             border: none;
             border-radius: 20px 0 0 20px;
             padding: 4px 14px;
@@ -152,12 +170,12 @@
         
         .function-btn.orange {
             background: transparent;
-            color: #0050fd;
-            border: 1px solid #0050fd;
+            color: var(--mine-outline, #0050fd);
+            border: 1px solid var(--mine-outline, #0050fd);
         }
         
         .function-btn.blue {
-            background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
+            background: var(--mine-btn-grad, linear-gradient(135deg, #1a94ff 0%, #008afd 100%));
             color: #fff;
         }
         
@@ -224,7 +242,7 @@
         }
         
         .logout-btn {
-            color: #1e6fff;
+            color: var(--mine-logout, #1e6fff);
             font-size: 16px;
             background: none;
             border: none;
@@ -243,6 +261,7 @@
         
         </style>
     <link rel="stylesheet" href="css/nav.css">
+    <script src="/js/theme-loader.js" defer></script>
 </head>
 <body>
     <!-- 我的页面 -->
@@ -268,21 +287,21 @@
         <div class="function-cards">
             <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="家庭成员">
                 <div class="function-icon">
-                    <img src="jtcy.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconFamily" src="jtcy.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">家庭成员</div>
                 <span class="function-btn orange" id="familyCount" aria-hidden="true">添加</span>
             </a>
             <a href="renzhi.html" class="function-card function-card-link" aria-label="任职受雇">
                 <div class="function-icon">
-                    <img src="rzsp.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconEmployer" src="rzsp.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">任职受雇</div>
                 <span class="function-btn blue" id="employerCount" aria-hidden="true"></span>
             </a>
             <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="银行卡">
                 <div class="function-icon">
-                    <img src="yhk.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconBank" src="yhk.jpg" alt="" style="width: 38px; border-radius: 8px;">
                 </div>
                 <div class="function-title">银行卡</div>
                 <span class="function-btn orange" id="bankCardCount" aria-hidden="true">添加</span>
@@ -386,6 +405,44 @@
         
         // 初始化时更新图标
         updateNavIcons();
+
+        function setMineHeaderByGender() {
+            var cfg = window.__MINE_UI_CONFIG;
+            var headerImg = document.getElementById('headerImg');
+            if (!headerImg) {
+                return;
+            }
+            var gender = localStorage.getItem('gender');
+            if (cfg) {
+                headerImg.src = gender == 2 ? cfg.header_female : cfg.header_male;
+            } else {
+                headerImg.src = gender == 2 ? 'nx.jpg' : 'grdb.jpg';
+            }
+        }
+
+        function setMineAssetsFromConfig() {
+            var cfg = window.__MINE_UI_CONFIG;
+            if (!cfg) {
+                return;
+            }
+            var fam = document.getElementById('mineIconFamily');
+            var emp = document.getElementById('mineIconEmployer');
+            var bank = document.getElementById('mineIconBank');
+            if (fam) {
+                fam.src = cfg.icon_family;
+            }
+            if (emp) {
+                emp.src = cfg.icon_employer;
+            }
+            if (bank) {
+                bank.src = cfg.icon_bank;
+            }
+            setMineHeaderByGender();
+        }
+
+        window.addEventListener('mineUiConfig', function () {
+            setMineAssetsFromConfig();
+        });
         
         // 纳税人识别号显示状态
         var taxIdVisible = false;
@@ -429,13 +486,7 @@
             }
             updateTaxIdDisplay(taxId);
             
-            // 根据localStorage中的性别快速切换图片
-            var headerImg = document.getElementById('headerImg');
-            if (gender == 2) {
-                headerImg.src = 'nx.jpg';
-            } else {
-                headerImg.src = 'grdb.jpg';
-            }
+            setMineHeaderByGender();
             
             // 如果没有登录信息，跳转到登录页
             if (!userId) {
@@ -458,13 +509,7 @@
                         localStorage.setItem('bank_card_count', user.bank_card_count);
                         localStorage.setItem('gender', user.gender);
                         
-                        // 根据性别切换头部图片
-                        var headerImg = document.getElementById('headerImg');
-                        if (user.gender == 2) {
-                            headerImg.src = 'nx.jpg';
-                        } else {
-                            headerImg.src = 'grdb.jpg';
-                        }
+                        setMineHeaderByGender();
                         
                         // 更新页面显示
                         document.getElementById('userName').textContent = user.real_name;
@@ -583,6 +628,9 @@
 
         // 页面加载时执行
         loadUserInfo();
+        if (window.__MINE_UI_CONFIG) {
+            setMineAssetsFromConfig();
+        }
         initMineMenuA11y();
         
         // iOS设备检测，底部导航上移

@@ -1,3 +1,14 @@
+/* 主题色：由 /js/theme-loader.js 根据管理后台配置设置 --app-accent* */
+:root {
+    --app-accent: #1e6fff;
+    --app-accent-mid: #008afd;
+    --app-accent-soft: #5aa3ff;
+}
+
+.nav-item.active .nav-text {
+    color: var(--app-accent);
+}
+
 /* 统一页面滚动条处理 */
 html, body {
     overflow-x: hidden;
@@ -94,18 +105,18 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 /* iOS设备选中状态 */
 .bottom-nav.ios-device .nav-item.active .nav-text {
-    color: #1e6fff;
+    color: var(--app-accent);
 }
 
 .bottom-nav.ios-device .nav-item.active .nav-icon svg path[stroke="#999"],
 .bottom-nav.ios-device .nav-item.active .nav-icon svg rect[stroke="#999"],
 .bottom-nav.ios-device .nav-item.active .nav-icon svg circle[stroke="#999"] {
-    stroke: #1e6fff;
+    stroke: var(--app-accent);
 }
 
 .bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#999"],
 .bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#1e6fff"] {
-    fill: #1e6fff;
+    fill: var(--app-accent);
 }
 
 .nav-item {
@@ -142,10 +153,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 .nav-text {
     font-size: 12px;
     color: #666;
-}
-
-.nav-item.active .nav-text {
-    color: #1e6fff;
 }
 
 .nav-badge {

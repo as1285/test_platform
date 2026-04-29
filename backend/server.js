@@ -28,6 +28,17 @@ const USER_TYPE_TEST = 1;
 const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
   process.env.TEST_ACCOUNT_COMPANY_NAME || '购买+Tangdong 购买++V : Tangdong6832';
 const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
+const SETTING_KEY_MINE_UI = 'mine_ui_json';
+
+/** 个人中心默认外观（管理后台可覆盖） */
+const DEFAULT_MINE_UI = {
+  theme: 'blue',
+  header_male: 'grdb.jpg',
+  header_female: 'nx.jpg',
+  icon_family: 'jtcy.jpg',
+  icon_employer: 'rzsp.jpg',
+  icon_bank: 'yhk.jpg'
+};
 
 let pool;
 /** @type {{ v: string, t: number }|null} */
@@ -59,6 +70,83 @@ async function getTestAccountCompanyName() {
 
 function invalidateTestCompanyNameCache() {
   _testCompanyNameCache = null;
+}
+
+function cloneMineUiDefaults() {
+  return {
+    theme: DEFAULT_MINE_UI.theme,
+    header_male: DEFAULT_MINE_UI.header_male,
+    header_female: DEFAULT_MINE_UI.header_female,
+    icon_family: DEFAULT_MINE_UI.icon_family,
+    icon_employer: DEFAULT_MINE_UI.icon_employer,
+    icon_bank: DEFAULT_MINE_UI.icon_bank
+  };
+}
+
+/** 允许站内相对路径或 https/http 图片地址，禁止 .. 与脚本伪协议 */
+function sanitizeMineUiImageRef(raw) {
+  if (raw == null) {
+    return '';
+  }
+  var s = String(raw).trim();
+  if (s === '' || s.length > 500) {
+    return '';
+  }
+  if (/[\s<>"']/.test(s)) {
+    return '';
+  }
+  if (s.indexOf('..') >= 0) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(s)) {
+    if (/^https?:\/\/[^\s'"<>]+$/i.test(s)) {
+      return s;
+    }
+    return '';
+  }
+  if (/^[a-zA-Z0-9][a-zA-Z0-9_.\-\/]*$/.test(s)) {
+    return s;
+  }
+  return '';
+}
+
+async function getMineUiForApi() {
+  var out = cloneMineUiDefaults();
+  if (!pool) {
+    return out;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [SETTING_KEY_MINE_UI]
+    );
+    if (rows.length > 0 && rows[0].setting_value != null) {
+      var parsed = JSON.parse(String(rows[0].setting_value));
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
+          out.theme = parsed.theme;
+        }
+        ['header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank'].forEach(function (k) {
+          if (parsed[k] != null) {
+            var ok = sanitizeMineUiImageRef(parsed[k]);
+            if (ok) {
+              out[k] = ok;
+            }
+          }
+        });
+      }
+    }
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      console.error('getMineUiForApi JSON', e);
+    } else {
+      console.error('getMineUiForApi', e);
+    }
+  } finally {
+    conn.release();
+  }
+  return out;
 }
 
 function rowUserTypeIsTest(row) {
@@ -340,6 +428,10 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
     [SETTING_KEY_TEST_COMPANY, TEST_ACCOUNT_COMPANY_NAME_DEFAULT]
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
+    [SETTING_KEY_MINE_UI, JSON.stringify(cloneMineUiDefaults())]
   );
 
   conn.release();
@@ -1076,6 +1168,77 @@ async function handleUserPost(req, res) {
           updateFields.push('bank_card_count = ?');
           updateParams.push(Number(body.bank_card_count));
         }
+
+        function profileField(bodyObj, key, maxLen) {
+          if (!Object.prototype.hasOwnProperty.call(bodyObj, key)) {
+            return undefined;
+          }
+          var s = bodyObj[key] == null ? '' : String(bodyObj[key]).trim();
+          if (s.length > maxLen) {
+            s = s.substring(0, maxLen);
+          }
+          return s;
+        }
+        var pfHujiArea = profileField(body, 'huji_area', 255);
+        if (pfHujiArea !== undefined) {
+          updateFields.push('huji_area = ?');
+          updateParams.push(pfHujiArea);
+        }
+        var pfHujiDetail = profileField(body, 'huji_detail', 512);
+        if (pfHujiDetail !== undefined) {
+          updateFields.push('huji_detail = ?');
+          updateParams.push(pfHujiDetail);
+        }
+        var pfLivingArea = profileField(body, 'living_area', 255);
+        if (pfLivingArea !== undefined) {
+          updateFields.push('living_area = ?');
+          updateParams.push(pfLivingArea);
+        }
+        var pfLivingDetail = profileField(body, 'living_detail', 512);
+        if (pfLivingDetail !== undefined) {
+          updateFields.push('living_detail = ?');
+          updateParams.push(pfLivingDetail);
+        }
+        var pfContactArea = profileField(body, 'contact_area', 255);
+        if (pfContactArea !== undefined) {
+          updateFields.push('contact_area = ?');
+          updateParams.push(pfContactArea);
+        }
+        var pfContactDetail = profileField(body, 'contact_detail', 512);
+        if (pfContactDetail !== undefined) {
+          updateFields.push('contact_detail = ?');
+          updateParams.push(pfContactDetail);
+        }
+        var pfIdType = profileField(body, 'id_type', 64);
+        if (pfIdType !== undefined && !isTestProfile) {
+          updateFields.push('id_type = ?');
+          updateParams.push(pfIdType);
+        }
+        var pfBirth = profileField(body, 'birth_date', 32);
+        if (pfBirth !== undefined && !isTestProfile) {
+          updateFields.push('birth_date = ?');
+          updateParams.push(pfBirth);
+        }
+        var pfNationality = profileField(body, 'nationality', 128);
+        if (pfNationality !== undefined && !isTestProfile) {
+          updateFields.push('nationality = ?');
+          updateParams.push(pfNationality);
+        }
+        var pfEducation = profileField(body, 'education', 64);
+        if (pfEducation !== undefined) {
+          updateFields.push('education = ?');
+          updateParams.push(pfEducation);
+        }
+        var pfEthnicity = profileField(body, 'ethnicity', 64);
+        if (pfEthnicity !== undefined) {
+          updateFields.push('ethnicity = ?');
+          updateParams.push(pfEthnicity);
+        }
+        var pfEmail = profileField(body, 'email', 255);
+        if (pfEmail !== undefined) {
+          updateFields.push('email = ?');
+          updateParams.push(pfEmail);
+        }
         
         if (updateFields.length > 0) {
           updateParams.push(userId);
@@ -1626,7 +1789,11 @@ async function handleAdminUserType(req, res) {
 async function handleAdminSettingsGet(req, res) {
   try {
     var name = await getTestAccountCompanyName();
-    return res.json({ code: 200, data: { test_account_company_name: name } });
+    var mineUi = await getMineUiForApi();
+    return res.json({
+      code: 200,
+      data: { test_account_company_name: name, mine_ui: mineUi }
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -1635,31 +1802,78 @@ async function handleAdminSettingsGet(req, res) {
 
 async function handleAdminSettingsPost(req, res) {
   var body = req.body || {};
-  var name = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
-  if (!name) {
-    return res.status(400).json({ code: 400, msg: '测试账号公司名称不能为空' });
+  var hasCompany = Object.prototype.hasOwnProperty.call(body, 'test_account_company_name');
+  var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
+  if (!hasCompany && !hasMineUi) {
+    return res.status(400).json({ code: 400, msg: '请提供 test_account_company_name 或 mine_ui' });
   }
-  if (name.length > 500) {
-    return res.status(400).json({ code: 400, msg: '名称过长（最多 500 字）' });
+
+  if (hasCompany) {
+    var name0 = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
+    if (!name0) {
+      return res.status(400).json({ code: 400, msg: '测试账号公司名称不能为空' });
+    }
+    if (name0.length > 500) {
+      return res.status(400).json({ code: 400, msg: '名称过长（最多 500 字）' });
+    }
   }
+
   const conn = await pool.getConnection();
   try {
-    await conn.execute(
-      `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-      [SETTING_KEY_TEST_COMPANY, name]
-    );
-    await conn.execute(
-      'UPDATE employers e INNER JOIN users u ON e.user_id = u.username SET e.company_name = ? WHERE u.user_type = ?',
-      [name, USER_TYPE_TEST]
-    );
-    invalidateTestCompanyNameCache();
-    return res.json({ code: 200, data: { test_account_company_name: name } });
+    if (hasCompany) {
+      var name = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_TEST_COMPANY, name]
+      );
+      await conn.execute(
+        'UPDATE employers e INNER JOIN users u ON e.user_id = u.username SET e.company_name = ? WHERE u.user_type = ?',
+        [name, USER_TYPE_TEST]
+      );
+      invalidateTestCompanyNameCache();
+    }
+
+    if (hasMineUi) {
+      var merged = await getMineUiForApi();
+      var incoming = body.mine_ui;
+      if (incoming.theme === 'blue' || incoming.theme === 'yellow') {
+        merged.theme = incoming.theme;
+      }
+      ['header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank'].forEach(function (k) {
+        if (incoming[k] != null && String(incoming[k]).trim() !== '') {
+          var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
+          if (ok) {
+            merged[k] = ok;
+          }
+        }
+      });
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_MINE_UI, JSON.stringify(merged)]
+      );
+    }
+
+    var outData = { success: true };
+    outData.test_account_company_name = await getTestAccountCompanyName();
+    outData.mine_ui = await getMineUiForApi();
+    return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
   } finally {
     conn.release();
+  }
+}
+
+async function handlePublicMineUi(req, res) {
+  try {
+    var mineUi = await getMineUiForApi();
+    return res.json({ code: 200, data: mineUi });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
 
@@ -1741,6 +1955,7 @@ async function handleAdminDeleteUser(req, res) {
 app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
 app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
+app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
 app.get('/api/admin/user-tax-records', requireAdminAuth, handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);

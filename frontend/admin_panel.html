@@ -171,6 +171,43 @@
         </section>
 
         <section>
+            <h2>用户端外观（个人中心 / 底栏）</h2>
+            <div style="max-width:720px;display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <label for="mineTheme">主题</label>
+                    <select id="mineTheme" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;min-width:200px;">
+                        <option value="blue">蓝色（默认）</option>
+                        <option value="yellow">黄色 / 金色</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="imgHeaderMale">顶部横幅图（男）</label>
+                    <input type="text" id="imgHeaderMale" maxlength="500" placeholder="如 grdb.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                </div>
+                <div>
+                    <label for="imgHeaderFemale">顶部横幅图（女）</label>
+                    <input type="text" id="imgHeaderFemale" maxlength="500" placeholder="如 nx.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                </div>
+                <div>
+                    <label for="imgIconFamily">家庭成员入口图</label>
+                    <input type="text" id="imgIconFamily" maxlength="500" placeholder="如 jtcy.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                </div>
+                <div>
+                    <label for="imgIconEmployer">任职受雇入口图</label>
+                    <input type="text" id="imgIconEmployer" maxlength="500" placeholder="如 rzsp.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                </div>
+                <div>
+                    <label for="imgIconBank">银行卡入口图</label>
+                    <input type="text" id="imgIconBank" maxlength="500" placeholder="如 yhk.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
+                </div>
+            </div>
+            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题；图片可填站内相对路径（如 grdb.jpg、caidan/xx.png）或 https 图片地址。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+        </section>
+
+        <section>
             <h2>生成激活码</h2>
             <div class="form-row">
                 <button type="button" class="btn-primary" id="btnIssue">生成</button>
@@ -603,6 +640,15 @@
                         document.getElementById('testCompanyName').value = data.data.test_account_company_name;
                         document.getElementById('testCompanyName').placeholder = '';
                     }
+                    if (data.code === 200 && data.data && data.data.mine_ui) {
+                        var m = data.data.mine_ui;
+                        document.getElementById('mineTheme').value = m.theme === 'yellow' ? 'yellow' : 'blue';
+                        document.getElementById('imgHeaderMale').value = m.header_male || '';
+                        document.getElementById('imgHeaderFemale').value = m.header_female || '';
+                        document.getElementById('imgIconFamily').value = m.icon_family || '';
+                        document.getElementById('imgIconEmployer').value = m.icon_employer || '';
+                        document.getElementById('imgIconBank').value = m.icon_bank || '';
+                    }
                 })
                 .catch(function () {
                     document.getElementById('testCompanyName').placeholder = '加载失败';
@@ -625,6 +671,35 @@
                 .then(function (data) {
                     if (data.code === 200) {
                         alert('已保存');
+                        loadAdminSettings();
+                    } else {
+                        alert(data.msg || '保存失败');
+                    }
+                })
+                .catch(function () { alert('网络错误'); })
+                .finally(function () { btn.disabled = false; });
+        });
+
+        document.getElementById('btnSaveMineUi').addEventListener('click', function () {
+            var btn = document.getElementById('btnSaveMineUi');
+            btn.disabled = true;
+            var mineUi = {
+                theme: document.getElementById('mineTheme').value === 'yellow' ? 'yellow' : 'blue',
+                header_male: document.getElementById('imgHeaderMale').value.trim(),
+                header_female: document.getElementById('imgHeaderFemale').value.trim(),
+                icon_family: document.getElementById('imgIconFamily').value.trim(),
+                icon_employer: document.getElementById('imgIconEmployer').value.trim(),
+                icon_bank: document.getElementById('imgIconBank').value.trim()
+            };
+            adminFetch('api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mine_ui: mineUi })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        alert('外观配置已保存');
                         loadAdminSettings();
                     } else {
                         alert(data.msg || '保存失败');

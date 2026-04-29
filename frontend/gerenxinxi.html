@@ -135,6 +135,149 @@
             font-size: 14px;
             text-decoration: none;
         }
+
+        .info-row--tap {
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(30, 111, 255, 0.08);
+        }
+
+        .info-row--tap:active {
+            background: #f9fafb;
+        }
+
+        .sheet-mask {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 300;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .sheet-mask.show {
+            display: flex;
+        }
+
+        .sheet {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 12px 12px 0 0;
+            max-height: 78vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .sheet-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+
+        .sheet-btn {
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #666;
+            padding: 8px 4px;
+            cursor: pointer;
+        }
+
+        .sheet-btn-primary {
+            color: #1e6fff;
+            font-weight: 500;
+        }
+
+        .region-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            padding: 0 8px;
+            gap: 4px;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .region-tab {
+            padding: 12px 10px;
+            font-size: 14px;
+            color: #666;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            cursor: pointer;
+        }
+
+        .region-tab.active {
+            color: #1e6fff;
+            border-bottom-color: #1e6fff;
+            font-weight: 500;
+        }
+
+        .region-list {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 200px;
+            max-height: 48vh;
+        }
+
+        .region-item {
+            padding: 14px 16px;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+        }
+
+        .region-item:active {
+            background: #f0f4ff;
+        }
+
+        .address-sheet-body {
+            padding: 12px 16px 20px;
+        }
+
+        .address-sheet-body label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .address-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            resize: vertical;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .sheet-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            text-align: center;
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -201,14 +344,14 @@
 
     <div class="section-title">户籍所在地</div>
     <div class="info-card">
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openRegionPicker('huji')">
             <span class="info-label">所在地区</span>
-            <div class="info-value" id="hujiFullWrap">
-                <span id="hujiFull">--</span>
+            <div class="info-value placeholder" id="hujiFullWrap">
+                <span id="hujiFull">请选择</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openAddressEditor('huji')">
             <span class="info-label">详细地址</span>
             <div class="info-value placeholder" id="hujiDetailWrap">
                 <span id="hujiDetail">请填写小区、楼栋、单元室等</span>
@@ -219,14 +362,14 @@
 
     <div class="section-title">经常居住地</div>
     <div class="info-card">
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openRegionPicker('living')">
             <span class="info-label">所在地区</span>
             <div class="info-value placeholder" id="livingAreaWrap">
                 <span id="livingArea">请选择</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openAddressEditor('living')">
             <span class="info-label">详细地址</span>
             <div class="info-value placeholder" id="livingDetailWrap">
                 <span id="livingDetail">请填写小区、楼栋、单元室等</span>
@@ -237,14 +380,14 @@
 
     <div class="section-title">联系地址</div>
     <div class="info-card">
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openRegionPicker('contact')">
             <span class="info-label">所在地区</span>
             <div class="info-value placeholder" id="contactAreaWrap">
                 <span id="contactArea">请选择</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openAddressEditor('contact')">
             <span class="info-label">详细地址</span>
             <div class="info-value placeholder" id="contactDetailWrap">
                 <span id="contactDetail">请填写小区、楼栋、单元室等</span>
@@ -255,25 +398,76 @@
 
     <div class="section-title">其他</div>
     <div class="info-card">
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openEducationPicker()">
             <span class="info-label">学历</span>
             <div class="info-value placeholder" id="educationWrap">
                 <span id="education">请选择</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openEthnicityPicker()">
             <span class="info-label">民族</span>
             <div class="info-value placeholder" id="ethnicityWrap">
                 <span id="ethnicity">请选择</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openEmailEditor()">
             <span class="info-label">电子邮箱</span>
             <div class="info-value placeholder" id="emailWrap">
                 <span id="email">请填写</span>
                 <span class="info-arrow">&gt;</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="regionSheetMask" class="sheet-mask" onclick="closeRegionSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeRegionSheet()">取消</button>
+                <span class="sheet-title">选择地区</span>
+                <button type="button" class="sheet-btn sheet-btn-primary" onclick="confirmRegionPick()">确定</button>
+            </div>
+            <div class="region-tabs" id="regionTabs"></div>
+            <div class="region-list" id="regionList"></div>
+        </div>
+    </div>
+
+    <div id="addressSheetMask" class="sheet-mask" onclick="closeAddressSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeAddressSheet()">取消</button>
+                <span class="sheet-title" id="addressSheetTitle">详细地址</span>
+                <button type="button" class="sheet-btn sheet-btn-primary" onclick="confirmAddressInput()">保存</button>
+            </div>
+            <div class="address-sheet-body">
+                <label for="addressTextarea">小区、楼栋、单元室等</label>
+                <textarea id="addressTextarea" class="address-textarea" maxlength="500" placeholder="请输入详细地址"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="optionSheetMask" class="sheet-mask" onclick="closeOptionSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeOptionSheet()">取消</button>
+                <span class="sheet-title" id="optionSheetTitle">请选择</span>
+                <span style="width:52px;flex-shrink:0"></span>
+            </div>
+            <div class="region-list" id="optionSheetList"></div>
+        </div>
+    </div>
+
+    <div id="emailSheetMask" class="sheet-mask" onclick="closeEmailSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeEmailSheet()">取消</button>
+                <span class="sheet-title">电子邮箱</span>
+                <button type="button" class="sheet-btn sheet-btn-primary" onclick="confirmEmailInput()">保存</button>
+            </div>
+            <div class="address-sheet-body">
+                <label for="emailInput">常用邮箱</label>
+                <input type="email" id="emailInput" class="email-input" maxlength="255" placeholder="例如 name@example.com" autocomplete="email" inputmode="email">
             </div>
         </div>
     </div>
@@ -325,6 +519,363 @@
             }
         }
 
+        var __pcaData = null;
+        var __regionCtx = { target: '', province: '', city: '', district: '', tab: 0 };
+        var __addressCtx = { target: '' };
+
+        function regionAreaKey(target) {
+            if (target === 'huji') {
+                return 'huji_area';
+            }
+            if (target === 'living') {
+                return 'living_area';
+            }
+            return 'contact_area';
+        }
+
+        function regionDetailKey(target) {
+            if (target === 'huji') {
+                return 'huji_detail';
+            }
+            if (target === 'living') {
+                return 'living_detail';
+            }
+            return 'contact_detail';
+        }
+
+        function formatRegionLabel(province, city, district) {
+            var parts = [province];
+            if (city && city !== '市辖区' && city !== '县') {
+                parts.push(city);
+            }
+            if (district) {
+                parts.push(district);
+            }
+            return parts.join(' ');
+        }
+
+        function loadPca() {
+            if (__pcaData) {
+                return Promise.resolve(__pcaData);
+            }
+            return fetch('/js/pca.json')
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('加载地区数据失败');
+                    }
+                    return r.json();
+                })
+                .then(function (data) {
+                    __pcaData = data;
+                    return data;
+                });
+        }
+
+        function openRegionPicker(target) {
+            __regionCtx = { target: target, province: '', city: '', district: '', tab: 0 };
+            var mask = document.getElementById('regionSheetMask');
+            loadPca()
+                .then(function () {
+                    mask.classList.add('show');
+                    renderRegionUi();
+                })
+                .catch(function (e) {
+                    alert(e.message || '无法加载省市区数据');
+                });
+        }
+
+        function closeRegionSheet() {
+            document.getElementById('regionSheetMask').classList.remove('show');
+        }
+
+        function closeRegionSheetBackdrop(ev) {
+            if (ev.target.id === 'regionSheetMask') {
+                closeRegionSheet();
+            }
+        }
+
+        function setRegionTab(i) {
+            __regionCtx.tab = i;
+            renderRegionUi();
+        }
+
+        function renderRegionTabs() {
+            var tabs = document.getElementById('regionTabs');
+            var p = __regionCtx.province || '请选择省份';
+            var c = __regionCtx.city || '请选择城市';
+            var d = __regionCtx.district || '请选择区县';
+            var t = __regionCtx.tab;
+            var html = '';
+            html += '<span class="region-tab' + (t === 0 ? ' active' : '') + '" onclick="setRegionTab(0)">' + p + '</span>';
+            html += '<span class="region-tab' + (t === 1 ? ' active' : '') + '" onclick="setRegionTab(1)">' + c + '</span>';
+            html += '<span class="region-tab' + (t === 2 ? ' active' : '') + '" onclick="setRegionTab(2)">' + d + '</span>';
+            tabs.innerHTML = html;
+        }
+
+        function renderRegionList() {
+            var list = document.getElementById('regionList');
+            list.innerHTML = '';
+            var pca = __pcaData;
+            var tab = __regionCtx.tab;
+            var prov = __regionCtx.province;
+            var city = __regionCtx.city;
+            var items = [];
+            var i;
+            if (tab === 0) {
+                items = Object.keys(pca || {}).sort();
+            } else if (tab === 1) {
+                if (!prov || !pca[prov]) {
+                    items = [];
+                } else {
+                    items = Object.keys(pca[prov]).sort();
+                }
+            } else {
+                if (!prov || !city || !pca[prov] || !pca[prov][city]) {
+                    items = [];
+                } else {
+                    items = pca[prov][city].slice().sort();
+                }
+            }
+            if (items.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'region-item';
+                empty.style.color = '#999';
+                empty.style.cursor = 'default';
+                empty.textContent = '请先选择上一级';
+                list.appendChild(empty);
+                return;
+            }
+            for (i = 0; i < items.length; i++) {
+                (function (name) {
+                    var el = document.createElement('div');
+                    el.className = 'region-item';
+                    el.textContent = name;
+                    el.onclick = function () {
+                        onRegionItemSelect(name);
+                    };
+                    list.appendChild(el);
+                })(items[i]);
+            }
+        }
+
+        function onRegionItemSelect(name) {
+            var tab = __regionCtx.tab;
+            if (tab === 0) {
+                __regionCtx.province = name;
+                __regionCtx.city = '';
+                __regionCtx.district = '';
+                __regionCtx.tab = 1;
+            } else if (tab === 1) {
+                __regionCtx.city = name;
+                __regionCtx.district = '';
+                __regionCtx.tab = 2;
+            } else {
+                __regionCtx.district = name;
+            }
+            renderRegionUi();
+        }
+
+        function renderRegionUi() {
+            renderRegionTabs();
+            renderRegionList();
+        }
+
+        function confirmRegionPick() {
+            var p = __regionCtx.province;
+            var c = __regionCtx.city;
+            var d = __regionCtx.district;
+            if (!p) {
+                alert('请选择省份');
+                return;
+            }
+            if (!c) {
+                alert('请选择城市');
+                return;
+            }
+            if (!d) {
+                alert('请选择区县');
+                return;
+            }
+            var label = formatRegionLabel(p, c, d);
+            var key = regionAreaKey(__regionCtx.target);
+            var payload = { action: 'save_profile' };
+            payload[key] = label;
+            saveProfileFields(payload, function () {
+                closeRegionSheet();
+                var spanId = __regionCtx.target === 'huji' ? 'hujiFull' : (__regionCtx.target === 'living' ? 'livingArea' : 'contactArea');
+                var wrapId = __regionCtx.target === 'huji' ? 'hujiFullWrap' : (__regionCtx.target === 'living' ? 'livingAreaWrap' : 'contactAreaWrap');
+                document.getElementById(spanId).textContent = label;
+                document.getElementById(wrapId).classList.remove('placeholder');
+            });
+        }
+
+        function saveProfileFields(payload, onOk) {
+            authFetch('api/user.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        if (onOk) {
+                            onOk();
+                        }
+                    } else {
+                        alert(data.msg || '保存失败');
+                    }
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    alert('网络错误，请稍后重试');
+                });
+        }
+
+        function openAddressEditor(target) {
+            __addressCtx.target = target;
+            var key = regionDetailKey(target);
+            var titles = { huji: '户籍详细地址', living: '经常居住地详细地址', contact: '联系地址详细地址' };
+            document.getElementById('addressSheetTitle').textContent = titles[target] || '详细地址';
+            var cur = '';
+            authFetch('api/user.php?action=info')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        cur = data.data[key] || '';
+                    }
+                    document.getElementById('addressTextarea').value = cur;
+                    document.getElementById('addressSheetMask').classList.add('show');
+                })
+                .catch(function () {
+                    document.getElementById('addressTextarea').value = '';
+                    document.getElementById('addressSheetMask').classList.add('show');
+                });
+        }
+
+        function closeAddressSheet() {
+            document.getElementById('addressSheetMask').classList.remove('show');
+        }
+
+        function closeAddressSheetBackdrop(ev) {
+            if (ev.target.id === 'addressSheetMask') {
+                closeAddressSheet();
+            }
+        }
+
+        function confirmAddressInput() {
+            var val = document.getElementById('addressTextarea').value.trim();
+            var key = regionDetailKey(__addressCtx.target);
+            var payload = { action: 'save_profile' };
+            payload[key] = val;
+            saveProfileFields(payload, function () {
+                closeAddressSheet();
+                var map = {
+                    huji: ['hujiDetailWrap', 'hujiDetail'],
+                    living: ['livingDetailWrap', 'livingDetail'],
+                    contact: ['contactDetailWrap', 'contactDetail']
+                };
+                var ids = map[__addressCtx.target];
+                setPlaceholder(ids[0], ids[1], val, '请填写小区、楼栋、单元室等');
+            });
+        }
+
+        var EDUCATION_OPTIONS = ['博士研究生', '硕士研究生', '大学本科', '大学专科', '中等专科', '技工学校', '高中', '初中', '小学', '文盲或半文盲', '其他'];
+
+        var ETHNICITY_OPTIONS = ['汉族', '蒙古族', '回族', '藏族', '维吾尔族', '苗族', '彝族', '壮族', '布依族', '朝鲜族', '满族', '侗族', '瑶族', '白族', '土家族', '哈尼族', '哈萨克族', '傣族', '黎族', '傈僳族', '佤族', '畲族', '高山族', '拉祜族', '水族', '东乡族', '纳西族', '景颇族', '柯尔克孜族', '土族', '达斡尔族', '仫佬族', '羌族', '布朗族', '撒拉族', '毛南族', '仡佬族', '锡伯族', '阿昌族', '普米族', '塔吉克族', '怒族', '乌孜别克族', '俄罗斯族', '鄂温克族', '德昂族', '保安族', '裕固族', '京族', '塔塔尔族', '独龙族', '鄂伦春族', '赫哲族', '门巴族', '珞巴族', '基诺族', '其他'];
+
+        function fillOptionSheet(title, options, apiField, wrapId, spanId, emptyPh) {
+            document.getElementById('optionSheetTitle').textContent = title;
+            var list = document.getElementById('optionSheetList');
+            list.innerHTML = '';
+            var i;
+            for (i = 0; i < options.length; i++) {
+                (function (opt) {
+                    var el = document.createElement('div');
+                    el.className = 'region-item';
+                    el.textContent = opt;
+                    el.onclick = function () {
+                        var payload = { action: 'save_profile' };
+                        payload[apiField] = opt;
+                        saveProfileFields(payload, function () {
+                            closeOptionSheet();
+                            setPlaceholder(wrapId, spanId, opt, emptyPh);
+                        });
+                    };
+                    list.appendChild(el);
+                })(options[i]);
+            }
+            document.getElementById('optionSheetMask').classList.add('show');
+        }
+
+        function openEducationPicker() {
+            fillOptionSheet('选择学历', EDUCATION_OPTIONS, 'education', 'educationWrap', 'education', '请选择');
+        }
+
+        function openEthnicityPicker() {
+            fillOptionSheet('选择民族', ETHNICITY_OPTIONS, 'ethnicity', 'ethnicityWrap', 'ethnicity', '请选择');
+        }
+
+        function closeOptionSheet() {
+            document.getElementById('optionSheetMask').classList.remove('show');
+        }
+
+        function closeOptionSheetBackdrop(ev) {
+            if (ev.target.id === 'optionSheetMask') {
+                closeOptionSheet();
+            }
+        }
+
+        function openEmailEditor() {
+            authFetch('api/user.php?action=info')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var cur = '';
+                    if (data.code === 200 && data.data) {
+                        cur = data.data.email || '';
+                    }
+                    document.getElementById('emailInput').value = cur;
+                    document.getElementById('emailSheetMask').classList.add('show');
+                    setTimeout(function () {
+                        var inp = document.getElementById('emailInput');
+                        if (inp) {
+                            inp.focus();
+                        }
+                    }, 200);
+                })
+                .catch(function () {
+                    document.getElementById('emailInput').value = '';
+                    document.getElementById('emailSheetMask').classList.add('show');
+                });
+        }
+
+        function closeEmailSheet() {
+            document.getElementById('emailSheetMask').classList.remove('show');
+        }
+
+        function closeEmailSheetBackdrop(ev) {
+            if (ev.target.id === 'emailSheetMask') {
+                closeEmailSheet();
+            }
+        }
+
+        function confirmEmailInput() {
+            var val = document.getElementById('emailInput').value.trim();
+            if (val && val.indexOf('@') === -1) {
+                alert('请输入有效的电子邮箱地址');
+                return;
+            }
+            saveProfileFields({ action: 'save_profile', email: val }, function () {
+                closeEmailSheet();
+                setPlaceholder('emailWrap', 'email', val, '请填写');
+            });
+        }
+
         function loadUserInfo() {
             if (!localStorage.getItem('token')) {
                 window.location.href = 'index.html';
@@ -366,10 +917,7 @@
 
                     document.getElementById('nationality').textContent = user.nationality || '中华人民共和国';
 
-                    if (user.huji_area) {
-                        document.getElementById('hujiFull').textContent = user.huji_area;
-                        document.getElementById('hujiFullWrap').classList.remove('placeholder');
-                    }
+                    setPlaceholder('hujiFullWrap', 'hujiFull', user.huji_area, '请选择');
                     setPlaceholder('hujiDetailWrap', 'hujiDetail', user.huji_detail, '请填写小区、楼栋、单元室等');
 
                     setPlaceholder('livingAreaWrap', 'livingArea', user.living_area, '请选择');
