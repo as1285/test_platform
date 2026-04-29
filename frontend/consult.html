@@ -577,7 +577,7 @@
 
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 − 5000（减除费用）− 社保 − 公积金 − 专项附加扣除；按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），并单独生成一条「全年一次性奖金收入」记录；可选择其归属月份（1–12 月）。扣缴义务人名称可在下方单独填写；未填时与上方「添加记录」表单中的扣缴义务人一致，其他税务字段仍取自上方表单。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 −（5000 + 下方「专项附加扣除」）− 基本养老保险 − 基本医疗保险 − 失业保险 − 住房公积金；写入时「本期减除费用」= 5000 + 专项附加扣除，「本期专项扣除」= 上述三险与公积金之和。按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），并单独生成一条「全年一次性奖金收入」记录；可使用下方「添加年终奖」仅写入奖金记录，或在生成全年月薪记录时一并写入。扣缴义务人名称可在下方单独填写；未填时与上方「添加记录」表单中的扣缴义务人一致，其他税务字段仍取自上方表单。</p>
                 <div class="form-group batch-salary-mode-group">
                     <label class="batch-salary-mode-title">工资填写方式</label>
                     <div class="batch-salary-mode-options">
@@ -619,14 +619,28 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="batch_social">社保扣费（月，元）</label>
-                        <input type="number" step="0.01" id="batch_social" value="0" min="0">
+                <div class="form-group">
+                    <label class="batch-salary-mode-title" style="margin-bottom:8px;">社会保险扣费（月，元）</label>
+                    <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">与上方「添加记录」一致：基本养老保险、基本医疗保险、失业保险与住房公积金之和记入「本期专项扣除」；累计预扣时与减除费用、专项附加一并从月薪中扣减。</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch_pension_insurance">基本养老保险</label>
+                            <input type="number" step="0.01" id="batch_pension_insurance" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="batch_medical_insurance">基本医疗保险</label>
+                            <input type="number" step="0.01" id="batch_medical_insurance" value="0" min="0">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="batch_fund">公积金扣费（月，元）</label>
-                        <input type="number" step="0.01" id="batch_fund" value="0" min="0">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch_unemployment_insurance">失业保险</label>
+                            <input type="number" step="0.01" id="batch_unemployment_insurance" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="batch_fund">住房公积金（月，元）</label>
+                            <input type="number" step="0.01" id="batch_fund" value="0" min="0">
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -654,6 +668,7 @@
                         <option value="12" selected>12月</option>
                     </select>
                 </div>
+                <button type="button" class="btn btn-default btn-block" style="margin-bottom:10px;" onclick="batchAddYearEndBonusOnly()">添加年终奖</button>
                 <button type="button" class="btn btn-primary btn-block" id="batch_generate_year_btn" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
             </div>
 
@@ -1053,9 +1068,21 @@
             initHeader();
         }
 
+        /** 本期专项扣除 = 养老 + 医疗 + 失业 + 公积金（与申报口径一致） */
+        function sumSpecialDeductionFromForm() {
+            var p = parseFloat(document.getElementById('f_pension_insurance').value) || 0;
+            var m = parseFloat(document.getElementById('f_medical_insurance').value) || 0;
+            var u = parseFloat(document.getElementById('f_unemployment_insurance').value) || 0;
+            var h = parseFloat(document.getElementById('f_housing_fund').value) || 0;
+            return round2(p + m + u + h);
+        }
+
         function onSubmitRecord(e) {
             e.preventDefault();
             var o = formObjectFromInputs();
+            var sd = sumSpecialDeductionFromForm();
+            o.special_deduction = sd.toFixed(2);
+            document.getElementById('f_special_deduction').value = o.special_deduction;
             var editId = document.getElementById('editing_id').value;
             if (!editId) {
                 o.id = 'tr_' + Date.now();
@@ -1233,14 +1260,95 @@
             return 0;
         }
 
-        /** 社保合计拆入三险字段（展示用） */
-        function splitSocialThree(social) {
-            var s = Math.max(0, Number(social) || 0);
-            if (s === 0) return { p: 0, m: 0, u: 0 };
-            var a = round2(s / 3);
-            var b = round2((s - a) / 2);
-            var c = round2(s - a - b);
-            return { p: a, m: b, u: c };
+        function readBatchSocialThree() {
+            var bp = parseFloat(document.getElementById('batch_pension_insurance').value) || 0;
+            var bm = parseFloat(document.getElementById('batch_medical_insurance').value) || 0;
+            var bu = parseFloat(document.getElementById('batch_unemployment_insurance').value) || 0;
+            if (bp < 0 || bm < 0 || bu < 0) return null;
+            return {
+                total: round2(bp + bm + bu),
+                p: round2(bp),
+                m: round2(bm),
+                u: round2(bu)
+            };
+        }
+
+        function postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {
+            var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
+            var b = JSON.parse(JSON.stringify(base));
+            b.company_name = companyForBatch;
+            b.year = year;
+            b.month = bonusMonth;
+            b.tax_period = year + '-' + pad2(bonusMonth);
+            b.report_date = year + '-' + pad2(bonusMonth) + '-15';
+            b.id = 'tr_' + uidKey + '_' + year + '_' + bonusMonth + '_bonus';
+            b.income_type = '工资薪金';
+            b.income_subtype = '全年一次性奖金收入';
+            b.income = String(round2(yearEndBonus));
+            b.income_this_period = String(round2(yearEndBonus));
+            b.tax_reported = String(round2(bonusTax));
+            b.deduction_fee = '0.00';
+            b.special_deduction = '0.00';
+            b.other_deduction = '0.00';
+            b.donation_deduction = '0.00';
+            b.pension_insurance = '0.00';
+            b.medical_insurance = '0.00';
+            b.unemployment_insurance = '0.00';
+            b.housing_fund = '0.00';
+            b.tax_free_income = '0.00';
+            return authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'save_record',
+                    user_id: uid,
+                    record: b
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200) throw new Error(data.msg || '年终奖记录保存失败');
+                });
+        }
+
+        function batchAddYearEndBonusOnly() {
+            var year = parseInt(document.getElementById('batch_year').value, 10);
+            var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
+            var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
+            if (!year || year < 1990 || year > 2100) {
+                showMsg('请填写合法计税年度', false);
+                return;
+            }
+            if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
+                showMsg('请选择合法的年终奖归属月份（1–12 月）', false);
+                return;
+            }
+            if (yearEndBonus <= 0) {
+                showMsg('请先填写年终奖金额（大于 0）', false);
+                return;
+            }
+            var uid = currentUserId();
+            var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
+            var base = formObjectFromInputs();
+            delete base.id;
+            var batchCompanyEl = document.getElementById('batch_company_name');
+            var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
+            var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
+            if (!companyForBatch) {
+                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在上方单条表单中填写）', false);
+                return;
+            }
+            var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
+            if (!confirm('将写入全年一次性奖金收入 ' + yearEndBonus + ' 元（归属 ' + bonusMonth + ' 月），单独计税约 ' + bonusTax + ' 元。是否确认？')) return;
+            postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus)
+                .then(function () {
+                    showMsg('年终奖记录已保存（归属 ' + bonusMonth + ' 月）', true);
+                    return refreshRecordList();
+                })
+                .catch(function (err) {
+                    showMsg('保存失败：' + (err.message || ''), false);
+                    return refreshRecordList();
+                });
         }
 
         function onBatchSalaryModeChange() {
@@ -1306,9 +1414,16 @@
 
         function batchAddYearTaxRecords() {
             var year = parseInt(document.getElementById('batch_year').value, 10);
-            var social = parseFloat(document.getElementById('batch_social').value) || 0;
+            var socPack = readBatchSocialThree();
+            if (!socPack) {
+                showMsg('基本养老保险、基本医疗保险、失业保险不能为负数', false);
+                return;
+            }
+            var social = socPack.total;
+            var soc = { p: socPack.p, m: socPack.m, u: socPack.u };
             var fund = parseFloat(document.getElementById('batch_fund').value) || 0;
-            var special = parseFloat(document.getElementById('batch_special').value) || 0;
+            var specialAdd = parseFloat(document.getElementById('batch_special').value) || 0;
+            var specFour = round2(soc.p + soc.m + soc.u + fund);
             var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
             var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
             if (yearEndBonus < 0) yearEndBonus = 0;
@@ -1331,7 +1446,6 @@
 
             var uid = currentUserId();
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
-            var soc = splitSocialThree(social);
 
             var base = formObjectFromInputs();
             delete base.id;
@@ -1345,7 +1459,7 @@
             }
 
             function monthlyTaxableFor(salaryMonth) {
-                return round2(Math.max(0, salaryMonth - 5000 - social - fund - special));
+                return round2(Math.max(0, salaryMonth - 5000 - specialAdd - social - fund));
             }
 
             /** variable 模式：未填月按 0 元月薪参与当年累计；uniform 为 12 个数字 */
@@ -1381,7 +1495,7 @@
             var salarySummary;
             if (salaryMode === 'uniform') {
                 var mt0 = monthlyTaxableFor(salaries[0]);
-                salarySummary = '每月月薪 ' + salaries[0] + ' 元；月应纳税所得额 ' + mt0 + ' 元（已扣 5000、社保、公积金、专项附加）。';
+                salarySummary = '每月月薪 ' + salaries[0] + ' 元；月应纳税所得额 ' + mt0 + ' 元（已扣 5000+专项附加、三险一金）。';
             } else {
                 var filled = [];
                 for (m = 0; m < 12; m++) {
@@ -1433,8 +1547,8 @@
                         o.income = String(inc);
                         o.income_this_period = String(inc);
                         o.tax_reported = taxStr;
-                        o.deduction_fee = '5000.00';
-                        o.special_deduction = String(round2(special));
+                        o.deduction_fee = String(round2(5000 + specialAdd));
+                        o.special_deduction = String(specFour);
                         o.pension_insurance = String(soc.p);
                         o.medical_insurance = String(soc.m);
                         o.unemployment_insurance = String(soc.u);
@@ -1459,40 +1573,7 @@
 
             if (yearEndBonus > 0) {
                 chain = chain.then(function () {
-                    var b = JSON.parse(JSON.stringify(base));
-                    b.company_name = companyForBatch;
-                    b.year = year;
-                    b.month = bonusMonth;
-                    b.tax_period = year + '-' + pad2(bonusMonth);
-                    b.report_date = year + '-' + pad2(bonusMonth) + '-15';
-                    b.id = 'tr_' + uidKey + '_' + year + '_' + bonusMonth + '_bonus';
-                    b.income_type = '工资薪金';
-                    b.income_subtype = '全年一次性奖金收入';
-                    b.income = String(round2(yearEndBonus));
-                    b.income_this_period = String(round2(yearEndBonus));
-                    b.tax_reported = String(round2(bonusTax));
-                    b.deduction_fee = '0.00';
-                    b.special_deduction = '0.00';
-                    b.other_deduction = '0.00';
-                    b.donation_deduction = '0.00';
-                    b.pension_insurance = '0.00';
-                    b.medical_insurance = '0.00';
-                    b.unemployment_insurance = '0.00';
-                    b.housing_fund = '0.00';
-                    b.tax_free_income = '0.00';
-                    return authFetch('api/tax.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'save_record',
-                            user_id: uid,
-                            record: b
-                        })
-                    })
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            if (data.code !== 200) throw new Error(data.msg || '年终奖记录保存失败');
-                        });
+                    return postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus);
                 });
             }
 

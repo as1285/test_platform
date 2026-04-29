@@ -201,6 +201,82 @@
         .svc-hot-mid { left: 33.33%; width: 33.33%; }
         .svc-hot-right { left: 66.66%; width: 33.34%; }
 
+        /* 推荐服务：横向滑动，避免末卡被裁切 */
+        .home-recommend {
+            padding: 10px 0 6px;
+            background: #f6f7fb;
+        }
+        .home-recommend-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            padding: 6px 16px 10px;
+            letter-spacing: 0.3px;
+        }
+        .home-quick-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            scroll-snap-type: x proximity;
+            padding: 0 12px 14px;
+            margin: 0;
+        }
+        .home-quick-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        .home-quick-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 2px;
+        }
+        .home-quick-card {
+            flex: 0 0 auto;
+            scroll-snap-align: start;
+            width: 148px;
+            min-height: 118px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 10px 10px;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+            -webkit-tap-highlight-color: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .home-quick-card:active {
+            opacity: 0.92;
+        }
+        .home-quick-card .q-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #eef4ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .home-quick-card .q-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+        .home-quick-card .q-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.35;
+            margin-bottom: 4px;
+        }
+        .home-quick-card .q-sub {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.4;
+        }
+
         </style>
     <link rel="stylesheet" href="css/nav.css">
 </head>
@@ -330,7 +406,46 @@
         </div>
         <div class="shouye-content">
             <img src="lb.jpg" alt="轮播" style="width: 100%; display: block;">
-            <img src="zdb.jpg" alt="置顶" style="width: 100%; display: block;">
+            <section class="home-recommend" aria-label="推荐服务">
+                <div class="home-recommend-title">推荐服务</div>
+                <div class="home-quick-scroll">
+                    <a href="daiban.html" class="home-quick-card">
+                        <span class="q-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8v16H8V4z" stroke="#2c80f4" stroke-width="1.6"/><path d="M10 8h4M10 12h4M10 16h3" stroke="#2c80f4" stroke-width="1.4" stroke-linecap="round"/><path d="M13 6l3-2v4" stroke="#2c80f4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="q-title">异议申诉</span>
+                        <span class="q-sub">查询申诉记录与结果</span>
+                    </a>
+                    <a href="zonghe.html" class="home-quick-card">
+                        <span class="q-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" stroke="#2c80f4" stroke-width="1.6"/><path d="M8 8h8M8 12h6" stroke="#2c80f4" stroke-width="1.4" stroke-linecap="round"/><rect x="9" y="15" width="6" height="4" rx="1" fill="#2c80f4" opacity=".25"/></svg>
+                        </span>
+                        <span class="q-title">综合所得年度汇算</span>
+                        <span class="q-sub">申报与查询</span>
+                    </a>
+                    <a href="shuiming.html?reset=1" class="home-quick-card">
+                        <span class="q-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M7 3h10l3 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V7l3-4z" stroke="#2c80f4" stroke-width="1.5"/><path d="M9 11h6M9 15h4" stroke="#2c80f4" stroke-width="1.3" stroke-linecap="round"/></svg>
+                        </span>
+                        <span class="q-title">收入纳税明细</span>
+                        <span class="q-sub">查询明细与税款计算</span>
+                    </a>
+                    <a href="najilu.html" class="home-quick-card">
+                        <span class="q-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#2c80f4" stroke-width="1.5"/><path d="M8 12l2.5 2.5L16 9" stroke="#2c80f4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="q-title">纳税记录开具</span>
+                        <span class="q-sub">申请与查看记录</span>
+                    </a>
+                    <a href="bancha.html" class="home-quick-card">
+                        <span class="q-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="#2c80f4" stroke-width="1.4"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="#2c80f4" stroke-width="1.4"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="#2c80f4" stroke-width="1.4"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="#2c80f4" stroke-width="1.4"/><circle cx="18" cy="18" r="3.5" stroke="#2c80f4" stroke-width="1.2"/><path d="M20 20l2 2" stroke="#2c80f4" stroke-width="1.2" stroke-linecap="round"/></svg>
+                        </span>
+                        <span class="q-title">更多功能</span>
+                        <span class="q-sub">办查与其他入口</span>
+                    </a>
+                </div>
+            </section>
         </div>
     </div>
     

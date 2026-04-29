@@ -540,30 +540,40 @@ async function getTaxCalculationData(userId, recordId) {
   let totalOther = 0;
   let totalDonation = 0;
   let totalTaxPaidBefore = 0;
+  /** 累计减除费用（基本减除，每月 5000 部分）与累计专项附加扣除（超出 5000 计入减除费用的部分），仅用于展示拆分 */
+  let totalBasicDeductionFee = 0;
+  let totalSpecialAdditionalFromFee = 0;
   const anchorMonth = month != null && !Number.isNaN(month) ? month : null;
 
   rows.forEach(function (r) {
     totalIncome += rowPeriodIncome(r);
     totalTaxFree += sumRowMoney(r, 'tax_free_income');
-    totalDeductionFee += sumRowMoney(r, 'deduction_fee');
+    const df = sumRowMoney(r, 'deduction_fee');
+    totalDeductionFee += df;
     totalSpecial += sumRowMoney(r, 'special_deduction');
     totalOther += sumRowMoney(r, 'other_deduction');
     totalDonation += sumRowMoney(r, 'donation_deduction');
+    const sub = String(r.income_subtype || '').trim();
+    if (sub !== '全年一次性奖金收入') {
+      const sadd = Math.max(0, Math.round((df - 5000) * 100) / 100);
+      totalSpecialAdditionalFromFee += sadd;
+      totalBasicDeductionFee += Math.round((df - sadd) * 100) / 100;
+    }
     const m = r.month != null ? parseInt(r.month, 10) : null;
     if (anchorMonth != null && m != null && !Number.isNaN(m) && m < anchorMonth) {
       totalTaxPaidBefore += sumRowMoney(r, 'tax_reported');
     }
   });
 
-  const totalSpecialAdditional = 0;
+  const totalSpecialAdditional = totalSpecialAdditionalFromFee;
   const totalPersonalPension = 0;
 
+  /** 专项附加已并入 deduction_fee 时，不得再单独从应纳税所得额中扣减 total_special_additional */
   const taxable =
     totalIncome -
     totalTaxFree -
     totalDeductionFee -
     totalSpecial -
-    totalSpecialAdditional -
     totalOther -
     totalPersonalPension -
     totalDonation;
@@ -577,7 +587,7 @@ async function getTaxCalculationData(userId, recordId) {
   return {
     total_income: totalIncome.toFixed(2),
     total_tax_free_income: totalTaxFree.toFixed(2),
-    total_deduction_fee: totalDeductionFee.toFixed(2),
+    total_deduction_fee: totalBasicDeductionFee.toFixed(2),
     total_special_deduction: totalSpecial.toFixed(2),
     total_special_additional: totalSpecialAdditional.toFixed(2),
     total_other_deduction: totalOther.toFixed(2),
