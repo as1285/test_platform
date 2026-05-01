@@ -175,6 +175,48 @@
             color: #c00;
             font-size: 14px;
         }
+
+        .detail-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            margin-top: 4px;
+            padding-left: 0;
+            padding-right: 0;
+            background: #f5f6fa;
+            margin-left: -15px;
+            margin-right: -25px;
+            padding-left: 15px;
+            padding-right: 25px;
+            padding-bottom: 10px;
+        }
+
+        .detail-summary-row .detail-label {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .detail-summary-row .detail-value {
+            font-weight: 500;
+        }
+
+        .detail-summary-row.is-emphasis .detail-value {
+            font-weight: 700;
+            color: #333;
+        }
+
+        .policy-link {
+            text-align: center;
+            padding: 16px 16px 8px;
+        }
+
+        .policy-link a {
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -239,6 +281,7 @@
         温馨提示：专项附加扣除和个人养老金已体现在税款计算过程中，在本期数据中不予显示。您可在"税款计算-累计收入与扣除详情"中查看。<a href="javascript:goTaxCalculation()" class="tips-link">查看税款计算</a>
     </div>
 
+    <div id="salaryDetailBottom">
     <div class="section-title" style="border-bottom: 1px solid #cccccc59;">本期收入与扣除详情</div>
     <div class="detail-card">
         <div class="detail-row">
@@ -283,6 +326,77 @@
         <div class="detail-row">
             <span class="detail-label">本期准予扣除的捐赠项目:</span>
             <span class="detail-value" id="donationDeduction">0.00元</span>
+        </div>
+    </div>
+    </div>
+
+    <div id="bonusDetailBottom" style="display: none;">
+        <div class="section-title" style="border-bottom: 1px solid #cccccc59;">收入与扣除详情</div>
+        <div class="detail-card">
+            <div class="detail-row">
+                <span class="detail-label">收入:</span>
+                <span class="detail-value" id="bonusIncome">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">免税收入:</span>
+                <span class="detail-value" id="bonusTaxFree">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">减除费用:</span>
+                <span class="detail-value" id="bonusDeductionFee">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">专项扣除:</span>
+                <span class="detail-value" id="bonusSpecialDeduction">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">其他扣除:</span>
+                <span class="detail-value" id="bonusOtherDeduction">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">准予扣除的捐赠额:</span>
+                <span class="detail-value" id="bonusDonation">0.00元</span>
+            </div>
+            <div class="detail-summary-row">
+                <span class="detail-label">应纳税所得额:</span>
+                <span class="detail-value" id="bonusTaxableIncome">0.00元</span>
+            </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 10px; border-bottom: 1px solid #cccccc59;">税款计算</div>
+        <div class="detail-card">
+            <div class="detail-row">
+                <span class="detail-label">应纳税所得额:</span>
+                <span class="detail-value" id="bonusCalcTaxable">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">税率/预扣率:</span>
+                <span class="detail-value" id="bonusTaxRate">0%</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">速算扣除数:</span>
+                <span class="detail-value" id="bonusQuickDeduction">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">应纳税额:</span>
+                <span class="detail-value" id="bonusTaxPayable">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">减免税额:</span>
+                <span class="detail-value" id="bonusTaxRelief">0.00元</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">已缴税额:</span>
+                <span class="detail-value" id="bonusTaxPaid">0.00元</span>
+            </div>
+            <div class="detail-summary-row is-emphasis">
+                <span class="detail-label">申报税额:</span>
+                <span class="detail-value" id="bonusTaxDeclared">0.00元</span>
+            </div>
+        </div>
+
+        <div class="policy-link">
+            <a href="#" onclick="return false;">查看政策说明</a>
         </div>
     </div>
 
@@ -359,6 +473,27 @@
                         }
                         document.getElementById('otherDeduction').textContent = record.other_deduction + '元';
                         document.getElementById('donationDeduction').textContent = record.donation_deduction + '元';
+
+                        var isBonus = record.income_subtype === '全年一次性奖金收入' && record.bonus_tax;
+                        document.getElementById('salaryDetailBottom').style.display = isBonus ? 'none' : 'block';
+                        document.getElementById('bonusDetailBottom').style.display = isBonus ? 'block' : 'none';
+                        if (isBonus) {
+                            document.getElementById('bonusIncome').textContent = record.income + '元';
+                            document.getElementById('bonusTaxFree').textContent = record.tax_free_income + '元';
+                            document.getElementById('bonusDeductionFee').textContent = record.deduction_fee + '元';
+                            document.getElementById('bonusSpecialDeduction').textContent = record.special_deduction + '元';
+                            document.getElementById('bonusOtherDeduction').textContent = record.other_deduction + '元';
+                            document.getElementById('bonusDonation').textContent = record.donation_deduction + '元';
+                            var bt = record.bonus_tax;
+                            document.getElementById('bonusTaxableIncome').textContent = bt.taxable_income + '元';
+                            document.getElementById('bonusCalcTaxable').textContent = bt.taxable_income + '元';
+                            document.getElementById('bonusTaxRate').textContent = bt.tax_rate;
+                            document.getElementById('bonusQuickDeduction').textContent = bt.quick_deduction + '元';
+                            document.getElementById('bonusTaxPayable').textContent = bt.tax_payable + '元';
+                            document.getElementById('bonusTaxRelief').textContent = bt.tax_relief + '元';
+                            document.getElementById('bonusTaxPaid').textContent = bt.tax_paid + '元';
+                            document.getElementById('bonusTaxDeclared').textContent = bt.tax_declared + '元';
+                        }
                         return;
                     }
                     errEl.style.display = 'block';

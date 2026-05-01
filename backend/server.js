@@ -4,6 +4,9 @@
  */
 const crypto = require('crypto');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const geoip = require('geoip-lite');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
@@ -20,6 +23,32 @@ const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || 'password';
 const DB_DATABASE = process.env.DB_DATABASE || 'personal_tax';
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+
+/** mine_ui JSON 中可配置的图片字段（相对路径、uploads/ 或 https） */
+const MINE_UI_IMAGE_KEYS = [
+  'header_male',
+  'header_female',
+  'icon_family',
+  'icon_employer',
+  'icon_bank',
+  'nav_sy_1',
+  'nav_sy_2',
+  'nav_db_1',
+  'nav_db_2',
+  'nav_bc_1',
+  'nav_bc_2',
+  'nav_xx_1',
+  'nav_xx_2',
+  'nav_w_1',
+  'nav_w_2',
+  'shouye_banner',
+  'shouye_zdfwdb',
+  'shouye_lb',
+  'daiban_header',
+  'bancha_header',
+  'message_header'
+];
 
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
@@ -79,7 +108,23 @@ function cloneMineUiDefaults() {
     header_female: DEFAULT_MINE_UI.header_female,
     icon_family: DEFAULT_MINE_UI.icon_family,
     icon_employer: DEFAULT_MINE_UI.icon_employer,
-    icon_bank: DEFAULT_MINE_UI.icon_bank
+    icon_bank: DEFAULT_MINE_UI.icon_bank,
+    nav_sy_1: 'caidan/sy1.png',
+    nav_sy_2: 'caidan/sy2.png',
+    nav_db_1: 'caidan/db1.png',
+    nav_db_2: 'caidan/db2.png',
+    nav_bc_1: 'caidan/bc1.png',
+    nav_bc_2: 'caidan/bc2.png',
+    nav_xx_1: 'caidan/xx1.png',
+    nav_xx_2: 'caidan/xx2.png',
+    nav_w_1: 'caidan/w1.png',
+    nav_w_2: 'caidan/w2.png',
+    shouye_banner: 'sydb-v2.jpg',
+    shouye_zdfwdb: 'zdfwdb.jpg',
+    shouye_lb: 'lb.jpg',
+    daiban_header: 'daiban.jpg',
+    bancha_header: 'db.jpg',
+    message_header: 'message_header.jpg'
   };
 }
 
@@ -96,6 +141,13 @@ function sanitizeMineUiImageRef(raw) {
     return '';
   }
   if (s.indexOf('..') >= 0) {
+    return '';
+  }
+  if (s.charAt(0) === '/') {
+    var tail = s.slice(1);
+    if (tail !== '' && /^[a-zA-Z0-9][a-zA-Z0-9_.\-\/]*$/.test(tail)) {
+      return s;
+    }
     return '';
   }
   if (/^https?:\/\//i.test(s)) {
@@ -127,7 +179,7 @@ async function getMineUiForApi() {
         if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
           out.theme = parsed.theme;
         }
-        ['header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank'].forEach(function (k) {
+        MINE_UI_IMAGE_KEYS.forEach(function (k) {
           if (parsed[k] != null) {
             var ok = sanitizeMineUiImageRef(parsed[k]);
             if (ok) {
@@ -147,6 +199,35 @@ async function getMineUiForApi() {
     conn.release();
   }
   return out;
+}
+
+const adminUpload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, UPLOAD_DIR);
+    },
+    filename: function (req, file, cb) {
+      var ext = path.extname(file.originalname || '').toLowerCase();
+      var allow = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      if (allow.indexOf(ext) < 0) {
+        ext = '.jpg';
+      }
+      cb(null, crypto.randomBytes(16).toString('hex') + ext);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    var ext = path.extname(file.originalname || '').toLowerCase();
+    var ok = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].indexOf(ext) >= 0;
+    cb(ok ? null : new Error('仅支持 jpg、png、gif、webp'), ok);
+  }
+});
+
+function handleAdminUploadAsset(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ code: 400, msg: '未选择文件或扩展名不支持' });
+  }
+  return res.json({ code: 200, data: { path: 'uploads/' + req.file.filename } });
 }
 
 function rowUserTypeIsTest(row) {
@@ -551,6 +632,47 @@ function formatTaxAmt(v, defaultStr) {
   return n.toFixed(2);
 }
 
+/** 全年一次性奖金单独计税：按「应纳税所得额÷12」对照月度税率表（与前端 consult 写入逻辑一致） */
+function yearEndBonusSeparateTaxFromTaxable(taxable) {
+  const t = Math.max(0, Number(taxable) || 0);
+  if (t <= 0) {
+    return {
+      taxable_income: '0.00',
+      tax_rate: '0%',
+      quick_deduction: '0.00',
+      tax_payable: '0.00'
+    };
+  }
+  const monthlyEq = t / 12;
+  const brackets = [
+    { max: 3000, rate: 0.03, qd: 0 },
+    { max: 12000, rate: 0.1, qd: 210 },
+    { max: 25000, rate: 0.2, qd: 1410 },
+    { max: 35000, rate: 0.25, qd: 2660 },
+    { max: 55000, rate: 0.3, qd: 4410 },
+    { max: 80000, rate: 0.35, qd: 7160 },
+    { max: Infinity, rate: 0.45, qd: 15160 }
+  ];
+  for (let i = 0; i < brackets.length; i++) {
+    if (monthlyEq <= brackets[i].max) {
+      const br = brackets[i];
+      const payable = Math.max(0, Math.round((t * br.rate - br.qd) * 100) / 100);
+      return {
+        taxable_income: t.toFixed(2),
+        tax_rate: (br.rate * 100).toFixed(2) + '%',
+        quick_deduction: br.qd.toFixed(2),
+        tax_payable: payable.toFixed(2)
+      };
+    }
+  }
+  return {
+    taxable_income: t.toFixed(2),
+    tax_rate: '0%',
+    quick_deduction: '0.00',
+    tax_payable: '0.00'
+  };
+}
+
 /** 居民个人工资薪金累计预扣预缴适用税率表（简化） */
 function iitWithholdingBracket(cumulativeTaxable) {
   const x = Math.max(0, Number(cumulativeTaxable) || 0);
@@ -702,7 +824,7 @@ function formatTaxDetailResponse(rec, userIdStr) {
   if (!taxPeriod && y != null && m != null) {
     taxPeriod = y + '-' + (m < 10 ? '0' + m : String(m));
   }
-  return {
+  const base = {
     id: rec.id,
     admin_id: 0,
     user_id: userIdStr,
@@ -731,6 +853,28 @@ function formatTaxDetailResponse(rec, userIdStr) {
     created_at: rec.created_at ? rec.created_at.toISOString() : '',
     updated_at: rec.updated_at ? rec.updated_at.toISOString() : ''
   };
+  if (String(rec.income_subtype || '').trim() === '全年一次性奖金收入') {
+    const gross = rowPeriodIncome(rec);
+    const taxableRaw =
+      gross -
+      sumRowMoney(rec, 'tax_free_income') -
+      sumRowMoney(rec, 'deduction_fee') -
+      sumRowMoney(rec, 'special_deduction') -
+      sumRowMoney(rec, 'other_deduction') -
+      sumRowMoney(rec, 'donation_deduction');
+    const taxable = Math.max(0, Math.round(taxableRaw * 100) / 100);
+    const bt = yearEndBonusSeparateTaxFromTaxable(taxable);
+    base.bonus_tax = {
+      taxable_income: bt.taxable_income,
+      tax_rate: bt.tax_rate,
+      quick_deduction: bt.quick_deduction,
+      tax_payable: bt.tax_payable,
+      tax_relief: '0.00',
+      tax_paid: '0.00',
+      tax_declared: formatTaxAmt(rec.tax_reported, '0.00')
+    };
+  }
+  return base;
 }
 
 function hashPassword(password, saltHex) {
@@ -1840,7 +1984,7 @@ async function handleAdminSettingsPost(req, res) {
       if (incoming.theme === 'blue' || incoming.theme === 'yellow') {
         merged.theme = incoming.theme;
       }
-      ['header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank'].forEach(function (k) {
+      MINE_UI_IMAGE_KEYS.forEach(function (k) {
         if (incoming[k] != null && String(incoming[k]).trim() !== '') {
           var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
           if (ok) {
@@ -1954,6 +2098,19 @@ async function handleAdminDeleteUser(req, res) {
 
 app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
+app.post(
+  '/api/admin/upload-asset',
+  requireAdminAuth,
+  function (req, res, next) {
+    adminUpload.single('file')(req, res, function (err) {
+      if (err) {
+        return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+      }
+      next();
+    });
+  },
+  handleAdminUploadAsset
+);
 app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
@@ -1973,6 +2130,11 @@ app.get('/api/health', healthHandler);
 
 async function startServer() {
   await initDatabase();
+  try {
+    await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
+  } catch (e) {
+    console.error('UPLOAD_DIR mkdir', UPLOAD_DIR, e);
+  }
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

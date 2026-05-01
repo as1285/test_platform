@@ -3,10 +3,13 @@
     --app-accent: #1e6fff;
     --app-accent-mid: #008afd;
     --app-accent-soft: #5aa3ff;
+    /* 底栏选中标签：对齐参考稿红橙色 */
+    --nav-tab-active-text: #e64340;
 }
 
 .nav-item.active .nav-text {
-    color: var(--app-accent);
+    color: var(--nav-tab-active-text);
+    font-weight: 600;
 }
 
 /* 统一页面滚动条处理 */
@@ -23,7 +26,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 /* 主内容底部留白参考（悬浮栏 + 下边距 + 安全区），可按页微调 */
 :root {
-    --bottom-nav-clearance: calc(100px + env(safe-area-inset-bottom, 0px));
+    --bottom-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 
 /* 底部导航：悬浮大圆弧胶囊 + 高透毛玻璃（对齐官方：能透出背后内容、圆角更圆） */
@@ -49,8 +52,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 10px 6px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 8px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 100;
     box-sizing: border-box;
     transform: translateZ(0);
@@ -105,7 +108,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 /* iOS设备选中状态 */
 .bottom-nav.ios-device .nav-item.active .nav-text {
-    color: var(--app-accent);
+    color: var(--nav-tab-active-text);
+    font-weight: 600;
 }
 
 .bottom-nav.ios-device .nav-item.active .nav-icon svg path[stroke="#999"],
@@ -137,17 +141,19 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .nav-icon {
-    width: 24px;
-    height: 24px;
-    margin-bottom: 4px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .nav-icon img {
-    width: 19px;
-    height: 19px;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    display: block;
 }
 
 .nav-text {

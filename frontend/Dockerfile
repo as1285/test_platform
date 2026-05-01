@@ -56,6 +56,7 @@ COPY bs.jpg /usr/share/nginx/html/
 COPY cx.jpg /usr/share/nginx/html/
 COPY db.jpg /usr/share/nginx/html/
 COPY fp.jpg /usr/share/nginx/html/
+COPY message_header.jpg /usr/share/nginx/html/
 COPY css /usr/share/nginx/html/css/
 COPY public/js /usr/share/nginx/html/js/
 COPY nginx.conf /etc/nginx/conf.d/default.conf

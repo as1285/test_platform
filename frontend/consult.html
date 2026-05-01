@@ -1839,6 +1839,9 @@
         }
 
         function boot() {
+            if (window.__refreshNavFromMineUi) {
+                window.__refreshNavFromMineUi();
+            }
             initHeader();
             initTabs();
             setDefaultMsgDate();

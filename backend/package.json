@@ -7,6 +7,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "multer": "^1.4.5-lts.2",
     "express": "^4.21.0",
     "geoip-lite": "^1.4.10",
     "jsonwebtoken": "^9.0.2",

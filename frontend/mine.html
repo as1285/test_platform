@@ -21,13 +21,14 @@
             --mine-logout: #1e6fff;
         }
 
+        /* 金色主题：信息卡底色与蓝色主题同一色；文字与操作色与蓝色主题一致 */
         html[data-app-theme="yellow"] {
-            --mine-user-card-bg: #fff8e6;
-            --mine-tax-id: #8a6a00;
-            --mine-info-btn-bg: #e8b018;
-            --mine-outline: #c9920a;
-            --mine-btn-grad: linear-gradient(135deg, #f2c43d 0%, #e2a10c 100%);
-            --mine-logout: #b8860b;
+            --mine-user-card-bg: #eed3aa;
+            --mine-tax-id: #b46d03;
+            --mine-info-btn-bg: #edaa66;
+            --mine-outline: #0050fd;
+            --mine-btn-grad: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
+            --mine-logout: #1e6fff;
         }
 
         body {
@@ -256,7 +257,7 @@
         
         .page.active {
             display: block;
-            padding-bottom: 100px;
+            padding-bottom: 118px;
         }
         
         </style>
@@ -401,6 +402,9 @@
                     img.src = 'caidan/' + icon + '2.png';
                 }
             });
+            if (window.__refreshNavFromMineUi) {
+                window.__refreshNavFromMineUi();
+            }
         }
         
         // 初始化时更新图标

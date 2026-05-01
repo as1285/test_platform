@@ -24,6 +24,7 @@ services:
       context: ./backend
     container_name: personal-tax-api
     environment:
+      UPLOAD_DIR: /data/uploads
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: root
@@ -41,6 +42,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - uploads_static:/data/uploads
     networks:
       - test_platform_default
     restart: unless-stopped
@@ -53,11 +56,15 @@ services:
       - "80:80"
     depends_on:
       - backend
+    volumes:
+      - uploads_static:/usr/share/nginx/html/uploads
     networks:
       - test_platform_default
     restart: unless-stopped
 
 volumes:
+  uploads_static:
+    name: test_platform_uploads_static
   personal_tax_mysql_data:
     name: personal_tax_mysql_data
 

@@ -146,6 +146,14 @@
             cursor: pointer;
         }
         .btn-page:disabled { background: #f5f5f5; color: #ccc; cursor: not-allowed; }
+        .mine-ui-block { max-width: 760px; display: flex; flex-direction: column; gap: 14px; }
+        .mine-ui-block h3 { font-size: 14px; color: #444; margin: 8px 0 0; font-weight: 600; }
+        .mine-ui-row label { font-size: 13px; color: #666; display: block; margin-bottom: 6px; }
+        .mine-ui-row .mine-ui-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .mine-ui-row input[type="text"] { flex: 1; min-width: 180px; border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+        .mine-ui-row input[type="file"] { font-size: 12px; max-width: 220px; }
+        .btn-file { background: #f5f7fa; color: #333; border: 1px solid #ccd; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+        .btn-file:disabled { opacity: 0.6; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -171,8 +179,8 @@
         </section>
 
         <section>
-            <h2>用户端外观（个人中心 / 底栏）</h2>
-            <div style="max-width:720px;display:flex;flex-direction:column;gap:12px;">
+            <h2>用户端外观（个人中心 / 五个 TAB / 各页顶图）</h2>
+            <div class="mine-ui-block">
                 <div>
                     <label for="mineTheme">主题</label>
                     <select id="mineTheme" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;min-width:200px;">
@@ -180,31 +188,186 @@
                         <option value="yellow">黄色 / 金色</option>
                     </select>
                 </div>
-                <div>
-                    <label for="imgHeaderMale">顶部横幅图（男）</label>
-                    <input type="text" id="imgHeaderMale" maxlength="500" placeholder="如 grdb.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+
+                <h3>个人中心配图</h3>
+                <div class="mine-ui-row">
+                    <label for="img_header_male">顶部横幅图（男）</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_header_male" maxlength="500" placeholder="如 grdb.jpg 或本地上传">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_header_male" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="imgHeaderFemale">顶部横幅图（女）</label>
-                    <input type="text" id="imgHeaderFemale" maxlength="500" placeholder="如 nx.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                <div class="mine-ui-row">
+                    <label for="img_header_female">顶部横幅图（女）</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_header_female" maxlength="500" placeholder="如 nx.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_header_female" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="imgIconFamily">家庭成员入口图</label>
-                    <input type="text" id="imgIconFamily" maxlength="500" placeholder="如 jtcy.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                <div class="mine-ui-row">
+                    <label for="img_icon_family">家庭成员入口图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_icon_family" maxlength="500" placeholder="如 jtcy.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_icon_family" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="imgIconEmployer">任职受雇入口图</label>
-                    <input type="text" id="imgIconEmployer" maxlength="500" placeholder="如 rzsp.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                <div class="mine-ui-row">
+                    <label for="img_icon_employer">任职受雇入口图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_icon_employer" maxlength="500" placeholder="如 rzsp.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_icon_employer" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
-                <div>
-                    <label for="imgIconBank">银行卡入口图</label>
-                    <input type="text" id="imgIconBank" maxlength="500" placeholder="如 yhk.jpg" style="width:100%;max-width:640px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;">
+                <div class="mine-ui-row">
+                    <label for="img_icon_bank">银行卡入口图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_icon_bank" maxlength="500" placeholder="如 yhk.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_icon_bank" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
+
+                <h3>底栏五个 TAB 图标（选中 / 未选中 各一张）</h3>
+                <div class="mine-ui-row">
+                    <label for="img_nav_sy_1">首页 · 选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_sy_1" maxlength="500" placeholder="默认 caidan/sy1.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_sy_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_sy_2">首页 · 未选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_sy_2" maxlength="500" placeholder="默认 caidan/sy2.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_sy_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_db_1">待办 · 选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_db_1" maxlength="500" placeholder="默认 caidan/db1.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_db_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_db_2">待办 · 未选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_db_2" maxlength="500" placeholder="默认 caidan/db2.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_db_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_bc_1">办查 · 选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_bc_1" maxlength="500" placeholder="默认 caidan/bc1.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_bc_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_bc_2">办查 · 未选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_bc_2" maxlength="500" placeholder="默认 caidan/bc2.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_bc_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_xx_1">消息 · 选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_xx_1" maxlength="500" placeholder="默认 caidan/xx1.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_xx_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_xx_2">消息 · 未选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_xx_2" maxlength="500" placeholder="默认 caidan/xx2.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_xx_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_w_1">我的 · 选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_w_1" maxlength="500" placeholder="默认 caidan/w1.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_w_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_nav_w_2">我的 · 未选中</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_nav_w_2" maxlength="500" placeholder="默认 caidan/w2.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_nav_w_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+
+                <h3>首页 / 待办 / 办查 / 消息页</h3>
+                <div class="mine-ui-row">
+                    <label for="img_shouye_banner">首页横幅大图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_shouye_banner" maxlength="500" placeholder="默认 sydb-v2.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_shouye_banner" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_shouye_zdfwdb">首页置顶服务底图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_shouye_zdfwdb" maxlength="500" placeholder="默认 zdfwdb.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_shouye_zdfwdb" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_shouye_lb">首页轮播图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_shouye_lb" maxlength="500" placeholder="默认 lb.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_shouye_lb" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_daiban_header">待办页顶部整图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_daiban_header" maxlength="500" placeholder="默认 daiban.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_daiban_header" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_bancha_header">办查页顶部整图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_bancha_header" maxlength="500" placeholder="默认 db.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_bancha_header" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_message_header">消息页顶部整图</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_message_header" maxlength="500" placeholder="默认 message_header.jpg">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_message_header" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
                 </div>
             </div>
-            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题；图片可填站内相对路径（如 grdb.jpg、caidan/xx.png）或 https 图片地址。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
         </section>
 
         <section>
@@ -643,11 +806,12 @@
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
                         document.getElementById('mineTheme').value = m.theme === 'yellow' ? 'yellow' : 'blue';
-                        document.getElementById('imgHeaderMale').value = m.header_male || '';
-                        document.getElementById('imgHeaderFemale').value = m.header_female || '';
-                        document.getElementById('imgIconFamily').value = m.icon_family || '';
-                        document.getElementById('imgIconEmployer').value = m.icon_employer || '';
-                        document.getElementById('imgIconBank').value = m.icon_bank || '';
+                        MINE_UI_FIELD_KEYS.forEach(function (k) {
+                            var el = document.getElementById('img_' + k);
+                            if (el) {
+                                el.value = m[k] != null ? String(m[k]) : '';
+                            }
+                        });
                     }
                 })
                 .catch(function () {
@@ -680,17 +844,86 @@
                 .finally(function () { btn.disabled = false; });
         });
 
+        var MINE_UI_FIELD_KEYS = [
+            'header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank',
+            'nav_sy_1', 'nav_sy_2', 'nav_db_1', 'nav_db_2', 'nav_bc_1', 'nav_bc_2',
+            'nav_xx_1', 'nav_xx_2', 'nav_w_1', 'nav_w_2',
+            'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header'
+        ];
+
+        function adminUploadAsset(file) {
+            var fd = new FormData();
+            fd.append('file', file);
+            var t = window.adminGetToken ? window.adminGetToken() : '';
+            return fetch('api/admin/upload-asset', {
+                method: 'POST',
+                headers: t ? { Authorization: 'Bearer ' + t } : {},
+                body: fd
+            }).then(function (r) {
+                if (r.status === 401) {
+                    try {
+                        localStorage.removeItem('admin_token');
+                    } catch (e) {}
+                    window.location.href = 'admin_login.html';
+                    return Promise.reject(new Error('unauthorized'));
+                }
+                return r.json();
+            });
+        }
+
+        function bindMineUiUploads() {
+            document.querySelectorAll('.mine-ui-file').forEach(function (fileInput) {
+                fileInput.addEventListener('change', function () {
+                    var f = fileInput.files && fileInput.files[0];
+                    if (!f) {
+                        return;
+                    }
+                    var targetId = fileInput.getAttribute('data-target');
+                    var targetEl = document.getElementById(targetId);
+                    fileInput.disabled = true;
+                    adminUploadAsset(f)
+                        .then(function (data) {
+                            if (data.code === 200 && data.data && data.data.path) {
+                                if (targetEl) {
+                                    targetEl.value = data.data.path;
+                                }
+                            } else {
+                                alert(data.msg || '上传失败');
+                            }
+                        })
+                        .catch(function () {
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            fileInput.disabled = false;
+                            fileInput.value = '';
+                        });
+                });
+            });
+            document.querySelectorAll('.mine-ui-pick').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var row = btn.closest('.mine-ui-controls');
+                    if (!row) {
+                        return;
+                    }
+                    var fi = row.querySelector('.mine-ui-file');
+                    if (fi) {
+                        fi.click();
+                    }
+                });
+            });
+        }
+
         document.getElementById('btnSaveMineUi').addEventListener('click', function () {
             var btn = document.getElementById('btnSaveMineUi');
             btn.disabled = true;
             var mineUi = {
-                theme: document.getElementById('mineTheme').value === 'yellow' ? 'yellow' : 'blue',
-                header_male: document.getElementById('imgHeaderMale').value.trim(),
-                header_female: document.getElementById('imgHeaderFemale').value.trim(),
-                icon_family: document.getElementById('imgIconFamily').value.trim(),
-                icon_employer: document.getElementById('imgIconEmployer').value.trim(),
-                icon_bank: document.getElementById('imgIconBank').value.trim()
+                theme: document.getElementById('mineTheme').value === 'yellow' ? 'yellow' : 'blue'
             };
+            MINE_UI_FIELD_KEYS.forEach(function (k) {
+                var el = document.getElementById('img_' + k);
+                mineUi[k] = el ? el.value.trim() : '';
+            });
             adminFetch('api/admin/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -709,6 +942,7 @@
                 .finally(function () { btn.disabled = false; });
         });
 
+        bindMineUiUploads();
         loadAdminSettings();
         loadUsers(1);
         loadCodes(1);
