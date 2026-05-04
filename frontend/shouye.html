@@ -177,7 +177,7 @@
             transform: translateY(-100%);
         }
 
-        /* 置顶服务三卡片：按图比例铺热区，覆盖「去申报 / 去查询 / 去开具」等（避免固定 px + 小圆区点不中） */
+        /* 置顶服务三卡片：与 zdfwdb 图、下方 lb 轮播一致 — 左收入纳税明细 | 中纳税记录开具 | 右异议申诉 */
         .svc-cards-wrap {
             position: relative;
             display: block;
@@ -349,15 +349,15 @@
             </div>
             <div class="svc-cards-wrap">
                 <img id="assetShouyeZdfwdb" src="zdfwdb.jpg" alt="置顶服务">
-                <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
-                <a href="najilu.html" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
-                <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
+                <a href="shuiming.html?reset=1" class="svc-hot svc-hot-left" aria-label="收入纳税明细"></a>
+                <a href="najilu.html" class="svc-hot svc-hot-mid" aria-label="纳税记录开具"></a>
+                <a href="daiban.html" class="svc-hot svc-hot-right" aria-label="异议申诉"></a>
             </div>
         </div>
         <div class="shouye-content">
             <div class="shouye-lb-wrap">
                 <img id="assetShouyeLb" src="lb.jpg" alt="轮播">
-                <a href="najilu.html" class="lb-svc-hot" aria-label="收入纳税明细"></a>
+                <a href="shuiming.html?reset=1" class="lb-svc-hot" aria-label="收入纳税明细"></a>
                 <a href="najilu.html" class="lb-svc-hot lb-svc-hot-mid" aria-label="纳税记录开具"></a>
                 <a href="daiban.html" class="lb-svc-hot lb-svc-hot-right" aria-label="异议申诉"></a>
             </div>
