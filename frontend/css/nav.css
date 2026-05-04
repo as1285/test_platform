@@ -3,6 +3,8 @@
     --app-accent: #1e6fff;
     --app-accent-mid: #008afd;
     --app-accent-soft: #5aa3ff;
+    /* 首页顶部条（含下滑后固定搜索条底色）；黄主题为橙，蓝主题为蓝 */
+    --shouye-top-bar-rgb: 44, 128, 244;
     /* 底栏选中标签：对齐参考稿红橙色 */
     --nav-tab-active-text: #e64340;
 }
