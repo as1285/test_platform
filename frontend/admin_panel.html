@@ -12,15 +12,71 @@
             background: #f0f2f5;
             min-height: 100vh;
             color: #333;
-            padding-bottom: 40px;
+            padding-bottom: 0;
+        }
+        .layout {
+            display: flex;
+            min-height: 100vh;
+            align-items: stretch;
+        }
+        .sidebar {
+            width: 228px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, #1a3352 0%, #1e3a5f 40%, #243d5c 100%);
+            color: #fff;
+            padding: 0 0 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+        }
+        .sidebar-brand {
+            padding: 22px 20px 18px;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            margin-bottom: 8px;
+        }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
+        .nav-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 12px 14px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(255,255,255,0.82);
+            font-size: 14px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            margin-left: 0;
+        }
+        .nav-item:hover {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+        }
+        .nav-item.active {
+            background: rgba(255,255,255,0.14);
+            color: #fff;
+            border-left-color: #7ec8ff;
+            font-weight: 500;
+        }
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #f0f2f5;
         }
         .top {
             background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
             color: #fff;
-            padding: 20px 20px 28px;
+            padding: 16px 24px 20px;
+            flex-shrink: 0;
         }
-        .top-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-        .top h1 { font-size: 20px; font-weight: 600; }
+        .top-inner { max-width: 1100px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .top h1 { font-size: 18px; font-weight: 600; }
         .top .btn-logout {
             background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.35);
@@ -30,7 +86,17 @@
             cursor: pointer;
             font-size: 14px;
         }
-        .wrap { max-width: 1100px; margin: -16px auto 0; padding: 0 16px; position: relative; z-index: 1; }
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px 20px 40px;
+            width: 100%;
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+        .page-panel { display: none; }
+        .page-panel.active { display: block; }
         section {
             background: #fff;
             border-radius: 12px;
@@ -154,16 +220,70 @@
         .mine-ui-row input[type="file"] { font-size: 12px; max-width: 220px; }
         .btn-file { background: #f5f7fa; color: #333; border: 1px solid #ccd; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
         .btn-file:disabled { opacity: 0.6; cursor: not-allowed; }
+        @media (max-width: 900px) {
+            .layout { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 12px 12px 14px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            }
+            .sidebar-brand {
+                width: 100%;
+                padding: 8px 8px 12px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid rgba(255,255,255,0.12);
+            }
+            .sidebar-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 0 4px;
+                width: 100%;
+            }
+            .nav-item {
+                width: auto;
+                flex: 1 1 auto;
+                min-width: calc(50% - 6px);
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                text-align: center;
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+            .nav-item.active {
+                border-left-color: transparent;
+                border-bottom-color: #7ec8ff;
+            }
+            .analytics-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="top">
-        <div class="top-inner">
-            <h1>管理控制台</h1>
-            <button type="button" class="btn-logout" onclick="adminLogout()">退出管理</button>
-        </div>
-    </div>
-    <div class="wrap">
+    <div class="layout">
+        <aside class="sidebar" aria-label="功能导航">
+            <div class="sidebar-brand">管理控制台</div>
+            <nav class="sidebar-nav">
+                <button type="button" class="nav-item active" data-page="settings" data-title="系统设置">系统设置</button>
+                <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
+                <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
+                <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
+            </nav>
+        </aside>
+        <div class="main-area">
+            <div class="top">
+                <div class="top-inner">
+                    <h1 id="pageTitle">系统设置</h1>
+                    <button type="button" class="btn-logout" onclick="adminLogout()">退出管理</button>
+                </div>
+            </div>
+            <div class="wrap">
+                <div id="page-settings" class="page-panel active" role="tabpanel">
         <section>
             <h2>系统设置</h2>
             <div class="form-row" style="flex-direction: column; align-items: stretch;">
@@ -177,7 +297,9 @@
             </div>
             <p class="hint">测试账号在「个人中心」添加税务记录、任职受雇、批量添加时，扣缴义务人名称均强制为此处配置；保存后会同步更新所有测试账号任职受雇中的公司名称（不自动改历史税务记录）。</p>
         </section>
+                </div>
 
+                <div id="page-appearance" class="page-panel" role="tabpanel">
         <section>
             <h2>用户端外观（个人中心 / 五个 TAB / 各页顶图）</h2>
             <div class="mine-ui-block">
@@ -369,7 +491,9 @@
             </div>
             <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
         </section>
+                </div>
 
+                <div id="page-codes" class="page-panel" role="tabpanel">
         <section>
             <h2>生成激活码</h2>
             <div class="form-row">
@@ -379,6 +503,31 @@
             <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；生成后请复制保存。</p>
         </section>
 
+        <section>
+            <h2>激活码列表</h2>
+            <button type="button" class="btn-primary" id="btnRefreshCodes" style="margin-bottom:12px;">刷新列表</button>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>激活码</th>
+                            <th>复制</th>
+                            <th>使用时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="codeTbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="codePagination">
+                <button type="button" class="btn-page" id="codePrev">上一页</button>
+                <span id="codePageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="codeNext">下一页</button>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-users" class="page-panel" role="tabpanel">
         <section>
             <h2>注册用户</h2>
             <div class="form-row" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
@@ -436,29 +585,99 @@
                 <button type="button" class="btn-page" id="userNext">下一页</button>
             </div>
         </section>
+                </div>
 
+                <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
-            <h2>激活码列表</h2>
-            <button type="button" class="btn-primary" id="btnRefreshCodes" style="margin-bottom:12px;">刷新列表</button>
-            <div class="scroll-x">
+            <h2>埋点说明</h2>
+            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>：按自然日聚合各 API 路径与业务分类（税务记录、消息中心、认证注册等）；含管理后台与公开接口。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+        </section>
+        <section>
+            <h2>用户日活与登录趋势</h2>
+            <div class="form-row" style="align-items: center;">
+                <div>
+                    <label for="analyticsOverviewDays">统计天数</label>
+                    <select id="analyticsOverviewDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14" selected>最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary" id="btnRefreshAnalytics">刷新统计</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;" class="analytics-grid">
+                <div class="scroll-x">
+                    <p class="stat">日活（去重用户数）</p>
+                    <table>
+                        <thead><tr><th>日期</th><th>活跃用户数</th></tr></thead>
+                        <tbody id="analyticsDauTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x">
+                    <p class="stat">登录次数（按日）</p>
+                    <table>
+                        <thead><tr><th>日期</th><th>成功</th><th>失败</th></tr></thead>
+                        <tbody id="analyticsLoginTbody"><tr><td colspan="3">—</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
+        </section>
+        <section>
+            <h2>接口调用（按业务分类）</h2>
+            <div class="form-row" style="align-items: center;">
+                <div>
+                    <label for="analyticsApiDays">统计天数</label>
+                    <select id="analyticsApiDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7" selected>最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                    </select>
+                </div>
+            </div>
+            <div class="scroll-x" style="margin-top: 12px;">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>激活码</th>
-                            <th>复制</th>
-                            <th>使用时间</th>
-                        </tr>
-                    </thead>
-                    <tbody id="codeTbody"></tbody>
+                    <thead><tr><th>业务分类</th><th>调用次数（合计）</th></tr></thead>
+                    <tbody id="analyticsCatTbody"><tr><td colspan="2">—</td></tr></tbody>
                 </table>
             </div>
-            <div class="pagination" id="codePagination">
-                <button type="button" class="btn-page" id="codePrev">上一页</button>
-                <span id="codePageInfo">第 1 页</span>
-                <button type="button" class="btn-page" id="codeNext">下一页</button>
+            <h3 style="font-size:14px;margin:16px 0 8px;color:#444;">高频接口 TOP（当前区间内）</h3>
+            <div class="scroll-x">
+                <table>
+                    <thead><tr><th>日期</th><th>分类</th><th>接口标识</th><th>次数</th></tr></thead>
+                    <tbody id="analyticsRoutesTbody"><tr><td colspan="4">—</td></tr></tbody>
+                </table>
             </div>
         </section>
+        <section>
+            <h2>最近登录流水</h2>
+            <div class="scroll-x">
+                <table>
+                    <thead><tr><th>时间</th><th>账号</th><th>结果</th><th>IP</th><th>城市</th></tr></thead>
+                    <tbody id="analyticsLoginRecentTbody"><tr><td colspan="5">—</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+        <section>
+            <h2>账号登录设备</h2>
+            <div class="form-row" style="align-items: flex-end;">
+                <div>
+                    <label for="analyticsDeviceUser">用户账号</label>
+                    <input type="text" id="analyticsDeviceUser" placeholder="输入 username" style="width:220px;">
+                </div>
+                <button type="button" class="btn-primary" id="btnLoadDevices">查询设备</button>
+            </div>
+            <div class="scroll-x" style="margin-top:12px;">
+                <table>
+                    <thead><tr><th>client_id</th><th>摘要</th><th>设备指纹</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th><th>接口同步</th><th>上报 JSON</th></tr></thead>
+                    <tbody id="analyticsDevicesTbody"><tr><td colspan="11">输入账号后查询</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
         function esc(s) {
@@ -551,6 +770,146 @@
         var userLimit = 10;
         var codePage = 1;
         var codeLimit = 10;
+
+        var _adminUsersLoaded = false;
+        var _adminCodesLoaded = false;
+        var _adminAnalyticsSeen = false;
+
+        function normalizeAdminPage(raw) {
+            var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
+            if (k === 'system' || k === 'setting') k = 'settings';
+            var ok = { settings: 1, appearance: 1, codes: 1, users: 1, analytics: 1 };
+            return ok[k] ? k : 'settings';
+        }
+
+        function applyAdminRoute() {
+            var pageKey = normalizeAdminPage(location.hash);
+            document.querySelectorAll('.page-panel').forEach(function (el) {
+                el.classList.toggle('active', el.id === 'page-' + pageKey);
+            });
+            document.querySelectorAll('.nav-item').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-page') === pageKey);
+            });
+            var navBtn = document.querySelector('.nav-item[data-page="' + pageKey + '"]');
+            var titleEl = document.getElementById('pageTitle');
+            if (titleEl && navBtn) {
+                titleEl.textContent = navBtn.getAttribute('data-title') || '管理控制台';
+            }
+            if (pageKey === 'users' && !_adminUsersLoaded) {
+                _adminUsersLoaded = true;
+                loadUsers(1);
+            }
+            if (pageKey === 'codes' && !_adminCodesLoaded) {
+                _adminCodesLoaded = true;
+                loadCodes(1);
+            }
+            if (pageKey === 'analytics' && !_adminAnalyticsSeen) {
+                _adminAnalyticsSeen = true;
+                loadAnalyticsDashboard();
+            }
+        }
+
+        function loadAnalyticsDashboard() {
+            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
+            var daysA = parseInt(document.getElementById('analyticsApiDays').value, 10) || 7;
+            document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
+            document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
+
+            Promise.all([
+                adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/login-recent?limit=120').then(function (r) { return r.json(); })
+            ]).then(function (results) {
+                var ov = results[0];
+                var api = results[1];
+                var recent = results[2];
+
+                if (ov.code === 200 && ov.data && ov.data.dau) {
+                    var dh = '';
+                    ov.data.dau.forEach(function (row) {
+                        dh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.active_users)) + '</td></tr>';
+                    });
+                    document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="2">暂无数据</td></tr>';
+                } else {
+                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">' + esc(ov.msg || '加载失败') + '</td></tr>';
+                }
+
+                if (ov.code === 200 && ov.data && ov.data.logins) {
+                    var lh = '';
+                    ov.data.logins.forEach(function (row) {
+                        lh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.success)) + '</td><td>' + esc(String(row.fail)) + '</td></tr>';
+                    });
+                    document.getElementById('analyticsLoginTbody').innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
+                } else {
+                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">—</td></tr>';
+                }
+
+                if (api.code === 200 && api.data) {
+                    var ch = '';
+                    (api.data.by_category || []).forEach(function (row) {
+                        ch += '<tr><td>' + esc(row.category) + '</td><td>' + esc(String(row.calls)) + '</td></tr>';
+                    });
+                    document.getElementById('analyticsCatTbody').innerHTML = ch || '<tr><td colspan="2">暂无数据</td></tr>';
+                    var rh = '';
+                    (api.data.top_routes || []).forEach(function (row) {
+                        rh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(row.category) + '</td><td class="cell-break"><code>' + esc(row.route_key) + '</code></td><td>' + esc(String(row.cnt)) + '</td></tr>';
+                    });
+                    document.getElementById('analyticsRoutesTbody').innerHTML = rh || '<tr><td colspan="4">暂无数据</td></tr>';
+                } else {
+                    document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">' + esc(api.msg || '加载失败') + '</td></tr>';
+                    document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">—</td></tr>';
+                }
+
+                if (recent.code === 200 && recent.data && recent.data.items) {
+                    var rr = '';
+                    recent.data.items.forEach(function (row) {
+                        var okBadge = row.ok
+                            ? '<span class="badge badge-yes">成功</span>'
+                            : '<span class="badge badge-no">失败</span>';
+                        rr += '<tr><td>' + formatDt(row.created_at) + '</td><td class="cell-break">' + esc(row.username) + '</td><td>' + okBadge + '</td><td>' + esc(row.ip) + '</td><td>' + esc(row.city) + '</td></tr>';
+                    });
+                    document.getElementById('analyticsLoginRecentTbody').innerHTML = rr || '<tr><td colspan="5">暂无记录</td></tr>';
+                } else {
+                    document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">' + esc(recent.msg || '加载失败') + '</td></tr>';
+                }
+            }).catch(function () {
+                document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
+            });
+        }
+
+        function loadAnalyticsDevices() {
+            var u = document.getElementById('analyticsDeviceUser').value.trim();
+            if (!u) {
+                alert('请输入用户账号');
+                return;
+            }
+            document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/devices?username=' + encodeURIComponent(u))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">' + esc(data.msg || '查询失败') + '</td></tr>';
+                        return;
+                    }
+                    var list = data.data.devices || [];
+                    var h = '';
+                    list.forEach(function (d) {
+                        var jshort = d.device_json ? esc(d.device_json.substring(0, 180)) + (d.device_json.length > 180 ? '…' : '') : '—';
+                        h += '<tr><td class="cell-break"><code>' + esc(d.client_id || '—') + '</code></td><td class="cell-break">' + esc(d.summary || '—') + '</td><td class="cell-break"><code>' + esc(d.device_fp) + '</code></td><td class="cell-break">' + esc(d.user_agent_short) + '</td><td>' + esc(d.ip_last) + '</td><td>' + esc(d.city_last) + '</td><td>' + formatDt(d.first_seen) + '</td><td>' + formatDt(d.last_seen) + '</td><td>' + esc(String(d.login_count)) + '</td><td>' + esc(String(d.api_sync_count != null ? d.api_sync_count : 0)) + '</td><td class="cell-break" title="' + esc(d.device_json || '') + '">' + jshort + '</td></tr>';
+                    });
+                    document.getElementById('analyticsDevicesTbody').innerHTML = h || '<tr><td colspan="11">暂无设备记录（需客户端携带 X-Client-Device 或发生过登录）</td></tr>';
+                })
+                .catch(function () {
+                    document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
+                });
+        }
 
         function loadUsers(p) {
             if (p != null) userPage = p;
@@ -944,8 +1303,31 @@
 
         bindMineUiUploads();
         loadAdminSettings();
-        loadUsers(1);
-        loadCodes(1);
+
+        document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
+            loadAnalyticsDashboard();
+        });
+        document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
+            if (_adminAnalyticsSeen) loadAnalyticsDashboard();
+        });
+        document.getElementById('analyticsApiDays').addEventListener('change', function () {
+            if (_adminAnalyticsSeen) loadAnalyticsDashboard();
+        });
+        document.getElementById('btnLoadDevices').addEventListener('click', loadAnalyticsDevices);
+
+        document.querySelectorAll('.nav-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var p = btn.getAttribute('data-page');
+                if (p) {
+                    location.hash = p;
+                }
+            });
+        });
+        window.addEventListener('hashchange', applyAdminRoute);
+        if (!location.hash || location.hash === '#') {
+            history.replaceState(null, '', '#settings');
+        }
+        applyAdminRoute();
     </script>
 </body>
 </html>

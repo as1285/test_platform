@@ -107,3 +107,53 @@ CREATE TABLE IF NOT EXISTS activation_codes (
     UNIQUE KEY uk_activation_code (code),
     INDEX idx_activation_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 接口调用按日聚合（埋点）
+CREATE TABLE IF NOT EXISTS analytics_api_daily (
+    stat_date DATE NOT NULL,
+    route_key VARCHAR(240) NOT NULL,
+    biz_category VARCHAR(64) NOT NULL,
+    cnt BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (stat_date, route_key),
+    INDEX idx_cat_date (biz_category, stat_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 用户日活：当日至少登录或调用过一次需登录接口的账号
+CREATE TABLE IF NOT EXISTS user_daily_activity (
+    activity_date DATE NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    PRIMARY KEY (activity_date, username),
+    INDEX idx_u_d (username, activity_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 登录流水（成功 / 失败）
+CREATE TABLE IF NOT EXISTS user_login_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    ok TINYINT(1) NOT NULL DEFAULT 1,
+    ip VARCHAR(128) NULL,
+    city VARCHAR(255) NULL,
+    user_agent VARCHAR(512) NULL,
+    device_fp CHAR(64) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_created (created_at),
+    INDEX idx_u_created (username, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 账号维度设备（登录 + 每次已登录接口携带 X-Client-Device 同步）
+CREATE TABLE IF NOT EXISTS user_devices (
+    username VARCHAR(255) NOT NULL,
+    device_fp CHAR(64) NOT NULL,
+    user_agent_short VARCHAR(512) NULL,
+    ip_last VARCHAR(128) NULL,
+    city_last VARCHAR(255) NULL,
+    first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_seen DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    login_count INT UNSIGNED NOT NULL DEFAULT 0,
+    client_id VARCHAR(128) NULL COMMENT '客户端上报唯一 id',
+    device_detail_json MEDIUMTEXT NULL COMMENT '最近一次显式上报 JSON',
+    api_sync_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '携带设备 JSON 的接口同步次数',
+    PRIMARY KEY (username, device_fp),
+    INDEX idx_last_seen (last_seen),
+    INDEX idx_client_id (username, client_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

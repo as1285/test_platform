@@ -161,7 +161,7 @@
 
             fetch('api/auth.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'register',
                     username: username,

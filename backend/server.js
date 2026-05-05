@@ -515,6 +515,80 @@ async function createTables() {
     [SETTING_KEY_MINE_UI, JSON.stringify(cloneMineUiDefaults())]
   );
 
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS analytics_api_daily (
+      stat_date DATE NOT NULL,
+      route_key VARCHAR(240) NOT NULL,
+      biz_category VARCHAR(64) NOT NULL,
+      cnt BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      PRIMARY KEY (stat_date, route_key),
+      INDEX idx_cat_date (biz_category, stat_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_daily_activity (
+      activity_date DATE NOT NULL,
+      username VARCHAR(255) NOT NULL,
+      PRIMARY KEY (activity_date, username),
+      INDEX idx_u_d (username, activity_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_login_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NOT NULL,
+      ok TINYINT(1) NOT NULL DEFAULT 1,
+      ip VARCHAR(128) NULL,
+      city VARCHAR(255) NULL,
+      user_agent VARCHAR(512) NULL,
+      device_fp CHAR(64) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_created (created_at),
+      INDEX idx_u_created (username, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_devices (
+      username VARCHAR(255) NOT NULL,
+      device_fp CHAR(64) NOT NULL,
+      user_agent_short VARCHAR(512) NULL,
+      ip_last VARCHAR(128) NULL,
+      city_last VARCHAR(255) NULL,
+      first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_seen DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      login_count INT UNSIGNED NOT NULL DEFAULT 0,
+      client_id VARCHAR(128) NULL COMMENT '客户端上报唯一 id',
+      device_detail_json MEDIUMTEXT NULL COMMENT '最近一次显式上报 JSON',
+      api_sync_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '携带设备 JSON 的接口同步次数',
+      PRIMARY KEY (username, device_fp),
+      INDEX idx_last_seen (last_seen),
+      INDEX idx_client_id (username, client_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  var devCols = [
+    "ALTER TABLE user_devices ADD COLUMN client_id VARCHAR(128) NULL COMMENT '客户端上报唯一 id'",
+    'ALTER TABLE user_devices ADD COLUMN device_detail_json MEDIUMTEXT NULL COMMENT \'最近一次显式上报 JSON\'',
+    "ALTER TABLE user_devices ADD COLUMN api_sync_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '携带设备 JSON 的接口同步次数'"
+  ];
+  for (var di = 0; di < devCols.length; di++) {
+    try {
+      await conn.execute(devCols[di]);
+    } catch (e) {
+      if (e.errno !== 1060) {
+        throw e;
+      }
+    }
+  }
+  try {
+    await conn.execute('CREATE INDEX idx_client_id ON user_devices (username, client_id)');
+  } catch (e) {
+    /* 已存在或非致命 */
+  }
+
   conn.release();
 }
 
@@ -1025,6 +1099,8 @@ async function requireAuth(req, res, next) {
     } finally {
       conn.release();
     }
+    touchUserDailyActivity(req.authUserId);
+    syncUserDeviceFromClientJson(req, req.authUserId);
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -1420,10 +1496,294 @@ async function handleUserPost(req, res) {
   }
 }
 
+/** ---------- 埋点统计（日活、接口聚合、登录与设备） ---------- */
+
+function classifyAnalyticsRoute(req) {
+  var path = req.path || '';
+  var method = String(req.method || 'GET').toUpperCase();
+  if (path === '/health' || path === '/api/health') {
+    return null;
+  }
+  var body = req.body && typeof req.body === 'object' ? req.body : {};
+  var q = req.query && typeof req.query === 'object' ? req.query : {};
+  var action = '';
+  if (body.action != null && String(body.action).trim() !== '') {
+    action = String(body.action).trim().substring(0, 80);
+  } else if (q.action != null && String(q.action).trim() !== '') {
+    action = String(q.action).trim().substring(0, 80);
+  }
+  var actionSuffix = action ? '#' + action : '';
+
+  if (path.indexOf('/api/admin') === 0) {
+    return { route_key: method + ' ' + path + actionSuffix, biz_category: '管理后台' };
+  }
+  if (path.endsWith('/tax.php') || path === '/tax.php') {
+    return { route_key: method + ' tax.php' + actionSuffix, biz_category: '税务记录' };
+  }
+  if (path.endsWith('/message.php') || path === '/message.php') {
+    return { route_key: method + ' message.php' + actionSuffix, biz_category: '消息中心' };
+  }
+  if (path.endsWith('/user.php') || path === '/user.php') {
+    return { route_key: method + ' user.php' + actionSuffix, biz_category: '用户资料与任职' };
+  }
+  if (path.endsWith('/auth.php') || path === '/auth.php') {
+    return { route_key: method + ' auth.php' + actionSuffix, biz_category: '认证注册' };
+  }
+  if (path === '/api/public/mine-ui') {
+    return { route_key: method + ' /api/public/mine-ui', biz_category: '公开配置' };
+  }
+  return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
+}
+
+function incrementApiDailyCounter(routeKey, bizCategory) {
+  if (!pool || !routeKey || !bizCategory) {
+    return;
+  }
+  var rk = String(routeKey).substring(0, 240);
+  var cat = String(bizCategory).substring(0, 64);
+  pool
+    .execute(
+      `INSERT INTO analytics_api_daily (stat_date, route_key, biz_category, cnt)
+       VALUES (CURDATE(), ?, ?, 1)
+       ON DUPLICATE KEY UPDATE cnt = cnt + 1`,
+      [rk, cat]
+    )
+    .catch(function (e) {
+      console.error('incrementApiDailyCounter', e);
+    });
+}
+
+function analyticsFinishMiddleware(req, res, next) {
+  res.on('finish', function () {
+    try {
+      var info = classifyAnalyticsRoute(req);
+      if (!info) {
+        return;
+      }
+      incrementApiDailyCounter(info.route_key, info.biz_category);
+    } catch (e) {
+      console.error('analyticsFinishMiddleware', e);
+    }
+  });
+  next();
+}
+
+function touchUserDailyActivity(username) {
+  if (!pool || username == null) {
+    return;
+  }
+  var u = String(username).trim();
+  if (!u) {
+    return;
+  }
+  pool
+    .execute('INSERT IGNORE INTO user_daily_activity (activity_date, username) VALUES (CURDATE(), ?)', [
+      u.substring(0, 255)
+    ])
+    .catch(function (e) {
+      console.error('touchUserDailyActivity', e);
+    });
+}
+
+function normalizeUserAgentHeader(req) {
+  return String((req.headers && req.headers['user-agent']) || '').trim().substring(0, 500);
+}
+
+/** 客户端请求头 X-Client-Device（JSON）允许的字段与最大长度 */
+var CLIENT_DEVICE_FIELD_LIMITS = {
+  client_id: 128,
+  source: 32,
+  platform: 64,
+  os_version: 64,
+  app_version: 64,
+  model: 128,
+  brand: 64,
+  screen: 32,
+  user_agent: 400,
+  language: 32,
+  locale: 32,
+  timezone: 64,
+  dpr: 16,
+  extra: 1024
+};
+
+function sanitizeClientDevicePayload(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
+  var out = {};
+  Object.keys(CLIENT_DEVICE_FIELD_LIMITS).forEach(function (k) {
+    var lim = CLIENT_DEVICE_FIELD_LIMITS[k];
+    if (raw[k] == null || raw[k] === '') {
+      return;
+    }
+    if (k === 'dpr') {
+      var n = Number(raw[k]);
+      if (!isNaN(n)) {
+        out[k] = String(Math.round(n * 100) / 100).substring(0, lim);
+      }
+      return;
+    }
+    var s = String(raw[k])
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
+      .substring(0, lim);
+    if (s) {
+      out[k] = s;
+    }
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+function readClientDeviceFromRequest(req) {
+  var raw = req.headers['x-client-device'];
+  if (!raw || typeof raw !== 'string') {
+    return null;
+  }
+  var s = raw.trim();
+  if (!s || s.length > 8192) {
+    return null;
+  }
+  try {
+    var o = JSON.parse(s);
+    return sanitizeClientDevicePayload(o);
+  } catch (e) {
+    return null;
+  }
+}
+
+function fingerprintFromExplicitDevice(obj) {
+  var cid = obj.client_id ? String(obj.client_id).trim() : '';
+  if (cid) {
+    return crypto.createHash('sha256').update('ex:' + cid, 'utf8').digest('hex');
+  }
+  var keys = Object.keys(obj).sort();
+  var stable = {};
+  keys.forEach(function (k) {
+    stable[k] = obj[k];
+  });
+  return crypto.createHash('sha256').update('exobj:' + JSON.stringify(stable), 'utf8').digest('hex');
+}
+
+function computeDeviceFingerprint(req) {
+  var ex = req.clientDevicePayload;
+  if (ex && Object.keys(ex).length > 0) {
+    return fingerprintFromExplicitDevice(ex);
+  }
+  var ua = normalizeUserAgentHeader(req);
+  var plat = '';
+  if (req.headers) {
+    plat =
+      String(req.headers['sec-ch-ua-platform'] || req.headers['sec-ch-ua-mobile'] || '').trim();
+  }
+  return crypto.createHash('sha256').update(ua + '|' + plat, 'utf8').digest('hex');
+}
+
+function userAgentShortForStore(req) {
+  var s = normalizeUserAgentHeader(req);
+  if (s.length <= 220) {
+    return s;
+  }
+  return s.substring(0, 220) + '…';
+}
+
+function displayUserAgentFromDevice(req) {
+  var ex = req.clientDevicePayload;
+  if (ex && ex.user_agent) {
+    var u = String(ex.user_agent);
+    if (u.length <= 220) {
+      return u;
+    }
+    return u.substring(0, 220) + '…';
+  }
+  return userAgentShortForStore(req);
+}
+
+function syncUserDeviceFromClientJson(req, username) {
+  if (!pool || !username) {
+    return Promise.resolve();
+  }
+  var ex = req.clientDevicePayload;
+  if (!ex || !Object.keys(ex).length) {
+    return Promise.resolve();
+  }
+  var fp = fingerprintFromExplicitDevice(ex);
+  var detailJson = JSON.stringify(ex);
+  var clientId = ex.client_id ? String(ex.client_id).substring(0, 128) : null;
+  var ip = getClientIp(req);
+  var city = cityLabelFromIp(ip);
+  var uaDisp = displayUserAgentFromDevice(req);
+  return pool
+    .execute(
+      `INSERT INTO user_devices (username, device_fp, user_agent_short, ip_last, city_last, login_count, client_id, device_detail_json, api_sync_count)
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE
+         user_agent_short = VALUES(user_agent_short),
+         ip_last = VALUES(ip_last),
+         city_last = VALUES(city_last),
+         device_detail_json = VALUES(device_detail_json),
+         client_id = COALESCE(VALUES(client_id), client_id),
+         api_sync_count = api_sync_count + 1,
+         last_seen = CURRENT_TIMESTAMP`,
+      [String(username).trim().substring(0, 255), fp, uaDisp, ip.substring(0, 128), city.substring(0, 255), clientId, detailJson]
+    )
+    .catch(function (e) {
+      console.error('syncUserDeviceFromClientJson', e);
+    });
+}
+
+async function recordUserLoginAttempt(username, ok, req) {
+  if (!pool || !username) {
+    return;
+  }
+  var uname = String(username).trim().substring(0, 255);
+  if (!uname) {
+    return;
+  }
+  var ip = getClientIp(req);
+  var city = cityLabelFromIp(ip);
+  var ua = normalizeUserAgentHeader(req);
+  var fp = computeDeviceFingerprint(req);
+  var ex = req.clientDevicePayload;
+  var detailJson = ex ? JSON.stringify(ex) : null;
+  var clientId = ex && ex.client_id ? String(ex.client_id).substring(0, 128) : null;
+  var uaDisp = displayUserAgentFromDevice(req);
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      `INSERT INTO user_login_events (username, ok, ip, city, user_agent, device_fp) VALUES (?, ?, ?, ?, ?, ?)`,
+      [uname, ok ? 1 : 0, ip.substring(0, 128), city.substring(0, 255), ua.substring(0, 512), fp]
+    );
+    if (ok) {
+      await conn.execute(
+        `INSERT INTO user_devices (username, device_fp, user_agent_short, ip_last, city_last, login_count, client_id, device_detail_json, api_sync_count)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, 0)
+         ON DUPLICATE KEY UPDATE
+           user_agent_short = VALUES(user_agent_short),
+           ip_last = VALUES(ip_last),
+           city_last = VALUES(city_last),
+           login_count = login_count + 1,
+           client_id = COALESCE(VALUES(client_id), client_id),
+           device_detail_json = COALESCE(VALUES(device_detail_json), device_detail_json),
+           last_seen = CURRENT_TIMESTAMP`,
+        [uname, fp, uaDisp, ip.substring(0, 128), city.substring(0, 255), clientId, detailJson]
+      );
+    }
+  } catch (e) {
+    console.error('recordUserLoginAttempt', e);
+  } finally {
+    conn.release();
+  }
+}
+
 const app = express();
 app.set('trust proxy', true);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(function attachClientDevicePayload(req, res, next) {
+  req.clientDevicePayload = readClientDeviceFromRequest(req);
+  next();
+});
+app.use(analyticsFinishMiddleware);
 
 async function handleTaxGet(req, res) {
   var action = req.query.action;
@@ -1712,10 +2072,18 @@ async function handleAuthPost(req, res) {
       var out2 = await loginUser(body.username, body.password);
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
+      touchUserDailyActivity(out2.username);
+      recordUserLoginAttempt(out2.username, true, req).catch(function () {});
       return res.json({ code: 200, data: out2 });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
+    try {
+      var b = req.body || {};
+      if (b.action === 'login' && b.username != null && String(b.username).trim() !== '') {
+        recordUserLoginAttempt(String(b.username).trim(), false, req).catch(function () {});
+      }
+    } catch (e2) {}
     return res.status(400).json({ code: 400, msg: e.message || String(e) });
   }
 }
@@ -2080,6 +2448,9 @@ async function handleAdminDeleteUser(req, res) {
     await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [target]);
     await conn.execute('DELETE FROM employers WHERE user_id = ?', [target]);
     await conn.execute('DELETE FROM messages WHERE user_id = ?', [target]);
+    await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [target]);
+    await conn.execute('DELETE FROM user_login_events WHERE username = ?', [target]);
+    await conn.execute('DELETE FROM user_devices WHERE username = ?', [target]);
     await conn.execute('DELETE FROM users WHERE username = ?', [target]);
     await conn.commit();
     conn.release();
@@ -2091,6 +2462,204 @@ async function handleAdminDeleteUser(req, res) {
       console.error(rbErr);
     }
     conn.release();
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+function clampAnalyticsDays(raw, def, max) {
+  var n = parseInt(raw, 10);
+  if (isNaN(n) || n < 1) {
+    n = def;
+  }
+  if (n > max) {
+    n = max;
+  }
+  return n;
+}
+
+async function handleAdminAnalyticsOverview(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 14, 90);
+    var span = Math.max(0, days - 1);
+    const conn = await pool.getConnection();
+    try {
+      const [dauRows] = await conn.execute(
+        `SELECT activity_date AS d, COUNT(*) AS cnt FROM user_daily_activity
+         WHERE activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY activity_date ORDER BY activity_date ASC`,
+        [span]
+      );
+      const [loginRows] = await conn.execute(
+        `SELECT DATE(created_at) AS d,
+           SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS success_cnt,
+           SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS fail_cnt
+         FROM user_login_events
+         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY DATE(created_at) ORDER BY d ASC`,
+        [span]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          dau: dauRows.map(function (r) {
+            return {
+              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+              active_users: Number(r.cnt)
+            };
+          }),
+          logins: loginRows.map(function (r) {
+            return {
+              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+              success: Number(r.success_cnt || 0),
+              fail: Number(r.fail_cnt || 0)
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsApi(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 7, 90);
+    var span = Math.max(0, days - 1);
+    const conn = await pool.getConnection();
+    try {
+      const [byCat] = await conn.execute(
+        `SELECT biz_category AS cat, SUM(cnt) AS total FROM analytics_api_daily
+         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY biz_category ORDER BY total DESC`,
+        [span]
+      );
+      const [topRoutes] = await conn.execute(
+        `SELECT stat_date AS d, biz_category AS cat, route_key AS route, cnt FROM analytics_api_daily
+         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         ORDER BY cnt DESC LIMIT 300`,
+        [span]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          by_category: byCat.map(function (r) {
+            return { category: String(r.cat), calls: Number(r.total) };
+          }),
+          top_routes: topRoutes.map(function (r) {
+            return {
+              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+              category: String(r.cat),
+              route_key: String(r.route),
+              cnt: Number(r.cnt)
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsDevices(req, res) {
+  var username = req.query.username != null ? String(req.query.username).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: '请填写要查询的账号 username' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        `SELECT device_fp, user_agent_short, ip_last, city_last, first_seen, last_seen, login_count,
+                client_id, device_detail_json, api_sync_count
+         FROM user_devices WHERE username = ? ORDER BY last_seen DESC`,
+        [username.substring(0, 255)]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          username: username,
+          devices: rows.map(function (r) {
+            var dj = r.device_detail_json != null ? String(r.device_detail_json) : '';
+            var summary = '';
+            if (dj) {
+              try {
+                var parsed = JSON.parse(dj);
+                if (parsed && typeof parsed === 'object') {
+                  var bits = [];
+                  if (parsed.source) bits.push(parsed.source);
+                  if (parsed.platform) bits.push(parsed.platform);
+                  if (parsed.model) bits.push(parsed.model);
+                  if (parsed.os_version) bits.push(parsed.os_version);
+                  if (parsed.app_version) bits.push('app:' + parsed.app_version);
+                  summary = bits.join(' · ');
+                }
+              } catch (e1) {
+                summary = '';
+              }
+            }
+            return {
+              device_fp: r.device_fp,
+              client_id: r.client_id != null ? String(r.client_id) : '',
+              summary: summary,
+              device_json: dj,
+              user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
+              ip_last: r.ip_last != null ? String(r.ip_last) : '',
+              city_last: r.city_last != null ? String(r.city_last) : '',
+              first_seen: r.first_seen ? r.first_seen.toISOString() : null,
+              last_seen: r.last_seen ? r.last_seen.toISOString() : null,
+              login_count: r.login_count != null ? Number(r.login_count) : 0,
+              api_sync_count: r.api_sync_count != null ? Number(r.api_sync_count) : 0
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsLoginRecent(req, res) {
+  try {
+    var limit = clampAnalyticsDays(req.query.limit, 80, 500);
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        `SELECT username, ok, ip, city, created_at FROM user_login_events
+         ORDER BY id DESC LIMIT ${limit}`
+      );
+      return res.json({
+        code: 200,
+        data: {
+          items: rows.map(function (r) {
+            return {
+              username: String(r.username),
+              ok: !!(r.ok === 1 || r.ok === true),
+              ip: r.ip != null ? String(r.ip) : '',
+              city: r.city != null ? String(r.city) : '',
+              created_at: r.created_at ? r.created_at.toISOString() : ''
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
   }
@@ -2120,6 +2689,10 @@ app.get('/api/admin/codes', requireAdminAuth, handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, handleAdminBan);
 app.post('/api/admin/user-type', requireAdminAuth, handleAdminUserType);
 app.post('/api/admin/user-delete', requireAdminAuth, handleAdminDeleteUser);
+app.get('/api/admin/analytics/overview', requireAdminAuth, handleAdminAnalyticsOverview);
+app.get('/api/admin/analytics/api-stats', requireAdminAuth, handleAdminAnalyticsApi);
+app.get('/api/admin/analytics/devices', requireAdminAuth, handleAdminAnalyticsDevices);
+app.get('/api/admin/analytics/login-recent', requireAdminAuth, handleAdminAnalyticsLoginRecent);
 
 function healthHandler(req, res) {
   res.json({ ok: true });
