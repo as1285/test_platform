@@ -61,6 +61,14 @@
     if (mh && cfg.message_header) {
       mh.src = cfg.message_header;
     }
+    var pg = document.getElementById('assetPiaojiaGoumai');
+    if (pg && cfg.piaojia_goumai) {
+      pg.src = cfg.piaojia_goumai;
+    }
+    var px = document.getElementById('assetPiaojiaXiaoshou');
+    if (px && cfg.piaojia_xiaoshou) {
+      px.src = cfg.piaojia_xiaoshou;
+    }
   }
 
   function applyThemeAndStore(d) {
@@ -105,7 +113,9 @@
       shouye_lb: d.shouye_lb || 'lb.jpg',
       daiban_header: d.daiban_header || 'daiban.jpg',
       bancha_header: d.bancha_header || 'db.jpg',
-      message_header: d.message_header || 'message_header.jpg'
+      message_header: d.message_header || 'message_header.jpg',
+      piaojia_goumai: d.piaojia_goumai || 'piaojia-goumai.png',
+      piaojia_xiaoshou: d.piaojia_xiaoshou || 'piaojia-xiaoshou.png'
     };
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(window.__MINE_UI_CONFIG));

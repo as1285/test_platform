@@ -47,7 +47,9 @@ const MINE_UI_IMAGE_KEYS = [
   'shouye_lb',
   'daiban_header',
   'bancha_header',
-  'message_header'
+  'message_header',
+  'piaojia_goumai',
+  'piaojia_xiaoshou'
 ];
 
 /** 0=普通账号 1=测试账号 */
@@ -124,7 +126,9 @@ function cloneMineUiDefaults() {
     shouye_lb: 'lb.jpg',
     daiban_header: 'daiban.jpg',
     bancha_header: 'db.jpg',
-    message_header: 'message_header.jpg'
+    message_header: 'message_header.jpg',
+    piaojia_goumai: 'piaojia-goumai.png',
+    piaojia_xiaoshou: 'piaojia-xiaoshou.png'
   };
 }
 

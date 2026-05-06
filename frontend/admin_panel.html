@@ -484,12 +484,28 @@
                         <button type="button" class="btn-file mine-ui-pick">本地上传</button>
                     </div>
                 </div>
+                <div class="mine-ui-row">
+                    <label for="img_piaojia_goumai">我的票夹 · 我购买的（整页截图）</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_piaojia_goumai" maxlength="500" placeholder="默认 piaojia-goumai.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_piaojia_goumai" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_piaojia_xiaoshou">我的票夹 · 我销售的（整页截图）</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_piaojia_xiaoshou" maxlength="500" placeholder="默认 piaojia-xiaoshou.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_piaojia_xiaoshou" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
 
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
                 </div>
             </div>
-            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
         </section>
                 </div>
 
@@ -1207,7 +1223,8 @@
             'header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank',
             'nav_sy_1', 'nav_sy_2', 'nav_db_1', 'nav_db_2', 'nav_bc_1', 'nav_bc_2',
             'nav_xx_1', 'nav_xx_2', 'nav_w_1', 'nav_w_2',
-            'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header'
+            'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header',
+            'piaojia_goumai', 'piaojia_xiaoshou'
         ];
 
         function adminUploadAsset(file) {
