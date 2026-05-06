@@ -2638,13 +2638,34 @@ async function handleAdminAnalyticsDevices(req, res) {
 
 async function handleAdminAnalyticsLoginRecent(req, res) {
   try {
-    var limit = clampAnalyticsDays(req.query.limit, 80, 500);
+    var page = parseInt(req.query.page, 10);
+    if (!isFinite(page) || page < 1) {
+      page = 1;
+    }
+    var limit = parseInt(req.query.limit, 10);
+    if (!isFinite(limit) || limit < 1) {
+      limit = 20;
+    }
+    if (limit > 100) {
+      limit = 100;
+    }
     const conn = await pool.getConnection();
     try {
+      const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM user_login_events');
+      var total = countRow && countRow.c != null ? Number(countRow.c) : 0;
+      var totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
+      if (totalPages > 0 && page > totalPages) {
+        page = totalPages;
+      }
+      var offset = (page - 1) * limit;
       const [rows] = await conn.execute(
         `SELECT username, ok, ip, city, created_at FROM user_login_events
-         ORDER BY id DESC LIMIT ${limit}`
+         ORDER BY id DESC LIMIT ? OFFSET ?`,
+        [limit, offset]
       );
+      if (total > 0 && totalPages < 1) {
+        totalPages = 1;
+      }
       return res.json({
         code: 200,
         data: {
@@ -2656,7 +2677,11 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
               city: r.city != null ? String(r.city) : '',
               created_at: r.created_at ? r.created_at.toISOString() : ''
             };
-          })
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
         }
       });
     } finally {

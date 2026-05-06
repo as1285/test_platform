@@ -26,6 +26,18 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /*
+         * 金额用正文同源无衬线 + tabular-nums：普通椭圆 0。
+         * （JetBrains Mono / Fira Code / Consolas 等编程字体会刻意做成「带点或斜杠的 0」以便和字母 O 区分，不适合账务展示。）
+         */
+        .summary-value,
+        .list-date,
+        .list-label {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum' 1, 'zero' 0;
+        }
+
         /* 高于 watermark.js 全屏层（z-index:99999），避免「未激活」水印叠在内容上导致插画/文字发灰、不清晰 */
         .page-root {
             position: relative;
@@ -193,8 +205,11 @@
 
         .summary-value {
             font-size: 15px;
+            font-weight: 500;
             color: #000000;
-            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+            text-align: right;
+            min-width: 5.5em;
         }
 
         /* 顶开固定头高度；与个税一致白底通栏无左右灰边 */
@@ -256,7 +271,8 @@
         .list-date {
             flex-shrink: 0;
             font-size: 17px;
-            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+            letter-spacing: -0.015em;
             color: #333;
             margin-right: 25px;
         }
@@ -268,6 +284,13 @@
         .list-label {
             font-size: 15px;
             color: #999;
+            letter-spacing: -0.01em;
+        }
+
+        /* 「7」后紧跟数字时略收紧字距（须由 JS 在已转义文本上包 span） */
+        .digit-kern-seven {
+            display: inline;
+            margin-right: -0.05em;
         }
 
         .list-row-with-arrow {
@@ -402,6 +425,18 @@
         }
 
         /**
+         * 在已 escapeHtml 的纯文本上，为「7」且紧跟数字的情况包 span，用负 margin 做轻微字距修正（如 71、7.1 不匹配点小数点后的 0）。
+         * 禁止对未转义内容调用，避免破坏标签或 XSS。
+         */
+        function kernSevenAfterDigitInEscaped(escapedText) {
+            return String(escapedText).replace(/7(?=\d)/g, '<span class="digit-kern-seven">7</span>');
+        }
+
+        function amountSummaryInnerHtml(yuanText) {
+            return kernSevenAfterDigitInEscaped(escapeHtml(String(yuanText)));
+        }
+
+        /**
          * 单字符在列表中的「显示宽度」：全角/中日韩等计 2，半角字母数字标点计 1（与常见「10 个汉字宽度」一致）。
          */
         function charDisplayWidth(ch) {
@@ -464,17 +499,17 @@
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
-                listHtml += '<span class="list-date">' + record.year + '-' + month + '</span>';
+                listHtml += '<span class="list-date">' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.year) + '-' + month)) + '</span>';
                 listHtml += '</div>';
                 listHtml += '<div class="list-row"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
-                listHtml += '<div class="list-row"><span class="list-label">收入：' + escapeHtml(String(record.income)) + '元</span></div>';
+                listHtml += '<div class="list-row"><span class="list-label">收入：' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.income))) + '元</span></div>';
                 listHtml += '</div>';
                 listHtml += '<img class="list-arrow" src="http://www.geshui665.com/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
-                listHtml += '<div class="list-row"><span class="list-label">已申报税额：' + escapeHtml(String(record.tax_reported)) + '元</span></div>';
+                listHtml += '<div class="list-row"><span class="list-label">已申报税额：' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.tax_reported))) + '元</span></div>';
                 listHtml += '</a>';
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
@@ -493,8 +528,8 @@
         }
 
         function applyTotals(data) {
-            document.getElementById('incomeTotal').textContent = formatYuanField(data.income_total) + '元';
-            document.getElementById('taxTotal').textContent = formatYuanField(data.tax_total) + '元';
+            document.getElementById('incomeTotal').innerHTML = amountSummaryInnerHtml(formatYuanField(data.income_total) + '元');
+            document.getElementById('taxTotal').innerHTML = amountSummaryInnerHtml(formatYuanField(data.tax_total) + '元');
         }
 
         function loadData() {

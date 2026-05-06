@@ -37,7 +37,17 @@
             border-bottom: 1px solid rgba(255,255,255,0.12);
             margin-bottom: 8px;
         }
-        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 0 10px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            max-height: calc(100vh - 80px);
+            -webkit-overflow-scrolling: touch;
+        }
         .nav-item {
             display: block;
             width: 100%;
@@ -242,6 +252,10 @@
                 gap: 6px;
                 padding: 0 4px;
                 width: 100%;
+                max-height: none;
+                overflow-y: visible;
+                flex: none;
+                min-height: 0;
             }
             .nav-item {
                 width: auto;
@@ -272,6 +286,7 @@
                 <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
                 <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                <button type="button" class="nav-item" data-page="login-log" data-title="登录流水">登录流水</button>
                 <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
             </nav>
         </aside>
@@ -606,7 +621,7 @@
                 <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>埋点说明</h2>
-            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>：按自然日聚合各 API 路径与业务分类（税务记录、消息中心、认证注册等）；含管理后台与公开接口。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>：按自然日聚合各 API 路径与业务分类（税务记录、消息中心、认证注册等）；含管理后台与公开接口。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -621,6 +636,7 @@
                     </select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshAnalytics">刷新统计</button>
+                <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;" class="analytics-grid">
                 <div class="scroll-x">
@@ -667,15 +683,6 @@
             </div>
         </section>
         <section>
-            <h2>最近登录流水</h2>
-            <div class="scroll-x">
-                <table>
-                    <thead><tr><th>时间</th><th>账号</th><th>结果</th><th>IP</th><th>城市</th></tr></thead>
-                    <tbody id="analyticsLoginRecentTbody"><tr><td colspan="5">—</td></tr></tbody>
-                </table>
-            </div>
-        </section>
-        <section>
             <h2>账号登录设备</h2>
             <div class="form-row" style="align-items: flex-end;">
                 <div>
@@ -689,6 +696,36 @@
                     <thead><tr><th>client_id</th><th>摘要</th><th>设备指纹</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th><th>接口同步</th><th>上报 JSON</th></tr></thead>
                     <tbody id="analyticsDevicesTbody"><tr><td colspan="11">输入账号后查询</td></tr></tbody>
                 </table>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-login-log" class="page-panel" role="tabpanel">
+        <section>
+            <h2>最近登录流水</h2>
+            <p class="hint">账号密码登录成功/失败记录（不含注册），按时间倒序；失败含密码错误、账号不存在、封禁等。与「数据统计」中的登录次数趋势相互独立展示。</p>
+            <div class="form-row" style="align-items: flex-end;">
+                <button type="button" class="btn-primary" id="btnRefreshLoginLog">刷新列表</button>
+                <div>
+                    <label for="loginLogPageSize">每页条数</label>
+                    <select id="loginLogPageSize" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="scroll-x" style="margin-top: 12px;">
+                <table>
+                    <thead><tr><th>时间</th><th>账号</th><th>结果</th><th>IP</th><th>城市</th></tr></thead>
+                    <tbody id="loginLogTbody"><tr><td colspan="5">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="loginLogPagination">
+                <button type="button" class="btn-page" id="loginLogPrev">上一页</button>
+                <span id="loginLogPageInfo">第 1 页 · 共 0 条</span>
+                <button type="button" class="btn-page" id="loginLogNext">下一页</button>
             </div>
         </section>
                 </div>
@@ -786,6 +823,8 @@
         var userLimit = 10;
         var codePage = 1;
         var codeLimit = 10;
+        var loginRecentPage = 1;
+        var loginRecentLimit = 20;
 
         var _adminUsersLoaded = false;
         var _adminCodesLoaded = false;
@@ -794,7 +833,7 @@
         function normalizeAdminPage(raw) {
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
             if (k === 'system' || k === 'setting') k = 'settings';
-            var ok = { settings: 1, appearance: 1, codes: 1, users: 1, analytics: 1 };
+            var ok = { settings: 1, appearance: 1, codes: 1, users: 1, analytics: 1, 'login-log': 1 };
             return ok[k] ? k : 'settings';
         }
 
@@ -823,6 +862,14 @@
                 _adminAnalyticsSeen = true;
                 loadAnalyticsDashboard();
             }
+            if (pageKey === 'login-log') {
+                loginRecentPage = 1;
+                var sz = document.getElementById('loginLogPageSize');
+                if (sz) {
+                    loginRecentLimit = parseInt(sz.value, 10) || 20;
+                }
+                loadLoginRecentPage(1);
+            }
         }
 
         function loadAnalyticsDashboard() {
@@ -832,16 +879,13 @@
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
-            document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
 
             Promise.all([
                 adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/login-recent?limit=120').then(function (r) { return r.json(); })
+                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); })
             ]).then(function (results) {
                 var ov = results[0];
                 var api = results[1];
-                var recent = results[2];
 
                 if (ov.code === 200 && ov.data && ov.data.dau) {
                     var dh = '';
@@ -879,25 +923,100 @@
                     document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">—</td></tr>';
                 }
 
-                if (recent.code === 200 && recent.data && recent.data.items) {
-                    var rr = '';
-                    recent.data.items.forEach(function (row) {
-                        var okBadge = row.ok
-                            ? '<span class="badge badge-yes">成功</span>'
-                            : '<span class="badge badge-no">失败</span>';
-                        rr += '<tr><td>' + formatDt(row.created_at) + '</td><td class="cell-break">' + esc(row.username) + '</td><td>' + okBadge + '</td><td>' + esc(row.ip) + '</td><td>' + esc(row.city) + '</td></tr>';
-                    });
-                    document.getElementById('analyticsLoginRecentTbody').innerHTML = rr || '<tr><td colspan="5">暂无记录</td></tr>';
-                } else {
-                    document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">' + esc(recent.msg || '加载失败') + '</td></tr>';
-                }
             }).catch(function () {
                 document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
-                document.getElementById('analyticsLoginRecentTbody').innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
             });
+        }
+
+        function loadLoginRecentPage(page) {
+            if (page != null && isFinite(page)) {
+                loginRecentPage = Math.max(1, parseInt(page, 10) || 1);
+            }
+            var lim = loginRecentLimit;
+            document.getElementById('loginLogTbody').innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
+            adminFetch(
+                'api/admin/analytics/login-recent?page=' +
+                    encodeURIComponent(loginRecentPage) +
+                    '&limit=' +
+                    encodeURIComponent(lim)
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (recent) {
+                    var info = document.getElementById('loginLogPageInfo');
+                    var prevBtn = document.getElementById('loginLogPrev');
+                    var nextBtn = document.getElementById('loginLogNext');
+                    if (recent.code === 200 && recent.data && recent.data.items) {
+                        var total = recent.data.total != null ? Number(recent.data.total) : 0;
+                        var tp = recent.data.total_pages != null ? Number(recent.data.total_pages) : 0;
+                        var cur = recent.data.page != null ? Number(recent.data.page) : loginRecentPage;
+                        loginRecentPage = cur;
+                        var rr = '';
+                        recent.data.items.forEach(function (row) {
+                            var okBadge = row.ok
+                                ? '<span class="badge badge-yes">成功</span>'
+                                : '<span class="badge badge-no">失败</span>';
+                            rr +=
+                                '<tr><td>' +
+                                formatDt(row.created_at) +
+                                '</td><td class="cell-break">' +
+                                esc(row.username) +
+                                '</td><td>' +
+                                okBadge +
+                                '</td><td>' +
+                                esc(row.ip) +
+                                '</td><td>' +
+                                esc(row.city) +
+                                '</td></tr>';
+                        });
+                        document.getElementById('loginLogTbody').innerHTML =
+                            rr || '<tr><td colspan="5">暂无记录</td></tr>';
+                        if (info) {
+                            info.textContent =
+                                '第 ' +
+                                cur +
+                                ' / ' +
+                                (tp > 0 ? tp : 1) +
+                                ' 页 · 共 ' +
+                                total +
+                                ' 条';
+                        }
+                        if (prevBtn) {
+                            prevBtn.disabled = cur <= 1;
+                        }
+                        if (nextBtn) {
+                            nextBtn.disabled = tp <= 0 || cur >= tp;
+                        }
+                    } else {
+                        document.getElementById('loginLogTbody').innerHTML =
+                            '<tr><td colspan="5">' + esc(recent.msg || '加载失败') + '</td></tr>';
+                        if (info) {
+                            info.textContent = '—';
+                        }
+                        if (prevBtn) {
+                            prevBtn.disabled = true;
+                        }
+                        if (nextBtn) {
+                            nextBtn.disabled = true;
+                        }
+                    }
+                })
+                .catch(function () {
+                    document.getElementById('loginLogTbody').innerHTML =
+                        '<tr><td colspan="5">网络错误</td></tr>';
+                    var prevBtn = document.getElementById('loginLogPrev');
+                    var nextBtn = document.getElementById('loginLogNext');
+                    if (prevBtn) {
+                        prevBtn.disabled = true;
+                    }
+                    if (nextBtn) {
+                        nextBtn.disabled = true;
+                    }
+                });
         }
 
         function loadAnalyticsDevices() {
@@ -1323,6 +1442,25 @@
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
             loadAnalyticsDashboard();
+        });
+        document.getElementById('btnGotoLoginLog').addEventListener('click', function () {
+            location.hash = 'login-log';
+        });
+        document.getElementById('loginLogPrev').addEventListener('click', function () {
+            if (loginRecentPage > 1) {
+                loadLoginRecentPage(loginRecentPage - 1);
+            }
+        });
+        document.getElementById('loginLogNext').addEventListener('click', function () {
+            loadLoginRecentPage(loginRecentPage + 1);
+        });
+        document.getElementById('loginLogPageSize').addEventListener('change', function () {
+            loginRecentLimit = parseInt(document.getElementById('loginLogPageSize').value, 10) || 20;
+            loadLoginRecentPage(1);
+        });
+        document.getElementById('btnRefreshLoginLog').addEventListener('click', function () {
+            loginRecentLimit = parseInt(document.getElementById('loginLogPageSize').value, 10) || 20;
+            loadLoginRecentPage(1);
         });
         document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
             if (_adminAnalyticsSeen) loadAnalyticsDashboard();
