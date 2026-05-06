@@ -2545,6 +2545,7 @@ async function handleAdminAnalyticsApi(req, res) {
       const [topRoutes] = await conn.execute(
         `SELECT stat_date AS d, biz_category AS cat, route_key AS route, cnt FROM analytics_api_daily
          WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND biz_category <> '管理后台'
          ORDER BY cnt DESC LIMIT 300`,
         [span]
       );
@@ -2657,11 +2658,15 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       if (totalPages > 0 && page > totalPages) {
         page = totalPages;
       }
-      var offset = (page - 1) * limit;
-      const [rows] = await conn.execute(
-        `SELECT username, ok, ip, city, created_at FROM user_login_events
-         ORDER BY id DESC LIMIT ? OFFSET ?`,
-        [limit, offset]
+      // 分页避免 LIMIT/OFFSET 占位符：部分 MySQL/MariaDB 或中间层对预编译 LIMIT 会报 stmt_execute 参数错误
+      var offset = Math.max(0, ((page - 1) * limit) | 0);
+      var limInt = limit | 0;
+      const [rows] = await conn.query(
+        'SELECT username, ok, ip, city, created_at FROM user_login_events ' +
+          'ORDER BY id DESC LIMIT ' +
+          limInt +
+          ' OFFSET ' +
+          offset
       );
       if (total > 0 && totalPages < 1) {
         totalPages = 1;
