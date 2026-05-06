@@ -215,7 +215,6 @@ const adminUpload = multer({
       cb(null, crypto.randomBytes(16).toString('hex') + ext);
     }
   }),
-  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: function (req, file, cb) {
     var ext = path.extname(file.originalname || '').toLowerCase();
     var ok = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].indexOf(ext) >= 0;

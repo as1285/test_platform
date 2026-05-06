@@ -19,7 +19,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
@@ -41,7 +41,8 @@
             left: 0;
             right: 0;
             z-index: 100;
-            background: #fff;
+            /* 与页面灰底一致，避免与列表衔接处因舍入露出白条 */
+            background: #f5f6fa;
             isolation: isolate;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
@@ -68,11 +69,10 @@
             left: 16px;
             color: #1e6fff;
             font-size: 16px;
-            font-weight: 400;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
             -webkit-tap-highlight-color: transparent;
             outline: none;
         }
@@ -85,7 +85,7 @@
 
         .header-title {
             font-size: 17px;
-            font-weight: 400;
+            font-weight: 500;
             color: #333;
         }
 
@@ -94,7 +94,6 @@
             right: 16px;
             color: #1e6fff;
             font-size: 15px;
-            font-weight: 400;
             text-decoration: none;
         }
 
@@ -102,7 +101,7 @@
             background: #fff;
             position: relative;
             border-top: none;
-            padding: 8px 16px 2px;
+            padding: 14px 16px 2px;
             border-bottom: none;
             overflow: visible;
             transform: translateZ(0);
@@ -122,11 +121,28 @@
             background: #f5f6fa;
         }
         .summary::before {
-            margin-top: -8px;
-            margin-bottom: 8px;
+            margin-top: -14px;
+            margin-bottom: 12px;
         }
         .summary::after {
             margin-top: 8px;
+        }
+
+        /* 无列表数据：不展示批量申诉 */
+        .page-root.is-record-empty .header-right {
+            display: none;
+        }
+
+        /* 无列表数据：去掉汇总区底部分隔条，避免与空状态之间出现多余浅/白缝 */
+        .page-root.is-record-empty .summary {
+            padding-bottom: 0;
+        }
+
+        .page-root.is-record-empty .summary::after {
+            display: none;
+            margin: 0;
+            height: 0;
+            content: none;
         }
 
         .summary-item {
@@ -140,7 +156,7 @@
         }
 
         .summary-item:not(:last-child) {
-            border-bottom: 0.5px solid #dcdce3;
+            border-bottom: 1px solid #e5e5e5;
         }
 
         .summary-item:last-child {
@@ -148,9 +164,8 @@
         }
 
         .summary-label {
-            font-size: 14px;
-            font-weight: 400;
-            color: #000;
+            font-size: 15px;
+            color: #000000;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -165,7 +180,7 @@
             align-items: center;
             justify-content: center;
             font-size: 12px;
-            font-weight: 400;
+            line-height: 1;
             color: #0e60f1;
         }
 
@@ -177,10 +192,9 @@
         }
 
         .summary-value {
-            font-size: 14px;
-            font-weight: 400;
+            font-size: 15px;
+            color: #000000;
             font-variant-numeric: tabular-nums;
-            color: #000;
         }
 
         /* 顶开固定头高度；与个税一致白底通栏无左右灰边 */
@@ -234,22 +248,17 @@
         }
 
         .list-title {
-            font-size: 17px;
-            font-weight: 400;
+            font-size: 16px;
+            font-weight: 500;
             color: #333;
-            letter-spacing: 0.01em;
         }
 
-        /* 年月：略大、常规字重；与金额区小数点对齐留右间距 */
         .list-date {
             flex-shrink: 0;
-            font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif;
             font-size: 17px;
-            font-weight: 400;
             font-variant-numeric: tabular-nums;
             color: #333;
-            margin-right: 34px;
-            letter-spacing: 0;
+            margin-right: 25px;
         }
 
         .list-row {
@@ -283,8 +292,8 @@
         }
 
         .list-arrow {
-            width: 18px;
-            height: 18px;
+            width: 10px;
+            height: auto;
             object-fit: contain;
             flex-shrink: 0;
             margin-top: 4px;
@@ -302,21 +311,32 @@
         /* 无纳税记录时的空状态（与产品参考一致：插画 + 文案） */
         .list-empty-state {
             text-align: center;
-            padding: 36px 20px 56px;
+            padding: 28px 16px 48px;
             background: #f5f6fa;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
         }
 
         .list-empty-illustration {
             margin: 0 auto;
-            max-width: 280px;
+            max-width: min(520px, 92vw);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            overflow: hidden;
         }
 
         .list-empty-illustration img {
             width: 100%;
-            max-width: 260px;
+            max-width: min(480px, 88vw);
             height: auto;
             display: block;
             margin: 0 auto;
+            object-fit: contain;
             opacity: 1;
             filter: none;
             -webkit-user-select: none;
@@ -326,7 +346,7 @@
     </style>
 </head>
 <body>
-    <div class="page-root">
+    <div class="page-root is-record-empty">
     <div class="top-fixed">
         <div class="header">
             <a href="shuiming.html" class="back-btn" aria-label="返回">
@@ -422,12 +442,12 @@
             return out;
         }
 
-        /** 无记录时的空状态（与产品图一致：shuiming_empty.png 内含插画与「页面空空如也」文案） */
+        /** 无记录时的空状态：shuiming_empty.png 为高清截切（仅插画+「页面空空如也」） */
         function getNoRecordsHtml() {
             return (
                 '<div class="list-empty-state" role="status">' +
                 '<div class="list-empty-illustration">' +
-                '<img src="shuiming_empty.png" alt="页面空空如也" width="229" height="227" loading="lazy" decoding="async">' +
+                '<img src="shuiming_empty.png" alt="页面空空如也" loading="lazy" decoding="async">' +
                 '</div></div>'
             );
         }
@@ -452,12 +472,19 @@
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
                 listHtml += '<div class="list-row"><span class="list-label">收入：' + escapeHtml(String(record.income)) + '元</span></div>';
                 listHtml += '</div>';
-                listHtml += '<img class="list-arrow" src="http://www.geshui665.com/jt.jpg" alt="" width="18" height="18" loading="lazy" decoding="async">';
+                listHtml += '<img class="list-arrow" src="http://www.geshui665.com/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
                 listHtml += '<div class="list-row"><span class="list-label">已申报税额：' + escapeHtml(String(record.tax_reported)) + '元</span></div>';
                 listHtml += '</a>';
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
+            syncRecordEmptyUi(records.length > 0);
+        }
+
+        function syncRecordEmptyUi(hasRecords) {
+            var root = document.querySelector('.page-root');
+            if (root) root.classList.toggle('is-record-empty', !hasRecords);
+            syncTopFixedHeight();
         }
 
         function formatYuanField(v) {
@@ -492,6 +519,7 @@
                     applyTotals({ income_total: '0.00', tax_total: '0.00' });
                     document.getElementById('recordList').innerHTML =
                         '<div class="list-empty">无法加载数据，请确认已登录且税务记录服务可用</div>';
+                    syncRecordEmptyUi(false);
                 });
         }
 

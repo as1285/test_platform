@@ -78,6 +78,29 @@
             width: 100%;
             display: block;
         }
+
+        /* 发票管理 ·「我的票夹」卡片热区（相对 fp.jpg，可按设计微调） */
+        .bancha-fp-wrap {
+            position: relative;
+            display: block;
+            line-height: 0;
+        }
+        .bancha-fp-wrap > img {
+            width: 100%;
+            display: block;
+        }
+        .bancha-fp-hot-piaojia {
+            position: absolute;
+            z-index: 6;
+            left: 59%;
+            width: 38%;
+            top: 11%;
+            height: 20%;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            outline: none;
+            background: transparent;
+        }
         
     </style>
     <link rel="stylesheet" href="css/nav.css">
@@ -95,9 +118,10 @@
             <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
                 <img src="cx.jpg" alt="查询">
             </a>
-            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
+            <div class="bancha-fp-wrap">
                 <img src="fp.jpg" alt="发票">
-            </a>
+                <a href="wodepiaojia.html" class="bancha-fp-hot-piaojia" aria-label="我的票夹"></a>
+            </div>
         </div>
     </div>
     

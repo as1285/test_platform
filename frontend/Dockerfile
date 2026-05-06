@@ -19,6 +19,10 @@ COPY xiangqing.html /usr/share/nginx/html/
 COPY shuikuanjisuan.html /usr/share/nginx/html/
 COPY daiban.html /usr/share/nginx/html/
 COPY bancha.html /usr/share/nginx/html/
+COPY wodepiaojia.html /usr/share/nginx/html/
+COPY wodepiaojia-xiaoshou.html /usr/share/nginx/html/
+COPY piaojia-goumai.png /usr/share/nginx/html/
+COPY piaojia-xiaoshou.png /usr/share/nginx/html/
 COPY message.html /usr/share/nginx/html/
 COPY register.html /usr/share/nginx/html/
 COPY activate.html /usr/share/nginx/html/

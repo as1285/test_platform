@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的票夹</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            min-height: 100%;
+            background: #eef1f6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .page {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .shot-wrap {
+            position: relative;
+            display: block;
+            line-height: 0;
+        }
+        .shot-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            vertical-align: top;
+        }
+        .hit {
+            position: absolute;
+            z-index: 6;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        a.hit {
+            display: block;
+            text-decoration: none;
+        }
+        /* 与截图中「返回」区域对齐（图已裁掉系统状态栏） */
+        .hit-back {
+            left: 0;
+            top: 0;
+            width: 30%;
+            height: 11%;
+        }
+        /* 标签栏：我购买的 / 我销售的（相对整图百分比，随图缩放） */
+        .hit-xiaoshou {
+            left: 26%;
+            width: 30%;
+            top: 12%;
+            height: 9%;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div id="panelGoumai" class="shot-wrap" role="tabpanel" aria-label="我购买的">
+            <img src="piaojia-goumai.png" alt="我的票夹 · 我购买的">
+            <a href="bancha.html" class="hit hit-back" aria-label="返回"></a>
+            <a href="wodepiaojia-xiaoshou.html" class="hit hit-xiaoshou" aria-label="我销售的"></a>
+        </div>
+    </div>
+    <script src="/js/watermark.js"></script>
+</body>
+</html>
