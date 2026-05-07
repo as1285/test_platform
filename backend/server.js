@@ -1940,6 +1940,10 @@ async function handleMessagePost(req, res) {
       await conn.execute('DELETE FROM messages WHERE id = ? AND user_id = ?', [String(delId), String(userId)]);
       return res.json({ code: 200, data: { success: true } });
     }
+    if (action === 'mark_all_read') {
+      await conn.execute('UPDATE messages SET is_read = 1 WHERE user_id = ?', [String(userId)]);
+      return res.json({ code: 200, data: { success: true } });
+    }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
     console.error(e);

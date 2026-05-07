@@ -32,10 +32,96 @@
             position: relative;
             z-index: 10;
         }
-        
-        .message-header-wrap .message-header-bg {
+
+        .message-header-builtin {
+            padding: 18px 16px 22px;
+            padding-top: calc(14px + env(safe-area-inset-top, 0px));
+            background: linear-gradient(
+                125deg,
+                var(--app-accent-mid, #008afd) 0%,
+                var(--app-accent, #1e6fff) 38%,
+                var(--app-accent-soft, #5aa3ff) 72%,
+                #9dc8ff 100%
+            );
+            border-radius: 0 0 22px 22px;
+            box-shadow: 0 8px 24px rgba(30, 111, 255, 0.22);
+        }
+
+        .message-header-title {
+            margin: 0 0 14px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .message-header-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .msg-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 999px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.28);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .msg-filter-chip:active {
+            opacity: 0.92;
+        }
+
+        .msg-filter-chip.active {
+            background: rgba(255, 255, 255, 0.42);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+        }
+
+        .msg-filter-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            opacity: 0.95;
+        }
+
+        .msg-clear-unread {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 4px;
+            border: none;
+            background: transparent;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.96);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .msg-clear-unread:active {
+            opacity: 0.85;
+        }
+
+        .msg-clear-icon {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            opacity: 0.95;
+        }
+
+        .message-header-custom-img {
             width: 100%;
-            display: block;
+            display: none;
             vertical-align: top;
         }
         
@@ -123,7 +209,25 @@
 <body>
     <div class="message-page">
         <div class="message-header-wrap">
-            <img id="assetMessageHeader" class="message-header-bg" src="message_header.jpg" alt="">
+            <div id="messageHeaderBuiltin" class="message-header-builtin">
+                <h1 class="message-header-title">消息</h1>
+                <div class="message-header-toolbar">
+                    <button type="button" id="btnMsgFilter" class="msg-filter-chip" aria-label="筛选">
+                        <span>筛选</span>
+                        <svg class="msg-filter-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 5h16v2.5l-6 7v6l-4 2v-8L4 7.5V5z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button type="button" id="btnMsgClearUnread" class="msg-clear-unread" aria-label="清除未读">
+                        <svg class="msg-clear-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M6 5h12v14H6V5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" opacity="0.85"/>
+                        </svg>
+                        <span>清除未读</span>
+                    </button>
+                </div>
+            </div>
+            <img id="assetMessageHeader" class="message-header-custom-img" alt="">
         </div>
         <div class="message-list" id="messageList">
             <!-- 动态加载 -->
@@ -185,45 +289,94 @@
         // 初始化时更新图标
         updateNavIcons();
         
-        // 加载消息列表（需登录，由 auth.js 保证）
+        var allMessages = [];
+        var filterUnreadOnly = false;
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderMessageList() {
+            var list = allMessages.filter(function (msg) {
+                return !filterUnreadOnly || Number(msg.is_read) === 0;
+            });
+            var html = '';
+            list.forEach(function (msg) {
+                html += '<div class="message-item">';
+                html += '<div class="msg-item-icon">';
+                html += '<img src="message_item_icon.png" width="44" height="44" alt="">';
+                html += '</div>';
+                html += '<div class="message-content">';
+                html += '<div class="message-content-title">' + escapeHtml(msg.title) + '</div>';
+                html += '<div class="message-content-desc">' + escapeHtml(msg.content) + '</div>';
+                html += '</div>';
+                html += '<div class="message-meta">';
+                html += '<span class="message-date">' + escapeHtml(msg.msg_date) + '</span>';
+                if (Number(msg.is_read) === 0) {
+                    html += '<span class="message-dot"></span>';
+                }
+                html += '</div>';
+                html += '</div>';
+            });
+            var emptyHint = filterUnreadOnly ? '暂无未读消息' : '暂无消息';
+            document.getElementById('messageList').innerHTML =
+                html || '<div style="text-align:center;padding:50px;color:#999;">' + emptyHint + '</div>';
+        }
+
         function loadMessages() {
             authFetch('api/message.php?action=list')
-            .then(response => response.json())
-            .then(data => {
-                if (data.code === 200) {
-                    var html = '';
-                    var unreadCount = 0;
-                    data.data.forEach(function(msg) {
-                        if (msg.is_read == 0) unreadCount++;
-                        html += '<div class="message-item">';
-                        html += '<div class="msg-item-icon">';
-                        html += '<img src="message_item_icon.png" width="44" height="44" alt="">';
-                        html += '</div>';
-                        html += '<div class="message-content">';
-                        html += '<div class="message-content-title">' + msg.title + '</div>';
-                        html += '<div class="message-content-desc">' + msg.content + '</div>';
-                        html += '</div>';
-                        html += '<div class="message-meta">';
-                        html += '<span class="message-date">' + msg.msg_date + '</span>';
-                        if (msg.is_read == 0) {
-                            html += '<span class="message-dot"></span>';
-                        }
-                        html += '</div>';
-                        html += '</div>';
-                    });
-                    document.getElementById('messageList').innerHTML = html || '<div style="text-align:center;padding:50px;color:#999;">暂无消息</div>';
-                } else {
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        allMessages = data.data || [];
+                        renderMessageList();
+                    } else {
+                        allMessages = [];
+                        document.getElementById('messageList').innerHTML =
+                            '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
+                    }
+                })
+                .catch(function (error) {
+                    console.error(error);
                     document.getElementById('messageList').innerHTML =
                         '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
-                }
-            })
-            .catch(function(error) {
-                console.error(error);
-                document.getElementById('messageList').innerHTML =
-                    '<div style="text-align:center;padding:50px 16px;color:#999;">暂无消息</div>';
-            });
+                });
         }
-        
+
+        document.getElementById('btnMsgFilter').addEventListener('click', function () {
+            filterUnreadOnly = !filterUnreadOnly;
+            this.classList.toggle('active', filterUnreadOnly);
+            renderMessageList();
+        });
+
+        document.getElementById('btnMsgClearUnread').addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            authFetch('api/message.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'mark_all_read' })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        loadMessages();
+                    }
+                })
+                .catch(function () {})
+                .finally(function () {
+                    btn.disabled = false;
+                });
+        });
+
         loadMessages();
         
         // iOS设备检测，底部导航上移

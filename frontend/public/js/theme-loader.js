@@ -58,7 +58,21 @@
       bc.src = cfg.bancha_header;
     }
     var mh = document.getElementById('assetMessageHeader');
-    if (mh && cfg.message_header) {
+    var msgBuiltin = document.getElementById('messageHeaderBuiltin');
+    if (mh && msgBuiltin && cfg.message_header) {
+      var mp = String(cfg.message_header).trim();
+      var defaultSlice =
+        mp === 'message_header.jpg' || /(^|\/)message_header\.jpg$/i.test(mp);
+      if (!defaultSlice) {
+        mh.src = mp;
+        mh.style.display = 'block';
+        msgBuiltin.style.display = 'none';
+      } else {
+        mh.removeAttribute('src');
+        mh.style.display = 'none';
+        msgBuiltin.style.display = '';
+      }
+    } else if (mh && cfg.message_header) {
       mh.src = cfg.message_header;
     }
     var pg = document.getElementById('assetPiaojiaGoumai');
