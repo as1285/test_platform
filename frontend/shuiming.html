@@ -79,7 +79,7 @@
             background: #fff;
             margin: 0 16px;
             border-radius: 8px;
-            padding: 14px 12px 14px 16px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -89,6 +89,7 @@
         
         .year-label {
             font-size: 15px;
+            font-weight: 400;
             color: #333;
             flex: 0 0 auto;
         }
@@ -96,7 +97,7 @@
         .year-value {
             flex: 1;
             text-align: center;
-            color: #000;
+            color: #000000;
             font-size: 15px;
             font-weight: 400;
         }
@@ -114,7 +115,7 @@
         .year-chevron {
             width: 18px;
             height: 18px;
-            color: #c8c8c8;
+            color: #cccccc;
             flex-shrink: 0;
         }
         .year-chevron path {
@@ -133,7 +134,7 @@
         }
         
         .type-item {
-            padding: 13px 16px;
+            padding: 16px;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -178,6 +179,7 @@
         
         .type-text {
             font-size: 15px;
+            font-weight: 400;
             color: #333;
         }
         
@@ -190,15 +192,15 @@
         
         /* 展开 / 收起：官方态 — 白卡片内一行，文案+双箭头整体居中，无右侧「>」 */
         .type-toggle {
-            padding: 12px 16px 14px;
-            color: #4d94ff;
-            font-size: 15px;
+            padding: 16px;
+            color: #1e6fff;
+            font-size: 14px;
             font-weight: 400;
             line-height: 1.4;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 4px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
@@ -225,9 +227,8 @@
             fill: none;
         }
         
-        /* 查询按钮：左右留白更接近官方 */
         .query-btn-wrapper {
-            padding: 28px 28px 36px;
+            padding: 30px 16px;
         }
         
         .query-btn {
@@ -237,8 +238,10 @@
             color: #fff;
             border: none;
             border-radius: 8px;
-            padding: 13px 16px;
+            padding: 14px;
             font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
         }
         
@@ -286,6 +289,8 @@
         .picker-cancel {
             color: #666;
             font-size: 16px;
+            font-weight: 400;
+            font-family: inherit;
             background: none;
             border: none;
             cursor: pointer;
@@ -294,6 +299,8 @@
         .picker-confirm {
             color: #1e6fff;
             font-size: 16px;
+            font-weight: 400;
+            font-family: inherit;
             background: none;
             border: none;
             cursor: pointer;
