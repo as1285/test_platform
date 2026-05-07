@@ -83,8 +83,8 @@
       root.style.setProperty('--app-accent', '#1e6fff');
       root.style.setProperty('--app-accent-mid', '#008afd');
       root.style.setProperty('--app-accent-soft', '#5aa3ff');
-      /* 首页顶部与下滑固定搜索条：对齐金版头图橙条 */
-      root.style.setProperty('--shouye-top-bar-rgb', '255, 126, 41');
+      /* 首页顶部与下滑固定搜索条：与蓝主题一致 */
+      root.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
     } else {
       root.style.setProperty('--app-accent', '#1e6fff');
       root.style.setProperty('--app-accent-mid', '#008afd');
