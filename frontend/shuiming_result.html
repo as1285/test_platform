@@ -32,7 +32,8 @@
          */
         .summary-value,
         .list-date,
-        .list-label {
+        .list-label,
+        .list-value {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-variant-numeric: tabular-nums;
             font-feature-settings: 'tnum' 1, 'zero' 0;
@@ -205,9 +206,8 @@
 
         .summary-value {
             font-size: 15px;
-            font-weight: 500;
+            font-weight: 400;
             color: #000000;
-            letter-spacing: -0.02em;
             text-align: right;
             min-width: 5.5em;
         }
@@ -271,8 +271,7 @@
         .list-date {
             flex-shrink: 0;
             font-size: 17px;
-            font-weight: 500;
-            letter-spacing: -0.015em;
+            font-weight: 400;
             color: #333;
             margin-right: 25px;
         }
@@ -284,7 +283,12 @@
         .list-label {
             font-size: 15px;
             color: #999;
-            letter-spacing: -0.01em;
+        }
+
+        /* 与参考稿一致：明细行内强调数值可用（当前结构多用 list-label 承载「收入/税额」文案） */
+        .list-value {
+            font-size: 14px;
+            color: #333;
         }
 
         /* 「7」后紧跟数字时略收紧字距（须由 JS 在已转义文本上包 span） */
@@ -308,6 +312,7 @@
 
         .list-company {
             font-size: 15px;
+            font-weight: 400;
             color: #999;
             white-space: nowrap;
             display: block;
