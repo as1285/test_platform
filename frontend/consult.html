@@ -309,6 +309,169 @@
             font-size: 13px;
         }
 
+        #panel-records .batch-float-fill-row {
+            margin: 10px 0 12px;
+        }
+
+        /* 浮动填充月薪 / 社保公积金（底部弹层） */
+        .batch-float-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 20050;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .batch-float-modal.open {
+            display: flex;
+        }
+
+        .batch-float-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+
+        .batch-float-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            max-height: 88vh;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            padding: 18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .batch-float-modal-panel .batch-float-modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 6px;
+        }
+
+        .batch-float-modal-panel .batch-float-modal-sub {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.45;
+            margin-bottom: 14px;
+        }
+
+        .batch-float-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .batch-float-modal-actions .btn {
+            flex: 1;
+        }
+
+        /* 测试账号 · 税务记录「批量添加」一次性浮层引导 */
+        body.consult-batch-guide-open {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #batchTaxCard.consult-batch-guide-target {
+            position: relative;
+            z-index: 10001;
+            box-shadow: 0 0 0 3px #1e6fff, 0 6px 28px rgba(30, 111, 255, 0.35);
+        }
+
+        #consultBatchGuideLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+        }
+
+        .consult-batch-guide-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.48);
+        }
+
+        .consult-batch-guide-card {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+            max-width: 440px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px 18px 14px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 10002;
+        }
+
+        .consult-batch-guide-card::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(2px);
+            border: 10px solid transparent;
+            border-bottom-color: #fff;
+        }
+
+        .consult-batch-guide-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: #c2410c;
+            background: #ffedd5;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .consult-batch-guide-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 10px;
+        }
+
+        .consult-batch-guide-list {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.65;
+            margin: 0 0 14px;
+            padding-left: 1.1em;
+        }
+
+        .consult-batch-guide-list li {
+            margin-bottom: 6px;
+        }
+
+        .consult-batch-guide-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .consult-batch-guide-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .consult-batch-guide-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .consult-batch-guide-btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+        }
+
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
     </style>
@@ -475,6 +638,9 @@
                     <div class="form-group">
                         <label>各月月薪（元）</label>
                         <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">留空表示该月不生成记录；只为您填写了金额的月份创建数据。未填月份在累计预扣中按 0 元月薪参与累算。</p>
+                        <div class="batch-float-fill-row">
+                            <button type="button" class="btn btn-secondary btn-block btn-sm" onclick="openBatchFloatFillModal()">浮动填充（随机月薪区间 + 基数×比例填社保公积金）</button>
+                        </div>
                         <div class="salary-month-grid">
                             <div class="form-group salary-month-cell"><label for="batch_salary_1">1月</label><input type="number" step="0.01" id="batch_salary_1" value="" min="0" placeholder="选填"></div>
                             <div class="form-group salary-month-cell"><label for="batch_salary_2">2月</label><input type="number" step="0.01" id="batch_salary_2" value="" min="0" placeholder="选填"></div>
@@ -686,6 +852,42 @@
         </div>
     </div>
 
+    <div id="batchFloatFillModal" class="batch-float-modal" aria-hidden="true">
+        <div class="batch-float-modal-backdrop" onclick="closeBatchFloatFillModal()"></div>
+        <div class="batch-float-modal-panel" role="dialog" aria-labelledby="batchFloatFillTitle" onclick="event.stopPropagation()">
+            <div class="batch-float-modal-title" id="batchFloatFillTitle">浮动填充</div>
+            <p class="batch-float-modal-sub">在区间内为 1～12 月各生成随机月薪（元）；并按缴费基数与个人缴费合计比例，将金额按 养老:医疗:失业:公积金 = 8:2:0.5:12 拆入下方四个字段。</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="batch_float_salary_min">月薪下限（元）</label>
+                    <input type="number" step="0.01" id="batch_float_salary_min" value="13000" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="batch_float_salary_max">月薪上限（元）</label>
+                    <input type="number" step="0.01" id="batch_float_salary_max" value="18000" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="batch_float_soc_base">社保公积金缴费基数（元）</label>
+                <input type="number" step="0.01" id="batch_float_soc_base" value="10000" min="0">
+            </div>
+            <div class="form-group">
+                <label for="batch_float_soc_ratio">个人缴费合计比例（%，四项之和占基数）</label>
+                <input type="number" step="0.01" id="batch_float_soc_ratio" value="22.5" min="0" max="100" placeholder="如 22.5">
+            </div>
+            <div class="form-group" style="margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;">
+                    <input type="checkbox" id="batch_float_overwrite" style="width:auto;">
+                    覆盖已有月薪（不勾选则只填入仍为空的月份）
+                </label>
+            </div>
+            <div class="batch-float-modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeBatchFloatFillModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="applyBatchFloatFill()">填入</button>
+            </div>
+        </div>
+    </div>
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item">
             <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt="首页"></div>
@@ -783,6 +985,111 @@
             }
         }
 
+        var CONSULT_TEST_BATCH_GUIDE_KEY = 'consult_test_batch_guide_v1_';
+
+        function consultBatchGuideUserKey() {
+            return (
+                localStorage.getItem('userName') ||
+                localStorage.getItem('username') ||
+                localStorage.getItem('user_id') ||
+                ''
+            );
+        }
+
+        function dismissConsultBatchGuide(permanent, userKey) {
+            var layer = document.getElementById('consultBatchGuideLayer');
+            if (layer) {
+                layer.remove();
+            }
+            var card = document.getElementById('batchTaxCard');
+            if (card) {
+                card.classList.remove('consult-batch-guide-target');
+            }
+            document.body.classList.remove('consult-batch-guide-open');
+            if (permanent && userKey) {
+                try {
+                    localStorage.setItem(CONSULT_TEST_BATCH_GUIDE_KEY + userKey, '1');
+                } catch (e0) {}
+            }
+        }
+
+        function showConsultBatchGuide(userKey) {
+            if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
+                return;
+            }
+            var panel = document.getElementById('panel-records');
+            if (!panel || !panel.classList.contains('active')) {
+                return;
+            }
+            var batchCard = document.getElementById('batchTaxCard');
+            if (!batchCard || document.getElementById('consultBatchGuideLayer')) {
+                return;
+            }
+            try {
+                batchCard.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } catch (e1) {
+                batchCard.scrollIntoView(true);
+            }
+            batchCard.classList.add('consult-batch-guide-target');
+            document.body.classList.add('consult-batch-guide-open');
+
+            var layer = document.createElement('div');
+            layer.id = 'consultBatchGuideLayer';
+            layer.setAttribute('role', 'dialog');
+            layer.setAttribute('aria-modal', 'true');
+            layer.setAttribute('aria-labelledby', 'consultBatchGuideTitle');
+            layer.innerHTML =
+                '<div class="consult-batch-guide-backdrop" data-cbg-dismiss="1"></div>' +
+                '<div class="consult-batch-guide-card">' +
+                '<span class="consult-batch-guide-badge">测试账号</span>' +
+                '<div class="consult-batch-guide-title" id="consultBatchGuideTitle">填写「批量添加」</div>' +
+                '<ol class="consult-batch-guide-list">' +
+                '<li>选择<strong>计税年度</strong>与<strong>工资填写方式</strong>（整年同一月薪或按月分别填写）。</li>' +
+                '<li>核对<strong>扣缴义务人</strong>（测试账号通常与后台固定名称一致）、<strong>月薪</strong>及<strong>社会保险扣费</strong>、<strong>专项附加扣除</strong>是否符合当前验收场景。</li>' +
+                '<li>确认后点击<strong>「生成全年 12 个月记录」</strong>写入；单条可在下方「添加税务记录」再改。正式用户不会看到本提示。</li>' +
+                '</ol>' +
+                '<div class="consult-batch-guide-actions">' +
+                '<button type="button" class="consult-batch-guide-btn consult-batch-guide-btn-secondary" data-cbg-later="1">下次再说</button>' +
+                '<button type="button" class="consult-batch-guide-btn consult-batch-guide-btn-primary" data-cbg-dismiss="1">知道了</button>' +
+                '</div></div>';
+
+            document.body.appendChild(layer);
+
+            layer.addEventListener('click', function (ev) {
+                var t = ev.target;
+                if (t && t.getAttribute('data-cbg-dismiss') === '1') {
+                    dismissConsultBatchGuide(true, userKey);
+                } else if (t && t.getAttribute('data-cbg-later') === '1') {
+                    dismissConsultBatchGuide(false, null);
+                }
+            });
+        }
+
+        function maybeShowConsultBatchGuide() {
+            if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
+                return;
+            }
+            var panel = document.getElementById('panel-records');
+            if (!panel || !panel.classList.contains('active')) {
+                return;
+            }
+            var uk = consultBatchGuideUserKey();
+            if (!uk) {
+                return;
+            }
+            try {
+                if (localStorage.getItem(CONSULT_TEST_BATCH_GUIDE_KEY + uk) === '1') {
+                    return;
+                }
+            } catch (e2) {}
+            if (document.getElementById('consultBatchGuideLayer')) {
+                return;
+            }
+            setTimeout(function () {
+                showConsultBatchGuide(uk);
+            }, 450);
+        }
+
         function tabHref(tab) {
             return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
         }
@@ -808,6 +1115,11 @@
                 u.searchParams.set('user_id', currentUserId());
                 u.searchParams.set('tab', tab);
                 history.replaceState({}, '', u);
+            }
+            if (tab === 'records') {
+                setTimeout(function () {
+                    maybeShowConsultBatchGuide();
+                }, 320);
             }
         }
 
@@ -876,6 +1188,7 @@
             var pfBankCardCount = document.getElementById('pf_bank_card_count');
             if (pfBankCardCount) pfBankCardCount.value = user.bank_card_count != null ? user.bank_card_count : '';
             applyConsultTestRestrictions(user);
+            maybeShowConsultBatchGuide();
         }
         
         function initHeader() {
@@ -1272,6 +1585,113 @@
                 m: round2(bm),
                 u: round2(bu)
             };
+        }
+
+        function openBatchFloatFillModal() {
+            var wrap = document.getElementById('batch_variable_salary_wrap');
+            var modeEl = document.querySelector('input[name="batch_salary_mode"]:checked');
+            if (!modeEl || modeEl.value !== 'variable' || !wrap || wrap.style.display === 'none') {
+                showMsg('请先选择「每月工资不同」', false);
+                return;
+            }
+            var m = document.getElementById('batchFloatFillModal');
+            if (m) {
+                m.classList.add('open');
+                m.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeBatchFloatFillModal() {
+            var modal = document.getElementById('batchFloatFillModal');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+            document.body.style.overflow = '';
+        }
+
+        /**
+         * 浮动填充：12 月薪在 [min,max] 内随机；社保公积金按 基数×合计比例 得到个人四项合计，
+         * 再按 8:2:0.5:12 拆入养老、医疗、失业、公积金输入框。
+         */
+        function applyBatchFloatFill() {
+            var wrap = document.getElementById('batch_variable_salary_wrap');
+            var modeEl = document.querySelector('input[name="batch_salary_mode"]:checked');
+            if (!modeEl || modeEl.value !== 'variable' || !wrap || wrap.style.display === 'none') {
+                showMsg('请先选择「每月工资不同」', false);
+                closeBatchFloatFillModal();
+                return;
+            }
+            var minS = parseFloat(document.getElementById('batch_float_salary_min').value);
+            var maxS = parseFloat(document.getElementById('batch_float_salary_max').value);
+            if (Number.isNaN(minS) || Number.isNaN(maxS)) {
+                showMsg('请填写合法的月薪上下限', false);
+                return;
+            }
+            if (minS < 0 || maxS < 0) {
+                showMsg('月薪区间不能为负', false);
+                return;
+            }
+            if (minS > maxS) {
+                var swap = minS;
+                minS = maxS;
+                maxS = swap;
+            }
+            var base = parseFloat(document.getElementById('batch_float_soc_base').value);
+            var ratioPct = parseFloat(document.getElementById('batch_float_soc_ratio').value);
+            if (Number.isNaN(base) || base < 0) {
+                showMsg('请填写合法的缴费基数', false);
+                return;
+            }
+            if (Number.isNaN(ratioPct) || ratioPct < 0 || ratioPct > 100) {
+                showMsg('请填写合法的个人缴费合计比例（0～100）', false);
+                return;
+            }
+            var overwrite = document.getElementById('batch_float_overwrite').checked;
+
+            var i;
+            for (i = 1; i <= 12; i++) {
+                var inp = document.getElementById('batch_salary_' + i);
+                if (!inp) {
+                    continue;
+                }
+                var raw = inp.value != null ? String(inp.value).trim() : '';
+                if (!overwrite && raw !== '') {
+                    continue;
+                }
+                var rnd = minS + Math.random() * (maxS - minS);
+                inp.value = String(round2(rnd));
+            }
+
+            var totalPersonal = round2(base * (ratioPct / 100));
+            var wSum = 8 + 2 + 0.5 + 12;
+            var pPart = round2(totalPersonal * 8 / wSum);
+            var mPart = round2(totalPersonal * 2 / wSum);
+            var uPart = round2(totalPersonal * 0.5 / wSum);
+            var fPart = round2(totalPersonal - pPart - mPart - uPart);
+            if (fPart < 0) {
+                fPart = 0;
+            }
+
+            document.getElementById('batch_pension_insurance').value = String(pPart);
+            document.getElementById('batch_medical_insurance').value = String(mPart);
+            document.getElementById('batch_unemployment_insurance').value = String(uPart);
+            document.getElementById('batch_fund').value = String(fPart);
+
+            closeBatchFloatFillModal();
+            showMsg(
+                '已随机填入月薪（约 ' +
+                    minS +
+                    '～' +
+                    maxS +
+                    ' 元），个人三险一金合计 ' +
+                    totalPersonal +
+                    ' 元/月（基数×' +
+                    ratioPct +
+                    '%）',
+                true
+            );
         }
 
         function postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {

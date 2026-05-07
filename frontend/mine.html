@@ -259,6 +259,108 @@
             display: block;
             padding-bottom: 118px;
         }
+
+        /* 测试账号：「我要咨询」一次性浮层引导 */
+        body.mine-test-guide-open {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .mine-menu-item.mine-test-guide-target {
+            position: relative;
+            z-index: 10001;
+            box-shadow: 0 0 0 3px #1a94ff, 0 4px 20px rgba(26, 148, 255, 0.35);
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        #mineTestGuideLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            pointer-events: auto;
+        }
+
+        .mine-test-guide-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.48);
+        }
+
+        .mine-test-guide-card {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px 18px 14px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+            z-index: 10002;
+        }
+
+        .mine-test-guide-card::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(2px);
+            border: 10px solid transparent;
+            border-bottom-color: #fff;
+            filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.06));
+        }
+
+        .mine-test-guide-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: #c2410c;
+            background: #ffedd5;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .mine-test-guide-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 8px;
+        }
+
+        .mine-test-guide-text {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+
+        .mine-test-guide-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .mine-test-guide-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-size: 15px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mine-test-guide-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .mine-test-guide-btn-primary {
+            background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
+            color: #fff;
+        }
         
         </style>
     <link rel="stylesheet" href="css/nav.css">
@@ -332,7 +434,7 @@
                 <span class="menu-text">帮助中心</span>
                 <span class="menu-arrow">></span>
             </a>
-            <div class="menu-item tappable" onclick="goUserCenter()" role="button" tabindex="0">
+            <div class="menu-item tappable mine-menu-item" id="mineMenuConsult" onclick="goUserCenter()" role="button" tabindex="0">
                 <div class="menu-icon">
                     <img src="caidan/zx.png" alt="" style="width: 19px; height: auto;">
                 </div>
@@ -548,6 +650,8 @@
                             bankCardBtn.textContent = '添加';
                             bankCardBtn.className = 'function-btn orange';
                         }
+
+                        maybeShowMineTestConsultGuide(user);
                     }
                 })
                 .catch(error => {
@@ -628,6 +732,104 @@
                     }
                 });
             });
+        }
+
+        var MINE_TEST_CONSULT_GUIDE_KEY = 'mine_test_consult_guide_v1_';
+
+        function dismissMineTestConsultGuide(storageUsername) {
+            var layer = document.getElementById('mineTestGuideLayer');
+            if (layer) {
+                layer.remove();
+            }
+            var consult = document.getElementById('mineMenuConsult');
+            if (consult) {
+                consult.classList.remove('mine-test-guide-target');
+            }
+            document.body.classList.remove('mine-test-guide-open');
+            if (storageUsername) {
+                try {
+                    localStorage.setItem(MINE_TEST_CONSULT_GUIDE_KEY + storageUsername, '1');
+                } catch (e1) {}
+            }
+        }
+
+        function showMineTestConsultGuide(storageUsername) {
+            var target = document.getElementById('mineMenuConsult');
+            if (!target || document.getElementById('mineTestGuideLayer')) {
+                return;
+            }
+            try {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            } catch (e2) {
+                target.scrollIntoView(true);
+            }
+            target.classList.add('mine-test-guide-target');
+            document.body.classList.add('mine-test-guide-open');
+
+            var layer = document.createElement('div');
+            layer.id = 'mineTestGuideLayer';
+            layer.setAttribute('role', 'dialog');
+            layer.setAttribute('aria-modal', 'true');
+            layer.setAttribute('aria-labelledby', 'mineTestGuideTitle');
+            layer.innerHTML =
+                '<div class="mine-test-guide-backdrop" data-dismiss="1"></div>' +
+                '<div class="mine-test-guide-card">' +
+                '<span class="mine-test-guide-badge">测试账号</span>' +
+                '<div class="mine-test-guide-title" id="mineTestGuideTitle">我要咨询</div>' +
+                '<p class="mine-test-guide-text">由此进入办税数据管理页，可维护税务记录、任职受雇、消息与个人信息等，便于联调与验收。正式用户不会看到本提示。</p>' +
+                '<div class="mine-test-guide-actions">' +
+                '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-secondary" data-later="1">下次再说</button>' +
+                '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-primary" data-dismiss="1">知道了</button>' +
+                '</div></div>';
+
+            document.body.appendChild(layer);
+
+            function onClose(permanent) {
+                if (permanent) {
+                    dismissMineTestConsultGuide(storageUsername);
+                } else {
+                    var l = document.getElementById('mineTestGuideLayer');
+                    if (l) {
+                        l.remove();
+                    }
+                    var c = document.getElementById('mineMenuConsult');
+                    if (c) {
+                        c.classList.remove('mine-test-guide-target');
+                    }
+                    document.body.classList.remove('mine-test-guide-open');
+                }
+            }
+
+            layer.addEventListener('click', function (ev) {
+                var t = ev.target;
+                if (t && t.getAttribute('data-dismiss') === '1') {
+                    onClose(true);
+                } else if (t && t.getAttribute('data-later') === '1') {
+                    onClose(false);
+                }
+            });
+        }
+
+        function maybeShowMineTestConsultGuide(user) {
+            if (!user || !user.is_test_account) {
+                return;
+            }
+            var uname =
+                localStorage.getItem('userName') ||
+                localStorage.getItem('username') ||
+                localStorage.getItem('user_id') ||
+                '';
+            if (!uname) {
+                return;
+            }
+            try {
+                if (localStorage.getItem(MINE_TEST_CONSULT_GUIDE_KEY + uname) === '1') {
+                    return;
+                }
+            } catch (e3) {}
+            setTimeout(function () {
+                showMineTestConsultGuide(uname);
+            }, 450);
         }
 
         // 页面加载时执行

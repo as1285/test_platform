@@ -465,11 +465,14 @@
             return 1;
         }
 
-        /** 超过「10 个中文字符」显示宽度（累计宽度 20）后截断并加省略号，不是简单数 10 个码点 */
-        function truncateZh10(s) {
+        /**
+         * 按「显示宽度」截断：全角/CJK 计 2，半角计 1；超出 maxDisplayWidth 则加省略号。
+         * maxDisplayWidth=20 → 约 10 个汉字；=22 → 约 11 个汉字。
+         */
+        function truncateDisplayWidth(s, maxDisplayWidth) {
             if (s == null || s === '') return '';
             var str = String(s);
-            var maxW = 20;
+            var maxW = maxDisplayWidth;
             var w = 0;
             var out = '';
             for (var ch of str) {
@@ -499,8 +502,8 @@
                 var month = record.month < 10 ? '0' + record.month : record.month;
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
-                var subtypeShow = truncateZh10(subtype);
-                var companyShow = truncateZh10(company);
+                var subtypeShow = truncateDisplayWidth(subtype, 20);
+                var companyShow = truncateDisplayWidth(company, 22);
                 var id = record.id != null ? record.id : '';
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';

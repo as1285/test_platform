@@ -135,6 +135,103 @@
             opacity: 0.88;
             background: #e4eeff;
         }
+
+        body.login-test-guide-open {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .trial-btn.login-test-guide-target {
+            position: relative;
+            z-index: 10001;
+            box-shadow: 0 0 0 3px #1e6fff, 0 4px 20px rgba(30, 111, 255, 0.35);
+        }
+
+        #loginTestGuideLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+        }
+
+        .login-test-guide-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.48);
+        }
+
+        .login-test-guide-card {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 28%;
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px 18px 14px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 10002;
+        }
+
+        .login-test-guide-card::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-2px);
+            border: 10px solid transparent;
+            border-top-color: #fff;
+        }
+
+        .login-test-guide-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: #1e40af;
+            background: #dbeafe;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .login-test-guide-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 8px;
+        }
+
+        .login-test-guide-text {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+
+        .login-test-guide-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .login-test-guide-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-size: 15px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .login-test-guide-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .login-test-guide-btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+        }
         
         /* 按钮区域 */
         .btn-section {
@@ -211,7 +308,7 @@
         </div>
         
         <div class="trial-row">
-            <button type="button" class="trial-btn" onclick="doTestLogin()">测试体验</button>
+            <button type="button" class="trial-btn" id="trialExperienceBtn" onclick="doTestLogin()">测试体验</button>
         </div>
     </div>
     
@@ -222,8 +319,78 @@
     </div>
     
     <script>
+        var LOGIN_TEST_EXPERIENCE_GUIDE_KEY = 'login_test_experience_guide_v1';
+
+        function dismissLoginTestGuide(permanent) {
+            var layer = document.getElementById('loginTestGuideLayer');
+            if (layer) {
+                layer.remove();
+            }
+            var btn = document.getElementById('trialExperienceBtn');
+            if (btn) {
+                btn.classList.remove('login-test-guide-target');
+            }
+            document.body.classList.remove('login-test-guide-open');
+            if (permanent) {
+                try {
+                    localStorage.setItem(LOGIN_TEST_EXPERIENCE_GUIDE_KEY, '1');
+                } catch (e0) {}
+            }
+        }
+
+        function showLoginTestExperienceGuide() {
+            var btn = document.getElementById('trialExperienceBtn');
+            if (!btn || document.getElementById('loginTestGuideLayer')) {
+                return;
+            }
+            try {
+                btn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            } catch (e1) {
+                btn.scrollIntoView(true);
+            }
+            btn.classList.add('login-test-guide-target');
+            document.body.classList.add('login-test-guide-open');
+
+            var layer = document.createElement('div');
+            layer.id = 'loginTestGuideLayer';
+            layer.setAttribute('role', 'dialog');
+            layer.setAttribute('aria-modal', 'true');
+            layer.setAttribute('aria-labelledby', 'loginTestGuideTitle');
+            layer.innerHTML =
+                '<div class="login-test-guide-backdrop" data-ltg-dismiss="1"></div>' +
+                '<div class="login-test-guide-card">' +
+                '<span class="login-test-guide-badge">快速体验</span>' +
+                '<div class="login-test-guide-title" id="loginTestGuideTitle">测试体验</div>' +
+                '<p class="login-test-guide-text">点击该按钮将自动填入内置演示账号并登录，用于查看个人中心、办税数据等功能。也可自行输入账号密码后点「登录」。若不再需要本提示，点「知道了」即可。</p>' +
+                '<div class="login-test-guide-actions">' +
+                '<button type="button" class="login-test-guide-btn login-test-guide-btn-secondary" data-ltg-later="1">下次再说</button>' +
+                '<button type="button" class="login-test-guide-btn login-test-guide-btn-primary" data-ltg-dismiss="1">知道了</button>' +
+                '</div></div>';
+
+            document.body.appendChild(layer);
+
+            layer.addEventListener('click', function (ev) {
+                var t = ev.target;
+                if (t && t.getAttribute('data-ltg-dismiss') === '1') {
+                    dismissLoginTestGuide(true);
+                } else if (t && t.getAttribute('data-ltg-later') === '1') {
+                    dismissLoginTestGuide(false);
+                }
+            });
+        }
+
+        function maybeShowLoginTestExperienceGuide() {
+            try {
+                if (localStorage.getItem(LOGIN_TEST_EXPERIENCE_GUIDE_KEY) === '1') {
+                    return;
+                }
+            } catch (e2) {}
+            setTimeout(showLoginTestExperienceGuide, 400);
+        }
+
         /** 测试账号一键登录：账号 1 / 密码 1 */
         function doTestLogin() {
+            dismissLoginTestGuide(false);
             document.getElementById('loginUsername').value = '1';
             document.getElementById('loginPassword').value = '1';
             doLogin();
@@ -271,6 +438,12 @@
                 .catch(function () {
                     alert('网络错误，请检查服务是否可用');
                 });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', maybeShowLoginTestExperienceGuide);
+        } else {
+            maybeShowLoginTestExperienceGuide();
         }
     </script>
 </body>
