@@ -447,6 +447,103 @@
         </div>
 
         <div id="panel-records" class="tab-panel active">
+            <div class="card" id="batchTaxCard">
+                <div class="card-title">批量添加（累计预扣计税）</div>
+                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 −（5000 + 下方「专项附加扣除」）− 基本养老保险 − 基本医疗保险 − 失业保险 − 住房公积金；写入时「本期减除费用」= 5000 + 专项附加扣除，「本期专项扣除」= 上述三险与公积金之和。按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），并单独生成一条「全年一次性奖金收入」记录；可使用本卡片下方「添加年终奖」仅写入奖金记录，或在生成全年月薪记录时一并写入。扣缴义务人名称可在本卡片内单独填写；未填时与下方「添加记录」表单中的扣缴义务人一致，其他税务字段仍取自下方表单。</p>
+                <div class="form-group batch-salary-mode-group">
+                    <label class="batch-salary-mode-title">工资填写方式</label>
+                    <div class="batch-salary-mode-options">
+                        <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_uniform" value="uniform" checked onchange="onBatchSalaryModeChange()"> 1–12 月每月工资相同（填一个固定月薪）</label>
+                        <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_variable" value="variable" onchange="onBatchSalaryModeChange()"> 每月工资不同（分别填写 1–12 月）</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="batch_company_name">扣缴义务人名称</label>
+                    <input type="text" id="batch_company_name" autocomplete="organization" placeholder="选填；不填则使用下方单条表单中的名称">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="batch_year">计税年度</label>
+                        <input type="number" id="batch_year" min="1990" max="2100" value="2026">
+                    </div>
+                    <div class="form-group" id="batch_uniform_salary_field_wrap">
+                        <label for="batch_monthly_salary">固定月薪（元）</label>
+                        <input type="number" step="0.01" id="batch_monthly_salary" value="10000" min="0">
+                    </div>
+                </div>
+                <div id="batch_variable_salary_wrap" style="display:none;">
+                    <div class="form-group">
+                        <label>各月月薪（元）</label>
+                        <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">留空表示该月不生成记录；只为您填写了金额的月份创建数据。未填月份在累计预扣中按 0 元月薪参与累算。</p>
+                        <div class="salary-month-grid">
+                            <div class="form-group salary-month-cell"><label for="batch_salary_1">1月</label><input type="number" step="0.01" id="batch_salary_1" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_2">2月</label><input type="number" step="0.01" id="batch_salary_2" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_3">3月</label><input type="number" step="0.01" id="batch_salary_3" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_4">4月</label><input type="number" step="0.01" id="batch_salary_4" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_5">5月</label><input type="number" step="0.01" id="batch_salary_5" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_6">6月</label><input type="number" step="0.01" id="batch_salary_6" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_7">7月</label><input type="number" step="0.01" id="batch_salary_7" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_8">8月</label><input type="number" step="0.01" id="batch_salary_8" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_9">9月</label><input type="number" step="0.01" id="batch_salary_9" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_10">10月</label><input type="number" step="0.01" id="batch_salary_10" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_11">11月</label><input type="number" step="0.01" id="batch_salary_11" value="" min="0" placeholder="选填"></div>
+                            <div class="form-group salary-month-cell"><label for="batch_salary_12">12月</label><input type="number" step="0.01" id="batch_salary_12" value="" min="0" placeholder="选填"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="batch-salary-mode-title" style="margin-bottom:8px;">社会保险扣费（月，元）</label>
+                    <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">与下方「添加记录」一致：基本养老保险、基本医疗保险、失业保险与住房公积金之和记入「本期专项扣除」；累计预扣时与减除费用、专项附加一并从月薪中扣减。</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch_pension_insurance">基本养老保险</label>
+                            <input type="number" step="0.01" id="batch_pension_insurance" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="batch_medical_insurance">基本医疗保险</label>
+                            <input type="number" step="0.01" id="batch_medical_insurance" value="0" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch_unemployment_insurance">失业保险</label>
+                            <input type="number" step="0.01" id="batch_unemployment_insurance" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="batch_fund">住房公积金（月，元）</label>
+                            <input type="number" step="0.01" id="batch_fund" value="0" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="batch_special">专项附加扣除（月，元，可填 0）</label>
+                    <input type="number" step="0.01" id="batch_special" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并生成独立记录）</label>
+                    <input type="number" step="0.01" id="batch_year_end_bonus" value="0" min="0" placeholder="无则填 0">
+                </div>
+                <div class="form-group">
+                    <label for="batch_bonus_month">年终奖归属月份（1–12 月）</label>
+                    <select id="batch_bonus_month">
+                        <option value="1">1月</option>
+                        <option value="2">2月</option>
+                        <option value="3">3月</option>
+                        <option value="4">4月</option>
+                        <option value="5">5月</option>
+                        <option value="6">6月</option>
+                        <option value="7">7月</option>
+                        <option value="8">8月</option>
+                        <option value="9">9月</option>
+                        <option value="10">10月</option>
+                        <option value="11">11月</option>
+                        <option value="12" selected>12月</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-default btn-block" style="margin-bottom:10px;" onclick="batchAddYearEndBonusOnly()">添加年终奖</button>
+                <button type="button" class="btn btn-primary btn-block" id="batch_generate_year_btn" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
+            </div>
+
             <div class="card">
                 <div class="card-title">添加税务记录</div>
                 <form id="recordForm" onsubmit="onSubmitRecord(event)">
@@ -574,103 +671,6 @@
 
                     <button type="submit" class="btn btn-primary btn-block" id="recordSubmitBtn">添加记录</button>
                 </form>
-            </div>
-
-            <div class="card" id="batchTaxCard">
-                <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣预缴办法：每月应纳税所得额 = 月薪 −（5000 + 下方「专项附加扣除」）− 基本养老保险 − 基本医疗保险 − 失业保险 − 住房公积金；写入时「本期减除费用」= 5000 + 专项附加扣除，「本期专项扣除」= 上述三险与公积金之和。按月累计后套七级税率表计算应预扣税额。可选择 12 个月同一月薪，或 1–12 月分别填写月薪。年终奖可选：按全年一次性奖金单独计税（除以 12 找税率），并单独生成一条「全年一次性奖金收入」记录；可使用下方「添加年终奖」仅写入奖金记录，或在生成全年月薪记录时一并写入。扣缴义务人名称可在下方单独填写；未填时与上方「添加记录」表单中的扣缴义务人一致，其他税务字段仍取自上方表单。</p>
-                <div class="form-group batch-salary-mode-group">
-                    <label class="batch-salary-mode-title">工资填写方式</label>
-                    <div class="batch-salary-mode-options">
-                        <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_uniform" value="uniform" checked onchange="onBatchSalaryModeChange()"> 1–12 月每月工资相同（填一个固定月薪）</label>
-                        <label><input type="radio" name="batch_salary_mode" id="batch_salary_mode_variable" value="variable" onchange="onBatchSalaryModeChange()"> 每月工资不同（分别填写 1–12 月）</label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="batch_company_name">扣缴义务人名称</label>
-                    <input type="text" id="batch_company_name" autocomplete="organization" placeholder="选填；不填则使用上方单条表单中的名称">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="batch_year">计税年度</label>
-                        <input type="number" id="batch_year" min="1990" max="2100" value="2026">
-                    </div>
-                    <div class="form-group" id="batch_uniform_salary_field_wrap">
-                        <label for="batch_monthly_salary">固定月薪（元）</label>
-                        <input type="number" step="0.01" id="batch_monthly_salary" value="10000" min="0">
-                    </div>
-                </div>
-                <div id="batch_variable_salary_wrap" style="display:none;">
-                    <div class="form-group">
-                        <label>各月月薪（元）</label>
-                        <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">留空表示该月不生成记录；只为您填写了金额的月份创建数据。未填月份在累计预扣中按 0 元月薪参与累算。</p>
-                        <div class="salary-month-grid">
-                            <div class="form-group salary-month-cell"><label for="batch_salary_1">1月</label><input type="number" step="0.01" id="batch_salary_1" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_2">2月</label><input type="number" step="0.01" id="batch_salary_2" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_3">3月</label><input type="number" step="0.01" id="batch_salary_3" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_4">4月</label><input type="number" step="0.01" id="batch_salary_4" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_5">5月</label><input type="number" step="0.01" id="batch_salary_5" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_6">6月</label><input type="number" step="0.01" id="batch_salary_6" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_7">7月</label><input type="number" step="0.01" id="batch_salary_7" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_8">8月</label><input type="number" step="0.01" id="batch_salary_8" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_9">9月</label><input type="number" step="0.01" id="batch_salary_9" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_10">10月</label><input type="number" step="0.01" id="batch_salary_10" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_11">11月</label><input type="number" step="0.01" id="batch_salary_11" value="" min="0" placeholder="选填"></div>
-                            <div class="form-group salary-month-cell"><label for="batch_salary_12">12月</label><input type="number" step="0.01" id="batch_salary_12" value="" min="0" placeholder="选填"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="batch-salary-mode-title" style="margin-bottom:8px;">社会保险扣费（月，元）</label>
-                    <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">与上方「添加记录」一致：基本养老保险、基本医疗保险、失业保险与住房公积金之和记入「本期专项扣除」；累计预扣时与减除费用、专项附加一并从月薪中扣减。</p>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="batch_pension_insurance">基本养老保险</label>
-                            <input type="number" step="0.01" id="batch_pension_insurance" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="batch_medical_insurance">基本医疗保险</label>
-                            <input type="number" step="0.01" id="batch_medical_insurance" value="0" min="0">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="batch_unemployment_insurance">失业保险</label>
-                            <input type="number" step="0.01" id="batch_unemployment_insurance" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="batch_fund">住房公积金（月，元）</label>
-                            <input type="number" step="0.01" id="batch_fund" value="0" min="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="batch_special">专项附加扣除（月，元，可填 0）</label>
-                    <input type="number" step="0.01" id="batch_special" value="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并生成独立记录）</label>
-                    <input type="number" step="0.01" id="batch_year_end_bonus" value="0" min="0" placeholder="无则填 0">
-                </div>
-                <div class="form-group">
-                    <label for="batch_bonus_month">年终奖归属月份（1–12 月）</label>
-                    <select id="batch_bonus_month">
-                        <option value="1">1月</option>
-                        <option value="2">2月</option>
-                        <option value="3">3月</option>
-                        <option value="4">4月</option>
-                        <option value="5">5月</option>
-                        <option value="6">6月</option>
-                        <option value="7">7月</option>
-                        <option value="8">8月</option>
-                        <option value="9">9月</option>
-                        <option value="10">10月</option>
-                        <option value="11">11月</option>
-                        <option value="12" selected>12月</option>
-                    </select>
-                </div>
-                <button type="button" class="btn btn-default btn-block" style="margin-bottom:10px;" onclick="batchAddYearEndBonusOnly()">添加年终奖</button>
-                <button type="button" class="btn btn-primary btn-block" id="batch_generate_year_btn" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
             </div>
 
             <div class="card">
@@ -1336,7 +1336,7 @@
             var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
             var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
             if (!companyForBatch) {
-                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在上方单条表单中填写）', false);
+                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在下方单条表单中填写）', false);
                 return;
             }
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
@@ -1455,7 +1455,7 @@
             var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
             var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
             if (!companyForBatch) {
-                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在上方单条表单中填写）', false);
+                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在下方单条表单中填写）', false);
                 return;
             }
 

@@ -315,6 +315,7 @@
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
                 <button type="button" class="nav-item" data-page="login-log" data-title="登录流水">登录流水</button>
                 <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
+                <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
             </nav>
         </aside>
         <div class="main-area">
@@ -652,7 +653,7 @@
                 <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>埋点说明</h2>
-            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>：按自然日聚合各 API 路径与业务分类（税务记录、消息中心、认证注册等）；含管理后台与公开接口。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -688,35 +689,8 @@
             <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
         </section>
         <section>
-            <h2>接口调用（按业务分类）</h2>
-            <div class="form-row" style="align-items: center;">
-                <div>
-                    <label for="analyticsApiDays">统计天数</label>
-                    <select id="analyticsApiDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="7" selected>最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                    </select>
-                </div>
-            </div>
-            <div class="scroll-x" style="margin-top: 12px;">
-                <table>
-                    <thead><tr><th>业务分类</th><th>调用次数（合计）</th></tr></thead>
-                    <tbody id="analyticsCatTbody"><tr><td colspan="2">—</td></tr></tbody>
-                </table>
-            </div>
-            <h3 style="font-size:14px;margin:16px 0 8px;color:#444;">高频接口 TOP（当前区间内）</h3>
-            <p class="hint" style="margin:0 0 8px;">不含「管理后台」类接口；上方「按业务分类」合计仍含管理后台。</p>
-            <div class="scroll-x">
-                <table>
-                    <thead><tr><th>日期</th><th>分类</th><th>接口标识</th><th>次数</th></tr></thead>
-                    <tbody id="analyticsRoutesTbody"><tr><td colspan="4">—</td></tr></tbody>
-                </table>
-            </div>
-        </section>
-        <section>
             <h2>机型与操作系统分布</h2>
-            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code>），缺失字段时用 UA 摘要推断。图标表示操作系统家族。</p>
+            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code> 含 <code>os_version</code>），否则从 UA 推断系统版本（如 iOS 17.4、Android 13）。图标仍表示系统家族。</p>
             <p id="deviceStatsSummary" class="hint" style="margin:0 0 12px;">加载中…</p>
             <div class="device-stats-grid">
                 <div>
@@ -753,6 +727,38 @@
                 <table>
                     <thead><tr><th>client_id</th><th>摘要</th><th>设备指纹</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th><th>接口同步</th><th>上报 JSON</th></tr></thead>
                     <tbody id="analyticsDevicesTbody"><tr><td colspan="11">输入账号后查询</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-api-analytics" class="page-panel" role="tabpanel">
+        <section>
+            <h2>接口调用（按业务分类）</h2>
+            <p class="hint" style="margin:0 0 12px;">按自然日聚合各 API 与业务分类；下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP 列表<strong>不含</strong>管理后台类接口。</p>
+            <div class="form-row" style="align-items: center;">
+                <div>
+                    <label for="apiAnalyticsDays">统计天数</label>
+                    <select id="apiAnalyticsDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7" selected>最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary" id="btnRefreshApiAnalytics">刷新</button>
+            </div>
+            <div class="scroll-x" style="margin-top: 12px;">
+                <table>
+                    <thead><tr><th>业务分类</th><th>调用次数（合计）</th></tr></thead>
+                    <tbody id="apiAnalyticsCatTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <h3 style="font-size:14px;margin:16px 0 8px;color:#444;">高频接口 TOP（当前区间内）</h3>
+            <p class="hint" style="margin:0 0 8px;">不含「管理后台」类接口；上方「按业务分类」合计仍含管理后台。</p>
+            <div class="scroll-x">
+                <table>
+                    <thead><tr><th>分类</th><th>接口标识</th><th>次数</th></tr></thead>
+                    <tbody id="apiAnalyticsRoutesTbody"><tr><td colspan="3">—</td></tr></tbody>
                 </table>
             </div>
         </section>
@@ -904,11 +910,20 @@
         var _adminUsersLoaded = false;
         var _adminCodesLoaded = false;
         var _adminAnalyticsSeen = false;
+        var _adminApiAnalyticsSeen = false;
 
         function normalizeAdminPage(raw) {
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
             if (k === 'system' || k === 'setting') k = 'settings';
-            var ok = { settings: 1, appearance: 1, codes: 1, users: 1, analytics: 1, 'login-log': 1 };
+            var ok = {
+                settings: 1,
+                appearance: 1,
+                codes: 1,
+                users: 1,
+                analytics: 1,
+                'api-analytics': 1,
+                'login-log': 1
+            };
             return ok[k] ? k : 'settings';
         }
 
@@ -937,6 +952,10 @@
                 _adminAnalyticsSeen = true;
                 loadAnalyticsDashboard();
             }
+            if (pageKey === 'api-analytics' && !_adminApiAnalyticsSeen) {
+                _adminApiAnalyticsSeen = true;
+                loadApiAnalyticsPanel();
+            }
             if (pageKey === 'login-log') {
                 loginRecentPage = 1;
                 var sz = document.getElementById('loginLogPageSize');
@@ -947,13 +966,61 @@
             }
         }
 
+        function loadApiAnalyticsPanel() {
+            var daysA = parseInt(document.getElementById('apiAnalyticsDays').value, 10) || 7;
+            document.getElementById('apiAnalyticsCatTbody').innerHTML =
+                '<tr><td colspan="2">加载中…</td></tr>';
+            document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
+                '<tr><td colspan="3">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (api) {
+                    if (api.code === 200 && api.data) {
+                        var ch = '';
+                        (api.data.by_category || []).forEach(function (row) {
+                            ch +=
+                                '<tr><td>' +
+                                esc(row.category) +
+                                '</td><td>' +
+                                esc(String(row.calls)) +
+                                '</td></tr>';
+                        });
+                        document.getElementById('apiAnalyticsCatTbody').innerHTML =
+                            ch || '<tr><td colspan="2">暂无数据</td></tr>';
+                        var rh = '';
+                        (api.data.top_routes || []).forEach(function (row) {
+                            rh +=
+                                '<tr><td>' +
+                                esc(row.category) +
+                                '</td><td class="cell-break"><code>' +
+                                esc(row.route_key) +
+                                '</code></td><td>' +
+                                esc(String(row.cnt)) +
+                                '</td></tr>';
+                        });
+                        document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
+                            rh || '<tr><td colspan="3">暂无数据</td></tr>';
+                    } else {
+                        document.getElementById('apiAnalyticsCatTbody').innerHTML =
+                            '<tr><td colspan="2">' + esc(api.msg || '加载失败') + '</td></tr>';
+                        document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
+                            '<tr><td colspan="3">—</td></tr>';
+                    }
+                })
+                .catch(function () {
+                    document.getElementById('apiAnalyticsCatTbody').innerHTML =
+                        '<tr><td colspan="2">网络错误</td></tr>';
+                    document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
+                        '<tr><td colspan="3">网络错误</td></tr>';
+                });
+        }
+
         function loadAnalyticsDashboard() {
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
-            var daysA = parseInt(document.getElementById('analyticsApiDays').value, 10) || 7;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
-            document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('deviceStatsSummary').textContent = '加载中…';
@@ -964,12 +1031,10 @@
 
             Promise.all([
                 adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); }),
                 adminFetch('api/admin/analytics/device-stats').then(function (r) { return r.json(); })
             ]).then(function (results) {
                 var ov = results[0];
-                var api = results[1];
-                var dev = results[2];
+                var dev = results[1];
 
                 if (ov.code === 200 && ov.data && ov.data.dau) {
                     var dh = '';
@@ -989,22 +1054,6 @@
                     document.getElementById('analyticsLoginTbody').innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
                 } else {
                     document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">—</td></tr>';
-                }
-
-                if (api.code === 200 && api.data) {
-                    var ch = '';
-                    (api.data.by_category || []).forEach(function (row) {
-                        ch += '<tr><td>' + esc(row.category) + '</td><td>' + esc(String(row.calls)) + '</td></tr>';
-                    });
-                    document.getElementById('analyticsCatTbody').innerHTML = ch || '<tr><td colspan="2">暂无数据</td></tr>';
-                    var rh = '';
-                    (api.data.top_routes || []).forEach(function (row) {
-                        rh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(row.category) + '</td><td class="cell-break"><code>' + esc(row.route_key) + '</code></td><td>' + esc(String(row.cnt)) + '</td></tr>';
-                    });
-                    document.getElementById('analyticsRoutesTbody').innerHTML = rh || '<tr><td colspan="4">暂无数据</td></tr>';
-                } else {
-                    document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">' + esc(api.msg || '加载失败') + '</td></tr>';
-                    document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">—</td></tr>';
                 }
 
                 if (dev.code === 200 && dev.data) {
@@ -1071,8 +1120,6 @@
             }).catch(function () {
                 document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
-                document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                 document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
                 document.getElementById('deviceStatsOsTbody').innerHTML =
                     '<tr><td colspan="3">网络错误</td></tr>';
@@ -1630,8 +1677,11 @@
         document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
             if (_adminAnalyticsSeen) loadAnalyticsDashboard();
         });
-        document.getElementById('analyticsApiDays').addEventListener('change', function () {
-            if (_adminAnalyticsSeen) loadAnalyticsDashboard();
+        document.getElementById('apiAnalyticsDays').addEventListener('change', function () {
+            if (_adminApiAnalyticsSeen) loadApiAnalyticsPanel();
+        });
+        document.getElementById('btnRefreshApiAnalytics').addEventListener('click', function () {
+            loadApiAnalyticsPanel();
         });
         document.getElementById('btnLoadDevices').addEventListener('click', loadAnalyticsDevices);
 

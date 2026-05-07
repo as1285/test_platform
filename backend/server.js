@@ -2570,6 +2570,93 @@ function slugDeviceStatsKey(s) {
   return t || 'unknown';
 }
 
+function normalizeUnderscoreVersion(s) {
+  var t = String(s || '')
+    .trim()
+    .replace(/_/g, '.')
+    .replace(/\.+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+  return t;
+}
+
+function osVersionFromClientDetail(osKey, detail) {
+  if (!detail || detail.os_version == null || detail.os_version === '') {
+    return '';
+  }
+  var v = String(detail.os_version)
+    .trim()
+    .replace(/[\x00-\x1f]/g, '');
+  if (!v) {
+    return '';
+  }
+  if (osKey === 'ios') {
+    v = v.replace(/^i(?:OS|os)\s*/i, '').trim();
+  } else if (osKey === 'android') {
+    v = v.replace(/^android\s*/i, '').trim();
+  }
+  return v.substring(0, 48);
+}
+
+function extractIosVersionFromUa(ua) {
+  var m = ua.match(/(?:CPU )?(?:iPhone |iPad |iPod )?OS\s+([\d_]+)/i);
+  if (m) {
+    return normalizeUnderscoreVersion(m[1]);
+  }
+  m = ua.match(/\bOS\s+([\d_]+)\s+like\s+Mac\s+OS\s+X/i);
+  if (m) {
+    return normalizeUnderscoreVersion(m[1]);
+  }
+  return '';
+}
+
+function extractAndroidVersionFromUa(ua) {
+  var m = ua.match(/Android\s+([\d.]+)/i);
+  return m ? String(m[1]).trim() : '';
+}
+
+function extractWindowsNtFromUa(ua) {
+  var m = ua.match(/Windows NT\s+([\d.]+)/i);
+  return m ? String(m[1]).trim() : '';
+}
+
+function extractMacOsVersionFromUa(ua) {
+  var m = ua.match(/Mac\s+OS\s+X\s+([\d_]+)/i);
+  if (m) {
+    return normalizeUnderscoreVersion(m[1]);
+  }
+  return '';
+}
+
+function extractChromeOsVersionFromUa(ua) {
+  var m = ua.match(/CrOS\s+[^\s]+\s+([\d.]+)/i);
+  return m ? String(m[1]).trim() : '';
+}
+
+/** 展示用的版本号片段（不含「iOS/Android」前缀）；优先 X-Client-Device 的 os_version，其次 UA。 */
+function resolveOsVersionString(osKey, ua, detail) {
+  var fromClient = osVersionFromClientDetail(osKey, detail);
+  if (fromClient) {
+    return fromClient;
+  }
+  ua = String(ua || '');
+  if (osKey === 'ios') {
+    return extractIosVersionFromUa(ua);
+  }
+  if (osKey === 'android') {
+    return extractAndroidVersionFromUa(ua);
+  }
+  if (osKey === 'windows') {
+    return extractWindowsNtFromUa(ua);
+  }
+  if (osKey === 'macos') {
+    return extractMacOsVersionFromUa(ua);
+  }
+  if (osKey === 'chromeos') {
+    return extractChromeOsVersionFromUa(ua);
+  }
+  return '';
+}
+
 /**
  * 返回用于聚合的 os_key（ios/android/windows/macos/linux/chromeos/other）与机型展示名。
  * 优先依据 UA；上报 JSON 中的 platform/model 做补充。
@@ -2644,8 +2731,11 @@ function classifyUserDeviceRow(userAgentShort, deviceDetailJson) {
     }
   }
 
+  var osVersion = resolveOsVersionString(osKey, ua, detail);
+
   return {
     os_key: osKey,
+    os_version: osVersion,
     model_key: slugDeviceStatsKey(modelLabel),
     model_label: modelLabel
   };
@@ -2702,14 +2792,18 @@ async function handleAdminAnalyticsDeviceStats(req, res) {
       rows.forEach(function (r) {
         var c = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
         var ok = c.os_key;
-        if (!osMap[ok]) {
-          osMap[ok] = {
-            label: DEVICE_STATS_OS_FAMILY_LABEL[ok] || DEVICE_STATS_OS_FAMILY_LABEL.other,
+        var family = DEVICE_STATS_OS_FAMILY_LABEL[ok] || DEVICE_STATS_OS_FAMILY_LABEL.other;
+        var ver = c.os_version ? String(c.os_version).trim() : '';
+        var osLabel = ver ? family + ' ' + ver : family;
+        var osAggKey = ok + '\0' + (ver || '');
+        if (!osMap[osAggKey]) {
+          osMap[osAggKey] = {
+            label: osLabel,
             icon_key: DEVICE_STATS_OS_ICON_KEY[ok] || 'other',
             count: 0
           };
         }
-        osMap[ok].count += 1;
+        osMap[osAggKey].count += 1;
 
         var mk = c.model_key;
         if (!modelMap[mk]) {
@@ -2800,10 +2894,12 @@ async function handleAdminAnalyticsApi(req, res) {
         [span]
       );
       const [topRoutes] = await conn.execute(
-        `SELECT stat_date AS d, biz_category AS cat, route_key AS route, cnt FROM analytics_api_daily
+        `SELECT MAX(biz_category) AS cat, route_key AS route, SUM(cnt) AS total
+         FROM analytics_api_daily
          WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
            AND biz_category <> '管理后台'
-         ORDER BY cnt DESC LIMIT 300`,
+         GROUP BY route_key
+         ORDER BY total DESC LIMIT 300`,
         [span]
       );
       return res.json({
@@ -2815,10 +2911,9 @@ async function handleAdminAnalyticsApi(req, res) {
           }),
           top_routes: topRoutes.map(function (r) {
             return {
-              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
               category: String(r.cat),
               route_key: String(r.route),
-              cnt: Number(r.cnt)
+              cnt: Number(r.total)
             };
           })
         }
