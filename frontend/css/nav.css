@@ -152,8 +152,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .nav-icon img {
-    width: 32px;
-    height: 32px;
+    width: 19px;
+    height: 19px;
     object-fit: contain;
     display: block;
 }
