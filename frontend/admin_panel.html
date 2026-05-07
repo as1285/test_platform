@@ -324,6 +324,10 @@
                         <option value="blue">蓝色（默认）</option>
                         <option value="yellow">黄色 / 金色</option>
                     </select>
+                    <p class="hint" style="margin:10px 0 0;display:flex;align-items:flex-start;gap:8px;max-width:640px;">
+                        <input type="checkbox" id="mineUseDefaultImages" style="margin-top:3px;flex-shrink:0;">
+                        <label for="mineUseDefaultImages" style="margin:0;font-weight:normal;cursor:pointer;">默认配置：用户端使用内置原始配图，不读取下方自定义路径；主题仍以上述下拉为准。取消勾选后恢复已保存的配图。</label>
+                    </p>
                 </div>
 
                 <h3>个人中心配图</h3>
@@ -1301,12 +1305,14 @@
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
                         document.getElementById('mineTheme').value = m.theme === 'yellow' ? 'yellow' : 'blue';
+                        document.getElementById('mineUseDefaultImages').checked = !!m.use_default_images;
                         MINE_UI_FIELD_KEYS.forEach(function (k) {
                             var el = document.getElementById('img_' + k);
                             if (el) {
                                 el.value = m[k] != null ? String(m[k]) : '';
                             }
                         });
+                        syncMineUiDefaultToggle();
                     }
                 })
                 .catch(function () {
@@ -1346,6 +1352,18 @@
             'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header',
             'piaojia_goumai', 'piaojia_xiaoshou'
         ];
+
+        function syncMineUiDefaultToggle() {
+            var on = document.getElementById('mineUseDefaultImages').checked;
+            document.querySelectorAll('#page-appearance .mine-ui-row input[type="text"]').forEach(function (el) {
+                el.disabled = on;
+            });
+            document.querySelectorAll('#page-appearance .mine-ui-pick').forEach(function (btn) {
+                btn.disabled = on;
+            });
+        }
+
+        document.getElementById('mineUseDefaultImages').addEventListener('change', syncMineUiDefaultToggle);
 
         function adminUploadAsset(file) {
             var fd = new FormData();
@@ -1414,7 +1432,8 @@
             var btn = document.getElementById('btnSaveMineUi');
             btn.disabled = true;
             var mineUi = {
-                theme: document.getElementById('mineTheme').value === 'yellow' ? 'yellow' : 'blue'
+                theme: document.getElementById('mineTheme').value === 'yellow' ? 'yellow' : 'blue',
+                use_default_images: document.getElementById('mineUseDefaultImages').checked
             };
             MINE_UI_FIELD_KEYS.forEach(function (k) {
                 var el = document.getElementById('img_' + k);

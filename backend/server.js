@@ -166,10 +166,9 @@ function sanitizeMineUiImageRef(raw) {
   return '';
 }
 
-async function getMineUiForApi() {
-  var out = cloneMineUiDefaults();
+async function loadMineUiParsed() {
   if (!pool) {
-    return out;
+    return null;
   }
   const conn = await pool.getConnection();
   try {
@@ -177,32 +176,68 @@ async function getMineUiForApi() {
       'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
       [SETTING_KEY_MINE_UI]
     );
-    if (rows.length > 0 && rows[0].setting_value != null) {
-      var parsed = JSON.parse(String(rows[0].setting_value));
-      if (parsed && typeof parsed === 'object') {
-        if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
-          out.theme = parsed.theme;
-        }
-        MINE_UI_IMAGE_KEYS.forEach(function (k) {
-          if (parsed[k] != null) {
-            var ok = sanitizeMineUiImageRef(parsed[k]);
-            if (ok) {
-              out[k] = ok;
-            }
-          }
-        });
-      }
+    if (rows.length === 0 || rows[0].setting_value == null) {
+      return null;
     }
+    var parsed = JSON.parse(String(rows[0].setting_value));
+    return parsed && typeof parsed === 'object' ? parsed : null;
   } catch (e) {
     if (e instanceof SyntaxError) {
-      console.error('getMineUiForApi JSON', e);
+      console.error('loadMineUiParsed JSON', e);
     } else {
-      console.error('getMineUiForApi', e);
+      console.error('loadMineUiParsed', e);
     }
+    return null;
   } finally {
     conn.release();
   }
+}
+
+/** 用户端实际生效：勾选「默认配置」时仅内置配图，主题仍读库 */
+async function getMineUiForApi() {
+  var out = cloneMineUiDefaults();
+  var parsed = await loadMineUiParsed();
+  if (!parsed) {
+    return out;
+  }
+  if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
+    out.theme = parsed.theme;
+  }
+  if (parsed.use_default_images === true) {
+    return out;
+  }
+  MINE_UI_IMAGE_KEYS.forEach(function (k) {
+    if (parsed[k] != null) {
+      var ok = sanitizeMineUiImageRef(parsed[k]);
+      if (ok) {
+        out[k] = ok;
+      }
+    }
+  });
   return out;
+}
+
+/** 管理后台表单：始终返回库中保存的路径与开关（不因默认配图而清空输入框） */
+async function getMineUiForAdminForm() {
+  var base = cloneMineUiDefaults();
+  var form = Object.assign({ use_default_images: false }, base);
+  var parsed = await loadMineUiParsed();
+  if (!parsed) {
+    return form;
+  }
+  if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
+    form.theme = parsed.theme;
+  }
+  form.use_default_images = parsed.use_default_images === true;
+  MINE_UI_IMAGE_KEYS.forEach(function (k) {
+    if (parsed[k] != null) {
+      var ok = sanitizeMineUiImageRef(parsed[k]);
+      if (ok) {
+        form[k] = ok;
+      }
+    }
+  });
+  return form;
 }
 
 const adminUpload = multer({
@@ -2304,7 +2339,7 @@ async function handleAdminUserType(req, res) {
 async function handleAdminSettingsGet(req, res) {
   try {
     var name = await getTestAccountCompanyName();
-    var mineUi = await getMineUiForApi();
+    var mineUi = await getMineUiForAdminForm();
     return res.json({
       code: 200,
       data: { test_account_company_name: name, mine_ui: mineUi }
@@ -2350,10 +2385,30 @@ async function handleAdminSettingsPost(req, res) {
     }
 
     if (hasMineUi) {
-      var merged = await getMineUiForApi();
+      var prev = await loadMineUiParsed();
+      var merged = Object.assign({ use_default_images: false }, cloneMineUiDefaults());
+      if (prev) {
+        if (prev.theme === 'yellow' || prev.theme === 'blue') {
+          merged.theme = prev.theme;
+        }
+        merged.use_default_images = prev.use_default_images === true;
+        MINE_UI_IMAGE_KEYS.forEach(function (k) {
+          if (prev[k] != null) {
+            var okPrev = sanitizeMineUiImageRef(prev[k]);
+            if (okPrev) {
+              merged[k] = okPrev;
+            }
+          }
+        });
+      }
       var incoming = body.mine_ui;
       if (incoming.theme === 'blue' || incoming.theme === 'yellow') {
         merged.theme = incoming.theme;
+      }
+      if (incoming.use_default_images === true || incoming.use_default_images === 'true' || incoming.use_default_images === 1) {
+        merged.use_default_images = true;
+      } else if (Object.prototype.hasOwnProperty.call(incoming, 'use_default_images')) {
+        merged.use_default_images = false;
       }
       MINE_UI_IMAGE_KEYS.forEach(function (k) {
         if (incoming[k] != null && String(incoming[k]).trim() !== '') {
@@ -2372,7 +2427,7 @@ async function handleAdminSettingsPost(req, res) {
 
     var outData = { success: true };
     outData.test_account_company_name = await getTestAccountCompanyName();
-    outData.mine_ui = await getMineUiForApi();
+    outData.mine_ui = await getMineUiForAdminForm();
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
