@@ -2540,6 +2540,204 @@ function clampAnalyticsDays(raw, def, max) {
   return n;
 }
 
+/** 管理端设备分布：解析上报 JSON 与 UA */
+function parseDeviceDetailJsonForStats(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return null;
+  }
+  var s = raw.trim();
+  if (!s) {
+    return null;
+  }
+  try {
+    var o = JSON.parse(s);
+    if (o && typeof o === 'object' && !Array.isArray(o)) {
+      return o;
+    }
+  } catch (e1) {
+    return null;
+  }
+  return null;
+}
+
+function slugDeviceStatsKey(s) {
+  var t = String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fff]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .substring(0, 80);
+  return t || 'unknown';
+}
+
+/**
+ * 返回用于聚合的 os_key（ios/android/windows/macos/linux/chromeos/other）与机型展示名。
+ * 优先依据 UA；上报 JSON 中的 platform/model 做补充。
+ */
+function classifyUserDeviceRow(userAgentShort, deviceDetailJson) {
+  var detail = parseDeviceDetailJsonForStats(deviceDetailJson);
+  var ua = '';
+  if (detail && detail.user_agent) {
+    ua = String(detail.user_agent);
+  }
+  if (!ua && userAgentShort) {
+    ua = String(userAgentShort);
+  }
+  var platform = detail && detail.platform ? String(detail.platform).trim() : '';
+  var model = detail && detail.model ? String(detail.model).trim() : '';
+  var brand = detail && detail.brand ? String(detail.brand).trim() : '';
+
+  var osKey = 'other';
+
+  if (/iPhone|CPU iPhone OS|iPod/i.test(ua)) {
+    osKey = 'ios';
+  } else if (/iPad/i.test(ua) || /^iPad$/i.test(platform)) {
+    osKey = 'ios';
+  } else if (/Android/i.test(ua)) {
+    osKey = 'android';
+  } else if (/Windows NT|Win64|WOW64/i.test(ua) || /^Win/i.test(platform)) {
+    osKey = 'windows';
+  } else if (/Mac OS X|Macintosh/i.test(ua) || platform === 'MacIntel') {
+    if (!/iPhone|iPad|iPod/i.test(ua)) {
+      osKey = 'macos';
+    }
+  }
+
+  if (osKey === 'other') {
+    if (/CrOS/i.test(ua)) {
+      osKey = 'chromeos';
+    } else if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+      osKey = 'linux';
+    } else if (platform === 'Win32') {
+      osKey = 'windows';
+    } else if (/iPhone|iPad|iPod/i.test(platform)) {
+      osKey = 'ios';
+    }
+  }
+
+  var modelLabel = '';
+  if (model) {
+    modelLabel = brand ? (brand + ' ' + model).trim() : model;
+  } else if (/iPhone/i.test(ua) || /^iPhone$/i.test(platform)) {
+    modelLabel = 'iPhone';
+  } else if (/iPad/i.test(ua) || /^iPad$/i.test(platform)) {
+    modelLabel = 'iPad';
+  } else if (/Android/i.test(ua)) {
+    var dm = ua.match(/Android\s+[\d._]+;\s*([^)]+)/i);
+    if (dm) {
+      modelLabel = dm[1].trim().replace(/\s+Build\/.*$/i, '').trim();
+    }
+  }
+  if (!modelLabel) {
+    if (osKey === 'windows') {
+      modelLabel = 'Windows PC';
+    } else if (osKey === 'macos') {
+      modelLabel = 'Mac';
+    } else if (osKey === 'linux') {
+      modelLabel = 'Linux PC';
+    } else if (osKey === 'chromeos') {
+      modelLabel = 'Chromebook';
+    } else if (platform) {
+      modelLabel = platform;
+    } else {
+      modelLabel = '未知机型';
+    }
+  }
+
+  return {
+    os_key: osKey,
+    model_key: slugDeviceStatsKey(modelLabel),
+    model_label: modelLabel
+  };
+}
+
+var DEVICE_STATS_OS_FAMILY_LABEL = {
+  ios: 'iOS',
+  android: 'Android',
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+  chromeos: 'Chrome OS',
+  other: '其他'
+};
+
+var DEVICE_STATS_OS_ICON_KEY = {
+  ios: 'ios',
+  android: 'android',
+  windows: 'windows',
+  macos: 'macos',
+  linux: 'linux',
+  chromeos: 'chromeos',
+  other: 'other'
+};
+
+function sortDeviceStatList(map) {
+  var arr = Object.keys(map).map(function (k) {
+    var o = map[k];
+    return {
+      key: k,
+      label: o.label,
+      icon_key: o.icon_key,
+      count: o.count
+    };
+  });
+  arr.sort(function (a, b) {
+    return b.count - a.count;
+  });
+  return arr;
+}
+
+async function handleAdminAnalyticsDeviceStats(req, res) {
+  if (!pool) {
+    return res.status(503).json({ code: 503, msg: '数据库未就绪' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT user_agent_short, device_detail_json FROM user_devices'
+      );
+      var osMap = {};
+      var modelMap = {};
+      rows.forEach(function (r) {
+        var c = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
+        var ok = c.os_key;
+        if (!osMap[ok]) {
+          osMap[ok] = {
+            label: DEVICE_STATS_OS_FAMILY_LABEL[ok] || DEVICE_STATS_OS_FAMILY_LABEL.other,
+            icon_key: DEVICE_STATS_OS_ICON_KEY[ok] || 'other',
+            count: 0
+          };
+        }
+        osMap[ok].count += 1;
+
+        var mk = c.model_key;
+        if (!modelMap[mk]) {
+          modelMap[mk] = {
+            label: c.model_label,
+            icon_key: DEVICE_STATS_OS_ICON_KEY[c.os_key] || 'other',
+            count: 0
+          };
+        }
+        modelMap[mk].count += 1;
+      });
+      return res.json({
+        code: 200,
+        data: {
+          total_devices: rows.length,
+          by_os: sortDeviceStatList(osMap),
+          by_model: sortDeviceStatList(modelMap)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminAnalyticsOverview(req, res) {
   try {
     var days = clampAnalyticsDays(req.query.days, 14, 90);
@@ -2784,6 +2982,7 @@ app.post('/api/admin/user-delete', requireAdminAuth, handleAdminDeleteUser);
 app.get('/api/admin/analytics/overview', requireAdminAuth, handleAdminAnalyticsOverview);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, handleAdminAnalyticsApi);
 app.get('/api/admin/analytics/devices', requireAdminAuth, handleAdminAnalyticsDevices);
+app.get('/api/admin/analytics/device-stats', requireAdminAuth, handleAdminAnalyticsDeviceStats);
 app.get('/api/admin/analytics/login-recent', requireAdminAuth, handleAdminAnalyticsLoginRecent);
 
 function healthHandler(req, res) {

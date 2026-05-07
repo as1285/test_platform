@@ -180,6 +180,33 @@
         .badge-no { background: #fce4ec; color: #c62828; }
         .badge-type-test { background: #fff3e0; color: #e65100; }
         .scroll-x { overflow-x: auto; }
+        .device-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 8px;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .device-stats-grid { grid-template-columns: 1fr; }
+        }
+        .device-stats-grid h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #444;
+            font-weight: 600;
+        }
+        .stat-svg-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .stat-svg-icon {
+            width: 22px;
+            height: 22px;
+            vertical-align: middle;
+        }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
         .user-detail-wrap {
             background: #f8fbff;
@@ -688,6 +715,32 @@
             </div>
         </section>
         <section>
+            <h2>机型与操作系统分布</h2>
+            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code>），缺失字段时用 UA 摘要推断。图标表示操作系统家族。</p>
+            <p id="deviceStatsSummary" class="hint" style="margin:0 0 12px;">加载中…</p>
+            <div class="device-stats-grid">
+                <div>
+                    <h3>操作系统</h3>
+                    <div class="scroll-x">
+                        <table>
+                            <thead><tr><th style="width:40px;"></th><th>系统</th><th>设备数</th></tr></thead>
+                            <tbody id="deviceStatsOsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3>机型 / 平台</h3>
+                    <div class="scroll-x">
+                        <table>
+                            <thead><tr><th style="width:40px;"></th><th>机型</th><th>设备数</th></tr></thead>
+                            <tbody id="deviceStatsModelTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <p id="deviceStatsModelHint" class="hint" style="margin-top:8px;margin-bottom:0;"></p>
+                </div>
+            </div>
+        </section>
+        <section>
             <h2>账号登录设备</h2>
             <div class="form-row" style="align-items: flex-end;">
                 <div>
@@ -741,6 +794,23 @@
         function esc(s) {
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        /** 操作系统家族图标（与接口 icon_key 对应） */
+        function statIconHtml(iconKey) {
+            var k = String(iconKey || 'other');
+            var W = '<span class="stat-svg-wrap">';
+            var Z = '</span>';
+            var icons = {
+                ios: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#1c1c1e" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>',
+                android: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#3DDC84" d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm4.86-9.01c.03-.55.47-.99 1.02-1.01.56.02 1.02.46 1.02 1.01 0 .57-.46 1.03-1.03 1.03-.56 0-1.01-.46-1.01-1.03zm4.28 0c0-.55.45-.99 1-1.01.55.02.99.46 1.01 1.01 0 .57-.45 1.03-1.01 1.03-.57 0-1-.46-1-1.03zM17.5 6h-1.71A4.49 4.49 0 0012 3.5 4.49 4.49 0 008.21 6H6.5c-.83 0-1.5.67-1.5 1.5S5.67 9 6.5 9H17.5c.83 0 1.5-.67 1.5-1.5S18.33 6 17.5 6z"/></svg>',
+                windows: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#0078D4" d="M3 3h8.5v8.5H3V3zm9.5 0H21v8.5h-8.5V3zM3 12.5h8.5V21H3v-8.5zm9.5 0H21V21h-8.5v-8.5z"/></svg>',
+                macos: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#555" d="M4 5h16v11H4V5zm2 2v7h12V7H6zm1 13h10v2H7v-2z"/></svg>',
+                linux: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#333" d="M8 4l-3 16h2.2l.6-3h5.2l.7 3H16l-3-16H8zm.9 10l1.7-7.5h.1l1.6 7.5H8.9z"/></svg>',
+                chromeos: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#4285F4" stroke-width="1.8"/><path fill="#EA4335" d="M12 7.5l4.3 7.5H7.7z" opacity=".85"/></svg>',
+                other: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#aaa" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" fill="#aaa"/></svg>'
+            };
+            return W + (icons[k] || icons.other) + Z;
         }
 
         function formatDt(iso) {
@@ -884,13 +954,22 @@
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
+            document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('deviceStatsSummary').textContent = '加载中…';
+            var _mHint = document.getElementById('deviceStatsModelHint');
+            if (_mHint) {
+                _mHint.textContent = '';
+            }
 
             Promise.all([
                 adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); })
+                adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/device-stats').then(function (r) { return r.json(); })
             ]).then(function (results) {
                 var ov = results[0];
                 var api = results[1];
+                var dev = results[2];
 
                 if (ov.code === 200 && ov.data && ov.data.dau) {
                     var dh = '';
@@ -928,11 +1007,77 @@
                     document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">—</td></tr>';
                 }
 
+                if (dev.code === 200 && dev.data) {
+                    var totalDev = dev.data.total_devices != null ? Number(dev.data.total_devices) : 0;
+                    document.getElementById('deviceStatsSummary').textContent =
+                        '当前共有 ' + totalDev + ' 条设备指纹记录。';
+                    var osRows = dev.data.by_os || [];
+                    var oh = '';
+                    osRows.forEach(function (row) {
+                        oh +=
+                            '<tr><td>' +
+                            statIconHtml(row.icon_key) +
+                            '</td><td>' +
+                            esc(row.label) +
+                            '</td><td>' +
+                            esc(String(row.count)) +
+                            '</td></tr>';
+                    });
+                    document.getElementById('deviceStatsOsTbody').innerHTML =
+                        oh || '<tr><td colspan="3">暂无数据</td></tr>';
+
+                    var modelRows = dev.data.by_model || [];
+                    var maxModelRows = 40;
+                    var slice = modelRows.slice(0, maxModelRows);
+                    var mh = '';
+                    slice.forEach(function (row) {
+                        mh +=
+                            '<tr><td>' +
+                            statIconHtml(row.icon_key) +
+                            '</td><td class="cell-break">' +
+                            esc(row.label) +
+                            '</td><td>' +
+                            esc(String(row.count)) +
+                            '</td></tr>';
+                    });
+                    document.getElementById('deviceStatsModelTbody').innerHTML =
+                        mh || '<tr><td colspan="3">暂无数据</td></tr>';
+                    var mhHint = document.getElementById('deviceStatsModelHint');
+                    if (mhHint) {
+                        if (modelRows.length > maxModelRows) {
+                            mhHint.textContent =
+                                '仅展示设备数前 ' +
+                                maxModelRows +
+                                ' 种机型（共 ' +
+                                modelRows.length +
+                                ' 种）。';
+                        } else {
+                            mhHint.textContent = '';
+                        }
+                    }
+                } else {
+                    document.getElementById('deviceStatsSummary').textContent =
+                        esc(dev.msg || '设备分布加载失败');
+                    document.getElementById('deviceStatsOsTbody').innerHTML =
+                        '<tr><td colspan="3">—</td></tr>';
+                    document.getElementById('deviceStatsModelTbody').innerHTML =
+                        '<tr><td colspan="3">—</td></tr>';
+                    var mhHintE = document.getElementById('deviceStatsModelHint');
+                    if (mhHintE) {
+                        mhHintE.textContent = '';
+                    }
+                }
+
             }).catch(function () {
                 document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('analyticsCatTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsRoutesTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
+                document.getElementById('deviceStatsOsTbody').innerHTML =
+                    '<tr><td colspan="3">网络错误</td></tr>';
+                document.getElementById('deviceStatsModelTbody').innerHTML =
+                    '<tr><td colspan="3">网络错误</td></tr>';
             });
         }
 
