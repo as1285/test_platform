@@ -75,6 +75,11 @@
             border-bottom: 1px solid #f0f0f0;
         }
 
+        /* 列表「编辑」滚动到单条表单时，预留 sticky Tab 高度避免标题被挡住 */
+        #singleTaxRecordCard {
+            scroll-margin-top: 52px;
+        }
+
         .form-group { margin-bottom: 16px; }
         .form-group label {
             display: block;
@@ -753,7 +758,7 @@
                 <button type="button" class="btn btn-primary btn-block" id="batch_generate_year_btn" onclick="batchAddYearTaxRecords()">生成全年 12 个月记录</button>
             </div>
 
-            <div class="card">
+            <div class="card" id="singleTaxRecordCard">
                 <div class="card-title">添加税务记录</div>
                 <form id="recordForm" onsubmit="onSubmitRecord(event)">
                     <input type="hidden" name="editing_id" id="editing_id" value="">
@@ -1466,13 +1471,27 @@
             mount.innerHTML = html;
         }
 
+        function scrollToSingleTaxRecordForm() {
+            var el = document.getElementById('singleTaxRecordCard');
+            if (!el) {
+                return;
+            }
+            try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (e0) {
+                el.scrollIntoView(true);
+            }
+        }
+
         function editRecord(id) {
             apiFetchRecords().then(function (list) {
                 var r = list.find(function (x) { return String(x.id) === String(id); });
                 if (!r) return;
                 applyToForm(r);
                 switchTab('records', true);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(function () {
+                    scrollToSingleTaxRecordForm();
+                }, 0);
             });
         }
 
