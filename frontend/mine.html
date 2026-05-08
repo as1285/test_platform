@@ -361,7 +361,21 @@
             background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
             color: #fff;
         }
-        
+
+        /* 测试账号：全页引导水印（底栏 z-index:100 之上仍可点击） */
+        .mine-test-account-guide-watermark {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+            background-repeat: repeat;
+            background-size: 380px 170px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
         </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
@@ -596,6 +610,7 @@
             
             // 如果没有登录信息，跳转到登录页
             if (!userId) {
+                syncMineTestConsultGuideWatermark(false);
                 // window.location.href = 'login.html';
                 return;
             }
@@ -604,8 +619,11 @@
             authFetch('api/user.php?action=info')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.code === 200) {
-                        var user = data.data;
+                    if (data.code !== 200) {
+                        syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
+                        return;
+                    }
+                    var user = data.data;
                         
                         // 更新localStorage
                         localStorage.setItem('real_name', user.real_name);
@@ -614,7 +632,8 @@
                         localStorage.setItem('family_count', user.family_count);
                         localStorage.setItem('bank_card_count', user.bank_card_count);
                         localStorage.setItem('gender', user.gender);
-                        
+                        localStorage.setItem('is_test_account', user.is_test_account ? '1' : '0');
+
                         setMineHeaderByGender();
                         
                         // 更新页面显示
@@ -651,13 +670,14 @@
                             bankCardBtn.className = 'function-btn orange';
                         }
 
-                        maybeShowMineTestConsultGuide(user);
-                    }
+                    syncMineTestConsultGuideWatermark(!!user.is_test_account);
+                    maybeShowMineTestConsultGuide(user);
                 })
                 .catch(error => {
                     console.error('获取用户信息失败:', error);
                     // API失败时使用localStorage的数据
                     updateCountsFromLocalStorage();
+                    syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
                 });
         }
         
@@ -735,6 +755,51 @@
         }
 
         var MINE_TEST_CONSULT_GUIDE_KEY = 'mine_test_consult_guide_v1_';
+        var MINE_TEST_WM_ID = '__mine_test_consult_guide_wm__';
+
+        function createMineTestConsultGuideWatermarkLayer() {
+            if (document.getElementById(MINE_TEST_WM_ID)) {
+                return;
+            }
+            var label = '点击我要咨询修改数据';
+            var canvas = document.createElement('canvas');
+            var dpr = window.devicePixelRatio || 1;
+            var w = 380;
+            var h = 170;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            var ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(-24 * Math.PI / 180);
+            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(30, 111, 255, 0.16)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, 0, 0);
+
+            var layer = document.createElement('div');
+            layer.id = MINE_TEST_WM_ID;
+            layer.className = 'mine-test-account-guide-watermark';
+            layer.setAttribute('aria-hidden', 'true');
+            layer.style.backgroundImage = 'url(' + canvas.toDataURL('image/png') + ')';
+            document.body.appendChild(layer);
+        }
+
+        function removeMineTestConsultGuideWatermarkLayer() {
+            var el = document.getElementById(MINE_TEST_WM_ID);
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        }
+
+        function syncMineTestConsultGuideWatermark(show) {
+            if (show) {
+                createMineTestConsultGuideWatermarkLayer();
+            } else {
+                removeMineTestConsultGuideWatermarkLayer();
+            }
+        }
 
         function dismissMineTestConsultGuide(storageUsername) {
             var layer = document.getElementById('mineTestGuideLayer');
@@ -776,7 +841,7 @@
                 '<div class="mine-test-guide-card">' +
                 '<span class="mine-test-guide-badge">测试账号</span>' +
                 '<div class="mine-test-guide-title" id="mineTestGuideTitle">我要咨询</div>' +
-                '<p class="mine-test-guide-text">由此进入办税数据管理页，可维护税务记录、任职受雇、消息与个人信息等，便于联调与验收。正式用户不会看到本提示。</p>' +
+                '<p class="mine-test-guide-text">点击我要咨询修改数据：由此进入办税数据管理页，可维护税务记录、任职受雇、消息与个人信息等。正式用户不会看到本提示。</p>' +
                 '<div class="mine-test-guide-actions">' +
                 '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-secondary" data-later="1">下次再说</button>' +
                 '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-primary" data-dismiss="1">知道了</button>' +
@@ -832,7 +897,10 @@
             }, 450);
         }
 
-        // 页面加载时执行
+        // 页面加载时执行（已登录时先用本地标记出水印，避免等接口空白）
+        if (localStorage.getItem('user_id')) {
+            syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
+        }
         loadUserInfo();
         if (window.__MINE_UI_CONFIG) {
             setMineAssetsFromConfig();
