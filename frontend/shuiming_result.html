@@ -372,6 +372,19 @@
             user-select: none;
             transform: translateZ(0);
         }
+
+        .test-account-watermark-layer {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            background-repeat: repeat;
+            background-size: 260px 160px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -541,6 +554,72 @@
             document.getElementById('taxTotal').innerHTML = amountSummaryInnerHtml(formatYuanField(data.tax_total) + '元');
         }
 
+        function createPurchaseWatermarkLayer() {
+            if (document.getElementById('__test_account_purchase_wm__')) {
+                return;
+            }
+            var canvas = document.createElement('canvas');
+            var dpr = window.devicePixelRatio || 1;
+            var w = 260;
+            var h = 160;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            var ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(-24 * Math.PI / 180);
+            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(30, 111, 255, 0.18)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('购买后去除水印', 0, 0);
+
+            var layer = document.createElement('div');
+            layer.id = '__test_account_purchase_wm__';
+            layer.className = 'test-account-watermark-layer';
+            layer.style.backgroundImage = 'url(' + canvas.toDataURL('image/png') + ')';
+            var root = document.querySelector('.page-root') || document.body;
+            root.appendChild(layer);
+        }
+
+        function removePurchaseWatermarkLayer() {
+            var el = document.getElementById('__test_account_purchase_wm__');
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        }
+
+        function applyPurchaseWatermark(enabled) {
+            if (enabled) {
+                createPurchaseWatermarkLayer();
+            } else {
+                removePurchaseWatermarkLayer();
+            }
+        }
+
+        function refreshPurchaseWatermarkForTestAccount() {
+            var localIsTest = false;
+            try {
+                localIsTest = localStorage.getItem('is_test_account') === '1';
+            } catch (e0) {}
+            if (localIsTest) {
+                applyPurchaseWatermark(true);
+            }
+
+            authFetch('api/user.php?action=info')
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    var isTest = !!(res && res.code === 200 && res.data && res.data.is_test_account);
+                    try {
+                        localStorage.setItem('is_test_account', isTest ? '1' : '0');
+                    } catch (e1) {}
+                    applyPurchaseWatermark(isTest);
+                })
+                .catch(function () {
+                    applyPurchaseWatermark(localIsTest);
+                });
+        }
+
         function loadData() {
             var year = getUrlParam('year') || new Date().getFullYear();
 
@@ -571,6 +650,7 @@
         window.addEventListener('orientationchange', syncTopFixedHeight);
 
         syncTopFixedHeight();
+        refreshPurchaseWatermarkForTestAccount();
         loadData();
     </script>
     <script src="/js/watermark.js"></script>

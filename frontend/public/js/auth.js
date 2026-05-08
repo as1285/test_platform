@@ -152,6 +152,7 @@
       localStorage.removeItem('bank_card_count');
       localStorage.removeItem('gender');
       localStorage.removeItem('account_active');
+      localStorage.removeItem('is_test_account');
     } catch (e) {}
   }
 
