@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 激活码（管理员发放，注册用户使用 action=activate 兑换）
+-- 激活码（管理员发放；注册时必填校验并扣次；已注册未激活用户仍可用 action=activate 兑换）
 CREATE TABLE IF NOT EXISTS activation_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(64) NOT NULL,

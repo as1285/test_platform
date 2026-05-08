@@ -1166,36 +1166,77 @@ async function requireAuth(req, res, next) {
   }
 }
 
-async function registerUser(username, password, realName) {
+/**
+ * 注册并立即用激活码开通（同一事务：校验码、建号、扣减使用次数）。
+ * 展示姓名默认与账号相同，用户可在个人中心修改。
+ */
+async function registerUserWithActivationCode(username, password, rawActivationCode) {
   var u = validateUsername(username);
-  if (u) throw new Error(u);
+  if (u) {
+    throw new Error(u);
+  }
   var p = validatePassword(password);
-  if (p) throw new Error(p);
+  if (p) {
+    throw new Error(p);
+  }
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
   }
-
-  const conn = await pool.getConnection();
-  const [existing] = await conn.execute('SELECT username FROM users WHERE username = ?', [username]);
-  
-  if (existing.length > 0) {
-    conn.release();
-    throw new Error('该账号已注册');
+  var code = String(rawActivationCode || '').trim().toUpperCase();
+  if (!code) {
+    throw new Error('请输入激活码');
   }
-  
+
   const saltBuf = crypto.randomBytes(16);
   const saltHex = saltBuf.toString('hex');
   const hash = crypto.scryptSync(password, saltBuf, 64).toString('hex');
-  const name = (realName && String(realName).trim()) || username;
-  
-  await conn.execute(`
-    INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
-    VALUES (?, ?, ?, ?, 0, ?, ?)
-  `, [username, saltHex, hash, name, USER_TYPE_NORMAL, password]);
-  
-  conn.release();
-  return { user_id: username, real_name: name, username: username, account_active: false };
+  const displayName = username;
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [codeRows] = await conn.execute(
+      'SELECT id, max_uses, used_count, expires_at FROM activation_codes WHERE code = ? FOR UPDATE',
+      [code]
+    );
+    if (codeRows.length === 0) {
+      await conn.rollback();
+      throw new Error('激活码无效');
+    }
+    var cr = codeRows[0];
+    if (cr.expires_at && new Date(cr.expires_at) < new Date()) {
+      await conn.rollback();
+      throw new Error('激活码已过期');
+    }
+    if (Number(cr.used_count) >= Number(cr.max_uses)) {
+      await conn.rollback();
+      throw new Error('激活码已用完');
+    }
+    const [existing] = await conn.execute('SELECT username FROM users WHERE username = ?', [username]);
+    if (existing.length > 0) {
+      await conn.rollback();
+      throw new Error('该账号已注册');
+    }
+    await conn.execute(
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+       VALUES (?, ?, ?, ?, 1, ?, ?)`,
+      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
+    );
+    await conn.execute(
+      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [cr.id]
+    );
+    await conn.commit();
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    throw e;
+  } finally {
+    conn.release();
+  }
+  return { user_id: username, real_name: displayName, username: username, account_active: true };
 }
 
 async function loginUser(username, password) {
@@ -2199,7 +2240,11 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
-      var out = await registerUser(body.username, body.password, body.real_name);
+      var out = await registerUserWithActivationCode(
+        body.username,
+        body.password,
+        body.activation_code != null ? body.activation_code : body.code
+      );
       out.token = signAccessToken(out);
       return res.json({ code: 200, data: out });
     }

@@ -266,6 +266,67 @@
             -webkit-tap-highlight-color: transparent;
             box-sizing: border-box;
         }
+
+        #activateSection {
+            display: none;
+            padding: 0 24px 32px;
+        }
+        #activateSection.activate-visible {
+            display: block;
+        }
+        .activate-hint {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .activate-code-input {
+            width: 100%;
+            height: 48px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 0 14px;
+            font-size: 16px;
+            letter-spacing: 0.04em;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+        }
+        .activate-code-input:focus {
+            outline: none;
+            border-color: #1e6fff;
+        }
+        .activate-btn {
+            width: 100%;
+            height: 48px;
+            background: #1e6fff;
+            border: none;
+            border-radius: 24px;
+            font-size: 17px;
+            color: #fff;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+        .activate-btn:disabled {
+            opacity: 0.6;
+        }
+        .activate-btn-secondary {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #d0d8e8;
+        }
+        .activate-msg {
+            font-size: 13px;
+            min-height: 1.2em;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .activate-msg.err {
+            color: #e53935;
+        }
+        .activate-msg.ok {
+            color: #2e7d32;
+        }
     </style>
 </head>
 <body>
@@ -278,48 +339,171 @@
         <span class="header-title">个人所得税</span>
     </div>
     
-    <!-- 头像区域 -->
-    <div class="avatar-section">
-        <div class="avatar">
-            <svg class="avatar-icon" viewBox="0 0 50 50" fill="none">
-                <!-- 头部 -->
-                <circle cx="25" cy="18" r="10" fill="#4a9eff"/>
-                <!-- 身体 -->
-                <path d="M10 45 C10 32 40 32 40 45" fill="#4a9eff"/>
-                <!-- 笑脸 -->
-                <path d="M21 20 Q25 24 29 20" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
-            </svg>
+    <div id="loginMainWrap">
+        <!-- 头像区域 -->
+        <div class="avatar-section">
+            <div class="avatar">
+                <svg class="avatar-icon" viewBox="0 0 50 50" fill="none">
+                    <!-- 头部 -->
+                    <circle cx="25" cy="18" r="10" fill="#4a9eff"/>
+                    <!-- 身体 -->
+                    <path d="M10 45 C10 32 40 32 40 45" fill="#4a9eff"/>
+                    <!-- 笑脸 -->
+                    <path d="M21 20 Q25 24 29 20" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 表单区域 -->
+        <div class="form-section">
+            <div class="form-item">
+                <span class="form-label">账号</span>
+                <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username">
+                <svg class="form-icon" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2"/>
+                    <text x="12" y="16" font-size="12" fill="#ccc" text-anchor="middle">?</text>
+                </svg>
+            </div>
+            <div class="form-item">
+                <span class="form-label">密码</span>
+                <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password">
+            </div>
+
+            <div class="trial-row">
+                <button type="button" class="trial-btn" id="trialExperienceBtn" onclick="doTestLogin()">测试体验</button>
+            </div>
+        </div>
+
+        <!-- 按钮区域 -->
+        <div class="btn-section">
+            <button type="button" class="login-btn" onclick="doLogin()">登录</button>
+            <a href="register.html" class="register-btn">注册</a>
         </div>
     </div>
-    
-    <!-- 表单区域 -->
-    <div class="form-section">
-        <div class="form-item">
-            <span class="form-label">账号</span>
-            <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username">
-            <svg class="form-icon" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2"/>
-                <text x="12" y="16" font-size="12" fill="#ccc" text-anchor="middle">?</text>
-            </svg>
-        </div>
-        <div class="form-item">
-            <span class="form-label">密码</span>
-            <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password">
-        </div>
-        
-        <div class="trial-row">
-            <button type="button" class="trial-btn" id="trialExperienceBtn" onclick="doTestLogin()">测试体验</button>
-        </div>
+
+    <div id="activateSection">
+        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。新用户注册时填写激活码即可直接开通，无需此步骤。</p>
+        <p class="activate-msg" id="activateMsg"></p>
+        <input type="text" id="activateCodeInput" class="activate-code-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+        <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
+        <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
     </div>
-    
-    <!-- 按钮区域 -->
-    <div class="btn-section">
-        <button type="button" class="login-btn" onclick="doLogin()">登录</button>
-        <a href="register.html" class="register-btn">注册</a>
-    </div>
-    
+
     <script>
         var LOGIN_TEST_EXPERIENCE_GUIDE_KEY = 'login_test_experience_guide_v1';
+
+        function isNeedActivateMode() {
+            try {
+                return new URLSearchParams(window.location.search).get('need_activate') === '1';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setActivateMsg(text, isErr) {
+            var el = document.getElementById('activateMsg');
+            if (!el) {
+                return;
+            }
+            el.textContent = text || '';
+            el.className = 'activate-msg' + (text ? (isErr ? ' err' : ' ok') : '');
+        }
+
+        function showActivateMode() {
+            var main = document.getElementById('loginMainWrap');
+            var act = document.getElementById('activateSection');
+            if (main) {
+                main.style.display = 'none';
+            }
+            if (act) {
+                act.classList.add('activate-visible');
+            }
+            try {
+                document.querySelector('.header-title').textContent = '账号激活';
+            } catch (e0) {}
+        }
+
+        function initActivateFromUrl() {
+            if (!isNeedActivateMode()) {
+                return;
+            }
+            var token = '';
+            try {
+                token = localStorage.getItem('token') || '';
+            } catch (e1) {}
+            if (!token) {
+                return;
+            }
+            try {
+                if (localStorage.getItem('account_active') === '1') {
+                    window.location.replace('mine.html');
+                    return;
+                }
+            } catch (e2) {}
+            showActivateMode();
+        }
+
+        initActivateFromUrl();
+
+        document.getElementById('btnDoActivate').addEventListener('click', function () {
+            var code = document.getElementById('activateCodeInput').value.trim();
+            if (!code) {
+                setActivateMsg('请输入激活码', true);
+                return;
+            }
+            var btn = document.getElementById('btnDoActivate');
+            btn.disabled = true;
+            setActivateMsg('');
+            fetch('api/auth.php', {
+                method: 'POST',
+                headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'activate', code: code })
+            })
+                .then(function (r) {
+                    return r.json().then(function (j) {
+                        return { status: r.status, body: j };
+                    });
+                })
+                .then(function (x) {
+                    if (x.status === 200 && x.body.code === 200 && x.body.data) {
+                        var d = x.body.data;
+                        if (d.token) {
+                            localStorage.setItem('token', d.token);
+                        }
+                        localStorage.setItem('account_active', '1');
+                        if (d.user_id) {
+                            localStorage.setItem('user_id', d.user_id);
+                        }
+                        if (d.real_name) {
+                            localStorage.setItem('real_name', d.real_name);
+                        }
+                        setActivateMsg('激活成功，正在进入…', false);
+                        setTimeout(function () {
+                            window.location.href = 'mine.html';
+                        }, 400);
+                        return;
+                    }
+                    setActivateMsg((x.body && x.body.msg) || '激活失败', true);
+                })
+                .catch(function () {
+                    setActivateMsg('网络错误', true);
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                });
+        });
+
+        document.getElementById('btnActivateLogout').addEventListener('click', function () {
+            if (typeof authClearSession === 'function') {
+                authClearSession();
+            } else {
+                try {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('account_active');
+                } catch (e3) {}
+            }
+            window.location.href = 'index.html';
+        });
 
         function dismissLoginTestGuide(permanent) {
             var layer = document.getElementById('loginTestGuideLayer');
@@ -380,6 +564,13 @@
         }
 
         function maybeShowLoginTestExperienceGuide() {
+            if (isNeedActivateMode()) {
+                try {
+                    if (localStorage.getItem('token') && localStorage.getItem('account_active') !== '1') {
+                        return;
+                    }
+                } catch (e3) {}
+            }
             try {
                 if (localStorage.getItem(LOGIN_TEST_EXPERIENCE_GUIDE_KEY) === '1') {
                     return;
@@ -430,7 +621,7 @@
                         localStorage.setItem('real_name', d.real_name || username);
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
-                        window.location.href = act ? 'mine.html' : 'activate.html';
+                        window.location.href = act ? 'mine.html' : 'index.html?need_activate=1';
                         return;
                     }
                     alert(data.msg || '登录失败');

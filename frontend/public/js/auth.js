@@ -5,7 +5,7 @@
  */
 (function () {
   var LOGIN_PAGE = 'index.html';
-  var ACTIVATE_PAGE = 'activate.html';
+  var ACTIVATE_PAGE = 'index.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var PUBLIC_PAGES = {
     'index.html': true,
@@ -28,7 +28,14 @@
   }
 
   function isActivationPage() {
-    return currentPageName() === ACTIVATE_PAGE;
+    if (currentPageName() !== 'index.html') {
+      return false;
+    }
+    try {
+      return new URLSearchParams(window.location.search).get('need_activate') === '1';
+    } catch (e) {
+      return false;
+    }
   }
 
   function isAccountActive() {
@@ -210,6 +217,9 @@
       if (isAccountActive()) {
         window.location.replace('mine.html');
       } else {
+        if (page === 'index.html' && isActivationPage()) {
+          return;
+        }
         window.location.replace(ACTIVATE_PAGE);
       }
     }

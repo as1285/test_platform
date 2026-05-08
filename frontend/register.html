@@ -120,8 +120,9 @@
                 <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
             </div>
             <div class="field">
-                <label>真实姓名</label>
-                <input type="text" id="real_name" name="real_name" placeholder="选填，用于个人中心展示" maxlength="32">
+                <label>激活码 <span class="req">*</span></label>
+                <input type="text" id="activation_code" name="activation_code" placeholder="请输入管理员提供的激活码" maxlength="128" autocomplete="off" autocapitalize="characters" required>
+                <div class="hint">注册时将校验激活码，验证通过后账号直接开通</div>
             </div>
             <button type="button" class="btn-submit" id="btnSubmit">注 册</button>
         </form>
@@ -144,11 +145,15 @@
             var username = document.getElementById('username').value.trim();
             var password = document.getElementById('password').value;
             var password2 = document.getElementById('password2').value;
-            var real_name = document.getElementById('real_name').value.trim();
+            var activation_code = document.getElementById('activation_code').value.trim();
             showErr('');
 
             if (!username || !password) {
                 showErr('请填写账号和密码');
+                return;
+            }
+            if (!activation_code) {
+                showErr('请填写激活码');
                 return;
             }
             if (password !== password2) {
@@ -166,7 +171,7 @@
                     action: 'register',
                     username: username,
                     password: password,
-                    real_name: real_name || undefined
+                    activation_code: activation_code
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -179,8 +184,8 @@
                         localStorage.setItem('userName', d.username || '');
                         localStorage.setItem('user_id', d.user_id || '');
                         localStorage.setItem('real_name', d.real_name || d.username || '');
-                        localStorage.setItem('account_active', '0');
-                        window.location.href = 'activate.html';
+                        localStorage.setItem('account_active', '1');
+                        window.location.href = 'mine.html';
                         return;
                     }
                     showErr(data.msg || '注册失败');
