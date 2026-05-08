@@ -180,6 +180,27 @@
 
         .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
 
+        .fb-type-options label { display: block; margin-bottom: 8px; font-size: 14px; color: #333; }
+        .feedback-reply-box {
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border-left: 3px solid #1e6fff;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .feedback-reply-box strong { color: #1e6fff; font-size: 12px; display: block; margin-bottom: 6px; }
+        .fb-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        #fb_content { min-height: 120px; resize: vertical; width: 100%; box-sizing: border-box; }
+
         .record-card {
             background: #f8f9fa;
             border-radius: 8px;
@@ -491,6 +512,7 @@
         <a href="#" class="tab" data-tab="employers">任职受雇</a>
         <a href="#" class="tab" data-tab="messages">消息管理</a>
         <a href="#" class="tab active" data-tab="records">税务记录</a>
+        <a href="#" class="tab" data-tab="feedback">用户反馈</a>
     </div>
 
     <div class="container">
@@ -609,6 +631,27 @@
             </div>
         </div>
 
+        <div id="panel-feedback" class="tab-panel">
+            <div class="card">
+                <div class="card-title">提交反馈</div>
+                <p class="hint" style="margin-bottom:12px;line-height:1.5;">欢迎反馈 APP 使用中的 BUG 或功能优化建议，我们会在管理后台查看并尽快回复（回复内容将显示在下方列表）。</p>
+                <div class="form-group fb-type-options">
+                    <label class="batch-salary-mode-title">反馈类型</label>
+                    <label><input type="radio" name="fb_type" value="bug" checked> BUG / 异常问题</label>
+                    <label><input type="radio" name="fb_type" value="suggestion"> 意见与优化建议</label>
+                </div>
+                <div class="form-group">
+                    <label for="fb_content">详细描述</label>
+                    <textarea id="fb_content" rows="5" maxlength="4000" placeholder="请尽量说明操作步骤、页面或期望行为，便于我们定位问题"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary btn-block" onclick="submitUserFeedback()">提交反馈</button>
+            </div>
+            <div class="card">
+                <div class="card-title">我的反馈与回复</div>
+                <div id="feedbackListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+            </div>
+        </div>
+
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
@@ -622,7 +665,7 @@
                 </div>
                 <div class="form-group">
                     <label for="batch_company_name">扣缴义务人名称</label>
-                    <input type="text" id="batch_company_name" autocomplete="organization" placeholder="选填；不填则使用下方单条表单中的名称">
+                    <input type="text" id="batch_company_name" autocomplete="organization" placeholder="请填写你自己公司全名">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -1121,6 +1164,9 @@
                     maybeShowConsultBatchGuide();
                 }, 320);
             }
+            if (tab === 'feedback') {
+                loadFeedbackList();
+            }
         }
 
         function initTabs() {
@@ -1133,7 +1179,7 @@
             });
             var tab = getUrlParam('tab') || 'records';
             if (tab === 'batch' || tab === 'batch_records') tab = 'records';
-            var valid = ['profile', 'employers', 'messages', 'records'];
+            var valid = ['profile', 'employers', 'messages', 'records', 'feedback'];
             if (valid.indexOf(tab) < 0) tab = 'records';
             switchTab(tab, false);
         }
@@ -2256,6 +2302,116 @@
             if (!el || el.value) return;
             var d = new Date();
             el.value = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+        }
+
+        function feedbackTypeLabel(t) {
+            return t === 'bug' ? 'BUG' : '意见优化';
+        }
+
+        function formatFeedbackTime(iso) {
+            if (!iso) return '';
+            var s = String(iso).replace('T', ' ').replace(/\.\d{3}Z?$/, '');
+            return s.length > 19 ? s.substring(0, 19) : s;
+        }
+
+        function renderFeedbackListFromArray(items) {
+            var mount = document.getElementById('feedbackListMount');
+            if (!mount) return;
+            if (!items.length) {
+                mount.innerHTML = '<div class="empty">暂无反馈记录</div>';
+                return;
+            }
+            var html = '';
+            items.forEach(function (it) {
+                var typ = feedbackTypeLabel(it.feedback_type);
+                var replyBlock;
+                if (it.admin_reply && String(it.admin_reply).trim()) {
+                    replyBlock =
+                        '<div class="feedback-reply-box"><strong>官方回复</strong><div>' +
+                        escapeHtml(it.admin_reply) +
+                        '</div>';
+                    if (it.replied_at) {
+                        replyBlock +=
+                            '<div class="hint" style="margin-top:6px;">' +
+                            escapeHtml(formatFeedbackTime(it.replied_at)) +
+                            '</div>';
+                    }
+                    replyBlock += '</div>';
+                } else {
+                    replyBlock = '<p class="hint" style="margin-top:8px;">暂未回复，请耐心等待</p>';
+                }
+                html += '<div class="list-item" style="flex-direction:column;align-items:stretch;">';
+                html +=
+                    '<div><span class="fb-type-badge">' +
+                    escapeHtml(typ) +
+                    '</span> <span class="hint">' +
+                    escapeHtml(formatFeedbackTime(it.created_at)) +
+                    '</span></div>';
+                html +=
+                    '<div style="margin-top:8px;line-height:1.5;font-size:14px;color:#333;">' +
+                    escapeHtml(it.content || '') +
+                    '</div>';
+                html += replyBlock;
+                html += '</div>';
+            });
+            mount.innerHTML = html;
+        }
+
+        function refreshFeedbackList() {
+            return authFetch('api/feedback.php?action=list')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (res) {
+                    if (res.code === 200 && res.data && Array.isArray(res.data.items)) {
+                        renderFeedbackListFromArray(res.data.items);
+                        return;
+                    }
+                    throw new Error(res.msg || '加载失败');
+                });
+        }
+
+        function loadFeedbackList() {
+            var mount = document.getElementById('feedbackListMount');
+            if (mount) {
+                mount.innerHTML = '<div class="empty" style="padding:24px;">加载中…</div>';
+            }
+            refreshFeedbackList().catch(function (err) {
+                if (mount) {
+                    mount.innerHTML =
+                        '<div class="empty">' + escapeHtml(err.message || '加载失败') + '</div>';
+                }
+            });
+        }
+
+        function submitUserFeedback() {
+            var typeEl = document.querySelector('#panel-feedback input[name="fb_type"]:checked');
+            var type = typeEl ? typeEl.value : 'suggestion';
+            var ta = document.getElementById('fb_content');
+            var content = ta ? ta.value.trim() : '';
+            if (!content) {
+                showMsg('请填写反馈内容', false);
+                return;
+            }
+            authFetch('api/feedback.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ feedback_type: type, content: content })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (res) {
+                    if (res.code === 200) {
+                        if (ta) ta.value = '';
+                        showMsg('提交成功，感谢您的反馈', true);
+                        return loadFeedbackList();
+                    }
+                    throw new Error(res.msg || '提交失败');
+                })
+                .catch(function (err) {
+                    showMsg('提交失败：' + (err.message || ''), false);
+                });
         }
 
         function boot() {

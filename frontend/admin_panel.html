@@ -313,6 +313,7 @@
                 <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
                 <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
                 <button type="button" class="nav-item" data-page="login-log" data-title="登录流水">登录流水</button>
                 <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
                 <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
@@ -344,7 +345,7 @@
 
                 <div id="page-appearance" class="page-panel" role="tabpanel">
         <section>
-            <h2>用户端外观（个人中心 / 五个 TAB / 各页顶图）</h2>
+            <h2>用户端外观（个人中心 / 六个 TAB / 各页顶图）</h2>
             <div class="mine-ui-block">
                 <div>
                     <label for="mineTheme">主题</label>
@@ -650,6 +651,47 @@
         </section>
                 </div>
 
+                <div id="page-feedback" class="page-panel" role="tabpanel">
+        <section>
+            <h2>用户反馈</h2>
+            <p class="hint">用户在个人中心「用户反馈」提交的 BUG 与优化建议；可回复后，用户在同一页面查看官方回复。</p>
+            <div class="form-row" style="align-items: flex-end;">
+                <div>
+                    <label for="feedbackFilterType">类型</label>
+                    <select id="feedbackFilterType" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="">全部</option>
+                        <option value="bug">BUG</option>
+                        <option value="suggestion">意见优化</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary" id="btnRefreshFeedback">刷新</button>
+            </div>
+            <div class="scroll-x" style="margin-top: 12px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>账号</th>
+                            <th>姓名</th>
+                            <th>类型</th>
+                            <th>内容</th>
+                            <th>提交时间</th>
+                            <th>状态</th>
+                            <th>官方回复</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feedbackAdminTbody"><tr><td colspan="9">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="feedbackAdminPagination">
+                <button type="button" class="btn-page" id="feedbackAdminPrev">上一页</button>
+                <span id="feedbackAdminPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="feedbackAdminNext">下一页</button>
+            </div>
+        </section>
+                </div>
+
                 <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>埋点说明</h2>
@@ -796,6 +838,18 @@
             </div>
         </div>
     </div>
+    <div id="feedbackReplyBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+        <div onclick="event.stopPropagation()" style="background:#fff;border-radius:12px;padding:20px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+            <h2 style="font-size:16px;margin-bottom:10px;color:#1e3a5f;">回复用户反馈</h2>
+            <p class="hint" id="feedbackReplyMeta" style="margin-bottom:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;"></p>
+            <label for="feedbackReplyText" style="font-size:13px;color:#666;">回复内容（用户将在个人中心查看）</label>
+            <textarea id="feedbackReplyText" rows="8" maxlength="4000" style="width:100%;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box;"></textarea>
+            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="button" class="btn-primary" id="feedbackReplySave">保存回复</button>
+                <button type="button" class="btn-page" id="feedbackReplyCancel">取消</button>
+            </div>
+        </div>
+    </div>
     <script>
         function esc(s) {
             return String(s == null ? '' : s)
@@ -920,6 +974,7 @@
                 appearance: 1,
                 codes: 1,
                 users: 1,
+                feedback: 1,
                 analytics: 1,
                 'api-analytics': 1,
                 'login-log': 1
@@ -964,6 +1019,125 @@
                 }
                 loadLoginRecentPage(1);
             }
+            if (pageKey === 'feedback') {
+                feedbackAdminPage = 1;
+                loadAdminFeedbackPage(1);
+            }
+        }
+
+        var feedbackAdminPage = 1;
+        var feedbackAdminLimit = 15;
+        var feedbackAdminLastItems = [];
+        var feedbackReplyEditingId = null;
+
+        function closeFeedbackReplyModal() {
+            var bd = document.getElementById('feedbackReplyBackdrop');
+            if (bd) {
+                bd.style.display = 'none';
+            }
+            feedbackReplyEditingId = null;
+        }
+
+        function openFeedbackReplyModal(row) {
+            feedbackReplyEditingId = row.id;
+            var meta =
+                'ID #' +
+                row.id +
+                ' · 账号 ' +
+                (row.user_id || '') +
+                ' · ' +
+                (row.real_name_snapshot || '—') +
+                '\n\n用户原文：\n' +
+                (row.content || '');
+            document.getElementById('feedbackReplyMeta').textContent = meta;
+            document.getElementById('feedbackReplyText').value =
+                row.admin_reply != null ? String(row.admin_reply) : '';
+            document.getElementById('feedbackReplyBackdrop').style.display = 'flex';
+        }
+
+        function loadAdminFeedbackPage(page) {
+            if (page != null && isFinite(page)) {
+                feedbackAdminPage = Math.max(1, parseInt(page, 10) || 1);
+            }
+            var typeF = document.getElementById('feedbackFilterType');
+            var t = typeF ? typeF.value : '';
+            var q =
+                'api/admin/feedback?page=' +
+                encodeURIComponent(feedbackAdminPage) +
+                '&limit=' +
+                encodeURIComponent(feedbackAdminLimit);
+            if (t) {
+                q += '&type=' + encodeURIComponent(t);
+            }
+            document.getElementById('feedbackAdminTbody').innerHTML =
+                '<tr><td colspan="9">加载中…</td></tr>';
+            adminFetch(q)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        document.getElementById('feedbackAdminTbody').innerHTML =
+                            '<tr><td colspan="9">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        return;
+                    }
+                    var items = j.data.items || [];
+                    feedbackAdminLastItems = items;
+                    var total = j.data.total != null ? Number(j.data.total) : 0;
+                    var tp = j.data.total_pages != null ? Number(j.data.total_pages) : 1;
+                    if (tp < 1) {
+                        tp = 1;
+                    }
+                    document.getElementById('feedbackAdminPageInfo').textContent =
+                        '第 ' + feedbackAdminPage + ' / ' + tp + ' 页 · 共 ' + total + ' 条';
+                    var prev = document.getElementById('feedbackAdminPrev');
+                    var next = document.getElementById('feedbackAdminNext');
+                    if (prev) {
+                        prev.disabled = feedbackAdminPage <= 1;
+                    }
+                    if (next) {
+                        next.disabled = feedbackAdminPage >= tp;
+                    }
+                    var html = '';
+                    if (!items.length) {
+                        html = '<tr><td colspan="9">暂无数据</td></tr>';
+                    } else {
+                        items.forEach(function (r) {
+                            var typLabel = r.feedback_type === 'bug' ? 'BUG' : '意见优化';
+                            var snippet = String(r.content || '');
+                            if (snippet.length > 100) {
+                                snippet = snippet.substring(0, 100) + '…';
+                            }
+                            var hasReply = r.admin_reply && String(r.admin_reply).trim();
+                            var repSnippet = hasReply ? String(r.admin_reply) : '';
+                            if (repSnippet.length > 60) {
+                                repSnippet = repSnippet.substring(0, 60) + '…';
+                            }
+                            html += '<tr>';
+                            html += '<td>' + esc(String(r.id)) + '</td>';
+                            html += '<td class="cell-break">' + esc(r.user_id || '') + '</td>';
+                            html += '<td>' + esc(r.real_name_snapshot || '—') + '</td>';
+                            html += '<td>' + esc(typLabel) + '</td>';
+                            html += '<td class="cell-break">' + esc(snippet) + '</td>';
+                            html += '<td>' + esc(formatDt(r.created_at)) + '</td>';
+                            html += '<td>' + esc(hasReply ? '已回复' : '待回复') + '</td>';
+                            html +=
+                                '<td class="cell-break">' + esc(hasReply ? repSnippet : '—') + '</td>';
+                            html +=
+                                '<td><button type="button" class="btn-sm btn-copy" data-feedback-id="' +
+                                esc(String(r.id)) +
+                                '">' +
+                                esc(hasReply ? '修改回复' : '回复') +
+                                '</button></td>';
+                            html += '</tr>';
+                        });
+                    }
+                    document.getElementById('feedbackAdminTbody').innerHTML = html;
+                })
+                .catch(function () {
+                    document.getElementById('feedbackAdminTbody').innerHTML =
+                        '<tr><td colspan="9">网络错误</td></tr>';
+                });
         }
 
         function loadApiAnalyticsPanel() {
@@ -1674,6 +1848,69 @@
             loginRecentLimit = parseInt(document.getElementById('loginLogPageSize').value, 10) || 20;
             loadLoginRecentPage(1);
         });
+
+        document.getElementById('feedbackAdminTbody').addEventListener('click', function (e) {
+            var b = e.target.closest('button[data-feedback-id]');
+            if (!b) {
+                return;
+            }
+            var id = parseInt(b.getAttribute('data-feedback-id'), 10);
+            var row = (feedbackAdminLastItems || []).filter(function (x) {
+                return Number(x.id) === id;
+            })[0];
+            if (row) {
+                openFeedbackReplyModal(row);
+            }
+        });
+        document.getElementById('feedbackReplyBackdrop').addEventListener('click', function (e) {
+            if (e.target.id === 'feedbackReplyBackdrop') {
+                closeFeedbackReplyModal();
+            }
+        });
+        document.getElementById('feedbackReplyCancel').addEventListener('click', closeFeedbackReplyModal);
+        document.getElementById('feedbackReplySave').addEventListener('click', function () {
+            if (!feedbackReplyEditingId) {
+                return;
+            }
+            var text = document.getElementById('feedbackReplyText').value.trim();
+            if (!text) {
+                alert('请填写回复内容');
+                return;
+            }
+            adminFetch('api/admin/feedback/reply', {
+                method: 'POST',
+                body: JSON.stringify({ id: feedbackReplyEditingId, reply: text })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code === 200) {
+                        closeFeedbackReplyModal();
+                        loadAdminFeedbackPage(feedbackAdminPage);
+                    } else {
+                        alert(j.msg || '保存失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                });
+        });
+        document.getElementById('btnRefreshFeedback').addEventListener('click', function () {
+            loadAdminFeedbackPage(feedbackAdminPage);
+        });
+        document.getElementById('feedbackFilterType').addEventListener('change', function () {
+            loadAdminFeedbackPage(1);
+        });
+        document.getElementById('feedbackAdminPrev').addEventListener('click', function () {
+            if (feedbackAdminPage > 1) {
+                loadAdminFeedbackPage(feedbackAdminPage - 1);
+            }
+        });
+        document.getElementById('feedbackAdminNext').addEventListener('click', function () {
+            loadAdminFeedbackPage(feedbackAdminPage + 1);
+        });
+
         document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
             if (_adminAnalyticsSeen) loadAnalyticsDashboard();
         });

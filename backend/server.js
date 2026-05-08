@@ -589,6 +589,23 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_feedback (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+      real_name_snapshot VARCHAR(255) NULL,
+      feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion',
+      content TEXT NOT NULL,
+      admin_reply TEXT NULL,
+      replied_at DATETIME NULL,
+      replied_by VARCHAR(255) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_id (user_id),
+      INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_devices (
       username VARCHAR(255) NOT NULL,
       device_fp CHAR(64) NOT NULL,
@@ -1564,6 +1581,9 @@ function classifyAnalyticsRoute(req) {
   if (path.endsWith('/user.php') || path === '/user.php') {
     return { route_key: method + ' user.php' + actionSuffix, biz_category: '用户资料与任职' };
   }
+  if (path.endsWith('/feedback.php') || path === '/feedback.php') {
+    return { route_key: method + ' feedback.php' + actionSuffix, biz_category: '用户反馈' };
+  }
   if (path.endsWith('/auth.php') || path === '/auth.php') {
     return { route_key: method + ' auth.php' + actionSuffix, biz_category: '认证注册' };
   }
@@ -1953,6 +1973,75 @@ async function handleMessagePost(req, res) {
   }
 }
 
+async function handleFeedbackGet(req, res) {
+  var action = req.query.action;
+  var userId = req.authUserId;
+  if (action !== 'list' || userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: 'action=list 且需已登录' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute(
+      `SELECT id, feedback_type, content, admin_reply, replied_at, created_at
+       FROM user_feedback WHERE user_id = ? ORDER BY id DESC LIMIT 200`,
+      [String(userId)]
+    );
+    conn.release();
+    var out = rows.map(function (r) {
+      return {
+        id: r.id,
+        feedback_type: r.feedback_type,
+        content: r.content,
+        admin_reply: r.admin_reply,
+        replied_at: r.replied_at ? r.replied_at.toISOString() : null,
+        created_at: r.created_at ? r.created_at.toISOString() : ''
+      };
+    });
+    res.json({ code: 200, data: { items: out } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleFeedbackPost(req, res) {
+  var body = req.body || {};
+  var userId = req.authUserId;
+  if (userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: 'user_id required' });
+  }
+  var fbType = body.feedback_type != null ? String(body.feedback_type).trim() : '';
+  var content = body.content != null ? String(body.content).trim() : '';
+  if (fbType !== 'bug' && fbType !== 'suggestion') {
+    return res.status(400).json({ code: 400, msg: 'feedback_type 须为 bug 或 suggestion' });
+  }
+  if (!content || content.length > 4000) {
+    return res.status(400).json({ code: 400, msg: '内容不能为空且不超过 4000 字' });
+  }
+  try {
+    var snap = '';
+    try {
+      var urow = await getUserRowByUsername(userId);
+      snap = urow && urow.real_name != null ? String(urow.real_name).substring(0, 255) : '';
+    } catch (e1) {
+      console.error('handleFeedbackPost snapshot', e1);
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [ins] = await conn.execute(
+        `INSERT INTO user_feedback (user_id, real_name_snapshot, feedback_type, content) VALUES (?, ?, ?, ?)`,
+        [String(userId), snap || null, fbType, content]
+      );
+      return res.json({ code: 200, data: { id: ins.insertId } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -2009,6 +2098,10 @@ app.get('/api/user.php', requireAuth, requireActivated, handleUserGet);
 app.post('/api/user.php', requireAuth, requireActivated, handleUserPost);
 app.get('/user.php', requireAuth, requireActivated, handleUserGet);
 app.post('/user.php', requireAuth, requireActivated, handleUserPost);
+app.get('/api/feedback.php', requireAuth, requireActivated, handleFeedbackGet);
+app.post('/api/feedback.php', requireAuth, requireActivated, handleFeedbackPost);
+app.get('/feedback.php', requireAuth, requireActivated, handleFeedbackGet);
+app.post('/feedback.php', requireAuth, requireActivated, handleFeedbackPost);
 
 async function handleAuthGet(req, res) {
   if (req.query.action !== 'status') {
@@ -3050,6 +3143,98 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
   }
 }
 
+async function handleAdminFeedbackList(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+    var typeFilter = req.query.type != null ? String(req.query.type).trim() : '';
+    var where = '';
+    var params = [];
+    if (typeFilter === 'bug' || typeFilter === 'suggestion') {
+      where = ' WHERE feedback_type = ? ';
+      params.push(typeFilter);
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [cntRows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM user_feedback' + where,
+        params
+      );
+      var total = cntRows.length ? Number(cntRows[0].c) : 0;
+      var totalPages = Math.ceil(total / limit);
+      if (total > 0 && totalPages < 1) {
+        totalPages = 1;
+      }
+      const [rows] = await conn.query(
+        `SELECT id, user_id, real_name_snapshot, feedback_type, content, admin_reply, replied_at, replied_by, created_at
+         FROM user_feedback ${where} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`,
+        params
+      );
+      return res.json({
+        code: 200,
+        data: {
+          items: rows.map(function (r) {
+            return {
+              id: r.id,
+              user_id: r.user_id,
+              real_name_snapshot: r.real_name_snapshot,
+              feedback_type: r.feedback_type,
+              content: r.content,
+              admin_reply: r.admin_reply,
+              replied_at: r.replied_at ? r.replied_at.toISOString() : null,
+              replied_by: r.replied_by,
+              created_at: r.created_at ? r.created_at.toISOString() : ''
+            };
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminFeedbackReply(req, res) {
+  try {
+    var body = req.body || {};
+    var id = parseInt(body.id, 10);
+    var reply = body.reply != null ? String(body.reply).trim() : '';
+    if (!id || id < 1) {
+      return res.status(400).json({ code: 400, msg: 'id 无效' });
+    }
+    if (!reply || reply.length > 4000) {
+      return res.status(400).json({ code: 400, msg: '回复内容不能为空且不超过 4000 字' });
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [result] = await conn.execute(
+        `UPDATE user_feedback SET admin_reply = ?, replied_at = NOW(), replied_by = ? WHERE id = ?`,
+        [reply, String(ADMIN_PANEL_USER), id]
+      );
+      if (!result.affectedRows) {
+        return res.status(404).json({ code: 404, msg: '记录不存在' });
+      }
+      return res.json({ code: 200, data: { success: true } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
 app.post(
@@ -3079,6 +3264,8 @@ app.get('/api/admin/analytics/api-stats', requireAdminAuth, handleAdminAnalytics
 app.get('/api/admin/analytics/devices', requireAdminAuth, handleAdminAnalyticsDevices);
 app.get('/api/admin/analytics/device-stats', requireAdminAuth, handleAdminAnalyticsDeviceStats);
 app.get('/api/admin/analytics/login-recent', requireAdminAuth, handleAdminAnalyticsLoginRecent);
+app.get('/api/admin/feedback', requireAdminAuth, handleAdminFeedbackList);
+app.post('/api/admin/feedback/reply', requireAdminAuth, handleAdminFeedbackReply);
 
 function healthHandler(req, res) {
   res.json({ ok: true });

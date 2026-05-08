@@ -87,6 +87,22 @@ CREATE TABLE IF NOT EXISTS messages (
     INDEX idx_msg_date (msg_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 用户反馈（BUG / 意见优化；管理后台可回复）
+CREATE TABLE IF NOT EXISTS user_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+    real_name_snapshot VARCHAR(255) NULL,
+    feedback_type VARCHAR(32) NOT NULL COMMENT 'bug | suggestion',
+    content TEXT NOT NULL,
+    admin_reply TEXT NULL,
+    replied_at DATETIME NULL,
+    replied_by VARCHAR(255) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 全局配置（如测试账号固定公司名称，管理后台可改）
 CREATE TABLE IF NOT EXISTS app_settings (
     setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
