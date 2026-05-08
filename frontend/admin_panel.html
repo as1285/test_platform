@@ -332,14 +332,14 @@
             <h2>系统设置</h2>
             <div class="form-row" style="flex-direction: column; align-items: stretch;">
                 <div style="width:100%;max-width:640px;">
-                    <label for="testCompanyName">测试账号固定「扣缴义务人名称」</label>
+                    <label for="testCompanyName">测试账号默认「扣缴义务人名称」（接口参考）</label>
                     <input type="text" id="testCompanyName" maxlength="500" placeholder="加载中…" style="width:100%;max-width:640px;">
                 </div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
                     <button type="button" class="btn-primary" id="btnSaveTestCompany">保存</button>
                 </div>
             </div>
-            <p class="hint">测试账号在「个人中心」添加税务记录、任职受雇、批量添加时，扣缴义务人名称均强制为此处配置；保存后会同步更新所有测试账号任职受雇中的公司名称（不自动改历史税务记录）。</p>
+            <p class="hint">此处名称通过用户资料接口下发（test_company_locked_name），便于前端展示或作为占位参考；测试账号可在个人中心自行填写真实姓名、公司名称与扣缴义务人名称，保存本设置不会批量改写用户已有任职或税务记录。</p>
         </section>
                 </div>
 
@@ -1506,7 +1506,7 @@
                             var name = btn.getAttribute('data-u');
                             var t = parseInt(btn.getAttribute('data-t'), 10);
                             var tip = t === 1
-                                ? '将「' + name + '」设为测试账号？任职受雇中的公司名称将统一为「系统设置」中的测试公司名称。'
+                                ? '将「' + name + '」设为测试账号？（水印等测试标识将生效；不会自动修改其任职受雇中的公司名称。）'
                                 : '将「' + name + '」设为普通账号？';
                             if (!confirm(tip)) return;
                             adminFetch('api/admin/user-type', {

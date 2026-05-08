@@ -971,60 +971,36 @@
             return localStorage.getItem('user_id') || '64';
         }
 
-        /** 由服务端 user.info 的 test_company_locked_name 写入；管理后台可改库中配置 */
-        window.consultTestCompanyName = '';
         window.consultUserFlags = { is_test_account: false };
 
         function applyConsultTestRestrictions(user) {
             var isTest = !!(user && user.is_test_account);
             window.consultUserFlags = { is_test_account: isTest };
-            var locked = isTest && user && user.test_company_locked_name
-                ? String(user.test_company_locked_name).trim()
-                : '';
-            window.consultTestCompanyName = locked;
             var pfName = document.getElementById('pf_real_name');
             if (pfName) {
-                pfName.readOnly = isTest;
-                pfName.style.background = isTest ? '#f0f0f0' : '';
+                pfName.readOnly = false;
+                pfName.style.background = '';
             }
             var ph = document.getElementById('pf_test_hint');
-            if (ph) ph.style.display = isTest ? 'block' : 'none';
+            if (ph) ph.style.display = 'none';
             var ef = document.getElementById('ef_company_name');
             var eh = document.getElementById('ef_test_hint');
             if (ef) {
-                if (isTest) {
-                    ef.value = locked;
-                    ef.readOnly = true;
-                    ef.style.background = '#f0f0f0';
-                } else {
-                    ef.readOnly = false;
-                    ef.style.background = '';
-                }
+                ef.readOnly = false;
+                ef.style.background = '';
             }
-            if (eh) eh.style.display = isTest ? 'block' : 'none';
+            if (eh) eh.style.display = 'none';
             var fcn = document.getElementById('f_company_name');
             var fth = document.getElementById('f_tax_company_hint');
             if (fcn) {
-                if (isTest) {
-                    fcn.value = locked;
-                    fcn.readOnly = true;
-                    fcn.style.background = '#f0f0f0';
-                } else {
-                    fcn.readOnly = false;
-                    fcn.style.background = '';
-                }
+                fcn.readOnly = false;
+                fcn.style.background = '';
             }
-            if (fth) fth.style.display = isTest ? 'block' : 'none';
+            if (fth) fth.style.display = 'none';
             var bcn = document.getElementById('batch_company_name');
             if (bcn) {
-                if (isTest) {
-                    bcn.value = locked;
-                    bcn.readOnly = true;
-                    bcn.style.background = '#f0f0f0';
-                } else {
-                    bcn.readOnly = false;
-                    bcn.style.background = '';
-                }
+                bcn.readOnly = false;
+                bcn.style.background = '';
             }
         }
 
@@ -1088,7 +1064,7 @@
                 '<div class="consult-batch-guide-title" id="consultBatchGuideTitle">填写「批量添加」</div>' +
                 '<ol class="consult-batch-guide-list">' +
                 '<li>选择<strong>计税年度</strong>与<strong>工资填写方式</strong>（整年同一月薪或按月分别填写）。</li>' +
-                '<li>核对<strong>扣缴义务人</strong>（测试账号通常与后台固定名称一致）、<strong>月薪</strong>及<strong>社会保险扣费</strong>、<strong>专项附加扣除</strong>是否符合当前验收场景。</li>' +
+                '<li>核对<strong>扣缴义务人</strong>、<strong>月薪</strong>及<strong>社会保险扣费</strong>、<strong>专项附加扣除</strong>是否符合当前验收场景。</li>' +
                 '<li>确认后点击<strong>「生成全年 12 个月记录」</strong>写入；单条可在下方「添加税务记录」再改。正式用户不会看到本提示。</li>' +
                 '</ol>' +
                 '<div class="consult-batch-guide-actions">' +
@@ -1302,9 +1278,7 @@
                     family_count: familyCount,
                     bank_card_count: bankCardCount
                 };
-                if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
-                    payload.real_name = realName;
-                }
+                payload.real_name = realName;
                 authFetch('api/user.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1353,9 +1327,7 @@
                 month: parseInt(document.getElementById('f_month').value, 10),
                 income_type: document.getElementById('f_income_type').value,
                 income_subtype: document.getElementById('f_income_subtype').value,
-                company_name: (window.consultUserFlags && window.consultUserFlags.is_test_account)
-                    ? (document.getElementById('f_company_name') && document.getElementById('f_company_name').value) || window.consultTestCompanyName || ''
-                    : document.getElementById('f_company_name').value,
+                company_name: document.getElementById('f_company_name').value,
                 company_tax_id: document.getElementById('f_company_tax_id').value,
                 tax_authority: document.getElementById('f_tax_authority').value,
                 report_channel: document.getElementById('f_report_channel').value,
@@ -1384,11 +1356,8 @@
             document.getElementById('f_income_type').value = r.income_type || '工资薪金';
             document.getElementById('f_income_subtype').value = r.income_subtype || '';
             document.getElementById('f_company_name').value = r.company_name || '';
-            if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
-                document.getElementById('f_company_name').value = window.consultTestCompanyName || r.company_name || '';
-            }
             var bcnField = document.getElementById('batch_company_name');
-            if (bcnField && !(window.consultUserFlags && window.consultUserFlags.is_test_account)) {
+            if (bcnField) {
                 bcnField.value = r.company_name || '';
             }
             document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
@@ -1414,17 +1383,8 @@
             document.getElementById('editing_id').value = '';
             document.getElementById('recordSubmitBtn').textContent = '添加记录';
             document.getElementById('recordForm').reset();
-            if (window.consultUserFlags && window.consultUserFlags.is_test_account) {
-                var fcn = document.getElementById('f_company_name');
-                if (fcn) {
-                    fcn.value = window.consultTestCompanyName || '';
-                    fcn.readOnly = true;
-                    fcn.style.background = '#f0f0f0';
-                }
-            } else {
-                var bcnClear = document.getElementById('batch_company_name');
-                if (bcnClear) bcnClear.value = '';
-            }
+            var bcnClear = document.getElementById('batch_company_name');
+            if (bcnClear) bcnClear.value = '';
             initHeader();
         }
 

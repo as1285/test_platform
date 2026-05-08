@@ -1417,8 +1417,6 @@ async function handleUserPost(req, res) {
           INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
           VALUES (?, ?, ?, ?, 0, ?, ?)
         `, [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']);
-      } else if (rowUserTypeIsTest(userRows[0])) {
-        employerData.company_name = await getTestAccountCompanyName();
       }
       
       employerData.id = 'emp_' + Date.now();
@@ -1460,7 +1458,7 @@ async function handleUserPost(req, res) {
         let updateFields = [];
         let updateParams = [];
         
-        if (body.real_name != null && !isTestProfile) {
+        if (body.real_name != null) {
           updateFields.push('real_name = ?');
           updateParams.push(String(body.real_name));
         }
@@ -2097,10 +2095,6 @@ async function handleTaxPost(req, res) {
       if (!record || typeof record !== 'object') {
         return res.status(400).json({ code: 400, msg: 'record required' });
       }
-      var urow = await getUserRowByUsername(userId);
-      if (urow && rowUserTypeIsTest(urow)) {
-        record = Object.assign({}, record, { company_name: await getTestAccountCompanyName() });
-      }
       var out = await saveRecord(userId, record);
       return res.json({ code: 200, data: out });
     }
@@ -2190,6 +2184,7 @@ async function handleActivatePost(req, res) {
         real_name: rec.real_name || rec.username,
         username: rec.username,
         account_active: true,
+        is_test_account: rowUserTypeIsTest(rec),
         token: signAccessToken({
           user_id: rec.username,
           username: rec.username,
@@ -2205,6 +2200,7 @@ async function handleActivatePost(req, res) {
       real_name: rec2.real_name || rec2.username,
       username: rec2.username,
       account_active: true,
+      is_test_account: rowUserTypeIsTest(rec2),
       token: signAccessToken({
         user_id: rec2.username,
         username: rec2.username,
@@ -2466,10 +2462,6 @@ async function handleAdminUserType(req, res) {
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
     await conn.execute('UPDATE users SET user_type = ? WHERE username = ?', [ut, target]);
-    if (ut === USER_TYPE_TEST) {
-      var testCo = await getTestAccountCompanyName();
-      await conn.execute('UPDATE employers SET company_name = ? WHERE user_id = ?', [testCo, target]);
-    }
     conn.release();
     return res.json({ code: 200, data: { username: target, user_type: ut } });
   } catch (e) {
@@ -2518,10 +2510,6 @@ async function handleAdminSettingsPost(req, res) {
         `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
         [SETTING_KEY_TEST_COMPANY, name]
-      );
-      await conn.execute(
-        'UPDATE employers e INNER JOIN users u ON e.user_id = u.username SET e.company_name = ? WHERE u.user_type = ?',
-        [name, USER_TYPE_TEST]
       );
       invalidateTestCompanyNameCache();
     }
