@@ -26,10 +26,10 @@
     <preference name="SplashScreenDelay" value="2500" />
     <preference name="FadeSplashScreen" value="true" />
     <preference name="FadeSplashScreenDuration" value="400" />
-    <!-- 原生状态栏固定为顶部主蓝色；WebView 不叠到状态栏下，避免 Android safe-area 取 0 时遮挡页面 -->
-    <preference name="StatusBarBackgroundColor" value="#1e6fff" />
+    <!-- 透明状态栏叠在 WebView 上；H5 用固定兜底变量给顶部内容让位，避免 Android env() 取 0 -->
+    <preference name="StatusBarBackgroundColor" value="#00000000" />
     <preference name="StatusBarStyle" value="lightcontent" />
-    <preference name="StatusBarOverlaysWebView" value="false" />
+    <preference name="StatusBarOverlaysWebView" value="true" />
     <!-- 供 H5 识别壳内环境（iframe 内页面同源 UA），保留给设备上报/后续兼容逻辑使用 -->
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />

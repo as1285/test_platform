@@ -66,18 +66,33 @@
         document.documentElement.classList.add('cordova-tax-shell');
       }
       var style = document.createElement('style');
-      /*
-       * 浏览器/PWA 场景使用 body::before 给安全区补蓝色。
-       * Cordova 原生壳已改为 StatusBarOverlaysWebView=false，由原生状态栏着色，不再给壳内页面额外补 30px。
-       */
-      style.textContent =
-        'html{background:' +
-        APP_STATUS_BAR_COLOR +
-        ';}' +
+      var barFill =
         'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
         APP_STATUS_BAR_COLOR +
         ';z-index:2147483647;pointer-events:none;}';
+      if (cordovaShell) {
+        barFill = '';
+      }
+      /*
+       * 浏览器/PWA 场景使用 body::before 给安全区补蓝色。
+       * Cordova 原生壳使用透明叠层状态栏，由下方 shellExtra 统一给顶部内容让位。
+       */
+      style.textContent = 'html{background:' + APP_STATUS_BAR_COLOR + ';}' + barFill;
       document.head.appendChild(style);
+      if (cordovaShell) {
+        var shellExtra = document.createElement('style');
+        shellExtra.setAttribute('data-cordova-tax-shell-safe', '1');
+        shellExtra.textContent =
+          'html.cordova-tax-shell{--app-shell-statusbar-top:48px;}' +
+          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
+          'html.cordova-tax-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
+          'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}';
+        document.head.appendChild(shellExtra);
+      }
     } catch (e) {}
     patchViewportFit();
     setTimeout(patchViewportFit, 0);
