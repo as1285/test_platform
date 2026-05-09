@@ -5,7 +5,7 @@
     <script src="/js/auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <!-- auth.js 默认用纯色填安全区；本页改为与头图一致的浅→深蓝渐变，更接近官方「通栏」顶栏 -->
+    <!-- 顶栏与头图共用一张背景图：关闭 auth.js 的 body::before 遮罩，头区背景延伸至刘海 -->
     <script>
         (function () {
             function setMeta(n, c) {
@@ -50,21 +50,26 @@
             overflow-x: hidden;
         }
         
-        /* 顶部：安全区 + 头图上方衔接（与 consult/register 等页同色渐变语言一致） */
-        html {
-            background: linear-gradient(180deg, #4d9aff 0%, #1e6fff 78%) fixed !important;
-        }
+        /* 禁用 auth.js 注入的顶栏纯色层（z-index 极高），否则状态栏带与头图永远「两张皮」 */
         body::before {
-            background: linear-gradient(180deg, #4d9aff 0%, #1e6fff 100%) !important;
+            display: none !important;
         }
+        html {
+            background-color: #f5f6fa !important;
+        }
+        /* 同一背景图铺满刘海区 + 头图区（cover + top，与官方通栏头图一致） */
         .header-bg {
-            background: linear-gradient(180deg, #4d9aff 0%, #1e6fff 88%);
+            --mine-header-bg-url: url('grdb.jpg');
+            margin-top: calc(-1 * env(safe-area-inset-top, 0px));
             padding-top: env(safe-area-inset-top, 0px);
-        }
-        
-        .header-bg img {
             width: 100%;
-            display: block;
+            box-sizing: border-box;
+            background-color: #1e6fff;
+            background-image: var(--mine-header-bg-url);
+            background-size: cover;
+            background-position: center top;
+            background-repeat: no-repeat;
+            min-height: calc(env(safe-area-inset-top, 0px) + min(46vw, 248px));
         }
         
         /* 内容包装器 - 顶部圆角 */
@@ -287,9 +292,7 @@
     <!-- 我的页面 -->
     <div id="page-mine" class="page active">
         <!-- 顶部蓝色背景 -->
-        <div class="header-bg">
-            <img id="headerImg" src="grdb.jpg" alt="个人中心">
-        </div>
+        <div class="header-bg" id="headerBg" role="img" aria-label="个人中心"></div>
         
         <div class="content-wrapper">
         <!-- 用户信息卡片 -->
@@ -431,16 +434,17 @@
 
         function setMineHeaderByGender() {
             var cfg = window.__MINE_UI_CONFIG;
-            var headerImg = document.getElementById('headerImg');
-            if (!headerImg) {
+            var headerBg = document.getElementById('headerBg');
+            if (!headerBg) {
                 return;
             }
             var gender = localStorage.getItem('gender');
+            var path = gender == 2 ? 'nx.jpg' : 'grdb.jpg';
             if (cfg) {
-                headerImg.src = gender == 2 ? cfg.header_female : cfg.header_male;
-            } else {
-                headerImg.src = gender == 2 ? 'nx.jpg' : 'grdb.jpg';
+                path = gender == 2 ? cfg.header_female : cfg.header_male;
             }
+            path = String(path || 'grdb.jpg').replace(/"/g, '');
+            headerBg.style.setProperty('--mine-header-bg-url', 'url("' + path + '")');
         }
 
         function setMineAssetsFromConfig() {
