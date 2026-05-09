@@ -57,6 +57,7 @@ jobs:
       - name: Build iOS (Simulator)
         run: npx cordova build ios --debug --emulator
 
+      # upload-artifact 相对仓库根解析路径；本 job 的 run 在 cordova-app 下，须写绝对路径或 cordova-app/ 前缀
       - name: Locate .app bundle
         id: locate
         run: |
@@ -66,7 +67,8 @@ jobs:
             find platforms/ios -type d | head -100
             exit 1
           fi
-          echo "path=$APP" >> "$GITHUB_OUTPUT"
+          echo "path=$(pwd)/$APP" >> "$GITHUB_OUTPUT"
+          echo "Found: $(pwd)/$APP"
 
       - name: Upload Simulator app artifact
         uses: actions/upload-artifact@v4
