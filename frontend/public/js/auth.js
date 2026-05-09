@@ -77,10 +77,13 @@
         var shellExtra = document.createElement('style');
         shellExtra.setAttribute('data-cordova-tax-shell-safe', '1');
         shellExtra.textContent =
-          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + env(safe-area-inset-top,0px)) !important;}' +
-          'html.cordova-tax-shell .daiban-header{padding-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.cordova-tax-shell .bancha-header{padding-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + env(safe-area-inset-top,0px)) !important;}';
+          'html.cordova-tax-shell{--app-statusbar-offset:max(env(safe-area-inset-top,0px),32px);}' +
+          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-statusbar-offset)) !important;}' +
+          'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-statusbar-offset)) !important;}' +
+          'html.cordova-tax-shell .daiban-header,html.cordova-tax-shell .bancha-header{padding-top:var(--app-statusbar-offset) !important;box-sizing:border-box;background:#1e6fff;}' +
+          'html.cordova-tax-shell .daiban-content,html.cordova-tax-shell .bancha-content{margin-top:calc(80px + var(--app-statusbar-offset)) !important;}' +
+          'html.cordova-tax-shell .header-bg{padding-top:var(--app-statusbar-offset) !important;min-height:calc(var(--app-statusbar-offset) + min(50vw,268px)) !important;}' +
+          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-statusbar-offset)) !important;}';
         document.head.appendChild(shellExtra);
       }
     } catch (e) {}
