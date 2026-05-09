@@ -81,15 +81,20 @@
             margin-bottom: 8px;
         }
         .card li { margin-bottom: 8px; }
-        .link-row {
-            word-break: break-all;
-            font-size: 13px;
-            color: #1e6fff;
-            background: #f0f6ff;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #d9e8ff;
+        .install-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .install-actions .btn {
+            flex: none;
+            width: 100%;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
         }
         .btn-row {
             display: flex;
@@ -102,7 +107,7 @@
             padding: 11px 16px;
             border: none;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
@@ -115,22 +120,6 @@
             background: #eef2f7;
             color: #374151;
         }
-        .toast {
-            position: fixed;
-            left: 50%;
-            bottom: 100px;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.78);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 9999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-        }
-        .toast.show { opacity: 1; }
         .video-card h2 { margin-bottom: 10px; }
         .video-wrap {
             border-radius: 12px;
@@ -178,30 +167,9 @@
 
     <div class="wrap">
         <section class="card">
-            <h2>安卓安装包下载地址</h2>
-            <p>复制下方链接到手机浏览器地址栏打开，即可下载安装包。</p>
-            <div class="link-row" id="androidUrlText">https://wwalr.lanzoul.com/iWD5L3nszo5e</div>
-            <div class="btn-row">
-                <button type="button" class="btn btn-primary" onclick="copyInstallLink('android')">复制链接</button>
-                <a class="btn btn-secondary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;" href="https://wwalr.lanzoul.com/iWD5L3nszo5e" target="_blank" rel="noopener noreferrer">浏览器打开</a>
-            </div>
-        </section>
-
-        <section class="card">
-            <h2>苹果 · 描述文件（个人.mobileconfig）</h2>
-            <p>请使用苹果自带的 <strong>Safari</strong> 打开本页，点击下方按钮直接下载描述文件（无需网盘）。若在微信内打开，请先右上角「…」→「在 Safari 中打开」。</p>
-            <div class="link-row" id="iosUrlText"></div>
-            <div class="btn-row">
-                <a class="btn btn-primary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;" id="iosDirectDownload" href="/personal.mobileconfig" download="个人.mobileconfig">下载描述文件</a>
-                <button type="button" class="btn btn-secondary" onclick="copyInstallLink('ios')">复制下载链接</button>
-            </div>
-            <p style="margin-top:14px;"><strong>安装步骤（iPhone / iPad）</strong></p>
-            <ol>
-                <li>用 <strong>Safari</strong> 打开本页，点击<strong>下载描述文件</strong>；出现提示时选择<strong>允许</strong>。</li>
-                <li>打开 <strong>设置 → 通用 → VPN与设备管理</strong>（部分系统为「描述文件与设备管理」），找到刚下载的描述文件并<strong>安装</strong>。</li>
-                <li>安装成功后，返回桌面即可进入 APP。</li>
-                <li>具体操作请向下查看<strong>操作视频</strong>。</li>
-            </ol>
+            <h2>应用下载</h2>
+            <div class="install-actions" id="installButtonsRow"></div>
+            <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
         </section>
 
         <section class="card video-card">
@@ -217,65 +185,78 @@
         </section>
     </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
     <script>
-        var ANDROID_PKG_URL = 'https://wwalr.lanzoul.com/iWD5L3nszo5e';
-        var IOS_PROFILE_PATH = '/personal.mobileconfig';
-
-        function iosProfileAbsoluteUrl() {
-            try {
-                return window.location.origin + IOS_PROFILE_PATH;
-            } catch (e) {
-                return IOS_PROFILE_PATH;
+        function toAbsoluteDownloadUrl(u) {
+            if (!u || !String(u).trim()) {
+                return '';
             }
+            var s = String(u).trim();
+            if (/^https?:\/\//i.test(s)) {
+                return s;
+            }
+            if (s.charAt(0) === '/') {
+                try {
+                    return window.location.origin + s;
+                } catch (e) {
+                    return s;
+                }
+            }
+            return s;
         }
 
-        (function fillIosLinkRow() {
-            var row = document.getElementById('iosUrlText');
-            if (row) {
-                row.textContent = iosProfileAbsoluteUrl();
+        (function initInstallButtons() {
+            var row = document.getElementById('installButtonsRow');
+            var empty = document.getElementById('installEmptyHint');
+            if (!row) {
+                return;
             }
-        })();
-        function showToast(msg) {
-            var t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            clearTimeout(showToast._tid);
-            showToast._tid = setTimeout(function () {
-                t.classList.remove('show');
-            }, 2000);
-        }
-
-        function copyInstallLink(which) {
-            var text = which === 'ios' ? iosProfileAbsoluteUrl() : ANDROID_PKG_URL;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(function () {
-                    showToast('已复制到剪贴板');
-                }).catch(function () {
-                    fallbackCopy(text);
+            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (body) {
+                    if (!body || body.code !== 200 || !body.data) {
+                        if (empty) {
+                            empty.style.display = 'block';
+                            empty.textContent = '无法加载下载配置，请稍后再试。';
+                        }
+                        return;
+                    }
+                    var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
+                    var ios = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
+                    row.innerHTML = '';
+                    if (!apk && !ios) {
+                        if (empty) {
+                            empty.style.display = 'block';
+                        }
+                        return;
+                    }
+                    if (empty) {
+                        empty.style.display = 'none';
+                    }
+                    if (apk) {
+                        var a = document.createElement('a');
+                        a.className = 'btn btn-primary';
+                        a.href = apk;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.textContent = '下载 Android 安装包';
+                        row.appendChild(a);
+                    }
+                    if (ios) {
+                        var href = toAbsoluteDownloadUrl(ios);
+                        var ia = document.createElement('a');
+                        ia.className = 'btn btn-primary';
+                        ia.href = href || ios;
+                        ia.textContent = '下载 iOS 描述文件';
+                        row.appendChild(ia);
+                    }
+                })
+                .catch(function () {
+                    if (empty) {
+                        empty.style.display = 'block';
+                        empty.textContent = '无法加载下载配置，请稍后再试。';
+                    }
                 });
-            } else {
-                fallbackCopy(text);
-            }
-        }
-
-        function fallbackCopy(text) {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.setAttribute('readonly', '');
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            try {
-                document.execCommand('copy');
-                showToast('已复制到剪贴板');
-            } catch (e) {
-                showToast('复制失败，请长按链接手动复制');
-            }
-            document.body.removeChild(ta);
-        }
+        })();
 
         function toAssetUrl(path) {
             if (!path) return '';

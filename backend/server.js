@@ -62,6 +62,8 @@ const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
   process.env.TEST_ACCOUNT_COMPANY_NAME || '购买+Tangdong 购买++V : Tangdong6832';
 const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
 const SETTING_KEY_MINE_UI = 'mine_ui_json';
+const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';
+const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
@@ -137,6 +139,57 @@ function cloneMineUiDefaults() {
 }
 
 /** 允许站内相对路径或 https/http 图片地址，禁止 .. 与脚本伪协议 */
+/** 安装包下载：完整 http(s) URL 或站内绝对路径（以 / 开头） */
+function sanitizeInstallDownloadUrl(raw) {
+  if (raw == null) {
+    return '';
+  }
+  var s = String(raw).trim();
+  if (s === '') {
+    return '';
+  }
+  if (s.length > 2048 || /[\s<>"'`]/.test(s)) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      var u = new URL(s);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        return '';
+      }
+      return s;
+    } catch (e) {
+      return '';
+    }
+  }
+  if (s.charAt(0) === '/' && s.indexOf('//') !== 0) {
+    if (/^\/[a-zA-Z0-9_.\-\/%]+$/.test(s)) {
+      return s;
+    }
+    return '';
+  }
+  return '';
+}
+
+async function getInstallPackageSettingsFromDb() {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?)',
+      [SETTING_KEY_ANDROID_APK, SETTING_KEY_IOS_MOBILECONFIG]
+    );
+    var map = {};
+    rows.forEach(function (r) {
+      map[r.setting_key] = r.setting_value;
+    });
+    var android = map[SETTING_KEY_ANDROID_APK] != null ? String(map[SETTING_KEY_ANDROID_APK]).trim() : '';
+    var ios = map[SETTING_KEY_IOS_MOBILECONFIG] != null ? String(map[SETTING_KEY_IOS_MOBILECONFIG]).trim() : '';
+    return { android: android, ios: ios };
+  } finally {
+    conn.release();
+  }
+}
+
 function sanitizeMineUiImageRef(raw) {
   if (raw == null) {
     return '';
@@ -570,6 +623,14 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
     [SETTING_KEY_MINE_UI, JSON.stringify(cloneMineUiDefaults())]
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
+    [SETTING_KEY_ANDROID_APK, 'https://wwalr.lanzoul.com/iWD5L3nszo5e']
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
+    [SETTING_KEY_IOS_MOBILECONFIG, '/personal.mobileconfig']
   );
 
   await conn.execute(`
@@ -1648,6 +1709,9 @@ function classifyAnalyticsRoute(req) {
   if (path === '/api/public/mine-ui') {
     return { route_key: method + ' /api/public/mine-ui', biz_category: '公开配置' };
   }
+  if (path === '/api/public/install-packages') {
+    return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
+  }
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
 }
 
@@ -2493,9 +2557,15 @@ async function handleAdminSettingsGet(req, res) {
   try {
     var name = await getTestAccountCompanyName();
     var mineUi = await getMineUiForAdminForm();
+    var installRaw = await getInstallPackageSettingsFromDb();
     return res.json({
       code: 200,
-      data: { test_account_company_name: name, mine_ui: mineUi }
+      data: {
+        test_account_company_name: name,
+        mine_ui: mineUi,
+        android_apk_download_url: installRaw.android,
+        ios_mobileconfig_download_url: installRaw.ios
+      }
     });
   } catch (e) {
     console.error(e);
@@ -2507,8 +2577,13 @@ async function handleAdminSettingsPost(req, res) {
   var body = req.body || {};
   var hasCompany = Object.prototype.hasOwnProperty.call(body, 'test_account_company_name');
   var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
-  if (!hasCompany && !hasMineUi) {
-    return res.status(400).json({ code: 400, msg: '请提供 test_account_company_name 或 mine_ui' });
+  var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
+  var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
+  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos) {
+    return res.status(400).json({
+      code: 400,
+      msg: '请提供 test_account_company_name、mine_ui 或安装包下载地址（android_apk_download_url / ios_mobileconfig_download_url）'
+    });
   }
 
   if (hasCompany) {
@@ -2590,9 +2665,41 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasAndroid) {
+      var rawA = body.android_apk_download_url;
+      var okA = sanitizeInstallDownloadUrl(rawA);
+      if (rawA != null && String(rawA).trim() !== '' && !okA) {
+        return res.status(400).json({ code: 400, msg: '安卓安装包地址无效（请使用 http 或 https 完整链接）' });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_ANDROID_APK, okA]
+      );
+    }
+
+    if (hasIos) {
+      var rawI = body.ios_mobileconfig_download_url;
+      var okI = sanitizeInstallDownloadUrl(rawI);
+      if (rawI != null && String(rawI).trim() !== '' && !okI) {
+        return res.status(400).json({
+          code: 400,
+          msg: 'iOS 描述文件地址无效（http(s) 完整链接，或以 / 开头的站内路径）'
+        });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_IOS_MOBILECONFIG, okI]
+      );
+    }
+
     var outData = { success: true };
     outData.test_account_company_name = await getTestAccountCompanyName();
     outData.mine_ui = await getMineUiForAdminForm();
+    var installAfter = await getInstallPackageSettingsFromDb();
+    outData.android_apk_download_url = installAfter.android;
+    outData.ios_mobileconfig_download_url = installAfter.ios;
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -2606,6 +2713,24 @@ async function handlePublicMineUi(req, res) {
   try {
     var mineUi = await getMineUiForApi();
     return res.json({ code: 200, data: mineUi });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handlePublicInstallPackages(req, res) {
+  try {
+    var raw = await getInstallPackageSettingsFromDb();
+    var android = sanitizeInstallDownloadUrl(raw.android);
+    var ios = sanitizeInstallDownloadUrl(raw.ios);
+    return res.json({
+      code: 200,
+      data: {
+        android_apk_download_url: android,
+        ios_mobileconfig_download_url: ios
+      }
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -3320,6 +3445,7 @@ app.post(
 );
 app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
 app.get('/api/public/mine-ui', handlePublicMineUi);
+app.get('/api/public/install-packages', handlePublicInstallPackages);
 app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
 app.get('/api/admin/user-tax-records', requireAdminAuth, handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);

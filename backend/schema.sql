@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS user_feedback (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 全局配置（如测试账号固定公司名称，管理后台可改）
+-- 全局配置（如测试账号固定公司名称、安装包下载 URL、mine_ui JSON；管理后台可改）
+-- setting_key 示例：test_account_company_name、mine_ui_json、android_apk_download_url、ios_mobileconfig_download_url
 CREATE TABLE IF NOT EXISTS app_settings (
     setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
     setting_value TEXT,
