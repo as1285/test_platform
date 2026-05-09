@@ -2,6 +2,7 @@
  * 登录态：JWT 存 localStorage.token；未登录访问受保护页面时跳转登录页。
  * 受保护接口请使用 authFetch（自动带 Authorization + X-Client-Device，401 时清理并跳转）。
  * WebView / App 可设置 window.CLIENT_APP_VERSION；可选 window.buildClientDevicePayloadHook(base) 合并字段。
+ * Cordova 壳在 UA 中追加 TaxPlatformCordovaApp（config AppendUserAgent），iframe 内 H5 也可识别并关闭顶栏遮罩。
  */
 (function () {
   var LOGIN_PAGE = 'index.html';
@@ -14,6 +15,16 @@
     'install_guide.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
+  /** Cordova 壳通过 config AppendUserAgent 追加，嵌套 iframe 加载的 H5 与壳共用同一 UA */
+  var CORDOVA_SHELL_UA_RE = /TaxPlatformCordovaApp\//i;
+
+  function isCordovaTaxAppShell() {
+    try {
+      return CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '');
+    } catch (e) {
+      return false;
+    }
+  }
 
   function upsertMeta(name, content) {
     try {
@@ -47,13 +58,31 @@
     /* iOS 只支持 default / black / black-translucent；用透明模式让页面蓝色安全区透到系统栏后方。 */
     upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
     try {
+      var cordovaShell = isCordovaTaxAppShell();
+      if (cordovaShell) {
+        document.documentElement.classList.add('cordova-tax-shell');
+      }
       var style = document.createElement('style');
-      style.textContent =
-        'html{background:' + APP_STATUS_BAR_COLOR + ';}' +
+      var barFill =
         'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
         APP_STATUS_BAR_COLOR +
         ';z-index:2147483647;pointer-events:none;}';
+      /* 壳内原生栏已叠在 WebView 上：不再盖一层纯色，便于头图延伸到刘海；固定顶栏单独加 safe-area */
+      if (cordovaShell) {
+        barFill = '';
+      }
+      style.textContent = 'html{background:' + APP_STATUS_BAR_COLOR + ';}' + barFill;
       document.head.appendChild(style);
+      if (cordovaShell) {
+        var shellExtra = document.createElement('style');
+        shellExtra.setAttribute('data-cordova-tax-shell-safe', '1');
+        shellExtra.textContent =
+          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + env(safe-area-inset-top,0px)) !important;}' +
+          'html.cordova-tax-shell .daiban-header{padding-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.cordova-tax-shell .bancha-header{padding-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + env(safe-area-inset-top,0px)) !important;}';
+        document.head.appendChild(shellExtra);
+      }
     } catch (e) {}
     patchViewportFit();
     setTimeout(patchViewportFit, 0);
