@@ -2,35 +2,31 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-overlay48"></script>
+    <script src="/js/auth.js?v=20260509-shellgrad50"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>综合所得</title>
+    <title>综合所得年度汇算</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
+            padding-bottom: 24px;
         }
-
         .header {
             background: #fff;
-            padding: 15px 16px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
+            position: sticky;
+            top: 0;
+            z-index: 20;
             border-bottom: 1px solid #eee;
         }
-
         .back-btn {
             position: absolute;
-            left: 16px;
+            left: 12px;
             color: #1e6fff;
             font-size: 16px;
             text-decoration: none;
@@ -40,28 +36,128 @@
             -webkit-tap-highlight-color: transparent;
             outline: none;
         }
-
         .header-title {
             font-size: 17px;
-            font-weight: 500;
+            font-weight: 600;
             color: #333;
         }
-
-        .content {
-            width: 100%;
-        }
-
-        .content img {
+        .hero {
             width: 100%;
             display: block;
+            vertical-align: top;
+        }
+        .panel {
+            margin: -12px 12px 0;
+            position: relative;
+            z-index: 2;
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 16px 22px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+        .warm-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .warm-list {
+            font-size: 14px;
+            color: #888;
+            line-height: 1.65;
+            padding-left: 18px;
+            margin-bottom: 20px;
+        }
+        .warm-list li { margin-bottom: 8px; }
+        .year-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 4px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .year-row .year-val {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #333;
+            font-weight: 500;
+        }
+        .year-row .chev {
+            color: #ccc;
+            font-size: 18px;
+            font-weight: 300;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 14px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .btn-primary {
+            background: linear-gradient(180deg, #3d8dff 0%, #1e6fff 100%);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 12px rgba(30, 111, 255, 0.35);
+        }
+        .btn-outline {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #1e6fff;
         }
     </style>
+    <link rel="stylesheet" href="css/nav.css">
+    <script src="/js/theme-loader.js" defer></script>
 </head>
 <body>
-    <div class="content" style="position: relative;">
-        <img src="erji.jpg" alt="综合所得">
-        <a onclick="history.back()" style="position: absolute; top: 0; left: 0; width: 80px; height: 80px; background: transparent; display: block; -webkit-tap-highlight-color: transparent; outline: none;"></a>
+    <div class="header">
+        <a href="shouye.html" class="back-btn" aria-label="返回">&lt; 返回</a>
+        <div class="header-title">综合所得年度汇算</div>
+    </div>
+    <img class="hero" src="erji.jpg" alt="">
+    <div class="panel">
+        <h2 class="warm-title">温馨提示</h2>
+        <ul class="warm-list">
+            <li>如您仅有境内所得且需要办理汇算，请选择申报年度后点击下方「开始申报」。</li>
+            <li>您可点击「查看申报记录」查询以往申报情况。</li>
+        </ul>
+        <div class="year-row" id="yearRow" role="button" tabindex="0">
+            <span>申报年度</span>
+            <span class="year-val"><span id="yearDisplay">2025</span><span class="chev">›</span></span>
+        </div>
+        <a class="btn btn-primary" href="daiban.html">开始申报</a>
+        <a class="btn btn-outline" href="bancha.html">查看申报记录</a>
     </div>
     <script src="/js/watermark.js"></script>
+    <script>
+        (function () {
+            var row = document.getElementById('yearRow');
+            var years = ['2025', '2024', '2023'];
+            var idx = 0;
+            var disp = document.getElementById('yearDisplay');
+            function cycle() {
+                idx = (idx + 1) % years.length;
+                disp.textContent = years[idx];
+            }
+            row.addEventListener('click', cycle);
+            row.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    cycle();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

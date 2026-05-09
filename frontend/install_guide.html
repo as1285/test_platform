@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-overlay48"></script>
+    <script src="/js/auth.js?v=20260509-shellgrad50"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>安装包和使用方法</title>
     <style>
@@ -174,13 +174,13 @@
 
         <section class="card video-card">
             <h2>苹果安装视频</h2>
-            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 iPhone / iPad 下载并安装描述文件的步骤，可在管理后台「用户端外观」中配置。</p>
+            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 iPhone / iPad 下载并安装描述文件的步骤，可在管理后台「引导安装」中配置。</p>
             <div id="iosInstallVideoContainer"></div>
         </section>
 
         <section class="card video-card">
             <h2>操作视频</h2>
-            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 APP 使用方法，可在管理后台「用户端外观」中配置。</p>
+            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 APP 使用方法，可在管理后台「引导安装」中配置。</p>
             <div id="usageVideoContainer"></div>
         </section>
     </div>
@@ -235,9 +235,13 @@
                     if (apk) {
                         var a = document.createElement('a');
                         a.className = 'btn btn-primary';
-                        a.href = apk;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
+                        a.href = /^https?:\/\//i.test(apk)
+                            ? apk
+                            : toAbsoluteDownloadUrl(apk.charAt(0) === '/' ? apk : '/' + apk.replace(/^\.\//, ''));
+                        if (/^https?:\/\//i.test(apk)) {
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
+                        }
                         a.textContent = '下载 Android 安装包';
                         row.appendChild(a);
                     }
@@ -285,7 +289,7 @@
                 wrap.appendChild(v);
                 box.appendChild(wrap);
             } else {
-                box.innerHTML = '<div class="video-placeholder">' + emptyText + '<br>请在管理后台「用户端外观」上传或填写视频地址</div>';
+                box.innerHTML = '<div class="video-placeholder">' + emptyText + '<br>请在管理后台「引导安装」上传或填写视频地址</div>';
             }
         }
 

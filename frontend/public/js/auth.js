@@ -86,11 +86,14 @@
           'html.cordova-tax-shell{--app-shell-statusbar-top:48px;}' +
           'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.cordova-tax-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
-          'html.cordova-tax-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
+          'html.cordova-tax-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
+          'html.cordova-tax-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
+          'html.cordova-tax-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
           'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.cordova-tax-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}';
+          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell .top-fixed .header{padding-top:calc(8px + env(safe-area-inset-top, 0px) + var(--app-shell-statusbar-top)) !important;}';
         document.head.appendChild(shellExtra);
       }
     } catch (e) {}

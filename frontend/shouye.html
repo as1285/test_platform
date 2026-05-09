@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-overlay48"></script>
+    <script src="/js/auth.js?v=20260509-shellgrad50"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>首页</title>
     <style>
@@ -194,7 +194,7 @@
             outline: none;
             touch-action: manipulation;
             background: transparent;
-            top: 40%;
+            top: 14%;
             bottom: 1%;
         }
         .svc-hot-left { left: 0; width: 33.33%; }
@@ -216,8 +216,8 @@
             z-index: 6;
             left: 0;
             width: 33.33%;
-            top: 14%;
-            height: 32%;
+            top: 8%;
+            height: 42%;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
@@ -225,6 +225,20 @@
         }
         .lb-svc-hot-mid { left: 33.33%; }
         .lb-svc-hot-right { left: 66.66%; width: 33.34%; }
+
+        /* 首页横幅图内「进入专题页」等区域：跳转综合所得年度汇算 */
+        .sy-banner-zonghe-hit {
+            position: absolute;
+            left: 4%;
+            width: 68%;
+            top: 42%;
+            bottom: 10%;
+            z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+            background: transparent;
+        }
 
         </style>
     <link rel="stylesheet" href="css/nav.css">
@@ -257,6 +271,7 @@
         <div class="shouye-header">
             <div style="position: relative;">
                 <img id="assetShouyeBanner" src="sydb-v2.jpg?v=3" alt="首页">
+                <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
                 <!-- 消息滚动条 -->
                 <div class="notice-bar">
                     <div class="notice-icon" style="flex-shrink:0;"><img src="ld.png" style="width:21px;object-fit:contain;"></div>

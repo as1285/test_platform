@@ -310,6 +310,7 @@
             <div class="sidebar-brand">管理控制台</div>
             <nav class="sidebar-nav">
                 <button type="button" class="nav-item active" data-page="settings" data-title="系统设置">系统设置</button>
+                <button type="button" class="nav-item" data-page="install-guide" data-title="引导安装">引导安装</button>
                 <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
                 <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
@@ -341,21 +342,58 @@
             </div>
             <p class="hint">此处名称通过用户资料接口下发（test_company_locked_name），便于前端展示或作为占位参考；测试账号可在个人中心自行填写真实姓名、公司名称与扣缴义务人名称，保存本设置不会批量改写用户已有任职或税务记录。</p>
         </section>
+                </div>
+
+                <div id="page-install-guide" class="page-panel" role="tabpanel">
+        <section>
+            <h2>引导安装（用户端）</h2>
+            <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）。下方集中配置<strong>安装包下载地址</strong>与<strong>安装引导视频</strong>；其它界面配图仍在左侧「用户端外观」。</p>
+        </section>
         <section>
             <h2>安装包下载（用户端）</h2>
-            <p class="hint">用户在「安装包和使用方法」页<strong>只看到下载按钮</strong>，不会看到下列链接文字。安卓请填 http(s) 直链（如网盘）；苹果可填站内路径（如 <code>/personal.mobileconfig</code>，需已在站点部署该文件）或完整 URL。留空则对应按钮不显示。</p>
+            <p class="hint">用户在「安装包和使用方法」页<strong>只看到下载按钮</strong>。推荐在此<strong>本地上传</strong>安装包（写入站点 <code>uploads/</code>）；也可手填外链（安卓须 https 完整 URL）或站内路径（苹果如 <code>/personal.mobileconfig</code>）。留空则对应按钮不显示。</p>
             <div class="form-row" style="flex-direction: column; align-items: stretch;">
                 <div style="width:100%;max-width:640px;">
-                    <label for="androidApkDownloadUrl">安卓安装包下载地址</label>
-                    <input type="url" id="androidApkDownloadUrl" maxlength="2048" placeholder="https://…" style="width:100%;max-width:640px;">
+                    <label for="androidApkDownloadUrl">安卓安装包（APK）</label>
+                    <div class="mine-ui-controls" style="margin-top:6px;">
+                        <input type="text" id="androidApkDownloadUrl" maxlength="2048" placeholder="上传 APK 自动填入 uploads/…，或填写 https:// 直链" style="flex:1;min-width:180px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
+                        <input type="file" class="install-pkg-file" accept=".apk,application/vnd.android.package-archive" data-target="androidApkDownloadUrl" hidden>
+                        <button type="button" class="btn-file install-pkg-pick">上传 APK</button>
+                    </div>
                 </div>
                 <div style="width:100%;max-width:640px;margin-top:12px;">
-                    <label for="iosMobileconfigDownloadUrl">苹果描述文件下载地址</label>
-                    <input type="text" id="iosMobileconfigDownloadUrl" maxlength="2048" placeholder="/personal.mobileconfig 或 https://…" style="width:100%;max-width:640px;">
+                    <label for="iosMobileconfigDownloadUrl">苹果描述文件（mobileconfig）</label>
+                    <div class="mine-ui-controls" style="margin-top:6px;">
+                        <input type="text" id="iosMobileconfigDownloadUrl" maxlength="2048" placeholder="上传描述文件自动填入 uploads/…，或填 /personal.mobileconfig / https://" style="flex:1;min-width:180px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
+                        <input type="file" class="install-pkg-file" accept=".mobileconfig,application/x-apple-aspen-config" data-target="iosMobileconfigDownloadUrl" hidden>
+                        <button type="button" class="btn-file install-pkg-pick">上传描述文件</button>
+                    </div>
                 </div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-                    <button type="button" class="btn-primary" id="btnSaveInstallPackages">保存下载配置</button>
+            </div>
+        </section>
+        <section>
+            <h2>安装引导视频</h2>
+            <p class="hint">对应用户页「安装包和使用方法」中的两个视频位；支持相对路径、<code>uploads/xxx.mp4</code> 或完整 https 链接，也可本地上传到 <code>uploads/</code>。</p>
+            <div class="mine-ui-block" style="max-width:760px;">
+                <div class="mine-ui-row mine-ui-video-row">
+                    <label for="img_install_ios_video">苹果安装视频</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_ios_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
+                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_ios_video" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
                 </div>
+                <div class="mine-ui-row mine-ui-video-row">
+                    <label for="img_install_usage_video">操作视频</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_usage_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
+                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_usage_video" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+                <button type="button" class="btn-primary" id="btnSaveInstallPackages">保存引导安装配置</button>
             </div>
         </section>
                 </div>
@@ -566,29 +604,11 @@
                     </div>
                 </div>
 
-                <h3>安装引导视频</h3>
-                <div class="mine-ui-row mine-ui-video-row">
-                    <label for="img_install_ios_video">苹果安装视频</label>
-                    <div class="mine-ui-controls">
-                        <input type="text" id="img_install_ios_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
-                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_ios_video" hidden>
-                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
-                    </div>
-                </div>
-                <div class="mine-ui-row mine-ui-video-row">
-                    <label for="img_install_usage_video">操作视频</label>
-                    <div class="mine-ui-controls">
-                        <input type="text" id="img_install_usage_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
-                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_usage_video" hidden>
-                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
-                    </div>
-                </div>
-
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
                 </div>
             </div>
-            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图、安装引导视频</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code>、<code>uploads/xxx.mp4</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。安装引导视频请在「引导安装」中配置。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
         </section>
                 </div>
 
@@ -1004,8 +1024,10 @@
         function normalizeAdminPage(raw) {
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
             if (k === 'system' || k === 'setting') k = 'settings';
+            if (k === 'install' || k === 'guide') k = 'install-guide';
             var ok = {
                 settings: 1,
+                'install-guide': 1,
                 appearance: 1,
                 codes: 1,
                 users: 1,
@@ -1723,6 +1745,12 @@
                                 el.value = m[k] != null ? String(m[k]) : '';
                             }
                         });
+                        MINE_INSTALL_VIDEO_KEYS.forEach(function (k) {
+                            var el = document.getElementById('img_' + k);
+                            if (el) {
+                                el.value = m[k] != null ? String(m[k]) : '';
+                            }
+                        });
                         syncMineUiDefaultToggle();
                     }
                 })
@@ -1763,13 +1791,17 @@
                 method: 'POST',
                 body: JSON.stringify({
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
-                    ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim()
+                    ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
+                    mine_ui: {
+                        install_ios_video: document.getElementById('img_install_ios_video').value.trim(),
+                        install_usage_video: document.getElementById('img_install_usage_video').value.trim()
+                    }
                 })
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
-                        alert('下载配置已保存');
+                        alert('引导安装配置已保存');
                         loadAdminSettings();
                     } else {
                         alert(data.msg || '保存失败');
@@ -1784,16 +1816,18 @@
             'nav_sy_1', 'nav_sy_2', 'nav_db_1', 'nav_db_2', 'nav_bc_1', 'nav_bc_2',
             'nav_xx_1', 'nav_xx_2', 'nav_w_1', 'nav_w_2',
             'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header',
-            'piaojia_goumai', 'piaojia_xiaoshou', 'install_ios_video', 'install_usage_video'
+            'piaojia_goumai', 'piaojia_xiaoshou'
         ];
+
+        var MINE_INSTALL_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 
         function syncMineUiDefaultToggle() {
             var on = document.getElementById('mineUseDefaultImages').checked;
             document.querySelectorAll('#page-appearance .mine-ui-row input[type="text"]').forEach(function (el) {
-                el.disabled = on && !el.closest('.mine-ui-video-row');
+                el.disabled = on;
             });
             document.querySelectorAll('#page-appearance .mine-ui-pick').forEach(function (btn) {
-                btn.disabled = on && !btn.closest('.mine-ui-video-row');
+                btn.disabled = on;
             });
         }
 
@@ -1816,6 +1850,50 @@
                     return Promise.reject(new Error('unauthorized'));
                 }
                 return r.json();
+            });
+        }
+
+        function bindInstallPackageUploads() {
+            document.querySelectorAll('.install-pkg-file').forEach(function (fileInput) {
+                fileInput.addEventListener('change', function () {
+                    var f = fileInput.files && fileInput.files[0];
+                    if (!f) {
+                        return;
+                    }
+                    var targetId = fileInput.getAttribute('data-target');
+                    var targetEl = document.getElementById(targetId);
+                    fileInput.disabled = true;
+                    adminUploadAsset(f)
+                        .then(function (data) {
+                            if (data.code === 200 && data.data && data.data.path) {
+                                if (targetEl) {
+                                    targetEl.value = data.data.path;
+                                }
+                                alert('已上传，请点击下方「保存引导安装配置」生效');
+                            } else {
+                                alert(data.msg || '上传失败');
+                            }
+                        })
+                        .catch(function () {
+                            alert('网络错误');
+                        })
+                        .finally(function () {
+                            fileInput.disabled = false;
+                            fileInput.value = '';
+                        });
+                });
+            });
+            document.querySelectorAll('.install-pkg-pick').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var row = btn.closest('.mine-ui-controls');
+                    if (!row) {
+                        return;
+                    }
+                    var fi = row.querySelector('.install-pkg-file');
+                    if (fi) {
+                        fi.click();
+                    }
+                });
             });
         }
 
@@ -1892,6 +1970,7 @@
         });
 
         bindMineUiUploads();
+        bindInstallPackageUploads();
         loadAdminSettings();
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {

@@ -168,6 +168,13 @@ function sanitizeInstallDownloadUrl(raw) {
     }
     return '';
   }
+  // 与上传接口一致：仅允许 uploads/ 下的相对路径（禁止 ..）
+  if (s.indexOf('..') >= 0) {
+    return '';
+  }
+  if (/^uploads\/[a-zA-Z0-9_.\-\/%]+$/.test(s)) {
+    return s;
+  }
   return '';
 }
 
@@ -312,6 +319,9 @@ async function getMineUiForAdminForm() {
   return form;
 }
 
+var ADMIN_UPLOAD_MEDIA_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'];
+var ADMIN_UPLOAD_INSTALL_EXT = ['.apk', '.mobileconfig'];
+
 const adminUpload = multer({
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
@@ -319,17 +329,21 @@ const adminUpload = multer({
     },
     filename: function (req, file, cb) {
       var ext = path.extname(file.originalname || '').toLowerCase();
-      var allow = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'];
+      var allow = ADMIN_UPLOAD_MEDIA_EXT.concat(ADMIN_UPLOAD_INSTALL_EXT);
       if (allow.indexOf(ext) < 0) {
-        ext = '.jpg';
+        ext = '.bin';
       }
       cb(null, crypto.randomBytes(16).toString('hex') + ext);
     }
   }),
   fileFilter: function (req, file, cb) {
     var ext = path.extname(file.originalname || '').toLowerCase();
-    var ok = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'].indexOf(ext) >= 0;
-    cb(ok ? null : new Error('仅支持 jpg、png、gif、webp、mp4、mov、m4v、webm'), ok);
+    var ok =
+      ADMIN_UPLOAD_MEDIA_EXT.indexOf(ext) >= 0 || ADMIN_UPLOAD_INSTALL_EXT.indexOf(ext) >= 0;
+    cb(
+      ok ? null : new Error('仅支持图片/视频（jpg、png、gif、webp、mp4 等）或安装包（apk、mobileconfig）'),
+      ok
+    );
   }
 });
 
