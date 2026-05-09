@@ -4,9 +4,23 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
     <title>加载中</title>
+    <meta name="theme-color" content="#1e6fff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #1e6fff; }
         #app-frame { border: 0; width: 100%; height: 100%; display: block; }
+        #startup-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: #fff url("splash.png") center center / cover no-repeat;
+            transition: opacity 0.25s ease;
+        }
+        #startup-screen.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
     <script>
         (function () {
@@ -25,6 +39,17 @@
                 f.setAttribute('importance', 'high');
                 f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
                 f.src = APP_ORIGIN;
+                f.addEventListener('load', function () {
+                    var s = document.getElementById('startup-screen');
+                    if (s) {
+                        s.classList.add('hide');
+                        setTimeout(function () {
+                            if (s && s.parentNode) {
+                                s.parentNode.removeChild(s);
+                            }
+                        }, 300);
+                    }
+                });
                 document.body.appendChild(f);
             }
             if (document.readyState === 'loading') {
@@ -32,8 +57,15 @@
             } else {
                 mount();
             }
+            document.addEventListener('deviceready', function () {
+                if (window.StatusBar) {
+                    StatusBar.overlaysWebView(false);
+                    StatusBar.backgroundColorByHexString('#1e6fff');
+                    StatusBar.styleLightContent();
+                }
+            });
         })();
     </script>
 </head>
-<body></body>
+<body><div id="startup-screen" aria-hidden="true"></div></body>
 </html>

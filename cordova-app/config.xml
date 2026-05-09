@@ -26,6 +26,10 @@
     <preference name="SplashScreenDelay" value="2500" />
     <preference name="FadeSplashScreen" value="true" />
     <preference name="FadeSplashScreenDuration" value="400" />
+    <preference name="StatusBarBackgroundColor" value="#1e6fff" />
+    <preference name="StatusBarStyle" value="lightcontent" />
+    <preference name="StatusBarOverlaysWebView" value="false" />
+    <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
         <!-- 桌面图标：同一 PNG 须为每个 density 各写一条，否则只会写入 mdpi，其它密度仍为模板默认「i」图标 -->
@@ -38,8 +42,8 @@
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
-        <!-- Android 12+ 系统启动屏：白底 + 中间图标（勿再用已弃用的 <splash> 标签） -->
+        <!-- Android 12+ 系统启动屏：白底 + 中间启动图（勿再用已弃用的 <splash> 标签） -->
         <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/icon/icon.png" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/splash/splash.png" />
     </platform>
 </widget>
