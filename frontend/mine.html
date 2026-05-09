@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-app-theme="blue">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-statusbar"></script>
+    <script src="/js/auth.js?v=20260509-nativebar"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <!-- 顶栏与头图共用一张背景图：关闭 auth.js 的 body::before 遮罩，头区背景延伸至刘海 -->
@@ -63,7 +63,7 @@
          */
         .header-bg {
             --mine-header-bg-url: url('grdb.jpg');
-            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            padding-top: env(safe-area-inset-top, 0px);
             width: 100%;
             box-sizing: border-box;
             background-color: #1e6fff;
@@ -72,7 +72,7 @@
             /* 略偏下锚点，使人像圆圈落在状态栏下方可视区 */
             background-position: center 28%;
             background-repeat: no-repeat;
-            min-height: calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)) + min(50vw, 268px));
+            min-height: calc(env(safe-area-inset-top, 0px) + min(50vw, 268px));
         }
         
         /* 内容包装器 - 顶部圆角 */
