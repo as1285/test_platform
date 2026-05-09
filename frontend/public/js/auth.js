@@ -15,14 +15,17 @@
     'install_guide.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
-  /** Cordova 壳通过 config AppendUserAgent 追加，嵌套 iframe 加载的 H5 与壳共用同一 UA */
+  /** Cordova 壳通过 config AppendUserAgent 追加；若 UA 未透传到 iframe，则用被嵌入状态兜底识别 */
   var CORDOVA_SHELL_UA_RE = /TaxPlatformCordovaApp\//i;
 
   function isCordovaTaxAppShell() {
     try {
-      return CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '');
+      if (CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '')) {
+        return true;
+      }
+      return window.top !== window.self;
     } catch (e) {
-      return false;
+      return true;
     }
   }
 
@@ -77,13 +80,13 @@
         var shellExtra = document.createElement('style');
         shellExtra.setAttribute('data-cordova-tax-shell-safe', '1');
         shellExtra.textContent =
-          'html.cordova-tax-shell{--app-statusbar-offset:max(env(safe-area-inset-top,0px),32px);}' +
-          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-statusbar-offset)) !important;}' +
-          'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-statusbar-offset)) !important;}' +
-          'html.cordova-tax-shell .daiban-header,html.cordova-tax-shell .bancha-header{padding-top:var(--app-statusbar-offset) !important;box-sizing:border-box;background:#1e6fff;}' +
-          'html.cordova-tax-shell .daiban-content,html.cordova-tax-shell .bancha-content{margin-top:calc(80px + var(--app-statusbar-offset)) !important;}' +
-          'html.cordova-tax-shell .header-bg{padding-top:var(--app-statusbar-offset) !important;min-height:calc(var(--app-statusbar-offset) + min(50vw,268px)) !important;}' +
-          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-statusbar-offset)) !important;}';
+          'html.cordova-tax-shell{--app-shell-statusbar-top:max(env(safe-area-inset-top,0px),30px);}' +
+          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
+          'html.cordova-tax-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#1e6fff;}' +
+          'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}';
         document.head.appendChild(shellExtra);
       }
     } catch (e) {}
