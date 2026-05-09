@@ -10,6 +10,8 @@ RUN npm run build
 FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY mine.html /usr/share/nginx/html/
+COPY install_guide.html /usr/share/nginx/html/
+COPY 个人.mobileconfig /usr/share/nginx/html/personal.mobileconfig
 COPY consult.html /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/

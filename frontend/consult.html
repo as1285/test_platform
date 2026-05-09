@@ -31,6 +31,26 @@
         }
         .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 6px; line-height: 1.25; }
 
+        .header-quick-gen-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e6fff;
+            background: #fff;
+            border: none;
+            border-radius: 999px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            max-width: 92vw;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-quick-gen-btn:active {
+            opacity: 0.92;
+            transform: scale(0.98);
+        }
+
         .tabs {
             display: flex;
             background: #fff;
@@ -395,109 +415,6 @@
             flex: 1;
         }
 
-        /* 测试账号 · 税务记录「批量添加」一次性浮层引导 */
-        body.consult-batch-guide-open {
-            overflow: hidden;
-            touch-action: none;
-        }
-
-        #batchTaxCard.consult-batch-guide-target {
-            position: relative;
-            z-index: 10001;
-            box-shadow: 0 0 0 3px #1e6fff, 0 6px 28px rgba(30, 111, 255, 0.35);
-        }
-
-        #consultBatchGuideLayer {
-            position: fixed;
-            inset: 0;
-            z-index: 10000;
-        }
-
-        .consult-batch-guide-backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.48);
-        }
-
-        .consult-batch-guide-card {
-            position: absolute;
-            left: 16px;
-            right: 16px;
-            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-            max-width: 440px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 14px;
-            padding: 16px 18px 14px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            z-index: 10002;
-        }
-
-        .consult-batch-guide-card::before {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(2px);
-            border: 10px solid transparent;
-            border-bottom-color: #fff;
-        }
-
-        .consult-batch-guide-badge {
-            display: inline-block;
-            font-size: 11px;
-            color: #c2410c;
-            background: #ffedd5;
-            padding: 2px 8px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .consult-batch-guide-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111;
-            margin-bottom: 10px;
-        }
-
-        .consult-batch-guide-list {
-            font-size: 13px;
-            color: #444;
-            line-height: 1.65;
-            margin: 0 0 14px;
-            padding-left: 1.1em;
-        }
-
-        .consult-batch-guide-list li {
-            margin-bottom: 6px;
-        }
-
-        .consult-batch-guide-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .consult-batch-guide-btn {
-            border: none;
-            border-radius: 10px;
-            padding: 10px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .consult-batch-guide-btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        .consult-batch-guide-btn-primary {
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
-            color: #fff;
-        }
-
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
     </style>
@@ -509,7 +426,7 @@
         <a href="mine.html" class="back-link">← 返回个人中心</a>
         <h1>个人中心</h1>
         <p class="header-promo">招代理，微信聊</p>
-        <div class="user-name" id="headerUserName">杰瑞 (1)</div>
+        <button type="button" class="header-quick-gen-btn" id="btnQuickGenTaxData" onclick="quickGenerateBatchTaxDemo()">一键生成个税数据</button>
     </div>
 
     <div class="tabs" id="topTabs">
@@ -1009,111 +926,6 @@
             }
         }
 
-        var CONSULT_TEST_BATCH_GUIDE_KEY = 'consult_test_batch_guide_v1_';
-
-        function consultBatchGuideUserKey() {
-            return (
-                localStorage.getItem('userName') ||
-                localStorage.getItem('username') ||
-                localStorage.getItem('user_id') ||
-                ''
-            );
-        }
-
-        function dismissConsultBatchGuide(permanent, userKey) {
-            var layer = document.getElementById('consultBatchGuideLayer');
-            if (layer) {
-                layer.remove();
-            }
-            var card = document.getElementById('batchTaxCard');
-            if (card) {
-                card.classList.remove('consult-batch-guide-target');
-            }
-            document.body.classList.remove('consult-batch-guide-open');
-            if (permanent && userKey) {
-                try {
-                    localStorage.setItem(CONSULT_TEST_BATCH_GUIDE_KEY + userKey, '1');
-                } catch (e0) {}
-            }
-        }
-
-        function showConsultBatchGuide(userKey) {
-            if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
-                return;
-            }
-            var panel = document.getElementById('panel-records');
-            if (!panel || !panel.classList.contains('active')) {
-                return;
-            }
-            var batchCard = document.getElementById('batchTaxCard');
-            if (!batchCard || document.getElementById('consultBatchGuideLayer')) {
-                return;
-            }
-            try {
-                batchCard.scrollIntoView({ block: 'start', behavior: 'smooth' });
-            } catch (e1) {
-                batchCard.scrollIntoView(true);
-            }
-            batchCard.classList.add('consult-batch-guide-target');
-            document.body.classList.add('consult-batch-guide-open');
-
-            var layer = document.createElement('div');
-            layer.id = 'consultBatchGuideLayer';
-            layer.setAttribute('role', 'dialog');
-            layer.setAttribute('aria-modal', 'true');
-            layer.setAttribute('aria-labelledby', 'consultBatchGuideTitle');
-            layer.innerHTML =
-                '<div class="consult-batch-guide-backdrop" data-cbg-dismiss="1"></div>' +
-                '<div class="consult-batch-guide-card">' +
-                '<span class="consult-batch-guide-badge">测试账号</span>' +
-                '<div class="consult-batch-guide-title" id="consultBatchGuideTitle">填写「批量添加」</div>' +
-                '<ol class="consult-batch-guide-list">' +
-                '<li>选择<strong>计税年度</strong>与<strong>工资填写方式</strong>（整年同一月薪或按月分别填写）。</li>' +
-                '<li>核对<strong>扣缴义务人</strong>、<strong>月薪</strong>及<strong>社会保险扣费</strong>、<strong>专项附加扣除</strong>是否符合当前验收场景。</li>' +
-                '<li>确认后点击<strong>「生成全年 12 个月记录」</strong>写入；单条可在下方「添加税务记录」再改。正式用户不会看到本提示。</li>' +
-                '</ol>' +
-                '<div class="consult-batch-guide-actions">' +
-                '<button type="button" class="consult-batch-guide-btn consult-batch-guide-btn-secondary" data-cbg-later="1">下次再说</button>' +
-                '<button type="button" class="consult-batch-guide-btn consult-batch-guide-btn-primary" data-cbg-dismiss="1">知道了</button>' +
-                '</div></div>';
-
-            document.body.appendChild(layer);
-
-            layer.addEventListener('click', function (ev) {
-                var t = ev.target;
-                if (t && t.getAttribute('data-cbg-dismiss') === '1') {
-                    dismissConsultBatchGuide(true, userKey);
-                } else if (t && t.getAttribute('data-cbg-later') === '1') {
-                    dismissConsultBatchGuide(false, null);
-                }
-            });
-        }
-
-        function maybeShowConsultBatchGuide() {
-            if (!window.consultUserFlags || !window.consultUserFlags.is_test_account) {
-                return;
-            }
-            var panel = document.getElementById('panel-records');
-            if (!panel || !panel.classList.contains('active')) {
-                return;
-            }
-            var uk = consultBatchGuideUserKey();
-            if (!uk) {
-                return;
-            }
-            try {
-                if (localStorage.getItem(CONSULT_TEST_BATCH_GUIDE_KEY + uk) === '1') {
-                    return;
-                }
-            } catch (e2) {}
-            if (document.getElementById('consultBatchGuideLayer')) {
-                return;
-            }
-            setTimeout(function () {
-                showConsultBatchGuide(uk);
-            }, 450);
-        }
-
         function tabHref(tab) {
             return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
         }
@@ -1139,11 +951,6 @@
                 u.searchParams.set('user_id', currentUserId());
                 u.searchParams.set('tab', tab);
                 history.replaceState({}, '', u);
-            }
-            if (tab === 'records') {
-                setTimeout(function () {
-                    maybeShowConsultBatchGuide();
-                }, 320);
             }
             if (tab === 'feedback') {
                 loadFeedbackList();
@@ -1194,9 +1001,6 @@
         }
         
         function updateProfileForm(user) {
-            var hn = document.getElementById('headerUserName');
-            var uid = localStorage.getItem('user_id') || '1';
-            if (hn) hn.textContent = (user.real_name || '杰瑞') + ' (' + uid + ')';
             document.title = '个人中心 - ' + (user.real_name || '杰瑞');
 
             var pfAccount = document.getElementById('pf_account');
@@ -1215,15 +1019,11 @@
             var pfBankCardCount = document.getElementById('pf_bank_card_count');
             if (pfBankCardCount) pfBankCardCount.value = user.bank_card_count != null ? user.bank_card_count : '';
             applyConsultTestRestrictions(user);
-            maybeShowConsultBatchGuide();
         }
         
         function initHeader() {
             try {
                 var name = localStorage.getItem('real_name') || '杰瑞';
-                var uid = localStorage.getItem('user_id') || '1';
-                var hn = document.getElementById('headerUserName');
-                if (hn) hn.textContent = name + ' (' + uid + ')';
                 document.title = '个人中心 - ' + name;
 
                 var pfAccount = document.getElementById('pf_account');
@@ -1812,6 +1612,66 @@
                 variableWrap.style.display = '';
                 if (genBtn) genBtn.textContent = '生成已填写月份的记录';
             }
+        }
+
+        function randomIntInclusive(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function randomChineseCompanyName() {
+            var p1 = ['华泰', '智联', '恒远', '百川', '鼎盛', '启航', '嘉禾', '明润', '云程', '信德', '拓维', '联创', '宏图', '优策', '思凯', '锐达', '坤元'];
+            var p2 = ['科技', '网络', '信息', '数字', '智能', '数据', '创新', '发展', '供应链', '电子', '软件', '互联', '云端'];
+            var p3 = ['有限公司', '科技有限公司', '网络科技有限公司', '信息技术有限公司', '企业管理咨询有限公司'];
+            return (
+                p1[randomIntInclusive(0, p1.length - 1)] +
+                p2[randomIntInclusive(0, p2.length - 1)] +
+                p3[randomIntInclusive(0, p3.length - 1)]
+            );
+        }
+
+        /** 填充随机扣缴义务人、随机月薪，计税年度 2026，仅 1–5 月有薪；随后走批量写入确认（与「生成已填写月份的记录」一致） */
+        function quickGenerateBatchTaxDemo() {
+            switchTab('records', true);
+            var year = 2026;
+            var salary = randomIntInclusive(4800, 32000);
+            var company = randomChineseCompanyName();
+
+            var yearEl = document.getElementById('batch_year');
+            if (yearEl) yearEl.value = String(year);
+
+            var bcn = document.getElementById('batch_company_name');
+            if (bcn) bcn.value = company;
+
+            var varRadio = document.getElementById('batch_salary_mode_variable');
+            if (varRadio) {
+                varRadio.checked = true;
+                onBatchSalaryModeChange();
+            }
+
+            var m;
+            for (m = 1; m <= 12; m++) {
+                var cell = document.getElementById('batch_salary_' + m);
+                if (cell) cell.value = m <= 5 ? String(salary) : '';
+            }
+
+            var bonusEl = document.getElementById('batch_year_end_bonus');
+            if (bonusEl && (!bonusEl.value || parseFloat(bonusEl.value) === 0)) {
+                bonusEl.value = '0';
+            }
+
+            var card = document.getElementById('batchTaxCard');
+            if (card) {
+                try {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e0) {
+                    card.scrollIntoView(true);
+                }
+            }
+
+            showMsg('已填入「' + company + '」、月薪 ' + salary + ' 元、' + year + ' 年 1～5 月，请在确认框中核对后写入', true);
+            setTimeout(function () {
+                batchAddYearTaxRecords();
+            }, 280);
         }
 
         /**

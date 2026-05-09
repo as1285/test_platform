@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>安装包和使用方法</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-inner {
+            position: relative;
+            text-align: center;
+            padding-top: 4px;
+        }
+        .back-btn {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            opacity: 0.95;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .wrap {
+            padding: 16px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+        .card h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .card p, .card li {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.65;
+            margin-bottom: 10px;
+        }
+        .card ol {
+            padding-left: 1.2em;
+            margin-bottom: 8px;
+        }
+        .card li { margin-bottom: 8px; }
+        .link-row {
+            word-break: break-all;
+            font-size: 13px;
+            color: #1e6fff;
+            background: #f0f6ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #d9e8ff;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 11px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+            color: #fff;
+        }
+        .btn-secondary {
+            background: #eef2f7;
+            color: #374151;
+        }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.78);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .toast.show { opacity: 1; }
+        .video-card h2 { margin-bottom: 10px; }
+        .video-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #111;
+            aspect-ratio: 16 / 9;
+            max-height: 56vh;
+        }
+        .video-wrap video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+        .video-placeholder {
+            aspect-ratio: 16 / 9;
+            max-height: 56vh;
+            border-radius: 12px;
+            border: 2px dashed #cfd8e6;
+            background: #fafbfc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+            font-size: 13px;
+            color: #888;
+            line-height: 1.5;
+        }
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-inner">
+            <a href="mine.html" class="back-btn"><img src="jt.png" alt="" width="9" height="15" style="filter:brightness(0) invert(1);width:9px;height:auto;"><span>返回</span></a>
+            <h1 class="header-title">安装包和使用方法</h1>
+        </div>
+    </header>
+
+    <div class="wrap">
+        <section class="card">
+            <h2>安卓安装包下载地址</h2>
+            <p>复制下方链接到手机浏览器地址栏打开，即可下载安装包。</p>
+            <div class="link-row" id="androidUrlText">https://wwalr.lanzoul.com/iWD5L3nszo5e</div>
+            <div class="btn-row">
+                <button type="button" class="btn btn-primary" onclick="copyInstallLink('android')">复制链接</button>
+                <a class="btn btn-secondary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;" href="https://wwalr.lanzoul.com/iWD5L3nszo5e" target="_blank" rel="noopener noreferrer">浏览器打开</a>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>苹果 · 描述文件（个人.mobileconfig）</h2>
+            <p>请使用苹果自带的 <strong>Safari</strong> 打开本页，点击下方按钮直接下载描述文件（无需网盘）。若在微信内打开，请先右上角「…」→「在 Safari 中打开」。</p>
+            <div class="link-row" id="iosUrlText"></div>
+            <div class="btn-row">
+                <a class="btn btn-primary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;" id="iosDirectDownload" href="/personal.mobileconfig" download="个人.mobileconfig">下载描述文件</a>
+                <button type="button" class="btn btn-secondary" onclick="copyInstallLink('ios')">复制下载链接</button>
+            </div>
+            <p style="margin-top:14px;"><strong>安装步骤（iPhone / iPad）</strong></p>
+            <ol>
+                <li>用 <strong>Safari</strong> 打开本页，点击<strong>下载描述文件</strong>；出现提示时选择<strong>允许</strong>。</li>
+                <li>打开 <strong>设置 → 通用 → VPN与设备管理</strong>（部分系统为「描述文件与设备管理」），找到刚下载的描述文件并<strong>安装</strong>。</li>
+                <li>安装成功后，返回桌面即可进入 APP。</li>
+                <li>具体操作请向下查看<strong>操作视频</strong>。</li>
+            </ol>
+        </section>
+
+        <section class="card video-card">
+            <h2>苹果安装视频</h2>
+            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 iPhone / iPad 下载并安装描述文件的步骤，可在管理后台「用户端外观」中配置。</p>
+            <div id="iosInstallVideoContainer"></div>
+        </section>
+
+        <section class="card video-card">
+            <h2>操作视频</h2>
+            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 APP 使用方法，可在管理后台「用户端外观」中配置。</p>
+            <div id="usageVideoContainer"></div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        var ANDROID_PKG_URL = 'https://wwalr.lanzoul.com/iWD5L3nszo5e';
+        var IOS_PROFILE_PATH = '/personal.mobileconfig';
+
+        function iosProfileAbsoluteUrl() {
+            try {
+                return window.location.origin + IOS_PROFILE_PATH;
+            } catch (e) {
+                return IOS_PROFILE_PATH;
+            }
+        }
+
+        (function fillIosLinkRow() {
+            var row = document.getElementById('iosUrlText');
+            if (row) {
+                row.textContent = iosProfileAbsoluteUrl();
+            }
+        })();
+        function showToast(msg) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(showToast._tid);
+            showToast._tid = setTimeout(function () {
+                t.classList.remove('show');
+            }, 2000);
+        }
+
+        function copyInstallLink(which) {
+            var text = which === 'ios' ? iosProfileAbsoluteUrl() : ANDROID_PKG_URL;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    showToast('已复制到剪贴板');
+                }).catch(function () {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast('已复制到剪贴板');
+            } catch (e) {
+                showToast('复制失败，请长按链接手动复制');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function toAssetUrl(path) {
+            if (!path) return '';
+            if (/^https?:\/\//i.test(path) || path.charAt(0) === '/') {
+                return path;
+            }
+            return '/' + path;
+        }
+
+        function renderVideo(containerId, url, emptyText) {
+            var box = document.getElementById(containerId);
+            if (!box) return;
+            var src = toAssetUrl(url);
+            if (src) {
+                var v = document.createElement('video');
+                v.setAttribute('controls', '');
+                v.setAttribute('playsinline', '');
+                v.setAttribute('preload', 'metadata');
+                v.className = 'guide-video';
+                var s = document.createElement('source');
+                s.src = src;
+                s.type = 'video/mp4';
+                v.appendChild(s);
+                var wrap = document.createElement('div');
+                wrap.className = 'video-wrap';
+                wrap.appendChild(v);
+                box.appendChild(wrap);
+            } else {
+                box.innerHTML = '<div class="video-placeholder">' + emptyText + '<br>请在管理后台「用户端外观」上传或填写视频地址</div>';
+            }
+        }
+
+        (function initVideos() {
+            renderVideo('iosInstallVideoContainer', '', '暂未配置苹果安装视频');
+            renderVideo('usageVideoContainer', '', '暂未配置操作视频');
+            fetch('/api/public/mine-ui', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (body) {
+                    if (!body || body.code !== 200 || !body.data) {
+                        return;
+                    }
+                    document.getElementById('iosInstallVideoContainer').innerHTML = '';
+                    document.getElementById('usageVideoContainer').innerHTML = '';
+                    renderVideo('iosInstallVideoContainer', body.data.install_ios_video || '', '暂未配置苹果安装视频');
+                    renderVideo('usageVideoContainer', body.data.install_usage_video || '', '暂未配置操作视频');
+                })
+                .catch(function () {});
+        })();
+    </script>
+</body>
+</html>

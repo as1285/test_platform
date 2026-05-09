@@ -10,8 +10,59 @@
   var PUBLIC_PAGES = {
     'index.html': true,
     'register.html': true,
-    'login.html': true
+    'login.html': true,
+    'install_guide.html': true
   };
+  var APP_STATUS_BAR_COLOR = '#1e6fff';
+
+  function upsertMeta(name, content) {
+    try {
+      var el = document.querySelector('meta[name="' + name + '"]');
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute('name', name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    } catch (e) {}
+  }
+
+  function patchViewportFit() {
+    try {
+      var el = document.querySelector('meta[name="viewport"]');
+      if (!el) {
+        return;
+      }
+      var c = el.getAttribute('content') || '';
+      if (c.indexOf('viewport-fit=cover') < 0) {
+        el.setAttribute('content', c ? c + ', viewport-fit=cover' : 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+      }
+    } catch (e) {}
+  }
+
+  function setupMobileStatusBar() {
+    upsertMeta('theme-color', APP_STATUS_BAR_COLOR);
+    upsertMeta('msapplication-navbutton-color', APP_STATUS_BAR_COLOR);
+    upsertMeta('apple-mobile-web-app-capable', 'yes');
+    /* iOS 只支持 default / black / black-translucent；用透明模式让页面蓝色安全区透到系统栏后方。 */
+    upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+    try {
+      var style = document.createElement('style');
+      style.textContent =
+        'html{background:' + APP_STATUS_BAR_COLOR + ';}' +
+        'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
+        APP_STATUS_BAR_COLOR +
+        ';z-index:2147483647;pointer-events:none;}';
+      document.head.appendChild(style);
+    } catch (e) {}
+    patchViewportFit();
+    setTimeout(patchViewportFit, 0);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', patchViewportFit);
+    }
+  }
+
+  setupMobileStatusBar();
 
   function currentPageName() {
     var p = window.location.pathname || '';

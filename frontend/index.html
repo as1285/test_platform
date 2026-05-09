@@ -207,6 +207,15 @@
     </style>
 </head>
 <body>
+    <script>
+        (function () {
+            try {
+                if (navigator.userAgent.indexOf('MicroMessenger') !== -1) {
+                    alert('⚠️ 微信内无法下载，请点右上角「…」→「在浏览器中打开」');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <!-- 顶部导航 -->
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">

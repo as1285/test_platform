@@ -549,11 +549,29 @@
                     </div>
                 </div>
 
+                <h3>安装引导视频</h3>
+                <div class="mine-ui-row mine-ui-video-row">
+                    <label for="img_install_ios_video">苹果安装视频</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_ios_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
+                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_ios_video" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row mine-ui-video-row">
+                    <label for="img_install_usage_video">操作视频</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_usage_video" maxlength="500" placeholder="如 uploads/xxx.mp4 或 https://...">
+                        <input type="file" class="mine-ui-file" accept="video/mp4,video/quicktime,video/webm,.m4v" data-target="img_install_usage_video" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
                 </div>
             </div>
-            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+            <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图、安装引导视频</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code>、<code>uploads/xxx.mp4</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
         </section>
                 </div>
 
@@ -1716,16 +1734,16 @@
             'nav_sy_1', 'nav_sy_2', 'nav_db_1', 'nav_db_2', 'nav_bc_1', 'nav_bc_2',
             'nav_xx_1', 'nav_xx_2', 'nav_w_1', 'nav_w_2',
             'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header',
-            'piaojia_goumai', 'piaojia_xiaoshou'
+            'piaojia_goumai', 'piaojia_xiaoshou', 'install_ios_video', 'install_usage_video'
         ];
 
         function syncMineUiDefaultToggle() {
             var on = document.getElementById('mineUseDefaultImages').checked;
             document.querySelectorAll('#page-appearance .mine-ui-row input[type="text"]').forEach(function (el) {
-                el.disabled = on;
+                el.disabled = on && !el.closest('.mine-ui-video-row');
             });
             document.querySelectorAll('#page-appearance .mine-ui-pick').forEach(function (btn) {
-                btn.disabled = on;
+                btn.disabled = on && !btn.closest('.mine-ui-video-row');
             });
         }
 

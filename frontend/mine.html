@@ -41,6 +41,8 @@
         
         /* 顶部蓝色背景区域 */
         .header-bg {
+            background: #1e6fff;
+            padding-top: env(safe-area-inset-top, 0px);
         }
         
         .header-bg img {
@@ -260,122 +262,6 @@
             padding-bottom: 118px;
         }
 
-        /* 测试账号：「我要咨询」一次性浮层引导 */
-        body.mine-test-guide-open {
-            overflow: hidden;
-            touch-action: none;
-        }
-
-        .mine-menu-item.mine-test-guide-target {
-            position: relative;
-            z-index: 10001;
-            box-shadow: 0 0 0 3px #1a94ff, 0 4px 20px rgba(26, 148, 255, 0.35);
-            border-radius: 10px;
-            background: #fff;
-        }
-
-        #mineTestGuideLayer {
-            position: fixed;
-            inset: 0;
-            z-index: 10000;
-            pointer-events: auto;
-        }
-
-        .mine-test-guide-backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.48);
-        }
-
-        .mine-test-guide-card {
-            position: absolute;
-            left: 16px;
-            right: 16px;
-            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-            max-width: 400px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 14px;
-            padding: 16px 18px 14px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
-            z-index: 10002;
-        }
-
-        .mine-test-guide-card::before {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(2px);
-            border: 10px solid transparent;
-            border-bottom-color: #fff;
-            filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.06));
-        }
-
-        .mine-test-guide-badge {
-            display: inline-block;
-            font-size: 11px;
-            color: #c2410c;
-            background: #ffedd5;
-            padding: 2px 8px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .mine-test-guide-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111;
-            margin-bottom: 8px;
-        }
-
-        .mine-test-guide-text {
-            font-size: 14px;
-            color: #444;
-            line-height: 1.55;
-            margin-bottom: 14px;
-        }
-
-        .mine-test-guide-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .mine-test-guide-btn {
-            border: none;
-            border-radius: 10px;
-            padding: 10px 18px;
-            font-size: 15px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .mine-test-guide-btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        .mine-test-guide-btn-primary {
-            background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
-            color: #fff;
-        }
-
-        /* 测试账号：全页引导水印（底栏 z-index:100 之上仍可点击） */
-        .mine-test-account-guide-watermark {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 99;
-            background-repeat: repeat;
-            background-size: 380px 170px;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
         </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
@@ -455,7 +341,7 @@
                 <span class="menu-text">我要咨询</span>
                 <span class="menu-arrow">></span>
             </div>
-            <a href="shuiming.html" class="menu-item tappable">
+            <a href="install_guide.html" class="menu-item tappable">
                 <div class="menu-icon">
                     <img src="caidan/gy.png" alt="" style="width: 19px;">
                 </div>
@@ -610,7 +496,6 @@
             
             // 如果没有登录信息，跳转到登录页
             if (!userId) {
-                syncMineTestConsultGuideWatermark(false);
                 // window.location.href = 'login.html';
                 return;
             }
@@ -620,7 +505,6 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.code !== 200) {
-                        syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
                         return;
                     }
                     var user = data.data;
@@ -670,14 +554,11 @@
                             bankCardBtn.className = 'function-btn orange';
                         }
 
-                    syncMineTestConsultGuideWatermark(!!user.is_test_account);
-                    maybeShowMineTestConsultGuide(user);
                 })
                 .catch(error => {
                     console.error('获取用户信息失败:', error);
                     // API失败时使用localStorage的数据
                     updateCountsFromLocalStorage();
-                    syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
                 });
         }
         
@@ -754,153 +635,6 @@
             });
         }
 
-        var MINE_TEST_CONSULT_GUIDE_KEY = 'mine_test_consult_guide_v1_';
-        var MINE_TEST_WM_ID = '__mine_test_consult_guide_wm__';
-
-        function createMineTestConsultGuideWatermarkLayer() {
-            if (document.getElementById(MINE_TEST_WM_ID)) {
-                return;
-            }
-            var label = '点击我要咨询修改数据';
-            var canvas = document.createElement('canvas');
-            var dpr = window.devicePixelRatio || 1;
-            var w = 380;
-            var h = 170;
-            canvas.width = w * dpr;
-            canvas.height = h * dpr;
-            var ctx = canvas.getContext('2d');
-            ctx.scale(dpr, dpr);
-            ctx.translate(w / 2, h / 2);
-            ctx.rotate(-24 * Math.PI / 180);
-            ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", Arial, sans-serif';
-            ctx.fillStyle = 'rgba(185, 28, 28, 0.42)';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(label, 0, 0);
-
-            var layer = document.createElement('div');
-            layer.id = MINE_TEST_WM_ID;
-            layer.className = 'mine-test-account-guide-watermark';
-            layer.setAttribute('aria-hidden', 'true');
-            layer.style.backgroundImage = 'url(' + canvas.toDataURL('image/png') + ')';
-            document.body.appendChild(layer);
-        }
-
-        function removeMineTestConsultGuideWatermarkLayer() {
-            var el = document.getElementById(MINE_TEST_WM_ID);
-            if (el && el.parentNode) {
-                el.parentNode.removeChild(el);
-            }
-        }
-
-        function syncMineTestConsultGuideWatermark(show) {
-            if (show) {
-                createMineTestConsultGuideWatermarkLayer();
-            } else {
-                removeMineTestConsultGuideWatermarkLayer();
-            }
-        }
-
-        function dismissMineTestConsultGuide(storageUsername) {
-            var layer = document.getElementById('mineTestGuideLayer');
-            if (layer) {
-                layer.remove();
-            }
-            var consult = document.getElementById('mineMenuConsult');
-            if (consult) {
-                consult.classList.remove('mine-test-guide-target');
-            }
-            document.body.classList.remove('mine-test-guide-open');
-            if (storageUsername) {
-                try {
-                    localStorage.setItem(MINE_TEST_CONSULT_GUIDE_KEY + storageUsername, '1');
-                } catch (e1) {}
-            }
-        }
-
-        function showMineTestConsultGuide(storageUsername) {
-            var target = document.getElementById('mineMenuConsult');
-            if (!target || document.getElementById('mineTestGuideLayer')) {
-                return;
-            }
-            try {
-                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            } catch (e2) {
-                target.scrollIntoView(true);
-            }
-            target.classList.add('mine-test-guide-target');
-            document.body.classList.add('mine-test-guide-open');
-
-            var layer = document.createElement('div');
-            layer.id = 'mineTestGuideLayer';
-            layer.setAttribute('role', 'dialog');
-            layer.setAttribute('aria-modal', 'true');
-            layer.setAttribute('aria-labelledby', 'mineTestGuideTitle');
-            layer.innerHTML =
-                '<div class="mine-test-guide-backdrop" data-dismiss="1"></div>' +
-                '<div class="mine-test-guide-card">' +
-                '<span class="mine-test-guide-badge">测试账号</span>' +
-                '<div class="mine-test-guide-title" id="mineTestGuideTitle">我要咨询</div>' +
-                '<p class="mine-test-guide-text">点击我要咨询修改数据：由此进入办税数据管理页，可维护税务记录、任职受雇、消息与个人信息等。正式用户不会看到本提示。</p>' +
-                '<div class="mine-test-guide-actions">' +
-                '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-secondary" data-later="1">下次再说</button>' +
-                '<button type="button" class="mine-test-guide-btn mine-test-guide-btn-primary" data-dismiss="1">知道了</button>' +
-                '</div></div>';
-
-            document.body.appendChild(layer);
-
-            function onClose(permanent) {
-                if (permanent) {
-                    dismissMineTestConsultGuide(storageUsername);
-                } else {
-                    var l = document.getElementById('mineTestGuideLayer');
-                    if (l) {
-                        l.remove();
-                    }
-                    var c = document.getElementById('mineMenuConsult');
-                    if (c) {
-                        c.classList.remove('mine-test-guide-target');
-                    }
-                    document.body.classList.remove('mine-test-guide-open');
-                }
-            }
-
-            layer.addEventListener('click', function (ev) {
-                var t = ev.target;
-                if (t && t.getAttribute('data-dismiss') === '1') {
-                    onClose(true);
-                } else if (t && t.getAttribute('data-later') === '1') {
-                    onClose(false);
-                }
-            });
-        }
-
-        function maybeShowMineTestConsultGuide(user) {
-            if (!user || !user.is_test_account) {
-                return;
-            }
-            var uname =
-                localStorage.getItem('userName') ||
-                localStorage.getItem('username') ||
-                localStorage.getItem('user_id') ||
-                '';
-            if (!uname) {
-                return;
-            }
-            try {
-                if (localStorage.getItem(MINE_TEST_CONSULT_GUIDE_KEY + uname) === '1') {
-                    return;
-                }
-            } catch (e3) {}
-            setTimeout(function () {
-                showMineTestConsultGuide(uname);
-            }, 450);
-        }
-
-        // 页面加载时执行（已登录时先用本地标记出水印，避免等接口空白）
-        if (localStorage.getItem('user_id')) {
-            syncMineTestConsultGuideWatermark(localStorage.getItem('is_test_account') === '1');
-        }
         loadUserInfo();
         if (window.__MINE_UI_CONFIG) {
             setMineAssetsFromConfig();

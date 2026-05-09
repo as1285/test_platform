@@ -28,17 +28,17 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 /* 主内容底部留白参考（悬浮栏 + 下边距 + 安全区），可按页微调 */
 :root {
-    --bottom-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
+    --bottom-nav-clearance: calc(85.2px + env(safe-area-inset-bottom, 0px));
 }
 
 /* 底部导航：悬浮大圆弧胶囊 + 高透毛玻璃（对齐官方：能透出背后内容、圆角更圆） */
 .bottom-nav {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: auto;
-    max-width: min(680px, calc(100% - 24px));
+    max-width: none;
     margin: 0 auto;
     /* 半透明底 + 强模糊，避免整块死白；无 backdrop 时由 @supports 回退 */
     background: rgba(255, 255, 255, 0.62);
@@ -54,8 +54,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 12px 8px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    height: 69.2px;
+    padding: 6px 8px;
     z-index: 100;
     box-sizing: border-box;
     transform: translateZ(0);
@@ -87,9 +87,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     }
 }
 
-/* iOS：与悬浮底栏一致，安全区已在 bottom / padding 中处理 */
+/* iOS：与悬浮底栏一致，安全区在 bottom 偏移中处理 */
 .bottom-nav.ios-device {
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 /* iOS设备未选中状态文字和图标颜色 */
@@ -143,9 +143,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .nav-icon {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 5px;
+    width: 28px;
+    height: 28px;
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -159,7 +159,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 .nav-text {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.15;
     color: #666;
 }
 

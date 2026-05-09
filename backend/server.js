@@ -51,6 +51,8 @@ const MINE_UI_IMAGE_KEYS = [
   'piaojia_goumai',
   'piaojia_xiaoshou'
 ];
+/** mine_ui JSON 中可配置的视频字段（相对路径、uploads/ 或 https） */
+const MINE_UI_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
@@ -128,7 +130,9 @@ function cloneMineUiDefaults() {
     bancha_header: 'db.jpg',
     message_header: 'message_header.jpg',
     piaojia_goumai: 'piaojia-goumai.png',
-    piaojia_xiaoshou: 'piaojia-xiaoshou.png'
+    piaojia_xiaoshou: 'piaojia-xiaoshou.png',
+    install_ios_video: '',
+    install_usage_video: ''
   };
 }
 
@@ -203,10 +207,17 @@ async function getMineUiForApi() {
   if (parsed.theme === 'yellow' || parsed.theme === 'blue') {
     out.theme = parsed.theme;
   }
-  if (parsed.use_default_images === true) {
-    return out;
+  if (parsed.use_default_images !== true) {
+    MINE_UI_IMAGE_KEYS.forEach(function (k) {
+      if (parsed[k] != null) {
+        var ok = sanitizeMineUiImageRef(parsed[k]);
+        if (ok) {
+          out[k] = ok;
+        }
+      }
+    });
   }
-  MINE_UI_IMAGE_KEYS.forEach(function (k) {
+  MINE_UI_VIDEO_KEYS.forEach(function (k) {
     if (parsed[k] != null) {
       var ok = sanitizeMineUiImageRef(parsed[k]);
       if (ok) {
@@ -237,6 +248,14 @@ async function getMineUiForAdminForm() {
       }
     }
   });
+  MINE_UI_VIDEO_KEYS.forEach(function (k) {
+    if (parsed[k] != null) {
+      var ok = sanitizeMineUiImageRef(parsed[k]);
+      if (ok) {
+        form[k] = ok;
+      }
+    }
+  });
   return form;
 }
 
@@ -247,7 +266,7 @@ const adminUpload = multer({
     },
     filename: function (req, file, cb) {
       var ext = path.extname(file.originalname || '').toLowerCase();
-      var allow = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      var allow = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'];
       if (allow.indexOf(ext) < 0) {
         ext = '.jpg';
       }
@@ -256,8 +275,8 @@ const adminUpload = multer({
   }),
   fileFilter: function (req, file, cb) {
     var ext = path.extname(file.originalname || '').toLowerCase();
-    var ok = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].indexOf(ext) >= 0;
-    cb(ok ? null : new Error('仅支持 jpg、png、gif、webp'), ok);
+    var ok = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'].indexOf(ext) >= 0;
+    cb(ok ? null : new Error('仅支持 jpg、png、gif、webp、mp4、mov、m4v、webm'), ok);
   }
 });
 
@@ -2530,6 +2549,14 @@ async function handleAdminSettingsPost(req, res) {
             }
           }
         });
+        MINE_UI_VIDEO_KEYS.forEach(function (k) {
+          if (prev[k] != null) {
+            var okPrev = sanitizeMineUiImageRef(prev[k]);
+            if (okPrev) {
+              merged[k] = okPrev;
+            }
+          }
+        });
       }
       var incoming = body.mine_ui;
       if (incoming.theme === 'blue' || incoming.theme === 'yellow') {
@@ -2541,6 +2568,14 @@ async function handleAdminSettingsPost(req, res) {
         merged.use_default_images = false;
       }
       MINE_UI_IMAGE_KEYS.forEach(function (k) {
+        if (incoming[k] != null && String(incoming[k]).trim() !== '') {
+          var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
+          if (ok) {
+            merged[k] = ok;
+          }
+        }
+      });
+      MINE_UI_VIDEO_KEYS.forEach(function (k) {
         if (incoming[k] != null && String(incoming[k]).trim() !== '') {
           var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
           if (ok) {
