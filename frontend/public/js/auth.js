@@ -29,6 +29,20 @@
     }
   }
 
+  /** 顶层 WKWebView 直接打开网址时 top===self 且无 Cordova UA，仍需避免蓝色安全区条盖住系统栏区域（仅 iOS 明显）。 */
+  function isLikelyIOSViewportClient() {
+    var ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+      return true;
+    }
+    try {
+      if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -55,45 +69,67 @@
   }
 
   function setupMobileStatusBar() {
-    upsertMeta('theme-color', APP_STATUS_BAR_COLOR);
-    upsertMeta('msapplication-navbutton-color', APP_STATUS_BAR_COLOR);
-    upsertMeta('apple-mobile-web-app-capable', 'yes');
-    /* iOS 只支持 default / black / black-translucent；用透明模式让页面蓝色安全区透到系统栏后方。 */
-    upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
     try {
       var cordovaShell = isCordovaTaxAppShell();
-      if (cordovaShell) {
-        document.documentElement.classList.add('cordova-tax-shell');
+      var iosClient = isLikelyIOSViewportClient();
+      /*
+       * 安卓浏览器：主题色与安全区补条用品牌蓝。
+       * Cordova / iframe 壳：白底，由各页顶栏铺色。
+       * iOS 顶层 WKWebView（直接打开网址、top===self）：原先会误判为「普通浏览器」而注入 html 蓝底 + body::before 蓝条，状态栏下整块发蓝。
+       */
+      var lightRootChrome = cordovaShell || iosClient;
+      var rootChromeBg = lightRootChrome ? '#ffffff' : APP_STATUS_BAR_COLOR;
+      upsertMeta('theme-color', rootChromeBg);
+      upsertMeta('msapplication-navbutton-color', rootChromeBg);
+      upsertMeta('apple-mobile-web-app-capable', 'yes');
+      upsertMeta(
+        'apple-mobile-web-app-status-bar-style',
+        lightRootChrome ? 'default' : 'black-translucent'
+      );
+      /*
+       * 顶部与系统状态栏避让：
+       * - Cordova / iframe：iframe 内 env(safe-area-inset-top) 常为 0，用固定 48px。
+       * - iOS 顶层 WKWebView（直接打开网址）：需 env(safe-area-inset-top)，否则首页搜索条、待办图头等会与时间栏重合。
+       */
+      var useTopSafeInset = cordovaShell || iosClient;
+      var statusInsetCss = cordovaShell ? '48px' : iosClient ? 'env(safe-area-inset-top, 0px)' : '';
+      if (useTopSafeInset) {
+        document.documentElement.classList.add('app-top-safe-shell');
       }
       var style = document.createElement('style');
       var barFill =
         'body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:' +
         APP_STATUS_BAR_COLOR +
         ';z-index:2147483647;pointer-events:none;}';
-      if (cordovaShell) {
+      if (lightRootChrome) {
         barFill = '';
       }
       /*
-       * 浏览器/PWA 场景使用 body::before 给安全区补蓝色。
-       * Cordova 原生壳使用透明叠层状态栏，由下方 shellExtra 统一给顶部内容让位。
+       * 浏览器/PWA（主要为安卓）：body::before 给安全区补蓝。
+       * Cordova / iOS：不铺条，避免与白顶栏冲突。
        */
-      style.textContent = 'html{background:' + APP_STATUS_BAR_COLOR + ';}' + barFill;
+      style.textContent = 'html{background:' + rootChromeBg + ';}' + barFill;
       document.head.appendChild(style);
-      if (cordovaShell) {
+      if (useTopSafeInset && statusInsetCss) {
         var shellExtra = document.createElement('style');
-        shellExtra.setAttribute('data-cordova-tax-shell-safe', '1');
+        shellExtra.setAttribute('data-app-top-safe-shell', '1');
+        var topFixedHeaderRule = cordovaShell
+          ? 'html.app-top-safe-shell .top-fixed .header{padding-top:calc(8px + env(safe-area-inset-top, 0px) + var(--app-shell-statusbar-top)) !important;}'
+          : '';
         shellExtra.textContent =
-          'html.cordova-tax-shell{--app-shell-statusbar-top:48px;}' +
-          'html.cordova-tax-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
-          'html.cordova-tax-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
-          'html.cordova-tax-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.cordova-tax-shell .top-fixed .header{padding-top:calc(8px + env(safe-area-inset-top, 0px) + var(--app-shell-statusbar-top)) !important;}';
+          'html.app-top-safe-shell{--app-shell-statusbar-top:' +
+          statusInsetCss +
+          ';}' +
+          'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
+          'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
+          'html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
+          topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
     } catch (e) {}

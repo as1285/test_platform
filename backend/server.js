@@ -589,6 +589,16 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE activation_codes ADD COLUMN used_by_username VARCHAR(255) NULL COMMENT '使用该激活码的用户账号'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   var profileCols = [
     "ALTER TABLE users ADD COLUMN id_type VARCHAR(64) NULL COMMENT '证件类型'",
     "ALTER TABLE users ADD COLUMN birth_date VARCHAR(32) NULL COMMENT '出生日期'",
@@ -1167,8 +1177,8 @@ async function applyActivationCode(username, rawCode) {
       throw new Error('激活码已用完');
     }
     await conn.execute(
-      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [r.id]
+      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
+      [username, r.id]
     );
     await conn.execute('UPDATE users SET account_active = 1 WHERE username = ?', [username]);
     await conn.commit();
@@ -1318,8 +1328,8 @@ async function registerUserWithActivationCode(username, password, rawActivationC
       [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
     );
     await conn.execute(
-      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [cr.id]
+      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
+      [username, cr.id]
     );
     await conn.commit();
   } catch (e) {
@@ -2492,7 +2502,7 @@ async function handleAdminCodes(req, res) {
     const total = totalRows[0].count;
 
     const [rows] = await conn.query(
-      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at FROM activation_codes ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`
+      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username FROM activation_codes ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`
     );
     conn.release();
     var out = rows.map(function (r) {
@@ -2504,7 +2514,11 @@ async function handleAdminCodes(req, res) {
         expires_at: r.expires_at ? r.expires_at.toISOString() : null,
         note: r.note,
         created_at: r.created_at ? r.created_at.toISOString() : '',
-        last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null
+        last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null,
+        used_by_username:
+          r.used_by_username != null && String(r.used_by_username).trim() !== ''
+            ? String(r.used_by_username).trim()
+            : null
       };
     });
     res.json({ code: 200, data: { codes: out, total: total, page: page, limit: limit } });

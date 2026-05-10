@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-shellgrad50"></script>
+    <script src="/js/auth.js?v=20260510-ios-safe-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -77,7 +77,7 @@
             color: #1e6fff;
             border-bottom-color: #1e6fff;
         }
-        .container { padding: 16px; padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+        .container { padding: 16px; padding-bottom: var(--bottom-nav-clearance); }
 
         .card {
             background: #fff;
@@ -1125,6 +1125,29 @@
                 });
         }
 
+        /** 批量卡片：扣缴义务人优先取本卡片输入，否则与下方单条表单一致 */
+        function resolveCompanyForBatch() {
+            var batchCompanyEl = document.getElementById('batch_company_name');
+            var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
+            var base = formObjectFromInputs();
+            var fallback = base.company_name != null ? String(base.company_name).trim() : '';
+            return batchCompanyTrim || fallback;
+        }
+
+        /** 未填写时阻塞提交并弹框（WebView/手机上比顶部 msgBar 更明显） */
+        function requireCompanyForBatchOrAlert() {
+            var name = resolveCompanyForBatch();
+            if (!name) {
+                alert('公司名称未填写，请先填写「扣缴义务人名称」。');
+                var el = document.getElementById('batch_company_name');
+                try {
+                    if (el) el.focus();
+                } catch (e0) {}
+                return false;
+            }
+            return true;
+        }
+
         function formObjectFromInputs() {
             return {
                 id: document.getElementById('editing_id').value || ('tr_' + Date.now()),
@@ -1205,6 +1228,15 @@
         function onSubmitRecord(e) {
             e.preventDefault();
             var o = formObjectFromInputs();
+            var cn = o.company_name != null ? String(o.company_name).trim() : '';
+            if (!cn) {
+                alert('公司名称未填写，请先填写「扣缴义务人名称」。');
+                var fc = document.getElementById('f_company_name');
+                try {
+                    if (fc) fc.focus();
+                } catch (e1) {}
+                return;
+            }
             var sd = sumSpecialDeductionFromForm();
             o.special_deduction = sd.toFixed(2);
             document.getElementById('f_special_deduction').value = o.special_deduction;
@@ -1577,13 +1609,10 @@
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
             var base = formObjectFromInputs();
             delete base.id;
-            var batchCompanyEl = document.getElementById('batch_company_name');
-            var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
-            var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
-            if (!companyForBatch) {
-                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在下方单条表单中填写）', false);
+            if (!requireCompanyForBatchOrAlert()) {
                 return;
             }
+            var companyForBatch = resolveCompanyForBatch();
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             if (!confirm('将写入全年一次性奖金收入 ' + yearEndBonus + ' 元（归属 ' + bonusMonth + ' 月），单独计税约 ' + bonusTax + ' 元。是否确认？')) return;
             postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus)
@@ -1756,13 +1785,10 @@
             var base = formObjectFromInputs();
             delete base.id;
 
-            var batchCompanyEl = document.getElementById('batch_company_name');
-            var batchCompanyTrim = batchCompanyEl ? String(batchCompanyEl.value).trim() : '';
-            var companyForBatch = batchCompanyTrim || (base.company_name != null ? String(base.company_name).trim() : '');
-            if (!companyForBatch) {
-                showMsg('请填写扣缴义务人名称（可在本卡片内填写，或在下方单条表单中填写）', false);
+            if (!requireCompanyForBatchOrAlert()) {
                 return;
             }
+            var companyForBatch = resolveCompanyForBatch();
 
             function monthlyTaxableFor(salaryMonth) {
                 return round2(Math.max(0, salaryMonth - 5000 - specialAdd - social - fund));

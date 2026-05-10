@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260509-shellgrad50"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260510-ios-safe-top"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
         * {
@@ -24,6 +24,7 @@
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            padding-top: env(safe-area-inset-top, 0px);
         }
 
         /*
@@ -50,7 +51,7 @@
 
         .top-fixed {
             position: fixed;
-            top: 0;
+            top: env(safe-area-inset-top, 0px);
             left: 0;
             right: 0;
             z-index: 100;

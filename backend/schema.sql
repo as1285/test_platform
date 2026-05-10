@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS activation_codes (
     expires_at DATETIME NULL,
     note VARCHAR(255) NULL,
     last_used_at DATETIME NULL COMMENT '最近一次使用时间',
+    used_by_username VARCHAR(255) NULL COMMENT '使用该激活码的用户账号',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_activation_code (code),
     INDEX idx_activation_expires (expires_at)

@@ -28,7 +28,8 @@
     <preference name="FadeSplashScreenDuration" value="400" />
     <!-- 透明状态栏叠在 WebView 上；H5 用固定兜底变量给顶部内容让位，避免 Android env() 取 0 -->
     <preference name="StatusBarBackgroundColor" value="#00000000" />
-    <preference name="StatusBarStyle" value="lightcontent" />
+    <!-- 与壳内 H5 白底顶栏一致；浅色内容会在白底状态栏区域看不清 -->
+    <preference name="StatusBarStyle" value="default" />
     <preference name="StatusBarOverlaysWebView" value="true" />
     <!-- 供 H5 识别壳内环境（iframe 内页面同源 UA），保留给设备上报/后续兼容逻辑使用 -->
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />

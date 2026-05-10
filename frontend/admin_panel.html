@@ -632,6 +632,7 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
+                            <th>使用账号</th>
                             <th>使用时间</th>
                         </tr>
                     </thead>
@@ -1659,14 +1660,19 @@
                             c.last_used_at && (Number(c.used_count) > 0)
                                 ? formatDt(c.last_used_at)
                                 : '—';
+                        var usedBy =
+                            c.used_by_username && String(c.used_by_username).trim() !== ''
+                                ? esc(String(c.used_by_username).trim())
+                                : '—';
                         html += '<tr>';
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                        html += '<td>' + usedBy + '</td>';
                         html += '<td>' + usedAt + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="4">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="5">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }

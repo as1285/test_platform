@@ -26,120 +26,62 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 
-/* 主内容底部留白参考（悬浮栏 + 下边距 + 安全区），可按页微调 */
+/*
+ * 主内容底部留白：悬浮底栏高度 + 距底 16px + Home Indicator（safe-area 计入 bottom，留白与之对齐）
+ */
 :root {
-    --bottom-nav-clearance: calc(85.2px + env(safe-area-inset-bottom, 0px));
+    --bottom-nav-clearance: calc(102px + env(safe-area-inset-bottom, 0px));
 }
 
-/* 底部导航：悬浮大圆弧胶囊 + 高透毛玻璃（对齐官方：能透出背后内容、圆角更圆） */
+/*
+ * 底部导航：悬浮圆角毛玻璃胶囊（距左右下各 16px，safe-area 叠在 bottom 上）
+ */
 .bottom-nav {
     position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     left: 16px;
     right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: auto;
-    max-width: none;
+    max-width: calc(100vw - 32px);
     margin: 0 auto;
-    /* 半透明底 + 强模糊，避免整块死白；无 backdrop 时由 @supports 回退 */
-    background: rgba(255, 255, 255, 0.62);
-    -webkit-backdrop-filter: saturate(200%) blur(26px);
-    backdrop-filter: saturate(200%) blur(26px);
-    /* 更大的圆角，接近官方「大圆弧」胶囊态 */
-    border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    /* 单层柔和外阴影，去掉过重 inset，减少 WebView 圆角处灰边/杂圈 */
-    box-shadow: 0 10px 36px rgba(15, 40, 90, 0.1);
-    overflow: hidden;
-    isolation: isolate;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     justify-content: space-around;
     align-items: center;
-    height: 69.2px;
-    padding: 6px 8px;
+    padding: 12px 8px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 35px;
     z-index: 100;
-    box-sizing: border-box;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    animation: bottomNavSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    -webkit-tap-highlight-color: transparent;
+    isolation: isolate;
 }
 
-@keyframes bottomNavSlideUp {
-    from {
-        transform: translate3d(0, calc(100% + 28px), 0);
-        opacity: 0.88;
-    }
-    to {
-        transform: translate3d(0, 0, 0);
-        opacity: 1;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .bottom-nav {
-        animation: none;
-    }
-}
-
-/* 不支持毛玻璃时略提高不透明度，保证可读 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .bottom-nav {
-        background: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.94);
     }
-}
-
-/* iOS：与悬浮底栏一致，安全区在 bottom 偏移中处理 */
-.bottom-nav.ios-device {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-}
-
-/* iOS设备未选中状态文字和图标颜色 */
-.bottom-nav.ios-device .nav-text {
-    color: #000000;
-}
-
-.bottom-nav.ios-device .nav-icon svg path[stroke="#999"],
-.bottom-nav.ios-device .nav-icon svg rect[stroke="#999"],
-.bottom-nav.ios-device .nav-icon svg circle[stroke="#999"] {
-    stroke: #000000;
-    stroke-width: 1.5;
-}
-
-.bottom-nav.ios-device .nav-icon svg path[fill="#999"] {
-    fill: #000000;
-}
-
-/* iOS设备选中状态 */
-.bottom-nav.ios-device .nav-item.active .nav-text {
-    color: var(--nav-tab-active-text);
-    font-weight: 600;
-}
-
-.bottom-nav.ios-device .nav-item.active .nav-icon svg path[stroke="#999"],
-.bottom-nav.ios-device .nav-item.active .nav-icon svg rect[stroke="#999"],
-.bottom-nav.ios-device .nav-item.active .nav-icon svg circle[stroke="#999"] {
-    stroke: var(--app-accent);
-}
-
-.bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#999"],
-.bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#1e6fff"] {
-    fill: var(--app-accent);
 }
 
 .nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-decoration: none;
     position: relative;
     -webkit-tap-highlight-color: transparent;
     outline: none;
     flex: 1;
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    min-width: 0;
+    padding: 2px 4px;
+    transition: opacity 0.15s ease;
 }
 
 .nav-item:active {
-    transform: scale(0.96);
-    opacity: 0.92;
+    opacity: 0.75;
 }
 
 .nav-icon {
@@ -160,7 +102,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 .nav-text {
     font-size: 11px;
-    line-height: 1.15;
+    line-height: 1.2;
     color: #666;
 }
 
@@ -178,4 +120,36 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     align-items: center;
     justify-content: center;
     padding: 0 4px;
+}
+
+/* iOS：未选中态文字/矢量图标统一为黑色（PNG 图标不受影响） */
+.bottom-nav.ios-device .nav-text {
+    color: #000000;
+}
+
+.bottom-nav.ios-device .nav-icon svg path[stroke="#999"],
+.bottom-nav.ios-device .nav-icon svg rect[stroke="#999"],
+.bottom-nav.ios-device .nav-icon svg circle[stroke="#999"] {
+    stroke: #000000;
+    stroke-width: 1.5;
+}
+
+.bottom-nav.ios-device .nav-icon svg path[fill="#999"] {
+    fill: #000000;
+}
+
+.bottom-nav.ios-device .nav-item.active .nav-text {
+    color: var(--nav-tab-active-text);
+    font-weight: 600;
+}
+
+.bottom-nav.ios-device .nav-item.active .nav-icon svg path[stroke="#999"],
+.bottom-nav.ios-device .nav-item.active .nav-icon svg rect[stroke="#999"],
+.bottom-nav.ios-device .nav-item.active .nav-icon svg circle[stroke="#999"] {
+    stroke: var(--app-accent);
+}
+
+.bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#999"],
+.bottom-nav.ios-device .nav-item.active .nav-icon svg path[fill="#1e6fff"] {
+    fill: var(--app-accent);
 }
