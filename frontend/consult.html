@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-batch-emp"></script>
+    <script src="/js/auth.js?v=20260511-batch-salary-range"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -554,7 +554,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段（例如 A 公司 2025-06～2026-05、B 公司 2025-07～至今），填好后点「一键生成」一次写入全部月份；任两个月不得重叠。年终奖仍可选，归属年度与月份见下方；扣缴义务人默认可取最后一段公司或单独填写。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。年终奖见下方。</p>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -584,9 +584,15 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>月薪（元）</label>
-                            <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="该段工作期间每月相同">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>月薪下限（元）</label>
+                                <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="固定月薪或浮动下限，如 15000">
+                            </div>
+                            <div class="form-group">
+                                <label>月薪上限（可选）</label>
+                                <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空=每月固定为下限；填则区间内随机，如 16000">
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -1611,7 +1617,11 @@
                     ey = parseInt(row.querySelector('.batch-emp-ey').value, 10);
                     em = parseInt(row.querySelector('.batch-emp-em').value, 10);
                 }
-                var salary = parseFloat(row.querySelector('.batch-emp-salary').value);
+                var salaryMin = parseFloat(row.querySelector('.batch-emp-salary').value);
+                var maxEl = row.querySelector('.batch-emp-salary-max');
+                var maxTrim = maxEl && maxEl.value != null ? String(maxEl.value).trim() : '';
+                var salaryFloat = maxTrim !== '';
+                var salaryMax = salaryFloat ? parseFloat(maxTrim) : salaryMin;
                 if (!company) {
                     return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段工作经历请填写扣缴义务人（公司全称）' };
                 }
@@ -1621,8 +1631,16 @@
                 if (!ongoing && (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12)) {
                     return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段结束年月不合法（或勾选至今）' };
                 }
-                if (Number.isNaN(salary) || salary < 0) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪须为非负数字' };
+                if (Number.isNaN(salaryMin) || salaryMin < 0) {
+                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪下限须为非负数字' };
+                }
+                if (salaryFloat) {
+                    if (Number.isNaN(salaryMax) || salaryMax < 0) {
+                        return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪上限须为非负数字' };
+                    }
+                    if (salaryMax < salaryMin) {
+                        return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪上限须不小于下限' };
+                    }
                 }
                 var months = enumerateYmRange(sy, sm, ey, em);
                 if (!months.length) {
@@ -1631,7 +1649,9 @@
                 employments.push({
                     empIdx: rowIdx,
                     company: company,
-                    salary: salary,
+                    salaryFloat: salaryFloat,
+                    salaryMin: salaryMin,
+                    salaryMax: salaryMax,
                     months: months
                 });
             }
@@ -1655,15 +1675,15 @@
             return { ok: true, employments: employments };
         }
 
-        /** 同一工作经历内按自然年度分段累计预扣 */
-        function taxesMapForEmploymentMonths(monthsList, salary, monthlyTaxableFn) {
+        /** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣 */
+        function taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFn) {
             var taxMap = {};
             var byYear = {};
             var i;
-            for (i = 0; i < monthsList.length; i++) {
-                var ym = monthsList[i];
-                if (!byYear[ym.year]) byYear[ym.year] = [];
-                byYear[ym.year].push(ym.month);
+            for (i = 0; i < monthEntries.length; i++) {
+                var e = monthEntries[i];
+                if (!byYear[e.year]) byYear[e.year] = [];
+                byYear[e.year].push({ month: e.month, salary: e.salary });
             }
             var years = Object.keys(byYear).map(function (x) {
                 return parseInt(x, 10);
@@ -1674,17 +1694,17 @@
             var yi;
             for (yi = 0; yi < years.length; yi++) {
                 var y = years[yi];
-                var months = byYear[y].slice().sort(function (a, b) {
-                    return a - b;
+                var arr = byYear[y].slice().sort(function (a, b) {
+                    return a.month - b.month;
                 });
                 var prefix = [0];
                 var mi;
-                for (mi = 0; mi < months.length; mi++) {
-                    var mt = monthlyTaxableFn(salary);
+                for (mi = 0; mi < arr.length; mi++) {
+                    var mt = monthlyTaxableFn(arr[mi].salary);
                     prefix[mi + 1] = round2(prefix[mi] + mt);
                 }
-                for (mi = 0; mi < months.length; mi++) {
-                    var mo = months[mi];
+                for (mi = 0; mi < arr.length; mi++) {
+                    var mo = arr[mi].month;
                     var cumPrev = prefix[mi];
                     var cumCur = prefix[mi + 1];
                     var taxM = round2(
@@ -1696,6 +1716,13 @@
                 }
             }
             return taxMap;
+        }
+
+        function batchEmpRandomSalaryInRange(minV, maxV) {
+            var lo = Number(minV);
+            var hi = Number(maxV);
+            if (hi <= lo) return round2(lo);
+            return round2(lo + Math.random() * (hi - lo));
         }
 
         function postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {
@@ -1906,18 +1933,26 @@
             var ei;
             for (ei = 0; ei < employments.length; ei++) {
                 var emp = employments[ei];
-                var taxMap = taxesMapForEmploymentMonths(emp.months, emp.salary, monthlyTaxableFor);
+                var monthEntries = [];
                 var mi;
                 for (mi = 0; mi < emp.months.length; mi++) {
-                    var ym = emp.months[mi];
-                    var k = ym.year + '-' + pad2(ym.month);
+                    var ym0 = emp.months[mi];
+                    var sal0 = emp.salaryFloat
+                        ? batchEmpRandomSalaryInRange(emp.salaryMin, emp.salaryMax)
+                        : round2(emp.salaryMin);
+                    monthEntries.push({ year: ym0.year, month: ym0.month, salary: sal0 });
+                }
+                var taxMap = taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFor);
+                for (mi = 0; mi < monthEntries.length; mi++) {
+                    var ent = monthEntries[mi];
+                    var k = ent.year + '-' + pad2(ent.month);
                     var taxM = taxMap[k];
                     taxSumSalary = round2(taxSumSalary + taxM);
                     writes.push({
-                        year: ym.year,
-                        month: ym.month,
+                        year: ent.year,
+                        month: ent.month,
                         company: emp.company,
-                        salary: emp.salary,
+                        salary: ent.salary,
                         tax: taxM,
                         empIdx: emp.empIdx
                     });
@@ -1936,7 +1971,16 @@
             var lines = [];
             for (ei = 0; ei < employments.length; ei++) {
                 var e = employments[ei];
-                lines.push('· ' + e.company + '：' + e.months.length + ' 个月，月薪 ' + e.salary + ' 元');
+                lines.push(
+                    '· ' +
+                        e.company +
+                        '：' +
+                        e.months.length +
+                        ' 个月，' +
+                        (e.salaryFloat
+                            ? '月薪约 ' + e.salaryMin + '～' + e.salaryMax + ' 元（本批次逐月随机）'
+                            : '月薪 ' + e.salaryMin + ' 元')
+                );
             }
             var bonusLine =
                 yearEndBonus > 0
