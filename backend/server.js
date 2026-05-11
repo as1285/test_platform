@@ -1271,10 +1271,9 @@ async function requireAuth(req, res, next) {
 }
 
 /**
- * 注册并立即用激活码开通（同一事务：校验码、建号、扣减使用次数）。
- * 展示姓名默认与账号相同，用户可在个人中心修改。
+ * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUserWithActivationCode(username, password, rawActivationCode) {
+async function registerUser(username, password) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -1287,10 +1286,6 @@ async function registerUserWithActivationCode(username, password, rawActivationC
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
   }
-  var code = String(rawActivationCode || '').trim().toUpperCase();
-  if (!code) {
-    throw new Error('请输入激活码');
-  }
 
   const saltBuf = crypto.randomBytes(16);
   const saltHex = saltBuf.toString('hex');
@@ -1299,48 +1294,25 @@ async function registerUserWithActivationCode(username, password, rawActivationC
 
   const conn = await pool.getConnection();
   try {
-    await conn.beginTransaction();
-    const [codeRows] = await conn.execute(
-      'SELECT id, max_uses, used_count, expires_at FROM activation_codes WHERE code = ? FOR UPDATE',
-      [code]
-    );
-    if (codeRows.length === 0) {
-      await conn.rollback();
-      throw new Error('激活码无效');
-    }
-    var cr = codeRows[0];
-    if (cr.expires_at && new Date(cr.expires_at) < new Date()) {
-      await conn.rollback();
-      throw new Error('激活码已过期');
-    }
-    if (Number(cr.used_count) >= Number(cr.max_uses)) {
-      await conn.rollback();
-      throw new Error('激活码已用完');
-    }
     const [existing] = await conn.execute('SELECT username FROM users WHERE username = ?', [username]);
     if (existing.length > 0) {
-      await conn.rollback();
       throw new Error('该账号已注册');
     }
     await conn.execute(
       `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
-       VALUES (?, ?, ?, ?, 1, ?, ?)`,
+       VALUES (?, ?, ?, ?, 0, ?, ?)`,
       [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
     );
-    await conn.execute(
-      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
-      [username, cr.id]
-    );
-    await conn.commit();
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (e2) {}
-    throw e;
   } finally {
     conn.release();
   }
-  return { user_id: username, real_name: displayName, username: username, account_active: true };
+  return {
+    user_id: username,
+    real_name: displayName,
+    username: username,
+    account_active: false,
+    is_test_account: false
+  };
 }
 
 async function loginUser(username, password) {
@@ -1409,6 +1381,7 @@ async function getUserInfoForApi(userId) {
     family_count: 0,
     bank_card_count: 0,
     gender: 1,
+    account_active: false,
     watermark_enabled: false,
     user_type: USER_TYPE_NORMAL,
     is_test_account: false,
@@ -1434,6 +1407,12 @@ async function getUserInfoForApi(userId) {
   
   const rec = rows[0];
   var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
+  var accountActive =
+    rec.account_active === 1 ||
+    rec.account_active === true ||
+    Number(rec.account_active) === 1;
+  var wmFlag =
+    Boolean(rec.watermark_enabled) || ut === USER_TYPE_TEST || !accountActive;
   function profileStr(field, fallback) {
     var v = rec[field];
     if (v == null || String(v).trim() === '') {
@@ -1448,7 +1427,8 @@ async function getUserInfoForApi(userId) {
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
     gender: rec.gender != null ? Number(rec.gender) : 1,
-    watermark_enabled: Boolean(rec.watermark_enabled),
+    account_active: accountActive,
+    watermark_enabled: wmFlag,
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
     test_company_locked_name: ut === USER_TYPE_TEST ? lockedCompany : '',
@@ -2236,9 +2216,16 @@ app.get('/api/message.php', requireAuth, requireActivated, handleMessageGet);
 app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
 app.get('/message.php', requireAuth, requireActivated, handleMessageGet);
 app.post('/message.php', requireAuth, requireActivated, handleMessagePost);
-app.get('/api/user.php', requireAuth, requireActivated, handleUserGet);
+function requireUserGetActivatedUnlessInfo(req, res, next) {
+  if (req.query.action === 'info') {
+    return next();
+  }
+  return requireActivated(req, res, next);
+}
+
+app.get('/api/user.php', requireAuth, requireUserGetActivatedUnlessInfo, handleUserGet);
 app.post('/api/user.php', requireAuth, requireActivated, handleUserPost);
-app.get('/user.php', requireAuth, requireActivated, handleUserGet);
+app.get('/user.php', requireAuth, requireUserGetActivatedUnlessInfo, handleUserGet);
 app.post('/user.php', requireAuth, requireActivated, handleUserPost);
 app.get('/api/feedback.php', requireAuth, requireActivated, handleFeedbackGet);
 app.post('/api/feedback.php', requireAuth, requireActivated, handleFeedbackPost);
@@ -2343,11 +2330,7 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
-      var out = await registerUserWithActivationCode(
-        body.username,
-        body.password,
-        body.activation_code != null ? body.activation_code : body.code
-      );
+      var out = await registerUser(body.username, body.password);
       out.token = signAccessToken(out);
       return res.json({ code: 200, data: out });
     }

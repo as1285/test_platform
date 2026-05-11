@@ -282,6 +282,8 @@
       localStorage.removeItem('gender');
       localStorage.removeItem('account_active');
       localStorage.removeItem('is_test_account');
+      localStorage.removeItem('wm_cache');
+      localStorage.removeItem('wm_cache_time');
     } catch (e) {}
   }
 
@@ -309,8 +311,9 @@
             try {
               localStorage.setItem('account_active', '0');
             } catch (e2) {}
-            window.location.href = ACTIVATE_PAGE;
-            return Promise.reject(new Error('need_activation'));
+            var err = new Error('need_activation');
+            err.need_activation = true;
+            return Promise.reject(err);
           }
           return Promise.reject(new Error('forbidden'));
         });
@@ -337,10 +340,7 @@
       }
       return;
     }
-    if (!isAccountActive()) {
-      window.location.replace(ACTIVATE_PAGE);
-      return;
-    }
+    /* 未激活也可浏览业务页，在个人中心（consult）等处激活 */
   } else {
     var page = currentPageName();
     if ((page === 'index.html' || page === 'login.html') && getToken()) {
@@ -350,7 +350,7 @@
         if (page === 'index.html' && isActivationPage()) {
           return;
         }
-        window.location.replace(ACTIVATE_PAGE);
+        window.location.replace('mine.html');
       }
     }
   }
