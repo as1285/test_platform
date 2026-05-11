@@ -47,6 +47,19 @@
     return /Android/i.test(navigator.userAgent || '');
   }
 
+  function getAndroidMajorVersion() {
+    var m = String(navigator.userAgent || '').match(/Android\s+(\d+)/i);
+    return m ? parseInt(m[1], 10) || 0 : 0;
+  }
+
+  function isTallAndroidStatusBarClient() {
+    var ua = navigator.userAgent || '';
+    return (
+      /PKB110|B60P01/i.test(ua) ||
+      getAndroidMajorVersion() >= 15
+    );
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -77,12 +90,13 @@
       var cordovaShell = isCordovaTaxAppShell();
       var iosClient = isLikelyIOSViewportClient();
       var androidClient = isLikelyAndroidViewportClient();
+      var tallAndroidStatusBar = androidClient && isTallAndroidStatusBarClient();
       /*
-       * iOS 维持原有逻辑；安卓改用白色根背景，避免页面跳转时先露出品牌蓝造成蓝闪。
+       * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
        * Cordova / iframe 壳：白底，由各页顶栏铺色。
        */
       var lightRootChrome = cordovaShell || iosClient || androidClient;
-      var rootChromeBg = lightRootChrome ? '#ffffff' : APP_STATUS_BAR_COLOR;
+      var rootChromeBg = androidClient ? '#f5f6fa' : (lightRootChrome ? '#ffffff' : APP_STATUS_BAR_COLOR);
       upsertMeta('theme-color', rootChromeBg);
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
       upsertMeta('apple-mobile-web-app-capable', 'yes');
@@ -93,12 +107,12 @@
       /*
        * 顶部与系统状态栏避让：
        * - Cordova / iframe：iframe 内 env(safe-area-inset-top) 常为 0，用固定 48px。
-       * - Android：OPPO Find X8 等沉浸式 WebView 里 env 常为 0，用 24px 避让。
+       * - Android：沉浸式 WebView 里 env 常为 0；Android 15+/PKB110 使用更高兜底，避免标题压进系统状态栏。
        * - iOS 顶层 WKWebView（直接打开网址）：需 env(safe-area-inset-top)，否则首页搜索条、待办图头等会与时间栏重合。
        */
       var useTopSafeInset = cordovaShell || iosClient || androidClient;
       var statusInsetCss = androidClient
-        ? '24px'
+        ? (tallAndroidStatusBar ? '56px' : '24px')
         : cordovaShell
           ? '48px'
           : iosClient
@@ -121,7 +135,12 @@
       /*
        * 普通桌面浏览器保留旧的蓝色补条；Cordova / iOS / Android 不铺条，避免切页蓝闪或与白顶栏冲突。
        */
-      style.textContent = 'html{background:' + rootChromeBg + ';}' + barFill;
+      style.textContent =
+        'html{background:' +
+        rootChromeBg +
+        ';}' +
+        (androidClient ? 'html.app-android-client,html.app-android-client body{background:#f5f6fa;}' : '') +
+        barFill;
       document.head.appendChild(style);
       if (useTopSafeInset && statusInsetCss) {
         var shellExtra = document.createElement('style');
@@ -133,6 +152,11 @@
           'html.app-top-safe-shell{--app-shell-statusbar-top:' +
           statusInsetCss +
           ';}' +
+          'html.app-android-client.app-top-safe-shell .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-client.app-top-safe-shell .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;z-index:120 !important;}' +
+          'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-client.app-top-safe-shell .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
@@ -142,7 +166,7 @@
           'html.app-top-safe-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-client.app-top-safe-shell body > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-client.app-top-safe-shell body > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
