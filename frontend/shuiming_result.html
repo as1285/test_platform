@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260511-shuiming-list-pad"></script>
+    <script src="/js/auth.js?v=20260511-shuiming-summary-seam"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -138,8 +138,10 @@
             margin-top: -14px;
             margin-bottom: 12px;
         }
+        /* 勿用 margin-top：外边距落在 .summary 白底上会露出「白线缝」，整块灰条一次画满 */
         .summary::after {
-            margin-top: 8px;
+            margin-top: 0;
+            height: 20px;
         }
 
         /* 无列表数据：不展示批量申诉 */
