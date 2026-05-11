@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-reg-activate"></script>
+    <script src="/js/auth.js?v=20260511-shell-activate-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>纳税记录开具</title>
     <style>
@@ -253,6 +253,65 @@
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
         }
+
+        .info-row-month-picker {
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .month-picker-hit {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .month-picker-hit:focus-visible {
+            outline: 2px solid #1677ff;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        .mp-title-wrap {
+            width: 110px;
+            flex-shrink: 0;
+        }
+
+        .mp-title {
+            font-size: 15px;
+            color: #333;
+        }
+
+        button.help-icon.mp-help-btn {
+            position: absolute;
+            left: calc(16px + 4.65em);
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            font: inherit;
+            line-height: 1;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .month-picker-native {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -284,21 +343,27 @@
                 <span class="info-label">证件号码</span>
                 <span class="info-value placeholder">6****************9</span>
             </div>
-            <div class="info-row" role="button" tabindex="0">
-                <div class="info-label-with-icon">
-                    <span style="font-size:15px;color:#333;">开具年月起</span>
-                    <span class="help-icon" title="说明">?</span>
-                </div>
-                <span class="info-value">2026-01</span>
-                <span class="info-arrow">›</span>
+            <div class="info-row info-row-month-picker">
+                <label class="month-picker-hit" for="rangeStartInput" tabindex="0">
+                    <span class="mp-title-wrap">
+                        <span class="mp-title">开具年月起</span>
+                    </span>
+                    <span class="info-value" id="rangeStartLabel">2026-01</span>
+                    <span class="info-arrow" aria-hidden="true">›</span>
+                </label>
+                <button type="button" class="help-icon mp-help-btn" title="说明" aria-label="开具年月起说明">?</button>
+                <input type="month" id="rangeStartInput" class="month-picker-native" min="2019-01" aria-label="开具年月起">
             </div>
-            <div class="info-row" role="button" tabindex="0">
-                <div class="info-label-with-icon">
-                    <span style="font-size:15px;color:#333;">开具年月止</span>
-                    <span class="help-icon" title="说明">?</span>
-                </div>
-                <span class="info-value">2026-03</span>
-                <span class="info-arrow">›</span>
+            <div class="info-row info-row-month-picker">
+                <label class="month-picker-hit" for="rangeEndInput" tabindex="0">
+                    <span class="mp-title-wrap">
+                        <span class="mp-title">开具年月止</span>
+                    </span>
+                    <span class="info-value" id="rangeEndLabel">2026-03</span>
+                    <span class="info-arrow" aria-hidden="true">›</span>
+                </label>
+                <button type="button" class="help-icon mp-help-btn" title="说明" aria-label="开具年月止说明">?</button>
+                <input type="month" id="rangeEndInput" class="month-picker-native" min="2019-01" aria-label="开具年月止">
             </div>
         </div>
 
@@ -322,6 +387,89 @@
 
     <script>
         (function () {
+            function pad2(n) {
+                return n < 10 ? '0' + n : String(n);
+            }
+
+            function currentYmMax() {
+                var d = new Date();
+                return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+            }
+
+            function yearFirstYm() {
+                var d = new Date();
+                return d.getFullYear() + '-01';
+            }
+
+            var rangeStartInput = document.getElementById('rangeStartInput');
+            var rangeEndInput = document.getElementById('rangeEndInput');
+            var rangeStartLabel = document.getElementById('rangeStartLabel');
+            var rangeEndLabel = document.getElementById('rangeEndLabel');
+            var ymMax = currentYmMax();
+            var ymDefaultStart = yearFirstYm();
+            var ymDefaultEnd = ymMax;
+
+            if (rangeStartInput && rangeEndInput) {
+                rangeStartInput.max = ymMax;
+                rangeEndInput.max = ymMax;
+                rangeStartInput.value = ymDefaultStart;
+                rangeEndInput.value = ymDefaultEnd;
+                if (rangeStartInput.value > rangeEndInput.value) {
+                    rangeEndInput.value = rangeStartInput.value;
+                }
+                rangeStartLabel.textContent = rangeStartInput.value;
+                rangeEndLabel.textContent = rangeEndInput.value;
+
+                function clampOrder() {
+                    if (rangeStartInput.value && rangeEndInput.value && rangeStartInput.value > rangeEndInput.value) {
+                        rangeEndInput.value = rangeStartInput.value;
+                        rangeEndLabel.textContent = rangeEndInput.value;
+                    }
+                    rangeEndInput.min = rangeStartInput.value || '2019-01';
+                    rangeStartInput.max = rangeEndInput.value || ymMax;
+                    if (rangeStartInput.max > ymMax) rangeStartInput.max = ymMax;
+                    if (rangeEndInput.max !== ymMax) rangeEndInput.max = ymMax;
+                }
+
+                rangeStartInput.addEventListener('change', function () {
+                    rangeStartLabel.textContent = rangeStartInput.value;
+                    clampOrder();
+                    rangeEndLabel.textContent = rangeEndInput.value;
+                });
+
+                rangeEndInput.addEventListener('change', function () {
+                    rangeEndLabel.textContent = rangeEndInput.value;
+                    clampOrder();
+                    rangeStartLabel.textContent = rangeStartInput.value;
+                });
+
+                document.querySelectorAll('.info-row-month-picker .mp-help-btn').forEach(function (el) {
+                    el.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 2019 年 1 月，最晚不超过当前月。');
+                    });
+                });
+
+                document.querySelectorAll('.month-picker-hit').forEach(function (lab) {
+                    lab.addEventListener('keydown', function (e) {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        var fid = lab.getAttribute('for');
+                        var inp = fid ? document.getElementById(fid) : null;
+                        if (!inp) return;
+                        inp.focus();
+                        if (typeof inp.showPicker === 'function') {
+                            try {
+                                inp.showPicker();
+                            } catch (err) {}
+                        }
+                    });
+                });
+
+                clampOrder();
+            }
+
             var lane = document.getElementById('sliderLane');
             var handle = document.getElementById('sliderHandle');
             var hint = document.getElementById('sliderHint');

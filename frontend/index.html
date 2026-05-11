@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-reg-activate"></script>
+    <script src="/js/auth.js?v=20260511-shell-activate-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
     <style>
@@ -192,6 +192,15 @@
             color: #1e6fff;
             border: 1px solid #d0d8e8;
         }
+        .activate-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .activate-btn-row .activate-btn {
+            flex: 1;
+            margin-bottom: 0;
+        }
         .activate-msg {
             font-size: 13px;
             min-height: 1.2em;
@@ -219,7 +228,7 @@
     <!-- 顶部导航 -->
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">
-            <img src="jt.png" alt="" width="9" height="15" style="width: 9px; height: auto; vertical-align: middle;">
+            <img src="data:image/png;base64,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" alt="" width="9" height="15" style="width: 9px; height: auto; vertical-align: middle;">
             <span>返回</span>
         </a>
         <span class="header-title">个人所得税</span>
@@ -244,7 +253,7 @@
         <div class="form-section">
             <div class="form-item">
                 <span class="form-label">账号</span>
-                <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username" value="1">
+                <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username" value="">
                 <svg class="form-icon" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2"/>
                     <text x="12" y="16" font-size="12" fill="#ccc" text-anchor="middle">?</text>
@@ -252,7 +261,7 @@
             </div>
             <div class="form-item">
                 <span class="form-label">密码</span>
-                <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password" value="1">
+                <input type="password" id="loginPassword" class="form-input" placeholder="请输入密码" autocomplete="current-password" value="">
             </div>
         </div>
 
@@ -264,10 +273,13 @@
     </div>
 
     <div id="activateSection">
-        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。也可在「个人中心」页面右上角点击「激活」完成开通。</p>
+        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。新用户注册时填写激活码即可直接开通，无需此步骤。</p>
         <p class="activate-msg" id="activateMsg"></p>
         <input type="text" id="activateCodeInput" class="activate-code-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
-        <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
+        <div class="activate-btn-row">
+            <button type="button" class="activate-btn activate-btn-secondary" id="btnXianyuPurchase">闲鱼购买</button>
+            <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
+        </div>
         <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
     </div>
 
@@ -321,9 +333,49 @@
                 }
             } catch (e2) {}
             showActivateMode();
+            prefetchXianyuPurchaseUrl();
         }
 
         initActivateFromUrl();
+
+        function prefetchXianyuPurchaseUrl() {
+            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    window.__xianyuPurchaseUrl =
+                        body && body.code === 200 && body.data && body.data.xianyu_purchase_url
+                            ? String(body.data.xianyu_purchase_url).trim()
+                            : '';
+                })
+                .catch(function () {
+                    window.__xianyuPurchaseUrl = '';
+                });
+        }
+        prefetchXianyuPurchaseUrl();
+
+        document.getElementById('btnXianyuPurchase').addEventListener('click', function () {
+            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    var u =
+                        body && body.code === 200 && body.data && body.data.xianyu_purchase_url
+                            ? String(body.data.xianyu_purchase_url).trim()
+                            : '';
+                    window.__xianyuPurchaseUrl = u;
+                    if (!u) {
+                        setActivateMsg('暂未配置购买链接，请在管理后台「引导安装」中填写', true);
+                        return;
+                    }
+                    window.open(u, '_blank', 'noopener,noreferrer');
+                })
+                .catch(function () {
+                    setActivateMsg('网络错误', true);
+                });
+        });
 
         document.getElementById('btnDoActivate').addEventListener('click', function () {
             var code = document.getElementById('activateCodeInput').value.trim();
@@ -431,25 +483,6 @@
                 });
         }
 
-        function ensureDefaultLoginCredentials() {
-            if (isNeedActivateMode()) {
-                return;
-            }
-            var u = document.getElementById('loginUsername');
-            var p = document.getElementById('loginPassword');
-            if (u && String(u.value).trim() === '') {
-                u.value = '1';
-            }
-            if (p && String(p.value).trim() === '') {
-                p.value = '1';
-            }
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', ensureDefaultLoginCredentials);
-        } else {
-            ensureDefaultLoginCredentials();
-        }
     </script>
 </body>
 </html>

@@ -64,6 +64,8 @@ const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
 const SETTING_KEY_MINE_UI = 'mine_ui_json';
 const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';
 const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
+/** 闲鱼购买等外链，与引导安装一同在后台配置 */
+const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
 
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
@@ -182,8 +184,8 @@ async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?)',
-      [SETTING_KEY_ANDROID_APK, SETTING_KEY_IOS_MOBILECONFIG]
+      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?)',
+      [SETTING_KEY_ANDROID_APK, SETTING_KEY_IOS_MOBILECONFIG, SETTING_KEY_XIANYU_PURCHASE]
     );
     var map = {};
     rows.forEach(function (r) {
@@ -191,7 +193,9 @@ async function getInstallPackageSettingsFromDb() {
     });
     var android = map[SETTING_KEY_ANDROID_APK] != null ? String(map[SETTING_KEY_ANDROID_APK]).trim() : '';
     var ios = map[SETTING_KEY_IOS_MOBILECONFIG] != null ? String(map[SETTING_KEY_IOS_MOBILECONFIG]).trim() : '';
-    return { android: android, ios: ios };
+    var xianyu =
+      map[SETTING_KEY_XIANYU_PURCHASE] != null ? String(map[SETTING_KEY_XIANYU_PURCHASE]).trim() : '';
+    return { android: android, ios: ios, xianyu: xianyu };
   } finally {
     conn.release();
   }
@@ -1372,6 +1376,7 @@ async function getUserInfoForApi(userId) {
   const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [uid]);
 
   const [employerRows] = await conn.execute('SELECT * FROM employers WHERE user_id = ?', [uid]);
+  const [taxCountRows] = await conn.execute('SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ?', [uid]);
   conn.release();
 
   const defaults = {
@@ -1380,6 +1385,7 @@ async function getUserInfoForApi(userId) {
     employer_count: 0,
     family_count: 0,
     bank_card_count: 0,
+    tax_record_count: 0,
     gender: 1,
     account_active: false,
     watermark_enabled: false,
@@ -1411,8 +1417,7 @@ async function getUserInfoForApi(userId) {
     rec.account_active === 1 ||
     rec.account_active === true ||
     Number(rec.account_active) === 1;
-  var wmFlag =
-    Boolean(rec.watermark_enabled) || ut === USER_TYPE_TEST || !accountActive;
+  var wmFlag = !accountActive;
   function profileStr(field, fallback) {
     var v = rec[field];
     if (v == null || String(v).trim() === '') {
@@ -1426,6 +1431,7 @@ async function getUserInfoForApi(userId) {
     employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
+    tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
     gender: rec.gender != null ? Number(rec.gender) : 1,
     account_active: accountActive,
     watermark_enabled: wmFlag,
@@ -2210,27 +2216,20 @@ async function handleTaxPost(req, res) {
   }
 }
 
-app.get('/api/tax.php', requireAuth, requireActivated, handleTaxGet);
-app.post('/api/tax.php', requireAuth, requireActivated, handleTaxPost);
-app.get('/api/message.php', requireAuth, requireActivated, handleMessageGet);
-app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
-app.get('/message.php', requireAuth, requireActivated, handleMessageGet);
-app.post('/message.php', requireAuth, requireActivated, handleMessagePost);
-function requireUserGetActivatedUnlessInfo(req, res, next) {
-  if (req.query.action === 'info') {
-    return next();
-  }
-  return requireActivated(req, res, next);
-}
-
-app.get('/api/user.php', requireAuth, requireUserGetActivatedUnlessInfo, handleUserGet);
-app.post('/api/user.php', requireAuth, requireActivated, handleUserPost);
-app.get('/user.php', requireAuth, requireUserGetActivatedUnlessInfo, handleUserGet);
-app.post('/user.php', requireAuth, requireActivated, handleUserPost);
-app.get('/api/feedback.php', requireAuth, requireActivated, handleFeedbackGet);
-app.post('/api/feedback.php', requireAuth, requireActivated, handleFeedbackPost);
-app.get('/feedback.php', requireAuth, requireActivated, handleFeedbackGet);
-app.post('/feedback.php', requireAuth, requireActivated, handleFeedbackPost);
+app.get('/api/tax.php', requireAuth, handleTaxGet);
+app.post('/api/tax.php', requireAuth, handleTaxPost);
+app.get('/api/message.php', requireAuth, handleMessageGet);
+app.post('/api/message.php', requireAuth, handleMessagePost);
+app.get('/message.php', requireAuth, handleMessageGet);
+app.post('/message.php', requireAuth, handleMessagePost);
+app.get('/api/user.php', requireAuth, handleUserGet);
+app.post('/api/user.php', requireAuth, handleUserPost);
+app.get('/user.php', requireAuth, handleUserGet);
+app.post('/user.php', requireAuth, handleUserPost);
+app.get('/api/feedback.php', requireAuth, handleFeedbackGet);
+app.post('/api/feedback.php', requireAuth, handleFeedbackPost);
+app.get('/feedback.php', requireAuth, handleFeedbackGet);
+app.post('/feedback.php', requireAuth, handleFeedbackPost);
 
 async function handleAuthGet(req, res) {
   if (req.query.action !== 'status') {
@@ -2575,7 +2574,8 @@ async function handleAdminSettingsGet(req, res) {
         test_account_company_name: name,
         mine_ui: mineUi,
         android_apk_download_url: installRaw.android,
-        ios_mobileconfig_download_url: installRaw.ios
+        ios_mobileconfig_download_url: installRaw.ios,
+        xianyu_purchase_url: installRaw.xianyu
       }
     });
   } catch (e) {
@@ -2590,10 +2590,12 @@ async function handleAdminSettingsPost(req, res) {
   var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
   var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
-  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos) {
+  var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
+  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos && !hasXianyu) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 test_account_company_name、mine_ui 或安装包下载地址（android_apk_download_url / ios_mobileconfig_download_url）'
+      msg:
+        '请提供 test_account_company_name、mine_ui、安装包下载地址（android_apk_download_url / ios_mobileconfig_download_url）或闲鱼购买链接（xianyu_purchase_url）'
     });
   }
 
@@ -2705,12 +2707,29 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasXianyu) {
+      var rawX = body.xianyu_purchase_url;
+      var okX = sanitizeInstallDownloadUrl(rawX);
+      if (rawX != null && String(rawX).trim() !== '' && !okX) {
+        return res.status(400).json({
+          code: 400,
+          msg: '闲鱼购买链接无效（请使用 http 或 https 完整链接）'
+        });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_XIANYU_PURCHASE, okX]
+      );
+    }
+
     var outData = { success: true };
     outData.test_account_company_name = await getTestAccountCompanyName();
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
     outData.android_apk_download_url = installAfter.android;
     outData.ios_mobileconfig_download_url = installAfter.ios;
+    outData.xianyu_purchase_url = installAfter.xianyu;
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -2735,11 +2754,13 @@ async function handlePublicInstallPackages(req, res) {
     var raw = await getInstallPackageSettingsFromDb();
     var android = sanitizeInstallDownloadUrl(raw.android);
     var ios = sanitizeInstallDownloadUrl(raw.ios);
+    var xianyu = sanitizeInstallDownloadUrl(raw.xianyu);
     return res.json({
       code: 200,
       data: {
         android_apk_download_url: android,
-        ios_mobileconfig_download_url: ios
+        ios_mobileconfig_download_url: ios,
+        xianyu_purchase_url: xianyu
       }
     });
   } catch (e) {

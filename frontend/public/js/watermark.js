@@ -4,30 +4,28 @@
     var WM_CACHE_TIME_KEY = 'wm_cache_time';
     var CACHE_TTL = 60000; // 1分钟缓存
 
-    function isMineProfilePage() {
+    function isIncomeTaxListPage() {
         try {
             var p = (window.location.pathname || '').toLowerCase();
-            return p.endsWith('/mine.html') || p.endsWith('mine.html');
+            return p.endsWith('/shuiming.html') ||
+                p.endsWith('shuiming.html') ||
+                p.endsWith('/shuiming_result.html') ||
+                p.endsWith('shuiming_result.html');
         } catch (e) {
             return false;
         }
     }
 
-    /** 未激活水印文案与平铺尺寸（「我的」页单独提示咨询入口） */
-    function getInactiveWatermarkSpec() {
-        if (isMineProfilePage()) {
-            return {
-                w: 340,
-                h: 132,
-                line1: '点击我要咨询修改数据',
-                line2: '',
-                font1: 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-                font2: '12px Arial, sans-serif',
-                color1: 'rgba(160, 0, 0, 0.34)',
-                color2: 'rgba(160, 0, 0, 0.28)',
-                line2OffsetY: 22
-            };
+    function isLocalInactiveAccount() {
+        try {
+            return localStorage.getItem('account_active') === '0';
+        } catch (e) {
+            return false;
         }
+    }
+
+    /** 未激活水印文案与平铺尺寸 */
+    function getInactiveWatermarkSpec() {
         return {
             w: 200,
             h: 120,
@@ -74,7 +72,7 @@
             'top:0', 'left:0', 'right:0', 'bottom:0',
             'width:100%', 'height:100%',
             'pointer-events:none',
-            'z-index:99999',
+            'z-index:2147483647',
             'background-image:url(' + dataUrl + ')',
             'background-repeat:repeat',
             'background-size:' + w + 'px ' + h + 'px',
@@ -102,6 +100,10 @@
     }
 
     function applyWatermark(enabled) {
+        if (!isIncomeTaxListPage()) {
+            removeWatermarkLayer();
+            return;
+        }
         if (enabled == 1 || enabled === '1' || enabled === true) {
             createWatermarkLayer();
         } else {
@@ -110,18 +112,34 @@
     }
 
     function fetchAndApply() {
+        if (!isIncomeTaxListPage()) {
+            removeWatermarkLayer();
+            return;
+        }
         var token = localStorage.getItem('token');
         if (!token) {
             removeWatermarkLayer();
             return;
         }
 
-        // 检查缓存
-        var cached = localStorage.getItem(WM_CACHE_KEY);
-        var cachedTime = parseInt(localStorage.getItem(WM_CACHE_TIME_KEY) || '0');
-        if (cached !== null && (Date.now() - cachedTime) < CACHE_TTL) {
-            applyWatermark(cached);
-            return;
+        // 页面可先按本地状态临时展示，但最终只以接口返回的 account_active 为准。
+        var localInactive = isLocalInactiveAccount();
+        var localActive = false;
+        try {
+            localActive = localStorage.getItem('account_active') === '1';
+        } catch (e0) {}
+        if (localActive) {
+            applyWatermark('0');
+            try {
+                localStorage.removeItem(WM_CACHE_KEY);
+                localStorage.removeItem(WM_CACHE_TIME_KEY);
+            } catch (e1) {}
+        } else if (localInactive) {
+            applyWatermark('1');
+            try {
+                localStorage.removeItem(WM_CACHE_KEY);
+                localStorage.removeItem(WM_CACHE_TIME_KEY);
+            } catch (e2) {}
         }
 
         // 从 API 获取最新状态（与 /api/user.php 一致，需 JWT，不再使用 URL 上的 user_id）
@@ -134,7 +152,10 @@
                 try {
                     var data = JSON.parse(xhr.responseText);
                     if (data.code === 200 && data.data) {
-                        var val = data.data.watermark_enabled ? '1' : '0';
+                        if (data.data.account_active !== undefined && data.data.account_active !== null) {
+                            localStorage.setItem('account_active', data.data.account_active ? '1' : '0');
+                        }
+                        var val = data.data.account_active === false ? '1' : '0';
                         localStorage.setItem(WM_CACHE_KEY, val);
                         localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
                         applyWatermark(val);

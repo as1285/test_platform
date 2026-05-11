@@ -1,45 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-app-theme="blue">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-reg-activate"></script>
+    <script src="/js/auth.js?v=20260511-shell-activate-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>个人中心</title>
-    <!-- 顶栏与头图共用一张背景图：关闭 auth.js 的 body::before 遮罩，头区背景延伸至刘海 -->
-    <script>
-        (function () {
-            function setMeta(n, c) {
-                var el = document.querySelector('meta[name="' + n + '"]');
-                if (el) el.setAttribute('content', c);
-            }
-            setMeta('theme-color', '#4d9aff');
-            setMeta('msapplication-navbutton-color', '#4d9aff');
-        })();
-    </script>
+    <title>我的</title>
+    <link rel="stylesheet" href="css/nav.css">
+    <script src="/js/theme-loader.js?v=20260511-mine-layout-no-avatar" defer></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-        
-        html[data-app-theme="blue"] {
-            --mine-user-card-bg: #eed3aa;
-            --mine-tax-id: #b46d03;
-            --mine-info-btn-bg: #edaa66;
-            --mine-outline: #0050fd;
-            --mine-btn-grad: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
-            --mine-logout: #1e6fff;
-        }
-
-        /* 金色主题：信息卡底色与蓝色主题同一色；文字与操作色与蓝色主题一致 */
-        html[data-app-theme="yellow"] {
-            --mine-user-card-bg: #eed3aa;
-            --mine-tax-id: #b46d03;
-            --mine-info-btn-bg: #edaa66;
-            --mine-outline: #0050fd;
-            --mine-btn-grad: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
-            --mine-logout: #1e6fff;
         }
 
         body {
@@ -48,34 +20,24 @@
             min-height: 100vh;
             max-width: 100vw;
             overflow-x: hidden;
+            padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+            -webkit-font-smoothing: antialiased;
         }
-        
-        /* 禁用 auth.js 注入的顶栏纯色层（z-index 极高），否则状态栏带与头图永远「两张皮」 */
-        body::before {
-            display: none !important;
-        }
-        html {
-            background-color: #f5f6fa !important;
-        }
-        /*
-         * 同一背景图铺满刘海：仅用 padding-top 扩背景（背景默认绘制到 padding 区），不要用负 margin-top
-         * 负 margin 会把整块区域整体上移，cover 裁切后头像容易顶进状态栏。
-         */
+
+        /* 顶部背景图：头像已经包含在 grdb/nx 这张整图里，不再额外叠头像层 */
         .header-bg {
-            --mine-header-bg-url: url('grdb.jpg');
-            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            position: relative;
             width: 100%;
-            box-sizing: border-box;
-            background-color: #1e6fff;
-            background-image: var(--mine-header-bg-url);
-            background-size: cover;
-            /* 略偏下锚点，使人像圆圈落在状态栏下方可视区 */
-            background-position: center 28%;
-            background-repeat: no-repeat;
-            min-height: calc(var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)) + min(50vw, 268px));
+            overflow: hidden;
         }
-        
-        /* 内容包装器 - 顶部圆角 */
+
+        .header-bg > img {
+            width: 100%;
+            display: block;
+            vertical-align: top;
+        }
+
+        /* 下方浅灰承接区 + 顶圆角（与参考一致） */
         .content-wrapper {
             background: #f5f6fa;
             border-radius: 20px 20px 0 0;
@@ -83,38 +45,49 @@
             position: relative;
             z-index: 10;
             padding-top: 10px;
+            padding-bottom: 12px;
         }
-        
-        /* 用户信息卡片 */
+
+        /* 米色用户信息卡：直接照参考代码上移，不再和额外头像层计算避让 */
         .user-card {
-            background: var(--mine-user-card-bg, #eed3aa);
+            background: #eed3aa;
             margin: -70px 16px 9px;
             border-radius: 12px 12px 0 0;
             padding: 14px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
-            z-index: 10;
+            z-index: 11;
         }
-        
+
         .user-info {
+            position: relative;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            min-height: 44px;
         }
-        
+
+        .user-info-text {
+            flex: 1;
+            min-width: 0;
+        }
+
         .user-name {
             font-size: 14.5px;
             color: #333;
+            font-weight: 600;
             margin-bottom: 8px;
         }
-        
+
         .user-id {
             font-size: 12px;
-            color: var(--mine-tax-id, #b46d03);
+            color: #b46d03;
+            line-height: 1.45;
+            word-break: break-all;
         }
-        
+
         .personal-info-btn {
-            background: var(--mine-info-btn-bg, #edaa66);
+            background: #edaa66;
             border: none;
             border-radius: 20px 0 0 20px;
             padding: 4px 14px;
@@ -124,20 +97,22 @@
             align-items: center;
             gap: 4px;
             cursor: pointer;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
             position: absolute;
             right: 0;
             top: 50%;
             transform: translateY(-50%);
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            -webkit-tap-highlight-color: transparent;
         }
-        
+
         .personal-info-btn::after {
             content: '>';
             font-size: 12px;
         }
-        
-        /* 功能入口区域 */
+
+        /* 功能入口 */
         .function-cards {
             display: flex;
             justify-content: space-between;
@@ -145,32 +120,23 @@
             margin-left: 16px;
             margin-right: 16px;
         }
-        
+
         .function-card {
             flex: 1;
             background: #fff;
             border-radius: 12px;
             padding: 7px 10px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            min-width: 0;
-        }
-
-        /* 三张卡片各自独立可点，避免中间整张 div 抢点导致误跳任职受雇 */
-        a.function-card-link {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             text-decoration: none;
             color: inherit;
-            display: block;
-            transition: transform 0.15s ease, opacity 0.15s ease;
             -webkit-tap-highlight-color: transparent;
         }
 
-        a.function-card-link:active {
-            transform: scale(0.97);
+        .function-card:active {
             opacity: 0.92;
         }
-        
+
         .function-icon {
             width: 44px;
             height: 44px;
@@ -179,14 +145,21 @@
             align-items: center;
             justify-content: center;
         }
-        
+
+        .function-icon img {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
         .function-title {
             font-size: 15px;
             color: #333;
             font-weight: 500;
             margin-bottom: 8px;
         }
-        
+
         .function-btn {
             display: inline-block;
             padding: 2px 10px;
@@ -194,72 +167,74 @@
             font-size: 12px;
             border: none;
             cursor: pointer;
+            font-family: inherit;
         }
-        
+
         .function-btn.orange {
             background: transparent;
-            color: var(--mine-outline, #0050fd);
-            border: 1px solid var(--mine-outline, #0050fd);
+            color: #0050fd;
+            border: 1px solid #0050fd;
         }
-        
+
         .function-btn.blue {
-            background: var(--mine-btn-grad, linear-gradient(135deg, #1a94ff 0%, #008afd 100%));
+            background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
             color: #fff;
+            border: none;
         }
-        
-        /* 菜单列表 */
+
+        /* 菜单 */
         .menu-list {
             background: #fff;
             margin: 16px;
             border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
-        
+
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 8px 20px;
+            padding: 12px 16px;
             border-bottom: 1px solid #f5f5f5;
+            font-size: 15px;
+            color: #333;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        
+
         .menu-item:last-child {
             border-bottom: none;
         }
 
-        .menu-item.tappable {
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+        .menu-item:active {
+            background: #fafafa;
         }
 
-        .menu-item.tappable:active {
-            background: #f0f2f5;
-        }
-
-        a.menu-item.tappable {
-            text-decoration: none;
-            color: inherit;
-        }
-        
         .menu-icon {
-            width: 21px;
-            margin-right: 14px;
+            width: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        
+
+        .menu-icon img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            display: block;
+        }
+
         .menu-text {
             flex: 1;
-            font-size: 15px;
-            color: #333;
         }
-        
+
         .menu-arrow {
-            color: #000000;
+            color: #999;
             font-size: 14px;
         }
-        
+
         /* 退出登录 */
         .logout-section {
             background: #fff;
@@ -267,415 +242,315 @@
             border-radius: 12px;
             padding: 16px;
             text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
-        
+
         .logout-btn {
-            color: var(--mine-logout, #1e6fff);
+            color: #1e6fff;
             font-size: 16px;
             background: none;
             border: none;
             cursor: pointer;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        /* 页面切换 */
-        .page {
-            display: none;
-        }
-        
-        .page.active {
-            display: block;
-            padding-bottom: var(--bottom-nav-clearance);
-        }
-
-        </style>
-    <link rel="stylesheet" href="css/nav.css">
-    <script src="/js/theme-loader.js" defer></script>
+    </style>
 </head>
 <body>
-    <!-- 我的页面 -->
-    <div id="page-mine" class="page active">
-        <!-- 顶部蓝色背景 -->
-        <div class="header-bg" id="headerBg" role="img" aria-label="个人中心"></div>
-        
-        <div class="content-wrapper">
-        <!-- 用户信息卡片 -->
+    <div class="header-bg">
+        <img id="headerImg" src="grdb.jpg" alt="个人中心">
+    </div>
+
+    <div class="content-wrapper">
         <div class="user-card">
             <div class="user-info">
-                <div>
-                    <div class="user-name" id="userName">xxx</div>
-                    <div class="user-id" id="userTaxId">纳税人识别号 6***************9 <svg onclick="toggleTaxId()" style="cursor:pointer;vertical-align:middle;margin-left: 5px;" t="1768653736506" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="#b46d03"></path><path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="#b46d03"></path></svg></div>
+                <div class="user-info-text">
+                    <div class="user-name" id="mineDisplayName">--</div>
+                    <div class="user-id" id="userTaxId">纳税人识别号 --</div>
                 </div>
-                <span class="personal-info-btn" onclick="goPersonalInfo()">个人信息</span>
+                <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             </div>
         </div>
-        
-        <!-- 功能入口：家庭成员/银行卡 → 个人中心「个人信息」tab；任职受雇 → renzhi -->
+
         <div class="function-cards">
-            <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="家庭成员">
+            <a class="function-card" href="xiangqing.html">
                 <div class="function-icon">
-                    <img id="mineIconFamily" src="jtcy.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconFamily" src="jtcy.jpg" alt="">
                 </div>
                 <div class="function-title">家庭成员</div>
-                <span class="function-btn orange" id="familyCount" aria-hidden="true">添加</span>
+                <span class="function-btn orange" id="familyCount" role="text">添加</span>
             </a>
-            <a href="renzhi.html" class="function-card function-card-link" aria-label="任职受雇">
+            <a class="function-card" href="renzhi.html">
                 <div class="function-icon">
-                    <img id="mineIconEmployer" src="rzsp.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconEmployer" src="rzsp.jpg" alt="">
                 </div>
                 <div class="function-title">任职受雇</div>
-                <span class="function-btn blue" id="employerCount" aria-hidden="true"></span>
+                <span class="function-btn orange" id="employerCount" role="text">暂无</span>
             </a>
-            <a href="consult.html?tab=profile" class="function-card function-card-link" aria-label="银行卡">
+            <a class="function-card" href="#">
                 <div class="function-icon">
-                    <img id="mineIconBank" src="yhk.jpg" alt="" style="width: 38px; border-radius: 8px;">
+                    <img id="mineIconBank" src="yhk.jpg" alt="">
                 </div>
                 <div class="function-title">银行卡</div>
-                <span class="function-btn orange" id="bankCardCount" aria-hidden="true">添加</span>
+                <span class="function-btn orange" id="bankCardCount" role="text">添加</span>
             </a>
         </div>
-        
-        <!-- 菜单列表 -->
+
         <div class="menu-list">
-            <a href="shuiming.html" class="menu-item tappable">
-                <div class="menu-icon">
-                    <img src="caidan/gh.png" alt="" style="width: 20px; height: auto;">
-                </div>
-                <span class="menu-text">切换关怀版</span>
-                <span class="menu-arrow">></span>
-            </a>
-            <div class="menu-item tappable" onclick="goConsultTab('messages')" role="button" tabindex="0">
-                <div class="menu-icon">
-                    <img src="caidan/aq.png" alt="" style="width: 19px; height: auto;">
-                </div>
-                <span class="menu-text">安全中心</span>
-                <span class="menu-arrow">></span>
-            </div>
-            <a href="shuiming.html" class="menu-item tappable">
-                <div class="menu-icon">
-                    <img src="caidan/bz.png" alt="" style="width: 19px; height: auto;">
-                </div>
-                <span class="menu-text">帮助中心</span>
-                <span class="menu-arrow">></span>
-            </a>
-            <div class="menu-item tappable mine-menu-item" id="mineMenuConsult" onclick="goUserCenter()" role="button" tabindex="0">
-                <div class="menu-icon">
-                    <img src="caidan/zx.png" alt="" style="width: 19px; height: auto;">
-                </div>
-                <span class="menu-text">我要咨询</span>
-                <span class="menu-arrow">></span>
-            </div>
-            <a href="install_guide.html" class="menu-item tappable">
-                <div class="menu-icon">
-                    <img src="caidan/gy.png" alt="" style="width: 19px;">
-                </div>
-                <span class="menu-text">关于&更新</span>
-                <span class="menu-arrow">></span>
-            </a>
+            <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="install_guide.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow">&gt;</span></a>
         </div>
-        
-        <!-- 退出登录 -->
+
         <div class="logout-section">
-            <button class="logout-btn" onclick="doLogout()">退出登录</button>
-        </div>
+            <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
         </div>
     </div>
-    
-    <!-- 底部导航 -->
-    <div class="bottom-nav">
-        <a href="shouye.html" class="nav-item" data-icon="sy">
-            <div class="nav-icon">
-                <img src="caidan/sy2.png" width="19" height="19" alt="首页">
-            </div>
-            <span class="nav-text">首页</span>
+
+    <nav class="bottom-nav" aria-label="主导航">
+        <a class="nav-item" data-icon="sy" href="shouye.html">
+            <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
+            <span>首页</span>
         </a>
-        <a href="daiban.html" class="nav-item" data-icon="db">
-            <div class="nav-icon">
-                <img src="caidan/db2.png" width="19" height="19" alt="待办">
-            </div>
-            <span class="nav-text">待办</span>
+        <a class="nav-item" data-icon="db" href="daiban.html">
+            <span class="nav-icon"><img src="caidan/db2.png" alt=""></span>
+            <span>待办</span>
         </a>
-        <a href="bancha.html" class="nav-item" data-icon="bc">
-            <div class="nav-icon">
-                <img src="caidan/bc2.png" width="19" height="19" alt="办查">
-            </div>
-            <span class="nav-text">办&查</span>
+        <a class="nav-item" data-icon="bc" href="bancha.html">
+            <span class="nav-icon"><img src="caidan/bc2.png" alt=""></span>
+            <span>办&amp;查</span>
         </a>
-        <a href="message.html" class="nav-item" data-icon="xx">
-            <div class="nav-icon">
-                <img src="caidan/xx2.png" width="19" height="19" alt="消息">
-            </div>
-            <span class="nav-text">消息</span>
+        <a class="nav-item" data-icon="xx" href="message.html">
+            <span class="nav-icon"><img src="caidan/xx2.png" alt=""></span>
+            <span>消息</span>
         </a>
-        <a href="mine.html" class="nav-item active" data-icon="w">
-            <div class="nav-icon">
-                <img src="caidan/w1.png" width="19" height="19" alt="我的">
-            </div>
-            <span class="nav-text">我的</span>
+        <a class="nav-item active" data-icon="w" href="mine.html">
+            <span class="nav-icon"><img src="caidan/w1.png" alt=""></span>
+            <span>我的</span>
         </a>
-    </div>
-    
+    </nav>
+
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script>
-        // 更新底部导航图标状态
-        function updateNavIcons() {
-            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
-            navItems.forEach(function(item) {
-                var icon = item.getAttribute('data-icon');
-                var img = item.querySelector('.nav-icon img');
-                if (item.classList.contains('active')) {
-                    img.src = 'caidan/' + icon + '1.png';
+        (function () {
+            function applyMineAssets(cfg) {
+                if (!cfg) return;
+                var hi = document.getElementById('headerImg');
+                if (hi) {
+                    var configuredHeader = cfg.mine_header || cfg.header_male || 'grdb.jpg';
+                    if (/sydb(?:-v2)?\.jpg(?:$|\?)/i.test(configuredHeader)) {
+                        configuredHeader = cfg.header_male || 'grdb.jpg';
+                    }
+                    hi.src = configuredHeader;
+                }
+                var f = document.getElementById('mineIconFamily');
+                var e = document.getElementById('mineIconEmployer');
+                var b = document.getElementById('mineIconBank');
+                if (f && cfg.icon_family) f.src = cfg.icon_family;
+                if (e && cfg.icon_employer) e.src = cfg.icon_employer;
+                if (b && cfg.icon_bank) b.src = cfg.icon_bank;
+            }
+
+            window.addEventListener('mineUiConfig', function (ev) {
+                applyMineAssets(ev.detail);
+                if (typeof window.__refreshNavFromMineUi === 'function') {
+                    window.__refreshNavFromMineUi();
+                }
+            });
+
+            setTimeout(function () {
+                if (window.__MINE_UI_CONFIG) {
+                    applyMineAssets(window.__MINE_UI_CONFIG);
+                }
+            }, 0);
+
+            function maskTaxId(taxId) {
+                if (!taxId || taxId.length < 2) {
+                    return '--';
+                }
+                return taxId.charAt(0) + '***************' + taxId.charAt(taxId.length - 1);
+            }
+
+            function setCounts(user) {
+                var employerBtn = document.getElementById('employerCount');
+                var familyBtn = document.getElementById('familyCount');
+                var bankBtn = document.getElementById('bankCardCount');
+                var ec = user && user.employer_count != null ? Number(user.employer_count) : NaN;
+                var fc = user && user.family_count != null ? Number(user.family_count) : NaN;
+                var bc = user && user.bank_card_count != null ? Number(user.bank_card_count) : NaN;
+
+                if (employerBtn) {
+                    if (user && !isNaN(ec) && ec > 0) {
+                        employerBtn.textContent = ec + '家';
+                        employerBtn.className = 'function-btn blue';
+                    } else {
+                        employerBtn.textContent = '暂无';
+                        employerBtn.className = 'function-btn orange';
+                    }
+                }
+                if (familyBtn) {
+                    if (user && !isNaN(fc) && fc > 0) {
+                        familyBtn.textContent = fc + '人';
+                        familyBtn.className = 'function-btn blue';
+                    } else {
+                        familyBtn.textContent = '添加';
+                        familyBtn.className = 'function-btn orange';
+                    }
+                }
+                if (bankBtn) {
+                    if (user && !isNaN(bc) && bc > 0) {
+                        bankBtn.textContent = bc + '张';
+                        bankBtn.className = 'function-btn blue';
+                    } else {
+                        bankBtn.textContent = '添加';
+                        bankBtn.className = 'function-btn orange';
+                    }
+                }
+            }
+
+            function updateCountsFromStorage() {
+                var ec = localStorage.getItem('employer_count');
+                var fc = localStorage.getItem('family_count');
+                var bc = localStorage.getItem('bank_card_count');
+                setCounts({
+                    employer_count: ec != null ? ec : null,
+                    family_count: fc != null ? fc : null,
+                    bank_card_count: bc != null ? bc : null
+                });
+            }
+
+            function isInactiveAccount() {
+                return localStorage.getItem('account_active') === '0';
+            }
+
+            function hasTaxRecords() {
+                var n = Number(localStorage.getItem('tax_record_count') || '0');
+                return !isNaN(n) && n > 0;
+            }
+
+            function goConsultPage() {
+                if (!localStorage.getItem('user_id')) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                window.location.href = 'consult.html';
+            }
+
+            function confirmModifyTaxData() {
+                if (confirm('点击我要咨询修改数据')) {
+                    goConsultPage();
+                }
+            }
+
+            function maybePromptInactiveModify() {
+                if (isInactiveAccount() && !hasTaxRecords()) {
+                    confirmModifyTaxData();
+                }
+            }
+
+            function applyAvatarGender(gender) {
+                var hi = document.getElementById('headerImg');
+                var cfg = window.__MINE_UI_CONFIG || {};
+                if (!hi) return;
+                if (Number(gender) === 2) {
+                    hi.src = cfg.header_female || 'nx.jpg';
                 } else {
-                    img.src = 'caidan/' + icon + '2.png';
-                }
-            });
-            if (window.__refreshNavFromMineUi) {
-                window.__refreshNavFromMineUi();
-            }
-        }
-        
-        // 初始化时更新图标
-        updateNavIcons();
-
-        function setMineHeaderByGender() {
-            var cfg = window.__MINE_UI_CONFIG;
-            var headerBg = document.getElementById('headerBg');
-            if (!headerBg) {
-                return;
-            }
-            var gender = localStorage.getItem('gender');
-            var path = gender == 2 ? 'nx.jpg' : 'grdb.jpg';
-            if (cfg) {
-                path = gender == 2 ? cfg.header_female : cfg.header_male;
-            }
-            path = String(path || 'grdb.jpg').replace(/"/g, '');
-            headerBg.style.setProperty('--mine-header-bg-url', 'url("' + path + '")');
-        }
-
-        function setMineAssetsFromConfig() {
-            var cfg = window.__MINE_UI_CONFIG;
-            if (!cfg) {
-                return;
-            }
-            var fam = document.getElementById('mineIconFamily');
-            var emp = document.getElementById('mineIconEmployer');
-            var bank = document.getElementById('mineIconBank');
-            if (fam) {
-                fam.src = cfg.icon_family;
-            }
-            if (emp) {
-                emp.src = cfg.icon_employer;
-            }
-            if (bank) {
-                bank.src = cfg.icon_bank;
-            }
-            setMineHeaderByGender();
-        }
-
-        window.addEventListener('mineUiConfig', function () {
-            setMineAssetsFromConfig();
-        });
-        
-        // 纳税人识别号显示状态
-        var taxIdVisible = false;
-        
-        // 切换纳税人识别号显示/隐藏
-        function toggleTaxId() {
-            var taxId = localStorage.getItem('tax_id');
-            if (!taxId) {
-                taxId = '620000000000000000'; // 默认值
-            }
-            
-            taxIdVisible = !taxIdVisible;
-            updateTaxIdDisplay(taxId);
-        }
-        
-        // 更新纳税人识别号显示
-        function updateTaxIdDisplay(taxId) {
-            var displayTaxId;
-            if (taxIdVisible) {
-                displayTaxId = taxId;
-            } else {
-                displayTaxId = taxId.substring(0, 1) + '***************' + taxId.substring(taxId.length - 1);
-            }
-            // 眼睛图标（闭眼表示隐藏状态，睁眼表示显示状态）
-            var eyeIcon = taxIdVisible 
-                ? '<svg onclick="toggleTaxId()" style="cursor:pointer;vertical-align:middle;margin-left:5px;" t="1768653736506" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#b46d03"></path><path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#b46d03"></path></svg>'
-                : '<svg onclick="toggleTaxId()" style="cursor:pointer;vertical-align:middle;margin-left:5px;" t="1768653736506" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="#b46d03"></path><path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="#b46d03"></path></svg>';
-            document.getElementById('userTaxId').innerHTML = '纳税人识别号 ' + displayTaxId + ' ' + eyeIcon;
-        }
-        
-        // 加载用户信息
-        function loadUserInfo() {
-            var userId = localStorage.getItem('user_id');
-            
-            // 先用localStorage的数据快速显示
-            var realName = localStorage.getItem('real_name');
-            var taxId = localStorage.getItem('tax_id') || '620000000000000000';
-            var gender = localStorage.getItem('gender');
-            if (realName) {
-                document.getElementById('userName').textContent = realName;
-            }
-            updateTaxIdDisplay(taxId);
-            
-            setMineHeaderByGender();
-            
-            // 如果没有登录信息，跳转到登录页
-            if (!userId) {
-                // window.location.href = 'login.html';
-                return;
-            }
-            
-            // 从API获取最新数据
-            authFetch('api/user.php?action=info')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.code !== 200) {
-                        return;
-                    }
-                    var user = data.data;
-                        
-                        // 更新localStorage
-                        localStorage.setItem('real_name', user.real_name);
-                        localStorage.setItem('tax_id', user.tax_id);
-                        localStorage.setItem('employer_count', user.employer_count);
-                        localStorage.setItem('family_count', user.family_count);
-                        localStorage.setItem('bank_card_count', user.bank_card_count);
-                        localStorage.setItem('gender', user.gender);
-                        localStorage.setItem('is_test_account', user.is_test_account ? '1' : '0');
-
-                        setMineHeaderByGender();
-                        
-                        // 更新页面显示
-                        document.getElementById('userName').textContent = user.real_name;
-                        updateTaxIdDisplay(user.tax_id);
-                        
-                        // 更新任职受雇数量
-                        var employerBtn = document.getElementById('employerCount');
-                        if (user.employer_count > 0) {
-                            employerBtn.textContent = user.employer_count + '家';
-                            employerBtn.className = 'function-btn blue';
-                        } else {
-                            employerBtn.textContent = '暂无';
-                            employerBtn.className = 'function-btn orange';
-                        }
-                        
-                        // 更新家庭成员数量
-                        var familyBtn = document.getElementById('familyCount');
-                        if (user.family_count > 0) {
-                            familyBtn.textContent = user.family_count + '人';
-                            familyBtn.className = 'function-btn blue';
-                        } else {
-                            familyBtn.textContent = '添加';
-                            familyBtn.className = 'function-btn orange';
-                        }
-                        
-                        // 更新银行卡数量
-                        var bankCardBtn = document.getElementById('bankCardCount');
-                        if (user.bank_card_count > 0) {
-                            bankCardBtn.textContent = user.bank_card_count + '张';
-                            bankCardBtn.className = 'function-btn blue';
-                        } else {
-                            bankCardBtn.textContent = '添加';
-                            bankCardBtn.className = 'function-btn orange';
-                        }
-
-                })
-                .catch(error => {
-                    console.error('获取用户信息失败:', error);
-                    // API失败时使用localStorage的数据
-                    updateCountsFromLocalStorage();
-                });
-        }
-        
-        // 从localStorage更新数量显示
-        function updateCountsFromLocalStorage() {
-            var employerCount = localStorage.getItem('employer_count');
-            var familyCount = localStorage.getItem('family_count');
-            var bankCardCount = localStorage.getItem('bank_card_count');
-            
-            var employerBtn = document.getElementById('employerCount');
-            if (employerCount !== null && employerCount != 0) {
-                employerBtn.textContent = employerCount + '家';
-                employerBtn.className = 'function-btn blue';
-            } else {
-                employerBtn.textContent = '暂无';
-                employerBtn.className = 'function-btn orange';
-            }
-            
-            var familyBtn = document.getElementById('familyCount');
-            if (familyCount !== null && familyCount != 0) {
-                familyBtn.textContent = familyCount + '人';
-                familyBtn.className = 'function-btn blue';
-            } else {
-                familyBtn.textContent = '添加';
-                familyBtn.className = 'function-btn orange';
-            }
-            
-            var bankCardBtn = document.getElementById('bankCardCount');
-            if (bankCardCount !== null && bankCardCount != 0) {
-                bankCardBtn.textContent = bankCardCount + '张';
-                bankCardBtn.className = 'function-btn blue';
-            } else {
-                bankCardBtn.textContent = '添加';
-                bankCardBtn.className = 'function-btn orange';
-            }
-        }
-        
-        // 退出登录
-        function doLogout() {
-            if (typeof authClearSession === 'function') {
-                authClearSession();
-            } else {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user_id');
-                localStorage.removeItem('username');
-                localStorage.removeItem('real_name');
-                localStorage.removeItem('tax_id');
-            }
-            window.location.href = 'index.html';
-        }
-        
-        function goPersonalInfo() {
-            window.location.href = 'personal_info.html';
-        }
-
-        /** 个人中心 consult 指定 tab：profile | employers | messages | records | feedback */
-        function goConsultTab(tab) {
-            window.location.href = 'consult.html?tab=' + encodeURIComponent(tab);
-        }
-
-        // 跳转到用户数据管理中心（默认打开税务记录，与 consult 首页一致）
-        function goUserCenter() {
-            goConsultTab('records');
-        }
-
-        function initMineMenuA11y() {
-            document.querySelectorAll('.menu-item.tappable').forEach(function (el) {
-                el.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        el.click();
-                    }
-                });
-            });
-        }
-
-        loadUserInfo();
-        if (window.__MINE_UI_CONFIG) {
-            setMineAssetsFromConfig();
-        }
-        initMineMenuA11y();
-        
-        // iOS设备检测，底部导航上移
-        (function() {
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            if (isIOS) {
-                var bottomNav = document.querySelector('.bottom-nav');
-                if (bottomNav) {
-                    bottomNav.classList.add('ios-device');
+                    hi.src = cfg.header_male || 'grdb.jpg';
                 }
             }
+
+            function loadUserInfo() {
+                var nameEl = document.getElementById('mineDisplayName');
+                var taxEl = document.getElementById('userTaxId');
+                var rn = localStorage.getItem('real_name');
+                var tid = localStorage.getItem('tax_id');
+                if (rn) {
+                    nameEl.textContent = rn;
+                }
+                taxEl.textContent = '纳税人识别号 ' + (tid ? maskTaxId(tid) : '--');
+
+                var g = localStorage.getItem('gender');
+                applyAvatarGender(g);
+
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
+
+                fetchFn('api/user.php?action=info')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200 || !data.data) {
+                            updateCountsFromStorage();
+                            return;
+                        }
+                        var u = data.data;
+                        if (u.account_active !== undefined && u.account_active !== null) {
+                            var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
+                            localStorage.setItem('account_active', active ? '1' : '0');
+                        }
+                        if (u.tax_record_count != null) {
+                            localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
+                        }
+                        if (u.real_name) {
+                            nameEl.textContent = u.real_name;
+                            localStorage.setItem('real_name', u.real_name);
+                        }
+                        if (u.tax_id) {
+                            localStorage.setItem('tax_id', u.tax_id);
+                            taxEl.textContent = '纳税人识别号 ' + maskTaxId(u.tax_id);
+                        }
+                        if (u.gender != null) {
+                            localStorage.setItem('gender', String(u.gender));
+                            applyAvatarGender(u.gender);
+                        }
+                        if (u.employer_count != null) {
+                            localStorage.setItem('employer_count', String(u.employer_count));
+                        }
+                        if (u.family_count != null) {
+                            localStorage.setItem('family_count', String(u.family_count));
+                        }
+                        if (u.bank_card_count != null) {
+                            localStorage.setItem('bank_card_count', String(u.bank_card_count));
+                        }
+                        setCounts(u);
+                        maybePromptInactiveModify();
+                    })
+                    .catch(function () {
+                        updateCountsFromStorage();
+                        maybePromptInactiveModify();
+                    });
+            }
+
+            loadUserInfo();
+
+            document.getElementById('consultModifyLink').addEventListener('click', function (e) {
+                e.preventDefault();
+                if (isInactiveAccount() && !hasTaxRecords()) {
+                    confirmModifyTaxData();
+                    return;
+                }
+                goConsultPage();
+            });
+
+            document.getElementById('mineLogout').addEventListener('click', function () {
+                try {
+                    sessionStorage.clear();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('username');
+                    localStorage.removeItem('real_name');
+                    localStorage.removeItem('tax_id');
+                } catch (e) {}
+                window.location.href = 'login.html';
+            });
         })();
     </script>
-    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

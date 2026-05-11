@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260511-shuiming-summary-seam"></script>
+    <script src="/js/auth.js?v=20260511-shell-activate-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -24,7 +24,6 @@
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            /* 顶部安全区仅由 .top-fixed 的 top 承担，勿再 padding-top，否则与 .header 内 env() 叠加倍增空白（尤其 Android） */
         }
 
         /*
@@ -40,8 +39,10 @@
             font-feature-settings: 'tnum' 1, 'zero' 0;
         }
 
-        /* 高于 watermark.js 全屏层（z-index:99999），避免「未激活」水印叠在内容上导致插画/文字发灰、不清晰 */
+        /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
         .page-root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --header-height: 52px;
             position: relative;
             z-index: 100000;
             min-height: 100vh;
@@ -50,32 +51,21 @@
         }
 
         .top-fixed {
-            position: fixed;
-            top: env(safe-area-inset-top, 0px);
-            left: 0;
-            right: 0;
-            z-index: 100;
-            /* 与页面灰底一致，避免与列表衔接处因舍入露出白条 */
-            background: #f5f6fa;
-            isolation: isolate;
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-            box-sizing: border-box;
+            position: static;
         }
 
         .header {
-            /* 顶栏纯白底；safe-area 已由 .top-fixed top 处理，此处勿再加 env(safe-area-inset-top) */
             background: #fff;
-            padding: 8px 16px 10px;
+            padding: 15px 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            border-bottom: 1px solid #dcdce3;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.045);
-            z-index: 2;
+            position: fixed;
+            top: var(--safe-top);
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: var(--header-height);
         }
 
         .back-btn {
@@ -113,35 +103,23 @@
 
         .summary {
             background: #fff;
-            position: relative;
-            border-top: none;
-            padding: 14px 16px 2px;
-            border-bottom: none;
+            position: fixed;
+            top: calc(var(--safe-top) + var(--header-height));
+            left: 0;
+            right: 0;
+            z-index: 101;
+            height: auto;
+            background-color: #fff;
+            background-clip: border-box;
             overflow: visible;
+            will-change: background;
+            border-top: 10px solid #f5f6fa;
+            border-bottom: 10px solid #f5f6fa;
+            padding: 10px 16px 2px;
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
-        }
-
-        /* 顶部汇总区的上下灰底条：与列表卡片间灰缝一致宽度 */
-        .summary::before,
-        .summary::after {
-            content: '';
-            display: block;
-            height: 12px;
-            width: calc(100% + 32px);
-            margin-left: -16px;
-            background: #f5f6fa;
-        }
-        .summary::before {
-            margin-top: -14px;
-            margin-bottom: 12px;
-        }
-        /* 勿用 margin-top：外边距落在 .summary 白底上会露出「白线缝」，整块灰条一次画满 */
-        .summary::after {
-            margin-top: 0;
-            height: 20px;
         }
 
         /* 无列表数据：不展示批量申诉 */
@@ -149,29 +127,19 @@
             display: none;
         }
 
-        /* 无列表数据：去掉汇总区底部分隔条，避免与空状态之间出现多余浅/白缝 */
+        /* 无列表数据：汇总区底部不额外留白 */
         .page-root.is-record-empty .summary {
             padding-bottom: 0;
-        }
-
-        .page-root.is-record-empty .summary::after {
-            display: none;
-            margin: 0;
-            height: 0;
-            content: none;
         }
 
         .summary-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 0 9px;
+            padding: 6px 0;
+            padding-bottom: 9px;
             margin-bottom: 3px;
             position: relative;
-            border-bottom: none;
-        }
-
-        .summary-item:not(:last-child) {
             border-bottom: 1px solid #e5e5e5;
         }
 
@@ -181,7 +149,7 @@
 
         .summary-label {
             font-size: 15px;
-            color: #333;
+            color: #000;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -209,16 +177,17 @@
 
         .summary-value {
             font-size: 15px;
-            font-weight: 500;
-            color: #333;
+            font-weight: 490;
+            color: #111;
             letter-spacing: -0.02em;
             text-align: right;
             min-width: 5.5em;
         }
 
-        /* 顶开固定头高度；与个税一致白底通栏无左右灰边（fallback 略大，避免首帧测量偏小导致首条被挡） */
+        /* 列表按参考稿固定避开顶部导航和汇总区 */
         .list {
-            padding: var(--top-fixed-height, min(42vh, 260px)) 0 24px;
+            margin-top: calc(var(--safe-top) + var(--header-height));
+            padding: 102px 0 20px;
             background: #f5f6fa;
             position: relative;
             isolation: isolate;
@@ -228,10 +197,10 @@
             display: block;
             width: 100%;
             background: #fff;
-            border-radius: 0;
+            border-radius: 8px;
             --list-inline-pad: 16px;
-            padding: 18px var(--list-inline-pad) 14px;
-            margin: 0;
+            padding: 16px var(--list-inline-pad);
+            margin-top: 9px;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             color: inherit;
@@ -240,34 +209,19 @@
             border-top: none;
         }
 
-        /*
-         * 卡片间灰缝须通栏：::before 在 padding 内的 content box 里，width:100% 会短一截。
-         * 用负 margin 拉齐到与白底卡片同宽（抵消左右 padding）。
-         */
-        .list-item:not(:first-child) {
-            padding-top: 0;
-        }
-
-        .list-item:not(:first-child)::before {
-            content: '';
-            display: block;
-            height: 12px;
-            width: calc(100% + 2 * var(--list-inline-pad));
-            margin-left: calc(-1 * var(--list-inline-pad));
-            margin-bottom: 16px;
-            background: #f5f6fa;
+        .list-item:first-child {
+            margin-top: 0;
         }
 
         .list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            min-height: 24px;
             margin-bottom: 3px;
         }
 
         .list-title {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 500;
             color: #333;
         }
@@ -281,6 +235,9 @@
         }
 
         .list-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 3px 0;
         }
 
@@ -625,24 +582,33 @@
 
         function refreshPurchaseWatermarkForTestAccount() {
             var localIsTest = false;
+            var localInactive = false;
             try {
                 localIsTest = localStorage.getItem('is_test_account') === '1';
+                localInactive = localStorage.getItem('account_active') === '0';
             } catch (e0) {}
-            if (localIsTest) {
+            if (localIsTest && localInactive) {
                 applyPurchaseWatermark(true);
+            } else {
+                applyPurchaseWatermark(false);
             }
 
             authFetch('api/user.php?action=info')
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
-                    var isTest = !!(res && res.code === 200 && res.data && res.data.is_test_account);
+                    var d = res && res.code === 200 ? res.data : null;
+                    var isTest = !!(d && d.is_test_account);
+                    var isInactive = !!(d && d.account_active === false);
                     try {
                         localStorage.setItem('is_test_account', isTest ? '1' : '0');
+                        if (d && d.account_active !== undefined && d.account_active !== null) {
+                            localStorage.setItem('account_active', d.account_active ? '1' : '0');
+                        }
                     } catch (e1) {}
-                    applyPurchaseWatermark(isTest);
+                    applyPurchaseWatermark(isTest && isInactive);
                 })
                 .catch(function () {
-                    applyPurchaseWatermark(localIsTest);
+                    applyPurchaseWatermark(localIsTest && localInactive);
                 });
         }
 

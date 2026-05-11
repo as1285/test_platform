@@ -43,6 +43,10 @@
     return false;
   }
 
+  function isLikelyAndroidViewportClient() {
+    return /Android/i.test(navigator.userAgent || '');
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -72,12 +76,12 @@
     try {
       var cordovaShell = isCordovaTaxAppShell();
       var iosClient = isLikelyIOSViewportClient();
+      var androidClient = isLikelyAndroidViewportClient();
       /*
-       * 安卓浏览器：主题色与安全区补条用品牌蓝。
+       * iOS 维持原有逻辑；安卓改用白色根背景，避免页面跳转时先露出品牌蓝造成蓝闪。
        * Cordova / iframe 壳：白底，由各页顶栏铺色。
-       * iOS 顶层 WKWebView（直接打开网址、top===self）：原先会误判为「普通浏览器」而注入 html 蓝底 + body::before 蓝条，状态栏下整块发蓝。
        */
-      var lightRootChrome = cordovaShell || iosClient;
+      var lightRootChrome = cordovaShell || iosClient || androidClient;
       var rootChromeBg = lightRootChrome ? '#ffffff' : APP_STATUS_BAR_COLOR;
       upsertMeta('theme-color', rootChromeBg);
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
@@ -89,12 +93,22 @@
       /*
        * 顶部与系统状态栏避让：
        * - Cordova / iframe：iframe 内 env(safe-area-inset-top) 常为 0，用固定 48px。
+       * - Android：OPPO Find X8 等沉浸式 WebView 里 env 常为 0，用 24px 避让。
        * - iOS 顶层 WKWebView（直接打开网址）：需 env(safe-area-inset-top)，否则首页搜索条、待办图头等会与时间栏重合。
        */
-      var useTopSafeInset = cordovaShell || iosClient;
-      var statusInsetCss = cordovaShell ? '48px' : iosClient ? 'env(safe-area-inset-top, 0px)' : '';
+      var useTopSafeInset = cordovaShell || iosClient || androidClient;
+      var statusInsetCss = androidClient
+        ? '24px'
+        : cordovaShell
+          ? '48px'
+          : iosClient
+            ? 'env(safe-area-inset-top, 0px)'
+            : '';
       if (useTopSafeInset) {
         document.documentElement.classList.add('app-top-safe-shell');
+      }
+      if (androidClient) {
+        document.documentElement.classList.add('app-android-client');
       }
       var style = document.createElement('style');
       var barFill =
@@ -105,8 +119,7 @@
         barFill = '';
       }
       /*
-       * 浏览器/PWA（主要为安卓）：body::before 给安全区补蓝。
-       * Cordova / iOS：不铺条，避免与白顶栏冲突。
+       * 普通桌面浏览器保留旧的蓝色补条；Cordova / iOS / Android 不铺条，避免切页蓝闪或与白顶栏冲突。
        */
       style.textContent = 'html{background:' + rootChromeBg + ';}' + barFill;
       document.head.appendChild(style);
@@ -129,6 +142,8 @@
           'html.app-top-safe-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-client.app-top-safe-shell body > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

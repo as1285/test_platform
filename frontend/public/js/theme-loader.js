@@ -4,6 +4,45 @@
  */
 (function () {
   var STORAGE_KEY = 'public_mine_ui_v1';
+  var PRELOADED = {};
+
+  function setSrcIfChanged(img, src) {
+    if (!img || !src) {
+      return;
+    }
+    if (img.getAttribute('src') !== src) {
+      img.src = src;
+    }
+  }
+
+  function preloadAsset(src) {
+    if (!src || PRELOADED[src]) {
+      return;
+    }
+    PRELOADED[src] = true;
+    try {
+      var img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+    } catch (e) {}
+  }
+
+  function preloadConfiguredAssets(cfg) {
+    if (!cfg) {
+      return;
+    }
+    [
+      cfg.nav_sy_1, cfg.nav_sy_2,
+      cfg.nav_db_1, cfg.nav_db_2,
+      cfg.nav_bc_1, cfg.nav_bc_2,
+      cfg.nav_xx_1, cfg.nav_xx_2,
+      cfg.nav_w_1, cfg.nav_w_2,
+      cfg.header_male, cfg.header_female,
+      cfg.icon_family, cfg.icon_employer, cfg.icon_bank,
+      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb,
+      cfg.daiban_header, cfg.bancha_header, cfg.message_header
+    ].forEach(preloadAsset);
+  }
 
   function applyBottomNavFromConfig(cfg) {
     if (!cfg) {
@@ -29,7 +68,7 @@
       var def2 = 'caidan/' + icon + '2.png';
       var u1 = cfg[k1];
       var u2 = cfg[k2];
-      img.src = active ? u1 || def1 : u2 || def2;
+      setSrcIfChanged(img, active ? u1 || def1 : u2 || def2);
     });
   }
 
@@ -39,23 +78,23 @@
     }
     var b = document.getElementById('assetShouyeBanner');
     if (b && cfg.shouye_banner) {
-      b.src = cfg.shouye_banner;
+      setSrcIfChanged(b, cfg.shouye_banner);
     }
     var z = document.getElementById('assetShouyeZdfwdb');
     if (z && cfg.shouye_zdfwdb) {
-      z.src = cfg.shouye_zdfwdb;
+      setSrcIfChanged(z, cfg.shouye_zdfwdb);
     }
     var lb = document.getElementById('assetShouyeLb');
     if (lb && cfg.shouye_lb) {
-      lb.src = cfg.shouye_lb;
+      setSrcIfChanged(lb, cfg.shouye_lb);
     }
     var dh = document.getElementById('assetDaibanHeader');
     if (dh && cfg.daiban_header) {
-      dh.src = cfg.daiban_header;
+      setSrcIfChanged(dh, cfg.daiban_header);
     }
     var bc = document.getElementById('assetBanchaHeader');
     if (bc && cfg.bancha_header) {
-      bc.src = cfg.bancha_header;
+      setSrcIfChanged(bc, cfg.bancha_header);
     }
     var mh = document.getElementById('assetMessageHeader');
     var msgBuiltin = document.getElementById('messageHeaderBuiltin');
@@ -64,7 +103,7 @@
       var defaultSlice =
         mp === 'message_header.jpg' || /(^|\/)message_header\.jpg$/i.test(mp);
       if (!defaultSlice) {
-        mh.src = mp;
+        setSrcIfChanged(mh, mp);
         mh.style.display = 'block';
         msgBuiltin.style.display = 'none';
       } else {
@@ -73,15 +112,15 @@
         msgBuiltin.style.display = '';
       }
     } else if (mh && cfg.message_header) {
-      mh.src = cfg.message_header;
+      setSrcIfChanged(mh, cfg.message_header);
     }
     var pg = document.getElementById('assetPiaojiaGoumai');
     if (pg && cfg.piaojia_goumai) {
-      pg.src = cfg.piaojia_goumai;
+      setSrcIfChanged(pg, cfg.piaojia_goumai);
     }
     var px = document.getElementById('assetPiaojiaXiaoshou');
     if (px && cfg.piaojia_xiaoshou) {
-      px.src = cfg.piaojia_xiaoshou;
+      setSrcIfChanged(px, cfg.piaojia_xiaoshou);
     }
   }
 
@@ -123,6 +162,7 @@
       nav_w_1: d.nav_w_1 || 'caidan/w1.png',
       nav_w_2: d.nav_w_2 || 'caidan/w2.png',
       shouye_banner: d.shouye_banner || 'sydb-v2.jpg',
+      mine_header: d.mine_header || d.header_male || 'grdb.jpg',
       shouye_zdfwdb: d.shouye_zdfwdb || 'zdfwdb.jpg',
       shouye_lb: d.shouye_lb || 'lb.jpg',
       daiban_header: d.daiban_header || 'daiban.jpg',
@@ -139,6 +179,7 @@
     } catch (e2) {}
     applyBottomNavFromConfig(window.__MINE_UI_CONFIG);
     applyTabPageImagesFromConfig(window.__MINE_UI_CONFIG);
+    preloadConfiguredAssets(window.__MINE_UI_CONFIG);
   }
 
   window.__refreshNavFromMineUi = function () {

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260511-batch-company-history"></script>
+    <script src="/js/auth.js?v=20260511-shell-activate-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -30,26 +30,6 @@
             letter-spacing: 0.04em;
         }
         .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 6px; line-height: 1.25; }
-
-        .header-quick-gen-btn {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 18px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #1e6fff;
-            background: #fff;
-            border: none;
-            border-radius: 999px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-            cursor: pointer;
-            max-width: 92vw;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .header-quick-gen-btn:active {
-            opacity: 0.92;
-            transform: scale(0.98);
-        }
 
         .tabs {
             display: flex;
@@ -227,6 +207,60 @@
             transform: scale(0.98);
         }
 
+        /* 激活码弹窗（含闲鱼购买，链接来自后台「引导安装」） */
+        .activate-modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .activate-modal-root.is-open {
+            display: flex;
+        }
+        .activate-modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .activate-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 16px 14px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        }
+        .activate-modal-title {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .activate-modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #1e6fff;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 14px;
+            box-sizing: border-box;
+        }
+        .activate-modal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        #btnConsultActivateXianyu {
+            margin-right: auto;
+        }
+
         .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
 
         .fb-type-options label { display: block; margin-bottom: 8px; font-size: 14px; color: #333; }
@@ -391,6 +425,160 @@
             pointer-events: none;
         }
 
+        #panel-records .batch-emp-month-salary-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        #panel-records .batch-emp-month-salary-badge {
+            font-size: 12px;
+            color: #1e6fff;
+        }
+
+        /* 工作经历：按月自定义工资浮窗 */
+        .batch-ms-modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 10050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .batch-ms-modal-root.is-open {
+            display: flex;
+        }
+        .batch-ms-modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .batch-ms-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            max-height: calc(100vh - 32px);
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .batch-ms-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+        .batch-ms-modal-head button {
+            border: none;
+            background: none;
+            font-size: 22px;
+            line-height: 1;
+            color: #999;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .batch-ms-modal-hint {
+            padding: 10px 14px 0;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.45;
+        }
+        .batch-ms-modal-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 14px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .batch-ms-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .batch-ms-row label {
+            flex: 0 0 92px;
+            font-size: 13px;
+            color: #555;
+        }
+        .batch-ms-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .batch-ms-modal-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 12px 14px;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+        }
+        #batchMsModalClear {
+            margin-right: auto;
+        }
+
+        /* 税务批量等：校验失败强提示（居中弹框） */
+        .consult-strong-alert-root {
+            position: fixed;
+            inset: 0;
+            z-index: 10060;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .consult-strong-alert-root.is-open {
+            display: flex;
+        }
+        .consult-strong-alert-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+        }
+        .consult-strong-alert-panel {
+            position: relative;
+            width: 100%;
+            max-width: 340px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+            padding: 20px 18px 16px;
+            border: 2px solid #ff7043;
+        }
+        .consult-strong-alert-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #d84315;
+            margin: 0 0 12px;
+            text-align: center;
+        }
+        .consult-strong-alert-body {
+            font-size: 15px;
+            line-height: 1.55;
+            color: #333;
+            margin: 0 0 18px;
+            word-break: break-word;
+        }
+        .consult-strong-alert-actions .btn {
+            width: 100%;
+        }
+
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
     </style>
@@ -403,7 +591,47 @@
         <button type="button" class="header-activate-btn" id="btnHeaderActivate" style="display:none;" aria-label="账号激活">激活</button>
         <h1>个人中心</h1>
         <p class="header-promo">招代理，微信聊</p>
-        <button type="button" class="header-quick-gen-btn" id="btnQuickGenTaxData" onclick="quickGenerateBatchTaxDemo()">一键生成个税数据</button>
+    </div>
+
+    <div id="consultActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="consultActivateModalTitle">
+        <div class="activate-modal-mask" id="consultActivateModalMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="consultActivateModalTitle">请输入激活码</p>
+            <input type="text" id="consultActivateCodeInput" class="activate-modal-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            <div class="activate-modal-actions">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnConsultActivateXianyu">闲鱼购买</button>
+                <button type="button" class="btn btn-default btn-sm" id="btnConsultActivateCancel">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnConsultActivateOk">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batchMonthSalaryModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="batchMsModalTitleEl">
+        <div class="batch-ms-modal-mask" id="batchMsModalMask"></div>
+        <div class="batch-ms-modal-panel">
+            <div class="batch-ms-modal-head">
+                <span id="batchMsModalTitleEl">按月自定义工资</span>
+                <button type="button" id="batchMsModalCloseX" aria-label="关闭">&times;</button>
+            </div>
+            <p class="batch-ms-modal-hint" id="batchMsModalHint"></p>
+            <div class="batch-ms-modal-scroll" id="batchMsModalBody"></div>
+            <div class="batch-ms-modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" id="batchMsModalClear">清空本月自定义</button>
+                <button type="button" class="btn btn-default btn-sm" id="batchMsModalCancel">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" id="batchMsModalSave">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="consultStrongAlertModal" class="consult-strong-alert-root" role="alertdialog" aria-modal="true" aria-labelledby="consultStrongAlertTitle" aria-describedby="consultStrongAlertText">
+        <div class="consult-strong-alert-mask" id="consultStrongAlertMask"></div>
+        <div class="consult-strong-alert-panel">
+            <div class="consult-strong-alert-title" id="consultStrongAlertTitle">请核对</div>
+            <div class="consult-strong-alert-body" id="consultStrongAlertText"></div>
+            <div class="consult-strong-alert-actions">
+                <button type="button" class="btn btn-primary" id="consultStrongAlertOk">我知道了</button>
+            </div>
+        </div>
     </div>
 
     <div class="tabs" id="topTabs">
@@ -554,7 +782,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人、年终奖公司名称会记在本地，点击输入框可点选曾填过的名称。年终奖见下方。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人、年终奖公司名称会记在本地，点击输入框可点选曾填过的名称。年终奖见下方。</p>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -566,6 +794,14 @@
                         <div class="form-group">
                             <label>扣缴义务人（公司全称）</label>
                             <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="请填写该公司全称（可点选历史）">
+                        </div>
+                        <div class="form-group">
+                            <label>扣缴义务人纳税人识别号（选填）</label>
+                            <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
+                        </div>
+                        <div class="form-group">
+                            <label>主管税务机关（选填）</label>
+                            <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -593,6 +829,10 @@
                                 <label>月薪上限（可选）</label>
                                 <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空=每月固定为下限；填则区间内随机，如 16000">
                             </div>
+                        </div>
+                        <div class="form-group batch-emp-month-salary-row">
+                            <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
+                            <span class="batch-emp-month-salary-badge" hidden></span>
                         </div>
                     </div>
                 </template>
@@ -885,6 +1125,25 @@
             setTimeout(function() { el.innerHTML = ''; }, 3000);
         }
 
+        function closeConsultStrongAlertModal() {
+            var root = document.getElementById('consultStrongAlertModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+        }
+
+        /** 税务批量等阻塞校验：居中弹框，避免顶栏轻提示易被忽略 */
+        function showConsultStrongAlert(message) {
+            var body = document.getElementById('consultStrongAlertText');
+            if (body) {
+                body.textContent = message || '';
+            }
+            var root = document.getElementById('consultStrongAlertModal');
+            if (root) {
+                root.classList.add('is-open');
+            }
+        }
+
         function switchTab(tab, pushHistory) {
             document.querySelectorAll('.tabs .tab').forEach(function(a) {
                 a.classList.toggle('active', a.getAttribute('data-tab') === tab);
@@ -977,12 +1236,55 @@
                 });
         }
 
-        function submitConsultActivate() {
-            var code = window.prompt('请输入激活码');
-            if (code == null) {
-                return;
+        var consultXianyuPurchaseUrl = '';
+
+        function refreshConsultInstallPackageUrls() {
+            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                        consultXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                    } else {
+                        consultXianyuPurchaseUrl = '';
+                    }
+                })
+                .catch(function () {
+                    consultXianyuPurchaseUrl = '';
+                });
+        }
+
+        function closeConsultActivateModal() {
+            var root = document.getElementById('consultActivateModal');
+            if (root) {
+                root.classList.remove('is-open');
             }
-            code = String(code).trim();
+            var inp = document.getElementById('consultActivateCodeInput');
+            if (inp) {
+                inp.value = '';
+            }
+        }
+
+        function openConsultActivateModal() {
+            refreshConsultInstallPackageUrls();
+            var root = document.getElementById('consultActivateModal');
+            var inp = document.getElementById('consultActivateCodeInput');
+            if (root) {
+                root.classList.add('is-open');
+            }
+            if (inp) {
+                inp.value = '';
+                setTimeout(function () {
+                    try {
+                        inp.focus();
+                    } catch (eF) {}
+                }, 50);
+            }
+        }
+
+        function submitConsultActivateWithCode(code) {
+            code = String(code || '').trim();
             if (!code) {
                 alert('激活码不能为空');
                 return;
@@ -1015,6 +1317,7 @@
                         if (typeof window.refreshWatermarkFromApi === 'function') {
                             window.refreshWatermarkFromApi();
                         }
+                        closeConsultActivateModal();
                         showMsg('激活成功', true);
                         loadUserInfoFromApi();
                         refreshRecordList();
@@ -1027,6 +1330,10 @@
                 .catch(function () {
                     alert('网络错误');
                 });
+        }
+
+        function submitConsultActivate() {
+            openConsultActivateModal();
         }
         
         function updateProfileForm(user) {
@@ -1183,7 +1490,9 @@
         function requireBonusCompanyOrAlert() {
             var name = resolveBonusCompanyName();
             if (!name) {
-                alert('请填写年终奖扣缴义务人，或在上方工作经历中填写公司，或与下方「添加记录」中扣缴义务人一致。');
+                showConsultStrongAlert(
+                    '请填写年终奖扣缴义务人，或在上方工作经历中填写公司，或与下方「添加记录」中扣缴义务人一致。'
+                );
                 try {
                     var el = document.getElementById('batch_bonus_company');
                     if (el) el.focus();
@@ -1607,13 +1916,23 @@
             }
             var cin = node.querySelector('.batch-emp-company');
             bindBatchEmpCompanyHistoryInput(cin);
+            var msBtn = node.querySelector('.batch-emp-month-salary-btn');
+            if (msBtn) {
+                msBtn.addEventListener('click', function () {
+                    openBatchMonthSalaryModal(node);
+                });
+            }
+            node.addEventListener('change', function () {
+                updateBatchEmpMonthSalaryBadge(node);
+            });
+            updateBatchEmpMonthSalaryBadge(node);
         }
 
         function removeBatchEmpRow(row) {
             var list = document.getElementById('batch_employment_list');
             if (!row || !list) return;
             if (list.querySelectorAll('.batch-emp-row').length <= 1) {
-                showMsg('至少保留一段工作经历', false);
+                showConsultStrongAlert('至少保留一段工作经历');
                 return;
             }
             row.remove();
@@ -1671,6 +1990,85 @@
             return out;
         }
 
+        /** 解析单段工作经历（含按月自定义工资 map → monthSalaryOverrides） */
+        function parseOneBatchEmpRow(row, rowIdx) {
+            var companyEl = row.querySelector('.batch-emp-company');
+            var company = companyEl ? String(companyEl.value).trim() : '';
+            var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
+            var authEl = row.querySelector('.batch-emp-tax-authority');
+            var company_tax_id = taxIdEl ? String(taxIdEl.value).trim() : '';
+            var tax_authority = authEl ? String(authEl.value).trim() : '';
+            var sy = parseInt(row.querySelector('.batch-emp-sy').value, 10);
+            var sm = parseInt(row.querySelector('.batch-emp-sm').value, 10);
+            var ongoing = row.querySelector('.batch-emp-ongoing') && row.querySelector('.batch-emp-ongoing').checked;
+            var ey;
+            var em;
+            if (ongoing) {
+                var dx = new Date();
+                ey = dx.getFullYear();
+                em = dx.getMonth() + 1;
+            } else {
+                ey = parseInt(row.querySelector('.batch-emp-ey').value, 10);
+                em = parseInt(row.querySelector('.batch-emp-em').value, 10);
+            }
+            var salaryMin = parseFloat(row.querySelector('.batch-emp-salary').value);
+            var maxEl = row.querySelector('.batch-emp-salary-max');
+            var maxTrim = maxEl && maxEl.value != null ? String(maxEl.value).trim() : '';
+            var salaryFloat = maxTrim !== '';
+            var salaryMax = salaryFloat ? parseFloat(maxTrim) : salaryMin;
+            var seg = rowIdx + 1;
+            if (!company) {
+                return { ok: false, error: '第 ' + seg + ' 段工作经历请填写扣缴义务人（公司全称）' };
+            }
+            if (!sy || sy < 1990 || sy > 2100 || !sm || sm < 1 || sm > 12) {
+                return { ok: false, error: '第 ' + seg + ' 段起始年月不合法' };
+            }
+            if (!ongoing && (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12)) {
+                return { ok: false, error: '第 ' + seg + ' 段结束年月不合法（或勾选至今）' };
+            }
+            if (Number.isNaN(salaryMin) || salaryMin < 0) {
+                return { ok: false, error: '第 ' + seg + ' 段月薪下限须为非负数字' };
+            }
+            if (salaryFloat) {
+                if (Number.isNaN(salaryMax) || salaryMax < 0) {
+                    return { ok: false, error: '第 ' + seg + ' 段月薪上限须为非负数字' };
+                }
+                if (salaryMax < salaryMin) {
+                    return { ok: false, error: '第 ' + seg + ' 段月薪上限须不小于下限' };
+                }
+            }
+            var months = enumerateYmRange(sy, sm, ey, em);
+            if (!months.length) {
+                return { ok: false, error: '第 ' + seg + ' 段在职区间无效（结束应不早于起始）' };
+            }
+            var rawMap = row._monthSalaryMap || {};
+            var monthSalaryOverrides = {};
+            var mi;
+            for (mi = 0; mi < months.length; mi++) {
+                var ym = months[mi];
+                var mk = ym.year + '-' + pad2(ym.month);
+                if (Object.prototype.hasOwnProperty.call(rawMap, mk)) {
+                    var vv = parseFloat(rawMap[mk]);
+                    if (!Number.isNaN(vv) && vv >= 0) {
+                        monthSalaryOverrides[mk] = round2(vv);
+                    }
+                }
+            }
+            return {
+                ok: true,
+                employment: {
+                    company: company,
+                    company_tax_id: company_tax_id,
+                    tax_authority: tax_authority,
+                    salaryFloat: salaryFloat,
+                    salaryMin: salaryMin,
+                    salaryMax: salaryMax,
+                    months: months,
+                    monthSalaryOverrides: monthSalaryOverrides
+                }
+            };
+        }
+
         function parseBatchEmploymentsFromDom() {
             var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
             if (!rows.length) {
@@ -1679,59 +2077,13 @@
             var employments = [];
             var rowIdx;
             for (rowIdx = 0; rowIdx < rows.length; rowIdx++) {
-                var row = rows[rowIdx];
-                var companyEl = row.querySelector('.batch-emp-company');
-                var company = companyEl ? String(companyEl.value).trim() : '';
-                var sy = parseInt(row.querySelector('.batch-emp-sy').value, 10);
-                var sm = parseInt(row.querySelector('.batch-emp-sm').value, 10);
-                var ongoing = row.querySelector('.batch-emp-ongoing') && row.querySelector('.batch-emp-ongoing').checked;
-                var ey;
-                var em;
-                if (ongoing) {
-                    var dx = new Date();
-                    ey = dx.getFullYear();
-                    em = dx.getMonth() + 1;
-                } else {
-                    ey = parseInt(row.querySelector('.batch-emp-ey').value, 10);
-                    em = parseInt(row.querySelector('.batch-emp-em').value, 10);
+                var one = parseOneBatchEmpRow(rows[rowIdx], rowIdx);
+                if (!one.ok) {
+                    return { ok: false, employments: [], error: one.error };
                 }
-                var salaryMin = parseFloat(row.querySelector('.batch-emp-salary').value);
-                var maxEl = row.querySelector('.batch-emp-salary-max');
-                var maxTrim = maxEl && maxEl.value != null ? String(maxEl.value).trim() : '';
-                var salaryFloat = maxTrim !== '';
-                var salaryMax = salaryFloat ? parseFloat(maxTrim) : salaryMin;
-                if (!company) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段工作经历请填写扣缴义务人（公司全称）' };
-                }
-                if (!sy || sy < 1990 || sy > 2100 || !sm || sm < 1 || sm > 12) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段起始年月不合法' };
-                }
-                if (!ongoing && (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12)) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段结束年月不合法（或勾选至今）' };
-                }
-                if (Number.isNaN(salaryMin) || salaryMin < 0) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪下限须为非负数字' };
-                }
-                if (salaryFloat) {
-                    if (Number.isNaN(salaryMax) || salaryMax < 0) {
-                        return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪上限须为非负数字' };
-                    }
-                    if (salaryMax < salaryMin) {
-                        return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段月薪上限须不小于下限' };
-                    }
-                }
-                var months = enumerateYmRange(sy, sm, ey, em);
-                if (!months.length) {
-                    return { ok: false, employments: [], error: '第 ' + (rowIdx + 1) + ' 段在职区间无效（结束应不早于起始）' };
-                }
-                employments.push({
-                    empIdx: rowIdx,
-                    company: company,
-                    salaryFloat: salaryFloat,
-                    salaryMin: salaryMin,
-                    salaryMax: salaryMax,
-                    months: months
-                });
+                var emp = one.employment;
+                emp.empIdx = rowIdx;
+                employments.push(emp);
             }
             var occ = {};
             var ei, mi;
@@ -1752,6 +2104,206 @@
             }
             return { ok: true, employments: employments };
         }
+
+        var batchMsModalCurrentRow = null;
+        var batchMsModalMonthsSnapshot = [];
+
+        function closeBatchMonthSalaryModal() {
+            var root = document.getElementById('batchMonthSalaryModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+            batchMsModalCurrentRow = null;
+            batchMsModalMonthsSnapshot = [];
+        }
+
+        function updateBatchEmpMonthSalaryBadge(row) {
+            var badge = row.querySelector('.batch-emp-month-salary-badge');
+            if (!badge) {
+                return;
+            }
+            var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
+            var idx = Array.prototype.indexOf.call(rows, row);
+            if (idx < 0) {
+                idx = 0;
+            }
+            var one = parseOneBatchEmpRow(row, idx);
+            if (!one.ok) {
+                badge.hidden = true;
+                badge.textContent = '';
+                return;
+            }
+            var n = Object.keys(one.employment.monthSalaryOverrides || {}).length;
+            if (n > 0) {
+                badge.hidden = false;
+                badge.textContent = '已自定义 ' + n + ' 个月';
+            } else {
+                badge.hidden = true;
+                badge.textContent = '';
+            }
+        }
+
+        function openBatchMonthSalaryModal(row) {
+            var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
+            var idx = Array.prototype.indexOf.call(rows, row);
+            if (idx < 0) {
+                idx = 0;
+            }
+            var one = parseOneBatchEmpRow(row, idx);
+            if (!one.ok) {
+                showConsultStrongAlert(one.error);
+                return;
+            }
+            var emp = one.employment;
+            batchMsModalCurrentRow = row;
+            batchMsModalMonthsSnapshot = emp.months.slice();
+
+            var titleEl = document.getElementById('batchMsModalTitleEl');
+            var hintEl = document.getElementById('batchMsModalHint');
+            var bodyEl = document.getElementById('batchMsModalBody');
+            var root = document.getElementById('batchMonthSalaryModal');
+            if (!titleEl || !hintEl || !bodyEl || !root) {
+                return;
+            }
+
+            var co = emp.company || '（未填公司）';
+            if (co.length > 20) {
+                co = co.slice(0, 20) + '…';
+            }
+            titleEl.textContent = '按月自定义工资 · ' + co;
+
+            hintEl.textContent =
+                '共 ' +
+                emp.months.length +
+                ' 个月。输入框默认显示月薪下限；修改并保存后该月使用自定义金额。若清空某月输入并保存，则该月恢复为「固定下限或区间内随机」。';
+
+            bodyEl.innerHTML = '';
+            var map = row._monthSalaryMap || {};
+            var mi;
+            for (mi = 0; mi < emp.months.length; mi++) {
+                var ym = emp.months[mi];
+                var mk = ym.year + '-' + pad2(ym.month);
+                var lab = document.createElement('label');
+                lab.setAttribute('for', 'batch-ms-inp-' + mk.replace(/-/g, '_'));
+                lab.textContent = ym.year + '年' + ym.month + '月';
+                var inp = document.createElement('input');
+                inp.type = 'number';
+                inp.step = '0.01';
+                inp.min = '0';
+                inp.id = 'batch-ms-inp-' + mk.replace(/-/g, '_');
+                inp.dataset.ymKey = mk;
+                if (Object.prototype.hasOwnProperty.call(map, mk) && map[mk] !== '' && map[mk] != null) {
+                    inp.value = String(map[mk]);
+                } else {
+                    inp.value = String(emp.salaryMin);
+                }
+                var wrap = document.createElement('div');
+                wrap.className = 'batch-ms-row';
+                wrap.appendChild(lab);
+                wrap.appendChild(inp);
+                bodyEl.appendChild(wrap);
+            }
+
+            root.classList.add('is-open');
+        }
+
+        function saveBatchMonthSalaryModal() {
+            var row = batchMsModalCurrentRow;
+            var bodyEl = document.getElementById('batchMsModalBody');
+            if (!row || !bodyEl) {
+                closeBatchMonthSalaryModal();
+                return;
+            }
+            if (!row._monthSalaryMap) {
+                row._monthSalaryMap = {};
+            }
+            var floorSal = parseFloat(row.querySelector('.batch-emp-salary').value);
+            if (Number.isNaN(floorSal)) {
+                floorSal = 0;
+            }
+            var floorRounded = round2(floorSal);
+            var inputs = bodyEl.querySelectorAll('input[data-ym-key]');
+            var i;
+            for (i = 0; i < inputs.length; i++) {
+                var inp = inputs[i];
+                var mk = inp.dataset.ymKey;
+                var trim = inp.value != null ? String(inp.value).trim() : '';
+                if (trim === '') {
+                    delete row._monthSalaryMap[mk];
+                    continue;
+                }
+                var v = parseFloat(trim);
+                if (Number.isNaN(v) || v < 0) {
+                    showConsultStrongAlert('「' + mk + '」工资须为非负数字');
+                    return;
+                }
+                var vr = round2(v);
+                var hadBefore = Object.prototype.hasOwnProperty.call(row._monthSalaryMap, mk);
+                if (!hadBefore && vr === floorRounded) {
+                    continue;
+                }
+                row._monthSalaryMap[mk] = vr;
+            }
+            updateBatchEmpMonthSalaryBadge(row);
+            closeBatchMonthSalaryModal();
+        }
+
+        function clearBatchMonthSalaryModal() {
+            var row = batchMsModalCurrentRow;
+            var bodyEl = document.getElementById('batchMsModalBody');
+            if (!row || !bodyEl) {
+                return;
+            }
+            if (!row._monthSalaryMap) {
+                row._monthSalaryMap = {};
+            }
+            batchMsModalMonthsSnapshot.forEach(function (ym) {
+                var mk = ym.year + '-' + pad2(ym.month);
+                delete row._monthSalaryMap[mk];
+            });
+            var empSalaryMin = parseFloat(row.querySelector('.batch-emp-salary').value);
+            if (Number.isNaN(empSalaryMin)) {
+                empSalaryMin = 0;
+            }
+            bodyEl.querySelectorAll('input[data-ym-key]').forEach(function (inp) {
+                inp.value = String(empSalaryMin);
+            });
+            updateBatchEmpMonthSalaryBadge(row);
+        }
+
+        (function bindBatchMonthSalaryModalUi() {
+            var mask = document.getElementById('batchMsModalMask');
+            var cx = document.getElementById('batchMsModalCloseX');
+            var cancel = document.getElementById('batchMsModalCancel');
+            var save = document.getElementById('batchMsModalSave');
+            var clr = document.getElementById('batchMsModalClear');
+            if (mask) {
+                mask.addEventListener('click', closeBatchMonthSalaryModal);
+            }
+            if (cx) {
+                cx.addEventListener('click', closeBatchMonthSalaryModal);
+            }
+            if (cancel) {
+                cancel.addEventListener('click', closeBatchMonthSalaryModal);
+            }
+            if (save) {
+                save.addEventListener('click', saveBatchMonthSalaryModal);
+            }
+            if (clr) {
+                clr.addEventListener('click', clearBatchMonthSalaryModal);
+            }
+        })();
+
+        (function bindConsultStrongAlertModal() {
+            var mask = document.getElementById('consultStrongAlertMask');
+            var ok = document.getElementById('consultStrongAlertOk');
+            if (mask) {
+                mask.addEventListener('click', closeConsultStrongAlertModal);
+            }
+            if (ok) {
+                ok.addEventListener('click', closeConsultStrongAlertModal);
+            }
+        })();
 
         /** monthEntries: [{ year, month, salary }, …] 已在时段内按时间顺序；按自然年度分段累计预扣 */
         function taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFn) {
@@ -1847,15 +2399,15 @@
             var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
             var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
             if (!year || year < 1990 || year > 2100) {
-                showMsg('请填写合法的年终奖归属年度', false);
+                showConsultStrongAlert('请填写合法的年终奖归属年度');
                 return;
             }
             if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
-                showMsg('请选择合法的年终奖归属月份（1–12 月）', false);
+                showConsultStrongAlert('请选择合法的年终奖归属月份（1–12 月）');
                 return;
             }
             if (yearEndBonus <= 0) {
-                showMsg('请先填写年终奖金额（大于 0）', false);
+                showConsultStrongAlert('请先填写年终奖金额（大于 0）');
                 return;
             }
             var uid = currentUserId();
@@ -1891,7 +2443,7 @@
                     return refreshRecordList();
                 })
                 .catch(function (err) {
-                    showMsg('保存失败：' + (err.message || ''), false);
+                    showConsultStrongAlert('保存失败：' + (err.message || ''));
                     return refreshRecordList();
                 });
         }
@@ -1963,13 +2515,13 @@
         function batchAddEmploymentTaxRecords() {
             var parsed = parseBatchEmploymentsFromDom();
             if (!parsed.ok) {
-                showMsg(parsed.error || '请检查工作经历', false);
+                showConsultStrongAlert(parsed.error || '请检查工作经历');
                 return;
             }
             var employments = parsed.employments;
             var socPack = readBatchSocialThree();
             if (!socPack) {
-                showMsg('基本养老保险、基本医疗保险、失业保险不能为负数', false);
+                showConsultStrongAlert('基本养老保险、基本医疗保险、失业保险不能为负数');
                 return;
             }
             var social = socPack.total;
@@ -1984,17 +2536,17 @@
             if (yearEndBonus < 0) yearEndBonus = 0;
 
             if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
-                showMsg('请选择合法的年终奖归属月份（1–12 月）', false);
+                showConsultStrongAlert('请选择合法的年终奖归属月份（1–12 月）');
                 return;
             }
             if (!bonusYear || bonusYear < 1990 || bonusYear > 2100) {
-                showMsg('请填写合法的年终奖归属年度', false);
+                showConsultStrongAlert('请填写合法的年终奖归属年度');
                 return;
             }
 
             var bonusCompany = resolveBonusCompanyName();
             if (yearEndBonus > 0 && !bonusCompany) {
-                showMsg('填写了年终奖时请填写「年终奖扣缴义务人」，或在工作经历里填写公司', false);
+                showConsultStrongAlert('填写了年终奖时请填写「年终奖扣缴义务人」，或在工作经历里填写公司');
                 return;
             }
 
@@ -2016,9 +2568,15 @@
                 var mi;
                 for (mi = 0; mi < emp.months.length; mi++) {
                     var ym0 = emp.months[mi];
-                    var sal0 = emp.salaryFloat
-                        ? batchEmpRandomSalaryInRange(emp.salaryMin, emp.salaryMax)
-                        : round2(emp.salaryMin);
+                    var mk0 = ym0.year + '-' + pad2(ym0.month);
+                    var sal0;
+                    if (emp.monthSalaryOverrides && emp.monthSalaryOverrides[mk0] != null) {
+                        sal0 = emp.monthSalaryOverrides[mk0];
+                    } else if (emp.salaryFloat) {
+                        sal0 = batchEmpRandomSalaryInRange(emp.salaryMin, emp.salaryMax);
+                    } else {
+                        sal0 = round2(emp.salaryMin);
+                    }
                     monthEntries.push({ year: ym0.year, month: ym0.month, salary: sal0 });
                 }
                 var taxMap = taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFor);
@@ -2031,6 +2589,8 @@
                         year: ent.year,
                         month: ent.month,
                         company: emp.company,
+                        company_tax_id: emp.company_tax_id || '',
+                        tax_authority: emp.tax_authority || '',
                         salary: ent.salary,
                         tax: taxM,
                         empIdx: emp.empIdx
@@ -2050,14 +2610,17 @@
             var lines = [];
             for (ei = 0; ei < employments.length; ei++) {
                 var e = employments[ei];
+                var oc = Object.keys(e.monthSalaryOverrides || {}).length;
                 lines.push(
                     '· ' +
                         e.company +
                         '：' +
                         e.months.length +
-                        ' 个月，' +
+                        ' 个月' +
+                        (oc > 0 ? '（已自定义 ' + oc + ' 个月）' : '') +
+                        '，' +
                         (e.salaryFloat
-                            ? '月薪约 ' + e.salaryMin + '～' + e.salaryMax + ' 元（本批次逐月随机）'
+                            ? '月薪约 ' + e.salaryMin + '～' + e.salaryMax + ' 元（未自定义的月份逐月随机）'
                             : '月薪 ' + e.salaryMin + ' 元')
                 );
             }
@@ -2091,6 +2654,8 @@
                     chain = chain.then(function () {
                         var o = JSON.parse(JSON.stringify(base));
                         o.company_name = w.company;
+                        o.company_tax_id = w.company_tax_id != null ? String(w.company_tax_id) : '';
+                        o.tax_authority = w.tax_authority != null ? String(w.tax_authority) : '';
                         o.year = w.year;
                         o.month = w.month;
                         o.tax_period = w.year + '-' + pad2(w.month);
@@ -2156,7 +2721,7 @@
                     return refreshRecordList();
                 })
                 .catch(function (err) {
-                    showMsg('批量添加中断：' + (err.message || ''), false);
+                    showConsultStrongAlert('批量添加中断：' + (err.message || ''));
                     return refreshRecordList();
                 });
         }
@@ -2513,6 +3078,7 @@
         }
 
         function boot() {
+            refreshConsultInstallPackageUrls();
             if (window.__refreshNavFromMineUi) {
                 window.__refreshNavFromMineUi();
             }
@@ -2528,6 +3094,57 @@
         }
 
         document.getElementById('btnHeaderActivate').addEventListener('click', submitConsultActivate);
+
+        (function bindConsultActivateModal() {
+            var okBtn = document.getElementById('btnConsultActivateOk');
+            var cancelBtn = document.getElementById('btnConsultActivateCancel');
+            var xyBtn = document.getElementById('btnConsultActivateXianyu');
+            var mask = document.getElementById('consultActivateModalMask');
+            var inp = document.getElementById('consultActivateCodeInput');
+            if (okBtn) {
+                okBtn.addEventListener('click', function () {
+                    var code = inp ? inp.value : '';
+                    submitConsultActivateWithCode(code);
+                });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeConsultActivateModal);
+            }
+            if (mask) {
+                mask.addEventListener('click', closeConsultActivateModal);
+            }
+            if (xyBtn) {
+                xyBtn.addEventListener('click', function () {
+                    fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (body) {
+                            var u = '';
+                            if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                                u = String(body.data.xianyu_purchase_url).trim();
+                            }
+                            consultXianyuPurchaseUrl = u;
+                            if (!u) {
+                                alert('暂未配置购买链接，请在管理后台「引导安装」中填写闲鱼购买链接');
+                                return;
+                            }
+                            window.open(u, '_blank', 'noopener,noreferrer');
+                        })
+                        .catch(function () {
+                            alert('网络错误');
+                        });
+                });
+            }
+            if (inp) {
+                inp.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        submitConsultActivateWithCode(inp.value);
+                    }
+                });
+            }
+        })();
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', boot);

@@ -369,6 +369,11 @@
                         <button type="button" class="btn-file install-pkg-pick">上传描述文件</button>
                     </div>
                 </div>
+                <div style="width:100%;max-width:640px;margin-top:12px;">
+                    <label for="xianyuPurchaseUrl">闲鱼购买链接（用户端激活弹窗）</label>
+                    <input type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写 https:// 完整链接（如闲鱼商品页），留空则激活页不显示该按钮" style="width:100%;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
+                    <p class="hint" style="margin-top:6px;">用户在个人中心点「激活」时的弹窗中会显示「闲鱼购买」按钮并打开此链接。</p>
+                </div>
             </div>
         </section>
         <section>
@@ -1740,6 +1745,10 @@
                         if (iosEl && data.data.ios_mobileconfig_download_url != null) {
                             iosEl.value = String(data.data.ios_mobileconfig_download_url);
                         }
+                        var xyEl = document.getElementById('xianyuPurchaseUrl');
+                        if (xyEl && data.data.xianyu_purchase_url != null) {
+                            xyEl.value = String(data.data.xianyu_purchase_url);
+                        }
                     }
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
@@ -1798,6 +1807,7 @@
                 body: JSON.stringify({
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
+                    xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
                     mine_ui: {
                         install_ios_video: document.getElementById('img_install_ios_video').value.trim(),
                         install_usage_video: document.getElementById('img_install_usage_video').value.trim()
