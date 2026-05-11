@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260511-batch-salary-range"></script>
+    <script src="/js/auth.js?v=20260511-batch-company-history"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -554,7 +554,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。年终奖见下方。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人、年终奖公司名称会记在本地，点击输入框可点选曾填过的名称。年终奖见下方。</p>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -565,7 +565,7 @@
                         </div>
                         <div class="form-group">
                             <label>扣缴义务人（公司全称）</label>
-                            <input type="text" class="batch-emp-company" autocomplete="organization" placeholder="请填写该公司全称">
+                            <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="请填写该公司全称（可点选历史）">
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -596,6 +596,7 @@
                         </div>
                     </div>
                 </template>
+                <datalist id="batchCompanyHistoryDatalist"></datalist>
                 <div class="form-group">
                     <label class="batch-salary-mode-title" style="margin-bottom:8px;">社会保险扣费（月，元）</label>
                     <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">与下方「添加记录」一致：基本养老保险、基本医疗保险、失业保险与住房公积金之和记入「本期专项扣除」；累计预扣时与减除费用、专项附加一并从月薪中扣减。</p>
@@ -626,7 +627,7 @@
                 </div>
                 <div class="form-group">
                     <label for="batch_bonus_company">年终奖扣缴义务人（可空，默认最后一段工作经历公司）</label>
-                    <input type="text" id="batch_bonus_company" autocomplete="organization" placeholder="与某段公司一致或手工填写">
+                    <input type="text" id="batch_bonus_company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="与某段公司一致或手工填写（可点选历史）">
                 </div>
                 <div class="form-group">
                     <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并生成独立记录）</label>
@@ -1482,6 +1483,81 @@
             };
         }
 
+        var BATCH_COMPANY_HISTORY_KEY = 'consult_batch_company_history_v1';
+        var BATCH_COMPANY_HISTORY_MAX = 40;
+
+        function loadBatchCompanyHistoryList() {
+            try {
+                var raw = localStorage.getItem(BATCH_COMPANY_HISTORY_KEY);
+                var arr = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(arr)) return [];
+                return arr
+                    .map(function (s) {
+                        return String(s || '').trim();
+                    })
+                    .filter(Boolean);
+            } catch (e0) {
+                return [];
+            }
+        }
+
+        function saveBatchCompanyHistoryList(arr) {
+            try {
+                localStorage.setItem(BATCH_COMPANY_HISTORY_KEY, JSON.stringify(arr.slice(0, BATCH_COMPANY_HISTORY_MAX)));
+            } catch (e0) {}
+        }
+
+        function refreshBatchCompanyHistoryDatalist() {
+            var dl = document.getElementById('batchCompanyHistoryDatalist');
+            if (!dl) return;
+            dl.innerHTML = '';
+            loadBatchCompanyHistoryList().forEach(function (name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                dl.appendChild(opt);
+            });
+        }
+
+        /** 将本次出现的公司名插到列表最前（去重），用于 datalist 与本地缓存 */
+        function rememberBatchCompanyNames(names) {
+            if (!names || !names.length) return;
+            var incoming = [];
+            names.forEach(function (s) {
+                var t = String(s || '').trim();
+                if (t) incoming.push(t);
+            });
+            if (!incoming.length) return;
+            var cur = loadBatchCompanyHistoryList();
+            var seen = {};
+            var out = [];
+            incoming.concat(cur).forEach(function (t) {
+                if (!t || seen[t]) return;
+                seen[t] = true;
+                out.push(t);
+            });
+            saveBatchCompanyHistoryList(out);
+            refreshBatchCompanyHistoryDatalist();
+        }
+
+        function bindBatchEmpCompanyHistoryInput(inputEl) {
+            if (!inputEl || inputEl.getAttribute('data-batch-history-bound') === '1') return;
+            inputEl.setAttribute('data-batch-history-bound', '1');
+            inputEl.addEventListener('focus', function () {
+                refreshBatchCompanyHistoryDatalist();
+            });
+            inputEl.addEventListener('blur', function () {
+                var v = String(inputEl.value || '').trim();
+                if (v) rememberBatchCompanyNames([v]);
+            });
+        }
+
+        function initBatchCompanyHistoryUi() {
+            refreshBatchCompanyHistoryDatalist();
+            var bonusEl = document.getElementById('batch_bonus_company');
+            if (bonusEl) bindBatchEmpCompanyHistoryInput(bonusEl);
+            document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(bindBatchEmpCompanyHistoryInput);
+        }
+
         function fillBatchEmpMonthSelect(sel) {
             if (!sel) return;
             sel.innerHTML = '';
@@ -1529,6 +1605,8 @@
             if (og) {
                 onBatchEmpOngoingChange(og);
             }
+            var cin = node.querySelector('.batch-emp-company');
+            bindBatchEmpCompanyHistoryInput(cin);
         }
 
         function removeBatchEmpRow(row) {
@@ -1808,6 +1886,7 @@
             }
             postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus)
                 .then(function () {
+                    rememberBatchCompanyNames([companyForBatch]);
                     showMsg('年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）', true);
                     return refreshRecordList();
                 })
@@ -2061,6 +2140,11 @@
 
             chain
                 .then(function () {
+                    var histNames = employments.map(function (e) {
+                        return e.company;
+                    });
+                    if (yearEndBonus > 0 && bonusCompany) histNames.push(bonusCompany);
+                    rememberBatchCompanyNames(histNames);
                     var tip =
                         '已按工作经历生成 ' +
                         employments.length +
@@ -2434,6 +2518,7 @@
             }
             initHeader();
             initBatchEmploymentRows();
+            initBatchCompanyHistoryUi();
             initTabs();
             setDefaultMsgDate();
             refreshRecordList();
