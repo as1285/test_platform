@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-ios-safe-top"></script>
+    <script src="/js/auth.js?v=20260510-reg-activate"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
     <style>
@@ -264,7 +264,7 @@
     </div>
 
     <div id="activateSection">
-        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。新用户注册时填写激活码即可直接开通，无需此步骤。</p>
+        <p class="activate-hint">您的账号尚未激活，请输入管理员提供的激活码。也可在「个人中心」页面右上角点击「激活」完成开通。</p>
         <p class="activate-msg" id="activateMsg"></p>
         <input type="text" id="activateCodeInput" class="activate-code-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
         <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
@@ -421,7 +421,7 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
-                        window.location.href = act ? 'mine.html' : 'index.html?need_activate=1';
+                        window.location.href = 'mine.html';
                         return;
                     }
                     alert(data.msg || '登录失败');

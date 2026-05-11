@@ -4,25 +4,66 @@
     var WM_CACHE_TIME_KEY = 'wm_cache_time';
     var CACHE_TTL = 60000; // 1分钟缓存
 
+    function isMineProfilePage() {
+        try {
+            var p = (window.location.pathname || '').toLowerCase();
+            return p.endsWith('/mine.html') || p.endsWith('mine.html');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /** 未激活水印文案与平铺尺寸（「我的」页单独提示咨询入口） */
+    function getInactiveWatermarkSpec() {
+        if (isMineProfilePage()) {
+            return {
+                w: 340,
+                h: 132,
+                line1: '点击我要咨询修改数据',
+                line2: '',
+                font1: 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+                font2: '12px Arial, sans-serif',
+                color1: 'rgba(160, 0, 0, 0.34)',
+                color2: 'rgba(160, 0, 0, 0.28)',
+                line2OffsetY: 22
+            };
+        }
+        return {
+            w: 200,
+            h: 120,
+            line1: '未激活',
+            line2: 'Unactivated',
+            font1: 'bold 18px Arial, sans-serif',
+            font2: '12px Arial, sans-serif',
+            color1: 'rgba(160, 0, 0, 0.35)',
+            color2: 'rgba(160, 0, 0, 0.28)',
+            line2OffsetY: 20
+        };
+    }
+
     function createWatermarkLayer() {
         var existing = document.getElementById('__wm_layer__');
         if (existing) return;
 
+        var spec = getInactiveWatermarkSpec();
         var canvas = document.createElement('canvas');
         var dpr = window.devicePixelRatio || 1;
-        var w = 200, h = 120;
+        var w = spec.w;
+        var h = spec.h;
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         var ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
         ctx.rotate(-25 * Math.PI / 180);
-        ctx.font = 'bold 18px Arial, sans-serif';
-        ctx.fillStyle = 'rgba(160, 0, 0, 0.35)';
         ctx.textAlign = 'center';
-        ctx.fillText('未激活', w / 2, h / 2);
-        ctx.font = '12px Arial, sans-serif';
-        ctx.fillStyle = 'rgba(160, 0, 0, 0.28)';
-        ctx.fillText('Unactivated', w / 2, h / 2 + 20);
+        ctx.font = spec.font1;
+        ctx.fillStyle = spec.color1;
+        ctx.fillText(spec.line1, w / 2, h / 2);
+        if (spec.line2) {
+            ctx.font = spec.font2;
+            ctx.fillStyle = spec.color2;
+            ctx.fillText(spec.line2, w / 2, h / 2 + spec.line2OffsetY);
+        }
 
         var dataUrl = canvas.toDataURL('image/png');
 
@@ -36,7 +77,7 @@
             'z-index:99999',
             'background-image:url(' + dataUrl + ')',
             'background-repeat:repeat',
-            'background-size:200px 120px',
+            'background-size:' + w + 'px ' + h + 'px',
             'user-select:none',
             '-webkit-user-select:none'
         ].join(';');
@@ -118,4 +159,12 @@
             fetchAndApply();
         }
     });
+
+    window.refreshWatermarkFromApi = function () {
+        try {
+            localStorage.removeItem(WM_CACHE_KEY);
+            localStorage.removeItem(WM_CACHE_TIME_KEY);
+        } catch (e) {}
+        fetchAndApply();
+    };
 })();

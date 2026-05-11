@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260510-ios-safe-top"></script>
+    <script src="/js/auth.js?v=20260510-reg-activate"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -119,11 +119,7 @@
                 <label>确认密码 <span class="req">*</span></label>
                 <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
             </div>
-            <div class="field">
-                <label>激活码 <span class="req">*</span></label>
-                <input type="text" id="activation_code" name="activation_code" placeholder="请输入管理员提供的激活码" maxlength="128" autocomplete="off" autocapitalize="characters" required>
-                <div class="hint">注册时将校验激活码，验证通过后账号直接开通</div>
-            </div>
+            <p class="hint" style="margin:-6px 0 14px;color:#666;line-height:1.5;">注册成功后账号为<strong>未激活</strong>状态；请登录后在<strong>个人中心</strong>右上角使用激活码开通。</p>
             <button type="button" class="btn-submit" id="btnSubmit">注 册</button>
         </form>
         <p class="footer-link">已有账号？<a href="login.html">去登录</a></p>
@@ -145,15 +141,10 @@
             var username = document.getElementById('username').value.trim();
             var password = document.getElementById('password').value;
             var password2 = document.getElementById('password2').value;
-            var activation_code = document.getElementById('activation_code').value.trim();
             showErr('');
 
             if (!username || !password) {
                 showErr('请填写账号和密码');
-                return;
-            }
-            if (!activation_code) {
-                showErr('请填写激活码');
                 return;
             }
             if (password !== password2) {
@@ -170,8 +161,7 @@
                 body: JSON.stringify({
                     action: 'register',
                     username: username,
-                    password: password,
-                    activation_code: activation_code
+                    password: password
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -184,8 +174,9 @@
                         localStorage.setItem('userName', d.username || '');
                         localStorage.setItem('user_id', d.user_id || '');
                         localStorage.setItem('real_name', d.real_name || d.username || '');
-                        localStorage.setItem('account_active', '1');
-                        localStorage.setItem('is_test_account', '0');
+                        var act = d.account_active === true || d.account_active === 1;
+                        localStorage.setItem('account_active', act ? '1' : '0');
+                        localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
                         window.location.href = 'mine.html';
                         return;
                     }
