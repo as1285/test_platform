@@ -779,6 +779,7 @@ async function createTables() {
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(255) NOT NULL,
       ok TINYINT(1) NOT NULL DEFAULT 1,
+      reason VARCHAR(120) NULL,
       ip VARCHAR(128) NULL,
       city VARCHAR(255) NULL,
       user_agent VARCHAR(512) NULL,
@@ -786,6 +787,58 @@ async function createTables() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_created (created_at),
       INDEX idx_u_created (username, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  try {
+    await conn.execute(`
+      ALTER TABLE user_login_events ADD COLUMN reason VARCHAR(120) NULL COMMENT '登录结果原因'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS admin_login_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      admin_username VARCHAR(255) NOT NULL,
+      ok TINYINT(1) NOT NULL DEFAULT 1,
+      reason VARCHAR(255) NULL,
+      ip VARCHAR(128) NULL,
+      city VARCHAR(255) NULL,
+      user_agent VARCHAR(512) NULL,
+      device_fp CHAR(64) NOT NULL,
+      device_desc VARCHAR(255) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_admin_login_created (created_at),
+      INDEX idx_admin_login_user_created (admin_username, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS admin_operation_logs (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      admin_username VARCHAR(255) NOT NULL,
+      admin_full_name VARCHAR(255) NULL,
+      method VARCHAR(16) NOT NULL,
+      path VARCHAR(255) NOT NULL,
+      route_key VARCHAR(240) NULL,
+      action VARCHAR(120) NULL,
+      target_username VARCHAR(255) NULL,
+      request_brief VARCHAR(1024) NULL,
+      ip VARCHAR(128) NULL,
+      city VARCHAR(255) NULL,
+      user_agent VARCHAR(512) NULL,
+      device_fp CHAR(64) NOT NULL,
+      device_desc VARCHAR(255) NULL,
+      status_code INT NOT NULL DEFAULT 0,
+      biz_result_code INT NULL,
+      ok TINYINT(1) NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_admin_op_created (created_at),
+      INDEX idx_admin_op_user_created (admin_username, created_at),
+      INDEX idx_admin_op_path_created (path, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
@@ -1434,6 +1487,18 @@ function requireAdminAnyMenu(menuKeys) {
   };
 }
 
+async function adminCanAccessTargetUser(conn, admin, username) {
+  if (!username) return false;
+  if (!admin || admin.is_super) return true;
+  const [rows] = await conn.execute(
+    `SELECT id FROM activation_codes
+     WHERE owner_admin_username = ? AND used_by_username = ?
+     LIMIT 1`,
+    [admin.username, username]
+  );
+  return rows.length > 0;
+}
+
 async function requireAdminAuth(req, res, next) {
   var auth = req.headers.authorization || '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
@@ -1460,6 +1525,24 @@ async function requireAdminAuth(req, res, next) {
         return res.status(403).json({ code: 403, msg: '管理账号已被停用' });
       }
       req.admin = admin;
+      if (!res.__adminJsonHooked) {
+        var oldJson = res.json.bind(res);
+        res.json = function (payload) {
+          try {
+            if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'code')) {
+              res.__adminBizCode = Number(payload.code);
+            }
+          } catch (e) {}
+          return oldJson(payload);
+        };
+        res.__adminJsonHooked = true;
+      }
+      if (!req.__adminAuditAttached) {
+        req.__adminAuditAttached = true;
+        res.on('finish', function () {
+          recordAdminOperationLog(req, res).catch(function () {});
+        });
+      }
     } finally {
       conn.release();
     }
@@ -1536,6 +1619,8 @@ async function registerUser(username, password) {
        VALUES (?, ?, ?, ?, 0, ?, ?)`,
       [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
     );
+    // 注册成功埋点（用于后台接口统计看转化）
+    incrementApiDailyCounter('EVENT register_success', '认证注册');
   } finally {
     conn.release();
   }
@@ -1714,6 +1799,10 @@ async function handleUserPost(req, res) {
   var userId = req.authUserId;
   
   try {
+    if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      return res.json({ code: 200, data: { ok: true } });
+    }
+
     if (action === 'add_employer') {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
@@ -2203,7 +2292,7 @@ function syncUserDeviceFromClientJson(req, username) {
     });
 }
 
-async function recordUserLoginAttempt(username, ok, req) {
+async function recordUserLoginAttempt(username, ok, req, reason) {
   if (!pool || !username) {
     return;
   }
@@ -2219,11 +2308,12 @@ async function recordUserLoginAttempt(username, ok, req) {
   var detailJson = ex ? JSON.stringify(ex) : null;
   var clientId = ex && ex.client_id ? String(ex.client_id).substring(0, 128) : null;
   var uaDisp = displayUserAgentFromDevice(req);
+  var reasonKey = sanitizeAuditText(ok ? 'ok' : normalizeUserLoginFailReason(reason), 120);
   const conn = await pool.getConnection();
   try {
     await conn.execute(
-      `INSERT INTO user_login_events (username, ok, ip, city, user_agent, device_fp) VALUES (?, ?, ?, ?, ?, ?)`,
-      [uname, ok ? 1 : 0, ip.substring(0, 128), city.substring(0, 255), ua.substring(0, 512), fp]
+      `INSERT INTO user_login_events (username, ok, reason, ip, city, user_agent, device_fp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [uname, ok ? 1 : 0, reasonKey || null, ip.substring(0, 128), city.substring(0, 255), ua.substring(0, 512), fp]
     );
     if (ok) {
       await conn.execute(
@@ -2242,6 +2332,209 @@ async function recordUserLoginAttempt(username, ok, req) {
     }
   } catch (e) {
     console.error('recordUserLoginAttempt', e);
+  } finally {
+    conn.release();
+  }
+}
+
+function normalizeUserLoginFailReason(rawMsg) {
+  var msg = String(rawMsg || '').trim();
+  if (!msg) return 'unknown_error';
+  if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
+  if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
+  if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
+  if (msg.indexOf('账号仅支持') >= 0 || msg.indexOf('账号长度') >= 0 || msg.indexOf('请输入账号') >= 0) {
+    return 'invalid_username';
+  }
+  return 'other_error';
+}
+
+function userLoginReasonLabel(reason) {
+  var k = String(reason || '').trim();
+  var map = {
+    ok: '成功',
+    empty_password: '密码为空',
+    account_banned: '账号已封禁',
+    invalid_credentials: '账号或密码错误',
+    invalid_username: '账号格式错误',
+    other_error: '其他错误',
+    unknown_error: '未知错误'
+  };
+  return map[k] || k || '未知错误';
+}
+
+function normalizeTrackEventKeyFromRoute(routeKey) {
+  var rk = String(routeKey || '').trim();
+  if (!rk) return '';
+  if (rk.indexOf('EVENT ') === 0) {
+    return rk.substring(6).trim();
+  }
+  var i = rk.indexOf('#track_');
+  if (i >= 0) {
+    return rk.substring(i + 1).trim();
+  }
+  return '';
+}
+
+function sanitizeAuditText(val, maxLen) {
+  var s = String(val == null ? '' : val)
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
+    .trim();
+  if (!s) return '';
+  var lim = isFinite(maxLen) && maxLen > 0 ? (maxLen | 0) : 255;
+  if (s.length > lim) s = s.substring(0, lim);
+  return s;
+}
+
+function sanitizeAuditObjectTopLevel(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
+  var out = {};
+  var keys = Object.keys(raw).slice(0, 40);
+  keys.forEach(function (k) {
+    var key = sanitizeAuditText(k, 80);
+    if (!key) return;
+    var v = raw[k];
+    if (v == null) return;
+    if (/pass|pwd|token|authorization|secret/i.test(key)) {
+      out[key] = '***';
+      return;
+    }
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      out[key] = sanitizeAuditText(v, 160);
+      return;
+    }
+    if (Array.isArray(v)) {
+      out[key] = '[array:' + v.length + ']';
+      return;
+    }
+    if (typeof v === 'object') {
+      out[key] = '[object]';
+    }
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+function adminDeviceDesc(req) {
+  var ex = req && req.clientDevicePayload;
+  if (ex && typeof ex === 'object') {
+    var bits = [];
+    if (ex.source) bits.push(String(ex.source));
+    if (ex.platform) bits.push(String(ex.platform));
+    if (ex.model) bits.push(String(ex.model));
+    if (ex.os_version) bits.push('OS ' + String(ex.os_version));
+    if (ex.app_version) bits.push('App ' + String(ex.app_version));
+    var merged = sanitizeAuditText(bits.join(' · '), 255);
+    if (merged) return merged;
+  }
+  return sanitizeAuditText(displayUserAgentFromDevice(req), 255);
+}
+
+function buildAdminRequestBrief(req) {
+  if (!req) return '';
+  var parts = [];
+  var qObj = sanitizeAuditObjectTopLevel(req.query);
+  var bObj = sanitizeAuditObjectTopLevel(req.body);
+  if (qObj) {
+    parts.push('query=' + JSON.stringify(qObj));
+  }
+  if (bObj) {
+    parts.push('body=' + JSON.stringify(bObj));
+  }
+  return sanitizeAuditText(parts.join(' | '), 1024);
+}
+
+async function recordAdminLoginAttempt(adminUsername, ok, reason, req) {
+  if (!pool) return;
+  var uname = sanitizeAuditText(adminUsername, 255);
+  if (!uname) uname = 'unknown';
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var city = sanitizeAuditText(cityLabelFromIp(ip), 255);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var deviceDesc = adminDeviceDesc(req);
+  var why = sanitizeAuditText(reason, 255);
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      `INSERT INTO admin_login_events
+       (admin_username, ok, reason, ip, city, user_agent, device_fp, device_desc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uname, ok ? 1 : 0, why || null, ip || null, city || null, ua || null, fp || null, deviceDesc || null]
+    );
+  } catch (e) {
+    console.error('recordAdminLoginAttempt', e);
+  } finally {
+    conn.release();
+  }
+}
+
+async function recordAdminOperationLog(req, res) {
+  if (!pool || !req || !req.admin || !res) return;
+  var p = sanitizeAuditText(req.path || '', 255);
+  if (!p || p === '/api/admin/login' || p === '/api/admin/admin-login-logs' || p === '/api/admin/admin-operation-logs') {
+    return;
+  }
+  var method = sanitizeAuditText(String(req.method || '').toUpperCase(), 16) || 'GET';
+  var adminUsername = sanitizeAuditText(req.admin.username, 255);
+  var adminFullName = sanitizeAuditText(req.admin.full_name || '', 255);
+  if (!adminUsername) return;
+  var action = '';
+  if (req.body && req.body.action != null && String(req.body.action).trim() !== '') {
+    action = sanitizeAuditText(req.body.action, 120);
+  } else if (req.query && req.query.action != null && String(req.query.action).trim() !== '') {
+    action = sanitizeAuditText(req.query.action, 120);
+  }
+  var targetUsername = '';
+  var src = req.body && typeof req.body === 'object' ? req.body : req.query;
+  if (src && src.username != null && String(src.username).trim() !== '') {
+    targetUsername = sanitizeAuditText(src.username, 255);
+  } else if (src && src.user_id != null && String(src.user_id).trim() !== '') {
+    targetUsername = sanitizeAuditText(src.user_id, 255);
+  }
+  var info = classifyAnalyticsRoute(req);
+  var routeKey = info && info.route_key ? sanitizeAuditText(info.route_key, 240) : '';
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var city = sanitizeAuditText(cityLabelFromIp(ip), 255);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var deviceDesc = adminDeviceDesc(req);
+  var statusCode = Number(res.statusCode || 0);
+  var bizCode = null;
+  if (res.__adminBizCode != null && isFinite(Number(res.__adminBizCode))) {
+    bizCode = Number(res.__adminBizCode);
+  }
+  var ok = statusCode < 400 && (bizCode == null || bizCode === 200);
+  var reqBrief = buildAdminRequestBrief(req);
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      `INSERT INTO admin_operation_logs
+       (admin_username, admin_full_name, method, path, route_key, action, target_username, request_brief,
+        ip, city, user_agent, device_fp, device_desc, status_code, biz_result_code, ok)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        adminUsername,
+        adminFullName || null,
+        method,
+        p,
+        routeKey || null,
+        action || null,
+        targetUsername || null,
+        reqBrief || null,
+        ip || null,
+        city || null,
+        ua || null,
+        fp || null,
+        deviceDesc || null,
+        statusCode,
+        bizCode,
+        ok ? 1 : 0
+      ]
+    );
+  } catch (e) {
+    console.error('recordAdminOperationLog', e);
   } finally {
     conn.release();
   }
@@ -2620,7 +2913,7 @@ async function handleAuthPost(req, res) {
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);
-      recordUserLoginAttempt(out2.username, true, req).catch(function () {});
+      recordUserLoginAttempt(out2.username, true, req, 'ok').catch(function () {});
       return res.json({ code: 200, data: out2 });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -2628,7 +2921,9 @@ async function handleAuthPost(req, res) {
     try {
       var b = req.body || {};
       if (b.action === 'login' && b.username != null && String(b.username).trim() !== '') {
-        recordUserLoginAttempt(String(b.username).trim(), false, req).catch(function () {});
+        recordUserLoginAttempt(String(b.username).trim(), false, req, e && e.message ? String(e.message) : '').catch(
+          function () {}
+        );
       }
     } catch (e2) {}
     return res.status(400).json({ code: 400, msg: e.message || String(e) });
@@ -2658,6 +2953,7 @@ async function handleAdminLogin(req, res) {
   var u = String(body.username || '').trim();
   var p = String(body.password || '');
   if (!u || !p) {
+    recordAdminLoginAttempt(u || 'unknown', false, 'missing_credentials', req).catch(function () {});
     return res.status(400).json({ code: 400, msg: '请输入账号和密码' });
   }
   try {
@@ -2665,11 +2961,14 @@ async function handleAdminLogin(req, res) {
     try {
       var admin = await loadAdminAccountByUsername(conn, u);
       if (!admin || !verifyPasswordBySaltHash(p, admin.salt, admin.hash)) {
+        recordAdminLoginAttempt(u, false, 'invalid_credentials', req).catch(function () {});
         return res.status(401).json({ code: 401, msg: '账号或密码错误' });
       }
       if (admin.banned) {
+        recordAdminLoginAttempt(u, false, 'banned', req).catch(function () {});
         return res.status(403).json({ code: 403, msg: '管理账号已停用' });
       }
+      recordAdminLoginAttempt(admin.username, true, 'ok', req).catch(function () {});
       return res.json({
         code: 200,
         data: {
@@ -2924,6 +3223,12 @@ async function handleAdminUsers(req, res) {
       whereClauses.push('banned = ?');
       params.push(qBanned === '1' ? 1 : 0);
     }
+    if (!req.admin || !req.admin.is_super) {
+      whereClauses.push(
+        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
+      );
+      params.push(req.admin.username);
+    }
 
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
 
@@ -3056,6 +3361,11 @@ async function handleAdminBan(req, res) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
     await conn.execute('UPDATE users SET banned = ? WHERE username = ?', [ban ? 1 : 0, target]);
     conn.release();
     return res.json({ code: 200, data: { username: target, banned: ban } });
@@ -3082,6 +3392,11 @@ async function handleAdminUserType(req, res) {
     if (urows.length === 0) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
     await conn.execute('UPDATE users SET user_type = ? WHERE username = ?', [ut, target]);
     conn.release();
@@ -3306,6 +3621,10 @@ async function handleAdminUserTaxRecords(req, res) {
   try {
     const conn = await pool.getConnection();
     try {
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看该用户详情' });
+      }
       const [rows] = await conn.execute(
         `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at
          FROM tax_records
@@ -3315,7 +3634,7 @@ async function handleAdminUserTaxRecords(req, res) {
         [username]
       );
       const [devices] = await conn.execute(
-        `SELECT user_agent_short, city_last, first_seen, last_seen, login_count, client_id, device_detail_json
+        `SELECT user_agent_short, ip_last, city_last, first_seen, last_seen, login_count, client_id, device_detail_json
          FROM user_devices
          WHERE username = ?
          ORDER BY last_seen DESC
@@ -3368,6 +3687,7 @@ async function handleAdminUserTaxRecords(req, res) {
           os_version: osVersion,
           app_version: appVersion,
           user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
+          ip_last: r.ip_last != null ? String(r.ip_last) : '',
           city_last: r.city_last != null ? String(r.city_last) : '',
           first_seen: r.first_seen ? r.first_seen.toISOString() : '',
           last_seen: r.last_seen ? r.last_seen.toISOString() : '',
@@ -3407,6 +3727,11 @@ async function handleAdminDeleteUser(req, res) {
     if (urows.length === 0) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
     await conn.beginTransaction();
     await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [target]);
@@ -3756,6 +4081,16 @@ async function handleAdminAnalyticsOverview(req, res) {
          GROUP BY DATE(created_at) ORDER BY d ASC`,
         [span]
       );
+      const [failReasonRows] = await conn.execute(
+        `SELECT COALESCE(NULLIF(reason, ''), 'unknown_error') AS reason_key, COUNT(*) AS cnt
+         FROM user_login_events
+         WHERE ok = 0
+           AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY reason_key
+         ORDER BY cnt DESC
+         LIMIT 20`,
+        [span]
+      );
       return res.json({
         code: 200,
         data: {
@@ -3772,6 +4107,10 @@ async function handleAdminAnalyticsOverview(req, res) {
               success: Number(r.success_cnt || 0),
               fail: Number(r.fail_cnt || 0)
             };
+          }),
+          fail_reasons: failReasonRows.map(function (r) {
+            var k = r.reason_key != null ? String(r.reason_key) : 'unknown_error';
+            return { reason_key: k, reason_label: userLoginReasonLabel(k), cnt: Number(r.cnt || 0) };
           })
         }
       });
@@ -3819,6 +4158,74 @@ async function handleAdminAnalyticsApi(req, res) {
               cnt: Number(r.total)
             };
           })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsEvents(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 14, 90);
+    var span = Math.max(0, days - 1);
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        `SELECT stat_date, route_key, SUM(cnt) AS total
+         FROM analytics_api_daily
+         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND (
+             route_key LIKE 'EVENT %'
+             OR route_key LIKE '%#track\\_%'
+           )
+         GROUP BY stat_date, route_key
+         ORDER BY stat_date ASC`,
+        [span]
+      );
+      var eventMap = {};
+      var dayMap = {};
+      rows.forEach(function (r) {
+        var rawKey = r.route_key != null ? String(r.route_key) : '';
+        var eventKey = normalizeTrackEventKeyFromRoute(rawKey);
+        if (!eventKey) return;
+        var c = Number(r.total || 0);
+        if (!isFinite(c) || c <= 0) return;
+        if (!eventMap[eventKey]) {
+          eventMap[eventKey] = { event_key: eventKey, total: 0 };
+        }
+        eventMap[eventKey].total += c;
+        var d = '';
+        if (r.stat_date instanceof Date) {
+          d = r.stat_date.toISOString().slice(0, 10);
+        } else {
+          d = String(r.stat_date || '').slice(0, 10);
+        }
+        if (!dayMap[d]) dayMap[d] = 0;
+        dayMap[d] += c;
+      });
+      var topEvents = Object.keys(eventMap).map(function (k) {
+        return eventMap[k];
+      });
+      topEvents.sort(function (a, b) {
+        return b.total - a.total;
+      });
+      var byDay = Object.keys(dayMap)
+        .sort()
+        .map(function (d) {
+          return { date: d, total: dayMap[d] };
+        });
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          total_events: rows.length,
+          by_day: byDay,
+          top_events: topEvents.slice(0, 200)
         }
       });
     } finally {
@@ -3905,9 +4312,28 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
     if (limit > 100) {
       limit = 100;
     }
+    var qUsername = req.query.username != null ? String(req.query.username).trim() : '';
+    var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
+    var where = [];
+    var params = [];
+    if (qUsername) {
+      where.push('username LIKE ?');
+      params.push('%' + qUsername + '%');
+    }
+    if (qOk === '1' || qOk === '0') {
+      where.push('ok = ?');
+      params.push(qOk === '1' ? 1 : 0);
+    }
+    if (!req.admin || !req.admin.is_super) {
+      where.push(
+        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = user_login_events.username AND ac.owner_admin_username = ?)'
+      );
+      params.push(req.admin.username);
+    }
+    var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
     const conn = await pool.getConnection();
     try {
-      const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM user_login_events');
+      const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM user_login_events' + whereSql, params);
       var total = countRow && countRow.c != null ? Number(countRow.c) : 0;
       var totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
       if (totalPages > 0 && page > totalPages) {
@@ -3917,11 +4343,14 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       var offset = Math.max(0, ((page - 1) * limit) | 0);
       var limInt = limit | 0;
       const [rows] = await conn.query(
-        'SELECT username, ok, ip, city, created_at FROM user_login_events ' +
+        'SELECT username, ok, reason, ip, city, user_agent, created_at FROM user_login_events ' +
+          whereSql +
+          ' ' +
           'ORDER BY id DESC LIMIT ' +
           limInt +
           ' OFFSET ' +
-          offset
+          offset,
+        params
       );
       if (total > 0 && totalPages < 1) {
         totalPages = 1;
@@ -3933,8 +4362,165 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
             return {
               username: String(r.username),
               ok: !!(r.ok === 1 || r.ok === true),
+              reason_key: r.reason != null ? String(r.reason) : '',
+              reason_label: userLoginReasonLabel(r.reason),
               ip: r.ip != null ? String(r.ip) : '',
               city: r.city != null ? String(r.city) : '',
+              user_agent: r.user_agent != null ? String(r.user_agent) : '',
+              created_at: r.created_at ? r.created_at.toISOString() : ''
+            };
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminLoginLogs(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10);
+    if (!isFinite(page) || page < 1) page = 1;
+    var limit = parseInt(req.query.limit, 10);
+    if (!isFinite(limit) || limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var qUsername = sanitizeAuditText(req.query.username || '', 255);
+    var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
+
+    var where = [];
+    var params = [];
+    if (!req.admin || !req.admin.is_super) {
+      where.push('admin_username = ?');
+      params.push(req.admin.username);
+    } else if (qUsername) {
+      where.push('admin_username LIKE ?');
+      params.push('%' + qUsername + '%');
+    }
+    if (qOk === '1' || qOk === '0') {
+      where.push('ok = ?');
+      params.push(qOk === '1' ? 1 : 0);
+    }
+    var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+    const conn = await pool.getConnection();
+    try {
+      const [cntRows] = await conn.execute('SELECT COUNT(*) AS c FROM admin_login_events' + whereSql, params);
+      var total = cntRows.length ? Number(cntRows[0].c) : 0;
+      var totalPages = Math.ceil(total / limit);
+      if (total > 0 && totalPages < 1) totalPages = 1;
+      if (totalPages > 0 && page > totalPages) page = totalPages;
+      var offset = Math.max(0, ((page - 1) * limit) | 0);
+      const [rows] = await conn.query(
+        'SELECT admin_username, ok, reason, ip, city, user_agent, device_desc, created_at FROM admin_login_events' +
+          whereSql +
+          ' ORDER BY id DESC LIMIT ' +
+          (limit | 0) +
+          ' OFFSET ' +
+          offset,
+        params
+      );
+      return res.json({
+        code: 200,
+        data: {
+          items: rows.map(function (r) {
+            return {
+              admin_username: r.admin_username != null ? String(r.admin_username) : '',
+              ok: r.ok === 1 || r.ok === true,
+              reason: r.reason != null ? String(r.reason) : '',
+              ip: r.ip != null ? String(r.ip) : '',
+              city: r.city != null ? String(r.city) : '',
+              user_agent: r.user_agent != null ? String(r.user_agent) : '',
+              device_desc: r.device_desc != null ? String(r.device_desc) : '',
+              created_at: r.created_at ? r.created_at.toISOString() : ''
+            };
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminOperationLogs(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10);
+    if (!isFinite(page) || page < 1) page = 1;
+    var limit = parseInt(req.query.limit, 10);
+    if (!isFinite(limit) || limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var qUsername = sanitizeAuditText(req.query.username || '', 255);
+    var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
+    var qPath = sanitizeAuditText(req.query.path || '', 255);
+
+    var where = [];
+    var params = [];
+    if (!req.admin || !req.admin.is_super) {
+      where.push('admin_username = ?');
+      params.push(req.admin.username);
+    } else if (qUsername) {
+      where.push('admin_username LIKE ?');
+      params.push('%' + qUsername + '%');
+    }
+    if (qOk === '1' || qOk === '0') {
+      where.push('ok = ?');
+      params.push(qOk === '1' ? 1 : 0);
+    }
+    if (qPath) {
+      where.push('path LIKE ?');
+      params.push('%' + qPath + '%');
+    }
+    var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+    const conn = await pool.getConnection();
+    try {
+      const [cntRows] = await conn.execute('SELECT COUNT(*) AS c FROM admin_operation_logs' + whereSql, params);
+      var total = cntRows.length ? Number(cntRows[0].c) : 0;
+      var totalPages = Math.ceil(total / limit);
+      if (total > 0 && totalPages < 1) totalPages = 1;
+      if (totalPages > 0 && page > totalPages) page = totalPages;
+      var offset = Math.max(0, ((page - 1) * limit) | 0);
+      const [rows] = await conn.query(
+        'SELECT admin_username, admin_full_name, method, path, action, target_username, request_brief, ip, city, device_desc, status_code, biz_result_code, ok, created_at ' +
+          'FROM admin_operation_logs' +
+          whereSql +
+          ' ORDER BY id DESC LIMIT ' +
+          (limit | 0) +
+          ' OFFSET ' +
+          offset,
+        params
+      );
+      return res.json({
+        code: 200,
+        data: {
+          items: rows.map(function (r) {
+            return {
+              admin_username: r.admin_username != null ? String(r.admin_username) : '',
+              admin_full_name: r.admin_full_name != null ? String(r.admin_full_name) : '',
+              method: r.method != null ? String(r.method) : '',
+              path: r.path != null ? String(r.path) : '',
+              action: r.action != null ? String(r.action) : '',
+              target_username: r.target_username != null ? String(r.target_username) : '',
+              request_brief: r.request_brief != null ? String(r.request_brief) : '',
+              ip: r.ip != null ? String(r.ip) : '',
+              city: r.city != null ? String(r.city) : '',
+              device_desc: r.device_desc != null ? String(r.device_desc) : '',
+              status_code: r.status_code != null ? Number(r.status_code) : 0,
+              biz_result_code: r.biz_result_code != null ? Number(r.biz_result_code) : null,
+              ok: r.ok === 1 || r.ok === true,
               created_at: r.created_at ? r.created_at.toISOString() : ''
             };
           }),
@@ -4074,9 +4660,12 @@ app.post('/api/admin/user-type', requireAdminAuth, requireAdminMenu('users'), ha
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
+app.get('/api/admin/analytics/events', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsEvents);
 app.get('/api/admin/analytics/devices', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDevices);
 app.get('/api/admin/analytics/device-stats', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDeviceStats);
 app.get('/api/admin/analytics/login-recent', requireAdminAuth, requireAdminMenu('login-log'), handleAdminAnalyticsLoginRecent);
+app.get('/api/admin/admin-login-logs', requireAdminAuth, requireAdminMenu('login-log'), handleAdminLoginLogs);
+app.get('/api/admin/admin-operation-logs', requireAdminAuth, requireAdminMenu('login-log'), handleAdminOperationLogs);
 app.get('/api/admin/feedback', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackList);
 app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackReply);
 app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);

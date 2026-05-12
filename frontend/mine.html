@@ -37,6 +37,106 @@
             vertical-align: top;
         }
 
+        .mine-activate-btn {
+            position: absolute;
+            right: 18px;
+            top: calc(14px + var(--app-shell-statusbar-top, 0px));
+            min-width: 76px;
+            height: 38px;
+            border: none;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1658dc;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+            -webkit-tap-highlight-color: transparent;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            z-index: 12;
+        }
+
+        .activate-modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .activate-modal-root.is-open {
+            display: flex;
+        }
+
+        .activate-modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+
+        .activate-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 16px 14px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        }
+
+        .activate-modal-title {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .activate-modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #1e6fff;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 14px;
+            box-sizing: border-box;
+        }
+
+        .activate-modal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .activate-modal-btn {
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            color: #333;
+            height: 34px;
+            border-radius: 17px;
+            padding: 0 14px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .activate-modal-btn.primary {
+            border-color: #1e6fff;
+            background: #1e6fff;
+            color: #fff;
+        }
+
+        .activate-modal-btn.xianyu {
+            margin-right: auto;
+        }
+
         /* 下方浅灰承接区 + 顶圆角（与参考一致） */
         .content-wrapper {
             background: #f5f6fa;
@@ -300,6 +400,7 @@
 <body>
     <div class="header-bg">
         <img id="headerImg" src="grdb.jpg" alt="个人中心">
+        <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
     </div>
 
     <div class="content-wrapper">
@@ -359,6 +460,19 @@
 
         <div class="logout-section">
             <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
+        </div>
+    </div>
+
+    <div id="mineActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineActivateModalTitle">
+        <div class="activate-modal-mask" id="mineActivateModalMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="mineActivateModalTitle">请输入激活码</p>
+            <input type="text" id="mineActivateCodeInput" class="activate-modal-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn xianyu" id="btnMineActivateXianyu">闲鱼购买</button>
+                <button type="button" class="activate-modal-btn" id="btnMineActivateCancel">取消</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineActivateOk">确定</button>
+            </div>
         </div>
     </div>
 
@@ -514,6 +628,85 @@
                 }
             }
 
+            function updateMineActivateButton(user) {
+                var btn = document.getElementById('mineActivateBtn');
+                if (!btn) return;
+                var active = false;
+                if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
+                    active = true;
+                } else {
+                    try {
+                        active = localStorage.getItem('account_active') === '1';
+                    } catch (e0) {}
+                }
+                btn.style.display = active ? 'none' : 'inline-flex';
+            }
+
+            function submitMineActivateWithCode(code) {
+                code = String(code || '').trim();
+                if (!code) {
+                    alert('激活码不能为空');
+                    return;
+                }
+                fetch('api/auth.php', {
+                    method: 'POST',
+                    headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'activate', code: code })
+                })
+                    .then(function (r) {
+                        return r.json().then(function (j) {
+                            return { status: r.status, body: j };
+                        });
+                    })
+                    .then(function (x) {
+                        if (x.status === 200 && x.body && x.body.code === 200) {
+                            var d = x.body.data || {};
+                            if (d.token) localStorage.setItem('token', d.token);
+                            localStorage.setItem('account_active', '1');
+                            if (d.user_id) localStorage.setItem('user_id', d.user_id);
+                            if (d.real_name) localStorage.setItem('real_name', d.real_name);
+                            if (typeof window.refreshWatermarkFromApi === 'function') {
+                                window.refreshWatermarkFromApi();
+                            }
+                            updateMineActivateButton({ account_active: true });
+                            alert('激活成功');
+                            loadUserInfo();
+                            return;
+                        }
+                        alert((x.body && x.body.msg) || '激活失败');
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            }
+
+            var mineXianyuPurchaseUrl = '';
+
+            function fetchMineXianyuUrl() {
+                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                            mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                        }
+                    })
+                    .catch(function () {});
+            }
+
+            function openMineActivateModal() {
+                var root = document.getElementById('mineActivateModal');
+                var inp = document.getElementById('mineActivateCodeInput');
+                if (!root || !inp) return;
+                root.classList.add('is-open');
+                inp.value = '';
+                setTimeout(function () { inp.focus(); }, 0);
+            }
+
+            function closeMineActivateModal() {
+                var root = document.getElementById('mineActivateModal');
+                if (root) root.classList.remove('is-open');
+            }
+
             function loadUserInfo() {
                 var nameEl = document.getElementById('mineDisplayName');
                 var taxEl = document.getElementById('userTaxIdText');
@@ -533,6 +726,7 @@
                 }
                 currentTaxIdRaw = tid || '';
                 renderTaxId();
+                updateMineActivateButton(null);
 
                 var g = localStorage.getItem('gender');
                 applyAvatarGender(g);
@@ -557,6 +751,7 @@
                         if (u.account_active !== undefined && u.account_active !== null) {
                             var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
                             localStorage.setItem('account_active', active ? '1' : '0');
+                            updateMineActivateButton({ account_active: active ? 1 : 0 });
                         }
                         if (u.tax_record_count != null) {
                             localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
@@ -600,6 +795,7 @@
             }
 
             loadUserInfo();
+            fetchMineXianyuUrl();
 
             document.getElementById('consultModifyLink').addEventListener('click', function (e) {
                 e.preventDefault();
@@ -609,6 +805,80 @@
                 }
                 goConsultPage();
             });
+
+            var mineActivateBtn = document.getElementById('mineActivateBtn');
+            if (mineActivateBtn) {
+                mineActivateBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_open', { page: 'mine' });
+                    }
+                    openMineActivateModal();
+                });
+            }
+
+            var mineOkBtn = document.getElementById('btnMineActivateOk');
+            var mineCancelBtn = document.getElementById('btnMineActivateCancel');
+            var mineXyBtn = document.getElementById('btnMineActivateXianyu');
+            var mineMask = document.getElementById('mineActivateModalMask');
+            var mineInput = document.getElementById('mineActivateCodeInput');
+            if (mineOkBtn) {
+                mineOkBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_confirm', { page: 'mine' });
+                    }
+                    closeMineActivateModal();
+                    submitMineActivateWithCode(mineInput ? mineInput.value : '');
+                });
+            }
+            if (mineCancelBtn) {
+                mineCancelBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_cancel', { page: 'mine' });
+                    }
+                    closeMineActivateModal();
+                });
+            }
+            if (mineMask) {
+                mineMask.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_cancel', { page: 'mine' });
+                    }
+                    closeMineActivateModal();
+                });
+            }
+            if (mineInput) {
+                mineInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (mineOkBtn) mineOkBtn.click();
+                    }
+                });
+            }
+            if (mineXyBtn) {
+                mineXyBtn.addEventListener('click', function () {
+                    var u = String(mineXianyuPurchaseUrl || '').trim();
+                    if (!u) {
+                        fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                            .then(function (r) { return r.json(); })
+                            .then(function (body) {
+                                if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                                    u = String(body.data.xianyu_purchase_url).trim();
+                                    mineXianyuPurchaseUrl = u;
+                                }
+                                if (u) {
+                                    window.open(u, '_blank');
+                                } else {
+                                    alert('暂未配置闲鱼购买链接');
+                                }
+                            })
+                            .catch(function () {
+                                alert('获取购买链接失败，请稍后重试');
+                            });
+                        return;
+                    }
+                    window.open(u, '_blank');
+                });
+            }
 
             document.getElementById('mineLogout').addEventListener('click', function () {
                 try {

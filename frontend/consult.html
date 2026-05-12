@@ -3031,7 +3031,12 @@
             tryEditFromUrl();
         }
 
-        document.getElementById('btnHeaderActivate').addEventListener('click', submitConsultActivate);
+        document.getElementById('btnHeaderActivate').addEventListener('click', function () {
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_activate_prompt_open', { page: 'consult' });
+            }
+            submitConsultActivate();
+        });
 
         (function bindConsultActivateModal() {
             var okBtn = document.getElementById('btnConsultActivateOk');
@@ -3041,15 +3046,28 @@
             var inp = document.getElementById('consultActivateCodeInput');
             if (okBtn) {
                 okBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_confirm', { page: 'consult' });
+                    }
                     var code = inp ? inp.value : '';
                     submitConsultActivateWithCode(code);
                 });
             }
             if (cancelBtn) {
-                cancelBtn.addEventListener('click', closeConsultActivateModal);
+                cancelBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_cancel', { page: 'consult' });
+                    }
+                    closeConsultActivateModal();
+                });
             }
             if (mask) {
-                mask.addEventListener('click', closeConsultActivateModal);
+                mask.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_cancel', { page: 'consult', via: 'mask' });
+                    }
+                    closeConsultActivateModal();
+                });
             }
             if (xyBtn) {
                 xyBtn.addEventListener('click', function () {

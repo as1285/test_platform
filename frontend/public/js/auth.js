@@ -372,12 +372,109 @@
     });
   }
 
+  function hasUserToken() {
+    return !!getToken();
+  }
+
+  function sanitizeTrackKey(raw) {
+    var s = String(raw || '').toLowerCase();
+    s = s.replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!s) s = 'unknown';
+    return s.substring(0, 80);
+  }
+
+  function normalizeTrackPath(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    try {
+      if (/^https?:\/\//i.test(s)) {
+        var u = new URL(s);
+        s = u.pathname || '';
+      }
+    } catch (e) {}
+    if (!s) return '';
+    if (s.charAt(0) !== '/') s = '/' + s;
+    s = s.replace(/\/+/g, '/');
+    if (s.length > 255) s = s.substring(0, 255);
+    return s;
+  }
+
+  function fireTrack(action, pagePath, meta) {
+    if (!hasUserToken()) return;
+    var act = sanitizeTrackKey(action);
+    var payload = { action: act };
+    if (meta && typeof meta === 'object') payload.meta = meta;
+    var headers = Object.assign({}, authHeaders(), {
+      'X-Page-Path': normalizeTrackPath(pagePath || '/event/' + act)
+    });
+    fetch('api/user.php', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(function () {});
+  }
+
+  function firstText(node) {
+    if (!node) return '';
+    var t = String(node.getAttribute && (node.getAttribute('aria-label') || node.getAttribute('title')) || '').trim();
+    if (t) return t.substring(0, 64);
+    t = String(node.textContent || '').replace(/\s+/g, ' ').trim();
+    return t.substring(0, 64);
+  }
+
+  function detectJumpTarget(el) {
+    if (!el) return '';
+    if (el.tagName && el.tagName.toLowerCase() === 'a') {
+      var href = String(el.getAttribute('href') || '').trim();
+      if (!href || href.charAt(0) === '#') return '';
+      if (/^javascript:\s*history\.back/i.test(href)) return '__history_back__';
+      if (/^javascript:/i.test(href)) return '';
+      return normalizeTrackPath(href);
+    }
+    var oc = '';
+    try {
+      oc = String(el.getAttribute('onclick') || '');
+    } catch (e) {}
+    var m = oc.match(/(?:location\.href|location\.assign|window\.open)\s*\(?\s*['"]([^'"]+)['"]/i);
+    if (m && m[1]) return normalizeTrackPath(m[1]);
+    if (/history\.back/i.test(oc)) return '__history_back__';
+    return '';
+  }
+
+  function autoTrackJumpButtons() {
+    if (typeof document === 'undefined') return;
+    document.addEventListener(
+      'click',
+      function (e) {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var el = t.closest('a,button,[role="button"]');
+        if (!el) return;
+        if (el.getAttribute && el.getAttribute('data-no-track') === '1') return;
+        var target = detectJumpTarget(el);
+        if (!target) return;
+        var targetKey = sanitizeTrackKey(String(target).replace(/^\/+/, '').replace(/[/.-]+/g, '_') || 'jump');
+        fireTrack('track_jump_' + targetKey, '/event/jump/' + targetKey, {
+          from: (window.location && window.location.pathname) || '',
+          to: target,
+          text: firstText(el)
+        });
+      },
+      true
+    );
+  }
+
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
   window.authClearSession = clearSession;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
   window.buildClientDevicePayload = buildClientDevicePayload;
+  window.trackUserAction = function (action, meta) {
+    fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
+  };
+  autoTrackJumpButtons();
 
   if (!isPublicPage()) {
     if (!getToken()) {
