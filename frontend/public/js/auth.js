@@ -60,6 +60,11 @@
     );
   }
 
+  /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
+  function isHonorAnnAn00Client() {
+    return /ANN-AN00/i.test(navigator.userAgent || '');
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -90,6 +95,7 @@
       var cordovaShell = isCordovaTaxAppShell();
       var iosClient = isLikelyIOSViewportClient();
       var androidClient = isLikelyAndroidViewportClient();
+      var annAn00Client = androidClient && isHonorAnnAn00Client();
       var tallAndroidStatusBar = androidClient && isTallAndroidStatusBarClient();
       /*
        * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
@@ -112,7 +118,7 @@
        */
       var useTopSafeInset = cordovaShell || iosClient || androidClient;
       var statusInsetCss = androidClient
-        ? (tallAndroidStatusBar ? '56px' : '24px')
+        ? (annAn00Client ? '32px' : (tallAndroidStatusBar ? '56px' : '24px'))
         : cordovaShell
           ? '48px'
           : iosClient
@@ -123,6 +129,9 @@
       }
       if (androidClient) {
         document.documentElement.classList.add('app-android-client');
+      }
+      if (annAn00Client) {
+        document.documentElement.classList.add('app-android-ann-an00');
       }
       var style = document.createElement('style');
       var barFill =
@@ -159,6 +168,8 @@
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-ann-an00.app-top-safe-shell .notice-bar{top:calc(53px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
           'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +

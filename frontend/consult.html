@@ -407,24 +407,6 @@
             width: 88px;
             padding: 7px 8px;
         }
-        #panel-records .batch-emp-ongoing-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: normal;
-            font-size: 12px;
-            margin-top: 6px;
-            cursor: pointer;
-        }
-        #panel-records .batch-emp-ongoing-label input {
-            width: auto;
-            margin: 0;
-        }
-        #panel-records .batch-emp-end-muted {
-            opacity: 0.45;
-            pointer-events: none;
-        }
-
         #panel-records .batch-emp-month-salary-row {
             display: flex;
             flex-wrap: wrap;
@@ -782,7 +764,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每月应纳税所得额 = 月薪 −（5000 + 专项附加扣除）− 三险一金；写入规则与原先一致。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人、年终奖公司名称会记在本地，点击输入框可点选曾填过的名称。年终奖见下方。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每段可单独填写专项附加与社保公积金：每月应纳税所得额 = 月薪 −（5000 + 该段专项附加扣除）− 该段三险一金。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人、年终奖公司名称会记在本地，点击输入框可点选曾填过的名称。年终奖见下方。</p>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -813,7 +795,6 @@
                             </div>
                             <div class="form-group">
                                 <label>结束年月</label>
-                                <label class="batch-emp-ongoing-label"><input type="checkbox" class="batch-emp-ongoing" onchange="onBatchEmpOngoingChange(this)"> 至今（含当月）</label>
                                 <div class="batch-ym-inline batch-emp-end-inputs">
                                     <input type="number" class="batch-emp-ey" min="1990" max="2100" placeholder="年">
                                     <select class="batch-emp-em" aria-label="结束月"></select>
@@ -830,6 +811,33 @@
                                 <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空=每月固定为下限；填则区间内随机，如 16000">
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label class="batch-salary-mode-title" style="margin-bottom:8px;">本段社保与专项附加（月，元）</label>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>基本养老保险</label>
+                                    <input type="number" class="batch-emp-pension" step="0.01" min="0" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>基本医疗保险</label>
+                                    <input type="number" class="batch-emp-medical" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>失业保险</label>
+                                    <input type="number" class="batch-emp-unemployment" step="0.01" min="0" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>住房公积金（月，元）</label>
+                                    <input type="number" class="batch-emp-fund" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>专项附加扣除（月，元，可填 0）</label>
+                                <input type="number" class="batch-emp-special" step="0.01" min="0" value="0">
+                            </div>
+                        </div>
                         <div class="form-group batch-emp-month-salary-row">
                             <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
                             <span class="batch-emp-month-salary-badge" hidden></span>
@@ -837,34 +845,6 @@
                     </div>
                 </template>
                 <datalist id="batchCompanyHistoryDatalist"></datalist>
-                <div class="form-group">
-                    <label class="batch-salary-mode-title" style="margin-bottom:8px;">社会保险扣费（月，元）</label>
-                    <p class="batch-hint" style="margin:0 0 8px;font-size:12px;opacity:0.9">与下方「添加记录」一致：基本养老保险、基本医疗保险、失业保险与住房公积金之和记入「本期专项扣除」；累计预扣时与减除费用、专项附加一并从月薪中扣减。</p>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="batch_pension_insurance">基本养老保险</label>
-                            <input type="number" step="0.01" id="batch_pension_insurance" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="batch_medical_insurance">基本医疗保险</label>
-                            <input type="number" step="0.01" id="batch_medical_insurance" value="0" min="0">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="batch_unemployment_insurance">失业保险</label>
-                            <input type="number" step="0.01" id="batch_unemployment_insurance" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="batch_fund">住房公积金（月，元）</label>
-                            <input type="number" step="0.01" id="batch_fund" value="0" min="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="batch_special">专项附加扣除（月，元，可填 0）</label>
-                    <input type="number" step="0.01" id="batch_special" value="0" min="0">
-                </div>
                 <div class="form-group">
                     <label for="batch_bonus_company">年终奖扣缴义务人（可空，默认最后一段工作经历公司）</label>
                     <input type="text" id="batch_bonus_company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="与某段公司一致或手工填写（可点选历史）">
@@ -1779,19 +1759,6 @@
             return 0;
         }
 
-        function readBatchSocialThree() {
-            var bp = parseFloat(document.getElementById('batch_pension_insurance').value) || 0;
-            var bm = parseFloat(document.getElementById('batch_medical_insurance').value) || 0;
-            var bu = parseFloat(document.getElementById('batch_unemployment_insurance').value) || 0;
-            if (bp < 0 || bm < 0 || bu < 0) return null;
-            return {
-                total: round2(bp + bm + bu),
-                p: round2(bp),
-                m: round2(bm),
-                u: round2(bu)
-            };
-        }
-
         var BATCH_COMPANY_HISTORY_KEY = 'consult_batch_company_history_v1';
         var BATCH_COMPANY_HISTORY_MAX = 40;
 
@@ -1879,40 +1846,12 @@
             }
         }
 
-        function onBatchEmpOngoingChange(chk) {
-            var row = chk.closest('.batch-emp-row');
-            if (!row) return;
-            var wrap = row.querySelector('.batch-emp-end-inputs');
-            var ey = row.querySelector('.batch-emp-ey');
-            var em = row.querySelector('.batch-emp-em');
-            var on = chk.checked;
-            if (wrap) wrap.classList.toggle('batch-emp-end-muted', on);
-            if (ey) {
-                ey.disabled = on;
-                if (on) {
-                    var d = new Date();
-                    ey.value = String(d.getFullYear());
-                }
-            }
-            if (em) {
-                em.disabled = on;
-                if (on) {
-                    var d2 = new Date();
-                    em.value = String(d2.getMonth() + 1);
-                }
-            }
-        }
-
         function bindBatchEmpRow(node) {
             var rm = node.querySelector('.batch-emp-remove-btn');
             if (rm) {
                 rm.addEventListener('click', function () {
                     removeBatchEmpRow(node);
                 });
-            }
-            var og = node.querySelector('.batch-emp-ongoing');
-            if (og) {
-                onBatchEmpOngoingChange(og);
             }
             var cin = node.querySelector('.batch-emp-company');
             bindBatchEmpCompanyHistoryInput(cin);
@@ -2000,22 +1939,18 @@
             var tax_authority = authEl ? String(authEl.value).trim() : '';
             var sy = parseInt(row.querySelector('.batch-emp-sy').value, 10);
             var sm = parseInt(row.querySelector('.batch-emp-sm').value, 10);
-            var ongoing = row.querySelector('.batch-emp-ongoing') && row.querySelector('.batch-emp-ongoing').checked;
-            var ey;
-            var em;
-            if (ongoing) {
-                var dx = new Date();
-                ey = dx.getFullYear();
-                em = dx.getMonth() + 1;
-            } else {
-                ey = parseInt(row.querySelector('.batch-emp-ey').value, 10);
-                em = parseInt(row.querySelector('.batch-emp-em').value, 10);
-            }
+            var ey = parseInt(row.querySelector('.batch-emp-ey').value, 10);
+            var em = parseInt(row.querySelector('.batch-emp-em').value, 10);
             var salaryMin = parseFloat(row.querySelector('.batch-emp-salary').value);
             var maxEl = row.querySelector('.batch-emp-salary-max');
             var maxTrim = maxEl && maxEl.value != null ? String(maxEl.value).trim() : '';
             var salaryFloat = maxTrim !== '';
             var salaryMax = salaryFloat ? parseFloat(maxTrim) : salaryMin;
+            var pension = parseFloat(row.querySelector('.batch-emp-pension').value) || 0;
+            var medical = parseFloat(row.querySelector('.batch-emp-medical').value) || 0;
+            var unemployment = parseFloat(row.querySelector('.batch-emp-unemployment').value) || 0;
+            var housingFund = parseFloat(row.querySelector('.batch-emp-fund').value) || 0;
+            var specialAdd = parseFloat(row.querySelector('.batch-emp-special').value) || 0;
             var seg = rowIdx + 1;
             if (!company) {
                 return { ok: false, error: '第 ' + seg + ' 段工作经历请填写扣缴义务人（公司全称）' };
@@ -2023,8 +1958,8 @@
             if (!sy || sy < 1990 || sy > 2100 || !sm || sm < 1 || sm > 12) {
                 return { ok: false, error: '第 ' + seg + ' 段起始年月不合法' };
             }
-            if (!ongoing && (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12)) {
-                return { ok: false, error: '第 ' + seg + ' 段结束年月不合法（或勾选至今）' };
+            if (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12) {
+                return { ok: false, error: '第 ' + seg + ' 段结束年月不合法' };
             }
             if (Number.isNaN(salaryMin) || salaryMin < 0) {
                 return { ok: false, error: '第 ' + seg + ' 段月薪下限须为非负数字' };
@@ -2036,6 +1971,9 @@
                 if (salaryMax < salaryMin) {
                     return { ok: false, error: '第 ' + seg + ' 段月薪上限须不小于下限' };
                 }
+            }
+            if (pension < 0 || medical < 0 || unemployment < 0 || housingFund < 0 || specialAdd < 0) {
+                return { ok: false, error: '第 ' + seg + ' 段社保/专项附加不能为负数' };
             }
             var months = enumerateYmRange(sy, sm, ey, em);
             if (!months.length) {
@@ -2063,6 +2001,11 @@
                     salaryFloat: salaryFloat,
                     salaryMin: salaryMin,
                     salaryMax: salaryMax,
+                    pension: round2(pension),
+                    medical: round2(medical),
+                    unemployment: round2(unemployment),
+                    housingFund: round2(housingFund),
+                    specialAdd: round2(specialAdd),
                     months: months,
                     monthSalaryOverrides: monthSalaryOverrides
                 }
@@ -2480,8 +2423,6 @@
                 rows[0].querySelector('.batch-emp-company').value = coA;
                 rows[0].querySelector('.batch-emp-sy').value = '2024';
                 rows[0].querySelector('.batch-emp-sm').value = '5';
-                rows[0].querySelector('.batch-emp-ongoing').checked = false;
-                onBatchEmpOngoingChange(rows[0].querySelector('.batch-emp-ongoing'));
                 rows[0].querySelector('.batch-emp-ey').value = '2025';
                 rows[0].querySelector('.batch-emp-em').value = '6';
                 rows[0].querySelector('.batch-emp-salary').value = String(salA);
@@ -2490,8 +2431,8 @@
                 rows[1].querySelector('.batch-emp-company').value = coB;
                 rows[1].querySelector('.batch-emp-sy').value = '2025';
                 rows[1].querySelector('.batch-emp-sm').value = '7';
-                rows[1].querySelector('.batch-emp-ongoing').checked = true;
-                onBatchEmpOngoingChange(rows[1].querySelector('.batch-emp-ongoing'));
+                rows[1].querySelector('.batch-emp-ey').value = String(new Date().getFullYear());
+                rows[1].querySelector('.batch-emp-em').value = String(new Date().getMonth() + 1);
                 rows[1].querySelector('.batch-emp-salary').value = String(salB);
             }
             var bonusEl = document.getElementById('batch_year_end_bonus');
@@ -2506,7 +2447,7 @@
                     card.scrollIntoView(true);
                 }
             }
-            showMsg('已填入两段演示工作经历（A：2024-05～2025-06；B：2025-07～至今），请在确认框中核对后写入', true);
+            showMsg('已填入两段演示工作经历（A：2024-05～2025-06；B：2025-07～当前月），请在确认框中核对后写入', true);
             setTimeout(function () {
                 batchAddEmploymentTaxRecords();
             }, 280);
@@ -2519,16 +2460,6 @@
                 return;
             }
             var employments = parsed.employments;
-            var socPack = readBatchSocialThree();
-            if (!socPack) {
-                showConsultStrongAlert('基本养老保险、基本医疗保险、失业保险不能为负数');
-                return;
-            }
-            var social = socPack.total;
-            var soc = { p: socPack.p, m: socPack.m, u: socPack.u };
-            var fund = parseFloat(document.getElementById('batch_fund').value) || 0;
-            var specialAdd = parseFloat(document.getElementById('batch_special').value) || 0;
-            var specFour = round2(soc.p + soc.m + soc.u + fund);
             var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
             var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
             var bonusYearEl = document.getElementById('batch_bonus_year');
@@ -2555,15 +2486,16 @@
             var base = formObjectFromInputs();
             delete base.id;
 
-            function monthlyTaxableFor(salaryMonth) {
-                return round2(Math.max(0, salaryMonth - 5000 - specialAdd - social - fund));
-            }
-
             var writes = [];
             var taxSumSalary = 0;
             var ei;
             for (ei = 0; ei < employments.length; ei++) {
                 var emp = employments[ei];
+                var empSocial = round2(emp.pension + emp.medical + emp.unemployment);
+                var empSpecFour = round2(empSocial + emp.housingFund);
+                var monthlyTaxableForEmp = function (salaryMonth) {
+                    return round2(Math.max(0, salaryMonth - 5000 - emp.specialAdd - empSocial - emp.housingFund));
+                };
                 var monthEntries = [];
                 var mi;
                 for (mi = 0; mi < emp.months.length; mi++) {
@@ -2579,7 +2511,7 @@
                     }
                     monthEntries.push({ year: ym0.year, month: ym0.month, salary: sal0 });
                 }
-                var taxMap = taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableFor);
+                var taxMap = taxesMapForEmploymentMonthEntries(monthEntries, monthlyTaxableForEmp);
                 for (mi = 0; mi < monthEntries.length; mi++) {
                     var ent = monthEntries[mi];
                     var k = ent.year + '-' + pad2(ent.month);
@@ -2593,6 +2525,12 @@
                         tax_authority: emp.tax_authority || '',
                         salary: ent.salary,
                         tax: taxM,
+                        pension: emp.pension,
+                        medical: emp.medical,
+                        unemployment: emp.unemployment,
+                        housingFund: emp.housingFund,
+                        specialAdd: emp.specialAdd,
+                        specFour: empSpecFour,
                         empIdx: emp.empIdx
                     });
                 }
@@ -2665,12 +2603,12 @@
                         o.income = String(inc);
                         o.income_this_period = String(inc);
                         o.tax_reported = String(w.tax);
-                        o.deduction_fee = String(round2(5000 + specialAdd));
-                        o.special_deduction = String(specFour);
-                        o.pension_insurance = String(soc.p);
-                        o.medical_insurance = String(soc.m);
-                        o.unemployment_insurance = String(soc.u);
-                        o.housing_fund = String(round2(fund));
+                        o.deduction_fee = String(round2(5000 + w.specialAdd));
+                        o.special_deduction = String(w.specFour);
+                        o.pension_insurance = String(w.pension);
+                        o.medical_insurance = String(w.medical);
+                        o.unemployment_insurance = String(w.unemployment);
+                        o.housing_fund = String(round2(w.housingFund));
                         o.tax_free_income = '0.00';
                         return authFetch('api/tax.php', {
                             method: 'POST',

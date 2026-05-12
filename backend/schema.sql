@@ -119,11 +119,35 @@ CREATE TABLE IF NOT EXISTS activation_codes (
     used_count INT NOT NULL DEFAULT 0,
     expires_at DATETIME NULL,
     note VARCHAR(255) NULL,
+    owner_admin_username VARCHAR(255) NULL COMMENT '生成该激活码的管理账号',
     last_used_at DATETIME NULL COMMENT '最近一次使用时间',
     used_by_username VARCHAR(255) NULL COMMENT '使用该激活码的用户账号',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_activation_code (code),
     INDEX idx_activation_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 管理后台账号（admin 为超级账号，可管理后台子账号与菜单权限）
+CREATE TABLE IF NOT EXISTS admin_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(255) NULL COMMENT '管理后台账号姓名',
+    salt VARCHAR(255) NOT NULL,
+    hash VARCHAR(255) NOT NULL,
+    is_super TINYINT(1) NOT NULL DEFAULT 0,
+    banned TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_admin_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 管理后台账号可用菜单
+CREATE TABLE IF NOT EXISTS admin_account_menus (
+    admin_id INT NOT NULL,
+    menu_key VARCHAR(64) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (admin_id, menu_key),
+    INDEX idx_menu_key (menu_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 接口调用按日聚合（埋点）
@@ -174,4 +198,16 @@ CREATE TABLE IF NOT EXISTS user_devices (
     PRIMARY KEY (username, device_fp),
     INDEX idx_last_seen (last_seen),
     INDEX idx_client_id (username, client_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 用户页面点击（通过已登录接口请求的 Referer / X-Page-Path 记录）
+CREATE TABLE IF NOT EXISTS user_page_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    page_path VARCHAR(255) NOT NULL,
+    route_key VARCHAR(240) NOT NULL,
+    client_id VARCHAR(128) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_created (username, created_at),
+    INDEX idx_page_created (page_path, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

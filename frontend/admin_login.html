@@ -94,6 +94,9 @@
                 .then(function (x) {
                     if (x.ok && x.j.code === 200 && x.j.data && x.j.data.token) {
                         localStorage.setItem('admin_token', x.j.data.token);
+                        if (x.j.data.admin) {
+                            localStorage.setItem('admin_profile', JSON.stringify(x.j.data.admin));
+                        }
                         window.location.href = 'admin_panel.html';
                         return;
                     }

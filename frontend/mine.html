@@ -84,6 +84,47 @@
             color: #b46d03;
             line-height: 1.45;
             word-break: break-all;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tax-eye-btn {
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: transparent;
+            color: #b46d03;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tax-eye-btn svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        .tax-eye-btn .tax-eye-open {
+            display: none;
+        }
+
+        .tax-eye-btn.reveal .tax-eye-closed {
+            display: none;
+        }
+
+        .tax-eye-btn.reveal .tax-eye-open {
+            display: block;
+        }
+
+        .tax-eye-btn.reveal {
+            opacity: 0.75;
         }
 
         .personal-info-btn {
@@ -266,7 +307,19 @@
             <div class="user-info">
                 <div class="user-info-text">
                     <div class="user-name" id="mineDisplayName">--</div>
-                    <div class="user-id" id="userTaxId">纳税人识别号 --</div>
+                    <div class="user-id" id="userTaxId">
+                        <span id="userTaxIdText">纳税人识别号 --</span>
+                        <button type="button" class="tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
+                            <svg class="tax-eye-closed" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="currentColor"></path>
+                                <path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="currentColor"></path>
+                            </svg>
+                            <svg class="tax-eye-open" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#b46d03"></path>
+                                <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#b46d03"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             </div>
@@ -463,13 +516,23 @@
 
             function loadUserInfo() {
                 var nameEl = document.getElementById('mineDisplayName');
-                var taxEl = document.getElementById('userTaxId');
+                var taxEl = document.getElementById('userTaxIdText');
+                var taxToggleBtn = document.getElementById('toggleTaxIdBtn');
+                var currentTaxIdRaw = '';
+                var taxReveal = false;
+                function renderTaxId() {
+                    taxEl.textContent = '纳税人识别号 ' + (currentTaxIdRaw ? (taxReveal ? currentTaxIdRaw : maskTaxId(currentTaxIdRaw)) : '--');
+                    if (taxToggleBtn) {
+                        taxToggleBtn.classList.toggle('reveal', taxReveal);
+                    }
+                }
                 var rn = localStorage.getItem('real_name');
                 var tid = localStorage.getItem('tax_id');
                 if (rn) {
                     nameEl.textContent = rn;
                 }
-                taxEl.textContent = '纳税人识别号 ' + (tid ? maskTaxId(tid) : '--');
+                currentTaxIdRaw = tid || '';
+                renderTaxId();
 
                 var g = localStorage.getItem('gender');
                 applyAvatarGender(g);
@@ -504,7 +567,8 @@
                         }
                         if (u.tax_id) {
                             localStorage.setItem('tax_id', u.tax_id);
-                            taxEl.textContent = '纳税人识别号 ' + maskTaxId(u.tax_id);
+                            currentTaxIdRaw = u.tax_id;
+                            renderTaxId();
                         }
                         if (u.gender != null) {
                             localStorage.setItem('gender', String(u.gender));
@@ -526,6 +590,13 @@
                         updateCountsFromStorage();
                         maybePromptInactiveModify();
                     });
+
+                if (taxToggleBtn) {
+                    taxToggleBtn.addEventListener('click', function () {
+                        taxReveal = !taxReveal;
+                        renderTaxId();
+                    });
+                }
             }
 
             loadUserInfo();

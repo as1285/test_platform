@@ -43,10 +43,11 @@
             outline: none;
         }
 
-        .back-arrow {
-            font-size: 17px;
-            line-height: 1;
-            margin-top: -1px;
+        .back-icon {
+            width: 18px;
+            height: 18px;
+            display: block;
+            object-fit: contain;
         }
 
         .header-title {
@@ -57,27 +58,28 @@
         }
 
         .page-content {
-            padding: 12px 14px 40px;
+            padding: 0 0 40px;
             padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
         }
 
         .tips-box {
             background: #e8f1ff;
-            border-radius: 6px;
-            padding: 12px 15px;
+            border-radius: 0;
+            padding: 12px 8px;
         }
 
         .tips-title {
-            font-size: 14px;
+            font-size: 15px;
             color: #333;
-            font-weight: 500;
-            margin-bottom: 6px;
+            font-weight: 600;
+            margin-bottom: 2px;
         }
 
         .tips-item {
-            font-size: 13px;
-            color: #555;
-            line-height: 1.8;
+            font-size: 15px;
+            color: #333;
+            line-height: 1.55;
+            font-weight: 600;
         }
 
         .tips-item a {
@@ -87,15 +89,16 @@
 
         .info-card {
             background: #fff;
-            border-radius: 8px;
+            border-radius: 0;
             overflow: hidden;
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .info-row {
             display: flex;
             align-items: center;
-            padding: 15px 16px;
+            min-height: 60px;
+            padding: 0 18px;
             border-bottom: 1px solid #f2f2f2;
             position: relative;
         }
@@ -105,17 +108,17 @@
         }
 
         .info-label {
-            font-size: 15px;
+            font-size: 19px;
             color: #333;
-            width: 90px;
+            width: 148px;
             flex-shrink: 0;
         }
 
         .info-value {
-            font-size: 15px;
+            font-size: 20px;
             color: #333;
             flex: 1;
-            text-align: right;
+            text-align: left;
         }
 
         .info-value.placeholder {
@@ -124,8 +127,8 @@
 
         .info-arrow {
             color: #c8c8c8;
-            font-size: 16px;
-            margin-left: 4px;
+            font-size: 24px;
+            margin-left: auto;
             flex-shrink: 0;
         }
 
@@ -138,35 +141,36 @@
         }
 
         .help-icon {
-            width: 16px;
-            height: 16px;
-            border: 1.5px solid #aaa;
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid #8fb9d9;
             border-radius: 50%;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
-            color: #aaa;
+            font-size: 12px;
+            color: #8fb9d9;
             font-weight: bold;
             flex-shrink: 0;
             line-height: 1;
         }
 
         .slider-section {
-            margin-top: 14px;
+            margin-top: 8px;
+            background: #fff;
         }
 
         .slider-box {
             background: #fff;
-            border-radius: 8px;
-            padding: 14px 16px;
+            border-radius: 0;
+            padding: 20px 22px;
         }
 
         .slider-lane {
             position: relative;
-            height: 42px;
+            height: 58px;
             background: #f0f0f0;
-            border-radius: 6px;
+            border-radius: 3px;
             overflow: hidden;
         }
 
@@ -175,9 +179,9 @@
             left: 0;
             right: 0;
             top: 0;
-            line-height: 42px;
+            line-height: 58px;
             text-align: center;
-            font-size: 14px;
+            font-size: 17px;
             color: #c0c0c0;
             pointer-events: none;
             user-select: none;
@@ -188,11 +192,11 @@
             left: 0;
             top: 0;
             will-change: left;
-            width: 42px;
-            height: 42px;
+            width: 60px;
+            height: 58px;
             background: #fff;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            border-radius: 3px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -208,8 +212,8 @@
         }
 
         .slider-arrows svg {
-            width: 22px;
-            height: 22px;
+            width: 30px;
+            height: 30px;
             fill: #999;
         }
 
@@ -222,17 +226,17 @@
         }
 
         .btn-section {
-            margin: 24px 0 0;
+            margin: 28px 12px 0;
         }
 
         .btn-primary {
             width: 100%;
-            height: 50px;
+            height: 58px;
             background: #1677ff;
             color: #fff;
             border: none;
-            border-radius: 8px;
-            font-size: 17px;
+            border-radius: 4px;
+            font-size: 20px;
             font-weight: 400;
             letter-spacing: 1px;
             cursor: pointer;
@@ -247,8 +251,8 @@
         .btn-link {
             display: block;
             text-align: center;
-            margin-top: 18px;
-            font-size: 15px;
+            margin-top: 22px;
+            font-size: 18px;
             color: #1677ff;
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
@@ -275,18 +279,18 @@
         }
 
         .mp-title-wrap {
-            width: 110px;
+            width: 148px;
             flex-shrink: 0;
         }
 
         .mp-title {
-            font-size: 15px;
+            font-size: 19px;
             color: #333;
         }
 
         button.help-icon.mp-help-btn {
             position: absolute;
-            left: calc(16px + 4.65em);
+            left: 116px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 2;
@@ -312,13 +316,106 @@
             opacity: 0;
             pointer-events: none;
         }
+
+        .record-page {
+            min-height: 100vh;
+            background: #f5f6fa;
+        }
+
+        .record-tips {
+            background: #e8f1ff;
+            padding: 10px 16px;
+            color: #555;
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .application-list {
+            background: #fff;
+        }
+
+        .application-card {
+            padding: 16px 16px 10px;
+            border-bottom: 8px solid #f5f6fa;
+        }
+
+        .application-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.9;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .application-label {
+            color: #333;
+            flex-shrink: 0;
+        }
+
+        .application-value {
+            color: #999;
+            min-width: 0;
+        }
+
+        .application-time {
+            font-size: 17px;
+            color: #333;
+        }
+
+        .application-status {
+            margin-left: auto;
+            color: #52c41a;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .application-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 24px;
+            padding-top: 12px;
+            font-size: 15px;
+        }
+
+        .application-action {
+            border: none;
+            background: transparent;
+            color: #6b98cf;
+            font-size: 15px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .empty-records {
+            padding: 48px 16px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .preview-page {
+            min-height: 100vh;
+            background: #f5f6fa;
+        }
+
+        .preview-wrap {
+            padding: 12px;
+        }
+
+        .preview-img {
+            display: block;
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">
-            <span class="back-arrow">‹</span>
+            <img src="/jt.png" class="back-icon" alt="">
             <span>返回</span>
         </a>
         <span class="header-title">纳税记录开具</span>
@@ -385,176 +482,7 @@
 
     </div>
 
-    <script>
-        (function () {
-            function pad2(n) {
-                return n < 10 ? '0' + n : String(n);
-            }
-
-            function currentYmMax() {
-                var d = new Date();
-                return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
-            }
-
-            function yearFirstYm() {
-                var d = new Date();
-                return d.getFullYear() + '-01';
-            }
-
-            var rangeStartInput = document.getElementById('rangeStartInput');
-            var rangeEndInput = document.getElementById('rangeEndInput');
-            var rangeStartLabel = document.getElementById('rangeStartLabel');
-            var rangeEndLabel = document.getElementById('rangeEndLabel');
-            var ymMax = currentYmMax();
-            var ymDefaultStart = yearFirstYm();
-            var ymDefaultEnd = ymMax;
-
-            if (rangeStartInput && rangeEndInput) {
-                rangeStartInput.max = ymMax;
-                rangeEndInput.max = ymMax;
-                rangeStartInput.value = ymDefaultStart;
-                rangeEndInput.value = ymDefaultEnd;
-                if (rangeStartInput.value > rangeEndInput.value) {
-                    rangeEndInput.value = rangeStartInput.value;
-                }
-                rangeStartLabel.textContent = rangeStartInput.value;
-                rangeEndLabel.textContent = rangeEndInput.value;
-
-                function clampOrder() {
-                    if (rangeStartInput.value && rangeEndInput.value && rangeStartInput.value > rangeEndInput.value) {
-                        rangeEndInput.value = rangeStartInput.value;
-                        rangeEndLabel.textContent = rangeEndInput.value;
-                    }
-                    rangeEndInput.min = rangeStartInput.value || '2019-01';
-                    rangeStartInput.max = rangeEndInput.value || ymMax;
-                    if (rangeStartInput.max > ymMax) rangeStartInput.max = ymMax;
-                    if (rangeEndInput.max !== ymMax) rangeEndInput.max = ymMax;
-                }
-
-                rangeStartInput.addEventListener('change', function () {
-                    rangeStartLabel.textContent = rangeStartInput.value;
-                    clampOrder();
-                    rangeEndLabel.textContent = rangeEndInput.value;
-                });
-
-                rangeEndInput.addEventListener('change', function () {
-                    rangeEndLabel.textContent = rangeEndInput.value;
-                    clampOrder();
-                    rangeStartLabel.textContent = rangeStartInput.value;
-                });
-
-                document.querySelectorAll('.info-row-month-picker .mp-help-btn').forEach(function (el) {
-                    el.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 2019 年 1 月，最晚不超过当前月。');
-                    });
-                });
-
-                document.querySelectorAll('.month-picker-hit').forEach(function (lab) {
-                    lab.addEventListener('keydown', function (e) {
-                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                        e.preventDefault();
-                        var fid = lab.getAttribute('for');
-                        var inp = fid ? document.getElementById(fid) : null;
-                        if (!inp) return;
-                        inp.focus();
-                        if (typeof inp.showPicker === 'function') {
-                            try {
-                                inp.showPicker();
-                            } catch (err) {}
-                        }
-                    });
-                });
-
-                clampOrder();
-            }
-
-            var lane = document.getElementById('sliderLane');
-            var handle = document.getElementById('sliderHandle');
-            var hint = document.getElementById('sliderHint');
-            var btn = document.getElementById('generateBtn');
-            var maxX = 0;
-            var startLeft = 0;
-            var startClientX = 0;
-            var dragging = false;
-
-            function layout() {
-                maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth);
-            }
-
-            function setHandle(x) {
-                x = Math.max(0, Math.min(x, maxX));
-                handle.style.left = x + 'px';
-            }
-
-            function resetSlider() {
-                handle.style.left = '0px';
-                handle.classList.remove('verified');
-                hint.textContent = '请按住滑块，拖动到最右边';
-                hint.style.color = '#c0c0c0';
-                btn.disabled = true;
-            }
-
-            function onPointerDown(e) {
-                if (handle.classList.contains('verified')) return;
-                dragging = true;
-                layout();
-                startLeft = handle.offsetLeft;
-                startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
-                e.preventDefault();
-            }
-
-            function onPointerMove(e) {
-                if (!dragging) return;
-                var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-                var dx = cx - startClientX;
-                setHandle(startLeft + dx);
-                e.preventDefault();
-            }
-
-            function onPointerUp() {
-                if (!dragging) return;
-                dragging = false;
-                layout();
-                var x = handle.offsetLeft;
-                if (x >= maxX - 2) {
-                    handle.classList.add('verified');
-                    hint.textContent = '验证通过';
-                    hint.style.color = '#52c41a';
-                    btn.disabled = false;
-                } else {
-                    resetSlider();
-                }
-            }
-
-            handle.addEventListener('mousedown', onPointerDown);
-            handle.addEventListener('touchstart', onPointerDown, { passive: false });
-            document.addEventListener('mousemove', onPointerMove);
-            document.addEventListener('touchmove', onPointerMove, { passive: false });
-            document.addEventListener('mouseup', onPointerUp);
-            document.addEventListener('touchend', onPointerUp);
-            document.addEventListener('touchcancel', onPointerUp);
-
-            window.addEventListener('resize', function () {
-                if (!handle.classList.contains('verified')) {
-                    layout();
-                    setHandle(handle.offsetLeft);
-                }
-            });
-
-            btn.addEventListener('click', function () {
-                alert('生成纳税记录功能开发中');
-            });
-
-            document.getElementById('viewRecordsLink').addEventListener('click', function (e) {
-                e.preventDefault();
-                alert('查看申请记录功能开发中');
-            });
-
-            layout();
-        })();
-    </script>
+    <script src="/js/najilu.js?v=20260512-jt-back-icon"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

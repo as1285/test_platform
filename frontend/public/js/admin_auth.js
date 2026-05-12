@@ -48,6 +48,7 @@
   function adminLogout() {
     try {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('admin_profile');
     } catch (e) {}
     window.location.href = LOGIN_PAGE;
   }

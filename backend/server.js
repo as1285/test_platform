@@ -67,6 +67,19 @@ const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 /** 闲鱼购买等外链，与引导安装一同在后台配置 */
 const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
 
+const ADMIN_MENU_KEYS = [
+  'settings',
+  'install-guide',
+  'appearance',
+  'codes',
+  'users',
+  'feedback',
+  'login-log',
+  'analytics',
+  'api-analytics',
+  'admin-accounts'
+];
+
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
   theme: 'blue',
@@ -81,6 +94,41 @@ let pool;
 /** @type {{ v: string, t: number }|null} */
 var _testCompanyNameCache = null;
 var TEST_COMPANY_CACHE_MS = 3000;
+
+function hashPasswordWithSalt(password, saltBuf) {
+  return crypto.scryptSync(password, saltBuf, 64).toString('hex');
+}
+
+function verifyPasswordBySaltHash(password, saltHex, hashHex) {
+  if (!saltHex || !hashHex) {
+    return false;
+  }
+  try {
+    var saltBuf = Buffer.from(String(saltHex), 'hex');
+    var actual = hashPasswordWithSalt(password, saltBuf);
+    return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(String(hashHex), 'hex'));
+  } catch (e) {
+    return false;
+  }
+}
+
+function normalizeAdminMenuList(rawMenus, isSuper) {
+  if (isSuper) {
+    return ADMIN_MENU_KEYS.slice();
+  }
+  var src = Array.isArray(rawMenus) ? rawMenus : [];
+  var seen = {};
+  var out = [];
+  src.forEach(function (m) {
+    var key = String(m || '').trim();
+    if (!key || ADMIN_MENU_KEYS.indexOf(key) < 0 || seen[key]) {
+      return;
+    }
+    seen[key] = true;
+    out.push(key);
+  });
+  return out;
+}
 
 async function getTestAccountCompanyName() {
   var now = Date.now();
@@ -603,6 +651,51 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE activation_codes ADD COLUMN owner_admin_username VARCHAR(255) NULL COMMENT '生成该激活码的管理账号'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS admin_accounts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NOT NULL UNIQUE,
+      full_name VARCHAR(255) NULL COMMENT '管理后台账号姓名',
+      salt VARCHAR(255) NOT NULL,
+      hash VARCHAR(255) NOT NULL,
+      is_super TINYINT(1) NOT NULL DEFAULT 0,
+      banned TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_admin_username (username)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  try {
+    await conn.execute(`
+      ALTER TABLE admin_accounts ADD COLUMN full_name VARCHAR(255) NULL COMMENT '管理后台账号姓名'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS admin_account_menus (
+      admin_id INT NOT NULL,
+      menu_key VARCHAR(64) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (admin_id, menu_key),
+      INDEX idx_menu_key (menu_key)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   var profileCols = [
     "ALTER TABLE users ADD COLUMN id_type VARCHAR(64) NULL COMMENT '证件类型'",
     "ALTER TABLE users ADD COLUMN birth_date VARCHAR(32) NULL COMMENT '出生日期'",
@@ -732,6 +825,19 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_page_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NOT NULL,
+      page_path VARCHAR(255) NOT NULL,
+      route_key VARCHAR(240) NOT NULL,
+      client_id VARCHAR(128) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_user_created (username, created_at),
+      INDEX idx_page_created (page_path, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   var devCols = [
     "ALTER TABLE user_devices ADD COLUMN client_id VARCHAR(128) NULL COMMENT '客户端上报唯一 id'",
     'ALTER TABLE user_devices ADD COLUMN device_detail_json MEDIUMTEXT NULL COMMENT \'最近一次显式上报 JSON\'',
@@ -750,6 +856,44 @@ async function createTables() {
     await conn.execute('CREATE INDEX idx_client_id ON user_devices (username, client_id)');
   } catch (e) {
     /* 已存在或非致命 */
+  }
+
+  var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+  var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
+  var rootSalt = crypto.randomBytes(16);
+  var rootSaltHex = rootSalt.toString('hex');
+  var rootHash = hashPasswordWithSalt(rootPassword, rootSalt);
+  const [adminRows] = await conn.execute(
+    'SELECT id, salt, hash, full_name FROM admin_accounts WHERE username = ? LIMIT 1',
+    [rootAdmin]
+  );
+  var rootAdminId = 0;
+  if (!adminRows.length) {
+    const [insRoot] = await conn.execute(
+      'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 1, 0)',
+      [rootAdmin, '系统管理员', rootSaltHex, rootHash]
+    );
+    rootAdminId = insRoot.insertId ? Number(insRoot.insertId) : 0;
+  } else {
+    rootAdminId = Number(adminRows[0].id) || 0;
+    var keepHash = verifyPasswordBySaltHash(rootPassword, adminRows[0].salt, adminRows[0].hash);
+    if (!keepHash) {
+      await conn.execute(
+        'UPDATE admin_accounts SET full_name = ?, salt = ?, hash = ?, is_super = 1, banned = 0 WHERE id = ?',
+        ['系统管理员', rootSaltHex, rootHash, rootAdminId]
+      );
+    } else {
+      await conn.execute('UPDATE admin_accounts SET full_name = ?, is_super = 1, banned = 0 WHERE id = ?', ['系统管理员', rootAdminId]);
+    }
+  }
+  if (rootAdminId > 0) {
+    await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [rootAdminId]);
+    for (var mi = 0; mi < ADMIN_MENU_KEYS.length; mi++) {
+      await conn.execute(
+        'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+        [rootAdminId, ADMIN_MENU_KEYS[mi]]
+      );
+    }
   }
 
   conn.release();
@@ -1218,11 +1362,79 @@ async function requireActivated(req, res, next) {
   }
 }
 
-function signAdminToken() {
-  return jwt.sign({ role: 'admin', sub: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
+function signAdminToken(username) {
+  return jwt.sign({ role: 'admin', sub: String(username || '') }, JWT_SECRET, { expiresIn: '12h' });
 }
 
-function requireAdminAuth(req, res, next) {
+async function loadAdminAccountByUsername(conn, username) {
+  const [rows] = await conn.execute(
+    'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
+    [username]
+  );
+  if (!rows.length) {
+    return null;
+  }
+  var row = rows[0];
+  const [menuRows] = await conn.execute(
+    'SELECT menu_key FROM admin_account_menus WHERE admin_id = ? ORDER BY menu_key ASC',
+    [row.id]
+  );
+  return {
+    id: Number(row.id) || 0,
+    username: String(row.username),
+    full_name: row.full_name != null ? String(row.full_name) : '',
+    salt: row.salt != null ? String(row.salt) : '',
+    hash: row.hash != null ? String(row.hash) : '',
+    is_super: row.is_super === 1 || row.is_super === true,
+    banned: row.banned === 1 || row.banned === true,
+    created_at: row.created_at ? row.created_at.toISOString() : '',
+    menus: normalizeAdminMenuList(
+      menuRows.map(function (m) {
+        return m.menu_key;
+      }),
+      row.is_super === 1 || row.is_super === true
+    )
+  };
+}
+
+function adminHasMenu(admin, menuKey) {
+  if (!admin || !menuKey) {
+    return false;
+  }
+  if (admin.is_super) {
+    return true;
+  }
+  return Array.isArray(admin.menus) && admin.menus.indexOf(menuKey) >= 0;
+}
+
+function requireAdminMenu(menuKey) {
+  return function (req, res, next) {
+    if (!req.admin || !adminHasMenu(req.admin, menuKey)) {
+      return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
+    }
+    next();
+  };
+}
+
+function requireAdminAnyMenu(menuKeys) {
+  return function (req, res, next) {
+    if (!req.admin) {
+      return res.status(403).json({ code: 403, msg: '当前账号无权限' });
+    }
+    if (req.admin.is_super) {
+      return next();
+    }
+    var list = Array.isArray(menuKeys) ? menuKeys : [];
+    for (var i = 0; i < list.length; i++) {
+      if (adminHasMenu(req.admin, list[i])) {
+        return next();
+      }
+    }
+    return res.status(403).json({ code: 403, msg: '当前账号无该菜单权限' });
+  };
+}
+
+async function requireAdminAuth(req, res, next) {
   var auth = req.headers.authorization || '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
   var token = m ? m[1] : null;
@@ -1233,6 +1445,23 @@ function requireAdminAuth(req, res, next) {
     var payload = jwt.verify(token, JWT_SECRET);
     if (payload.role !== 'admin') {
       return res.status(403).json({ code: 403, msg: '无管理员权限' });
+    }
+    var adminUsername = payload.sub != null ? String(payload.sub).trim() : '';
+    if (!adminUsername) {
+      return res.status(401).json({ code: 401, msg: '管理登录已失效，请重新登录' });
+    }
+    const conn = await pool.getConnection();
+    try {
+      var admin = await loadAdminAccountByUsername(conn, adminUsername);
+      if (!admin) {
+        return res.status(401).json({ code: 401, msg: '管理账号不存在，请重新登录' });
+      }
+      if (admin.banned) {
+        return res.status(403).json({ code: 403, msg: '管理账号已被停用' });
+      }
+      req.admin = admin;
+    } finally {
+      conn.release();
     }
     next();
   } catch (err) {
@@ -1751,11 +1980,64 @@ function analyticsFinishMiddleware(req, res, next) {
         return;
       }
       incrementApiDailyCounter(info.route_key, info.biz_category);
+      recordUserPageEvent(req, info.route_key);
     } catch (e) {
       console.error('analyticsFinishMiddleware', e);
     }
   });
   next();
+}
+
+function normalizeClientPagePath(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (/[\x00-\x1f]/.test(s)) return '';
+  if (s.length > 255) s = s.substring(0, 255);
+  try {
+    if (/^https?:\/\//i.test(s)) {
+      var u = new URL(s);
+      s = String(u.pathname || '').trim();
+    }
+  } catch (e) {}
+  if (!s) return '';
+  if (s.charAt(0) !== '/') s = '/' + s;
+  s = s.replace(/\/+/g, '/');
+  if (s.indexOf('/api/') === 0 || s === '/api') return '';
+  return s;
+}
+
+function inferPagePathFromRequest(req) {
+  var direct = normalizeClientPagePath(req.headers && req.headers['x-page-path']);
+  if (direct) return direct;
+  var ref = normalizeClientPagePath(req.headers && req.headers.referer);
+  if (ref) return ref;
+  var path = String(req.path || '').trim();
+  if (path && path.indexOf('/api/') !== 0 && path.slice(-5).toLowerCase() === '.html') return path;
+  return '';
+}
+
+function recordUserPageEvent(req, routeKey) {
+  if (!pool || !req || !req.authUserId) return;
+  var username = String(req.authUserId).trim().substring(0, 255);
+  if (!username) return;
+  var pagePath = inferPagePathFromRequest(req);
+  if (!pagePath) return;
+  var cid = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      cid = String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e) {}
+  var rk = String(routeKey || '').trim().substring(0, 240);
+  pool
+    .execute(
+      `INSERT INTO user_page_events (username, page_path, route_key, client_id)
+       VALUES (?, ?, ?, ?)`,
+      [username, pagePath, rk || 'unknown', cid || null]
+    )
+    .catch(function (e) {
+      console.error('recordUserPageEvent', e);
+    });
 }
 
 function touchUserDailyActivity(username) {
@@ -2375,10 +2657,238 @@ async function handleAdminLogin(req, res) {
   var body = req.body || {};
   var u = String(body.username || '').trim();
   var p = String(body.password || '');
-  if (u === ADMIN_PANEL_USER && p === ADMIN_PANEL_PASSWORD) {
-    return res.json({ code: 200, data: { token: signAdminToken() } });
+  if (!u || !p) {
+    return res.status(400).json({ code: 400, msg: '请输入账号和密码' });
   }
-  return res.status(401).json({ code: 401, msg: '账号或密码错误' });
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var admin = await loadAdminAccountByUsername(conn, u);
+      if (!admin || !verifyPasswordBySaltHash(p, admin.salt, admin.hash)) {
+        return res.status(401).json({ code: 401, msg: '账号或密码错误' });
+      }
+      if (admin.banned) {
+        return res.status(403).json({ code: 403, msg: '管理账号已停用' });
+      }
+      return res.json({
+        code: 200,
+        data: {
+          token: signAdminToken(admin.username),
+          admin: {
+            username: admin.username,
+            full_name: admin.full_name || '',
+            is_super: !!admin.is_super,
+            menus: admin.menus
+          }
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminMe(req, res) {
+  return res.json({
+    code: 200,
+    data: {
+      admin: {
+        username: req.admin.username,
+        full_name: req.admin.full_name || '',
+        is_super: !!req.admin.is_super,
+        menus: req.admin.menus
+      }
+    }
+  });
+}
+
+async function handleAdminAccountsList(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts ORDER BY id ASC'
+      );
+      var out = [];
+      for (var i = 0; i < rows.length; i++) {
+        const [menuRows] = await conn.execute(
+          'SELECT menu_key FROM admin_account_menus WHERE admin_id = ? ORDER BY menu_key ASC',
+          [rows[i].id]
+        );
+        out.push({
+          id: Number(rows[i].id) || 0,
+          username: String(rows[i].username),
+          full_name: rows[i].full_name != null ? String(rows[i].full_name) : '',
+          is_super: rows[i].is_super === 1 || rows[i].is_super === true,
+          banned: rows[i].banned === 1 || rows[i].banned === true,
+          created_at: rows[i].created_at ? rows[i].created_at.toISOString() : '',
+          menus: normalizeAdminMenuList(
+            menuRows.map(function (m) {
+              return m.menu_key;
+            }),
+            rows[i].is_super === 1 || rows[i].is_super === true
+          )
+        });
+      }
+      return res.json({ code: 200, data: { accounts: out, menu_keys: ADMIN_MENU_KEYS } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAccountsCreate(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  }
+  var body = req.body || {};
+  var username = String(body.username || '').trim();
+  var fullName = String(body.full_name || '').trim();
+  var password = String(body.password || '');
+  var menus = normalizeAdminMenuList(body.menus, false);
+  if (!username || username.length < 3 || username.length > 64 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
+    return res.status(400).json({ code: 400, msg: '账号仅支持 3-64 位字母数字._-' });
+  }
+  if (!password || password.length < 4 || password.length > 128) {
+    return res.status(400).json({ code: 400, msg: '密码长度需为 4-128 位' });
+  }
+  if (!fullName || fullName.length > 255) {
+    return res.status(400).json({ code: 400, msg: '请填写姓名（1-255 字）' });
+  }
+  if (!menus.length) {
+    return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
+  }
+  if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '保留账号请直接使用 admin' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [exists] = await conn.execute('SELECT id FROM admin_accounts WHERE username = ? LIMIT 1', [username]);
+      if (exists.length) {
+        return res.status(400).json({ code: 400, msg: '该管理账号已存在' });
+      }
+      var saltBuf = crypto.randomBytes(16);
+      var saltHex = saltBuf.toString('hex');
+      var hashHex = hashPasswordWithSalt(password, saltBuf);
+      const [ins] = await conn.execute(
+        'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 0, 0)',
+        [username, fullName, saltHex, hashHex]
+      );
+      var adminId = ins.insertId ? Number(ins.insertId) : 0;
+      for (var i = 0; i < menus.length; i++) {
+        await conn.execute(
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+          [adminId, menus[i]]
+        );
+      }
+      return res.json({ code: 200, data: { username: username } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAccountsUpdate(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  }
+  var body = req.body || {};
+  var username = String(body.username || '').trim();
+  var fullName = body.full_name != null ? String(body.full_name).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  var updatePassword = body.password != null ? String(body.password) : '';
+  var hasPasswordUpdate = updatePassword !== '';
+  if (hasPasswordUpdate && (updatePassword.length < 4 || updatePassword.length > 128)) {
+    return res.status(400).json({ code: 400, msg: '密码长度需为 4-128 位' });
+  }
+  var menus = normalizeAdminMenuList(body.menus, false);
+  if (!menus.length) {
+    return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
+  }
+  if (!fullName || fullName.length > 255) {
+    return res.status(400).json({ code: 400, msg: '请填写姓名（1-255 字）' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var admin = await loadAdminAccountByUsername(conn, username);
+      if (!admin) {
+        return res.status(404).json({ code: 404, msg: '管理账号不存在' });
+      }
+      if (admin.is_super) {
+        return res.status(400).json({ code: 400, msg: '不能修改 admin 超级账号权限' });
+      }
+      await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
+      for (var i = 0; i < menus.length; i++) {
+        await conn.execute(
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+          [admin.id, menus[i]]
+        );
+      }
+      await conn.execute('UPDATE admin_accounts SET full_name = ? WHERE id = ?', [fullName, admin.id]);
+      if (hasPasswordUpdate) {
+        var saltBuf = crypto.randomBytes(16);
+        var saltHex = saltBuf.toString('hex');
+        var hashHex = hashPasswordWithSalt(updatePassword, saltBuf);
+        await conn.execute('UPDATE admin_accounts SET salt = ?, hash = ? WHERE id = ?', [saltHex, hashHex, admin.id]);
+      }
+      return res.json({ code: 200, data: { username: username } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAccountsDelete(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  }
+  var body = req.body || {};
+  var username = String(body.username || '').trim();
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (username === req.admin.username) {
+    return res.status(400).json({ code: 400, msg: '不能删除当前登录账号' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var admin = await loadAdminAccountByUsername(conn, username);
+      if (!admin) {
+        return res.status(404).json({ code: 404, msg: '管理账号不存在' });
+      }
+      if (admin.is_super) {
+        return res.status(400).json({ code: 400, msg: '不能删除 admin 超级账号' });
+      }
+      await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
+      await conn.execute('DELETE FROM admin_accounts WHERE id = ?', [admin.id]);
+      return res.json({ code: 200, data: { username: username, deleted: true } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
 }
 
 async function handleAdminUsers(req, res) {
@@ -2457,8 +2967,8 @@ async function handleAdminIssueCode(req, res) {
     var plainCode = crypto.randomBytes(16).toString('hex').toUpperCase();
     const conn = await pool.getConnection();
     await conn.execute(
-      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note) VALUES (?, ?, 0, ?, ?)',
-      [plainCode, maxUses, null, null]
+      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
+      [plainCode, maxUses, null, null, req.admin && req.admin.username ? req.admin.username : null]
     );
     conn.release();
     return res.json({
@@ -2475,16 +2985,31 @@ async function handleAdminCodes(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 10;
+    var qOwnerAdmin = req.query.owner_admin != null ? String(req.query.owner_admin).trim() : '';
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
     var offset = (page - 1) * limit;
 
     const conn = await pool.getConnection();
-    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM activation_codes');
+    var whereSql = '';
+    var params = [];
+    if (!req.admin || !req.admin.is_super) {
+      whereSql = ' WHERE owner_admin_username = ?';
+      params.push(req.admin.username);
+    } else if (qOwnerAdmin) {
+      whereSql = ' WHERE owner_admin_username LIKE ?';
+      params.push('%' + qOwnerAdmin + '%');
+    }
+    const [totalRows] = await conn.execute(
+      'SELECT COUNT(*) as count FROM activation_codes' + whereSql,
+      params
+    );
     const total = totalRows[0].count;
 
     const [rows] = await conn.query(
-      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username FROM activation_codes ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`
+      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username, owner_admin_username
+       FROM activation_codes ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`,
+      params
     );
     conn.release();
     var out = rows.map(function (r) {
@@ -2500,6 +3025,10 @@ async function handleAdminCodes(req, res) {
         used_by_username:
           r.used_by_username != null && String(r.used_by_username).trim() !== ''
             ? String(r.used_by_username).trim()
+            : null,
+        owner_admin_username:
+          r.owner_admin_username != null && String(r.owner_admin_username).trim() !== ''
+            ? String(r.owner_admin_username).trim()
             : null
       };
     });
@@ -2776,31 +3305,86 @@ async function handleAdminUserTaxRecords(req, res) {
   }
   try {
     const conn = await pool.getConnection();
-    const [rows] = await conn.execute(
-      `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at
-       FROM tax_records
-       WHERE user_id = ?
-       ORDER BY year DESC, month DESC, id DESC
-       LIMIT 200`,
-      [username]
-    );
-    conn.release();
-    var out = rows.map(function (r) {
-      return {
-        id: r.id,
-        year: r.year != null ? Number(r.year) : null,
-        month: r.month != null ? Number(r.month) : null,
-        income_type: r.income_type != null ? String(r.income_type) : '',
-        income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
-        company_name: r.company_name != null ? String(r.company_name) : '',
-        income: r.income != null ? String(r.income) : '0.00',
-        tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0.00',
-        tax_period: r.tax_period != null ? String(r.tax_period) : '',
-        report_date: r.report_date != null ? String(r.report_date) : '',
-        created_at: r.created_at ? r.created_at.toISOString() : ''
-      };
-    });
-    return res.json({ code: 200, data: { records: out } });
+    try {
+      const [rows] = await conn.execute(
+        `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at
+         FROM tax_records
+         WHERE user_id = ?
+         ORDER BY year DESC, month DESC, id DESC
+         LIMIT 200`,
+        [username]
+      );
+      const [devices] = await conn.execute(
+        `SELECT user_agent_short, city_last, first_seen, last_seen, login_count, client_id, device_detail_json
+         FROM user_devices
+         WHERE username = ?
+         ORDER BY last_seen DESC
+         LIMIT 30`,
+        [username]
+      );
+      const [pages] = await conn.execute(
+        `SELECT page_path, MAX(created_at) AS last_entered_at
+         FROM user_page_events
+         WHERE username = ?
+         GROUP BY page_path
+         ORDER BY last_entered_at DESC
+         LIMIT 120`,
+        [username]
+      );
+      var out = rows.map(function (r) {
+        return {
+          id: r.id,
+          year: r.year != null ? Number(r.year) : null,
+          month: r.month != null ? Number(r.month) : null,
+          income_type: r.income_type != null ? String(r.income_type) : '',
+          income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
+          company_name: r.company_name != null ? String(r.company_name) : '',
+          income: r.income != null ? String(r.income) : '0.00',
+          tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0.00',
+          tax_period: r.tax_period != null ? String(r.tax_period) : '',
+          report_date: r.report_date != null ? String(r.report_date) : '',
+          created_at: r.created_at ? r.created_at.toISOString() : ''
+        };
+      });
+      var devOut = devices.map(function (r) {
+        var model = '';
+        var platform = '';
+        var osVersion = '';
+        var appVersion = '';
+        try {
+          if (r.device_detail_json) {
+            var parsed = JSON.parse(String(r.device_detail_json));
+            if (parsed && typeof parsed === 'object') {
+              model = parsed.model != null ? String(parsed.model) : '';
+              platform = parsed.platform != null ? String(parsed.platform) : '';
+              osVersion = parsed.os_version != null ? String(parsed.os_version) : '';
+              appVersion = parsed.app_version != null ? String(parsed.app_version) : '';
+            }
+          }
+        } catch (e1) {}
+        return {
+          model: model,
+          platform: platform,
+          os_version: osVersion,
+          app_version: appVersion,
+          user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
+          city_last: r.city_last != null ? String(r.city_last) : '',
+          first_seen: r.first_seen ? r.first_seen.toISOString() : '',
+          last_seen: r.last_seen ? r.last_seen.toISOString() : '',
+          login_count: r.login_count != null ? Number(r.login_count) : 0,
+          client_id: r.client_id != null ? String(r.client_id) : ''
+        };
+      });
+      var pageOut = pages.map(function (r) {
+        return {
+          page_path: r.page_path != null ? String(r.page_path) : '',
+          last_entered_at: r.last_entered_at ? r.last_entered_at.toISOString() : ''
+        };
+      });
+      return res.json({ code: 200, data: { records: out, devices: devOut, recent_pages: pageOut } });
+    } finally {
+      conn.release();
+    }
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -2831,6 +3415,7 @@ async function handleAdminDeleteUser(req, res) {
     await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [target]);
     await conn.execute('DELETE FROM user_login_events WHERE username = ?', [target]);
     await conn.execute('DELETE FROM user_devices WHERE username = ?', [target]);
+    await conn.execute('DELETE FROM user_page_events WHERE username = ?', [target]);
     await conn.execute('DELETE FROM users WHERE username = ?', [target]);
     await conn.commit();
     conn.release();
@@ -3445,7 +4030,7 @@ async function handleAdminFeedbackReply(req, res) {
     try {
       const [result] = await conn.execute(
         `UPDATE user_feedback SET admin_reply = ?, replied_at = NOW(), replied_by = ? WHERE id = ?`,
-        [reply, String(ADMIN_PANEL_USER), id]
+        [reply, req.admin && req.admin.username ? String(req.admin.username) : String(ADMIN_PANEL_USER), id]
       );
       if (!result.affectedRows) {
         return res.status(404).json({ code: 404, msg: '记录不存在' });
@@ -3461,10 +4046,12 @@ async function handleAdminFeedbackReply(req, res) {
 }
 
 app.post('/api/admin/login', handleAdminLogin);
-app.get('/api/admin/settings', requireAdminAuth, handleAdminSettingsGet);
+app.get('/api/admin/me', requireAdminAuth, handleAdminMe);
+app.get('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), handleAdminSettingsGet);
 app.post(
   '/api/admin/upload-asset',
   requireAdminAuth,
+  requireAdminAnyMenu(['install-guide', 'appearance']),
   function (req, res, next) {
     adminUpload.single('file')(req, res, function (err) {
       if (err) {
@@ -3475,23 +4062,27 @@ app.post(
   },
   handleAdminUploadAsset
 );
-app.post('/api/admin/settings', requireAdminAuth, handleAdminSettingsPost);
+app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), handleAdminSettingsPost);
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
-app.get('/api/admin/users', requireAdminAuth, handleAdminUsers);
-app.get('/api/admin/user-tax-records', requireAdminAuth, handleAdminUserTaxRecords);
-app.post('/api/admin/issue-code', requireAdminAuth, handleAdminIssueCode);
-app.get('/api/admin/codes', requireAdminAuth, handleAdminCodes);
-app.post('/api/admin/ban', requireAdminAuth, handleAdminBan);
-app.post('/api/admin/user-type', requireAdminAuth, handleAdminUserType);
-app.post('/api/admin/user-delete', requireAdminAuth, handleAdminDeleteUser);
-app.get('/api/admin/analytics/overview', requireAdminAuth, handleAdminAnalyticsOverview);
-app.get('/api/admin/analytics/api-stats', requireAdminAuth, handleAdminAnalyticsApi);
-app.get('/api/admin/analytics/devices', requireAdminAuth, handleAdminAnalyticsDevices);
-app.get('/api/admin/analytics/device-stats', requireAdminAuth, handleAdminAnalyticsDeviceStats);
-app.get('/api/admin/analytics/login-recent', requireAdminAuth, handleAdminAnalyticsLoginRecent);
-app.get('/api/admin/feedback', requireAdminAuth, handleAdminFeedbackList);
-app.post('/api/admin/feedback/reply', requireAdminAuth, handleAdminFeedbackReply);
+app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
+app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
+app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
+app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
+app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
+app.post('/api/admin/user-type', requireAdminAuth, requireAdminMenu('users'), handleAdminUserType);
+app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
+app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
+app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
+app.get('/api/admin/analytics/devices', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDevices);
+app.get('/api/admin/analytics/device-stats', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDeviceStats);
+app.get('/api/admin/analytics/login-recent', requireAdminAuth, requireAdminMenu('login-log'), handleAdminAnalyticsLoginRecent);
+app.get('/api/admin/feedback', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackList);
+app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackReply);
+app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);
+app.post('/api/admin/accounts/create', requireAdminAuth, handleAdminAccountsCreate);
+app.post('/api/admin/accounts/update', requireAdminAuth, handleAdminAccountsUpdate);
+app.post('/api/admin/accounts/delete', requireAdminAuth, handleAdminAccountsDelete);
 
 function healthHandler(req, res) {
   res.json({ ok: true });

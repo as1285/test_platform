@@ -313,6 +313,7 @@
                 <button type="button" class="nav-item" data-page="install-guide" data-title="引导安装">引导安装</button>
                 <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
                 <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
+                <button type="button" class="nav-item" data-page="admin-accounts" data-title="后台账号权限">后台账号权限</button>
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
                 <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
                 <button type="button" class="nav-item" data-page="login-log" data-title="登录流水">登录流水</button>
@@ -624,12 +625,22 @@
                 <button type="button" class="btn-primary" id="btnIssue">生成</button>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；生成后请复制保存。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；子账号仅能查看自己生成的激活码，admin 可查看全部。</p>
         </section>
 
         <section>
             <h2>激活码列表</h2>
-            <button type="button" class="btn-primary" id="btnRefreshCodes" style="margin-bottom:12px;">刷新列表</button>
+            <div class="form-row" style="margin-bottom:12px;">
+                <div>
+                    <label for="codeOwnerAdminFilter">管理员账号</label>
+                    <input type="text" id="codeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:8px;">
+                    <button type="button" class="btn-primary" id="btnSearchCodes">查询</button>
+                    <button type="button" class="btn-page" id="btnResetCodesFilter">重置</button>
+                    <button type="button" class="btn-primary" id="btnRefreshCodes">刷新列表</button>
+                </div>
+            </div>
             <div class="scroll-x">
                 <table>
                     <thead>
@@ -637,6 +648,7 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
+                            <th>归属管理员</th>
                             <th>使用账号</th>
                             <th>使用时间</th>
                         </tr>
@@ -648,6 +660,51 @@
                 <button type="button" class="btn-page" id="codePrev">上一页</button>
                 <span id="codePageInfo">第 1 页</span>
                 <button type="button" class="btn-page" id="codeNext">下一页</button>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-admin-accounts" class="page-panel" role="tabpanel">
+        <section>
+            <h2>后台账号权限</h2>
+            <p class="hint">仅 admin 超级账号可见。可新增后台账号，并为该账号勾选可用菜单。非 admin 账号仅可看到自己被授权的菜单。</p>
+            <div class="form-row" style="align-items:flex-start;">
+                <div>
+                    <label>账号</label>
+                    <input type="text" id="adminAccUsername" placeholder="如 op01">
+                </div>
+                <div>
+                    <label>姓名</label>
+                    <input type="text" id="adminAccFullName" placeholder="如 张三">
+                </div>
+                <div>
+                    <label>密码</label>
+                    <input type="text" id="adminAccPassword" placeholder="4-128 位">
+                </div>
+                <div style="display:flex;align-items:flex-end;">
+                    <button type="button" class="btn-primary" id="btnCreateAdminAccount">新增账号</button>
+                </div>
+            </div>
+            <div style="margin:10px 0 8px;color:#666;">可用菜单</div>
+            <div id="adminAccountMenuSelector" class="form-row" style="align-items:center;gap:16px;"></div>
+        </section>
+        <section>
+            <h2>后台账号列表</h2>
+            <button type="button" class="btn-primary" id="btnRefreshAdminAccounts" style="margin-bottom:12px;">刷新列表</button>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>账号</th>
+                            <th>姓名</th>
+                            <th>权限</th>
+                            <th>菜单</th>
+                            <th>重置密码</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminAccountTbody"></tbody>
+                </table>
             </div>
         </section>
                 </div>
@@ -993,25 +1050,64 @@
             return esc(String(v));
         }
 
-        function buildTaxRecordsHtml(username, records) {
-            if (!records || !records.length) {
-                return '<div class="user-detail-wrap"><div class="user-detail-title">账号「' + esc(username) + '」个税记录</div><div style="color:#888;">暂无个税记录</div></div>';
-            }
+        function buildTaxRecordsHtml(username, payload) {
+            var records = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.records) ? payload.records : []);
+            var devices = payload && Array.isArray(payload.devices) ? payload.devices : [];
+            var pages = payload && Array.isArray(payload.recent_pages) ? payload.recent_pages : [];
             var html = '<div class="user-detail-wrap">';
-            html += '<div class="user-detail-title">账号「' + esc(username) + '」个税记录（' + records.length + ' 条）</div>';
-            html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>税款所属期</th><th>所得项目</th><th>所得小类</th><th>扣缴义务人</th><th>收入</th><th>已申报税额</th></tr></thead><tbody>';
-            records.forEach(function (r) {
-                var period = r.tax_period || ((r.year || '') + '-' + String(r.month || '').padStart(2, '0'));
-                html += '<tr>';
-                html += '<td>' + esc(period || '—') + '</td>';
-                html += '<td>' + esc(r.income_type || '—') + '</td>';
-                html += '<td>' + esc(r.income_subtype || '—') + '</td>';
-                html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
-                html += '<td>' + formatMoneyLike(r.income) + '</td>';
-                html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
-                html += '</tr>';
-            });
-            html += '</tbody></table></div></div>';
+            html += '<div class="user-detail-title">账号「' + esc(username) + '」详情</div>';
+            html += '<div style="margin:0 0 8px 0;color:#666;">登录机型设备（' + devices.length + ' 台）</div>';
+            if (!devices.length) {
+                html += '<div style="color:#999;margin-bottom:10px;">暂无设备记录</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>机型</th><th>系统</th><th>最近登录/同步</th></tr></thead><tbody>';
+                devices.forEach(function (d) {
+                    var model = d.model || d.user_agent_short || '—';
+                    var sys = [d.platform || '', d.os_version || ''].filter(Boolean).join(' ');
+                    var seen = d.last_seen ? formatDt(d.last_seen) : '—';
+                    var syncTxt = '登录' + (d.login_count || 0) + '次';
+                    html += '<tr>';
+                    html += '<td class="cell-break">' + esc(model) + '</td>';
+                    html += '<td>' + esc(sys || '—') + '</td>';
+                    html += '<td>' + esc(seen + ' / ' + syncTxt) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 8px 0;color:#666;">最近进入页面（去重，' + pages.length + ' 个）</div>';
+            if (!pages.length) {
+                html += '<div style="color:#999;margin-bottom:10px;">暂无页面点击记录</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>页面</th><th>最近进入时间</th></tr></thead><tbody>';
+                pages.forEach(function (p) {
+                    html += '<tr>';
+                    html += '<td class="cell-break">' + esc(p.page_path || '—') + '</td>';
+                    html += '<td>' + esc(p.last_entered_at ? formatDt(p.last_entered_at) : '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 8px 0;color:#666;">个税记录（' + records.length + ' 条）</div>';
+            if (!records.length) {
+                html += '<div style="color:#999;">暂无个税记录</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>税款所属期</th><th>所得项目</th><th>所得小类</th><th>扣缴义务人</th><th>收入</th><th>已申报税额</th></tr></thead><tbody>';
+                records.forEach(function (r) {
+                    var period = r.tax_period || ((r.year || '') + '-' + String(r.month || '').padStart(2, '0'));
+                    html += '<tr>';
+                    html += '<td>' + esc(period || '—') + '</td>';
+                    html += '<td>' + esc(r.income_type || '—') + '</td>';
+                    html += '<td>' + esc(r.income_subtype || '—') + '</td>';
+                    html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
+                    html += '<td>' + formatMoneyLike(r.income) + '</td>';
+                    html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+            html += '</div>';
             return html;
         }
 
@@ -1021,11 +1117,51 @@
         var codeLimit = 10;
         var loginRecentPage = 1;
         var loginRecentLimit = 20;
+        var currentAdminProfile = { username: '', full_name: '', is_super: false, menus: [] };
+        var adminMenuKeyList = [];
+        var _adminAccountsLoaded = false;
 
         var _adminUsersLoaded = false;
         var _adminCodesLoaded = false;
         var _adminAnalyticsSeen = false;
         var _adminApiAnalyticsSeen = false;
+
+        function adminHasMenu(menuKey) {
+            if (!menuKey) return false;
+            if (currentAdminProfile && currentAdminProfile.is_super) return true;
+            return !!(currentAdminProfile && Array.isArray(currentAdminProfile.menus) && currentAdminProfile.menus.indexOf(menuKey) >= 0);
+        }
+
+        function firstAllowedAdminPage() {
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'feedback', 'login-log', 'analytics', 'api-analytics'];
+            for (var i = 0; i < order.length; i++) {
+                if (adminHasMenu(order[i])) return order[i];
+            }
+            return 'settings';
+        }
+
+        function readAdminProfileCache() {
+            try {
+                var raw = localStorage.getItem('admin_profile');
+                if (!raw) return;
+                var parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return;
+                currentAdminProfile = {
+                    username: parsed.username ? String(parsed.username) : '',
+                    full_name: parsed.full_name ? String(parsed.full_name) : '',
+                    is_super: !!parsed.is_super,
+                    menus: Array.isArray(parsed.menus) ? parsed.menus.map(function (m) { return String(m); }) : []
+                };
+            } catch (e) {}
+        }
+
+        function applyMenuVisibility() {
+            document.querySelectorAll('.nav-item').forEach(function (btn) {
+                var key = btn.getAttribute('data-page');
+                var on = adminHasMenu(key);
+                btn.style.display = on ? '' : 'none';
+            });
+        }
 
         function normalizeAdminPage(raw) {
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
@@ -1036,13 +1172,17 @@
                 'install-guide': 1,
                 appearance: 1,
                 codes: 1,
+                'admin-accounts': 1,
                 users: 1,
                 feedback: 1,
                 analytics: 1,
                 'api-analytics': 1,
                 'login-log': 1
             };
-            return ok[k] ? k : 'settings';
+            if (!ok[k] || !adminHasMenu(k)) {
+                return firstAllowedAdminPage();
+            }
+            return k;
         }
 
         function applyAdminRoute() {
@@ -1065,6 +1205,10 @@
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
                 loadCodes(1);
+            }
+            if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
+                _adminAccountsLoaded = true;
+                loadAdminAccounts();
             }
             if (pageKey === 'analytics' && !_adminAnalyticsSeen) {
                 _adminAnalyticsSeen = true;
@@ -1514,13 +1658,10 @@
                         var loginCity = u.last_login_city
                             ? esc(u.last_login_city)
                             : '<span style="color:#999">—</span>';
-                        var typeBtn = u.is_test_account
-                            ? '<button type="button" class="btn-sm btn-unban btn-user-type" data-u="' + esc(u.username) + '" data-t="0">设为普通</button>'
-                            : '<button type="button" class="btn-sm btn-copy btn-user-type" data-u="' + esc(u.username) + '" data-t="1">设为测试</button>';
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
-                            : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>') + ' ' + typeBtn
+                            : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除账号</button>';
                         
@@ -1537,7 +1678,7 @@
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" style="display:none;">';
-                        html += '<td colspan="9"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载个税记录…</div></td>';
+                        html += '<td colspan="9"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
                     document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
@@ -1552,29 +1693,6 @@
                             adminFetch('api/admin/ban', {
                                 method: 'POST',
                                 body: JSON.stringify({ username: name, banned: b ? 1 : 0 })
-                            })
-                                .then(function (r) { return r.json(); })
-                                .then(function (d) {
-                                    if (d.code === 200) {
-                                        loadUsers();
-                                    } else {
-                                        alert(d.msg || '操作失败');
-                                    }
-                                })
-                                .catch(function () { alert('网络错误'); });
-                        };
-                    });
-                    document.getElementById('userTbody').querySelectorAll('.btn-user-type').forEach(function (btn) {
-                        btn.onclick = function () {
-                            var name = btn.getAttribute('data-u');
-                            var t = parseInt(btn.getAttribute('data-t'), 10);
-                            var tip = t === 1
-                                ? '将「' + name + '」设为测试账号？（水印等测试标识将生效；不会自动修改其任职受雇中的公司名称。）'
-                                : '将「' + name + '」设为普通账号？';
-                            if (!confirm(tip)) return;
-                            adminFetch('api/admin/user-type', {
-                                method: 'POST',
-                                body: JSON.stringify({ username: name, user_type: t })
                             })
                                 .then(function (r) { return r.json(); })
                                 .then(function (d) {
@@ -1630,8 +1748,7 @@
                                         box.textContent = d.msg || '加载失败';
                                         return;
                                     }
-                                    var records = d.data && Array.isArray(d.data.records) ? d.data.records : [];
-                                    box.innerHTML = buildTaxRecordsHtml(name, records);
+                                    box.innerHTML = buildTaxRecordsHtml(name, d.data || {});
                                     box.setAttribute('data-loaded', '1');
                                 })
                                 .catch(function () {
@@ -1647,7 +1764,14 @@
 
         function loadCodes(p) {
             if (p != null) codePage = p;
-            adminFetch('api/admin/codes?page=' + codePage + '&limit=' + codeLimit)
+            var ownerAdmin = '';
+            var ownerInput = document.getElementById('codeOwnerAdminFilter');
+            if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
+            var q = 'api/admin/codes?page=' + codePage + '&limit=' + codeLimit;
+            if (ownerAdmin) {
+                q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
+            }
+            adminFetch(q)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) return;
@@ -1665,6 +1789,10 @@
                             c.last_used_at && (Number(c.used_count) > 0)
                                 ? formatDt(c.last_used_at)
                                 : '—';
+                        var ownerAdmin =
+                            c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
+                                ? esc(String(c.owner_admin_username).trim())
+                                : '—';
                         var usedBy =
                             c.used_by_username && String(c.used_by_username).trim() !== ''
                                 ? esc(String(c.used_by_username).trim())
@@ -1673,13 +1801,117 @@
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                        html += '<td>' + ownerAdmin + '</td>';
                         html += '<td>' + usedBy + '</td>';
                         html += '<td>' + usedAt + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="5">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
+        }
+
+        var ADMIN_MENU_LABELS = {
+            settings: '系统设置',
+            'install-guide': '引导安装',
+            appearance: '用户端外观',
+            codes: '激活码',
+            users: '注册用户',
+            feedback: '用户反馈',
+            'login-log': '登录流水',
+            analytics: '数据统计',
+            'api-analytics': '接口统计',
+            'admin-accounts': '后台账号权限'
+        };
+
+        function menuLabel(key) {
+            return ADMIN_MENU_LABELS[key] || key;
+        }
+
+        function selectedMenusFromRoot(rootEl) {
+            if (!rootEl) return [];
+            var out = [];
+            rootEl.querySelectorAll('input[type="checkbox"][data-menu-key]').forEach(function (el) {
+                if (el.checked) out.push(String(el.getAttribute('data-menu-key') || ''));
+            });
+            return out.filter(Boolean);
+        }
+
+        function renderAdminMenuSelector(rootEl, selected) {
+            if (!rootEl) return;
+            var selectedMap = {};
+            (selected || []).forEach(function (k) { selectedMap[k] = true; });
+            var html = '';
+            adminMenuKeyList.forEach(function (k) {
+                html += '<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#444;">';
+                html += '<input type="checkbox" data-menu-key="' + esc(k) + '"' + (selectedMap[k] ? ' checked' : '') + '>';
+                html += '<span>' + esc(menuLabel(k)) + '</span>';
+                html += '</label>';
+            });
+            rootEl.innerHTML = html;
+        }
+
+        function loadAdminAccounts() {
+            if (!adminHasMenu('admin-accounts')) {
+                return;
+            }
+            adminFetch('api/admin/accounts')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        alert(data.msg || '加载后台账号失败');
+                        return;
+                    }
+                    adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
+                    renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), ['codes']);
+                    var list = Array.isArray(data.data.accounts) ? data.data.accounts : [];
+                    var html = '';
+                    list.forEach(function (a) {
+                        var isSuper = !!a.is_super;
+                        var menuText = isSuper ? '全部菜单（超级账号）' : (Array.isArray(a.menus) ? a.menus.map(menuLabel).join('、') : '—');
+                        html += '<tr>';
+                        html += '<td>' + esc(a.username) + '</td>';
+                        html += '<td>' + esc(a.full_name || '—') + '</td>';
+                        html += '<td>' + esc(isSuper ? 'admin(超级)' : '子账号') + '</td>';
+                        html += '<td class="cell-break">' + esc(menuText || '—') + '</td>';
+                        html += '<td>';
+                        if (!isSuper) {
+                            html += '<input type="text" class="admin-account-newpwd" data-username="' + esc(a.username) + '" placeholder="留空=不改">';
+                        } else {
+                            html += '—';
+                        }
+                        html += '</td>';
+                        html += '<td>';
+                        if (!isSuper) {
+                            html += '<button type="button" class="btn-sm btn-copy btn-admin-account-edit" data-username="' + esc(a.username) + '">改菜单</button> ';
+                            html += '<button type="button" class="btn-sm btn-ban btn-admin-account-del" data-username="' + esc(a.username) + '">删除</button>';
+                        } else {
+                            html += '—';
+                        }
+                        html += '</td>';
+                        html += '</tr>';
+                        if (!isSuper) {
+                            html += '<tr><td colspan="6">';
+                            html += '<div class="form-row" style="margin:0 0 6px;align-items:center;gap:8px;">';
+                            html += '<label style="font-size:12px;color:#666;">姓名</label>';
+                            html += '<input type="text" class="admin-account-fullname" data-username="' + esc(a.username) + '" value="' + esc(a.full_name || '') + '" placeholder="填写姓名">';
+                            html += '</div>';
+                            html += '<div class="form-row admin-account-menu-row" data-username="' + esc(a.username) + '" style="gap:12px;margin:0;padding:0 0 2px;">';
+                            adminMenuKeyList.forEach(function (mk) {
+                                var checked = a.menus && a.menus.indexOf(mk) >= 0;
+                                html += '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#555;">';
+                                html += '<input type="checkbox" data-menu-key="' + esc(mk) + '"' + (checked ? ' checked' : '') + '>';
+                                html += '<span>' + esc(menuLabel(mk)) + '</span>';
+                                html += '</label>';
+                            });
+                            html += '</div></td></tr>';
+                        }
+                    });
+                    document.getElementById('adminAccountTbody').innerHTML = html || '<tr><td colspan="6">暂无后台账号</td></tr>';
+                })
+                .catch(function () {
+                    alert('网络错误');
+                });
         }
 
         document.getElementById('userPrev').onclick = function() { if (userPage > 1) loadUsers(userPage - 1); };
@@ -1727,6 +1959,102 @@
         });
 
         document.getElementById('btnRefreshCodes').addEventListener('click', function() { loadCodes(1); });
+        document.getElementById('btnSearchCodes').addEventListener('click', function() { loadCodes(1); });
+        document.getElementById('btnResetCodesFilter').addEventListener('click', function () {
+            var input = document.getElementById('codeOwnerAdminFilter');
+            if (input) input.value = '';
+            loadCodes(1);
+        });
+
+        document.getElementById('btnRefreshAdminAccounts').addEventListener('click', function () {
+            loadAdminAccounts();
+        });
+        document.getElementById('btnCreateAdminAccount').addEventListener('click', function () {
+            var username = document.getElementById('adminAccUsername').value.trim();
+            var fullName = document.getElementById('adminAccFullName').value.trim();
+            var password = document.getElementById('adminAccPassword').value;
+            var menus = selectedMenusFromRoot(document.getElementById('adminAccountMenuSelector'));
+            if (!username || !password || !fullName) {
+                alert('请填写账号、姓名和密码');
+                return;
+            }
+            adminFetch('api/admin/accounts/create', {
+                method: 'POST',
+                body: JSON.stringify({ username: username, full_name: fullName, password: password, menus: menus })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.code === 200) {
+                        document.getElementById('adminAccUsername').value = '';
+                        document.getElementById('adminAccFullName').value = '';
+                        document.getElementById('adminAccPassword').value = '';
+                        loadAdminAccounts();
+                        alert('新增成功');
+                    } else {
+                        alert(j.msg || '新增失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                });
+        });
+
+        document.getElementById('adminAccountTbody').addEventListener('click', function (e) {
+            var editBtn = e.target.closest('.btn-admin-account-edit');
+            if (editBtn) {
+                var uname = editBtn.getAttribute('data-username');
+                var row = document.querySelector('.admin-account-menu-row[data-username="' + uname + '"]');
+                var pwdInput = document.querySelector('.admin-account-newpwd[data-username="' + uname + '"]');
+                var fullNameInput = document.querySelector('.admin-account-fullname[data-username="' + uname + '"]');
+                var menus = selectedMenusFromRoot(row);
+                var newPassword = pwdInput ? String(pwdInput.value || '') : '';
+                var fullName = fullNameInput ? String(fullNameInput.value || '').trim() : '';
+                adminFetch('api/admin/accounts/update', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: uname,
+                        full_name: fullName,
+                        menus: menus,
+                        password: newPassword
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.code === 200) {
+                            if (pwdInput) pwdInput.value = '';
+                            loadAdminAccounts();
+                            alert('已更新');
+                        } else {
+                            alert(j.msg || '更新失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+                return;
+            }
+            var delBtn = e.target.closest('.btn-admin-account-del');
+            if (delBtn) {
+                var uname2 = delBtn.getAttribute('data-username');
+                if (!confirm('确认删除后台账号「' + uname2 + '」吗？')) return;
+                adminFetch('api/admin/accounts/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ username: uname2 })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.code === 200) {
+                            loadAdminAccounts();
+                            alert('已删除');
+                        } else {
+                            alert(j.msg || '删除失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            }
+        });
 
         function loadAdminSettings() {
             adminFetch('api/admin/settings')
@@ -2085,6 +2413,38 @@
         });
         document.getElementById('btnLoadDevices').addEventListener('click', loadAnalyticsDevices);
 
+        function initAdminSession() {
+            readAdminProfileCache();
+            applyMenuVisibility();
+            if (!location.hash || location.hash === '#') {
+                history.replaceState(null, '', '#' + firstAllowedAdminPage());
+            }
+            applyAdminRoute();
+            adminFetch('api/admin/me')
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data || !j.data.admin) {
+                        return;
+                    }
+                    var a = j.data.admin;
+                    currentAdminProfile = {
+                        username: a.username ? String(a.username) : '',
+                        full_name: a.full_name ? String(a.full_name) : '',
+                        is_super: !!a.is_super,
+                        menus: Array.isArray(a.menus) ? a.menus.map(function (m) { return String(m); }) : []
+                    };
+                    localStorage.setItem('admin_profile', JSON.stringify(currentAdminProfile));
+                    applyMenuVisibility();
+                    var normalized = normalizeAdminPage(location.hash);
+                    if (location.hash !== '#' + normalized) {
+                        location.hash = normalized;
+                        return;
+                    }
+                    applyAdminRoute();
+                })
+                .catch(function () {});
+        }
+
         document.querySelectorAll('.nav-item').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var p = btn.getAttribute('data-page');
@@ -2094,10 +2454,7 @@
             });
         });
         window.addEventListener('hashchange', applyAdminRoute);
-        if (!location.hash || location.hash === '#') {
-            history.replaceState(null, '', '#settings');
-        }
-        applyAdminRoute();
+        initAdminSession();
     </script>
 </body>
 </html>
