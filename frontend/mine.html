@@ -707,6 +707,21 @@
                 if (root) root.classList.remove('is-open');
             }
 
+            function installLegacyActivatePromptShim() {
+                if (window.__mineActivatePromptShimInstalled) return;
+                if (typeof window.prompt !== 'function') return;
+                var nativePrompt = window.prompt.bind(window);
+                window.__mineActivatePromptShimInstalled = true;
+                window.prompt = function (message, defaultValue) {
+                    var msg = String(message || '');
+                    if (msg.indexOf('激活码') !== -1) {
+                        openMineActivateModal();
+                        return null;
+                    }
+                    return nativePrompt(message, defaultValue);
+                };
+            }
+
             function loadUserInfo() {
                 var nameEl = document.getElementById('mineDisplayName');
                 var taxEl = document.getElementById('userTaxIdText');
@@ -796,6 +811,7 @@
 
             loadUserInfo();
             fetchMineXianyuUrl();
+            installLegacyActivatePromptShim();
 
             document.getElementById('consultModifyLink').addEventListener('click', function (e) {
                 e.preventDefault();
