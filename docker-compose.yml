@@ -38,7 +38,7 @@ services:
       ADMIN_PANEL_USER: ${ADMIN_PANEL_USER:-admin}
       ADMIN_PANEL_PASSWORD: ${ADMIN_PANEL_PASSWORD:-640810}
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -53,7 +53,8 @@ services:
       context: ./frontend
     container_name: frontend-container
     ports:
-      - "80:80"
+      # 显式绑定到所有网卡；若写成 127.0.0.1:80:80 则外网访问会 connection refused
+      - "0.0.0.0:80:80"
     depends_on:
       - backend
     volumes:
