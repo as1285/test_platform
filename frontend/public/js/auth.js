@@ -383,15 +383,59 @@
     return s.substring(0, 80);
   }
 
+  /** 不得进入埋点路径 / track_jump 键名的查询参数（避免账号、手机号等进入聚合键） */
+  var TRACK_QUERY_PARAM_DENY =
+    /^(user_id|userid|username|phone|mobile|tel|token|access_token|refresh_token|authorization|pwd|password|secret|code_challenge)$/i;
+
+  function stripSensitiveSearchParams(searchParams) {
+    if (!searchParams || typeof searchParams.forEach !== 'function') return '';
+    var pairs = [];
+    try {
+      searchParams.forEach(function (value, key) {
+        if (TRACK_QUERY_PARAM_DENY.test(String(key))) return;
+        var v = String(value == null ? '' : value).trim();
+        if (!v) return;
+        pairs.push({ k: String(key), v: v });
+      });
+    } catch (e) {}
+    if (!pairs.length) return '';
+    pairs.sort(function (a, b) {
+      return String(a.k).localeCompare(String(b.k));
+    });
+    return (
+      '?' +
+      pairs
+        .map(function (p) {
+          return encodeURIComponent(p.k) + '=' + encodeURIComponent(p.v);
+        })
+        .join('&')
+    );
+  }
+
   function normalizeTrackPath(raw) {
     var s = String(raw || '').trim();
     if (!s) return '';
+    var base = '';
     try {
-      if (/^https?:\/\//i.test(s)) {
-        var u = new URL(s);
-        s = u.pathname || '';
-      }
-    } catch (e) {}
+      base =
+        typeof window !== 'undefined' && window.location && window.location.href
+          ? window.location.href
+          : 'http://localhost/';
+    } catch (e0) {
+      base = 'http://localhost/';
+    }
+    try {
+      var u = /^https?:\/\//i.test(s) ? new URL(s) : new URL(s, base);
+      var path = u.pathname || '';
+      s = path + stripSensitiveSearchParams(u.searchParams);
+    } catch (e) {
+      var qi = s.indexOf('?');
+      var hi = s.indexOf('#');
+      var cut = s.length;
+      if (hi >= 0) cut = Math.min(cut, hi);
+      if (qi >= 0) cut = Math.min(cut, qi);
+      s = s.substring(0, cut);
+    }
     if (!s) return '';
     if (s.charAt(0) !== '/') s = '/' + s;
     s = s.replace(/\/+/g, '/');
