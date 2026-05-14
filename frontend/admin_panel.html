@@ -1201,6 +1201,7 @@
             var records = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.records) ? payload.records : []);
             var devices = payload && Array.isArray(payload.devices) ? payload.devices : [];
             var pages = payload && Array.isArray(payload.recent_pages) ? payload.recent_pages : [];
+            var issues = payload && Array.isArray(payload.issue_applications) ? payload.issue_applications : [];
             var html = '<div class="user-detail-wrap">';
             html += '<div class="user-detail-title">账号「' + esc(username) + '」详情</div>';
             html += '<div style="margin:0 0 8px 0;color:#666;">登录机型设备（' + devices.length + ' 台）</div>';
@@ -1233,6 +1234,26 @@
                     html += '<tr>';
                     html += '<td class="cell-break">' + esc(p.page_path || '—') + '</td>';
                     html += '<td>' + esc(p.last_entered_at ? formatDt(p.last_entered_at) : '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 8px 0;color:#666;">纳税记录开具申请（' + issues.length + ' 条）</div>';
+            if (!issues.length) {
+                html += '<div style="color:#999;margin-bottom:10px;">暂无申请记录（用户端生成成功后会自动上报）</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>申请时间</th><th>税款所属期</th><th>开具范围</th><th>状态</th><th>记录号</th><th>查询码</th><th>上报时间</th></tr></thead><tbody>';
+                issues.forEach(function (it) {
+                    var period = (it.period_start || '—') + ' 至 ' + (it.period_end || '—');
+                    html += '<tr>';
+                    html += '<td>' + esc(it.apply_time || '—') + '</td>';
+                    html += '<td>' + esc(period) + '</td>';
+                    html += '<td>' + esc(it.scope || '—') + '</td>';
+                    html += '<td>' + esc(it.status || '—') + '</td>';
+                    html += '<td>' + esc(it.record_no || '—') + '</td>';
+                    html += '<td class="cell-break"><code>' + esc(it.query_code || '—') + '</code></td>';
+                    html += '<td>' + esc(it.created_at ? formatDt(it.created_at) : '—') + '</td>';
                     html += '</tr>';
                 });
                 html += '</tbody></table></div>';

@@ -82,6 +82,33 @@
     } catch (e) {}
   }
 
+  function pushIssueToServer(app) {
+    if (typeof window.authFetch !== 'function' || !app) return;
+    var body = {
+      action: 'log_issue_application',
+      application: {
+        id: String(app.id || '').substring(0, 128),
+        apply_time: String(app.apply_time || '').substring(0, 64),
+        period_start: String(app.period_start || '').substring(0, 16),
+        period_end: String(app.period_end || '').substring(0, 16),
+        record_no: String(app.record_no || '').substring(0, 32),
+        scope: String(app.scope != null ? app.scope : '全国').substring(0, 64),
+        status: String(app.status != null ? app.status : '制作成功').substring(0, 64),
+        query_code: String(app.query_code || '').substring(0, 32)
+      }
+    };
+    window
+      .authFetch('api/tax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(function (r) {
+        return r.json();
+      })
+      .catch(function () {});
+  }
+
   function maskId(id) {
     id = String(id || '');
     if (!id) return '--';
@@ -490,6 +517,7 @@
           var apps = loadApplications();
           apps.unshift(app);
           saveApplications(apps);
+          pushIssueToServer(app);
           window.location.href = 'najilu.html?view=records';
         })
         .catch(function (err) {
@@ -812,6 +840,7 @@
       if (String(apps[i].id) === String(app.id)) {
         apps[i] = app;
         saveApplications(apps);
+        pushIssueToServer(app);
         return;
       }
     }

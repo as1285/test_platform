@@ -72,6 +72,23 @@ CREATE TABLE IF NOT EXISTS tax_records (
     INDEX idx_year_month (year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 纳税记录开具申请（前端 najilu 同步上报，管理后台用户详情展示）
+CREATE TABLE IF NOT EXISTS tax_issue_applications (
+    id VARCHAR(128) NOT NULL,
+    user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+    apply_time VARCHAR(64) NULL COMMENT '客户端展示的申请时间',
+    period_start VARCHAR(16) NOT NULL,
+    period_end VARCHAR(16) NOT NULL,
+    record_no VARCHAR(32) NULL,
+    scope VARCHAR(64) NULL,
+    status VARCHAR(64) NULL,
+    query_code VARCHAR(32) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_issue_user_created (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 消息表（个人中心消息管理）
 CREATE TABLE IF NOT EXISTS messages (
     id VARCHAR(255) PRIMARY KEY,

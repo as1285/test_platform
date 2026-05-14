@@ -562,6 +562,24 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS tax_issue_applications (
+      id VARCHAR(128) NOT NULL,
+      user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+      apply_time VARCHAR(64) NULL COMMENT '客户端展示的申请时间',
+      period_start VARCHAR(16) NOT NULL,
+      period_end VARCHAR(16) NOT NULL,
+      record_no VARCHAR(32) NULL,
+      scope VARCHAR(64) NULL,
+      status VARCHAR(64) NULL,
+      query_code VARCHAR(32) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      INDEX idx_issue_user_created (user_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS messages (
       id VARCHAR(255) PRIMARY KEY,
       user_id VARCHAR(255) NOT NULL,
@@ -2784,6 +2802,52 @@ async function handleTaxPost(req, res) {
       await deleteAllRecords(userId);
       return res.json({ code: 200, data: {} });
     }
+    if (action === 'log_issue_application') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var appIn = body.application;
+      if (!appIn || typeof appIn !== 'object') {
+        return res.status(400).json({ code: 400, msg: 'application required' });
+      }
+      var issueId = String(appIn.id != null ? appIn.id : '').trim().substring(0, 128);
+      if (!issueId) {
+        return res.status(400).json({ code: 400, msg: 'application.id required' });
+      }
+      var ps = String(appIn.period_start != null ? appIn.period_start : '').trim().substring(0, 16);
+      var pe = String(appIn.period_end != null ? appIn.period_end : '').trim().substring(0, 16);
+      if (!ps || !pe) {
+        return res.status(400).json({ code: 400, msg: 'application.period_start / period_end required' });
+      }
+      var applyTime = String(appIn.apply_time != null ? appIn.apply_time : '').trim().substring(0, 64);
+      var recordNo = String(appIn.record_no != null ? appIn.record_no : '').trim().substring(0, 32);
+      var scope = String(appIn.scope != null ? appIn.scope : '全国').trim().substring(0, 64) || '全国';
+      var status = String(appIn.status != null ? appIn.status : '制作成功').trim().substring(0, 64) || '制作成功';
+      var queryCode = String(appIn.query_code != null ? appIn.query_code : '').trim().substring(0, 32);
+      const connIssue = await pool.getConnection();
+      try {
+        const [existRows] = await connIssue.execute('SELECT user_id FROM tax_issue_applications WHERE id = ?', [issueId]);
+        if (existRows.length && String(existRows[0].user_id) !== String(userId)) {
+          return res.status(403).json({ code: 403, msg: '无权写入该申请' });
+        }
+        if (existRows.length) {
+          await connIssue.execute(
+            `UPDATE tax_issue_applications SET apply_time = ?, period_start = ?, period_end = ?, record_no = ?, scope = ?, status = ?, query_code = ?
+             WHERE id = ? AND user_id = ?`,
+            [applyTime, ps, pe, recordNo, scope, status, queryCode, issueId, String(userId)]
+          );
+        } else {
+          await connIssue.execute(
+            `INSERT INTO tax_issue_applications (id, user_id, apply_time, period_start, period_end, record_no, scope, status, query_code)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [issueId, String(userId), applyTime, ps, pe, recordNo, scope, status, queryCode]
+          );
+        }
+        return res.json({ code: 200, data: { id: issueId } });
+      } finally {
+        connIssue.release();
+      }
+    }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
     console.error(e);
@@ -3650,6 +3714,14 @@ async function handleAdminUserTaxRecords(req, res) {
          LIMIT 120`,
         [username]
       );
+      const [issueRows] = await conn.execute(
+        `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at, updated_at
+         FROM tax_issue_applications
+         WHERE user_id = ?
+         ORDER BY created_at DESC
+         LIMIT 80`,
+        [username]
+      );
       var out = rows.map(function (r) {
         return {
           id: r.id,
@@ -3701,7 +3773,24 @@ async function handleAdminUserTaxRecords(req, res) {
           last_entered_at: r.last_entered_at ? r.last_entered_at.toISOString() : ''
         };
       });
-      return res.json({ code: 200, data: { records: out, devices: devOut, recent_pages: pageOut } });
+      var issueOut = issueRows.map(function (r) {
+        return {
+          id: r.id != null ? String(r.id) : '',
+          apply_time: r.apply_time != null ? String(r.apply_time) : '',
+          period_start: r.period_start != null ? String(r.period_start) : '',
+          period_end: r.period_end != null ? String(r.period_end) : '',
+          record_no: r.record_no != null ? String(r.record_no) : '',
+          scope: r.scope != null ? String(r.scope) : '',
+          status: r.status != null ? String(r.status) : '',
+          query_code: r.query_code != null ? String(r.query_code) : '',
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          updated_at: r.updated_at ? r.updated_at.toISOString() : ''
+        };
+      });
+      return res.json({
+        code: 200,
+        data: { records: out, devices: devOut, recent_pages: pageOut, issue_applications: issueOut }
+      });
     } finally {
       conn.release();
     }
@@ -3735,6 +3824,7 @@ async function handleAdminDeleteUser(req, res) {
     }
     await conn.beginTransaction();
     await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [target]);
+    await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [target]);
     await conn.execute('DELETE FROM employers WHERE user_id = ?', [target]);
     await conn.execute('DELETE FROM messages WHERE user_id = ?', [target]);
     await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [target]);
