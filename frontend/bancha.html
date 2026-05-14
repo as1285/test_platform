@@ -101,6 +101,41 @@
             outline: none;
             background: transparent;
         }
+
+        /* 办税切片 bs.jpg：上分「综合所得年度汇算」、中块「专项附加扣除」分热区 */
+        .bancha-bs-wrap {
+            position: relative;
+            display: block;
+            line-height: 0;
+        }
+        .bancha-bs-wrap > img {
+            width: 100%;
+            display: block;
+            border-radius: 16px 16px 0 0;
+        }
+        .bancha-bs-wrap a {
+            position: absolute;
+            z-index: 6;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            outline: none;
+            background: transparent;
+        }
+        /* 综合卡片在图上偏上，专项卡片在其下；原 44% 过高会把专项整块压在「综合」热区下导致误跳 zonghe.html */
+        .bancha-bs-hot-zonghe {
+            left: 2%;
+            right: 2%;
+            top: 0%;
+            height: 32%;
+            z-index: 6;
+        }
+        .bancha-bs-hot-zxk {
+            left: 2%;
+            right: 2%;
+            top: 31%;
+            height: 42%;
+            z-index: 7;
+        }
         
     </style>
     <link rel="stylesheet" href="css/nav.css">
@@ -112,9 +147,11 @@
             <img id="assetBanchaHeader" src="db.jpg" alt="办&查" style="width: 100%; display: block;">
         </div>
         <div class="bancha-content">
-            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
-                <img src="bs.jpg" alt="办税" style="border-radius: 16px 16px 0 0;">
-            </a>
+            <div class="bancha-bs-wrap">
+                <img src="bs.jpg" alt="办税">
+                <a href="zonghe.html" class="bancha-bs-hot-zonghe" aria-label="综合所得年度汇算"></a>
+                <a href="zxkouchu.html" class="bancha-bs-hot-zxk" aria-label="专项附加扣除"></a>
+            </div>
             <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
                 <img src="cx.jpg" alt="查询">
             </a>

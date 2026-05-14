@@ -31,6 +31,7 @@ COPY admin_login.html /usr/share/nginx/html/
 COPY admin_panel.html /usr/share/nginx/html/
 COPY profile.html /usr/share/nginx/html/
 COPY zonghe.html /usr/share/nginx/html/
+COPY zxkouchu.html /usr/share/nginx/html/
 COPY najilu.html /usr/share/nginx/html/
 COPY renzhi.html /usr/share/nginx/html/
 COPY renzhi_detail.html /usr/share/nginx/html/

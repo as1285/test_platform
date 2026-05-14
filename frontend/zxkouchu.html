@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260513-track-no-userid"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>专项附加扣除</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .header-title { font-size: 17px; font-weight: 600; color: #333; }
+        .notice {
+            margin: 12px 16px 0;
+            padding: 10px 12px;
+            background: #e8f4ff;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+        }
+        .notice svg { flex-shrink: 0; margin-top: 2px; }
+        .grid-wrap {
+            background: #fff;
+            margin-top: 12px;
+            padding: 20px 12px 24px;
+        }
+        .zxk-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px 8px;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .zxk-item {
+            border: none;
+            background: transparent;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+        }
+        .zxk-item:active { opacity: 0.85; }
+        .zxk-item .icon-wrap {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zxk-item .label {
+            font-size: 13px;
+            color: #333;
+            text-align: center;
+            line-height: 1.35;
+        }
+        .zxk-item:nth-child(7) { grid-column: 1; }
+        .records {
+            margin-top: 8px;
+            background: #fff;
+            border-top: 8px solid #f5f6fa;
+            padding: 16px 16px 32px;
+        }
+        .records-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .records-title { font-size: 16px; font-weight: 600; color: #333; }
+        .year-btn {
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: inherit;
+            padding: 4px 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .records-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 40px;
+        }
+        .records-empty svg { width: 220px; height: 140px; margin-bottom: 16px; }
+        .records-empty p { font-size: 15px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="bancha.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">专项附加扣除</span>
+    </div>
+    <div class="notice">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#1e6fff" d="M12 3C8.5 3 5.5 5.2 4.3 8.3c-.2.5 0 1 .4 1.3l2.5 1.7v3.2c0 .6.4 1 1 1h3.6c.6 0 1-.4 1-1v-3.2l2.5-1.7c.4-.3.6-.8.4-1.3C18.5 5.2 15.5 3 12 3zm-1 16c0 .6.4 1 1 1s1-.4 1-1-.4-1-1-1-1 .4-1 1z"/>
+        </svg>
+        <span>按照规定，专项附加扣除信息需每年提交一次。</span>
+    </div>
+    <div class="grid-wrap">
+        <div class="zxk-grid">
+            <button type="button" class="zxk-item" aria-label="子女教育">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <rect x="8" y="14" width="14" height="28" rx="2" fill="#4a9eff"/>
+                        <rect x="19" y="10" width="14" height="32" rx="2" fill="#5eb8ff"/>
+                        <rect x="30" y="16" width="14" height="26" rx="2" fill="#7ec8ff"/>
+                        <line x1="12" y1="22" x2="18" y2="22" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
+                        <line x1="23" y1="18" x2="29" y2="18" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
+                    </svg>
+                </span>
+                <span class="label">子女教育</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="继续教育">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <path d="M26 8L8 16v8c0 8 7.5 14 18 18 10.5-4 18-10 18-18v-8L26 8z" fill="#7ec8ff"/>
+                        <ellipse cx="26" cy="16" rx="18" ry="6" fill="#5eb8ff"/>
+                        <rect x="20" y="22" width="12" height="3" rx="1" fill="#fff" opacity="0.85"/>
+                    </svg>
+                </span>
+                <span class="label">继续教育</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="大病医疗">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <rect x="12" y="14" width="28" height="24" rx="3" fill="#f0f4f8" stroke="#cfd8e6"/>
+                        <rect x="22" y="20" width="8" height="8" rx="1" fill="#e53935"/>
+                        <path d="M24 22h4v4h-4z" fill="#fff"/>
+                    </svg>
+                </span>
+                <span class="label">大病医疗</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="住房贷款利息">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <path d="M26 12L10 24v14h32V24L26 12z" fill="#9b7aff"/>
+                        <text x="26" y="34" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">¥</text>
+                    </svg>
+                </span>
+                <span class="label">住房贷款利息</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="住房租金">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <path d="M26 12L10 24v14h32V24L26 12z" fill="#b39dff"/>
+                        <circle cx="26" cy="28" r="4" fill="none" stroke="#fff" stroke-width="2"/>
+                        <path d="M26 32v6" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                </span>
+                <span class="label">住房租金</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="赡养老人">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <circle cx="26" cy="18" r="8" fill="#ffb74d"/>
+                        <path d="M14 44c0-8 5.4-14 12-14s12 6 12 14H14z" fill="#ff9800"/>
+                    </svg>
+                </span>
+                <span class="label">赡养老人</span>
+            </button>
+            <button type="button" class="zxk-item" aria-label="3岁以下婴幼儿照护">
+                <span class="icon-wrap">
+                    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+                        <circle cx="22" cy="16" r="6" fill="#f48fb1"/>
+                        <circle cx="32" cy="20" r="5" fill="#fce4ec" stroke="#f48fb1"/>
+                        <path d="M12 40c2-8 8-12 16-12s14 4 16 12H12z" fill="#ec407a" opacity="0.85"/>
+                    </svg>
+                </span>
+                <span class="label">3岁以下婴幼儿照护</span>
+            </button>
+        </div>
+    </div>
+    <section class="records">
+        <div class="records-head">
+            <span class="records-title">填报记录</span>
+            <button type="button" class="year-btn" aria-label="选择查询年度">
+                选择查询年度：2026
+                <span aria-hidden="true">▼</span>
+            </button>
+        </div>
+        <div class="records-empty">
+            <svg viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="60" y="20" width="100" height="90" rx="6" fill="#e3f2fd" stroke="#90caf9" stroke-width="1.5"/>
+                <line x1="75" y1="38" x2="145" y2="38" stroke="#fff" stroke-width="3"/>
+                <line x1="75" y1="52" x2="135" y2="52" stroke="#fff" stroke-width="3"/>
+                <line x1="75" y1="66" x2="125" y2="66" stroke="#fff" stroke-width="3"/>
+                <polygon points="20,100 50,55 80,100" fill="#bbdefb" opacity="0.9"/>
+                <polygon points="140,100 170,60 200,100" fill="#bbdefb" opacity="0.9"/>
+                <polygon points="100,118 130,75 160,118" fill="#90caf9" opacity="0.7"/>
+            </svg>
+            <p>暂无扣除信息</p>
+        </div>
+    </section>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

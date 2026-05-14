@@ -7,13 +7,18 @@
     <title>其他身份证件</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { overflow-x: hidden; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f5f6fa;
+            background: #fff;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom, 0);
         }
         .header {
+            flex-shrink: 0;
             background: #fff;
             padding: 14px 16px;
             display: flex;
@@ -34,9 +39,54 @@
             align-items: center;
             gap: 2px;
             -webkit-tap-highlight-color: transparent;
+            outline: none;
         }
         .header-title { font-size: 17px; font-weight: 500; color: #333; }
-        .placeholder { padding: 48px 24px; text-align: center; color: #999; font-size: 15px; }
+        .notice {
+            flex-shrink: 0;
+            margin: 12px 16px 0;
+            padding: 12px 14px;
+            background: #eef5ff;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.55;
+            color: #555;
+        }
+        .notice strong { color: #333; font-weight: 600; }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px 100px;
+            min-height: 0;
+        }
+        .empty-illus { width: 200px; height: 160px; margin-bottom: 20px; }
+        .empty-text { font-size: 15px; color: #888; }
+        .footer {
+            flex-shrink: 0;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+            background: #fff;
+            box-shadow: 0 -1px 0 #f0f0f0;
+        }
+        .btn-add {
+            display: block;
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-add:active { opacity: 0.92; }
     </style>
 </head>
 <body>
@@ -47,7 +97,34 @@
         </a>
         <span class="header-title">其他身份证件</span>
     </div>
-    <div class="placeholder">暂无更多内容</div>
+    <div class="notice">
+        <strong>温馨提示：</strong>您可使用已添加的其他身份证件办理“纳税记录开具”“添加银行卡”等业务，但不支持用于登录，若您需要使用其他身份证件登录，请前往税务大厅办理。
+    </div>
+    <div class="main">
+        <svg class="empty-illus" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+                <filter id="s" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+                </filter>
+                <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#5b8cff"/>
+                    <stop offset="100%" stop-color="#8b6cff"/>
+                </linearGradient>
+            </defs>
+            <rect x="28" y="38" width="118" height="86" rx="8" fill="#f0f4fa" stroke="#dde4ee" stroke-width="1.5"/>
+            <rect x="54" y="22" width="118" height="86" rx="8" fill="#fff" stroke="#cfd8e6" stroke-width="1.5" filter="url(#s)"/>
+            <rect x="68" y="38" width="36" height="36" rx="6" fill="url(#g)"/>
+            <circle cx="86" cy="54" r="10" fill="#fff" opacity="0.95"/>
+            <path d="M86 50c-3 0-5 2-5 5v2h10v-2c0-3-2-5-5-5z" fill="url(#g)" opacity="0.35"/>
+            <rect x="112" y="42" width="48" height="6" rx="2" fill="#e8ecf2"/>
+            <rect x="112" y="54" width="40" height="6" rx="2" fill="#e8ecf2"/>
+            <rect x="112" y="66" width="52" height="6" rx="2" fill="#e8ecf2"/>
+        </svg>
+        <p class="empty-text">当前没有信息</p>
+    </div>
+    <div class="footer">
+        <button type="button" class="btn-add">添加</button>
+    </div>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

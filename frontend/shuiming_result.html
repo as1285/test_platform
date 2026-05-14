@@ -2,6 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+            } catch (e) {}
+        })();
+    </script>
     <script src="/js/auth.js?v=20260513-track-no-userid"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
@@ -184,6 +192,13 @@
             min-width: 5.5em;
         }
 
+        /* Android：Roboto 对中段字重易合成偏粗，汇总金额略降为 400 以接近 iOS/SF 观感；未加 class 的 iOS 等保持 490 */
+        html.platform-android .summary-value {
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.015em;
+        }
+
         /* 列表按参考稿固定避开顶部导航和汇总区 */
         .list {
             margin-top: calc(var(--safe-top) + var(--header-height));
@@ -224,6 +239,12 @@
             font-size: 16px;
             font-weight: 500;
             color: #333;
+        }
+
+        /* Android：列表主标题（工资薪金等）Roboto 500 偏厚，略降为 400 与右侧日期粗细更协调 */
+        html.platform-android .list-title {
+            font-weight: 400;
+            font-synthesis: none;
         }
 
         .list-date {
