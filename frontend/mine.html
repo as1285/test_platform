@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-track-no-userid"></script>
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -278,6 +278,33 @@
             opacity: 0.92;
         }
 
+        /* 家庭成员 / 银行卡：主区进列表，底部小按钮在无数据时直达添加页 */
+        .function-card--split {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .function-card--split .function-card-hit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            flex: 1;
+            min-height: 0;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .function-card--split .function-card-hit:active {
+            opacity: 0.92;
+        }
+        .function-card--split .function-btn {
+            margin-top: 2px;
+            align-self: center;
+            text-decoration: none;
+        }
+
         .function-icon {
             width: 44px;
             height: 44px;
@@ -427,13 +454,15 @@
         </div>
 
         <div class="function-cards">
-            <a class="function-card" href="xiangqing.html">
-                <div class="function-icon">
-                    <img id="mineIconFamily" src="jtcy.jpg" alt="">
-                </div>
-                <div class="function-title">家庭成员</div>
-                <span class="function-btn orange" id="familyCount" role="text">添加</span>
-            </a>
+            <div class="function-card function-card--split">
+                <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
+                    <div class="function-icon">
+                        <img id="mineIconFamily" src="jtcy.jpg" alt="">
+                    </div>
+                    <div class="function-title">家庭成员</div>
+                </a>
+                <a href="jtcy_add.html" class="function-btn orange" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount" role="text">添加</span></a>
+            </div>
             <a class="function-card" href="renzhi.html">
                 <div class="function-icon">
                     <img id="mineIconEmployer" src="rzsp.jpg" alt="">
@@ -441,18 +470,20 @@
                 <div class="function-title">任职受雇</div>
                 <span class="function-btn orange" id="employerCount" role="text">暂无</span>
             </a>
-            <a class="function-card" href="#">
-                <div class="function-icon">
-                    <img id="mineIconBank" src="yhk.jpg" alt="">
-                </div>
-                <div class="function-title">银行卡</div>
-                <span class="function-btn orange" id="bankCardCount" role="text">添加</span>
-            </a>
+            <div class="function-card function-card--split">
+                <a href="yhk.html" class="function-card-hit" aria-label="银行卡">
+                    <div class="function-icon">
+                        <img id="mineIconBank" src="yhk.jpg" alt="">
+                    </div>
+                    <div class="function-title">银行卡</div>
+                </a>
+                <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
+            </div>
         </div>
 
         <div class="menu-list">
             <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow">&gt;</span></a>
-            <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="consult.html?tab=feedback" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="install_guide.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow">&gt;</span></a>
@@ -543,7 +574,9 @@
             function setCounts(user) {
                 var employerBtn = document.getElementById('employerCount');
                 var familyBtn = document.getElementById('familyCount');
+                var familyWrap = document.getElementById('familyCountWrap');
                 var bankBtn = document.getElementById('bankCardCount');
+                var bankWrap = document.getElementById('bankCardAddWrap');
                 var ec = user && user.employer_count != null ? Number(user.employer_count) : NaN;
                 var fc = user && user.family_count != null ? Number(user.family_count) : NaN;
                 var bc = user && user.bank_card_count != null ? Number(user.bank_card_count) : NaN;
@@ -557,22 +590,30 @@
                         employerBtn.className = 'function-btn orange';
                     }
                 }
-                if (familyBtn) {
+                if (familyBtn && familyWrap) {
                     if (user && !isNaN(fc) && fc > 0) {
                         familyBtn.textContent = fc + '人';
-                        familyBtn.className = 'function-btn blue';
+                        familyWrap.className = 'function-btn blue';
+                        familyWrap.setAttribute('href', 'jtcy.html');
+                        familyWrap.setAttribute('aria-label', '家庭成员');
                     } else {
                         familyBtn.textContent = '添加';
-                        familyBtn.className = 'function-btn orange';
+                        familyWrap.className = 'function-btn orange';
+                        familyWrap.setAttribute('href', 'jtcy_add.html');
+                        familyWrap.setAttribute('aria-label', '添加家庭成员');
                     }
                 }
-                if (bankBtn) {
+                if (bankBtn && bankWrap) {
                     if (user && !isNaN(bc) && bc > 0) {
                         bankBtn.textContent = bc + '张';
-                        bankBtn.className = 'function-btn blue';
+                        bankWrap.className = 'function-btn blue';
+                        bankWrap.setAttribute('href', 'yhk.html');
+                        bankWrap.setAttribute('aria-label', '银行卡');
                     } else {
                         bankBtn.textContent = '添加';
-                        bankBtn.className = 'function-btn orange';
+                        bankWrap.className = 'function-btn orange';
+                        bankWrap.setAttribute('href', 'yhk_add.html');
+                        bankWrap.setAttribute('aria-label', '添加银行卡');
                     }
                 }
             }

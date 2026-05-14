@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>安全中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .profile {
+            background: #fff;
+            padding: 24px 16px 20px;
+            text-align: center;
+            border-bottom: 8px solid #f5f6fa;
+        }
+        .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            margin: 0 auto 12px;
+        }
+        .masked-phone {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+        }
+        html.platform-android .masked-phone { font-weight: 400; font-synthesis: none; }
+        .list-wrap {
+            background: #fff;
+        }
+        .list-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            min-height: 50px;
+            border-bottom: 1px solid #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            font-size: 16px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .list-row:last-child { border-bottom: none; }
+        .list-row:active { background: #fafafa; }
+        .list-row .arrow { color: #ccc; font-size: 14px; margin-left: 8px; }
+        .list-row-toggle {
+            border-bottom: none;
+            padding-bottom: 10px;
+        }
+        .list-hint {
+            padding: 0 16px 14px;
+            font-size: 12px;
+            color: #999;
+            line-height: 1.5;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .switch {
+            flex-shrink: 0;
+        }
+        .switch label {
+            position: relative;
+            display: block;
+            width: 51px;
+            height: 31px;
+            cursor: pointer;
+        }
+        .switch input {
+            position: absolute;
+            opacity: 0;
+            width: 51px;
+            height: 31px;
+            margin: 0;
+            z-index: 2;
+            cursor: pointer;
+        }
+        .switch-inner {
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            background: #e5e5ea;
+            transition: background 0.2s;
+        }
+        .switch-thumb {
+            position: absolute;
+            width: 27px;
+            height: 27px;
+            left: 2px;
+            top: 2px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+            pointer-events: none;
+        }
+        .switch input:checked ~ .switch-inner {
+            background: #34c759;
+        }
+        .switch input:checked ~ .switch-thumb {
+            transform: translateX(20px);
+        }
+        .switch input:focus-visible ~ .switch-inner {
+            outline: 2px solid #1e6fff;
+            outline-offset: 2px;
+        }
+        .switch.switch-blue input:checked ~ .switch-inner {
+            background: #1e6fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="mine.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">安全中心</span>
+    </div>
+    <div class="profile">
+        <img class="avatar" id="aqzxAvatar" src="grdb.jpg" alt="">
+        <div class="masked-phone" id="aqzxPhone">132****8468</div>
+    </div>
+    <div class="list-wrap">
+        <a href="#" class="list-row" onclick="return false;">
+            <span>修改手机号码</span>
+            <span class="arrow">&gt;</span>
+        </a>
+        <a href="#" class="list-row" onclick="return false;">
+            <span>修改密码</span>
+            <span class="arrow">&gt;</span>
+        </a>
+        <div class="list-row list-row-toggle">
+            <span>扫脸登录</span>
+            <div class="switch switch-blue">
+                <label>
+                    <input type="checkbox" id="aqzxFaceLogin" checked aria-label="扫脸登录">
+                    <span class="switch-inner"></span>
+                    <span class="switch-thumb"></span>
+                </label>
+            </div>
+        </div>
+        <div class="list-row list-row-toggle">
+            <span>手势登录</span>
+            <div class="switch">
+                <label>
+                    <input type="checkbox" id="aqzxGestureLogin" aria-label="手势登录">
+                    <span class="switch-inner"></span>
+                    <span class="switch-thumb"></span>
+                </label>
+            </div>
+        </div>
+        <div class="list-hint">开启后可便捷登录，设置仅对本机生效</div>
+        <a href="#" class="list-row" onclick="return false;">
+            <span>更多操作</span>
+            <span class="arrow">&gt;</span>
+        </a>
+    </div>
+    <script>
+        (function () {
+            function maskPhone(raw) {
+                var s = String(raw || '').replace(/\D/g, '');
+                if (s.length < 7) return '';
+                return s.slice(0, 3) + '****' + s.slice(-4);
+            }
+            try {
+                var p = localStorage.getItem('user_phone') || localStorage.getItem('phone') || '';
+                var el = document.getElementById('aqzxPhone');
+                var masked = maskPhone(p);
+                if (el && masked) el.textContent = masked;
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

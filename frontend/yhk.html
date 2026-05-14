@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>银行卡</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .header {
+            flex-shrink: 0;
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .main {
+            flex: 1;
+            padding: 12px 16px 100px;
+        }
+        .bank-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .bank-card:active { opacity: 0.92; }
+        .bank-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: linear-gradient(145deg, #003d82, #0066cc);
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        html.platform-android .bank-logo { font-weight: 500; font-synthesis: none; }
+        .bank-info { flex: 1; min-width: 0; }
+        .bank-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 6px;
+        }
+        html.platform-android .bank-name { font-weight: 500; font-synthesis: none; }
+        .bank-mask {
+            font-size: 14px;
+            color: #888;
+            letter-spacing: 0.02em;
+        }
+        .footer {
+            flex-shrink: 0;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+            background: #f5f6fa;
+        }
+        .btn-add {
+            display: block;
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-add:active { opacity: 0.92; }
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            padding: 40px 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="mine.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">银行卡</span>
+    </div>
+    <div class="main" id="bankListMount">
+        <a href="#" class="bank-card" id="bankDemoCard" onclick="return false;">
+            <div class="bank-logo" aria-hidden="true">交</div>
+            <div class="bank-info">
+                <div class="bank-name">交通银行</div>
+                <div class="bank-mask">**** **** **** ***0 287</div>
+            </div>
+        </a>
+    </div>
+    <div class="footer">
+        <a href="yhk_add.html" class="btn-add">添加</a>
+    </div>
+    <script>
+        (function () {
+            try {
+                var n = parseInt(localStorage.getItem('bank_card_count'), 10);
+                if (!isNaN(n) && n <= 0) {
+                    var card = document.getElementById('bankDemoCard');
+                    var mount = document.getElementById('bankListMount');
+                    if (card) card.remove();
+                    if (mount && !mount.querySelector('.bank-card')) {
+                        mount.innerHTML = '<p class="empty-tip">暂无银行卡，请点击下方添加</p>';
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

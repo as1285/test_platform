@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>添加银行卡</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 0));
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .notice {
+            margin: 12px 16px 0;
+            padding: 12px 14px;
+            background: #fff8e6;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #c65a00;
+            line-height: 1.55;
+        }
+        .notice p { margin-bottom: 8px; }
+        .notice p:last-child { margin-bottom: 0; }
+        .notice .help-i {
+            display: inline-flex;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 1px solid #1e6fff;
+            color: #1e6fff;
+            font-size: 11px;
+            align-items: center;
+            justify-content: center;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+        .notice a {
+            color: #1e6fff;
+            text-decoration: none;
+        }
+        .form-wrap {
+            margin-top: 12px;
+            background: #fff;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            min-height: 48px;
+        }
+        .form-row:last-of-type { border-bottom: none; }
+        .form-label {
+            font-size: 15px;
+            color: #333;
+            flex-shrink: 0;
+            max-width: 52%;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .form-value {
+            flex: 1;
+            text-align: right;
+            font-size: 15px;
+            color: #999;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+        }
+        .form-value.dark { color: #333; }
+        .form-row-link {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            color: #999;
+            font-size: 15px;
+            text-decoration: none;
+        }
+        .form-row-link.dark { color: #333; }
+        .hint-icon {
+            display: inline-flex;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #1e6fff;
+            color: #1e6fff;
+            font-size: 11px;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+            background: #f5f6fa;
+        }
+        .btn-next {
+            display: block;
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #7eb4ff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-next:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="yhk.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">添加银行卡</span>
+    </div>
+    <div class="notice">
+        <p>建议使用本人在境内开立的<strong>I类银行账户</strong><span class="help-i" title="一类户说明">?</span>。</p>
+        <p>银行卡认证每日限 5 次。</p>
+        <p>可使用已登记的身份证件或其他已添加证件。<a href="other_id.html" onclick="return true;">去添加其他身份证件</a></p>
+    </div>
+    <div class="form-wrap">
+        <div class="form-row">
+            <span class="form-label">姓名</span>
+            <span class="form-value dark" style="pointer-events:none;">唐冬</span>
+        </div>
+        <div class="form-row">
+            <span class="form-label">证件类型</span>
+            <span class="form-value dark" style="pointer-events:none;">居民身份证</span>
+        </div>
+        <div class="form-row">
+            <span class="form-label">证件号码</span>
+            <span class="form-value dark" style="pointer-events:none;">4*****************3</span>
+        </div>
+        <div class="form-row">
+            <span class="form-label">银行卡号</span>
+            <input type="text" class="form-value" id="yhkCardNo" placeholder="请输入您的银行卡号" inputmode="numeric" autocomplete="off" maxlength="23">
+        </div>
+        <div class="form-row">
+            <span class="form-label">所属银行<span class="hint-icon" title="将根据卡号识别">?</span></span>
+            <span class="form-value" id="yhkBankName" style="pointer-events:none;">—</span>
+        </div>
+        <div class="form-row">
+            <span class="form-label">开户银行所在省份</span>
+            <a href="#" class="form-row-link" onclick="return false;">请选择 <span style="color:#ccc;">›</span></a>
+        </div>
+        <div class="form-row">
+            <span class="form-label">银行预留手机号码</span>
+            <input type="tel" class="form-value" id="yhkPhone" placeholder="请输入您的手机号码" inputmode="numeric" autocomplete="tel" maxlength="11">
+        </div>
+    </div>
+    <div class="footer">
+        <button type="button" class="btn-next" id="yhkNextBtn" disabled>下一步</button>
+    </div>
+    <script>
+        (function () {
+            var card = document.getElementById('yhkCardNo');
+            var phone = document.getElementById('yhkPhone');
+            var btn = document.getElementById('yhkNextBtn');
+            function digitsOnly(s) {
+                return String(s || '').replace(/\D/g, '');
+            }
+            function syncNext() {
+                if (!btn) return;
+                var cn = digitsOnly(card && card.value);
+                var pn = digitsOnly(phone && phone.value);
+                var ok = cn.length >= 16 && pn.length === 11;
+                btn.disabled = !ok;
+                btn.style.background = ok ? '#1e6fff' : '#7eb4ff';
+            }
+            if (card) card.addEventListener('input', syncNext);
+            if (phone) phone.addEventListener('input', syncNext);
+            syncNext();
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

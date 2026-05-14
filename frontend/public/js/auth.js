@@ -412,6 +412,50 @@
     );
   }
 
+  /** 跳转埋点聚合键：只保留路径 + 白名单 query（如 tab），忽略 id_tr 等同页不同参数，避免管理台按 ID 拆行 */
+  var TRACK_JUMP_AGGREGATE_QUERY_ALLOW = /^tab$/i;
+
+  function jumpTrackAggregatePath(normalizedPath) {
+    var s = String(normalizedPath || '').trim();
+    if (!s || s === '__history_back__') return s;
+    var base = '';
+    try {
+      base =
+        typeof window !== 'undefined' && window.location && window.location.href
+          ? window.location.href
+          : 'http://localhost/';
+    } catch (e0) {
+      base = 'http://localhost/';
+    }
+    try {
+      var urlStr = s;
+      if (urlStr.indexOf('://') < 0) {
+        urlStr = new URL(urlStr.charAt(0) === '/' ? urlStr : '/' + urlStr.replace(/^\/+/, ''), base).href;
+      }
+      var u = new URL(urlStr);
+      var path = u.pathname || '/';
+      var allowed = new URLSearchParams();
+      try {
+        u.searchParams.forEach(function (v, k) {
+          if (TRACK_JUMP_AGGREGATE_QUERY_ALLOW.test(String(k))) {
+            allowed.set(String(k).toLowerCase(), String(v == null ? '' : v).trim());
+          }
+        });
+      } catch (e1) {}
+      var q = allowed.toString();
+      return path + (q ? '?' + q : '');
+    } catch (e2) {
+      var qi = s.indexOf('?');
+      var hi = s.indexOf('#');
+      var cut = s.length;
+      if (hi >= 0) cut = Math.min(cut, hi);
+      if (qi >= 0) cut = Math.min(cut, qi);
+      var fallback = s.substring(0, cut);
+      if (fallback && fallback.charAt(0) !== '/') fallback = '/' + fallback.replace(/^\/+/, '');
+      return fallback || '/';
+    }
+  }
+
   function normalizeTrackPath(raw) {
     var s = String(raw || '').trim();
     if (!s) return '';
@@ -498,7 +542,12 @@
         if (el.getAttribute && el.getAttribute('data-no-track') === '1') return;
         var target = detectJumpTarget(el);
         if (!target) return;
-        var targetKey = sanitizeTrackKey(String(target).replace(/^\/+/, '').replace(/[/.-]+/g, '_') || 'jump');
+        var agg = jumpTrackAggregatePath(target);
+        var targetKey = sanitizeTrackKey(
+          String(agg)
+            .replace(/^\/+/, '')
+            .replace(/[/.-]+/g, '_') || 'jump'
+        );
         fireTrack('track_jump_' + targetKey, '/event/jump/' + targetKey, {
           from: (window.location && window.location.pathname) || '',
           to: target,
