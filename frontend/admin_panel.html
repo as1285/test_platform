@@ -232,6 +232,46 @@
             white-space: nowrap;
         }
         .btn-detail { background: #546e7a; color: #fff; }
+        .user-detail-pages-collapsible {
+            margin: 10px 0 10px 0;
+        }
+        .user-detail-pages-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 12px;
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+            text-align: left;
+            background: #fff;
+            border: 1px solid #dbe7ff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .user-detail-pages-toggle:hover {
+            background: #eef4ff;
+        }
+        .user-detail-pages-toggle-label {
+            flex: 1;
+            min-width: 0;
+            font-weight: 500;
+            color: #444;
+        }
+        .user-detail-pages-chevron {
+            flex-shrink: 0;
+            color: #1e6fff;
+            font-size: 11px;
+            line-height: 1;
+        }
+        .user-detail-pages-panel {
+            margin-top: 8px;
+        }
         .pagination {
             display: flex;
             align-items: center;
@@ -1225,10 +1265,16 @@
                 html += '</tbody></table></div>';
             }
 
-            html += '<div style="margin:10px 0 8px 0;color:#666;">最近进入页面（去重，' + pages.length + ' 个）</div>';
             if (!pages.length) {
                 html += '<div style="color:#999;margin-bottom:10px;">暂无页面点击记录</div>';
             } else {
+                html += '<div class="user-detail-pages-collapsible">';
+                html +=
+                    '<button type="button" class="user-detail-pages-toggle" aria-expanded="false" title="点击展开或收起">';
+                html += '<span class="user-detail-pages-toggle-label">最近进入页面（去重，' + pages.length + ' 个）</span>';
+                html += '<span class="user-detail-pages-chevron" aria-hidden="true">▼</span>';
+                html += '</button>';
+                html += '<div class="user-detail-pages-panel" hidden>';
                 html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>页面</th><th>最近进入时间</th></tr></thead><tbody>';
                 pages.forEach(function (p) {
                     html += '<tr>';
@@ -1237,6 +1283,7 @@
                     html += '</tr>';
                 });
                 html += '</tbody></table></div>';
+                html += '</div></div>';
             }
 
             html += '<div style="margin:10px 0 8px 0;color:#666;">纳税记录开具申请（' + issues.length + ' 条）</div>';
@@ -2015,7 +2062,30 @@
                 });
         }
 
+        var __adminUserPagesToggleBound = false;
+        function ensureUserDetailPagesToggleDelegation() {
+            if (__adminUserPagesToggleBound) return;
+            var tb = document.getElementById('userTbody');
+            if (!tb) return;
+            __adminUserPagesToggleBound = true;
+            tb.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('.user-detail-pages-toggle');
+                if (!btn) return;
+                ev.preventDefault();
+                var root = btn.closest('.user-detail-pages-collapsible');
+                if (!root) return;
+                var panel = root.querySelector('.user-detail-pages-panel');
+                var chev = btn.querySelector('.user-detail-pages-chevron');
+                var expanded = btn.getAttribute('aria-expanded') === 'true';
+                var next = !expanded;
+                btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+                if (panel) panel.hidden = !next;
+                if (chev) chev.textContent = next ? '▲' : '▼';
+            });
+        }
+
         function loadUsers(p) {
+            ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
             
             var username = document.getElementById('filterUsername').value.trim();
