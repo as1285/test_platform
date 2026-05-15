@@ -2568,6 +2568,54 @@ app.use(function attachClientDevicePayload(req, res, next) {
 });
 app.use(analyticsFinishMiddleware);
 
+/** 扫码验证纳税记录开具：无需登录，仅返回非敏感摘要 */
+async function handleTaxVerifyIssueGet(req, res) {
+  var code = String(req.query.code != null ? req.query.code : '')
+    .replace(/\s+/g, '')
+    .trim()
+    .toUpperCase();
+  var recordNo = String(req.query.record != null ? req.query.record : '')
+    .trim()
+    .substring(0, 32);
+  if (!/^[A-Z0-9]{16}$/.test(code)) {
+    return res.json({ code: 400, msg: '无效的查询验证码', data: { found: false } });
+  }
+  const conn = await pool.getConnection();
+  try {
+    var sql =
+      "SELECT apply_time, period_start, period_end, record_no, scope, status, query_code FROM tax_issue_applications WHERE UPPER(REPLACE(TRIM(IFNULL(query_code,'')), ' ', '')) = ?";
+    var params = [code];
+    if (recordNo) {
+      sql += ' AND record_no = ?';
+      params.push(recordNo);
+    }
+    sql += ' ORDER BY updated_at DESC LIMIT 1';
+    const [rows] = await conn.execute(sql, params);
+    if (!rows.length) {
+      return res.json({ code: 200, msg: '未查询到与该验证码匹配的开具记录', data: { found: false } });
+    }
+    var r = rows[0];
+    return res.json({
+      code: 200,
+      msg: '成功',
+      data: {
+        found: true,
+        record_no: r.record_no != null ? String(r.record_no) : '',
+        period_start: r.period_start != null ? String(r.period_start) : '',
+        period_end: r.period_end != null ? String(r.period_end) : '',
+        apply_time: r.apply_time != null ? String(r.apply_time) : '',
+        scope: r.scope != null ? String(r.scope) : '',
+        status: r.status != null ? String(r.status) : ''
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  } finally {
+    conn.release();
+  }
+}
+
 async function handleTaxGet(req, res) {
   var action = req.query.action;
   if (action === 'detail') {
@@ -2855,7 +2903,27 @@ async function handleTaxPost(req, res) {
   }
 }
 
-app.get('/api/tax.php', requireAuth, handleTaxGet);
+app.get('/api/tax.php', async function taxGetEntry(req, res) {
+  if (String(req.query.action || '') === 'verify_issue') {
+    try {
+      await handleTaxVerifyIssueGet(req, res);
+    } catch (e) {
+      console.error(e);
+      if (!res.headersSent) {
+        res.status(500).json({ code: 500, msg: String(e.message) });
+      }
+    }
+    return;
+  }
+  requireAuth(req, res, function () {
+    handleTaxGet(req, res).catch(function (e) {
+      console.error(e);
+      if (!res.headersSent) {
+        res.status(500).json({ code: 500, msg: String(e.message) });
+      }
+    });
+  });
+});
 app.post('/api/tax.php', requireAuth, handleTaxPost);
 app.get('/api/message.php', requireAuth, handleMessageGet);
 app.post('/api/message.php', requireAuth, handleMessagePost);

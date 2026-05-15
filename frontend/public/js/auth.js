@@ -272,8 +272,19 @@
     return name;
   }
 
+  function isNajiluVerifyView() {
+    if (currentPageName() !== 'najilu.html') {
+      return false;
+    }
+    try {
+      return new URLSearchParams(window.location.search).get('view') === 'verify';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isPublicPage() {
-    return !!PUBLIC_PAGES[currentPageName()];
+    return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView();
   }
 
   function isActivationPage() {

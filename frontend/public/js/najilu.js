@@ -659,8 +659,34 @@
     ctx.restore();
   }
 
+  function buildCertificateVerifyUrl(app) {
+    var code = queryCode(app);
+    try {
+      var u = new URL('najilu.html', window.location.href);
+      u.searchParams.set('view', 'verify');
+      u.searchParams.set('code', code);
+      if (app && app.id) {
+        u.searchParams.set('id', String(app.id));
+      }
+      if (app && app.record_no) {
+        u.searchParams.set('record', String(app.record_no));
+      }
+      return u.href;
+    } catch (e1) {
+      return (
+        'najilu.html?view=verify&code=' +
+        encodeURIComponent(code) +
+        (app && app.id ? '&id=' + encodeURIComponent(String(app.id)) : '') +
+        (app && app.record_no ? '&record=' + encodeURIComponent(String(app.record_no)) : '')
+      );
+    }
+  }
+
   function renderCertificateDataUrl(app) {
-    return new Promise(function (resolve) {
+    var verifyCode = queryCode(app);
+    var verifyUrl = buildCertificateVerifyUrl(app);
+
+    function paintCanvas(qrImg) {
       var rows = normalizeRecords(app.records || []);
       var width = 1240;
       var rowH = 70;
@@ -674,10 +700,15 @@
       ctx.strokeStyle = '#d6d6d6';
       ctx.lineWidth = 1;
 
-      var verifyCode = queryCode(app);
       drawText(ctx, '(' + app.apply_date_compact + ' 记录 ' + app.record_no + ')', 88, 92, { size: 20, color: '#555' });
       drawText(ctx, '◉', width / 2, 92, { size: 48, color: '#b92828', align: 'center' });
-      drawQr(ctx, width - 257, 42, 185, app.id + verifyCode);
+      if (qrImg && qrImg.complete && qrImg.naturalWidth) {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(width - 257, 42, 185, 185);
+        ctx.drawImage(qrImg, width - 257, 42, 185, 185);
+      } else {
+        drawQr(ctx, width - 257, 42, 185, app.id + verifyCode);
+      }
       drawText(ctx, '查询验证码', width - 164, 255, { size: 28, align: 'center', color: '#555' });
       drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 312, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
       drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 364, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
@@ -752,7 +783,9 @@
       ctx.lineTo(x0 + cols[0], footY + 44);
       ctx.stroke();
       drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 29, { size: 16, align: 'center' });
-      var total = rows.reduce(function (sum, r) { return sum + Number(r.tax_reported || 0); }, 0);
+      var total = rows.reduce(function (sum, r) {
+        return sum + Number(r.tax_reported || 0);
+      }, 0);
       drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 29, { size: 16 });
 
       var explainY = Math.max(height - 310, footY + 250);
@@ -771,7 +804,32 @@
       drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 205, { size: 20, color: '#555' });
       drawText(ctx, '当前第1页，共1页', width - 230, explainY + 265, { size: 18, color: '#555' });
       drawStamp(ctx, width - 275, explainY + 126, stampAuthority(rows));
-      resolve(canvas.toDataURL('image/png'));
+      return canvas.toDataURL('image/png');
+    }
+
+    return new Promise(function (resolve) {
+      if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
+        resolve(paintCanvas(null));
+        return;
+      }
+      QRCode.toDataURL(
+        verifyUrl,
+        { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
+        function (err, dataUrl) {
+          if (err || !dataUrl) {
+            resolve(paintCanvas(null));
+            return;
+          }
+          var img = new Image();
+          img.onload = function () {
+            resolve(paintCanvas(img));
+          };
+          img.onerror = function () {
+            resolve(paintCanvas(null));
+          };
+          img.src = dataUrl;
+        }
+      );
     });
   }
 
@@ -897,6 +955,89 @@
       });
   }
 
+  function renderVerifyPage() {
+    document.title = '纳税记录验证';
+    var code = cleanText(getParam('code')).replace(/\s+/g, '').toUpperCase();
+    var record = cleanText(getParam('record'));
+    var lineCode = '';
+    if (/^[A-Z0-9]{16}$/.test(code)) {
+      lineCode = queryCodeLine(code, 0, 3) + ' ' + queryCodeLine(code, 12, 1);
+    } else {
+      lineCode = code;
+    }
+
+    document.body.innerHTML =
+      '<div class="verify-page">' +
+      renderHeader('纳税记录验证', 'najilu.html') +
+      '<div class="verify-body" id="verifyMount"><div class="empty-records">正在查询…</div></div></div>';
+
+    if (!/^[A-Z0-9]{16}$/.test(code)) {
+      document.getElementById('verifyMount').innerHTML =
+        '<div class="verify-card"><p>查询验证码格式无效。</p>' +
+        '<p class="verify-hint">请重新扫描纳税记录上的二维码或核对手动输入的验证码。</p></div>';
+      return;
+    }
+
+    var qs = 'action=verify_issue&code=' + encodeURIComponent(code);
+    if (record) {
+      qs += '&record=' + encodeURIComponent(record);
+    }
+    fetch('api/tax.php?' + qs)
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        var mount = document.getElementById('verifyMount');
+        if (!mount) {
+          return;
+        }
+        var d = j && j.data ? j.data : {};
+        if (j.code !== 200 || !d.found) {
+          mount.innerHTML =
+            '<div class="verify-card">' +
+            '<p class="verify-title-bad">未查询到记录</p>' +
+            '<p class="verify-desc">未在平台找到与验证码 <strong>' +
+            esc(lineCode) +
+            '</strong> 匹配的纳税记录开具信息。</p>' +
+            '<p class="verify-hint">若记录为近期开具，请确认已联网同步；仅本地保存而未同步的记录无法通过扫码验证。</p>' +
+            '</div>';
+          return;
+        }
+        var period = periodText(d.period_start, d.period_end);
+        mount.innerHTML =
+          '<div class="verify-card">' +
+          '<p class="verify-title-ok">验证通过</p>' +
+          '<p class="verify-desc">您扫描的二维码对应以下在本平台归档的纳税记录开具信息（摘要）：</p>' +
+          '<div class="verify-row"><span class="verify-label">查询验证码</span><span>' +
+          esc(lineCode) +
+          '</span></div>' +
+          '<div class="verify-row"><span class="verify-label">凭证号码</span><span>' +
+          esc(d.record_no || '') +
+          '</span></div>' +
+          '<div class="verify-row"><span class="verify-label">记录期间</span><span>' +
+          esc(period) +
+          '</span></div>' +
+          '<div class="verify-row"><span class="verify-label">申请时间</span><span>' +
+          esc(d.apply_time || '') +
+          '</span></div>' +
+          '<div class="verify-row"><span class="verify-label">开具范围</span><span>' +
+          esc(d.scope || '') +
+          '</span></div>' +
+          '<div class="verify-row"><span class="verify-label">状态</span><span>' +
+          esc(d.status || '') +
+          '</span></div>' +
+          '<p class="verify-footnote">说明：本页已省略纳税人身份信息等敏感字段；完整凭证请以申请人设备中下载的电子版为准。</p>' +
+          '</div>';
+      })
+      .catch(function () {
+        var mount = document.getElementById('verifyMount');
+        if (mount) {
+          mount.innerHTML =
+            '<div class="verify-card"><p>网络错误，无法完成验证。</p><p class="verify-hint">请稍后重试。</p></div>';
+        }
+      });
+  }
+
   function downloadUrl(url, app) {
     var a = document.createElement('a');
     a.href = url;
@@ -923,6 +1064,8 @@
     renderApplicationsPage();
   } else if (view === 'preview') {
     renderPreviewPage(getParam('id'));
+  } else if (view === 'verify') {
+    renderVerifyPage();
   } else {
     initForm();
   }
