@@ -178,6 +178,7 @@
           'html.app-top-safe-shell{--app-shell-statusbar-top:' +
           statusInsetCss +
           ';}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:72px !important;}' +
           'html.app-android-client.app-top-safe-shell .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;z-index:120 !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
@@ -185,12 +186,16 @@
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell .notice-bar{top:calc(60px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .notice-bar{top:calc(53px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
           'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
           'html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell .bancha-page .bancha-content{margin-top:calc(80px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell .bancha-page .bancha-content{margin-top:calc(96px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .message-header-builtin{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +

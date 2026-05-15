@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260515-mine-xiaomi14"></script>
+    <script src="/js/auth.js?v=20260515-xiaomi14-v2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -53,6 +53,25 @@
 
         html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .mine-activate-btn {
             top: calc(12px + var(--app-shell-statusbar-top, 0px));
+        }
+
+        /* 小米 14：主白区横向贴边，减少两侧灰条 */
+        html.app-android-xiaomi-14 body.page-mine .user-card {
+            margin-left: 0;
+            margin-right: 0;
+            border-radius: 0;
+        }
+
+        html.app-android-xiaomi-14 body.page-mine .function-cards {
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+
+        html.app-android-xiaomi-14 body.page-mine .menu-list,
+        html.app-android-xiaomi-14 body.page-mine .logout-section {
+            margin-left: 0;
+            margin-right: 0;
+            border-radius: 0;
         }
 
         .header-bg > img {
