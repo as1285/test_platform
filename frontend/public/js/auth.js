@@ -231,7 +231,7 @@
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .user-card{margin-top:-62px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:40px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .search-bar-wrapper{padding-top:6px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .notice-bar{top:49px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header{padding-top:0 !important;}' +
@@ -243,7 +243,9 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card{margin-top:-70px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{top:14px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

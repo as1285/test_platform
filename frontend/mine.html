@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260515-cordova-23127"></script>
+    <script src="/js/auth.js?v=20260515-cordova-23127-activate"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -53,6 +53,14 @@
 
         html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .mine-activate-btn {
             top: calc(12px + var(--app-shell-statusbar-top, 0px));
+        }
+
+        /* Cordova 23127PN0CC：固定定位，避免被 header-bg overflow 或黑状态栏裁切 */
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn {
+            position: fixed;
+            top: calc(10px + var(--app-cordova-statusbar-chrome, 40px));
+            right: 18px;
+            z-index: 500;
         }
 
         /* 小米 14：主白区横向贴边，减少两侧灰条 */
