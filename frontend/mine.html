@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260515-cordova-23127-activate"></script>
+    <script src="/js/auth.js?v=20260515-cordova-23127-mine-card"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -43,15 +43,15 @@
         }
 
         /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
-        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .header-bg > img {
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
             margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) + 8px);
         }
 
-        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .user-card {
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
             margin-top: calc(-70px + 8px);
         }
 
-        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .mine-activate-btn {
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
             top: calc(12px + var(--app-shell-statusbar-top, 0px));
         }
 
@@ -63,8 +63,29 @@
             z-index: 500;
         }
 
-        /* 小米 14：主白区横向贴边，减少两侧灰条 */
-        html.app-android-xiaomi-14 body.page-mine .user-card {
+        /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper {
+            margin-top: -6px;
+            padding-top: 14px;
+        }
+
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
+            margin: -38px 16px 12px;
+            border-radius: 12px 12px 0 0;
+            padding: 16px 14px 14px;
+        }
+
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name {
+            margin-bottom: 10px;
+            line-height: 1.35;
+        }
+
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn {
+            top: 16px;
+        }
+
+        /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
+        html.app-android-xiaomi-14:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
             margin-left: 0;
             margin-right: 0;
             border-radius: 0;
