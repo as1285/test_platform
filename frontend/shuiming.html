@@ -56,19 +56,18 @@
         }
 
         /*
-         * 表单白卡片：标题与内容同宽、同背景，避免标题单独一条「假白/假灰」且与下方列表左右不齐。
-         * 左右边距只由卡片 margin 承担，内部统一用 --form-card-pad-x。
+         * 表单白卡片：标题与内容同卡片内；左右贴屏撑满（无两侧灰条），块与块之间仍用 margin-top 露出页底灰。
          */
         .form-section-card {
             --form-card-pad-x: 16px;
             background: #fff;
-            margin: 0 16px;
-            border-radius: 8px;
+            margin: 0;
+            border-radius: 0;
             overflow: hidden;
         }
 
         .form-section-card--first {
-            margin-top: 16px;
+            margin-top: 10px;
         }
 
         .form-section-card + .form-section-card {
@@ -249,7 +248,8 @@
         }
         
         .query-btn-wrapper {
-            padding: 30px 16px;
+            padding: 30px 0;
+            padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
         }
         
         .query-btn {
@@ -258,7 +258,7 @@
             background: #1e6fff;
             color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: 0;
             padding: 14px;
             font-size: 16px;
             font-weight: 600;
