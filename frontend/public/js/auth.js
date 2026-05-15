@@ -73,6 +73,18 @@
     return getAndroidMajorVersion() >= 14;
   }
 
+  /**
+   * Cordova 壳 + 小米 14（23127PN0CC 等）：系统状态栏为黑条、iframe 内 env 常为 0。
+   * 仅匹配上报 UA，避免影响其它机型；与 app-android-xiaomi-14 叠加时以本类样式为准。
+   */
+  function isCordovaXiaomi23127Client() {
+    var ua = navigator.userAgent || '';
+    if (!CORDOVA_SHELL_UA_RE.test(ua)) {
+      return false;
+    }
+    return /23127PN0CC|23127PN\b/i.test(ua);
+  }
+
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
   function isHonorAnnAn00Client() {
     return /ANN-AN00/i.test(navigator.userAgent || '');
@@ -110,13 +122,20 @@
       var androidClient = isLikelyAndroidViewportClient();
       var annAn00Client = androidClient && isHonorAnnAn00Client();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
+      var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
        * Cordova / iframe 壳：白底，由各页顶栏铺色。
        */
       var lightRootChrome = cordovaShell || iosClient || androidClient;
-      var rootChromeBg = androidClient ? '#f5f6fa' : (lightRootChrome ? '#ffffff' : APP_STATUS_BAR_COLOR);
+      var rootChromeBg = cordovaXiaomi23127
+        ? APP_STATUS_BAR_COLOR
+        : androidClient
+          ? '#f5f6fa'
+          : lightRootChrome
+            ? '#ffffff'
+            : APP_STATUS_BAR_COLOR;
       upsertMeta('theme-color', rootChromeBg);
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
       upsertMeta('apple-mobile-web-app-capable', 'yes');
@@ -149,6 +168,9 @@
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
+      }
+      if (cordovaXiaomi23127) {
+        document.documentElement.classList.add('app-cordova-xiaomi-23127');
       }
       var style = document.createElement('style');
       var barFill =
@@ -209,6 +231,19 @@
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .user-card{margin-top:-62px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .search-bar-wrapper{padding-top:6px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .notice-bar{top:49px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header{padding-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-page .bancha-content{margin-top:80px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header{padding-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header > img{margin-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .message-header-builtin{padding-top:14px !important;padding-bottom:26px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card{margin-top:-70px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{top:14px !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

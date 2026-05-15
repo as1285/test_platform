@@ -76,12 +76,24 @@
             } else {
                 mount();
             }
+            function isCordovaXiaomi23127() {
+                var ua = navigator.userAgent || '';
+                return /TaxPlatformCordovaApp/i.test(ua) && /23127PN0CC|23127PN\b/i.test(ua);
+            }
             document.addEventListener('deviceready', function () {
-                if (window.StatusBar) {
-                    StatusBar.overlaysWebView(true);
-                    StatusBar.backgroundColorByHexString('#00000000');
-                    StatusBar.styleDefault();
+                if (!window.StatusBar) {
+                    return;
                 }
+                if (isCordovaXiaomi23127()) {
+                    /* 23127PN0CC / Android 16：避免透明沉浸式顶栏呈黑条，与 H5 蓝头一致 */
+                    StatusBar.overlaysWebView(false);
+                    StatusBar.backgroundColorByHexString('#1e6fff');
+                    StatusBar.styleLightContent();
+                    return;
+                }
+                StatusBar.overlaysWebView(true);
+                StatusBar.backgroundColorByHexString('#00000000');
+                StatusBar.styleDefault();
             });
         })();
     </script>
