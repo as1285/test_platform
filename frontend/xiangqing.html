@@ -149,8 +149,9 @@
             margin: 0 0px;
             border-radius: 8px;
             padding-top: 5px;
-            padding-left: 15px;
-            padding-right: 25px;
+            /* 与 .info-card / .section-title 横向 16px 对齐，约 1 个全角汉字宽（勿用空格缩进） */
+            padding-left: 16px;
+            padding-right: 16px;
         }
 
         .detail-row {
@@ -185,10 +186,10 @@
             padding-left: 0;
             padding-right: 0;
             background: #f5f6fa;
-            margin-left: -15px;
-            margin-right: -25px;
-            padding-left: 15px;
-            padding-right: 25px;
+            margin-left: -16px;
+            margin-right: -16px;
+            padding-left: 16px;
+            padding-right: 16px;
             padding-bottom: 10px;
         }
 
@@ -301,7 +302,7 @@
             <span class="detail-value" id="specialDeduction">0.00元</span>
             <svg id="specialDeductionArrow" viewBox="0 0 1024 1024" width="12" height="12" style="position: absolute;right: -17px;top: 10px;transform: rotate(0deg);"><path d="M1024 255.996 511.971 767.909 0 255.996 1024 255.996z" fill="#272636"></path></svg>
         </div>
-        <div id="specialDeductionDetail" style="display: none; padding-left: 20px; background: #fafafa;">
+        <div id="specialDeductionDetail" style="display: none; padding-left: 16px; background: #fafafa;">
             <div class="detail-row">
                 <span class="detail-label">基本养老保险:</span>
                 <span class="detail-value" id="pensionInsurance">0.00元</span>
