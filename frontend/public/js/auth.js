@@ -56,8 +56,21 @@
     var ua = navigator.userAgent || '';
     return (
       /PKB110|B60P01/i.test(ua) ||
+      /Xiaomi\s*14|23127PN|2201PN|2211133C/i.test(ua) ||
       getAndroidMajorVersion() >= 15
     );
+  }
+
+  /** 小米 14 / HyperOS 等：UA 偶无型号时仍按 Android 15+ 顶栏高度处理 */
+  function isXiaomi14LikeClient() {
+    var ua = navigator.userAgent || '';
+    if (/Xiaomi\s*14|23127PN|2201PN|2211133C/i.test(ua)) {
+      return true;
+    }
+    if (!/Xiaomi|Miui|Redmi|HyperOS/i.test(ua)) {
+      return false;
+    }
+    return getAndroidMajorVersion() >= 14;
   }
 
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
@@ -96,7 +109,8 @@
       var iosClient = isLikelyIOSViewportClient();
       var androidClient = isLikelyAndroidViewportClient();
       var annAn00Client = androidClient && isHonorAnnAn00Client();
-      var tallAndroidStatusBar = androidClient && isTallAndroidStatusBarClient();
+      var xiaomi14Client = androidClient && isXiaomi14LikeClient();
+      var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
        * Cordova / iframe 壳：白底，由各页顶栏铺色。
@@ -132,6 +146,9 @@
       }
       if (annAn00Client) {
         document.documentElement.classList.add('app-android-ann-an00');
+      }
+      if (androidClient && isXiaomi14LikeClient()) {
+        document.documentElement.classList.add('app-android-xiaomi-14');
       }
       var style = document.createElement('style');
       var barFill =
@@ -179,6 +196,7 @@
           'html.app-top-safe-shell body.page-login .header{padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell body > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260515-xiangqing-xiaomi14"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细详情</title>
     <style>
         * {
@@ -12,14 +12,30 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --xq-header-core: 48px;
+            --xq-safe-top: env(safe-area-inset-top, 0px);
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-top: 45px;
+            /* 为固定顶栏留白；Android/iOS 壳内由 auth.js 注入 --app-shell-statusbar-top 后覆盖 */
+            padding-top: calc(var(--xq-safe-top) + var(--xq-header-core));
             padding-bottom: 30px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* auth.js：app-top-safe-shell 顶栏含状态栏，正文须同步下移，避免「纳税明细信息」被遮住 */
+        html.app-top-safe-shell body.page-xiangqing {
+            padding-top: calc(var(--xq-header-core) + var(--app-shell-statusbar-top, 0px));
+        }
+
+        /* 小米 14 / HyperOS 等 Android 15+ 沉浸式状态栏偏高 */
+        html.app-android-client.app-top-safe-shell body.page-xiangqing {
+            --xq-header-core: 48px;
         }
 
         .header {
@@ -34,6 +50,7 @@
             right: 0;
             z-index: 100;
             border-bottom: 1px solid #eee;
+            min-height: var(--xq-header-core);
         }
 
         .back-btn {
@@ -220,7 +237,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-xiangqing">
     <div class="header">
         <a href="shuiming_result.html" class="back-btn" id="backLink">
             <img src="jt.png" alt="" width="9" height="15" style="width: 9px; height: auto; vertical-align: middle;">
