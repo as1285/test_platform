@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260515-mine-xiaomi14"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js?v=20260511-mine-layout-no-avatar" defer></script>
@@ -29,6 +29,30 @@
             position: relative;
             width: 100%;
             overflow: hidden;
+            --mine-safe-top: env(safe-area-inset-top, 0px);
+            /* 与 grdb/nx 顶图顶部蓝色接近，状态栏区不露灰底 */
+            background: linear-gradient(180deg, #5eb3ff 0%, #3d94f7 55%, #2d7ae8 100%);
+        }
+
+        html.app-top-safe-shell body.page-mine .header-bg {
+            padding-top: var(--app-shell-statusbar-top, var(--mine-safe-top));
+        }
+
+        html.app-top-safe-shell body.page-mine .header-bg > img {
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
+        }
+
+        /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
+        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .header-bg > img {
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) + 8px);
+        }
+
+        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .user-card {
+            margin-top: calc(-70px + 8px);
+        }
+
+        html.app-android-xiaomi-14.app-top-safe-shell body.page-mine .mine-activate-btn {
+            top: calc(12px + var(--app-shell-statusbar-top, 0px));
         }
 
         .header-bg > img {
@@ -424,7 +448,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-mine">
     <div class="header-bg">
         <img id="headerImg" src="grdb.jpg" alt="个人中心">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
