@@ -54,32 +54,53 @@
         .content {
             padding: 0 0 100px;
         }
-        
-        /* 区块标题 */
-        .section-title {
-            padding: 20px 16px 12px;
+
+        /*
+         * 表单白卡片：标题与内容同宽、同背景，避免标题单独一条「假白/假灰」且与下方列表左右不齐。
+         * 左右边距只由卡片 margin 承担，内部统一用 --form-card-pad-x。
+         */
+        .form-section-card {
+            --form-card-pad-x: 16px;
+            background: #fff;
+            margin: 0 16px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .form-section-card--first {
+            margin-top: 16px;
+        }
+
+        .form-section-card + .form-section-card {
+            margin-top: 12px;
+        }
+
+        .form-section-card-title {
+            padding: 16px var(--form-card-pad-x) 12px;
             font-size: 15px;
-            color:#000000;
+            color: #000;
             font-weight: 500;
             display: flex;
             align-items: center;
             gap: 8px;
+            border-bottom: 1px solid #f0f0f0;
         }
-        
-        .section-title::before {
+
+        .form-section-card-title::before {
             content: '';
             width: 3px;
             height: 16px;
             background: #1e6fff;
             border-radius: 2px;
+            flex-shrink: 0;
         }
         
         /* 年度选择：三栏 flex，左右箭头用 SVG，避免系统字体 > 粗细不一 */
         .year-select {
             background: #fff;
-            margin: 0 16px;
-            border-radius: 8px;
-            padding: 14px 16px;
+            margin: 0;
+            border-radius: 0;
+            padding: 14px var(--form-card-pad-x);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -126,15 +147,15 @@
             fill: none;
         }
         
-        /* 所得类型列表 */
+        /* 所得类型列表（白底由外层 .form-section-card 提供） */
         .type-list {
-            background: #fff;
-            margin: 0 16px;
-            border-radius: 8px;
+            background: transparent;
+            margin: 0;
+            border-radius: 0;
         }
         
         .type-item {
-            padding: 16px;
+            padding: 16px var(--form-card-pad-x);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -192,7 +213,7 @@
         
         /* 展开 / 收起：官方态 — 白卡片内一行，文案+双箭头整体居中，无右侧「>」 */
         .type-toggle {
-            padding: 16px;
+            padding: 16px var(--form-card-pad-x);
             color: #1e6fff;
             font-size: 14px;
             font-weight: 400;
@@ -414,9 +435,10 @@
     
     <!-- 内容区域 -->
     <div class="content">
-        <!-- 请选择纳税年度 -->
-        <div class="section-title">请选择纳税年度</div>
-        <div class="year-select" id="yearSelect">
+        <!-- 请选择纳税年度（标题 + 年度行同一白卡片，与下方所得类型卡片左右对齐） -->
+        <div class="form-section-card form-section-card--first">
+            <div class="form-section-card-title">请选择纳税年度</div>
+            <div class="year-select" id="yearSelect">
             <span class="year-label">年度</span>
             <span class="year-value" id="yearDisplay">2026</span>
             <span class="year-chevron-wrap" aria-hidden="true">
@@ -424,11 +446,13 @@
                     <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </span>
+            </div>
         </div>
         
-        <!-- 请选择所得类型 -->
-        <div class="section-title">请选择所得类型</div>
-        <div class="type-list">
+        <!-- 请选择所得类型（标题与列表同一白卡片） -->
+        <div class="form-section-card">
+            <div class="form-section-card-title">请选择所得类型</div>
+            <div class="type-list">
             <div class="type-item" role="checkbox" aria-checked="true" tabindex="0">
                 <div class="check-icon">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -520,6 +544,7 @@
                 <path d="M5 16l5-5 5 5"/>
             </svg>
         </div>
+            </div>
         </div>
         
         <!-- 查询按钮 -->
