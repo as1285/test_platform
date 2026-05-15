@@ -533,16 +533,29 @@
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script>
         (function () {
+            function applyMineHeaderImage(gender) {
+                var hi = document.getElementById('headerImg');
+                var cfg = window.__MINE_UI_CONFIG || {};
+                if (!hi) return;
+                var g = gender;
+                if (g == null || g === '') {
+                    try {
+                        g = localStorage.getItem('gender');
+                    } catch (e0) {
+                        g = null;
+                    }
+                }
+                var n = Number(g);
+                if (Number(n) === 2) {
+                    hi.src = cfg.header_female || 'nx.jpg';
+                } else {
+                    hi.src = cfg.header_male || 'grdb.jpg';
+                }
+            }
+
             function applyMineAssets(cfg) {
                 if (!cfg) return;
-                var hi = document.getElementById('headerImg');
-                if (hi) {
-                    var configuredHeader = cfg.mine_header || cfg.header_male || 'grdb.jpg';
-                    if (/sydb(?:-v2)?\.jpg(?:$|\?)/i.test(configuredHeader)) {
-                        configuredHeader = cfg.header_male || 'grdb.jpg';
-                    }
-                    hi.src = configuredHeader;
-                }
+                applyMineHeaderImage();
                 var f = document.getElementById('mineIconFamily');
                 var e = document.getElementById('mineIconEmployer');
                 var b = document.getElementById('mineIconBank');
@@ -659,14 +672,7 @@
             }
 
             function applyAvatarGender(gender) {
-                var hi = document.getElementById('headerImg');
-                var cfg = window.__MINE_UI_CONFIG || {};
-                if (!hi) return;
-                if (Number(gender) === 2) {
-                    hi.src = cfg.header_female || 'nx.jpg';
-                } else {
-                    hi.src = cfg.header_male || 'grdb.jpg';
-                }
+                applyMineHeaderImage(gender);
             }
 
             function updateMineActivateButton(user) {
