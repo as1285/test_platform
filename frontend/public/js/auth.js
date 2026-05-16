@@ -85,6 +85,18 @@
     return /23127PN0CC|23127PN\b/i.test(ua);
   }
 
+  /**
+   * Cordova 壳 + 2410DPN6CC（Android 16）：WebView 内 env(safe-area-inset-bottom) 常为 0，
+   * 底部胶囊导航与系统手势条重叠。仅匹配该机型 UA，不影响其它设备。
+   */
+  function isCordovaXiaomi2410Client() {
+    var ua = navigator.userAgent || '';
+    if (!CORDOVA_SHELL_UA_RE.test(ua)) {
+      return false;
+    }
+    return /2410DPN6CC/i.test(ua);
+  }
+
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
   function isHonorAnnAn00Client() {
     return /ANN-AN00/i.test(navigator.userAgent || '');
@@ -123,6 +135,7 @@
       var annAn00Client = androidClient && isHonorAnnAn00Client();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
+      var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
@@ -171,6 +184,9 @@
       }
       if (cordovaXiaomi23127) {
         document.documentElement.classList.add('app-cordova-xiaomi-23127');
+      }
+      if (cordovaXiaomi2410) {
+        document.documentElement.classList.add('app-cordova-xiaomi-2410');
       }
       var style = document.createElement('style');
       var barFill =

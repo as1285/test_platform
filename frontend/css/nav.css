@@ -81,3 +81,23 @@
         border-radius: 34px;
     }
 }
+
+/* Cordova 2410DPN6CC：底部 env 常为 0，抬高胶囊导航，避免与系统手势条/主页条重叠 */
+html.app-cordova-xiaomi-2410 {
+    --app-cordova-bottom-inset: 32px;
+    --bottom-nav-clearance: calc(96px + var(--app-cordova-bottom-inset));
+}
+
+html.app-cordova-xiaomi-2410 .bottom-nav {
+    bottom: calc(12px + var(--app-cordova-bottom-inset));
+    padding-bottom: 4px;
+    box-sizing: border-box;
+}
+
+html.app-cordova-xiaomi-2410 .bottom-nav .nav-item {
+    padding-bottom: 10px;
+}
+
+html.app-cordova-xiaomi-2410 body.page-mine {
+    padding-bottom: calc(58px + var(--app-cordova-bottom-inset)) !important;
+}
