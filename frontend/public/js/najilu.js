@@ -244,7 +244,11 @@
   }
 
   function rowRemark(r) {
-    return cleanText(r.remark || r.remarks || r.remark_text) || '原申报';
+    var raw = cleanText(r.remark || r.remarks || r.remark_text);
+    if (!raw) return '原申报';
+    raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
+    raw = raw.replace(/\s+/g, '');
+    return raw;
   }
 
   function stampAuthority(rows) {
@@ -730,7 +734,7 @@
       var x0 = 90;
       var y0 = 610;
       var tableW = width - 180;
-      var cols = [145, 145, 145, 170, 150, 250, 55];
+      var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
       ctx.strokeRect(x0, y0, tableW, 48);
       var xx = x0;
@@ -769,6 +773,19 @@
           if (i === 5) {
             ctx.font = '16px serif';
             wrapText(ctx, v, cx + 10, y + 25, cols[i] - 18, 22, { size: 16, color: '#333', maxLines: 2 });
+          } else if (i === 6) {
+            var remark = String(v == null ? '' : v);
+            var cellPad = 8;
+            var maxW = Math.max(24, cols[i] - cellPad);
+            var sz = 16;
+            ctx.save();
+            ctx.font = sz + 'px serif';
+            while (sz > 10 && ctx.measureText(remark).width > maxW) {
+              sz -= 1;
+              ctx.font = sz + 'px serif';
+            }
+            ctx.restore();
+            drawText(ctx, remark, cx + cols[i] / 2, y + 42, { size: sz, align: 'center', color: '#333' });
           } else {
             drawText(ctx, v, cx + cols[i] / 2, y + 42, { size: 16, align: 'center', color: '#333' });
           }
