@@ -3456,7 +3456,9 @@ async function handleAdminCodes(req, res) {
 
     const [rows] = await conn.query(
       `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username, owner_admin_username
-       FROM activation_codes ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`,
+       FROM activation_codes ${whereSql}
+       ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), ''), '—') ASC, id DESC
+       LIMIT ${limit} OFFSET ${offset}`,
       params
     );
     conn.release();

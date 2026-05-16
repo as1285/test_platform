@@ -179,6 +179,20 @@
         .badge-yes { background: #e8f5e9; color: #2e7d32; }
         .badge-no { background: #fce4ec; color: #c62828; }
         .badge-type-test { background: #fff3e0; color: #e65100; }
+        .code-owner-group-header td {
+            background: #eef4fb;
+            color: #1a3a5c;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 14px;
+            border-top: 2px solid #b8cfe8;
+        }
+        .code-owner-group-header:first-child td {
+            border-top: none;
+        }
+        .code-owner-data-row td {
+            border-top: 1px solid #f0f0f0;
+        }
         .scroll-x { overflow-x: auto; }
         .device-stats-grid {
             display: grid;
@@ -689,7 +703,6 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
-                            <th>归属管理员</th>
                             <th>使用账号</th>
                             <th>使用时间</th>
                         </tr>
@@ -2242,30 +2255,44 @@
                     document.getElementById('codePrev').disabled = codePage <= 1;
                     document.getElementById('codeNext').disabled = codePage >= totalPages;
 
+                    function codeOwnerKey(c) {
+                        return c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
+                            ? String(c.owner_admin_username).trim()
+                            : '—';
+                    }
                     var html = '';
-                    list.forEach(function (c) {
+                    var lastOwnerKey = null;
+                    list.forEach(function (c, idx) {
+                        var ownerKey = codeOwnerKey(c);
+                        if (ownerKey !== lastOwnerKey) {
+                            lastOwnerKey = ownerKey;
+                            var cnt = 0;
+                            for (var gi = idx; gi < list.length; gi++) {
+                                if (codeOwnerKey(list[gi]) !== ownerKey) break;
+                                cnt += 1;
+                            }
+                            html += '<tr class="code-owner-group-header"><td colspan="5"><strong>归属管理员：</strong>'
+                                + esc(ownerKey)
+                                + ' <span style="font-weight:400;color:#666;font-size:13px;">（本组 '
+                                + cnt + ' 条）</span></td></tr>';
+                        }
                         var usedAt =
                             c.last_used_at && (Number(c.used_count) > 0)
                                 ? formatDt(c.last_used_at)
-                                : '—';
-                        var ownerAdmin =
-                            c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
-                                ? esc(String(c.owner_admin_username).trim())
                                 : '—';
                         var usedBy =
                             c.used_by_username && String(c.used_by_username).trim() !== ''
                                 ? esc(String(c.used_by_username).trim())
                                 : '—';
-                        html += '<tr>';
+                        html += '<tr class="code-owner-data-row">';
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
-                        html += '<td>' + ownerAdmin + '</td>';
                         html += '<td>' + usedBy + '</td>';
                         html += '<td>' + usedAt + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="5">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }
