@@ -794,6 +794,7 @@
                             <th>密码</th>
                             <th>激活</th>
                             <th>封禁</th>
+                            <th>上线</th>
                             <th>注册时间</th>
                             <th>操作</th>
                         </tr>
@@ -2131,14 +2132,15 @@
                         html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
+                        html += '<td class="cell-break">' + esc(u.upline_admin || '—') + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" style="display:none;">';
-                        html += '<td colspan="8"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="9"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="8">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {

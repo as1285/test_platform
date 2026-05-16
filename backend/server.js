@@ -3370,7 +3370,14 @@ async function handleAdminUsers(req, res) {
 
     const [rows] = await conn.query(`
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-             last_login_city, created_at, hash, plain_password
+             last_login_city, created_at, hash, plain_password,
+             (SELECT ac.owner_admin_username
+              FROM activation_codes ac
+              WHERE ac.used_by_username = users.username
+                AND ac.owner_admin_username IS NOT NULL
+                AND TRIM(ac.owner_admin_username) <> ''
+              ORDER BY ac.last_used_at DESC, ac.id DESC
+              LIMIT 1) AS upline_admin_username
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `, params);
     conn.release();
@@ -3387,6 +3394,10 @@ async function handleAdminUsers(req, res) {
         user_type: ut,
         is_test_account: ut === USER_TYPE_TEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
+        upline_admin:
+          r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
+            ? String(r.upline_admin_username).trim()
+            : '',
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password: r.plain_password || (r.hash ? '历史账号(密文)' : '—') // 统一返回明文或提示
       };
