@@ -1177,6 +1177,19 @@ async function deleteAllRecords(userId) {
   conn.release();
 }
 
+async function deleteRecordsByYear(userId, year) {
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.execute('DELETE FROM tax_records WHERE user_id = ? AND year = ?', [
+      userId,
+      year
+    ]);
+    return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
+  } finally {
+    conn.release();
+  }
+}
+
 async function getTaxRecordById(userId, id) {
   const conn = await pool.getConnection();
   const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
@@ -3151,6 +3164,17 @@ async function handleTaxPost(req, res) {
       }
       await deleteAllRecords(userId);
       return res.json({ code: 200, data: {} });
+    }
+    if (action === 'delete_records_by_year') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var delYear = parseInt(body.year, 10);
+      if (!delYear || delYear < 1990 || delYear > 2100) {
+        return res.status(400).json({ code: 400, msg: '请填写合法年份（1990–2100）' });
+      }
+      var delOut = await deleteRecordsByYear(userId, delYear);
+      return res.json({ code: 200, data: delOut });
     }
     if (action === 'log_issue_application') {
       if (!userId) {

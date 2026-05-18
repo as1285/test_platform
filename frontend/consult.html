@@ -1011,7 +1011,7 @@
                     <span>税务记录列表</span>
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
-                        <button type="button" class="btn btn-default btn-sm" onclick="document.getElementById('batchTaxCard').scrollIntoView({ behavior: 'smooth', block: 'start' })">批量添加信息</button>
+                        <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
                     </div>
                 </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
@@ -1726,6 +1726,42 @@
                 .then(function (data) {
                     if (data.code === 200) {
                         showMsg('已全部删除', true);
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function deleteTaxRecordsByYear() {
+            var defaultYear = String(new Date().getFullYear());
+            var yearEl = document.getElementById('f_year');
+            if (yearEl && yearEl.value) {
+                defaultYear = String(yearEl.value);
+            }
+            var raw = prompt('请输入要删除的税务记录年份（如 2025）', defaultYear);
+            if (raw == null) return;
+            var year = parseInt(String(raw).trim(), 10);
+            if (!year || year < 1990 || year > 2100) {
+                showConsultStrongAlert('请输入合法年份（1990–2100）');
+                return;
+            }
+            if (!confirm('确定删除 ' + year + ' 年的全部税务记录？此操作不可恢复。')) return;
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_records_by_year',
+                    year: year
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                        showMsg(n > 0 ? '已删除 ' + year + ' 年共 ' + n + ' 条记录' : year + ' 年暂无记录', true);
                         return refreshRecordList();
                     }
                     throw new Error(data.msg || '删除失败');
