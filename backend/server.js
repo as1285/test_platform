@@ -1040,14 +1040,14 @@ async function getRecords(userId, year) {
   };
 }
 
-async function saveRecord(userId, record) {
-  const conn = await pool.getConnection();
+async function saveRecordInConn(conn, userId, record) {
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
-  
+
   const [existing] = await conn.execute('SELECT id FROM tax_records WHERE id = ?', [id]);
-  
+
   if (existing.length > 0) {
-    await conn.execute(`
+    await conn.execute(
+      `
       UPDATE tax_records SET
         year = ?, month = ?, income_type = ?, income_subtype = ?,
         company_name = ?, company_tax_id = ?, tax_authority = ?,
@@ -1057,21 +1057,38 @@ async function saveRecord(userId, record) {
         other_deduction = ?, donation_deduction = ?,
         pension_insurance = ?, medical_insurance = ?,
         unemployment_insurance = ?, housing_fund = ?
-      WHERE id = ?
-    `, [
-      record.year, record.month, record.income_type || '工资薪金',
-      record.income_subtype || '正常工资薪金', record.company_name,
-      record.company_tax_id, record.tax_authority,
-      record.report_channel || '其他', record.report_date,
-      record.tax_period, record.income, record.tax_reported,
-      record.income_this_period, record.tax_free_income,
-      record.deduction_fee, record.special_deduction,
-      record.other_deduction, record.donation_deduction,
-      record.pension_insurance, record.medical_insurance,
-      record.unemployment_insurance, record.housing_fund, id
-    ]);
+      WHERE id = ? AND user_id = ?
+    `,
+      [
+        record.year,
+        record.month,
+        record.income_type || '工资薪金',
+        record.income_subtype || '正常工资薪金',
+        record.company_name,
+        record.company_tax_id,
+        record.tax_authority,
+        record.report_channel || '其他',
+        record.report_date,
+        record.tax_period,
+        record.income,
+        record.tax_reported,
+        record.income_this_period,
+        record.tax_free_income,
+        record.deduction_fee,
+        record.special_deduction,
+        record.other_deduction,
+        record.donation_deduction,
+        record.pension_insurance,
+        record.medical_insurance,
+        record.unemployment_insurance,
+        record.housing_fund,
+        id,
+        userId
+      ]
+    );
   } else {
-    await conn.execute(`
+    await conn.execute(
+      `
       INSERT INTO tax_records (
         id, user_id, year, month, income_type, income_subtype,
         company_name, company_tax_id, tax_authority,
@@ -1082,21 +1099,70 @@ async function saveRecord(userId, record) {
         pension_insurance, medical_insurance,
         unemployment_insurance, housing_fund
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id, userId, record.year, record.month,
-      record.income_type || '工资薪金', record.income_subtype || '正常工资薪金',
-      record.company_name, record.company_tax_id, record.tax_authority,
-      record.report_channel || '其他', record.report_date, record.tax_period,
-      record.income, record.tax_reported, record.income_this_period,
-      record.tax_free_income, record.deduction_fee, record.special_deduction,
-      record.other_deduction, record.donation_deduction,
-      record.pension_insurance, record.medical_insurance,
-      record.unemployment_insurance, record.housing_fund
-    ]);
+    `,
+      [
+        id,
+        userId,
+        record.year,
+        record.month,
+        record.income_type || '工资薪金',
+        record.income_subtype || '正常工资薪金',
+        record.company_name,
+        record.company_tax_id,
+        record.tax_authority,
+        record.report_channel || '其他',
+        record.report_date,
+        record.tax_period,
+        record.income,
+        record.tax_reported,
+        record.income_this_period,
+        record.tax_free_income,
+        record.deduction_fee,
+        record.special_deduction,
+        record.other_deduction,
+        record.donation_deduction,
+        record.pension_insurance,
+        record.medical_insurance,
+        record.unemployment_insurance,
+        record.housing_fund
+      ]
+    );
   }
-  
-  conn.release();
+
   return { id: id };
+}
+
+async function saveRecord(userId, record) {
+  const conn = await pool.getConnection();
+  try {
+    return await saveRecordInConn(conn, userId, record);
+  } finally {
+    conn.release();
+  }
+}
+
+async function batchSaveRecords(userId, records) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const saved = [];
+    for (let i = 0; i < records.length; i++) {
+      const rec = records[i];
+      if (!rec || typeof rec !== 'object') {
+        throw new Error('第 ' + (i + 1) + ' 条记录无效');
+      }
+      saved.push(await saveRecordInConn(conn, userId, rec));
+    }
+    await conn.commit();
+    return { saved: saved.length, ids: saved.map(function (x) { return x.id; }) };
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    throw e;
+  } finally {
+    conn.release();
+  }
 }
 
 async function deleteRecord(userId, id) {
@@ -3053,6 +3119,20 @@ async function handleTaxPost(req, res) {
       }
       var out = await saveRecord(userId, record);
       return res.json({ code: 200, data: out });
+    }
+    if (action === 'batch_save_records') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var records = body.records;
+      if (!Array.isArray(records) || records.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (records.length > 600) {
+        return res.status(400).json({ code: 400, msg: '单次最多写入 600 条记录' });
+      }
+      var batchOut = await batchSaveRecords(userId, records);
+      return res.json({ code: 200, data: batchOut });
     }
     if (action === 'delete_record') {
       if (!userId) {

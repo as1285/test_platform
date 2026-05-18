@@ -2327,7 +2327,33 @@
             return round2(lo + Math.random() * (hi - lo));
         }
 
-        function postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {
+        function buildBatchSalaryRecord(w, base, uidKey) {
+            var o = JSON.parse(JSON.stringify(base));
+            o.company_name = w.company;
+            o.company_tax_id = w.company_tax_id != null ? String(w.company_tax_id) : '';
+            o.tax_authority = w.tax_authority != null ? String(w.tax_authority) : '';
+            o.year = w.year;
+            o.month = w.month;
+            o.tax_period = w.year + '-' + pad2(w.month);
+            o.report_date = w.year + '-' + pad2(w.month) + '-15';
+            o.id = 'tr_' + uidKey + '_' + w.year + '_' + pad2(w.month) + '_e' + w.empIdx;
+            var inc = round2(w.salary);
+            o.income = String(inc);
+            o.income_this_period = String(inc);
+            o.tax_reported = String(w.tax);
+            o.deduction_fee = String(round2(5000 + w.specialAdd));
+            o.special_deduction = String(w.specFour);
+            o.pension_insurance = String(w.pension);
+            o.medical_insurance = String(w.medical);
+            o.unemployment_insurance = String(w.unemployment);
+            o.housing_fund = String(round2(w.housingFund));
+            o.tax_free_income = '0.00';
+            o.income_type = o.income_type || '工资薪金';
+            o.income_subtype = o.income_subtype || '正常工资薪金';
+            return o;
+        }
+
+        function buildBatchYearEndBonusRecord(uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             var b = JSON.parse(JSON.stringify(base));
             b.company_name = companyForBatch;
@@ -2350,19 +2376,36 @@
             b.unemployment_insurance = '0.00';
             b.housing_fund = '0.00';
             b.tax_free_income = '0.00';
+            return b;
+        }
+
+        function postBatchTaxRecordsPromise(records) {
             return authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    action: 'save_record',
-                    user_id: uid,
-                    record: b
+                    action: 'batch_save_records',
+                    records: records
                 })
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.code !== 200) throw new Error(data.msg || '年终奖记录保存失败');
+                    if (data.code !== 200) throw new Error(data.msg || '批量保存失败');
+                    return data.data || {};
                 });
+        }
+
+        function setBatchSubmitBtnLoading(loading) {
+            var btn = document.getElementById('batch_submit_employments_btn');
+            if (!btn) return;
+            if (loading) {
+                if (!btn.dataset.prevText) btn.dataset.prevText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = '生成中…';
+            } else {
+                btn.disabled = false;
+                btn.textContent = btn.dataset.prevText || '一键生成税务记录';
+            }
         }
 
         function batchAddYearEndBonusOnly() {
@@ -2408,7 +2451,9 @@
             ) {
                 return;
             }
-            postYearEndBonusRecordPromise(uid, uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus)
+            var bonusRec = buildBatchYearEndBonusRecord(uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus);
+            setBatchSubmitBtnLoading(true);
+            postBatchTaxRecordsPromise([bonusRec])
                 .then(function () {
                     rememberBatchCompanyNames([companyForBatch]);
                     showMsg('年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）', true);
@@ -2417,6 +2462,9 @@
                 .catch(function (err) {
                     showConsultStrongAlert('保存失败：' + (err.message || ''));
                     return refreshRecordList();
+                })
+                .finally(function () {
+                    setBatchSubmitBtnLoading(false);
                 });
         }
 
@@ -2614,63 +2662,19 @@
             ];
             if (!confirm(msgParts.join('\n'))) return;
 
-            var chain = Promise.resolve();
+            var records = [];
             var wi;
             for (wi = 0; wi < writes.length; wi++) {
-                (function (w) {
-                    chain = chain.then(function () {
-                        var o = JSON.parse(JSON.stringify(base));
-                        o.company_name = w.company;
-                        o.company_tax_id = w.company_tax_id != null ? String(w.company_tax_id) : '';
-                        o.tax_authority = w.tax_authority != null ? String(w.tax_authority) : '';
-                        o.year = w.year;
-                        o.month = w.month;
-                        o.tax_period = w.year + '-' + pad2(w.month);
-                        o.report_date = w.year + '-' + pad2(w.month) + '-15';
-                        o.id = 'tr_' + uidKey + '_' + w.year + '_' + pad2(w.month) + '_e' + w.empIdx;
-                        var inc = round2(w.salary);
-                        o.income = String(inc);
-                        o.income_this_period = String(inc);
-                        o.tax_reported = String(w.tax);
-                        o.deduction_fee = String(round2(5000 + w.specialAdd));
-                        o.special_deduction = String(w.specFour);
-                        o.pension_insurance = String(w.pension);
-                        o.medical_insurance = String(w.medical);
-                        o.unemployment_insurance = String(w.unemployment);
-                        o.housing_fund = String(round2(w.housingFund));
-                        o.tax_free_income = '0.00';
-                        return authFetch('api/tax.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                action: 'save_record',
-                                user_id: uid,
-                                record: o
-                            })
-                        })
-                            .then(function (r) { return r.json(); })
-                            .then(function (data) {
-                                if (data.code !== 200) throw new Error(data.msg || '保存失败');
-                            });
-                    });
-                })(writes[wi]);
+                records.push(buildBatchSalaryRecord(writes[wi], base, uidKey));
             }
-
             if (yearEndBonus > 0) {
-                chain = chain.then(function () {
-                    return postYearEndBonusRecordPromise(
-                        uid,
-                        uidKey,
-                        base,
-                        bonusCompany,
-                        bonusYear,
-                        bonusMonth,
-                        yearEndBonus
-                    );
-                });
+                records.push(
+                    buildBatchYearEndBonusRecord(uidKey, base, bonusCompany, bonusYear, bonusMonth, yearEndBonus)
+                );
             }
 
-            chain
+            setBatchSubmitBtnLoading(true);
+            postBatchTaxRecordsPromise(records)
                 .then(function () {
                     var histNames = employments.map(function (e) {
                         return e.company;
@@ -2688,8 +2692,11 @@
                     return refreshRecordList();
                 })
                 .catch(function (err) {
-                    showConsultStrongAlert('批量添加中断：' + (err.message || ''));
+                    showConsultStrongAlert('批量生成失败：' + (err.message || ''));
                     return refreshRecordList();
+                })
+                .finally(function () {
+                    setBatchSubmitBtnLoading(false);
                 });
         }
 
