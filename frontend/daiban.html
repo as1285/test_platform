@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>待办</title>
     <style>
         * {
@@ -11,42 +11,95 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f6f7fb;
             min-height: 100vh;
         }
-        
+
         .daiban-page {
             min-height: 100vh;
             background: #f6f7fb;
+            padding-bottom: var(--bottom-nav-clearance, 72px);
         }
-        
+
         .daiban-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 10;
+            position: relative;
+            z-index: 1;
         }
-        
+
         .daiban-header img {
             width: 100%;
             display: block;
         }
-        
-        .daiban-content {
-            background: #f6f7fb;
-            border-radius: 16px 16px 0 0;
-            margin-top: 80px;
+
+        .daiban-panel {
             position: relative;
-            z-index: 5;
-            min-height: calc(100vh - 120px);
-            padding-bottom: var(--bottom-nav-clearance);
+            z-index: 2;
+            margin: -14px 0 0;
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            min-height: calc(100vh - 200px);
         }
-        
-        </style>
+
+        .daiban-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+
+        .daiban-tab {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 14px 8px 12px;
+            font-size: 16px;
+            color: #666;
+            font-family: inherit;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .daiban-tab.active {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .daiban-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 3px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+
+        .daiban-empty {
+            text-align: center;
+            padding: 36px 24px 48px;
+            background: #fff;
+        }
+
+        .daiban-empty-illustration {
+            max-width: min(320px, 78vw);
+            margin: 0 auto 16px;
+        }
+
+        .daiban-empty-illustration img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .daiban-empty-text {
+            font-size: 15px;
+            color: #999;
+            line-height: 1.5;
+        }
+    </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
 </head>
@@ -55,12 +108,20 @@
         <div class="daiban-header">
             <img id="assetDaibanHeader" src="daiban.jpg" alt="待办">
         </div>
-        <div class="daiban-content">
-            <!-- 内容区域 -->
+        <div class="daiban-panel">
+            <div class="daiban-tabs" role="tablist">
+                <button type="button" class="daiban-tab active" data-tab="pending" role="tab" aria-selected="true">未办结</button>
+                <button type="button" class="daiban-tab" data-tab="done" role="tab" aria-selected="false">已办结</button>
+            </div>
+            <div class="daiban-empty" id="daibanEmptyPanel" role="tabpanel">
+                <div class="daiban-empty-illustration">
+                    <img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">
+                </div>
+                <p class="daiban-empty-text" id="daibanEmptyText">暂无未办结事项</p>
+            </div>
         </div>
     </div>
-    
-    <!-- 底部导航 -->
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item" data-icon="sy">
             <div class="nav-icon">
@@ -94,10 +155,43 @@
         </a>
     </div>
     <script>
-        // 更新底部导航图标状态
+        (function () {
+            var tabs = document.querySelectorAll('.daiban-tab');
+            var emptyText = document.getElementById('daibanEmptyText');
+            var labels = {
+                pending: '暂无未办结事项',
+                done: '暂无已办结事项'
+            };
+
+            function setTab(name) {
+                tabs.forEach(function (btn) {
+                    var on = btn.getAttribute('data-tab') === name;
+                    btn.classList.toggle('active', on);
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                if (emptyText && labels[name]) {
+                    emptyText.textContent = labels[name];
+                }
+            }
+
+            var tabFromUrl = '';
+            try {
+                tabFromUrl = new URLSearchParams(window.location.search).get('tab') || '';
+            } catch (e) {}
+            if (tabFromUrl === 'done' || tabFromUrl === 'pending') {
+                setTab(tabFromUrl);
+            }
+
+            tabs.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setTab(btn.getAttribute('data-tab'));
+                });
+            });
+        })();
+
         function updateNavIcons() {
             var navItems = document.querySelectorAll('.bottom-nav .nav-item');
-            navItems.forEach(function(item) {
+            navItems.forEach(function (item) {
                 var icon = item.getAttribute('data-icon');
                 var img = item.querySelector('.nav-icon img');
                 if (item.classList.contains('active')) {
@@ -110,12 +204,10 @@
                 window.__refreshNavFromMineUi();
             }
         }
-        
-        // 初始化时更新图标
+
         updateNavIcons();
-        
-        // iOS设备检测，底部导航上移
-        (function() {
+
+        (function () {
             var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             if (isIOS) {
                 var bottomNav = document.querySelector('.bottom-nav');
