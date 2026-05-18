@@ -641,8 +641,8 @@
                 </div>
                 <div class="form-group">
                     <label>纳税人识别号</label>
-                    <input type="text" id="pf_tax_id" readonly>
-                    <p class="hint" id="pf_tax_id_hint" style="margin-top:6px;color:#888;font-size:13px;line-height:1.5;">所有信息点击我要咨询修改</p>
+                    <input type="text" id="pf_tax_id" autocomplete="off" maxlength="32" placeholder="所有信息点击我要咨询修改">
+                    <p class="hint" id="pf_tax_id_hint" style="margin-top:6px;color:#888;font-size:13px;line-height:1.5;">未填写时显示默认提示，可直接输入纳税人识别号后保存。</p>
                 </div>
                 <div class="form-group">
                     <label>性别</label>
@@ -1064,12 +1064,6 @@
         var DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
         var LEGACY_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
 
-        function formatTaxIdForForm(v) {
-            var s = String(v || '').trim();
-            if (!s || s === LEGACY_DEFAULT_TAX_ID || s === LEGACY_TAX_ID_HINT) return DEFAULT_TAX_ID_HINT;
-            return s;
-        }
-
         function isPlaceholderTaxIdForm(v) {
             var s = String(v || '').trim();
             return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT || s === LEGACY_TAX_ID_HINT;
@@ -1078,11 +1072,18 @@
         function applyTaxIdField(taxIdRaw) {
             var pfTax = document.getElementById('pf_tax_id');
             if (!pfTax) return;
-            var display = formatTaxIdForForm(taxIdRaw);
-            pfTax.value = display;
-            var isPlaceholder = isPlaceholderTaxIdForm(taxIdRaw) || isPlaceholderTaxIdForm(display);
-            pfTax.readOnly = isPlaceholder;
-            pfTax.style.color = isPlaceholder ? '#888' : '#333';
+            var raw = String(taxIdRaw || '').trim();
+            pfTax.readOnly = false;
+            pfTax.disabled = false;
+            pfTax.style.color = '#333';
+            pfTax.style.background = '';
+            if (isPlaceholderTaxIdForm(raw)) {
+                pfTax.value = '';
+                pfTax.placeholder = DEFAULT_TAX_ID_HINT;
+            } else {
+                pfTax.value = raw;
+                pfTax.placeholder = '';
+            }
         }
 
         window.consultUserFlags = { is_test_account: false };
