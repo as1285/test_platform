@@ -2329,9 +2329,15 @@ function classifyAnalyticsRoute(req) {
   var q = req.query && typeof req.query === 'object' ? req.query : {};
   var action = '';
   if (body.action != null && String(body.action).trim() !== '') {
-    action = String(body.action).trim().substring(0, 80);
+    action = String(body.action).trim();
   } else if (q.action != null && String(q.action).trim() !== '') {
-    action = String(q.action).trim().substring(0, 80);
+    action = String(q.action).trim();
+  }
+  if (action && /^track_jump_/i.test(action)) {
+    action = collapseTrackJumpEventKey(action);
+  }
+  if (action.length > 80) {
+    action = action.substring(0, 80);
   }
   var actionSuffix = action ? '#' + action : '';
 
@@ -2682,17 +2688,58 @@ function userLoginReasonLabel(reason) {
   return map[k] || k || '未知错误';
 }
 
+/** 将含记录 ID / 查询参数的 track_jump_* 合并为「页面级」一条，便于管理台统计 */
+function collapseTrackJumpEventKey(eventKey) {
+  var k = String(eventKey || '')
+    .trim()
+    .toLowerCase();
+  if (!k || k.indexOf('track_jump_') !== 0) {
+    return k;
+  }
+  if (k.indexOf('history_back') >= 0) {
+    return 'track_jump__history_back__';
+  }
+  var m = k.match(/^track_jump_([a-z0-9]+)_html(.*)$/);
+  if (!m) {
+    return k;
+  }
+  var base = 'track_jump_' + m[1] + '_html';
+  var rest = m[2] || '';
+  if (!rest) {
+    return base;
+  }
+  if (rest.indexOf('_tab_') === 0) {
+    var tabM = rest.match(/^(_tab_[a-z0-9_]+)/);
+    if (tabM) {
+      return base + tabM[1];
+    }
+  }
+  if (
+    /_id_tr_/i.test(rest) ||
+    /^_id_/i.test(rest) ||
+    /_year_\d{4}/i.test(rest) ||
+    /_tr_[a-z0-9_]{6,}/i.test(rest) ||
+    /\d{8,}/.test(rest)
+  ) {
+    return base;
+  }
+  return k;
+}
+
 function normalizeTrackEventKeyFromRoute(routeKey) {
   var rk = String(routeKey || '').trim();
   if (!rk) return '';
+  var eventKey = '';
   if (rk.indexOf('EVENT ') === 0) {
-    return rk.substring(6).trim();
+    eventKey = rk.substring(6).trim();
+  } else {
+    var i = rk.indexOf('#track_');
+    if (i >= 0) {
+      eventKey = rk.substring(i + 1).trim();
+    }
   }
-  var i = rk.indexOf('#track_');
-  if (i >= 0) {
-    return rk.substring(i + 1).trim();
-  }
-  return '';
+  if (!eventKey) return '';
+  return collapseTrackJumpEventKey(eventKey);
 }
 
 function sanitizeAuditText(val, maxLen) {

@@ -1340,7 +1340,7 @@
                         profile: '个人资料'
                     };
                     button = '标签切换：' + (tabMap[tabName] || tabName);
-                } else if (rest) {
+                } else if (rest && !/^id_tr_|^id_|^tr_/.test(rest)) {
                     button = '跳转动作：' + rest;
                 }
                 return { button: button, page: pageNameFromTrackKey(pageKey) };
