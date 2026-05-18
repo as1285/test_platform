@@ -179,6 +179,8 @@
         .badge-yes { background: #e8f5e9; color: #2e7d32; }
         .badge-no { background: #fce4ec; color: #c62828; }
         .badge-type-test { background: #fff3e0; color: #e65100; }
+        .badge-risk { background: #fff3e0; color: #e65100; font-weight: 600; }
+        .risk-hint-line { font-size: 12px; color: #888; margin-top: 4px; }
         .code-owner-group-header td {
             background: #eef4fb;
             color: #1a3a5c;
@@ -853,6 +855,7 @@
                 <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
+            <p class="hint">登录风控（北京时间）：当日成功登录 ≥3 次，或累计关联设备 ≥3 台时标记为风险。</p>
             <div class="scroll-x">
                 <table>
                     <thead>
@@ -863,6 +866,7 @@
                             <th>密码</th>
                             <th>激活</th>
                             <th>封禁</th>
+                            <th>风控</th>
                             <th>上线</th>
                             <th>注册时间</th>
                             <th>操作</th>
@@ -2234,6 +2238,24 @@
                     list.forEach(function (u) {
                         var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
+                        var riskCell = '<span class="risk-hint-line">—</span>';
+                        if (u.risk && u.risk_messages && u.risk_messages.length) {
+                            riskCell =
+                                '<span class="badge badge-risk" title="' +
+                                esc(u.risk_messages.join('；')) +
+                                '">风险</span><div class="risk-hint-line">' +
+                                esc(u.risk_messages.join('；')) +
+                                '</div>';
+                        } else {
+                            var lt = u.login_today_count != null ? Number(u.login_today_count) : 0;
+                            var dc = u.device_count != null ? Number(u.device_count) : 0;
+                            riskCell =
+                                '<span class="risk-hint-line">登录' +
+                                lt +
+                                '次 / 设备' +
+                                dc +
+                                '台</span>';
+                        }
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
@@ -2249,15 +2271,16 @@
                         html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
+                        html += '<td class="cell-break">' + riskCell + '</td>';
                         html += '<td class="cell-break">' + esc(u.upline_admin || '—') + '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" style="display:none;">';
-                        html += '<td colspan="9"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="10"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="9">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
