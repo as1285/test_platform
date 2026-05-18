@@ -213,6 +213,57 @@
         .activate-msg.ok {
             color: #2e7d32;
         }
+
+        .login-welcome-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .login-welcome-modal.is-open {
+            display: flex;
+        }
+        .login-welcome-modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .login-welcome-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 22px 20px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+        .login-welcome-modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        .login-welcome-modal-body {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #444;
+            text-align: center;
+        }
+        .login-welcome-modal-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body class="page-login">
@@ -283,6 +334,15 @@
         <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
     </div>
 
+    <div id="loginWelcomeModal" class="login-welcome-modal" role="dialog" aria-modal="true" aria-labelledby="loginWelcomeModalTitle">
+        <div class="login-welcome-modal-mask" id="loginWelcomeModalMask"></div>
+        <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-title" id="loginWelcomeModalTitle">温馨提示</p>
+            <p class="login-welcome-modal-body" id="loginWelcomeModalBody">请注册账号后登录，注册免费，激活码199 永久使用，闲鱼购买，谨防被骗</p>
+            <button type="button" class="login-welcome-modal-btn" id="loginWelcomeModalOk">我知道了</button>
+        </div>
+    </div>
+
     <script>
         function isNeedActivateMode() {
             try {
@@ -337,6 +397,63 @@
         }
 
         initActivateFromUrl();
+
+        var LOGIN_WELCOME_STORAGE_KEY = 'tax_app_login_welcome_v1';
+
+        function isTaxAppClient() {
+            try {
+                if (/TaxPlatformCordovaApp\//i.test(navigator.userAgent || '')) {
+                    return true;
+                }
+                return window.top !== window.self;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        function closeLoginWelcomeModal(markSeen) {
+            var root = document.getElementById('loginWelcomeModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+            if (markSeen) {
+                try {
+                    localStorage.setItem(LOGIN_WELCOME_STORAGE_KEY, '1');
+                } catch (e) {}
+            }
+        }
+
+        function maybeShowLoginWelcomeModal() {
+            if (!isTaxAppClient() || isNeedActivateMode()) {
+                return;
+            }
+            try {
+                if (localStorage.getItem(LOGIN_WELCOME_STORAGE_KEY) === '1') {
+                    return;
+                }
+            } catch (e) {}
+            var root = document.getElementById('loginWelcomeModal');
+            if (!root) {
+                return;
+            }
+            root.classList.add('is-open');
+            var ok = document.getElementById('loginWelcomeModalOk');
+            var mask = document.getElementById('loginWelcomeModalMask');
+            if (ok && !ok.__welcomeBound) {
+                ok.__welcomeBound = true;
+                ok.addEventListener('click', function () {
+                    closeLoginWelcomeModal(true);
+                });
+            }
+            if (mask && !mask.__welcomeBound) {
+                mask.__welcomeBound = true;
+                mask.addEventListener('click', function () {
+                    closeLoginWelcomeModal(true);
+                });
+            }
+        }
+
+        maybeShowLoginWelcomeModal();
 
         function prefetchXianyuPurchaseUrl() {
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
