@@ -132,7 +132,12 @@
 
   function isDefaultTaxId(v) {
     var t = cleanText(v);
-    return !t || t === '620000000000000000' || t === '注册默认： 所有信息点击我要咨询修改';
+    return (
+      !t ||
+      t === '620000000000000000' ||
+      t === '所有信息点击我要咨询修改' ||
+      t === '注册默认： 所有信息点击我要咨询修改'
+    );
   }
 
   function cacheUserInfo(user) {

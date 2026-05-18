@@ -642,7 +642,7 @@
                 <div class="form-group">
                     <label>纳税人识别号</label>
                     <input type="text" id="pf_tax_id" readonly>
-                    <p class="hint" id="pf_tax_id_hint" style="margin-top:6px;color:#888;font-size:13px;line-height:1.5;">注册默认： 所有信息点击我要咨询修改</p>
+                    <p class="hint" id="pf_tax_id_hint" style="margin-top:6px;color:#888;font-size:13px;line-height:1.5;">所有信息点击我要咨询修改</p>
                 </div>
                 <div class="form-group">
                     <label>性别</label>
@@ -1065,17 +1065,18 @@
         }
 
         var LEGACY_DEFAULT_TAX_ID = '620000000000000000';
-        var DEFAULT_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
+        var DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
+        var LEGACY_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
 
         function formatTaxIdForForm(v) {
             var s = String(v || '').trim();
-            if (!s || s === LEGACY_DEFAULT_TAX_ID) return DEFAULT_TAX_ID_HINT;
+            if (!s || s === LEGACY_DEFAULT_TAX_ID || s === LEGACY_TAX_ID_HINT) return DEFAULT_TAX_ID_HINT;
             return s;
         }
 
         function isPlaceholderTaxIdForm(v) {
             var s = String(v || '').trim();
-            return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT;
+            return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT || s === LEGACY_TAX_ID_HINT;
         }
 
         function applyTaxIdField(taxIdRaw) {

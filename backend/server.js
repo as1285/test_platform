@@ -59,17 +59,18 @@ const USER_TYPE_NORMAL = 0;
 const USER_TYPE_TEST = 1;
 /** 历史注册默认税号；对外展示为 DEFAULT_TAX_ID_HINT */
 const LEGACY_DEFAULT_TAX_ID = '620000000000000000';
-const DEFAULT_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
+const DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
+const LEGACY_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
 
 function normalizeTaxIdForApi(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
-  if (!s || s === LEGACY_DEFAULT_TAX_ID) return DEFAULT_TAX_ID_HINT;
+  if (!s || s === LEGACY_DEFAULT_TAX_ID || s === LEGACY_TAX_ID_HINT) return DEFAULT_TAX_ID_HINT;
   return s;
 }
 
 function isPlaceholderTaxId(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
-  return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT;
+  return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT || s === LEGACY_TAX_ID_HINT;
 }
 /** 环境变量或内置默认；首次写入 app_settings 及库中无配置时使用 */
 const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
