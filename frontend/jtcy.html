@@ -59,7 +59,9 @@
             border-radius: 8px;
             padding: 16px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            margin-bottom: 12px;
         }
+        .member-card:last-child { margin-bottom: 0; }
         .member-name {
             font-size: 17px;
             font-weight: 600;
@@ -119,28 +121,75 @@
         <span class="header-title">家庭成员</span>
     </div>
     <div class="main" id="memberListMount">
-        <div class="member-card" id="memberDemoCard">
-            <div class="member-name">唐和平</div>
-            <div class="member-line">他(她)是我的：父母</div>
-            <div class="member-line">证件号：4****************2</div>
-        </div>
+        <p class="empty-tip">加载中…</p>
     </div>
     <div class="footer">
         <a href="jtcy_add.html" class="btn-add">添加</a>
     </div>
     <script>
         (function () {
-            try {
-                var n = parseInt(localStorage.getItem('family_count'), 10);
-                if (!isNaN(n) && n <= 0) {
-                    var card = document.getElementById('memberDemoCard');
-                    var mount = document.getElementById('memberListMount');
-                    if (card) card.remove();
-                    if (mount && !mount.querySelector('.member-card')) {
-                        mount.innerHTML = '<p class="empty-tip">暂无家庭成员，请点击下方添加</p>';
-                    }
+            var mount = document.getElementById('memberListMount');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function renderMembers(members) {
+                if (!mount) return;
+                if (!members || !members.length) {
+                    mount.innerHTML = '<p class="empty-tip">暂无家庭成员，请点击下方添加</p>';
+                    try {
+                        localStorage.setItem('family_count', '0');
+                    } catch (e) {}
+                    return;
                 }
-            } catch (e) {}
+                var html = '';
+                members.forEach(function (m) {
+                    html +=
+                        '<div class="member-card">' +
+                        '<div class="member-name">' +
+                        esc(m.real_name || '') +
+                        '</div>' +
+                        '<div class="member-line">他(她)是我的：' +
+                        esc(m.relation || '') +
+                        '</div>' +
+                        '<div class="member-line">证件号：' +
+                        esc(m.id_no_masked || '—') +
+                        '</div>' +
+                        '</div>';
+                });
+                mount.innerHTML = html;
+                try {
+                    localStorage.setItem('family_count', String(members.length));
+                } catch (e2) {}
+            }
+
+            function loadMembers() {
+                if (!mount) return;
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                fetchFn('api/user.php?action=family_members', { credentials: 'same-origin' })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && Array.isArray(data.data.members)) {
+                            renderMembers(data.data.members);
+                            return;
+                        }
+                        mount.innerHTML = '<p class="empty-tip">加载失败，请稍后重试</p>';
+                    })
+                    .catch(function () {
+                        if (mount) {
+                            mount.innerHTML = '<p class="empty-tip">网络错误，请稍后重试</p>';
+                        }
+                    });
+            }
+
+            loadMembers();
         })();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>

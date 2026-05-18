@@ -663,17 +663,31 @@
             if (saveBtn) {
                 saveBtn.addEventListener('click', function () {
                     if (saveBtn.disabled) return;
+                    var name = nameInput ? String(nameInput.value || '').trim() : '';
+                    var idNo = idInput ? String(idInput.value || '').trim() : '';
+                    if (!relationValue || !name || !idNo) {
+                        alert('请完整填写信息');
+                        return;
+                    }
                     saveBtn.disabled = true;
                     saveBtn.textContent = '保存中…';
-                    var fc = parseInt(localStorage.getItem('family_count'), 10);
-                    if (isNaN(fc) || fc < 0) fc = 0;
-                    var newCount = fc + 1;
+                    var idType = typeBtn ? String(typeBtn.getAttribute('data-id-type') || 'resident') : 'resident';
+                    var idTypeLabel = typeText ? String(typeText.textContent || '').trim() : '';
+                    var birthIso = birthEl ? birthEl.getAttribute('data-iso') || '' : '';
                     var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
                     var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
                     fetchFn('api/user.php', {
                         method: 'POST',
                         headers: headers,
-                        body: JSON.stringify({ action: 'save_profile', family_count: newCount })
+                        body: JSON.stringify({
+                            action: 'add_family_member',
+                            real_name: name,
+                            relation: relationValue,
+                            id_type: idType,
+                            id_type_label: idTypeLabel,
+                            id_no: idNo,
+                            birth_date: birthIso
+                        })
                     })
                         .then(function (r) {
                             return r.json().then(function (j) {
@@ -682,8 +696,14 @@
                         })
                         .then(function (x) {
                             if (x.status === 200 && x.body && x.body.code === 200) {
+                                var cnt =
+                                    x.body.data && x.body.data.family_count != null
+                                        ? Number(x.body.data.family_count)
+                                        : null;
                                 try {
-                                    localStorage.setItem('family_count', String(newCount));
+                                    if (cnt != null && !isNaN(cnt)) {
+                                        localStorage.setItem('family_count', String(cnt));
+                                    }
                                 } catch (e) {}
                                 window.location.href = 'jtcy.html';
                                 return;

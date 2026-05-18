@@ -541,6 +541,22 @@ async function createTables() {
       INDEX idx_user_id (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS family_members (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      real_name VARCHAR(255) NOT NULL,
+      relation VARCHAR(64) NOT NULL,
+      id_type VARCHAR(32) NOT NULL DEFAULT 'resident',
+      id_type_label VARCHAR(64) NULL,
+      id_no VARCHAR(64) NOT NULL,
+      birth_date VARCHAR(32) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_family_user_id (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
   
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS tax_records (
@@ -1831,9 +1847,51 @@ async function getUserInfoForApi(userId) {
   };
 }
 
+function maskFamilyMemberIdNo(idNo) {
+  var s = String(idNo || '').trim();
+  if (!s) return '';
+  if (s.length <= 2) {
+    return s.charAt(0) + '*';
+  }
+  return s.charAt(0) + '*'.repeat(s.length - 2) + s.charAt(s.length - 1);
+}
+
+async function listFamilyMembersForUser(userId) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT id, real_name, relation, id_type, id_type_label, id_no, birth_date, created_at
+       FROM family_members WHERE user_id = ? ORDER BY created_at ASC, id ASC`,
+      [userId]
+    );
+    return rows.map(function (r) {
+      return {
+        id: r.id,
+        real_name: r.real_name || '',
+        relation: r.relation || '',
+        id_type: r.id_type || 'resident',
+        id_type_label: r.id_type_label || '',
+        id_no_masked: maskFamilyMemberIdNo(r.id_no),
+        birth_date: r.birth_date || ''
+      };
+    });
+  } finally {
+    conn.release();
+  }
+}
+
+async function syncUserFamilyCount(conn, userId) {
+  const [cntRows] = await conn.execute('SELECT COUNT(*) AS count FROM family_members WHERE user_id = ?', [
+    userId
+  ]);
+  var n = cntRows.length && cntRows[0].count != null ? Number(cntRows[0].count) : 0;
+  await conn.execute('UPDATE users SET family_count = ? WHERE username = ?', [n, userId]);
+  return n;
+}
+
 async function handleUserGet(req, res) {
   var action = req.query.action;
-  if (action !== 'info' && action !== 'employers') {
+  if (action !== 'info' && action !== 'employers' && action !== 'family_members') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
   var userId = req.authUserId;
@@ -1841,6 +1899,10 @@ async function handleUserGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'user_id required' });
   }
   try {
+    if (action === 'family_members') {
+      var members = await listFamilyMembersForUser(userId);
+      return res.json({ code: 200, data: { members: members } });
+    }
     var data = await getUserInfoForApi(userId);
     if (!data) {
       return res.status(400).json({ code: 400, msg: 'user_id required' });
@@ -2036,6 +2098,75 @@ async function handleUserPost(req, res) {
         conn.release();
         
         return res.json({ code: 200, data: { success: true } });
+      }
+
+      if (action === 'add_family_member') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var fmName = String(body.real_name || '').trim();
+        var fmRelation = String(body.relation || '').trim();
+        var fmIdNo = String(body.id_no || '')
+          .replace(/\s/g, '')
+          .toUpperCase();
+        var fmIdType = String(body.id_type || 'resident').trim() || 'resident';
+        var fmIdTypeLabel = String(body.id_type_label || '').trim();
+        var fmBirth = String(body.birth_date || '').trim();
+        if (!fmName) {
+          return res.status(400).json({ code: 400, msg: '请填写姓名' });
+        }
+        if (!fmRelation) {
+          return res.status(400).json({ code: 400, msg: '请选择与我的关系' });
+        }
+        if (!fmIdNo) {
+          return res.status(400).json({ code: 400, msg: '请填写证件号' });
+        }
+        if (fmIdType === 'resident') {
+          if (
+            !(
+              (fmIdNo.length === 18 && /^\d{17}[\dX]$/.test(fmIdNo)) ||
+              (fmIdNo.length === 15 && /^\d{15}$/.test(fmIdNo))
+            )
+          ) {
+            return res.status(400).json({ code: 400, msg: '居民身份证号码格式不正确' });
+          }
+        }
+        const connFm = await pool.getConnection();
+        try {
+          const [userRowsFm] = await connFm.execute('SELECT username FROM users WHERE username = ?', [userId]);
+          if (userRowsFm.length === 0) {
+            await connFm.execute(
+              `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+               VALUES (?, ?, ?, ?, 0, ?, ?)`,
+              [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']
+            );
+          }
+          var fmId = 'fm_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+          await connFm.execute(
+            `INSERT INTO family_members (id, user_id, real_name, relation, id_type, id_type_label, id_no, birth_date)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [fmId, userId, fmName, fmRelation, fmIdType, fmIdTypeLabel || null, fmIdNo, fmBirth || null]
+          );
+          var familyCount = await syncUserFamilyCount(connFm, userId);
+          return res.json({
+            code: 200,
+            data: {
+              success: true,
+              member: {
+                id: fmId,
+                real_name: fmName,
+                relation: fmRelation,
+                id_type: fmIdType,
+                id_type_label: fmIdTypeLabel,
+                id_no_masked: maskFamilyMemberIdNo(fmIdNo),
+                birth_date: fmBirth
+              },
+              family_count: familyCount
+            }
+          });
+        } finally {
+          connFm.release();
+        }
       }
 
       if (action === 'change_password') {
