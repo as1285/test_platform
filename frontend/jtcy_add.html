@@ -98,15 +98,56 @@
             color: #1e6fff;
             text-decoration: none;
         }
-        .slider-mock {
-            margin: 16px;
-            padding: 12px 14px;
+        .slider-section {
+            margin: 16px 16px 0;
+        }
+        .slider-lane {
+            position: relative;
+            height: 48px;
             background: #eef1f6;
             border-radius: 4px;
-            font-size: 13px;
-            color: #888;
+            overflow: hidden;
+        }
+        .slider-hint {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            line-height: 48px;
             text-align: center;
-            line-height: 1.5;
+            font-size: 14px;
+            color: #999;
+            pointer-events: none;
+            user-select: none;
+        }
+        .slider-arrows {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 52px;
+            height: 48px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            cursor: grab;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slider-arrows:active { cursor: grabbing; }
+        .slider-arrows svg {
+            width: 26px;
+            height: 26px;
+            fill: #999;
+        }
+        .slider-arrows.verified {
+            background: #e8f5e9;
+        }
+        .slider-arrows.verified svg {
+            fill: #52c41a;
         }
         .footer {
             position: fixed;
@@ -130,6 +171,10 @@
             -webkit-tap-highlight-color: transparent;
         }
         .btn-save:active { opacity: 0.92; }
+        .btn-save:disabled {
+            cursor: default;
+            opacity: 1;
+        }
         .hint-icon {
             display: inline-flex;
             width: 16px;
@@ -281,7 +326,7 @@
         </div>
         <div class="form-row">
             <span class="form-label">姓名</span>
-            <input type="text" class="form-value" placeholder="请填写姓名" autocomplete="name">
+            <input type="text" class="form-value" id="jtcyName" placeholder="请填写姓名" autocomplete="name">
         </div>
         <div class="form-row-extra">
             <span></span>
@@ -296,9 +341,19 @@
             <span class="form-value readonly" id="jtcyBirthDisplay">根据证件号自动填入</span>
         </div>
     </div>
-    <div class="slider-mock">请按住滑块，拖动至最右边（示意）</div>
+    <div class="slider-section">
+        <div class="slider-lane" id="jtcySliderLane">
+            <span class="slider-hint" id="jtcySliderHint">请按住滑块，拖动到最右边</span>
+            <div class="slider-arrows" id="jtcySliderHandle" aria-label="拖动滑块完成验证">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M9.29 15.88L13.17 12 9.29 8.12a1 1 0 011.41-1.41l4.59 4.59a1 1 0 010 1.41l-4.59 4.59a1 1 0 01-1.41-1.42z"/>
+                    <path d="M4.29 15.88L8.17 12 4.29 8.12a1 1 0 011.41-1.41l4.59 4.59a1 1 0 010 1.41l-4.59 4.59a1 1 0 01-1.41-1.42z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
     <div class="footer">
-        <button type="button" class="btn-save">保存</button>
+        <button type="button" class="btn-save" id="jtcySaveBtn" disabled>保存</button>
     </div>
     <div id="jtcyPickerRoot" class="picker-root" aria-hidden="true">
         <div class="picker-mask" id="jtcyPickerMask" role="presentation"></div>
@@ -324,7 +379,10 @@
                 { type: 'foreign_pr', label: '外国人永久居留身份证' }
             ];
             var idInput = document.getElementById('jtcyIdNo');
+            var nameInput = document.getElementById('jtcyName');
             var birthEl = document.getElementById('jtcyBirthDisplay');
+            var saveBtn = document.getElementById('jtcySaveBtn');
+            var sliderVerified = false;
             var typeBtn = document.getElementById('jtcyIdTypeBtn');
             var typeText = document.getElementById('jtcyIdTypeText');
             var relationBtn = document.getElementById('jtcyRelationBtn');
@@ -423,6 +481,7 @@
                     }
                 }
                 closePicker();
+                syncSaveBtn();
             }
 
             if (relationBtn) {
@@ -499,13 +558,151 @@
                 }
             }
 
+            function formReady() {
+                var name = nameInput ? String(nameInput.value || '').trim() : '';
+                var idNo = idInput ? String(idInput.value || '').trim() : '';
+                if (!relationValue || !name || !idNo) return false;
+                if (isResidentIdCard()) {
+                    return !!(birthEl && birthEl.getAttribute('data-iso'));
+                }
+                return true;
+            }
+
+            function syncSaveBtn() {
+                if (!saveBtn) return;
+                var ok = sliderVerified && formReady();
+                saveBtn.disabled = !ok;
+                saveBtn.style.background = ok ? '#1e6fff' : '#7eb4ff';
+            }
+
+            function initSlider() {
+                var lane = document.getElementById('jtcySliderLane');
+                var handle = document.getElementById('jtcySliderHandle');
+                var hint = document.getElementById('jtcySliderHint');
+                if (!lane || !handle || !hint) return;
+                var maxX = 0;
+                var startLeft = 0;
+                var startClientX = 0;
+                var dragging = false;
+
+                function layout() {
+                    maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth);
+                }
+                function setHandle(x) {
+                    x = Math.max(0, Math.min(x, maxX));
+                    handle.style.left = x + 'px';
+                }
+                function resetSlider() {
+                    sliderVerified = false;
+                    handle.style.left = '0px';
+                    handle.classList.remove('verified');
+                    hint.textContent = '请按住滑块，拖动到最右边';
+                    hint.style.color = '#999';
+                    syncSaveBtn();
+                }
+                function onPointerDown(e) {
+                    if (handle.classList.contains('verified')) return;
+                    dragging = true;
+                    layout();
+                    startLeft = handle.offsetLeft;
+                    startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
+                    e.preventDefault();
+                }
+                function onPointerMove(e) {
+                    if (!dragging) return;
+                    var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                    setHandle(startLeft + cx - startClientX);
+                    e.preventDefault();
+                }
+                function onPointerUp() {
+                    if (!dragging) return;
+                    dragging = false;
+                    layout();
+                    if (handle.offsetLeft >= maxX - 2) {
+                        sliderVerified = true;
+                        handle.classList.add('verified');
+                        hint.textContent = '验证通过';
+                        hint.style.color = '#52c41a';
+                        syncSaveBtn();
+                    } else {
+                        resetSlider();
+                    }
+                }
+
+                handle.addEventListener('mousedown', onPointerDown);
+                handle.addEventListener('touchstart', onPointerDown, { passive: false });
+                document.addEventListener('mousemove', onPointerMove);
+                document.addEventListener('touchmove', onPointerMove, { passive: false });
+                document.addEventListener('mouseup', onPointerUp);
+                document.addEventListener('touchend', onPointerUp);
+                document.addEventListener('touchcancel', onPointerUp);
+                window.addEventListener('resize', function () {
+                    if (!handle.classList.contains('verified')) {
+                        layout();
+                        setHandle(handle.offsetLeft);
+                    }
+                });
+                layout();
+            }
+
             if (idInput) {
-                idInput.addEventListener('input', syncBirthFromId);
+                idInput.addEventListener('input', function () {
+                    syncBirthFromId();
+                    syncSaveBtn();
+                });
                 idInput.addEventListener('paste', function () {
-                    setTimeout(syncBirthFromId, 0);
+                    setTimeout(function () {
+                        syncBirthFromId();
+                        syncSaveBtn();
+                    }, 0);
                 });
             }
+            if (nameInput) {
+                nameInput.addEventListener('input', syncSaveBtn);
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    if (saveBtn.disabled) return;
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = '保存中…';
+                    var fc = parseInt(localStorage.getItem('family_count'), 10);
+                    if (isNaN(fc) || fc < 0) fc = 0;
+                    var newCount = fc + 1;
+                    var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                    var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
+                    fetchFn('api/user.php', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ action: 'save_profile', family_count: newCount })
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (j) {
+                                return { status: r.status, body: j };
+                            });
+                        })
+                        .then(function (x) {
+                            if (x.status === 200 && x.body && x.body.code === 200) {
+                                try {
+                                    localStorage.setItem('family_count', String(newCount));
+                                } catch (e) {}
+                                window.location.href = 'jtcy.html';
+                                return;
+                            }
+                            alert((x.body && x.body.msg) || '保存失败');
+                        })
+                        .catch(function () {
+                            alert('网络错误，请稍后重试');
+                        })
+                        .finally(function () {
+                            saveBtn.textContent = '保存';
+                            syncSaveBtn();
+                        });
+                });
+            }
+
             syncBirthFromId();
+            initSlider();
+            syncSaveBtn();
         })();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
