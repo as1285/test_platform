@@ -3467,6 +3467,25 @@ function computeUserLoginRisk(loginTodayCount, deviceCount) {
   };
 }
 
+/** SQL：账号是否命中登录风控（当日登录次数或设备数） */
+function userLoginRiskMatchSql(usernameExpr) {
+  var u = usernameExpr || 'users.username';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  return (
+    '((SELECT COUNT(*) FROM user_login_events ule WHERE ule.username = ' +
+    u +
+    ' AND ule.ok = 1 AND DATE(DATE_ADD(ule.created_at, INTERVAL 8 HOUR)) = ' +
+    cnToday +
+    ') >= ' +
+    USER_LOGIN_RISK_DAILY_THRESHOLD +
+    ' OR (SELECT COUNT(*) FROM user_devices ud WHERE ud.username = ' +
+    u +
+    ') >= ' +
+    USER_LOGIN_RISK_DEVICE_THRESHOLD +
+    ')'
+  );
+}
+
 async function handleAdminUsersDailyConversion(req, res) {
   try {
     var days = parseInt(req.query.days, 10) || 7;
@@ -3581,21 +3600,38 @@ async function handleAdminUsers(req, res) {
     var offset = (page - 1) * limit;
 
     // 筛选参数
-    var qUsername = req.query.username || '';
-    var qRealName = req.query.real_name || '';
+    var qUsername = String(req.query.username || '').trim();
+    var qRealName = String(req.query.real_name || '').trim();
     var qActive = req.query.active; // '1' or '0'
     var qBanned = req.query.banned; // '1' or '0'
+    var qExact = req.query.exact === '1' || req.query.exact === 'true';
+    var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
 
     let whereClauses = [];
     let params = [];
 
     if (qUsername) {
-      whereClauses.push('username LIKE ?');
-      params.push(`%${qUsername}%`);
+      if (qExact) {
+        whereClauses.push('username = ?');
+        params.push(qUsername);
+      } else {
+        whereClauses.push('username LIKE ?');
+        params.push('%' + qUsername + '%');
+      }
     }
     if (qRealName) {
-      whereClauses.push('real_name LIKE ?');
-      params.push(`%${qRealName}%`);
+      if (qExact) {
+        whereClauses.push('real_name = ?');
+        params.push(qRealName);
+      } else {
+        whereClauses.push('real_name LIKE ?');
+        params.push('%' + qRealName + '%');
+      }
+    }
+    if (qRisk === '1') {
+      whereClauses.push(userLoginRiskMatchSql('users.username'));
+    } else if (qRisk === '0') {
+      whereClauses.push('NOT ' + userLoginRiskMatchSql('users.username'));
     }
     if (qActive === '1' || qActive === '0') {
       whereClauses.push('account_active = ?');

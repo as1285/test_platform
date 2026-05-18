@@ -236,6 +236,30 @@
             border-radius: 8px;
             border: 1px solid #eee;
         }
+        .filter-account-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-inline-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: normal;
+            color: #555;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .filter-inline-check input { margin: 0; cursor: pointer; }
+        .filter-select {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            background: white;
+        }
         .user-filter-bar .user-filter-fields {
             display: flex;
             flex-wrap: wrap;
@@ -825,11 +849,24 @@
                 <div class="user-filter-fields">
                 <div>
                     <label>账号</label>
-                    <input type="text" id="filterUsername" placeholder="搜索账号" style="width: 140px;">
+                    <div class="filter-account-row">
+                        <input type="text" id="filterUsername" placeholder="搜索账号" style="width: 140px;">
+                        <label class="filter-inline-check">
+                            <input type="checkbox" id="filterExact"> 精准查询
+                        </label>
+                    </div>
                 </div>
                 <div>
                     <label>姓名</label>
                     <input type="text" id="filterRealName" placeholder="搜索姓名" style="width: 140px;">
+                </div>
+                <div>
+                    <label>风险账号</label>
+                    <select id="filterRisk" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="1">仅风险账号</option>
+                        <option value="0">非风险账号</option>
+                    </select>
                 </div>
                 <div>
                     <label>激活状态</label>
@@ -855,7 +892,7 @@
                 <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
-            <p class="hint">登录风控（北京时间）：当日成功登录 ≥3 次，或累计关联设备 ≥3 台时标记为风险。</p>
+            <p class="hint">登录风控（北京时间）：当日成功登录 ≥3 次，或累计关联设备 ≥3 台时标记为风险。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
             <div class="scroll-x">
                 <table>
                     <thead>
@@ -2214,12 +2251,18 @@
             var realName = document.getElementById('filterRealName').value.trim();
             var active = document.getElementById('filterActive').value;
             var banned = document.getElementById('filterBanned').value;
+            var exactEl = document.getElementById('filterExact');
+            var riskEl = document.getElementById('filterRisk');
+            var exact = exactEl && exactEl.checked;
+            var risk = riskEl ? riskEl.value : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
             if (realName) url += '&real_name=' + encodeURIComponent(realName);
             if (active !== '') url += '&active=' + active;
             if (banned !== '') url += '&banned=' + banned;
+            if (exact) url += '&exact=1';
+            if (risk !== '') url += '&risk=' + encodeURIComponent(risk);
 
             adminFetch(url)
                 .then(function (r) { return r.json(); })
@@ -2537,6 +2580,10 @@
             document.getElementById('filterRealName').value = '';
             document.getElementById('filterActive').value = '';
             document.getElementById('filterBanned').value = '';
+            var exactEl = document.getElementById('filterExact');
+            if (exactEl) exactEl.checked = false;
+            var riskEl = document.getElementById('filterRisk');
+            if (riskEl) riskEl.value = '';
             loadUsers(1);
         };
 
