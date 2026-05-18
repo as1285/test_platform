@@ -3454,10 +3454,15 @@ async function handleAdminCodes(req, res) {
     );
     const total = totalRows[0].count;
 
+    var orderSql =
+      req.admin && req.admin.is_super && !qOwnerAdmin
+        ? ' ORDER BY id DESC'
+        : qOwnerAdmin
+          ? ' ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), \'\'), \'—\') ASC, id DESC'
+          : ' ORDER BY id DESC';
     const [rows] = await conn.query(
       `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username, owner_admin_username
-       FROM activation_codes ${whereSql}
-       ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), ''), '—') ASC, id DESC
+       FROM activation_codes ${whereSql}${orderSql}
        LIMIT ${limit} OFFSET ${offset}`,
       params
     );

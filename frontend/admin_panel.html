@@ -680,7 +680,8 @@
                 <button type="button" class="btn-primary" id="btnIssue">生成</button>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；子账号仅能查看自己生成的激活码，admin 可查看全部。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效；子账号仅能查看自己生成的激活码，admin 超级账号默认展示<strong>全部管理员</strong>的激活码（按 ID 倒序，最新在前）。</p>
+            <p class="stat" id="codeListStat" style="margin:0 0 10px;"></p>
         </section>
 
         <section>
@@ -703,6 +704,7 @@
                             <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
+                            <th>归属管理员</th>
                             <th>使用账号</th>
                             <th>使用时间</th>
                         </tr>
@@ -2234,12 +2236,20 @@
                 });
         }
 
+        function codeOwnerLabel(c) {
+            return c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
+                ? esc(String(c.owner_admin_username).trim())
+                : '—';
+        }
+
         function loadCodes(p) {
             if (p != null) codePage = p;
             var ownerAdmin = '';
             var ownerInput = document.getElementById('codeOwnerAdminFilter');
             if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
-            var q = 'api/admin/codes?page=' + codePage + '&limit=' + codeLimit;
+            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
+            var limit = isSuper && !ownerAdmin ? 20 : codeLimit;
+            var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit;
             if (ownerAdmin) {
                 q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
             }
@@ -2249,33 +2259,24 @@
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.codes || [];
                     var total = data.data.total || 0;
-                    
-                    var totalPages = Math.ceil(total / codeLimit) || 1;
+                    var statEl = document.getElementById('codeListStat');
+                    if (statEl) {
+                        if (isSuper && !ownerAdmin) {
+                            statEl.textContent = '共 ' + total + ' 条（全部管理员，按最新在前）';
+                        } else if (ownerAdmin) {
+                            statEl.textContent = '共 ' + total + ' 条（筛选：' + ownerAdmin + '）';
+                        } else {
+                            statEl.textContent = '共 ' + total + ' 条（本账号生成的激活码）';
+                        }
+                    }
+
+                    var totalPages = Math.ceil(total / limit) || 1;
                     document.getElementById('codePageInfo').textContent = '第 ' + codePage + ' 页 / 共 ' + totalPages + ' 页';
                     document.getElementById('codePrev').disabled = codePage <= 1;
                     document.getElementById('codeNext').disabled = codePage >= totalPages;
 
-                    function codeOwnerKey(c) {
-                        return c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
-                            ? String(c.owner_admin_username).trim()
-                            : '—';
-                    }
                     var html = '';
-                    var lastOwnerKey = null;
-                    list.forEach(function (c, idx) {
-                        var ownerKey = codeOwnerKey(c);
-                        if (ownerKey !== lastOwnerKey) {
-                            lastOwnerKey = ownerKey;
-                            var cnt = 0;
-                            for (var gi = idx; gi < list.length; gi++) {
-                                if (codeOwnerKey(list[gi]) !== ownerKey) break;
-                                cnt += 1;
-                            }
-                            html += '<tr class="code-owner-group-header"><td colspan="5"><strong>归属管理员：</strong>'
-                                + esc(ownerKey)
-                                + ' <span style="font-weight:400;color:#666;font-size:13px;">（本组 '
-                                + cnt + ' 条）</span></td></tr>';
-                        }
+                    list.forEach(function (c) {
                         var usedAt =
                             c.last_used_at && (Number(c.used_count) > 0)
                                 ? formatDt(c.last_used_at)
@@ -2284,15 +2285,16 @@
                             c.used_by_username && String(c.used_by_username).trim() !== ''
                                 ? esc(String(c.used_by_username).trim())
                                 : '—';
-                        html += '<tr class="code-owner-data-row">';
+                        html += '<tr>';
                         html += '<td>' + esc(c.id) + '</td>';
                         html += '<td>' + esc(c.code) + '</td>';
                         html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                        html += '<td>' + codeOwnerLabel(c) + '</td>';
                         html += '<td>' + usedBy + '</td>';
                         html += '<td>' + usedAt + '</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="5">暂无激活码</td></tr>';
+                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }
