@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>申报记录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+            padding: 0 48px;
+            text-align: center;
+            line-height: 1.35;
+        }
+        .tabs {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+        .tab {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 8px 10px;
+            font-size: 15px;
+            color: #333;
+            font-family: inherit;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab.active {
+            color: #1e6fff;
+            font-weight: 500;
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 3px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+        .notice {
+            margin: 12px 16px 0;
+            padding: 12px 14px;
+            background: #e8f3ff;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.65;
+            color: #666;
+        }
+        .notice a {
+            color: #1e6fff;
+            text-decoration: none;
+        }
+        .empty-wrap {
+            padding: 24px 16px 48px;
+        }
+        .empty-illustration {
+            max-width: min(520px, 92vw);
+            margin: 0 auto;
+        }
+        .empty-illustration img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="zonghe.html" class="back-btn" aria-label="返回">&lt; 返回</a>
+        <h1 class="header-title">申报记录（更正/作废申报）</h1>
+    </div>
+    <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-tab="pending" role="tab" aria-selected="true">未完成</button>
+        <button type="button" class="tab" data-tab="done" role="tab" aria-selected="false">已完成</button>
+        <button type="button" class="tab" data-tab="void" role="tab" aria-selected="false">已作废</button>
+    </div>
+    <div class="notice">
+        如您存在未支付完成的订单，则该申报表无法更正和作废；如需更正和作废，请15分钟后再试，或直接至<a href="daiban.html">支付订单管理</a>取消订单后再操作。
+    </div>
+    <div class="empty-wrap" id="tabContent" role="tabpanel">
+        <div class="empty-illustration">
+            <img src="shuiming_empty.png" alt="页面空空如也" loading="lazy" decoding="async">
+        </div>
+    </div>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script>
+        (function () {
+            var tabs = document.querySelectorAll('.tab');
+            var tabFromUrl = '';
+            try {
+                tabFromUrl = new URLSearchParams(window.location.search).get('tab') || '';
+            } catch (e) {}
+            function setTab(name) {
+                tabs.forEach(function (btn) {
+                    var on = btn.getAttribute('data-tab') === name;
+                    btn.classList.toggle('active', on);
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+            }
+            if (tabFromUrl === 'done' || tabFromUrl === 'void' || tabFromUrl === 'pending') {
+                setTab(tabFromUrl);
+            }
+            tabs.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setTab(btn.getAttribute('data-tab'));
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
