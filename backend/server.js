@@ -3322,6 +3322,113 @@ async function handleAdminAccountsDelete(req, res) {
   }
 }
 
+function formatDateKey(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  var s = String(d).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
+async function handleAdminUsersDailyConversion(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 7;
+    if (days < 1) days = 1;
+    if (days > 30) days = 30;
+    var span = days - 1;
+
+    const conn = await pool.getConnection();
+    try {
+      var regWhere = 'created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)';
+      var regParams = [span];
+      var actWhere =
+        'last_used_at IS NOT NULL AND used_count > 0 AND last_used_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)';
+      var actParams = [span];
+
+      if (!req.admin || !req.admin.is_super) {
+        regWhere +=
+          ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
+        regParams.push(req.admin.username);
+        actWhere += ' AND owner_admin_username = ?';
+        actParams.push(req.admin.username);
+      }
+
+      const [regRows] = await conn.query(
+        'SELECT DATE(created_at) AS d, COUNT(*) AS cnt FROM users WHERE ' + regWhere + ' GROUP BY DATE(created_at)',
+        regParams
+      );
+      const [actRows] = await conn.query(
+        'SELECT DATE(last_used_at) AS d, COUNT(DISTINCT used_by_username) AS cnt FROM activation_codes WHERE ' +
+          actWhere +
+          ' GROUP BY DATE(last_used_at)',
+        actParams
+      );
+
+      var regMap = {};
+      regRows.forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) regMap[k] = Number(r.cnt) || 0;
+      });
+      var actMap = {};
+      actRows.forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) actMap[k] = Number(r.cnt) || 0;
+      });
+
+      var series = [];
+      var today = new Date();
+      for (var i = 0; i < days; i++) {
+        var dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1 - i));
+        var key = formatDateKey(dt);
+        var registered = regMap[key] || 0;
+        var activated = actMap[key] || 0;
+        var rate = registered > 0 ? activated / registered : null;
+        series.push({
+          date: key,
+          registered: registered,
+          activated: activated,
+          rate: rate,
+          rate_pct: rate == null ? null : (Math.round(rate * 1000) / 10).toFixed(1) + '%'
+        });
+      }
+
+      var todayKey = formatDateKey(today);
+      var todayRow = series.length ? series[series.length - 1] : { date: todayKey, registered: 0, activated: 0, rate: null, rate_pct: null };
+      if (todayRow.date !== todayKey) {
+        todayRow = {
+          date: todayKey,
+          registered: regMap[todayKey] || 0,
+          activated: actMap[todayKey] || 0,
+          rate: null,
+          rate_pct: null
+        };
+        if (todayRow.registered > 0) {
+          todayRow.rate = todayRow.activated / todayRow.registered;
+          todayRow.rate_pct = (Math.round(todayRow.rate * 1000) / 10).toFixed(1) + '%';
+        }
+      }
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          today: todayRow,
+          series: series
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -4828,6 +4935,7 @@ app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
+app.get('/api/admin/users/daily-conversion', requireAdminAuth, requireAdminMenu('users'), handleAdminUsersDailyConversion);
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);

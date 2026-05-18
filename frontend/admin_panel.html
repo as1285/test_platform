@@ -222,6 +222,57 @@
             vertical-align: middle;
         }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .user-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px 16px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .user-filter-bar .user-filter-fields {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 12px 16px;
+            flex: 1;
+            min-width: 280px;
+        }
+        .user-daily-conversion {
+            flex-shrink: 0;
+            text-align: right;
+            min-width: 200px;
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #e3e8ef;
+            border-radius: 8px;
+        }
+        .user-daily-conversion .conv-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .user-daily-conversion .conv-today {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1677ff;
+            line-height: 1.2;
+        }
+        .user-daily-conversion .conv-sub {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .user-daily-conversion .conv-recent {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
         .user-detail-wrap {
             background: #f8fbff;
             border: 1px solid #dbe7ff;
@@ -768,7 +819,8 @@
                 <div id="page-users" class="page-panel" role="tabpanel">
         <section>
             <h2>注册用户</h2>
-            <div class="form-row" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+            <div class="user-filter-bar">
+                <div class="user-filter-fields">
                 <div>
                     <label>账号</label>
                     <input type="text" id="filterUsername" placeholder="搜索账号" style="width: 140px;">
@@ -797,6 +849,8 @@
                     <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                     <button type="button" class="btn-page" id="btnResetUsers">重置</button>
                 </div>
+                </div>
+                <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <div class="scroll-x">
@@ -2100,8 +2154,56 @@
             });
         }
 
+        function renderUserDailyConversion(data) {
+            var el = document.getElementById('userDailyConversion');
+            if (!el) return;
+            if (!data || !data.today) {
+                el.textContent = '转化率暂无数据';
+                return;
+            }
+            var today = data.today;
+            var rateText = today.rate_pct != null ? today.rate_pct : (today.registered > 0 ? '0.0%' : '—');
+            var html = '<div class="conv-label">今日转化率</div>';
+            html += '<div class="conv-today">' + esc(rateText) + '</div>';
+            html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
+            var series = Array.isArray(data.series) ? data.series : [];
+            if (series.length > 1) {
+                var parts = [];
+                for (var i = series.length - 2; i >= 0 && parts.length < 6; i--) {
+                    var row = series[i];
+                    if (!row || !row.date) continue;
+                    var label = row.date.slice(5);
+                    var pct = row.rate_pct != null ? row.rate_pct : (row.registered > 0 ? '0.0%' : '—');
+                    parts.push(label + ' ' + pct);
+                }
+                if (parts.length) {
+                    html += '<div class="conv-recent">近' + esc(String(data.days || series.length)) + '日：' + esc(parts.join(' · ')) + '</div>';
+                }
+            }
+            html += '<div class="conv-recent" style="margin-top:4px;color:#bbb;">每日转化率 = 当日激活数 ÷ 当日注册数</div>';
+            el.innerHTML = html;
+        }
+
+        function loadUserDailyConversion() {
+            var el = document.getElementById('userDailyConversion');
+            if (!el) return;
+            adminFetch('api/admin/users/daily-conversion?days=7')
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = '转化率加载失败';
+                        return;
+                    }
+                    renderUserDailyConversion(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '转化率加载失败';
+                });
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
+            loadUserDailyConversion();
             if (p != null) userPage = p;
             
             var username = document.getElementById('filterUsername').value.trim();
