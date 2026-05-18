@@ -1740,7 +1740,7 @@ async function getUserInfoForApi(userId) {
   };
   
   if (rows.length === 0) {
-    return defaults;
+    return Object.assign({ username: uid }, defaults);
   }
   
   const rec = rows[0];
@@ -1758,6 +1758,7 @@ async function getUserInfoForApi(userId) {
     return String(v);
   }
   return {
+    username: uid,
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
     tax_id: rec.tax_id != null ? String(rec.tax_id) : defaults.tax_id,
     employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
@@ -1988,6 +1989,49 @@ async function handleUserPost(req, res) {
         conn.release();
         
         return res.json({ code: 200, data: { success: true } });
+      }
+
+      if (action === 'change_password') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var oldPassword = String(body.old_password || '');
+        var newPassword = String(body.new_password || '');
+        if (!oldPassword) {
+          return res.status(400).json({ code: 400, msg: '请输入原密码' });
+        }
+        var newPwdErr = validatePassword(newPassword);
+        if (newPwdErr) {
+          return res.status(400).json({ code: 400, msg: newPwdErr });
+        }
+        if (oldPassword === newPassword) {
+          return res.status(400).json({ code: 400, msg: '新密码不能与原密码相同' });
+        }
+        const connPwd = await pool.getConnection();
+        try {
+          const [pwdRows] = await connPwd.execute('SELECT * FROM users WHERE username = ?', [userId]);
+          if (!pwdRows.length) {
+            return res.status(404).json({ code: 404, msg: '用户不存在' });
+          }
+          const pwdRec = pwdRows[0];
+          if (!pwdRec.salt || !pwdRec.hash) {
+            return res.status(400).json({ code: 400, msg: '账号尚未设置密码，请联系管理员' });
+          }
+          const oldCheck = hashPassword(oldPassword, pwdRec.salt);
+          if (oldCheck !== pwdRec.hash) {
+            return res.status(400).json({ code: 400, msg: '原密码错误' });
+          }
+          var pwdSaltBuf = crypto.randomBytes(16);
+          var pwdSaltHex = pwdSaltBuf.toString('hex');
+          var pwdHashHex = hashPasswordWithSalt(newPassword, pwdSaltBuf);
+          await connPwd.execute(
+            'UPDATE users SET salt = ?, hash = ?, plain_password = ? WHERE username = ?',
+            [pwdSaltHex, pwdHashHex, newPassword, userId]
+          );
+          return res.json({ code: 200, data: { success: true } });
+        } finally {
+          connPwd.release();
+        }
       }
       
       if (action === 'delete_employer') {

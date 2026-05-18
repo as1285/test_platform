@@ -10,7 +10,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>安全中心</title>
     <style>
@@ -166,7 +166,7 @@
             <span>修改手机号码</span>
             <span class="arrow">&gt;</span>
         </a>
-        <a href="#" class="list-row" onclick="return false;">
+        <a href="xiugaimima.html" class="list-row">
             <span>修改密码</span>
             <span class="arrow">&gt;</span>
         </a>
@@ -198,17 +198,49 @@
     </div>
     <script>
         (function () {
-            function maskPhone(raw) {
-                var s = String(raw || '').replace(/\D/g, '');
-                if (s.length < 7) return '';
-                return s.slice(0, 3) + '****' + s.slice(-4);
+            function maskAccount(raw) {
+                var s = String(raw || '').trim();
+                if (!s) return '';
+                var digits = s.replace(/\D/g, '');
+                if (digits.length === 11) {
+                    return digits.slice(0, 3) + '****' + digits.slice(-4);
+                }
+                if (digits.length >= 7 && digits.length === s.length) {
+                    return digits.slice(0, 3) + '****' + digits.slice(-4);
+                }
+                return s;
             }
-            try {
-                var p = localStorage.getItem('user_phone') || localStorage.getItem('phone') || '';
+            function applyAccount(text) {
                 var el = document.getElementById('aqzxPhone');
-                var masked = maskPhone(p);
-                if (el && masked) el.textContent = masked;
-            } catch (e) {}
+                if (el && text) el.textContent = text;
+            }
+            function loadFromStorage() {
+                try {
+                    var account =
+                        localStorage.getItem('user_id') ||
+                        localStorage.getItem('userName') ||
+                        localStorage.getItem('user_phone') ||
+                        localStorage.getItem('phone') ||
+                        '';
+                    var masked = maskAccount(account);
+                    if (masked) applyAccount(masked);
+                } catch (e) {}
+            }
+            loadFromStorage();
+            var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+            var headers = typeof authHeaders === 'function' ? authHeaders() : {};
+            fetchFn('api/user.php?action=info', { headers: headers })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data && data.code === 200 && data.data) {
+                        var u = data.data.username || '';
+                        var masked = maskAccount(u);
+                        if (masked) applyAccount(masked);
+                    }
+                })
+                .catch(function () {});
         })();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
