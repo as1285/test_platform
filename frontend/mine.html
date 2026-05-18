@@ -170,6 +170,13 @@
             font-weight: 500;
         }
 
+        .activate-modal-body {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.65;
+            margin-bottom: 16px;
+        }
+
         .activate-modal-input {
             width: 100%;
             padding: 10px 12px;
@@ -579,6 +586,18 @@
         </div>
     </div>
 
+    <div id="mineConsultModifyModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineConsultModifyModalTitle">
+        <div class="activate-modal-mask" id="mineConsultModifyModalMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-body" id="mineConsultModifyModalTitle">点击我要咨询修改数据，闲鱼购买，谨防被骗</p>
+            <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">闲鱼购买</button>
+                <button type="button" class="activate-modal-btn" id="btnMineConsultModifyCancel">取消</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineConsultModifyOk">确定</button>
+            </div>
+        </div>
+    </div>
+
     <nav class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
             <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
@@ -731,10 +750,42 @@
                 window.location.href = 'consult.html';
             }
 
-            function confirmModifyTaxData() {
-                if (confirm('点击我要咨询修改数据')) {
-                    goConsultPage();
+            function openMineXianyuPurchase() {
+                var u = String(mineXianyuPurchaseUrl || '').trim();
+                if (u) {
+                    window.open(u, '_blank');
+                    return;
                 }
+                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
+                            u = String(body.data.xianyu_purchase_url).trim();
+                            mineXianyuPurchaseUrl = u;
+                        }
+                        if (u) {
+                            window.open(u, '_blank');
+                        } else {
+                            alert('暂未配置闲鱼购买链接');
+                        }
+                    })
+                    .catch(function () {
+                        alert('获取购买链接失败，请稍后重试');
+                    });
+            }
+
+            function openMineConsultModifyModal() {
+                var root = document.getElementById('mineConsultModifyModal');
+                if (root) root.classList.add('is-open');
+            }
+
+            function closeMineConsultModifyModal() {
+                var root = document.getElementById('mineConsultModifyModal');
+                if (root) root.classList.remove('is-open');
+            }
+
+            function confirmModifyTaxData() {
+                openMineConsultModifyModal();
             }
 
             function maybePromptInactiveModify() {
@@ -990,29 +1041,27 @@
                 });
             }
             if (mineXyBtn) {
-                mineXyBtn.addEventListener('click', function () {
-                    var u = String(mineXianyuPurchaseUrl || '').trim();
-                    if (!u) {
-                        fetch('/api/public/install-packages', { credentials: 'same-origin' })
-                            .then(function (r) { return r.json(); })
-                            .then(function (body) {
-                                if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                                    u = String(body.data.xianyu_purchase_url).trim();
-                                    mineXianyuPurchaseUrl = u;
-                                }
-                                if (u) {
-                                    window.open(u, '_blank');
-                                } else {
-                                    alert('暂未配置闲鱼购买链接');
-                                }
-                            })
-                            .catch(function () {
-                                alert('获取购买链接失败，请稍后重试');
-                            });
-                        return;
-                    }
-                    window.open(u, '_blank');
+                mineXyBtn.addEventListener('click', openMineXianyuPurchase);
+            }
+
+            var consultModifyOk = document.getElementById('btnMineConsultModifyOk');
+            var consultModifyCancel = document.getElementById('btnMineConsultModifyCancel');
+            var consultModifyXy = document.getElementById('btnMineConsultModifyXianyu');
+            var consultModifyMask = document.getElementById('mineConsultModifyModalMask');
+            if (consultModifyOk) {
+                consultModifyOk.addEventListener('click', function () {
+                    closeMineConsultModifyModal();
+                    goConsultPage();
                 });
+            }
+            if (consultModifyCancel) {
+                consultModifyCancel.addEventListener('click', closeMineConsultModifyModal);
+            }
+            if (consultModifyMask) {
+                consultModifyMask.addEventListener('click', closeMineConsultModifyModal);
+            }
+            if (consultModifyXy) {
+                consultModifyXy.addEventListener('click', openMineXianyuPurchase);
             }
 
             document.getElementById('mineLogout').addEventListener('click', function () {
