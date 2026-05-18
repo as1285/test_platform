@@ -439,9 +439,24 @@
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
     return fetch(url, opts).then(function (r) {
       if (r.status === 401) {
-        clearSession();
-        window.location.href = LOGIN_PAGE;
-        return Promise.reject(new Error('unauthorized'));
+        return r.text().then(function (text) {
+          clearSession();
+          var j = null;
+          try {
+            j = JSON.parse(text);
+          } catch (e) {}
+          if (j && j.banned) {
+            try {
+              alert('账号已被封禁');
+            } catch (e2) {}
+          } else if (j && j.session_revoked) {
+            try {
+              alert('登录已失效，请重新登录');
+            } catch (e3) {}
+          }
+          window.location.href = LOGIN_PAGE;
+          return Promise.reject(new Error('unauthorized'));
+        });
       }
       if (r.status === 403) {
         return r.text().then(function (text) {
@@ -451,6 +466,9 @@
           } catch (e) {}
           if (j && j.banned) {
             clearSession();
+            try {
+              alert('账号已被封禁');
+            } catch (e4) {}
             window.location.href = LOGIN_PAGE;
             return Promise.reject(new Error('banned'));
           }

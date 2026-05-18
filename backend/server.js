@@ -632,6 +632,16 @@ async function createTables() {
 
   try {
     await conn.execute(`
+      ALTER TABLE users ADD COLUMN session_rev INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '登录会话版本，封禁递增使旧令牌失效'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
       ALTER TABLE users ADD COLUMN user_type TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试'
     `);
   } catch (e) {
@@ -1364,6 +1374,11 @@ function validatePassword(p) {
   return null;
 }
 
+function userSessionRevFromRow(rec) {
+  if (!rec || rec.session_rev == null) return 0;
+  return Number(rec.session_rev) || 0;
+}
+
 function signAccessToken(userPayload) {
   var uid = userPayload.user_id != null ? String(userPayload.user_id) : String(userPayload.username || '');
   var act =
@@ -1372,7 +1387,9 @@ function signAccessToken(userPayload) {
     userPayload.account_active === '1'
       ? 1
       : 0;
-  return jwt.sign({ sub: uid, act: act }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  var srv = userPayload.session_rev != null ? Number(userPayload.session_rev) : 0;
+  if (!srv || srv < 0) srv = 0;
+  return jwt.sign({ sub: uid, act: act, srv: srv }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
 async function getUserRowByUsername(username) {
@@ -1600,9 +1617,20 @@ async function requireAuth(req, res, next) {
     req.authUserId = payload.sub;
     const conn = await pool.getConnection();
     try {
-      const [rows] = await conn.execute('SELECT banned FROM users WHERE username = ?', [req.authUserId]);
-      if (rows.length && (rows[0].banned === 1 || rows[0].banned === true)) {
+      const [rows] = await conn.execute('SELECT banned, session_rev FROM users WHERE username = ?', [req.authUserId]);
+      if (!rows.length) {
+        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
+      }
+      if (rows[0].banned === 1 || rows[0].banned === true) {
         return res.status(403).json({ code: 403, msg: '账号已被封禁', banned: true });
+      }
+      var dbSrv = userSessionRevFromRow(rows[0]);
+      var tokSrv = payload.srv != null && payload.srv !== '' ? Number(payload.srv) : null;
+      if (tokSrv !== null && !isNaN(tokSrv) && tokSrv !== dbSrv) {
+        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
+      }
+      if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
+        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
       }
     } finally {
       conn.release();
@@ -1702,7 +1730,8 @@ async function loginUser(username, password) {
     username: username,
     account_active: accountActive,
     user_type: ut,
-    is_test_account: ut === USER_TYPE_TEST
+    is_test_account: ut === USER_TYPE_TEST,
+    session_rev: userSessionRevFromRow(rec)
   };
 }
 
@@ -3050,7 +3079,8 @@ async function handleActivatePost(req, res) {
         token: signAccessToken({
           user_id: rec.username,
           username: rec.username,
-          account_active: true
+          account_active: true,
+          session_rev: userSessionRevFromRow(rec)
         })
       };
       return res.json({ code: 200, data: outOk, msg: '账号已激活' });
@@ -3066,7 +3096,8 @@ async function handleActivatePost(req, res) {
       token: signAccessToken({
         user_id: rec2.username,
         username: rec2.username,
-        account_active: true
+        account_active: true,
+        session_rev: userSessionRevFromRow(rec2)
       })
     };
     return res.json({ code: 200, data: out });
@@ -3814,9 +3845,16 @@ async function handleAdminBan(req, res) {
       conn.release();
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
-    await conn.execute('UPDATE users SET banned = ? WHERE username = ?', [ban ? 1 : 0, target]);
+    if (ban) {
+      await conn.execute(
+        'UPDATE users SET banned = 1, session_rev = session_rev + 1 WHERE username = ?',
+        [target]
+      );
+    } else {
+      await conn.execute('UPDATE users SET banned = 0 WHERE username = ?', [target]);
+    }
     conn.release();
-    return res.json({ code: 200, data: { username: target, banned: ban } });
+    return res.json({ code: 200, data: { username: target, banned: ban, session_revoked: !!ban } });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
