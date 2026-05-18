@@ -641,7 +641,8 @@
                 </div>
                 <div class="form-group">
                     <label>纳税人识别号</label>
-                    <input type="text" id="pf_tax_id">
+                    <input type="text" id="pf_tax_id" readonly>
+                    <p class="hint" id="pf_tax_id_hint" style="margin-top:6px;color:#888;font-size:13px;line-height:1.5;">注册默认： 所有信息点击我要咨询修改</p>
                 </div>
                 <div class="form-group">
                     <label>性别</label>
@@ -1063,6 +1064,30 @@
             return localStorage.getItem('user_id') || '64';
         }
 
+        var LEGACY_DEFAULT_TAX_ID = '620000000000000000';
+        var DEFAULT_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
+
+        function formatTaxIdForForm(v) {
+            var s = String(v || '').trim();
+            if (!s || s === LEGACY_DEFAULT_TAX_ID) return DEFAULT_TAX_ID_HINT;
+            return s;
+        }
+
+        function isPlaceholderTaxIdForm(v) {
+            var s = String(v || '').trim();
+            return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT;
+        }
+
+        function applyTaxIdField(taxIdRaw) {
+            var pfTax = document.getElementById('pf_tax_id');
+            if (!pfTax) return;
+            var display = formatTaxIdForForm(taxIdRaw);
+            pfTax.value = display;
+            var isPlaceholder = isPlaceholderTaxIdForm(taxIdRaw) || isPlaceholderTaxIdForm(display);
+            pfTax.readOnly = isPlaceholder;
+            pfTax.style.color = isPlaceholder ? '#888' : '#333';
+        }
+
         window.consultUserFlags = { is_test_account: false };
 
         function applyConsultTestRestrictions(user) {
@@ -1323,8 +1348,7 @@
             if (pfAccount) pfAccount.value = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
             var pfName = document.getElementById('pf_real_name');
             if (pfName) pfName.value = user.real_name || '';
-            var pfTax = document.getElementById('pf_tax_id');
-            if (pfTax) pfTax.value = user.tax_id || '';
+            applyTaxIdField(user.tax_id || '');
             var pfGender = document.getElementById('pf_gender');
             if (pfGender) pfGender.value = user.gender != null ? user.gender : '1';
             
@@ -1346,8 +1370,7 @@
                 if (pfAccount) pfAccount.value = localStorage.getItem('userName') || localStorage.getItem('user_id') || '';
                 var pfName = document.getElementById('pf_real_name');
                 if (pfName) pfName.value = localStorage.getItem('real_name') || name;
-                var pfTax = document.getElementById('pf_tax_id');
-                if (pfTax) pfTax.value = localStorage.getItem('tax_id') || '';
+                applyTaxIdField(localStorage.getItem('tax_id') || '');
                 var pfGender = document.getElementById('pf_gender');
                 var g = localStorage.getItem('gender');
                 if (pfGender && g) pfGender.value = g;
@@ -1382,7 +1405,11 @@
             var bankCardCount = document.getElementById('pf_bank_card_count').value;
             
             if (realName) localStorage.setItem('real_name', realName);
-            if (taxId) localStorage.setItem('tax_id', taxId);
+            if (!isPlaceholderTaxIdForm(taxId)) {
+                localStorage.setItem('tax_id', taxId);
+            } else {
+                localStorage.setItem('tax_id', DEFAULT_TAX_ID_HINT);
+            }
             localStorage.setItem('gender', gender);
             if (employerCount !== '') localStorage.setItem('employer_count', employerCount);
             if (familyCount !== '') localStorage.setItem('family_count', familyCount);
@@ -1393,12 +1420,14 @@
                 var payload = {
                     action: 'save_profile',
                     user_id: userId,
-                    tax_id: taxId,
                     gender: gender,
                     employer_count: employerCount,
                     family_count: familyCount,
                     bank_card_count: bankCardCount
                 };
+                if (!isPlaceholderTaxIdForm(taxId)) {
+                    payload.tax_id = taxId;
+                }
                 payload.real_name = realName;
                 authFetch('api/user.php', {
                     method: 'POST',

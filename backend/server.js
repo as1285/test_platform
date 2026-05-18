@@ -57,6 +57,20 @@ const MINE_UI_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
 const USER_TYPE_TEST = 1;
+/** 历史注册默认税号；对外展示为 DEFAULT_TAX_ID_HINT */
+const LEGACY_DEFAULT_TAX_ID = '620000000000000000';
+const DEFAULT_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
+
+function normalizeTaxIdForApi(taxId) {
+  var s = taxId == null ? '' : String(taxId).trim();
+  if (!s || s === LEGACY_DEFAULT_TAX_ID) return DEFAULT_TAX_ID_HINT;
+  return s;
+}
+
+function isPlaceholderTaxId(taxId) {
+  var s = taxId == null ? '' : String(taxId).trim();
+  return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT;
+}
 /** 环境变量或内置默认；首次写入 app_settings 及库中无配置时使用 */
 const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
   process.env.TEST_ACCOUNT_COMPANY_NAME || '购买+Tangdong 购买++V : Tangdong6832';
@@ -1713,7 +1727,7 @@ async function getUserInfoForApi(userId) {
 
   const defaults = {
     real_name: uid,
-    tax_id: '620000000000000000',
+    tax_id: DEFAULT_TAX_ID_HINT,
     employer_count: 0,
     family_count: 0,
     bank_card_count: 0,
@@ -1760,7 +1774,7 @@ async function getUserInfoForApi(userId) {
   return {
     username: uid,
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
-    tax_id: rec.tax_id != null ? String(rec.tax_id) : defaults.tax_id,
+    tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
     employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
@@ -1890,8 +1904,11 @@ async function handleUserPost(req, res) {
           updateParams.push(String(body.real_name));
         }
         if (body.tax_id != null) {
-          updateFields.push('tax_id = ?');
-          updateParams.push(String(body.tax_id));
+          var taxIdVal = String(body.tax_id).trim();
+          if (!isPlaceholderTaxId(taxIdVal)) {
+            updateFields.push('tax_id = ?');
+            updateParams.push(taxIdVal);
+          }
         }
         if (body.gender != null) {
           updateFields.push('gender = ?');
