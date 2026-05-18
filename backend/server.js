@@ -3334,19 +3334,33 @@ function formatDateKey(d) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
 }
 
+/** 与后台列表 formatDt（UTC+8）一致：按北京时间取日 */
+function chinaDateKeyNow() {
+  var now = new Date();
+  var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  return formatDateKey(new Date(utcMs + 8 * 3600000));
+}
+
 async function handleAdminUsersDailyConversion(req, res) {
   try {
     var days = parseInt(req.query.days, 10) || 7;
     if (days < 1) days = 1;
     if (days > 30) days = 30;
     var span = days - 1;
+    var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var cnActDay = 'DATE(DATE_ADD(last_used_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
 
     const conn = await pool.getConnection();
     try {
-      var regWhere = 'created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)';
+      var regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
       var regParams = [span];
       var actWhere =
-        'last_used_at IS NOT NULL AND used_count > 0 AND last_used_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)';
+        'last_used_at IS NOT NULL AND used_count > 0 AND ' +
+        cnActDay +
+        ' >= DATE_SUB(' +
+        cnToday +
+        ', INTERVAL ? DAY)';
       var actParams = [span];
 
       if (!req.admin || !req.admin.is_super) {
@@ -3358,13 +3372,16 @@ async function handleAdminUsersDailyConversion(req, res) {
       }
 
       const [regRows] = await conn.query(
-        'SELECT DATE(created_at) AS d, COUNT(*) AS cnt FROM users WHERE ' + regWhere + ' GROUP BY DATE(created_at)',
+        'SELECT ' + cnUserDay + ' AS d, COUNT(*) AS cnt FROM users WHERE ' + regWhere + ' GROUP BY ' + cnUserDay,
         regParams
       );
       const [actRows] = await conn.query(
-        'SELECT DATE(last_used_at) AS d, COUNT(DISTINCT used_by_username) AS cnt FROM activation_codes WHERE ' +
+        'SELECT ' +
+          cnActDay +
+          ' AS d, COUNT(DISTINCT used_by_username) AS cnt FROM activation_codes WHERE ' +
           actWhere +
-          ' GROUP BY DATE(last_used_at)',
+          ' GROUP BY ' +
+          cnActDay,
         actParams
       );
 
@@ -3380,9 +3397,10 @@ async function handleAdminUsersDailyConversion(req, res) {
       });
 
       var series = [];
-      var today = new Date();
+      var todayKey = chinaDateKeyNow();
+      var todayParts = todayKey.split('-').map(Number);
       for (var i = 0; i < days; i++) {
-        var dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1 - i));
+        var dt = new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - (days - 1 - i));
         var key = formatDateKey(dt);
         var registered = regMap[key] || 0;
         var activated = actMap[key] || 0;
@@ -3396,7 +3414,6 @@ async function handleAdminUsersDailyConversion(req, res) {
         });
       }
 
-      var todayKey = formatDateKey(today);
       var todayRow = series.length ? series[series.length - 1] : { date: todayKey, registered: 0, activated: 0, rate: null, rate_pct: null };
       if (todayRow.date !== todayKey) {
         todayRow = {
