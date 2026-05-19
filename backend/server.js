@@ -1807,6 +1807,15 @@ async function requireAuth(req, res, next) {
   }
 }
 
+function parseTaxRecordIncome(raw) {
+  if (raw == null || raw === '') return 0;
+  var n = Number(raw);
+  if (!isNaN(n)) return n;
+  var s = String(raw).replace(/,/g, '').trim();
+  n = parseFloat(s);
+  return isNaN(n) || n < 0 ? 0 : n;
+}
+
 function formatAvgSalary6mLabel(avg, monthCount) {
   if (avg == null || isNaN(avg)) return '未填写';
   var n = Number(avg);
@@ -1836,8 +1845,7 @@ function computeTaxRecordsAvgSalary6m(records) {
     }
     if (!y || !m || isNaN(y) || isNaN(m)) return;
     var key = y + '-' + String(m).padStart(2, '0');
-    var inc = Number(r.income);
-    if (isNaN(inc) || inc < 0) inc = 0;
+    var inc = parseTaxRecordIncome(r.income);
     if (!byMonth[key]) byMonth[key] = { y: y, m: m, total: 0 };
     byMonth[key].total += inc;
   });

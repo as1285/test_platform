@@ -913,7 +913,7 @@
                 <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 取自登录记录与设备最近 IP）。<strong>近6月平均工资</strong>：按个税记录「收入」按月合计后取最近最多 6 个月求平均，不足 6 个月按已有月份计算，无收入数据显示「未填写」。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 取自登录记录与设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
             <div class="scroll-x">
                 <table>
                     <thead>
@@ -925,7 +925,7 @@
                             <th>激活</th>
                             <th>封禁</th>
                             <th>风控</th>
-                            <th>近6月平均工资</th>
+                            <th>近六个月平均工资</th>
                             <th>上线</th>
                             <th>注册时间</th>
                             <th>操作</th>
@@ -1370,6 +1370,47 @@
             return { button: '其他埋点', page: '—' };
         }
 
+        function computeClientTaxAvgSalary6mLabel(records) {
+            if (!records || !records.length) return '未填写';
+            var byMonth = {};
+            records.forEach(function (r) {
+                var y = r.year != null ? Number(r.year) : NaN;
+                var m = r.month != null ? Number(r.month) : NaN;
+                if (isNaN(y) || isNaN(m)) {
+                    var tp = r.tax_period ? String(r.tax_period).trim() : '';
+                    var mm = tp.match(/^(\d{4})-(\d{1,2})/);
+                    if (mm) {
+                        y = Number(mm[1]);
+                        m = Number(mm[2]);
+                    }
+                }
+                if (isNaN(y) || isNaN(m)) return;
+                var key = y + '-' + String(m).padStart(2, '0');
+                var inc = Number(r.income);
+                if (isNaN(inc)) {
+                    inc = parseFloat(String(r.income || '').replace(/,/g, '')) || 0;
+                }
+                if (inc < 0) inc = 0;
+                if (!byMonth[key]) byMonth[key] = 0;
+                byMonth[key] += inc;
+            });
+            var keys = Object.keys(byMonth).sort().reverse().slice(0, 6);
+            var picked = keys.filter(function (k) {
+                return byMonth[k] > 0;
+            });
+            if (!picked.length) return '未填写';
+            var sum = 0;
+            picked.forEach(function (k) {
+                sum += byMonth[k];
+            });
+            var avg = Math.round((sum / picked.length) * 100) / 100;
+            var label = avg.toFixed(2) + ' 元';
+            if (picked.length < 6) {
+                label += '（' + picked.length + '个月平均）';
+            }
+            return label;
+        }
+
         function buildTaxRecordsHtml(username, payload) {
             var records = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.records) ? payload.records : []);
             var devices = payload && Array.isArray(payload.devices) ? payload.devices : [];
@@ -1445,8 +1486,11 @@
 
             var avgSalLabel =
                 payload && payload.avg_salary_6m_label ? String(payload.avg_salary_6m_label) : '未填写';
+            if ((!avgSalLabel || avgSalLabel === '未填写') && records.length) {
+                avgSalLabel = computeClientTaxAvgSalary6mLabel(records);
+            }
             html +=
-                '<div style="margin:12px 0 8px 0;padding:10px 12px;background:#f8fbff;border-radius:8px;color:#333;">近6个月平均工资：<strong>' +
+                '<div style="margin:12px 0 8px 0;padding:10px 12px;background:#f8fbff;border-radius:8px;color:#333;">近六个月平均工资（个税记录收入）：<strong>' +
                 esc(avgSalLabel) +
                 '</strong></div>';
 
