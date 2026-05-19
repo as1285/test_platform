@@ -187,6 +187,24 @@
             box-sizing: border-box;
         }
 
+        .activate-modal-label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .activate-modal-label + .activate-modal-input {
+            margin-bottom: 12px;
+        }
+
+        .mine-profile-edit-hint {
+            font-size: 12px;
+            color: #999;
+            line-height: 1.5;
+            margin: -4px 0 12px;
+        }
+
         .activate-modal-actions {
             display: flex;
             flex-wrap: wrap;
@@ -249,6 +267,15 @@
         .user-info-text {
             flex: 1;
             min-width: 0;
+        }
+
+        .user-info-text.user-info-text--editable {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .user-info-text.user-info-text--editable:active {
+            opacity: 0.88;
         }
 
         .user-name {
@@ -512,7 +539,13 @@
     <div class="content-wrapper">
         <div class="user-card">
             <div class="user-info">
-                <div class="user-info-text">
+                <div
+                    class="user-info-text user-info-text--editable"
+                    id="mineProfileEditHit"
+                    role="button"
+                    tabindex="0"
+                    aria-label="修改姓名与纳税人识别号"
+                >
                     <div class="user-name" id="mineDisplayName">--</div>
                     <div class="user-id" id="userTaxId">
                         <span id="userTaxIdText">纳税人识别号 --</span>
@@ -582,6 +615,22 @@
                 <button type="button" class="activate-modal-btn xianyu" id="btnMineActivateXianyu">闲鱼购买</button>
                 <button type="button" class="activate-modal-btn" id="btnMineActivateCancel">取消</button>
                 <button type="button" class="activate-modal-btn primary" id="btnMineActivateOk">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mineProfileEditModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineProfileEditModalTitle">
+        <div class="activate-modal-mask" id="mineProfileEditModalMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="mineProfileEditModalTitle">修改个人信息</p>
+            <label class="activate-modal-label" for="mineEditRealName">姓名</label>
+            <input type="text" id="mineEditRealName" class="activate-modal-input" placeholder="请输入姓名" autocomplete="name">
+            <label class="activate-modal-label" for="mineEditTaxId">纳税人识别号</label>
+            <input type="text" id="mineEditTaxId" class="activate-modal-input" placeholder="请输入纳税人识别号" autocomplete="off">
+            <p class="mine-profile-edit-hint">修改后将同步保存到您的账号。</p>
+            <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn" id="btnMineProfileEditCancel">取消</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineProfileEditOk">保存</button>
             </div>
         </div>
     </div>
@@ -673,6 +722,109 @@
                     return '--';
                 }
                 return taxId.charAt(0) + '***************' + taxId.charAt(taxId.length - 1);
+            }
+
+            var MINE_LEGACY_DEFAULT_TAX_ID = '620000000000000000';
+            var MINE_DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
+            var MINE_LEGACY_TAX_ID_HINT = '所***************改';
+            var mineCurrentTaxIdRaw = '';
+            var mineTaxRevealState = false;
+            var mineRenderTaxIdFn = null;
+
+            function isPlaceholderTaxIdMine(v) {
+                var s = String(v || '').trim();
+                return (
+                    !s ||
+                    s === MINE_LEGACY_DEFAULT_TAX_ID ||
+                    s === MINE_DEFAULT_TAX_ID_HINT ||
+                    s === MINE_LEGACY_TAX_ID_HINT
+                );
+            }
+
+            function mineCurrentUserId() {
+                return (
+                    localStorage.getItem('user_id') ||
+                    localStorage.getItem('userName') ||
+                    localStorage.getItem('username') ||
+                    ''
+                );
+            }
+
+            function openMineProfileEditModal() {
+                var root = document.getElementById('mineProfileEditModal');
+                var nameInp = document.getElementById('mineEditRealName');
+                var taxInp = document.getElementById('mineEditTaxId');
+                var nameEl = document.getElementById('mineDisplayName');
+                if (!root || !nameInp || !taxInp) return;
+                var displayName = nameEl ? String(nameEl.textContent || '').trim() : '';
+                nameInp.value = displayName === '--' ? '' : displayName;
+                var tid = mineCurrentTaxIdRaw || localStorage.getItem('tax_id') || '';
+                if (isPlaceholderTaxIdMine(tid)) tid = '';
+                taxInp.value = tid;
+                root.classList.add('is-open');
+                setTimeout(function () {
+                    nameInp.focus();
+                }, 0);
+            }
+
+            function closeMineProfileEditModal() {
+                var root = document.getElementById('mineProfileEditModal');
+                if (root) root.classList.remove('is-open');
+            }
+
+            function saveMineProfileEdit() {
+                var nameInp = document.getElementById('mineEditRealName');
+                var taxInp = document.getElementById('mineEditTaxId');
+                var nameEl = document.getElementById('mineDisplayName');
+                if (!nameInp || !taxInp) return;
+                var realName = nameInp.value.trim();
+                var taxId = taxInp.value.trim();
+                if (!realName) {
+                    alert('请输入姓名');
+                    return;
+                }
+                if (!taxId) {
+                    alert('请输入纳税人识别号');
+                    return;
+                }
+                if (nameEl) nameEl.textContent = realName;
+                localStorage.setItem('real_name', realName);
+                mineCurrentTaxIdRaw = taxId;
+                mineTaxRevealState = false;
+                localStorage.setItem('tax_id', taxId);
+                if (mineRenderTaxIdFn) mineRenderTaxIdFn();
+                closeMineProfileEditModal();
+
+                var userId = mineCurrentUserId();
+                if (!userId) return;
+
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
+                fetchFn('api/user.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_profile',
+                        user_id: userId,
+                        real_name: realName,
+                        tax_id: taxId
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200) {
+                            alert('保存失败：' + (data.msg || '未知错误'));
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络异常，已保存到本地');
+                    });
             }
 
             function setCounts(user) {
@@ -896,20 +1048,26 @@
                 var nameEl = document.getElementById('mineDisplayName');
                 var taxEl = document.getElementById('userTaxIdText');
                 var taxToggleBtn = document.getElementById('toggleTaxIdBtn');
-                var currentTaxIdRaw = '';
-                var taxReveal = false;
+                mineTaxRevealState = false;
                 function renderTaxId() {
-                    taxEl.textContent = '纳税人识别号 ' + (currentTaxIdRaw ? (taxReveal ? currentTaxIdRaw : maskTaxId(currentTaxIdRaw)) : '--');
+                    taxEl.textContent =
+                        '纳税人识别号 ' +
+                        (mineCurrentTaxIdRaw
+                            ? mineTaxRevealState
+                                ? mineCurrentTaxIdRaw
+                                : maskTaxId(mineCurrentTaxIdRaw)
+                            : '--');
                     if (taxToggleBtn) {
-                        taxToggleBtn.classList.toggle('reveal', taxReveal);
+                        taxToggleBtn.classList.toggle('reveal', mineTaxRevealState);
                     }
                 }
+                mineRenderTaxIdFn = renderTaxId;
                 var rn = localStorage.getItem('real_name');
                 var tid = localStorage.getItem('tax_id');
                 if (rn) {
                     nameEl.textContent = rn;
                 }
-                currentTaxIdRaw = tid || '';
+                mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(tid) ? '' : tid || '';
                 renderTaxId();
                 updateMineActivateButton(null);
 
@@ -947,7 +1105,7 @@
                         }
                         if (u.tax_id) {
                             localStorage.setItem('tax_id', u.tax_id);
-                            currentTaxIdRaw = u.tax_id;
+                            mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(u.tax_id) ? '' : u.tax_id;
                             renderTaxId();
                         }
                         if (u.gender != null) {
@@ -972,11 +1130,53 @@
                     });
 
                 if (taxToggleBtn) {
-                    taxToggleBtn.addEventListener('click', function () {
-                        taxReveal = !taxReveal;
+                    taxToggleBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        mineTaxRevealState = !mineTaxRevealState;
                         renderTaxId();
                     });
                 }
+            }
+
+            var profileEditHit = document.getElementById('mineProfileEditHit');
+            if (profileEditHit) {
+                profileEditHit.addEventListener('click', openMineProfileEditModal);
+                profileEditHit.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMineProfileEditModal();
+                    }
+                });
+            }
+            var profileEditOk = document.getElementById('btnMineProfileEditOk');
+            var profileEditCancel = document.getElementById('btnMineProfileEditCancel');
+            var profileEditMask = document.getElementById('mineProfileEditModalMask');
+            var profileEditNameInp = document.getElementById('mineEditRealName');
+            var profileEditTaxInp = document.getElementById('mineEditTaxId');
+            if (profileEditOk) {
+                profileEditOk.addEventListener('click', saveMineProfileEdit);
+            }
+            if (profileEditCancel) {
+                profileEditCancel.addEventListener('click', closeMineProfileEditModal);
+            }
+            if (profileEditMask) {
+                profileEditMask.addEventListener('click', closeMineProfileEditModal);
+            }
+            if (profileEditNameInp) {
+                profileEditNameInp.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (profileEditOk) profileEditOk.click();
+                    }
+                });
+            }
+            if (profileEditTaxInp) {
+                profileEditTaxInp.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (profileEditOk) profileEditOk.click();
+                    }
+                });
             }
 
             loadUserInfo();
