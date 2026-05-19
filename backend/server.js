@@ -796,6 +796,20 @@ async function createTables() {
     }
   }
 
+  var registerSalaryCols = [
+    "ALTER TABLE users ADD COLUMN register_salary_months_json TEXT NULL COMMENT '注册时填写的近6个月工资 JSON 数组'",
+    'ALTER TABLE users ADD COLUMN register_avg_salary_6m DECIMAL(12,2) NULL COMMENT \'注册时近6个月平均工资（按已填月份计算）\''
+  ];
+  for (var rsi = 0; rsi < registerSalaryCols.length; rsi++) {
+    try {
+      await conn.execute(registerSalaryCols[rsi]);
+    } catch (e) {
+      if (e.errno !== 1060) {
+        throw e;
+      }
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS app_settings (
       setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -1749,10 +1763,44 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/** 解析注册页近6个月工资：仅保留有效非负数值，最多6个 */
+function parseRegisterSalaryMonthsInput(raw) {
+  if (raw == null) return [];
+  var arr = Array.isArray(raw) ? raw : [];
+  var out = [];
+  for (var i = 0; i < 6 && i < arr.length; i++) {
+    var v = arr[i];
+    if (v === null || v === undefined || v === '') continue;
+    var n = Number(String(v).replace(/,/g, '').trim());
+    if (isNaN(n) || n < 0) continue;
+    out.push(Math.round(n * 100) / 100);
+  }
+  return out;
+}
+
+function computeRegisterAvgSalary6m(months) {
+  if (!months || !months.length) return null;
+  var sum = 0;
+  for (var i = 0; i < months.length; i++) {
+    sum += months[i];
+  }
+  return Math.round((sum / months.length) * 100) / 100;
+}
+
+function formatRegisterAvgSalary6mLabel(avg, monthCount) {
+  if (avg == null || isNaN(avg)) return '未填写';
+  var n = Number(avg);
+  var base = n.toFixed(2) + ' 元';
+  if (monthCount > 0 && monthCount < 6) {
+    return base + '（' + monthCount + '个月平均）';
+  }
+  return base;
+}
+
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password) {
+async function registerUser(username, password, salaryMonthsRaw) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -1766,6 +1814,10 @@ async function registerUser(username, password) {
     throw new Error('该账号名保留，请换一个');
   }
 
+  var salaryMonths = parseRegisterSalaryMonthsInput(salaryMonthsRaw);
+  var avgSalary6m = computeRegisterAvgSalary6m(salaryMonths);
+  var salaryJson = salaryMonths.length ? JSON.stringify(salaryMonths) : null;
+
   const saltBuf = crypto.randomBytes(16);
   const saltHex = saltBuf.toString('hex');
   const hash = crypto.scryptSync(password, saltBuf, 64).toString('hex');
@@ -1778,9 +1830,9 @@ async function registerUser(username, password) {
       throw new Error('该账号已注册');
     }
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
-       VALUES (?, ?, ?, ?, 0, ?, ?)`,
-      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_salary_months_json, register_avg_salary_6m)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password, salaryJson, avgSalary6m]
     );
     // 注册成功埋点（用于后台接口统计看转化）
     incrementApiDailyCounter('EVENT register_success', '认证注册');
@@ -1792,7 +1844,9 @@ async function registerUser(username, password) {
     real_name: displayName,
     username: username,
     account_active: false,
-    is_test_account: false
+    is_test_account: false,
+    register_avg_salary_6m: avgSalary6m,
+    register_avg_salary_6m_label: formatRegisterAvgSalary6mLabel(avgSalary6m, salaryMonths.length)
   };
 }
 
@@ -3418,7 +3472,7 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
-      var out = await registerUser(body.username, body.password);
+      var out = await registerUser(body.username, body.password, body.salary_months);
       out.token = signAccessToken(out);
       return res.json({ code: 200, data: out });
     }
@@ -4444,6 +4498,29 @@ async function handleAdminUserTaxRecords(req, res) {
          LIMIT 80`,
         [username]
       );
+      const [userSalaryRows] = await conn.execute(
+        'SELECT register_salary_months_json, register_avg_salary_6m FROM users WHERE username = ? LIMIT 1',
+        [username]
+      );
+      var regSalaryMonths = [];
+      var regAvgSalary6m = null;
+      if (userSalaryRows.length) {
+        var ur = userSalaryRows[0];
+        if (ur.register_avg_salary_6m != null && !isNaN(Number(ur.register_avg_salary_6m))) {
+          regAvgSalary6m = Math.round(Number(ur.register_avg_salary_6m) * 100) / 100;
+        }
+        try {
+          if (ur.register_salary_months_json) {
+            var parsedSal = JSON.parse(String(ur.register_salary_months_json));
+            if (Array.isArray(parsedSal)) {
+              regSalaryMonths = parseRegisterSalaryMonthsInput(parsedSal);
+            }
+          }
+        } catch (eSal) {}
+        if (regAvgSalary6m == null && regSalaryMonths.length) {
+          regAvgSalary6m = computeRegisterAvgSalary6m(regSalaryMonths);
+        }
+      }
       var out = rows.map(function (r) {
         return {
           id: r.id,
@@ -4511,7 +4588,18 @@ async function handleAdminUserTaxRecords(req, res) {
       });
       return res.json({
         code: 200,
-        data: { records: out, devices: devOut, recent_pages: pageOut, issue_applications: issueOut }
+        data: {
+          records: out,
+          devices: devOut,
+          recent_pages: pageOut,
+          issue_applications: issueOut,
+          register_avg_salary_6m: regAvgSalary6m,
+          register_avg_salary_6m_label: formatRegisterAvgSalary6mLabel(
+            regAvgSalary6m,
+            regSalaryMonths.length
+          ),
+          register_salary_month_count: regSalaryMonths.length
+        }
       });
     } finally {
       conn.release();

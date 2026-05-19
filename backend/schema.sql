@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     account_active TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=已激活，新注册由程序写入0',
     banned TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=封禁',
     user_type TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试',
+    register_salary_months_json TEXT NULL COMMENT '注册时填写的近6个月工资 JSON 数组',
+    register_avg_salary_6m DECIMAL(12,2) NULL COMMENT '注册时近6个月平均工资（按已填月份计算）',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username)

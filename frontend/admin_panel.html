@@ -1421,6 +1421,15 @@
                 html += '</tbody></table></div>';
             }
 
+            var avgSalLabel =
+                payload && payload.register_avg_salary_6m_label
+                    ? String(payload.register_avg_salary_6m_label)
+                    : '未填写';
+            html +=
+                '<div style="margin:12px 0 8px 0;padding:10px 12px;background:#f8fbff;border-radius:8px;color:#333;">近6个月平均工资（注册填写）：<strong>' +
+                esc(avgSalLabel) +
+                '</strong></div>';
+
             html += '<div style="margin:10px 0 8px 0;color:#666;">个税记录（' + records.length + ' 条）</div>';
             if (!records.length) {
                 html += '<div style="color:#999;">暂无个税记录</div>';
