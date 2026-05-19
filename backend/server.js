@@ -1826,6 +1826,25 @@ function formatAvgSalary6mLabel(avg, monthCount) {
   return base;
 }
 
+function parseSalaryRangeFilterParam(raw) {
+  if (raw == null || raw === '') return null;
+  var n = Number(String(raw).replace(/,/g, '').trim());
+  if (isNaN(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function userMatchesSalaryRange(salInfo, minVal, maxVal) {
+  if (minVal == null && maxVal == null) return true;
+  var avg =
+    salInfo && salInfo.avg_salary_6m != null && !isNaN(Number(salInfo.avg_salary_6m))
+      ? Number(salInfo.avg_salary_6m)
+      : null;
+  if (avg == null) return false;
+  if (minVal != null && avg < minVal) return false;
+  if (maxVal != null && avg > maxVal) return false;
+  return true;
+}
+
 /** 按个税记录「收入」：每月合计后取最近最多 6 个月求平均 */
 function computeTaxRecordsAvgSalary6m(records) {
   if (!records || !records.length) {
@@ -4125,6 +4144,12 @@ async function handleAdminUsers(req, res) {
     var qBanned = req.query.banned; // '1' or '0'
     var qExact = req.query.exact === '1' || req.query.exact === 'true';
     var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
+    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
+    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
+    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
+    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
+      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
+    }
 
     let whereClauses = [];
     let params = [];
@@ -4170,10 +4195,60 @@ async function handleAdminUsers(req, res) {
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
 
     const conn = await pool.getConnection();
-    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
-    const total = totalRows[0].count;
+    var rows = [];
+    var total = 0;
+    var avgSalaryMaps = {};
 
-    const [rows] = await conn.query(`
+    if (hasSalaryFilter) {
+      const [allUserRows] = await conn.query(
+        'SELECT username FROM users' + whereSql + ' ORDER BY id DESC',
+        params
+      );
+      var allUsernames = allUserRows.map(function (r) {
+        return String(r.username);
+      });
+      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, allUsernames);
+      var filteredUsernames = [];
+      for (var fi = 0; fi < allUsernames.length; fi++) {
+        var funame = allUsernames[fi];
+        var fsal = avgSalaryMaps[funame] || {
+          avg_salary_6m: null,
+          avg_salary_6m_label: '未填写',
+          salary_month_count: 0
+        };
+        if (userMatchesSalaryRange(fsal, qSalaryMin, qSalaryMax)) {
+          filteredUsernames.push(funame);
+        }
+      }
+      total = filteredUsernames.length;
+      var pageUsernames = filteredUsernames.slice(offset, offset + limit);
+      if (pageUsernames.length) {
+        var ph = pageUsernames.map(function () {
+          return '?';
+        }).join(',');
+        const [pageRows] = await conn.query(
+          `SELECT id, username, real_name, tax_id, account_active, banned, user_type,
+                  last_login_city, created_at, hash, plain_password,
+                  (SELECT ac.owner_admin_username
+                   FROM activation_codes ac
+                   WHERE ac.used_by_username = users.username
+                     AND ac.owner_admin_username IS NOT NULL
+                     AND TRIM(ac.owner_admin_username) <> ''
+                   ORDER BY ac.last_used_at DESC, ac.id DESC
+                   LIMIT 1) AS upline_admin_username
+           FROM users WHERE username IN (` +
+            ph +
+            ') ORDER BY id DESC',
+          pageUsernames
+        );
+        rows = pageRows;
+      }
+    } else {
+      const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
+      total = totalRows[0].count;
+
+      const [pageRows] = await conn.query(
+        `
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
              last_login_city, created_at, hash, plain_password,
              (SELECT ac.owner_admin_username
@@ -4184,12 +4259,20 @@ async function handleAdminUsers(req, res) {
               ORDER BY ac.last_used_at DESC, ac.id DESC
               LIMIT 1) AS upline_admin_username
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
-    `, params);
-    var usernamesOnPage = rows.map(function (r) {
+    `,
+        params
+      );
+      rows = pageRows;
+      var usernamesOnPage = rows.map(function (r) {
+        return r.username;
+      });
+      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, usernamesOnPage);
+    }
+
+    var usernamesForRisk = rows.map(function (r) {
       return r.username;
     });
-    var riskMaps = await buildUserLoginRiskMaps(conn, usernamesOnPage);
-    var avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, usernamesOnPage);
+    var riskMaps = await buildUserLoginRiskMaps(conn, usernamesForRisk);
     conn.release();
 
     var out = rows.map(function (r) {
