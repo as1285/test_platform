@@ -594,7 +594,7 @@
         </div>
 
         <div class="menu-list">
-            <a class="menu-item" href="#"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="consult.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="consult.html?tab=feedback" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow">&gt;</span></a>
             <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow">&gt;</span></a>
@@ -1183,14 +1183,19 @@
             fetchMineXianyuUrl();
             installLegacyActivatePromptShim();
 
-            document.getElementById('consultModifyLink').addEventListener('click', function (e) {
+            function handleConsultMenuClick(e) {
                 e.preventDefault();
                 if (isInactiveAccount() && !hasTaxRecords()) {
                     confirmModifyTaxData();
                     return;
                 }
                 goConsultPage();
-            });
+            }
+            document.getElementById('consultModifyLink').addEventListener('click', handleConsultMenuClick);
+            var careVersionLink = document.getElementById('mineCareVersionLink');
+            if (careVersionLink) {
+                careVersionLink.addEventListener('click', handleConsultMenuClick);
+            }
 
             var mineActivateBtn = document.getElementById('mineActivateBtn');
             if (mineActivateBtn) {
