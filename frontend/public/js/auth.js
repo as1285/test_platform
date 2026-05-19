@@ -265,6 +265,15 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          /* 收入纳税明细 shuiming_result：小米 14 顶栏/汇总区避免被状态栏遮挡 */
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header{height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;padding-top:calc(var(--app-shell-statusbar-top) + 10px) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header .header-right{top:calc(var(--app-shell-statusbar-top) + 10px) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header{height:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;padding-top:var(--app-cordova-statusbar-chrome,40px) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-cordova-statusbar-chrome,40px) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
