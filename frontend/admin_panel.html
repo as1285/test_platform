@@ -892,7 +892,7 @@
                 <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
-            <p class="hint">登录风控（北京时间）：当日成功登录 ≥3 次，或累计关联设备 ≥3 台时标记为风险。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 取自登录记录与设备最近 IP）。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
             <div class="scroll-x">
                 <table>
                     <thead>
@@ -2290,12 +2290,12 @@
                                 esc(u.risk_messages.join('；')) +
                                 '</div>';
                         } else {
-                            var lt = u.login_today_count != null ? Number(u.login_today_count) : 0;
+                            var ipCnt = u.distinct_ip_count != null ? Number(u.distinct_ip_count) : 0;
                             var dc = u.device_count != null ? Number(u.device_count) : 0;
                             riskCell =
-                                '<span class="risk-hint-line">登录' +
-                                lt +
-                                '次 / 设备' +
+                                '<span class="risk-hint-line">IP' +
+                                ipCnt +
+                                '个 / 设备' +
                                 dc +
                                 '台</span>';
                         }

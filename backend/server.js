@@ -3716,15 +3716,26 @@ function chinaDateKeyNow() {
   return formatDateKey(new Date(utcMs + 8 * 3600000));
 }
 
-/** 注册用户列表登录风控：当日成功登录次数、关联设备数 */
-var USER_LOGIN_RISK_DAILY_THRESHOLD = 3;
+/** 注册用户列表登录风控：不同登录 IP 数、关联设备数 */
+var USER_LOGIN_RISK_IP_THRESHOLD = 2;
 var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
 
+function userLoginRiskIpUnionSubquery(usernameExpr) {
+  var u = usernameExpr || 'users.username';
+  return (
+    '(SELECT TRIM(ip) AS ip_val FROM user_login_events WHERE username = ' +
+    u +
+    " AND ok = 1 AND ip IS NOT NULL AND TRIM(ip) <> '' UNION ALL SELECT TRIM(ip_last) AS ip_val FROM user_devices WHERE username = " +
+    u +
+    " AND ip_last IS NOT NULL AND TRIM(ip_last) <> '')"
+  );
+}
+
 async function buildUserLoginRiskMaps(conn, usernames) {
-  var loginToday = {};
+  var ipDistinct = {};
   var deviceCnt = {};
   if (!conn || !usernames || !usernames.length) {
-    return { loginToday: loginToday, deviceCnt: deviceCnt };
+    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
   }
   var uniq = [];
   var seen = {};
@@ -3735,62 +3746,62 @@ async function buildUserLoginRiskMaps(conn, usernames) {
     uniq.push(u);
   }
   if (!uniq.length) {
-    return { loginToday: loginToday, deviceCnt: deviceCnt };
+    return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
   }
   var ph = uniq.map(function () {
     return '?';
   }).join(',');
-  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-  var [loginRows] = await conn.execute(
-    'SELECT username, COUNT(*) AS cnt FROM user_login_events WHERE ok = 1 AND username IN (' +
+  var ipParams = uniq.concat(uniq);
+  var [ipRows] = await conn.execute(
+    'SELECT username, COUNT(DISTINCT ip_val) AS cnt FROM (' +
+      'SELECT username, TRIM(ip) AS ip_val FROM user_login_events WHERE ok = 1 AND username IN (' +
       ph +
-      ') AND DATE(DATE_ADD(created_at, INTERVAL 8 HOUR)) = ' +
-      cnToday +
-      ' GROUP BY username',
-    uniq
+      ") AND ip IS NOT NULL AND TRIM(ip) <> '' UNION ALL " +
+      'SELECT username, TRIM(ip_last) AS ip_val FROM user_devices WHERE username IN (' +
+      ph +
+      ") AND ip_last IS NOT NULL AND TRIM(ip_last) <> ''" +
+      ') combined GROUP BY username',
+    ipParams
   );
   var [devRows] = await conn.execute(
     'SELECT username, COUNT(*) AS cnt FROM user_devices WHERE username IN (' + ph + ') GROUP BY username',
     uniq
   );
-  loginRows.forEach(function (r) {
-    loginToday[String(r.username)] = Number(r.cnt) || 0;
+  ipRows.forEach(function (r) {
+    ipDistinct[String(r.username)] = Number(r.cnt) || 0;
   });
   devRows.forEach(function (r) {
     deviceCnt[String(r.username)] = Number(r.cnt) || 0;
   });
-  return { loginToday: loginToday, deviceCnt: deviceCnt };
+  return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
 }
 
-function computeUserLoginRisk(loginTodayCount, deviceCount) {
-  var loginCnt = Number(loginTodayCount) || 0;
+function computeUserLoginRisk(ipDistinctCount, deviceCount) {
+  var ipCnt = Number(ipDistinctCount) || 0;
   var devCnt = Number(deviceCount) || 0;
   var msgs = [];
-  if (loginCnt >= USER_LOGIN_RISK_DAILY_THRESHOLD) {
-    msgs.push('当日登录' + loginCnt + '次');
+  if (ipCnt >= USER_LOGIN_RISK_IP_THRESHOLD) {
+    msgs.push('不同IP' + ipCnt + '个');
   }
   if (devCnt >= USER_LOGIN_RISK_DEVICE_THRESHOLD) {
     msgs.push('设备' + devCnt + '台');
   }
   return {
-    login_today_count: loginCnt,
+    distinct_ip_count: ipCnt,
     device_count: devCnt,
     risk: msgs.length > 0,
     risk_messages: msgs
   };
 }
 
-/** SQL：账号是否命中登录风控（当日登录次数或设备数） */
+/** SQL：账号是否命中登录风控（不同 IP 数或设备数） */
 function userLoginRiskMatchSql(usernameExpr) {
   var u = usernameExpr || 'users.username';
-  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
   return (
-    '((SELECT COUNT(*) FROM user_login_events ule WHERE ule.username = ' +
-    u +
-    ' AND ule.ok = 1 AND DATE(DATE_ADD(ule.created_at, INTERVAL 8 HOUR)) = ' +
-    cnToday +
-    ') >= ' +
-    USER_LOGIN_RISK_DAILY_THRESHOLD +
+    '((SELECT COUNT(DISTINCT ip_val) FROM ' +
+    userLoginRiskIpUnionSubquery(u) +
+    ' ip_union) >= ' +
+    USER_LOGIN_RISK_IP_THRESHOLD +
     ' OR (SELECT COUNT(*) FROM user_devices ud WHERE ud.username = ' +
     u +
     ') >= ' +
@@ -3990,7 +4001,7 @@ async function handleAdminUsers(req, res) {
     var out = rows.map(function (r) {
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var uname = String(r.username || '');
-      var riskInfo = computeUserLoginRisk(riskMaps.loginToday[uname] || 0, riskMaps.deviceCnt[uname] || 0);
+      var riskInfo = computeUserLoginRisk(riskMaps.ipDistinct[uname] || 0, riskMaps.deviceCnt[uname] || 0);
       return {
         id: r.id,
         username: r.username,
@@ -4007,7 +4018,7 @@ async function handleAdminUsers(req, res) {
             : '',
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password: r.plain_password || (r.hash ? '历史账号(密文)' : '—'), // 统一返回明文或提示
-        login_today_count: riskInfo.login_today_count,
+        distinct_ip_count: riskInfo.distinct_ip_count,
         device_count: riskInfo.device_count,
         risk: riskInfo.risk,
         risk_messages: riskInfo.risk_messages
