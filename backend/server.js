@@ -458,6 +458,13 @@ function cityLabelFromIp(ip) {
   return parts.join(' · ') || '—';
 }
 
+/** 设备/登录展示用城市：优先库内 city_last，否则按 IP 推断 */
+function resolveDeviceCityLabel(ip, cityStored) {
+  var c = cityStored != null ? String(cityStored).trim() : '';
+  if (c && c !== '—') return c.substring(0, 255);
+  return cityLabelFromIp(ip);
+}
+
 async function updateUserLastLoginCity(username, req) {
   try {
     var ip = getClientIp(req);
@@ -4475,7 +4482,7 @@ async function handleAdminUserTaxRecords(req, res) {
           app_version: appVersion,
           user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
           ip_last: r.ip_last != null ? String(r.ip_last) : '',
-          city_last: r.city_last != null ? String(r.city_last) : '',
+          city_last: resolveDeviceCityLabel(r.ip_last, r.city_last),
           first_seen: r.first_seen ? r.first_seen.toISOString() : '',
           last_seen: r.last_seen ? r.last_seen.toISOString() : '',
           login_count: r.login_count != null ? Number(r.login_count) : 0,
@@ -5086,7 +5093,7 @@ async function handleAdminAnalyticsDevices(req, res) {
               device_json: dj,
               user_agent_short: r.user_agent_short != null ? String(r.user_agent_short) : '',
               ip_last: r.ip_last != null ? String(r.ip_last) : '',
-              city_last: r.city_last != null ? String(r.city_last) : '',
+              city_last: resolveDeviceCityLabel(r.ip_last, r.city_last),
               first_seen: r.first_seen ? r.first_seen.toISOString() : null,
               last_seen: r.last_seen ? r.last_seen.toISOString() : null,
               login_count: r.login_count != null ? Number(r.login_count) : 0,

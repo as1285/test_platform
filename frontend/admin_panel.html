@@ -1366,6 +1366,10 @@
                     var seen = d.last_seen ? formatDt(d.last_seen) : '—';
                     var syncTxt = '登录' + (d.login_count || 0) + '次';
                     var ipTxt = d.ip_last ? String(d.ip_last) : '—';
+                    var cityTxt = d.city_last && String(d.city_last).trim() ? String(d.city_last).trim() : '';
+                    if (ipTxt !== '—' && cityTxt && cityTxt !== '—') {
+                        ipTxt = ipTxt + '（' + cityTxt + '）';
+                    }
                     if (idx > 0) {
                         html += '<tr><td colspan="2" style="background:#f8fbff;color:#999;">— 设备分隔 —</td></tr>';
                     }
