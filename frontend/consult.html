@@ -274,6 +274,28 @@
             line-height: 1.5;
         }
         .feedback-reply-box strong { color: #1e6fff; font-size: 12px; display: block; margin-bottom: 6px; }
+        .feedback-wechat-pay {
+            margin-bottom: 14px;
+            padding: 14px;
+            background: #f8fbff;
+            border-radius: 10px;
+            border: 1px solid #e8eef8;
+            text-align: center;
+        }
+        .feedback-wechat-pay-title {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .feedback-wechat-pay img {
+            max-width: 220px;
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+        }
         .fb-type-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -742,6 +764,10 @@
         </div>
 
         <div id="panel-feedback" class="tab-panel">
+            <div id="feedbackWechatPayCard" class="card feedback-wechat-pay" style="display:none;">
+                <div class="feedback-wechat-pay-title">微信收款码</div>
+                <img id="feedbackWechatPayImg" src="" alt="微信收款码">
+            </div>
             <div class="card">
                 <div class="card-title">提交反馈</div>
                 <p class="hint" style="margin-bottom:12px;line-height:1.5;">欢迎反馈 APP 使用中的 BUG 或功能优化建议，我们会在管理后台查看并尽快回复（回复内容将显示在下方列表）。</p>
@@ -1164,8 +1190,42 @@
                 history.replaceState({}, '', u);
             }
             if (tab === 'feedback') {
+                loadFeedbackWechatPayQr();
                 loadFeedbackList();
             }
+        }
+
+        function renderFeedbackWechatPayQr(displayUrl) {
+            var card = document.getElementById('feedbackWechatPayCard');
+            var img = document.getElementById('feedbackWechatPayImg');
+            if (!card || !img) return;
+            var u = displayUrl != null ? String(displayUrl).trim() : '';
+            if (!u) {
+                card.style.display = 'none';
+                img.removeAttribute('src');
+                return;
+            }
+            img.src = u;
+            card.style.display = 'block';
+        }
+
+        function loadFeedbackWechatPayQr() {
+            return authFetch('api/feedback.php?action=config')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (res) {
+                    if (res.code === 200 && res.data) {
+                        renderFeedbackWechatPayQr(
+                            res.data.wechat_pay_qrcode_display_url || res.data.wechat_pay_qrcode_url
+                        );
+                        return;
+                    }
+                    renderFeedbackWechatPayQr('');
+                })
+                .catch(function () {
+                    renderFeedbackWechatPayQr('');
+                });
         }
 
         function initTabs() {
@@ -3037,6 +3097,9 @@
                 })
                 .then(function (res) {
                     if (res.code === 200 && res.data && Array.isArray(res.data.items)) {
+                        renderFeedbackWechatPayQr(
+                            res.data.wechat_pay_qrcode_display_url || res.data.wechat_pay_qrcode_url
+                        );
                         renderFeedbackListFromArray(res.data.items);
                         return;
                     }

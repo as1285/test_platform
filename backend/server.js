@@ -81,6 +81,7 @@ const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';
 const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 /** 闲鱼购买等外链，与引导安装一同在后台配置 */
 const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
+const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 
 const ADMIN_MENU_KEYS = [
   'settings',
@@ -143,6 +144,45 @@ function normalizeAdminMenuList(rawMenus, isSuper) {
     out.push(key);
   });
   return out;
+}
+
+var _wechatPayQrcodeCache = null;
+var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
+
+async function getWechatPayQrcodeUrl() {
+  var now = Date.now();
+  if (_wechatPayQrcodeCache && now - _wechatPayQrcodeCache.t < WECHAT_PAY_QRCODE_CACHE_MS) {
+    return _wechatPayQrcodeCache.v;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [SETTING_KEY_WECHAT_PAY_QRCODE]
+    );
+    var v = '';
+    if (rows.length > 0 && rows[0].setting_value != null) {
+      var s = sanitizeMineUiImageRef(String(rows[0].setting_value).trim());
+      if (s) v = s;
+    }
+    _wechatPayQrcodeCache = { v: v, t: now };
+    return v;
+  } finally {
+    conn.release();
+  }
+}
+
+function invalidateWechatPayQrcodeCache() {
+  _wechatPayQrcodeCache = null;
+}
+
+/** 用户端展示用：uploads/… 或相对路径补全为站内 URL */
+function resolvePublicAssetUrl(ref) {
+  var ok = sanitizeMineUiImageRef(ref);
+  if (!ok) return '';
+  if (/^https?:\/\//i.test(ok)) return ok;
+  if (ok.charAt(0) === '/') return ok;
+  return '/' + ok;
 }
 
 async function getTestAccountCompanyName() {
@@ -833,6 +873,10 @@ async function createTables() {
     `INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`,
     [SETTING_KEY_IOS_MOBILECONFIG, '/personal.mobileconfig']
   );
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_WECHAT_PAY_QRCODE,
+    ''
+  ]);
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS analytics_api_daily (
@@ -3214,8 +3258,26 @@ async function handleMessagePost(req, res) {
 async function handleFeedbackGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
-  if (action !== 'list' || userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: 'action=list 且需已登录' });
+  if (userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: '需已登录' });
+  }
+  if (action === 'config') {
+    try {
+      var qrRef = await getWechatPayQrcodeUrl();
+      return res.json({
+        code: 200,
+        data: {
+          wechat_pay_qrcode_url: qrRef,
+          wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
+  if (action !== 'list') {
+    return res.status(400).json({ code: 400, msg: 'action=list 或 config' });
   }
   try {
     const conn = await pool.getConnection();
@@ -3225,6 +3287,7 @@ async function handleFeedbackGet(req, res) {
       [String(userId)]
     );
     conn.release();
+    var qrRef = await getWechatPayQrcodeUrl();
     var out = rows.map(function (r) {
       return {
         id: r.id,
@@ -3235,7 +3298,14 @@ async function handleFeedbackGet(req, res) {
         created_at: r.created_at ? r.created_at.toISOString() : ''
       };
     });
-    res.json({ code: 200, data: { items: out } });
+    res.json({
+      code: 200,
+      data: {
+        items: out,
+        wechat_pay_qrcode_url: qrRef,
+        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
+      }
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
@@ -4315,6 +4385,7 @@ async function handleAdminSettingsGet(req, res) {
     var name = await getTestAccountCompanyName();
     var mineUi = await getMineUiForAdminForm();
     var installRaw = await getInstallPackageSettingsFromDb();
+    var qrRef = await getWechatPayQrcodeUrl();
     return res.json({
       code: 200,
       data: {
@@ -4322,7 +4393,9 @@ async function handleAdminSettingsGet(req, res) {
         mine_ui: mineUi,
         android_apk_download_url: installRaw.android,
         ios_mobileconfig_download_url: installRaw.ios,
-        xianyu_purchase_url: installRaw.xianyu
+        xianyu_purchase_url: installRaw.xianyu,
+        wechat_pay_qrcode_url: qrRef,
+        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
       }
     });
   } catch (e) {
@@ -4338,11 +4411,12 @@ async function handleAdminSettingsPost(req, res) {
   var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
-  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos && !hasXianyu) {
+  var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
+  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasWechatPayQr) {
     return res.status(400).json({
       code: 400,
       msg:
-        '请提供 test_account_company_name、mine_ui、安装包下载地址（android_apk_download_url / ios_mobileconfig_download_url）或闲鱼购买链接（xianyu_purchase_url）'
+        '请提供 test_account_company_name、mine_ui、安装包下载地址、闲鱼购买链接或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -4470,6 +4544,26 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasWechatPayQr) {
+      var rawQr = body.wechat_pay_qrcode_url;
+      var okQr = '';
+      if (rawQr != null && String(rawQr).trim() !== '') {
+        okQr = sanitizeMineUiImageRef(String(rawQr).trim());
+        if (!okQr) {
+          return res.status(400).json({
+            code: 400,
+            msg: '微信收款码地址无效（请上传图片或填写 uploads/… 或 https 链接）'
+          });
+        }
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_WECHAT_PAY_QRCODE, okQr]
+      );
+      invalidateWechatPayQrcodeCache();
+    }
+
     var outData = { success: true };
     outData.test_account_company_name = await getTestAccountCompanyName();
     outData.mine_ui = await getMineUiForAdminForm();
@@ -4477,6 +4571,9 @@ async function handleAdminSettingsPost(req, res) {
     outData.android_apk_download_url = installAfter.android;
     outData.ios_mobileconfig_download_url = installAfter.ios;
     outData.xianyu_purchase_url = installAfter.xianyu;
+    var qrAfter = await getWechatPayQrcodeUrl();
+    outData.wechat_pay_qrcode_url = qrAfter;
+    outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);

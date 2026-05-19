@@ -475,6 +475,27 @@
             </div>
             <p class="hint">此处名称通过用户资料接口下发（test_company_locked_name），便于前端展示或作为占位参考；测试账号可在个人中心自行填写真实姓名、公司名称与扣缴义务人名称，保存本设置不会批量改写用户已有任职或税务记录。</p>
         </section>
+        <section style="margin-top:24px;">
+            <h2>微信收款码（用户反馈页）</h2>
+            <p class="hint">上传后将在用户端「我要咨询 → 我要反馈」页面展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不在用户端显示。</p>
+            <div class="form-row" style="flex-direction: column; align-items: stretch;">
+                <div style="width:100%;max-width:320px;">
+                    <div id="wechatPayQrPreviewWrap" style="display:none;margin-bottom:12px;padding:12px;background:#f8fbff;border-radius:8px;border:1px solid #e8e8e8;">
+                        <img id="wechatPayQrPreview" alt="微信收款码预览" style="max-width:240px;max-height:240px;display:block;border-radius:6px;">
+                    </div>
+                    <label for="wechatPayQrcodeUrl">收款码图片地址</label>
+                    <div class="mine-ui-controls" style="margin-top:6px;">
+                        <input type="text" id="wechatPayQrcodeUrl" maxlength="500" placeholder="上传后自动填入 uploads/…" style="flex:1;min-width:180px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
+                        <input type="file" class="wechat-pay-qr-file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                        <button type="button" class="btn-page wechat-pay-qr-pick">上传图片</button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                    <button type="button" class="btn-primary" id="btnSaveWechatPayQr">保存收款码</button>
+                    <button type="button" class="btn-page" id="btnClearWechatPayQr">清空</button>
+                </div>
+            </div>
+        </section>
                 </div>
 
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
@@ -2733,6 +2754,20 @@
             }
         });
 
+        function updateWechatPayQrPreview(displayUrl) {
+            var wrap = document.getElementById('wechatPayQrPreviewWrap');
+            var img = document.getElementById('wechatPayQrPreview');
+            if (!wrap || !img) return;
+            var u = displayUrl != null ? String(displayUrl).trim() : '';
+            if (!u) {
+                wrap.style.display = 'none';
+                img.removeAttribute('src');
+                return;
+            }
+            img.src = u;
+            wrap.style.display = 'block';
+        }
+
         function loadAdminSettings() {
             adminFetch('api/admin/settings')
                 .then(function (r) { return r.json(); })
@@ -2740,6 +2775,19 @@
                     if (data.code === 200 && data.data && data.data.test_account_company_name != null) {
                         document.getElementById('testCompanyName').value = data.data.test_account_company_name;
                         document.getElementById('testCompanyName').placeholder = '';
+                    }
+                    if (data.code === 200 && data.data) {
+                        var qrEl = document.getElementById('wechatPayQrcodeUrl');
+                        if (qrEl) {
+                            qrEl.value =
+                                data.data.wechat_pay_qrcode_url != null
+                                    ? String(data.data.wechat_pay_qrcode_url)
+                                    : '';
+                        }
+                        updateWechatPayQrPreview(
+                            data.data.wechat_pay_qrcode_display_url ||
+                                (qrEl && qrEl.value ? '/' + String(qrEl.value).replace(/^\//, '') : '')
+                        );
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
@@ -2778,6 +2826,66 @@
                     document.getElementById('testCompanyName').placeholder = '加载失败';
                 });
         }
+
+        document.getElementById('btnSaveWechatPayQr').addEventListener('click', function () {
+            var btn = document.getElementById('btnSaveWechatPayQr');
+            var path = document.getElementById('wechatPayQrcodeUrl').value.trim();
+            btn.disabled = true;
+            adminFetch('api/admin/settings', {
+                method: 'POST',
+                body: JSON.stringify({ wechat_pay_qrcode_url: path })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        alert('收款码已保存');
+                        loadAdminSettings();
+                    } else {
+                        alert(data.msg || '保存失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                });
+        });
+
+        document.getElementById('btnClearWechatPayQr').addEventListener('click', function () {
+            document.getElementById('wechatPayQrcodeUrl').value = '';
+            updateWechatPayQrPreview('');
+        });
+
+        document.querySelector('.wechat-pay-qr-pick').addEventListener('click', function () {
+            var fi = document.querySelector('.wechat-pay-qr-file');
+            if (fi) fi.click();
+        });
+        document.querySelector('.wechat-pay-qr-file').addEventListener('change', function () {
+            var fileInput = document.querySelector('.wechat-pay-qr-file');
+            var f = fileInput.files && fileInput.files[0];
+            if (!f) return;
+            fileInput.disabled = true;
+            adminUploadAsset(f)
+                .then(function (data) {
+                    if (data.code === 200 && data.data && data.data.path) {
+                        document.getElementById('wechatPayQrcodeUrl').value = data.data.path;
+                        updateWechatPayQrPreview('/' + String(data.data.path).replace(/^\//, ''));
+                        alert('已上传，请点击「保存收款码」生效');
+                    } else {
+                        alert(data.msg || '上传失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .finally(function () {
+                    fileInput.disabled = false;
+                    fileInput.value = '';
+                });
+        });
 
         document.getElementById('btnSaveTestCompany').addEventListener('click', function () {
             var btn = document.getElementById('btnSaveTestCompany');
