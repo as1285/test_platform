@@ -97,6 +97,14 @@
     return /2410DPN6CC/i.test(ua);
   }
 
+  /**
+   * Redmi K80 等（25060RK16C，Android 16 Cordova）：收入纳税明细「扣缴义务人」需完整展示。
+   * 仅按 UA 型号匹配，不影响其它机型。
+   */
+  function isAndroid25060RK16CClient() {
+    return /25060RK16C/i.test(navigator.userAgent || '');
+  }
+
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
   function isHonorAnnAn00Client() {
     return /ANN-AN00/i.test(navigator.userAgent || '');
@@ -150,6 +158,7 @@
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
+      var android25060RK16C = androidClient && isAndroid25060RK16CClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
@@ -202,6 +211,9 @@
       }
       if (cordovaXiaomi2410) {
         document.documentElement.classList.add('app-cordova-xiaomi-2410');
+      }
+      if (android25060RK16C) {
+        document.documentElement.classList.add('app-android-25060rk16c');
       }
       if (huaweiPura70Client) {
         document.documentElement.classList.add('app-huawei-pura70');
