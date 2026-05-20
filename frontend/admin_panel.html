@@ -374,6 +374,36 @@
         .user-detail-pages-panel {
             margin-top: 8px;
         }
+        .dau-users-panel {
+            background: #f8fbff;
+            border: 1px solid #dbe7ff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 4px 0 8px;
+        }
+        .dau-users-panel .dau-users-title {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .dau-users-list {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.65;
+            word-break: break-all;
+        }
+        .dau-users-list .dau-user-item {
+            padding: 2px 0;
+            border-bottom: 1px solid #eef3fb;
+        }
+        .dau-users-list .dau-user-item:last-child {
+            border-bottom: none;
+        }
+        .dau-users-panel .pagination {
+            margin-top: 10px;
+            margin-bottom: 0;
+            justify-content: flex-start;
+        }
         .pagination {
             display: flex;
             align-items: center;
@@ -1005,7 +1035,7 @@
                 <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>埋点说明</h2>
-            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台；点击「查看账号」可展开当日活跃用户列表（每页 10 条）。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -1026,8 +1056,8 @@
                 <div class="scroll-x">
                     <p class="stat">日活（去重用户数）</p>
                     <table>
-                        <thead><tr><th>日期</th><th>活跃用户数</th></tr></thead>
-                        <tbody id="analyticsDauTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
+                        <thead><tr><th>日期</th><th>活跃用户数</th><th>操作</th></tr></thead>
+                        <tbody id="analyticsDauTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
                     </table>
                 </div>
                 <div class="scroll-x">
@@ -1835,9 +1865,83 @@
                 });
         }
 
+        var DAU_USERS_PAGE_LIMIT = 10;
+
+        function dauDateDomKey(dateStr) {
+            return String(dateStr || '').replace(/[^0-9]/g, '');
+        }
+
+        function renderDauUsersPanel(box, dateStr, data) {
+            if (!box) return;
+            var users = Array.isArray(data.usernames) ? data.usernames : [];
+            var page = Number(data.page) || 1;
+            var total = Number(data.total) || 0;
+            var totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / DAU_USERS_PAGE_LIMIT) || 1);
+            box.setAttribute('data-date', dateStr);
+            box.setAttribute('data-page', String(page));
+            box.setAttribute('data-loaded', '1');
+
+            var html = '<div class="dau-users-panel">';
+            html += '<div class="dau-users-title">' + esc(dateStr) + ' 活跃用户账号（共 ' + total + ' 个）</div>';
+            if (!users.length) {
+                html += '<div class="dau-users-list">暂无账号</div>';
+            } else {
+                html += '<div class="dau-users-list">';
+                users.forEach(function (u, idx) {
+                    var n = (page - 1) * DAU_USERS_PAGE_LIMIT + idx + 1;
+                    html += '<div class="dau-user-item">' + n + '. ' + esc(u) + '</div>';
+                });
+                html += '</div>';
+            }
+            html += '<div class="pagination">';
+            html +=
+                '<button type="button" class="btn-page dau-users-prev" data-date="' +
+                esc(dateStr) +
+                '"' +
+                (page <= 1 ? ' disabled' : '') +
+                '>上一页</button>';
+            html += '<span>第 ' + page + ' / ' + totalPages + ' 页</span>';
+            html +=
+                '<button type="button" class="btn-page dau-users-next" data-date="' +
+                esc(dateStr) +
+                '"' +
+                (page >= totalPages ? ' disabled' : '') +
+                '>下一页</button>';
+            html += '</div></div>';
+            box.innerHTML = html;
+        }
+
+        function loadDauUsersPage(dateStr, page, box) {
+            if (!box || !dateStr) return;
+            box.removeAttribute('data-loaded');
+            box.innerHTML = '<div class="dau-users-panel" style="color:#888;">加载中…</div>';
+            adminFetch(
+                'api/admin/analytics/dau-users?date=' +
+                    encodeURIComponent(dateStr) +
+                    '&page=' +
+                    encodeURIComponent(String(page || 1)) +
+                    '&limit=' +
+                    DAU_USERS_PAGE_LIMIT
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        box.innerHTML =
+                            '<div class="dau-users-panel" style="color:#c00;">' + esc(j.msg || '加载失败') + '</div>';
+                        return;
+                    }
+                    renderDauUsersPanel(box, dateStr, j.data);
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="dau-users-panel" style="color:#c00;">网络错误</div>';
+                });
+        }
+
         function loadAnalyticsDashboard() {
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
-            document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
@@ -1863,11 +1967,25 @@
                 if (ov.code === 200 && ov.data && ov.data.dau) {
                     var dh = '';
                     ov.data.dau.forEach(function (row) {
-                        dh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.active_users)) + '</td></tr>';
+                        var dk = dauDateDomKey(row.date);
+                        dh += '<tr class="dau-summary-row">';
+                        dh += '<td>' + esc(row.date) + '</td>';
+                        dh += '<td>' + esc(String(row.active_users)) + '</td>';
+                        dh +=
+                            '<td><button type="button" class="btn-sm btn-detail btn-dau-users-toggle" data-date="' +
+                            esc(row.date) +
+                            '">查看账号</button></td>';
+                        dh += '</tr>';
+                        dh +=
+                            '<tr id="dau_users_row_' +
+                            dk +
+                            '" class="dau-users-detail-row" style="display:none;"><td colspan="3"><div id="dau_users_box_' +
+                            dk +
+                            '" class="dau-users-box">点击「查看账号」加载列表…</div></td></tr>';
                     });
-                    document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="2">暂无数据</td></tr>';
+                    document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
                 } else {
-                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">' + esc(ov.msg || '加载失败') + '</td></tr>';
+                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">' + esc(ov.msg || '加载失败') + '</td></tr>';
                 }
 
                 if (ov.code === 200 && ov.data && ov.data.logins) {
@@ -1985,7 +2103,7 @@
                 }
 
             }).catch(function () {
-                document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
@@ -3304,6 +3422,44 @@
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
             loadAnalyticsDashboard();
+        });
+        document.getElementById('analyticsDauTbody').addEventListener('click', function (e) {
+            var toggleBtn = e.target.closest('.btn-dau-users-toggle');
+            if (toggleBtn) {
+                var dateT = toggleBtn.getAttribute('data-date');
+                var keyT = dauDateDomKey(dateT);
+                var rowT = document.getElementById('dau_users_row_' + keyT);
+                var boxT = document.getElementById('dau_users_box_' + keyT);
+                if (!rowT || !boxT) return;
+                var opening = rowT.style.display === 'none';
+                if (!opening) {
+                    rowT.style.display = 'none';
+                    toggleBtn.textContent = '查看账号';
+                    return;
+                }
+                rowT.style.display = '';
+                toggleBtn.textContent = '收起';
+                if (boxT.getAttribute('data-loaded') === '1') return;
+                loadDauUsersPage(dateT, 1, boxT);
+                return;
+            }
+            var prevBtn = e.target.closest('.dau-users-prev');
+            if (prevBtn && !prevBtn.disabled) {
+                var dateP = prevBtn.getAttribute('data-date');
+                var boxP = prevBtn.closest('.dau-users-box');
+                if (!boxP || !dateP) return;
+                var pageP = (parseInt(boxP.getAttribute('data-page'), 10) || 1) - 1;
+                loadDauUsersPage(dateP, pageP, boxP);
+                return;
+            }
+            var nextBtn = e.target.closest('.dau-users-next');
+            if (nextBtn && !nextBtn.disabled) {
+                var dateN = nextBtn.getAttribute('data-date');
+                var boxN = nextBtn.closest('.dau-users-box');
+                if (!boxN || !dateN) return;
+                var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
+                loadDauUsersPage(dateN, pageN, boxN);
+            }
         });
         document.getElementById('btnGotoLoginLog').addEventListener('click', function () {
             location.hash = 'login-log';

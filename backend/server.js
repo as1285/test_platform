@@ -5402,6 +5402,68 @@ async function handleAdminAnalyticsDeviceStats(req, res) {
   }
 }
 
+async function handleAdminAnalyticsDauUsers(req, res) {
+  try {
+    var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res.status(400).json({ code: 400, msg: 'date required (YYYY-MM-DD)' });
+    }
+    var page = parseInt(req.query.page, 10);
+    if (!isFinite(page) || page < 1) {
+      page = 1;
+    }
+    var limit = parseInt(req.query.limit, 10);
+    if (!isFinite(limit) || limit < 1) {
+      limit = 10;
+    }
+    if (limit > 100) {
+      limit = 100;
+    }
+    const conn = await pool.getConnection();
+    try {
+      const [[countRow]] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM user_daily_activity WHERE activity_date = ?',
+        [dateStr]
+      );
+      var total = countRow && countRow.c != null ? Number(countRow.c) : 0;
+      var totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
+      if (totalPages > 0 && page > totalPages) {
+        page = totalPages;
+      }
+      var offset = Math.max(0, ((page - 1) * limit) | 0);
+      var limInt = limit | 0;
+      const [rows] = await conn.query(
+        'SELECT username FROM user_daily_activity WHERE activity_date = ? ORDER BY username ASC LIMIT ' +
+          limInt +
+          ' OFFSET ' +
+          offset,
+        [dateStr]
+      );
+      if (total > 0 && totalPages < 1) {
+        totalPages = 1;
+      }
+      return res.json({
+        code: 200,
+        data: {
+          date: dateStr,
+          usernames: rows.map(function (r) {
+            return String(r.username || '');
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminAnalyticsOverview(req, res) {
   try {
     var days = clampAnalyticsDays(req.query.days, 14, 90);
@@ -6002,6 +6064,7 @@ app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAd
 app.post('/api/admin/user-type', requireAdminAuth, requireAdminMenu('users'), handleAdminUserType);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
+app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
 app.get('/api/admin/analytics/events', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsEvents);
 app.get('/api/admin/analytics/devices', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDevices);
