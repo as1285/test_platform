@@ -143,9 +143,23 @@
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-next:disabled {
+        .btn-next:disabled,
+        .btn-next.is-disabled {
             opacity: 1;
             cursor: default;
+        }
+        .btn-fill-sample {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 0;
+            border: none;
+            background: none;
+            color: #1e6fff;
+            font-size: 14px;
+            font-family: inherit;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
@@ -193,7 +207,8 @@
         </div>
     </div>
     <div class="footer">
-        <button type="button" class="btn-next" id="yhkNextBtn" disabled>下一步</button>
+        <button type="button" class="btn-next is-disabled" id="yhkNextBtn">下一步</button>
+        <button type="button" class="btn-fill-sample" id="yhkFillSampleBtn">生成示例数据</button>
     </div>
     <script>
         (function () {
@@ -235,13 +250,44 @@
                 bankNameEl.classList.toggle('dark', name !== '—');
             }
 
-            function syncNext() {
-                if (!btn) return;
+            function formReady() {
                 var cn = digitsOnly(card && card.value);
                 var pn = digitsOnly(phone && phone.value);
-                var ok = cn.length >= 16 && pn.length === 11;
-                btn.disabled = !ok;
-                btn.style.background = ok ? '#1e6fff' : '#7eb4ff';
+                var prov = String(provinceValue || '').trim();
+                return {
+                    cardLen: cn.length,
+                    phoneLen: pn.length,
+                    provinceOk: !!prov,
+                    ok: cn.length >= 16 && pn.length === 11 && !!prov
+                };
+            }
+
+            function syncNext() {
+                if (!btn) return;
+                var st = formReady();
+                btn.classList.toggle('is-disabled', !st.ok);
+                btn.style.background = st.ok ? '#1e6fff' : '#7eb4ff';
+            }
+
+            function formHint() {
+                var st = formReady();
+                var parts = [];
+                if (st.cardLen < 16) parts.push('银行卡号至少16位（当前' + st.cardLen + '位）');
+                if (st.phoneLen !== 11) parts.push('预留手机号须为11位（当前' + st.phoneLen + '位）');
+                if (!st.provinceOk) parts.push('请选择开户银行所在省份');
+                return parts.join('；');
+            }
+
+            function fillSampleData() {
+                if (card) card.value = '6222021234567890';
+                if (phone) phone.value = '13800138000';
+                provinceValue = '北京市';
+                if (provinceLink) {
+                    provinceLink.classList.add('dark');
+                    provinceLink.innerHTML = escHtml(provinceValue) + ' <span style="color:#ccc;">›</span>';
+                }
+                syncBankName();
+                syncNext();
             }
 
             function loadHolderProfile() {
@@ -277,7 +323,6 @@
                     if (p == null) return;
                     provinceValue = String(p).trim();
                     if (provinceValue) {
-                        provinceLink.textContent = provinceValue + ' ';
                         provinceLink.classList.add('dark');
                         provinceLink.innerHTML =
                             escHtml(provinceValue) + ' <span style="color:#ccc;">›</span>';
@@ -285,6 +330,7 @@
                         provinceLink.classList.remove('dark');
                         provinceLink.innerHTML = '请选择 <span style="color:#ccc;">›</span>';
                     }
+                    syncNext();
                 });
             }
 
@@ -303,16 +349,24 @@
             }
             if (phone) phone.addEventListener('input', syncNext);
 
+            var fillSampleBtn = document.getElementById('yhkFillSampleBtn');
+            if (fillSampleBtn) {
+                fillSampleBtn.addEventListener('click', fillSampleData);
+            }
+
+            var submitting = false;
             if (btn) {
                 btn.addEventListener('click', function () {
-                    if (btn.disabled) return;
-                    var cardNo = digitsOnly(card && card.value);
-                    var phoneNo = digitsOnly(phone && phone.value);
-                    if (cardNo.length < 16 || phoneNo.length !== 11) {
-                        alert('请完整填写银行卡号与预留手机号');
+                    if (submitting) return;
+                    var st = formReady();
+                    if (!st.ok) {
+                        alert(formHint() || '请完整填写表单');
                         return;
                     }
-                    btn.disabled = true;
+                    var cardNo = digitsOnly(card && card.value);
+                    var phoneNo = digitsOnly(phone && phone.value);
+                    submitting = true;
+                    btn.classList.add('is-disabled');
                     btn.textContent = '提交中…';
                     var bankName = inferBankName(cardNo);
                     if (bankName === '—') bankName = '银行卡';
@@ -354,6 +408,7 @@
                             alert('网络错误，请稍后重试');
                         })
                         .finally(function () {
+                            submitting = false;
                             btn.textContent = '下一步';
                             syncNext();
                         });
