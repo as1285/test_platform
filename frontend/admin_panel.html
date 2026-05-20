@@ -277,34 +277,65 @@
             flex: 1;
             min-width: 280px;
         }
-        .analytics-daily-conversion {
-            max-width: 520px;
+        .analytics-conv-wrap {
+            margin-top: 12px;
+        }
+        .analytics-conv-summary {
+            max-width: 320px;
             padding: 12px 16px;
             background: #fff;
             border: 1px solid #e3e8ef;
             border-radius: 8px;
+            margin-bottom: 12px;
         }
-        .analytics-daily-conversion .conv-label {
+        .analytics-conv-summary .conv-label {
             font-size: 12px;
             color: #888;
             margin-bottom: 4px;
         }
-        .analytics-daily-conversion .conv-today {
+        .analytics-conv-summary .conv-today {
             font-size: 22px;
             font-weight: 700;
             color: #1677ff;
             line-height: 1.2;
         }
-        .analytics-daily-conversion .conv-sub {
+        .analytics-conv-summary .conv-sub {
             font-size: 12px;
             color: #666;
             margin-top: 4px;
         }
-        .analytics-daily-conversion .conv-recent {
-            font-size: 11px;
-            color: #999;
-            margin-top: 8px;
-            line-height: 1.5;
+        .analytics-conv-table-wrap {
+            background: #fff;
+            border: 1px solid #e3e8ef;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .analytics-conv-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .analytics-conv-table-wrap th,
+        .analytics-conv-table-wrap td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eef1f5;
+            white-space: nowrap;
+        }
+        .analytics-conv-table-wrap th {
+            background: #f8fafc;
+            color: #666;
+            font-weight: 600;
+        }
+        .analytics-conv-table-wrap tr:last-child td {
+            border-bottom: none;
+        }
+        .analytics-conv-table-wrap tr.conv-row-today td {
+            background: #f0f7ff;
+        }
+        .analytics-conv-table-wrap .conv-rate-cell {
+            font-weight: 600;
+            color: #1677ff;
         }
         .user-detail-wrap {
             background: #f8fbff;
@@ -1097,7 +1128,19 @@
         <section>
             <h2>注册转化率</h2>
             <p class="hint" style="margin-top:0;">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准）。</p>
-            <div id="analyticsDailyConversion" class="analytics-daily-conversion" aria-live="polite" style="margin-top:12px;">转化率加载中…</div>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="analyticsConversionDays">统计天数</label>
+                    <select id="analyticsConversionDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
+            </div>
+            <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -2536,32 +2579,45 @@
                 return;
             }
             var today = data.today;
+            var todayKey = today.date || '';
             var rateText = today.rate_pct != null ? today.rate_pct : (today.registered > 0 ? '0.0%' : '—');
-            var html = '<div class="conv-label">今日转化率</div>';
+            var html = '<div class="analytics-conv-summary">';
+            html += '<div class="conv-label">今日转化率（' + esc(todayKey) + '）</div>';
             html += '<div class="conv-today">' + esc(rateText) + '</div>';
             html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
-            var series = Array.isArray(data.series) ? data.series : [];
-            if (series.length > 1) {
-                var parts = [];
-                for (var i = series.length - 2; i >= 0 && parts.length < 6; i--) {
-                    var row = series[i];
-                    if (!row || !row.date) continue;
-                    var label = row.date.slice(5);
+            html += '</div>';
+
+            var series = Array.isArray(data.series) ? data.series.slice() : [];
+            series.reverse();
+            html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
+            html += '<th>日期</th><th>注册数</th><th>激活数</th><th>转化率</th>';
+            html += '</tr></thead><tbody>';
+            if (!series.length) {
+                html += '<tr><td colspan="4">暂无数据</td></tr>';
+            } else {
+                series.forEach(function (row) {
+                    if (!row || !row.date) return;
                     var pct = row.rate_pct != null ? row.rate_pct : (row.registered > 0 ? '0.0%' : '—');
-                    parts.push(label + ' ' + pct);
-                }
-                if (parts.length) {
-                    html += '<div class="conv-recent">近' + esc(String(data.days || series.length)) + '日：' + esc(parts.join(' · ')) + '</div>';
-                }
+                    var isToday = row.date === todayKey;
+                    html += '<tr' + (isToday ? ' class="conv-row-today"' : '') + '>';
+                    html += '<td>' + esc(row.date) + (isToday ? ' <span style="color:#1677ff;font-size:12px;">今日</span>' : '') + '</td>';
+                    html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.activated != null ? row.activated : 0)) + '</td>';
+                    html += '<td class="conv-rate-cell">' + esc(pct) + '</td>';
+                    html += '</tr>';
+                });
             }
+            html += '</tbody></table></div>';
             el.innerHTML = html;
         }
 
         function loadAnalyticsDailyConversion() {
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
+            var daysEl = document.getElementById('analyticsConversionDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
             el.textContent = '转化率加载中…';
-            adminFetch('api/admin/analytics/daily-conversion?days=7')
+            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(days))
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {

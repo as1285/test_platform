@@ -4337,7 +4337,7 @@ async function handleAdminUsersDailyConversion(req, res) {
   try {
     var days = parseInt(req.query.days, 10) || 7;
     if (days < 1) days = 1;
-    if (days > 30) days = 30;
+    if (days > 90) days = 90;
     var span = days - 1;
     var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
     var cnActDay = 'DATE(DATE_ADD(last_used_at, INTERVAL 8 HOUR))';
