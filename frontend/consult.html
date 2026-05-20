@@ -592,7 +592,7 @@
 <body>
     <div class="header">
         <a href="mine.html" class="back-link">← 返回个人中心</a>
-        <button type="button" class="header-activate-btn" id="btnHeaderActivate" style="display:none;" aria-label="账号激活">激活</button>
+        <button type="button" class="header-activate-btn" id="btnHeaderActivate" aria-label="添加QQ号">添加QQ号</button>
         <h1>个人中心</h1>
         <p class="header-promo">闲鱼购买，如无法购买添加微信 13267166832</p>
     </div>
@@ -1253,20 +1253,12 @@
             } catch (e0) {}
         }
 
-        function updateConsultActivateButton(user) {
+        function updateConsultActivateButton() {
             var btn = document.getElementById('btnHeaderActivate');
             if (!btn) {
                 return;
             }
-            var act = false;
-            if (user && (user.account_active === true || user.account_active === 1)) {
-                act = true;
-            } else {
-                try {
-                    act = localStorage.getItem('account_active') === '1';
-                } catch (e1) {}
-            }
-            btn.style.display = act ? 'none' : '';
+            btn.style.display = '';
         }
 
         function loadUserInfoFromApi() {
@@ -1300,22 +1292,47 @@
         }
 
         var consultXianyuPurchaseUrl = '';
+        var consultQqAddUrl = '';
 
         function refreshConsultInstallPackageUrls() {
-            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+            return fetch('/api/public/install-packages', { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })
                 .then(function (body) {
-                    if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                        consultXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                    if (body && body.code === 200 && body.data) {
+                        consultXianyuPurchaseUrl =
+                            body.data.xianyu_purchase_url != null
+                                ? String(body.data.xianyu_purchase_url).trim()
+                                : '';
+                        consultQqAddUrl =
+                            body.data.qq_add_url != null ? String(body.data.qq_add_url).trim() : '';
                     } else {
                         consultXianyuPurchaseUrl = '';
+                        consultQqAddUrl = '';
                     }
                 })
                 .catch(function () {
                     consultXianyuPurchaseUrl = '';
+                    consultQqAddUrl = '';
                 });
+        }
+
+        function openConsultQqAddUrl() {
+            var openUrl = function (u) {
+                if (!u) {
+                    alert('暂未配置 QQ 添加链接，请在管理后台「系统设置」中填写');
+                    return;
+                }
+                window.open(u, '_blank', 'noopener,noreferrer');
+            };
+            if (consultQqAddUrl) {
+                openUrl(consultQqAddUrl);
+                return;
+            }
+            refreshConsultInstallPackageUrls().then(function () {
+                openUrl(consultQqAddUrl);
+            });
         }
 
         function closeConsultActivateModal() {
@@ -3155,9 +3172,9 @@
 
         document.getElementById('btnHeaderActivate').addEventListener('click', function () {
             if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_activate_prompt_open', { page: 'consult' });
+                window.trackUserAction('track_consult_qq_add_click', { page: 'consult' });
             }
-            submitConsultActivate();
+            openConsultQqAddUrl();
         });
 
         (function bindConsultActivateModal() {
