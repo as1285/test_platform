@@ -280,6 +280,9 @@
       }
       if (iosIPhone16Pro) {
         document.documentElement.classList.add('app-ios-iphone16pro');
+        /* 16 Pro 状态栏区易露出 html 白底；首页顶栏为蓝，与 theme-color 对齐 */
+        upsertMeta('theme-color', '#2c80f4');
+        upsertMeta('msapplication-navbutton-color', '#2c80f4');
       }
       if (huaweiPura70Client) {
         document.documentElement.classList.add('app-huawei-pura70');
@@ -376,6 +379,9 @@
           'html.app-huawei-pura70 body.page-mine .user-card,html.app-huawei-pura70 body.page-mine .menu-list,html.app-huawei-pura70 body.page-mine .logout-section{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
           'html.app-huawei-pura70 body.page-mine .function-cards{margin-left:8px !important;margin-right:8px !important;}' +
           'html.app-huawei-pura70.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
+          /* iPhone 16 Pro：首页固定搜索条上方安全区铺蓝，消除状态栏下白边 */
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <script src="/js/auth.js?v=20260520-shouye-iphone16pro-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>首页</title>
     <style>
@@ -44,6 +44,11 @@
         
         .search-bar-wrapper.scrolled {
             background: rgb(var(--shouye-top-bar-rgb));
+        }
+
+        /* iPhone 16 Pro：状态栏安全区与顶栏同色（auth.js 亦注入，此处兜底） */
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
         
         .search-bar {
