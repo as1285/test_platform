@@ -5632,6 +5632,42 @@ async function handleAdminAnalyticsApi(req, res) {
   }
 }
 
+/** C 端行为埋点在 analytics_api_daily 中的匹配条件（与列表查询一致） */
+var ANALYTICS_TRACK_EVENT_SQL =
+  "(route_key LIKE 'EVENT %' OR route_key LIKE '%#track\\_%')";
+
+async function handleAdminAnalyticsEventsClear(req, res) {
+  try {
+    var days = clampAnalyticsDays(
+      req.query.days != null ? req.query.days : req.body && req.body.days,
+      14,
+      90
+    );
+    var span = Math.max(0, days - 1);
+    const conn = await pool.getConnection();
+    try {
+      const [result] = await conn.execute(
+        `DELETE FROM analytics_api_daily
+         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND ${ANALYTICS_TRACK_EVENT_SQL}`,
+        [span]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          deleted_rows: result && result.affectedRows != null ? Number(result.affectedRows) : 0
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminAnalyticsEvents(req, res) {
   try {
     var days = clampAnalyticsDays(req.query.days, 14, 90);
@@ -5642,10 +5678,7 @@ async function handleAdminAnalyticsEvents(req, res) {
         `SELECT stat_date, route_key, SUM(cnt) AS total
          FROM analytics_api_daily
          WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-           AND (
-             route_key LIKE 'EVENT %'
-             OR route_key LIKE '%#track\\_%'
-           )
+           AND ${ANALYTICS_TRACK_EVENT_SQL}
          GROUP BY stat_date, route_key
          ORDER BY stat_date ASC`,
         [span]
@@ -6126,6 +6159,12 @@ app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('ana
 app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
 app.get('/api/admin/analytics/events', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsEvents);
+app.post(
+  '/api/admin/analytics/events/clear',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminAnalyticsEventsClear
+);
 app.get('/api/admin/analytics/devices', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDevices);
 app.get('/api/admin/analytics/device-stats', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDeviceStats);
 app.get('/api/admin/analytics/login-recent', requireAdminAuth, requireAdminMenu('login-log'), handleAdminAnalyticsLoginRecent);

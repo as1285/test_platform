@@ -146,6 +146,15 @@
         .btn-unban { background: #43a047; color: #fff; }
         .btn-copy { background: #5c6bc0; color: #fff; white-space: nowrap; }
         .btn-del-user { background: #8d6e63; color: #fff; white-space: nowrap; }
+        .section-head-actions {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .section-head-actions h2 { margin: 0; }
+        .section-head-actions > .btn-sm { flex-shrink: 0; margin-top: 2px; }
         .hint { font-size: 12px; color: #888; margin-top: 8px; }
         .code-result {
             margin-top: 12px;
@@ -1116,9 +1125,14 @@
             <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
         </section>
         <section>
-            <h2>C端行为埋点</h2>
-            <p class="hint">展示 C 端上报的埋点事件（如 <code>track_jump_*</code>、激活弹窗确认/取消、注册成功）。统计区间与上方“统计天数”一致。</p>
-            <div class="scroll-x">
+            <div class="section-head-actions">
+                <div>
+                    <h2>C端行为埋点</h2>
+                    <p class="hint" style="margin-top:8px;margin-bottom:0;">展示 C 端上报的埋点事件（如 <code>track_jump_*</code>、激活弹窗确认/取消、注册成功）。统计区间与上方“统计天数”一致。</p>
+                </div>
+                <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
+            </div>
+            <div class="scroll-x" style="margin-top:12px;">
                 <table>
                     <thead><tr><th>按钮名称</th><th>页面名称</th><th>事件名</th><th>次数</th></tr></thead>
                     <tbody id="analyticsEventsTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
@@ -3532,6 +3546,39 @@
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
             loadAnalyticsDashboard();
+        });
+        document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
+            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
+            if (
+                !confirm(
+                    '确定删除最近 ' +
+                        daysO +
+                        ' 天内的 C 端行为埋点统计数据？\n仅删除 track_* / EVENT 类埋点，不影响日活、接口调用等其它统计。此操作不可恢复。'
+                )
+            ) {
+                return;
+            }
+            var btn = this;
+            btn.disabled = true;
+            adminFetch('api/admin/analytics/events/clear?days=' + encodeURIComponent(daysO), { method: 'POST' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code === 200) {
+                        var n = j.data && j.data.deleted_rows != null ? j.data.deleted_rows : 0;
+                        alert('已删除 ' + n + ' 条埋点聚合记录');
+                        loadAnalyticsDashboard();
+                    } else {
+                        alert(j.msg || '删除失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                });
         });
         document.getElementById('analyticsDauTbody').addEventListener('click', function (e) {
             var toggleBtn = e.target.closest('.btn-dau-users-toggle');
