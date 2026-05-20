@@ -452,6 +452,14 @@
             letter-spacing: -0.012em;
         }
 
+        /* iPhone 11 Pro：汇总「?」在 PingFang 下偏大，略缩小以贴近官方 */
+        html.app-ios-iphone11pro body.page-shuiming-result .summary-label .icon {
+            width: 14px;
+            height: 14px;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
         /* iPhone 16 Pro：状态栏与顶栏/汇总区同为白底（auth.js 亦注入） */
         html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root {
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
