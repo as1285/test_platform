@@ -791,7 +791,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每段可单独填写专项附加与社保公积金：每月应纳税所得额 = 月薪 −（5000 + 该段专项附加扣除）− 该段三险一金。可添加多段，填好后点「一键生成」；任两个月不得重叠。扣缴义务人名称会记在本地，点击输入框可点选曾填过的名称。年终奖默认使用最后一段工作经历的公司，见下方。</p>
+                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每段可单独填写专项附加与社保公积金：每月应纳税所得额 = 月薪 −（5000 + 该段专项附加扣除）− 该段三险一金。可添加多段，填好后点「一键生成」。扣缴义务人名称会记在本地，点击输入框可点选曾填过的名称。年终奖默认使用最后一段工作经历的公司，见下方。</p>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -2152,23 +2152,6 @@
                 var emp = one.employment;
                 emp.empIdx = rowIdx;
                 employments.push(emp);
-            }
-            var occ = {};
-            var ei, mi;
-            for (ei = 0; ei < employments.length; ei++) {
-                var emp = employments[ei];
-                for (mi = 0; mi < emp.months.length; mi++) {
-                    var ym = emp.months[mi];
-                    var key = ym.year + '-' + pad2(ym.month);
-                    if (occ[key]) {
-                        return {
-                            ok: false,
-                            employments: [],
-                            error: '工作经历月份重叠：' + key + '（「' + occ[key] + '」与「' + emp.company + '」）'
-                        };
-                    }
-                    occ[key] = emp.company;
-                }
             }
             return { ok: true, employments: employments };
         }
