@@ -854,10 +854,19 @@
 
         <section>
             <h2>激活码列表</h2>
-            <div class="form-row" style="margin-bottom:12px;">
+            <div class="form-row" style="margin-bottom:12px;flex-wrap:wrap;">
                 <div>
                     <label for="codeOwnerAdminFilter">管理员账号</label>
                     <input type="text" id="codeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                </div>
+                <div>
+                    <label for="codeUsedByFilter">使用账号</label>
+                    <input type="text" id="codeUsedByFilter" placeholder="按使用账号查询">
+                </div>
+                <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+                    <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" id="codeUsedByExact"> 使用账号精准查询
+                    </label>
                 </div>
                 <div style="display:flex;align-items:flex-end;gap:8px;">
                     <button type="button" class="btn-primary" id="btnSearchCodes">查询</button>
@@ -2719,11 +2728,21 @@
             var ownerAdmin = '';
             var ownerInput = document.getElementById('codeOwnerAdminFilter');
             if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
+            var usedBy = '';
+            var usedInput = document.getElementById('codeUsedByFilter');
+            if (usedInput) usedBy = String(usedInput.value || '').trim();
+            var usedExactEl = document.getElementById('codeUsedByExact');
+            var usedExact = !!(usedExactEl && usedExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var limit = isSuper && !ownerAdmin ? 20 : codeLimit;
+            var hasFilter = !!(ownerAdmin || usedBy);
+            var limit = isSuper && !hasFilter ? 20 : codeLimit;
             var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit;
             if (ownerAdmin) {
                 q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
+            }
+            if (usedBy) {
+                q += '&used_by=' + encodeURIComponent(usedBy);
+                if (usedExact) q += '&used_by_exact=1';
             }
             adminFetch(q)
                 .then(function (r) { return r.json(); })
@@ -2733,10 +2752,17 @@
                     var total = data.data.total || 0;
                     var statEl = document.getElementById('codeListStat');
                     if (statEl) {
-                        if (isSuper && !ownerAdmin) {
+                        var filterParts = [];
+                        if (ownerAdmin) filterParts.push('管理员「' + ownerAdmin + '」');
+                        if (usedBy) {
+                            filterParts.push(
+                                (usedExact ? '使用账号精准「' : '使用账号「') + usedBy + '」'
+                            );
+                        }
+                        if (isSuper && !hasFilter) {
                             statEl.textContent = '共 ' + total + ' 条（全部管理员，按最新在前）';
-                        } else if (ownerAdmin) {
-                            statEl.textContent = '共 ' + total + ' 条（筛选：' + ownerAdmin + '）';
+                        } else if (filterParts.length) {
+                            statEl.textContent = '共 ' + total + ' 条（筛选：' + filterParts.join('，') + '）';
                         } else {
                             statEl.textContent = '共 ' + total + ' 条（本账号生成的激活码）';
                         }
@@ -3022,6 +3048,10 @@
         document.getElementById('btnResetCodesFilter').addEventListener('click', function () {
             var input = document.getElementById('codeOwnerAdminFilter');
             if (input) input.value = '';
+            var usedInput = document.getElementById('codeUsedByFilter');
+            if (usedInput) usedInput.value = '';
+            var usedExactEl = document.getElementById('codeUsedByExact');
+            if (usedExactEl) usedExactEl.checked = false;
             loadCodes(1);
         });
 

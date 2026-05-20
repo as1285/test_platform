@@ -4557,30 +4557,46 @@ async function handleAdminCodes(req, res) {
     var page = parseInt(req.query.page, 10) || 1;
     var limit = parseInt(req.query.limit, 10) || 10;
     var qOwnerAdmin = req.query.owner_admin != null ? String(req.query.owner_admin).trim() : '';
+    var qUsedBy = req.query.used_by != null ? String(req.query.used_by).trim() : '';
+    var usedByExact =
+      req.query.used_by_exact === '1' ||
+      req.query.used_by_exact === 'true' ||
+      req.query.used_by_exact === true;
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
     var offset = (page - 1) * limit;
 
     const conn = await pool.getConnection();
-    var whereSql = '';
+    var conditions = [];
     var params = [];
     if (!req.admin || !req.admin.is_super) {
-      whereSql = ' WHERE owner_admin_username = ?';
+      conditions.push('owner_admin_username = ?');
       params.push(req.admin.username);
     } else if (qOwnerAdmin) {
-      whereSql = ' WHERE owner_admin_username LIKE ?';
+      conditions.push('owner_admin_username LIKE ?');
       params.push('%' + qOwnerAdmin + '%');
     }
+    if (qUsedBy) {
+      if (usedByExact) {
+        conditions.push('used_by_username = ?');
+        params.push(qUsedBy);
+      } else {
+        conditions.push('used_by_username LIKE ?');
+        params.push('%' + qUsedBy + '%');
+      }
+    }
+    var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
       'SELECT COUNT(*) as count FROM activation_codes' + whereSql,
       params
     );
     const total = totalRows[0].count;
 
+    var hasListFilter = !!(qOwnerAdmin || qUsedBy);
     var orderSql =
-      req.admin && req.admin.is_super && !qOwnerAdmin
+      req.admin && req.admin.is_super && !hasListFilter
         ? ' ORDER BY id DESC'
-        : qOwnerAdmin
+        : qOwnerAdmin && !qUsedBy
           ? ' ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), \'\'), \'—\') ASC, id DESC'
           : ' ORDER BY id DESC';
     const [rows] = await conn.query(
