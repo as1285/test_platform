@@ -2,7 +2,6 @@
 #
 # 如何取包：仓库 → Actions → 本工作流 → 选一次成功运行 → Artifacts → android-debug-apk → 下载 zip（内含 app-debug.apk）
 # 手动触发：Actions → Cordova Android Debug APK → Run workflow
-# CI trigger: 2026-05-15
 #
 # 仅 Debug 包（自测 / 内部分发）；上架需另行配置 Release 签名与 Play 流程。
 # 本地等价命令：cd cordova-app && npx cordova build android --debug
