@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260520-shuiming-iphone11pro-font"></script>
+    <script src="/js/auth.js?v=20260520-shuiming-iphone16pro-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -450,6 +450,32 @@
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.012em;
+        }
+
+        /* iPhone 16 Pro：状态栏与顶栏/汇总区同为白底（auth.js 亦注入） */
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root {
+            --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+        }
+
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            top: 0;
+            height: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)) 16px 0;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            height: var(--header-height, 52px);
+            display: flex;
+            align-items: center;
+        }
+
+        html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            background: #fff;
         }
 
         .list-arrow {
