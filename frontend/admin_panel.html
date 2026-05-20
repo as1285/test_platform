@@ -337,6 +337,10 @@
             font-weight: 600;
             color: #1677ff;
         }
+        .analytics-conv-pagination {
+            margin-top: 12px;
+            justify-content: flex-end;
+        }
         .user-detail-wrap {
             background: #f8fbff;
             border: 1px solid #dbe7ff;
@@ -2571,12 +2575,21 @@
             });
         }
 
-        function renderAnalyticsDailyConversion(data) {
+        var analyticsConvPage = 1;
+        var analyticsConvLimit = 10;
+        var analyticsConvCache = null;
+
+        function renderAnalyticsDailyConversion(data, page) {
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
             if (!data || !data.today) {
+                analyticsConvCache = null;
                 el.textContent = '转化率暂无数据';
                 return;
+            }
+            analyticsConvCache = data;
+            if (page != null) {
+                analyticsConvPage = page;
             }
             var today = data.today;
             var todayKey = today.date || '';
@@ -2589,13 +2602,24 @@
 
             var series = Array.isArray(data.series) ? data.series.slice() : [];
             series.reverse();
+            var totalRows = series.length;
+            var totalPages = Math.max(1, Math.ceil(totalRows / analyticsConvLimit) || 1);
+            if (analyticsConvPage > totalPages) {
+                analyticsConvPage = totalPages;
+            }
+            if (analyticsConvPage < 1) {
+                analyticsConvPage = 1;
+            }
+            var start = (analyticsConvPage - 1) * analyticsConvLimit;
+            var pageRows = series.slice(start, start + analyticsConvLimit);
+
             html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
             html += '<th>日期</th><th>注册数</th><th>激活数</th><th>转化率</th>';
             html += '</tr></thead><tbody>';
-            if (!series.length) {
+            if (!pageRows.length) {
                 html += '<tr><td colspan="4">暂无数据</td></tr>';
             } else {
-                series.forEach(function (row) {
+                pageRows.forEach(function (row) {
                     if (!row || !row.date) return;
                     var pct = row.rate_pct != null ? row.rate_pct : (row.registered > 0 ? '0.0%' : '—');
                     var isToday = row.date === todayKey;
@@ -2607,13 +2631,35 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table></div>';
+            html += '</tbody></table>';
+            if (totalRows > 0) {
+                html +=
+                    '<div class="pagination analytics-conv-pagination">' +
+                    '<button type="button" class="btn-page" id="analyticsConvPrev"' +
+                    (analyticsConvPage <= 1 ? ' disabled' : '') +
+                    '>上一页</button>' +
+                    '<span id="analyticsConvPageInfo">第 ' +
+                    esc(String(analyticsConvPage)) +
+                    ' 页 / 共 ' +
+                    esc(String(totalPages)) +
+                    ' 页（共 ' +
+                    esc(String(totalRows)) +
+                    ' 天）</span>' +
+                    '<button type="button" class="btn-page" id="analyticsConvNext"' +
+                    (analyticsConvPage >= totalPages ? ' disabled' : '') +
+                    '>下一页</button>' +
+                    '</div>';
+            }
+            html += '</div>';
             el.innerHTML = html;
         }
 
-        function loadAnalyticsDailyConversion() {
+        function loadAnalyticsDailyConversion(resetPage) {
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
+            if (resetPage !== false) {
+                analyticsConvPage = 1;
+            }
             var daysEl = document.getElementById('analyticsConversionDays');
             var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
             el.textContent = '转化率加载中…';
@@ -2621,12 +2667,14 @@
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
+                        analyticsConvCache = null;
                         el.textContent = '转化率加载失败';
                         return;
                     }
-                    renderAnalyticsDailyConversion(j.data);
+                    renderAnalyticsDailyConversion(j.data, analyticsConvPage);
                 })
                 .catch(function () {
+                    analyticsConvCache = null;
                     el.textContent = '转化率加载失败';
                 });
         }
@@ -3648,6 +3696,25 @@
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
             loadAnalyticsDashboard();
+        });
+        document.getElementById('btnRefreshConversion').addEventListener('click', function () {
+            loadAnalyticsDailyConversion(true);
+        });
+        document.getElementById('analyticsConversionDays').addEventListener('change', function () {
+            loadAnalyticsDailyConversion(true);
+        });
+        document.getElementById('analyticsDailyConversion').addEventListener('click', function (ev) {
+            if (!analyticsConvCache) return;
+            var t = ev.target;
+            if (t && t.id === 'analyticsConvPrev' && analyticsConvPage > 1) {
+                renderAnalyticsDailyConversion(analyticsConvCache, analyticsConvPage - 1);
+            } else if (t && t.id === 'analyticsConvNext') {
+                var series = Array.isArray(analyticsConvCache.series) ? analyticsConvCache.series.length : 0;
+                var totalPages = Math.max(1, Math.ceil(series / analyticsConvLimit) || 1);
+                if (analyticsConvPage < totalPages) {
+                    renderAnalyticsDailyConversion(analyticsConvCache, analyticsConvPage + 1);
+                }
+            }
         });
         document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
