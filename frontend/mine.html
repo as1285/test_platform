@@ -654,7 +654,7 @@
         <div class="activate-modal-panel">
             <p class="activate-modal-body" id="mineConsultModifyModalTitle">点击我要咨询修改数据，闲鱼购买，谨防被骗</p>
             <div class="activate-modal-actions">
-                <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">闲鱼购买</button>
+                <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">添加QQ号</button>
                 <button type="button" class="activate-modal-btn" id="btnMineConsultModifyCancel">取消</button>
                 <button type="button" class="activate-modal-btn primary" id="btnMineConsultModifyOk">确定</button>
             </div>
@@ -919,7 +919,7 @@
             function openMineXianyuPurchase() {
                 var u = String(mineXianyuPurchaseUrl || '').trim();
                 if (u) {
-                    window.open(u, '_blank');
+                    window.open(u, '_blank', 'noopener,noreferrer');
                     return;
                 }
                 fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -930,13 +930,37 @@
                             mineXianyuPurchaseUrl = u;
                         }
                         if (u) {
-                            window.open(u, '_blank');
+                            window.open(u, '_blank', 'noopener,noreferrer');
                         } else {
                             alert('暂未配置闲鱼购买链接');
                         }
                     })
                     .catch(function () {
                         alert('获取购买链接失败，请稍后重试');
+                    });
+            }
+
+            function openMineQqAddUrl() {
+                var u = String(mineQqAddUrl || '').trim();
+                if (u) {
+                    window.open(u, '_blank', 'noopener,noreferrer');
+                    return;
+                }
+                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data && body.data.qq_add_url) {
+                            u = String(body.data.qq_add_url).trim();
+                            mineQqAddUrl = u;
+                        }
+                        if (u) {
+                            window.open(u, '_blank', 'noopener,noreferrer');
+                        } else {
+                            alert('暂未配置 QQ 添加链接，请在管理后台「系统设置」中填写');
+                        }
+                    })
+                    .catch(function () {
+                        alert('获取链接失败，请稍后重试');
                     });
             }
 
@@ -1017,13 +1041,19 @@
             }
 
             var mineXianyuPurchaseUrl = '';
+            var mineQqAddUrl = '';
 
             function fetchMineXianyuUrl() {
                 fetch('/api/public/install-packages', { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (body) {
-                        if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                            mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                        if (body && body.code === 200 && body.data) {
+                            if (body.data.xianyu_purchase_url) {
+                                mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                            }
+                            if (body.data.qq_add_url) {
+                                mineQqAddUrl = String(body.data.qq_add_url).trim();
+                            }
                         }
                     })
                     .catch(function () {});
@@ -1280,7 +1310,7 @@
                 consultModifyMask.addEventListener('click', closeMineConsultModifyModal);
             }
             if (consultModifyXy) {
-                consultModifyXy.addEventListener('click', openMineXianyuPurchase);
+                consultModifyXy.addEventListener('click', openMineQqAddUrl);
             }
 
             document.getElementById('mineLogout').addEventListener('click', function () {
