@@ -604,6 +604,20 @@ async function createTables() {
       INDEX idx_family_user_id (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS bank_cards (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      card_no VARCHAR(32) NOT NULL,
+      bank_name VARCHAR(128) NULL,
+      province VARCHAR(64) NULL,
+      phone VARCHAR(20) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_bank_cards_user_id (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
   
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS tax_records (
@@ -2156,9 +2170,76 @@ async function syncUserFamilyCount(conn, userId) {
   return n;
 }
 
+function maskBankCardNo(cardNo) {
+  var d = String(cardNo || '').replace(/\D/g, '');
+  if (d.length < 4) {
+    return '****';
+  }
+  return '**** **** **** ***' + d.charAt(d.length - 4) + ' ' + d.slice(-3);
+}
+
+function inferBankNameFromCardNo(cardNo) {
+  var s = String(cardNo || '').replace(/\D/g, '');
+  if (!s) {
+    return '银行卡';
+  }
+  if (/^622260|^622261|^622262|^622258|^521899|^434910|^458123/.test(s)) {
+    return '交通银行';
+  }
+  if (/^622202|^622203|^955880|^621226|^621225/.test(s)) {
+    return '中国工商银行';
+  }
+  if (/^622700|^621700|^436742|^552245/.test(s)) {
+    return '中国建设银行';
+  }
+  if (/^622848|^622845|^95599|^103/.test(s)) {
+    return '中国农业银行';
+  }
+  if (/^621660|^621661|^621662|^456351/.test(s)) {
+    return '中国银行';
+  }
+  if (/^622588|^622575|^622576/.test(s)) {
+    return '招商银行';
+  }
+  if (/^622155|^622156|^622157/.test(s)) {
+    return '平安银行';
+  }
+  return '银行卡';
+}
+
+async function listBankCardsForUser(userId) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT id, card_no, bank_name, province, phone, created_at
+       FROM bank_cards WHERE user_id = ? ORDER BY created_at ASC, id ASC`,
+      [userId]
+    );
+    return rows.map(function (r) {
+      var bankName = String(r.bank_name || '').trim() || inferBankNameFromCardNo(r.card_no);
+      return {
+        id: r.id,
+        bank_name: bankName,
+        card_no_masked: maskBankCardNo(r.card_no),
+        province: r.province || '',
+        phone: r.phone || ''
+      };
+    });
+  } finally {
+    conn.release();
+  }
+}
+
+async function syncUserBankCardCount(conn, userId) {
+  const [cntRows] = await conn.execute('SELECT COUNT(*) AS count FROM bank_cards WHERE user_id = ?', [userId]);
+  var n = cntRows.length && cntRows[0].count != null ? Number(cntRows[0].count) : 0;
+  await conn.execute('UPDATE users SET bank_card_count = ? WHERE username = ?', [n, userId]);
+  return n;
+}
+
 async function handleUserGet(req, res) {
   var action = req.query.action;
-  if (action !== 'info' && action !== 'employers' && action !== 'family_members') {
+  if (action !== 'info' && action !== 'employers' && action !== 'family_members' && action !== 'bank_cards') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
   var userId = req.authUserId;
@@ -2169,6 +2250,10 @@ async function handleUserGet(req, res) {
     if (action === 'family_members') {
       var members = await listFamilyMembersForUser(userId);
       return res.json({ code: 200, data: { members: members } });
+    }
+    if (action === 'bank_cards') {
+      var cards = await listBankCardsForUser(userId);
+      return res.json({ code: 200, data: { cards: cards } });
     }
     var data = await getUserInfoForApi(userId);
     if (!data) {
@@ -2433,6 +2518,59 @@ async function handleUserPost(req, res) {
           });
         } finally {
           connFm.release();
+        }
+      }
+
+      if (action === 'add_bank_card') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var cardNo = String(body.card_no || '').replace(/\D/g, '');
+        var phone = String(body.phone || '').replace(/\D/g, '');
+        var province = String(body.province || '').trim();
+        var bankName = String(body.bank_name || '').trim();
+        if (!cardNo || cardNo.length < 16) {
+          return res.status(400).json({ code: 400, msg: '请填写正确的银行卡号' });
+        }
+        if (phone.length !== 11) {
+          return res.status(400).json({ code: 400, msg: '请填写11位银行预留手机号' });
+        }
+        if (!bankName) {
+          bankName = inferBankNameFromCardNo(cardNo);
+        }
+        const connBc = await pool.getConnection();
+        try {
+          const [userRowsBc] = await connBc.execute('SELECT username FROM users WHERE username = ?', [userId]);
+          if (userRowsBc.length === 0) {
+            await connBc.execute(
+              `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+               VALUES (?, ?, ?, ?, 0, ?, ?)`,
+              [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']
+            );
+          }
+          var bcId = 'bc_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+          await connBc.execute(
+            `INSERT INTO bank_cards (id, user_id, card_no, bank_name, province, phone)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [bcId, userId, cardNo, bankName, province || null, phone]
+          );
+          var bankCardCount = await syncUserBankCardCount(connBc, userId);
+          return res.json({
+            code: 200,
+            data: {
+              success: true,
+              card: {
+                id: bcId,
+                bank_name: bankName,
+                card_no_masked: maskBankCardNo(cardNo),
+                province: province,
+                phone: phone
+              },
+              bank_card_count: bankCardCount
+            }
+          });
+        } finally {
+          connBc.release();
         }
       }
 

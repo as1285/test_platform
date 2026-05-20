@@ -165,7 +165,7 @@
     <div class="form-wrap">
         <div class="form-row">
             <span class="form-label">姓名</span>
-            <span class="form-value dark" style="pointer-events:none;">唐冬</span>
+            <span class="form-value dark" id="yhkHolderName" style="pointer-events:none;">—</span>
         </div>
         <div class="form-row">
             <span class="form-label">证件类型</span>
@@ -185,7 +185,7 @@
         </div>
         <div class="form-row">
             <span class="form-label">开户银行所在省份</span>
-            <a href="#" class="form-row-link" onclick="return false;">请选择 <span style="color:#ccc;">›</span></a>
+            <a href="#" class="form-row-link" id="yhkProvinceLink" onclick="return false;">请选择 <span style="color:#ccc;">›</span></a>
         </div>
         <div class="form-row">
             <span class="form-label">银行预留手机号码</span>
@@ -200,9 +200,41 @@
             var card = document.getElementById('yhkCardNo');
             var phone = document.getElementById('yhkPhone');
             var btn = document.getElementById('yhkNextBtn');
+            var bankNameEl = document.getElementById('yhkBankName');
+            var holderNameEl = document.getElementById('yhkHolderName');
+            var provinceLink = document.getElementById('yhkProvinceLink');
+            var provinceValue = '';
+
             function digitsOnly(s) {
                 return String(s || '').replace(/\D/g, '');
             }
+
+            function maskTaxId(tid) {
+                var s = String(tid || '').trim();
+                if (!s || s.length < 2) return '—';
+                return s.charAt(0) + '*'.repeat(Math.max(1, s.length - 2)) + s.charAt(s.length - 1);
+            }
+
+            function inferBankName(cardNo) {
+                var s = digitsOnly(cardNo);
+                if (!s) return '—';
+                if (/^622260|^622261|^622262|^622258|^521899|^434910|^458123/.test(s)) return '交通银行';
+                if (/^622202|^622203|^955880|^621226|^621225/.test(s)) return '中国工商银行';
+                if (/^622700|^621700|^436742|^552245/.test(s)) return '中国建设银行';
+                if (/^622848|^622845|^95599|^103/.test(s)) return '中国农业银行';
+                if (/^621660|^621661|^621662|^456351/.test(s)) return '中国银行';
+                if (/^622588|^622575|^622576/.test(s)) return '招商银行';
+                if (/^622155|^622156|^622157/.test(s)) return '平安银行';
+                return '银行卡';
+            }
+
+            function syncBankName() {
+                if (!bankNameEl) return;
+                var name = inferBankName(card && card.value);
+                bankNameEl.textContent = name;
+                bankNameEl.classList.toggle('dark', name !== '—');
+            }
+
             function syncNext() {
                 if (!btn) return;
                 var cn = digitsOnly(card && card.value);
@@ -211,8 +243,125 @@
                 btn.disabled = !ok;
                 btn.style.background = ok ? '#1e6fff' : '#7eb4ff';
             }
-            if (card) card.addEventListener('input', syncNext);
+
+            function loadHolderProfile() {
+                try {
+                    var rn = localStorage.getItem('real_name');
+                    if (rn && holderNameEl) holderNameEl.textContent = rn;
+                } catch (e) {}
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                fetchFn('api/user.php?action=info', { credentials: 'same-origin' })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200 || !data.data) return;
+                        if (data.data.real_name && holderNameEl) {
+                            holderNameEl.textContent = data.data.real_name;
+                            try {
+                                localStorage.setItem('real_name', data.data.real_name);
+                            } catch (e2) {}
+                        }
+                        var taxRow = document.querySelector('.form-row:nth-child(3) .form-value');
+                        if (taxRow && data.data.tax_id) {
+                            taxRow.textContent = maskTaxId(data.data.tax_id);
+                        }
+                    })
+                    .catch(function () {});
+            }
+
+            if (provinceLink) {
+                provinceLink.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var p = window.prompt('请输入开户银行所在省份', provinceValue || '');
+                    if (p == null) return;
+                    provinceValue = String(p).trim();
+                    if (provinceValue) {
+                        provinceLink.textContent = provinceValue + ' ';
+                        provinceLink.classList.add('dark');
+                        provinceLink.innerHTML =
+                            escHtml(provinceValue) + ' <span style="color:#ccc;">›</span>';
+                    } else {
+                        provinceLink.classList.remove('dark');
+                        provinceLink.innerHTML = '请选择 <span style="color:#ccc;">›</span>';
+                    }
+                });
+            }
+
+            function escHtml(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            if (card) {
+                card.addEventListener('input', function () {
+                    syncBankName();
+                    syncNext();
+                });
+            }
             if (phone) phone.addEventListener('input', syncNext);
+
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    if (btn.disabled) return;
+                    var cardNo = digitsOnly(card && card.value);
+                    var phoneNo = digitsOnly(phone && phone.value);
+                    if (cardNo.length < 16 || phoneNo.length !== 11) {
+                        alert('请完整填写银行卡号与预留手机号');
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.textContent = '提交中…';
+                    var bankName = inferBankName(cardNo);
+                    if (bankName === '—') bankName = '银行卡';
+                    var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                    var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
+                    fetchFn('api/user.php', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({
+                            action: 'add_bank_card',
+                            card_no: cardNo,
+                            phone: phoneNo,
+                            bank_name: bankName,
+                            province: provinceValue
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (j) {
+                                return { status: r.status, body: j };
+                            });
+                        })
+                        .then(function (x) {
+                            if (x.status === 200 && x.body && x.body.code === 200) {
+                                var cnt =
+                                    x.body.data && x.body.data.bank_card_count != null
+                                        ? Number(x.body.data.bank_card_count)
+                                        : null;
+                                try {
+                                    if (cnt != null && !isNaN(cnt)) {
+                                        localStorage.setItem('bank_card_count', String(cnt));
+                                    }
+                                } catch (e) {}
+                                window.location.href = 'yhk.html';
+                                return;
+                            }
+                            alert((x.body && x.body.msg) || '添加失败');
+                        })
+                        .catch(function () {
+                            alert('网络错误，请稍后重试');
+                        })
+                        .finally(function () {
+                            btn.textContent = '下一步';
+                            syncNext();
+                        });
+                });
+            }
+
+            loadHolderProfile();
+            syncBankName();
             syncNext();
         })();
     </script>

@@ -54,6 +54,11 @@
             flex: 1;
             padding: 12px 16px 100px;
         }
+        .bank-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
         .bank-card {
             display: flex;
             align-items: center;
@@ -136,30 +141,84 @@
         <span class="header-title">银行卡</span>
     </div>
     <div class="main" id="bankListMount">
-        <a href="#" class="bank-card" id="bankDemoCard" onclick="return false;">
-            <div class="bank-logo" aria-hidden="true">交</div>
-            <div class="bank-info">
-                <div class="bank-name">交通银行</div>
-                <div class="bank-mask">**** **** **** ***0 287</div>
-            </div>
-        </a>
+        <p class="empty-tip">加载中…</p>
     </div>
     <div class="footer">
         <a href="yhk_add.html" class="btn-add">添加</a>
     </div>
     <script>
         (function () {
-            try {
-                var n = parseInt(localStorage.getItem('bank_card_count'), 10);
-                if (!isNaN(n) && n <= 0) {
-                    var card = document.getElementById('bankDemoCard');
-                    var mount = document.getElementById('bankListMount');
-                    if (card) card.remove();
-                    if (mount && !mount.querySelector('.bank-card')) {
-                        mount.innerHTML = '<p class="empty-tip">暂无银行卡，请点击下方添加</p>';
-                    }
+            var mount = document.getElementById('bankListMount');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function bankLogoChar(name) {
+                var n = String(name || '').trim();
+                if (!n) return '卡';
+                return n.charAt(0);
+            }
+
+            function renderCards(cards) {
+                if (!mount) return;
+                if (!cards || !cards.length) {
+                    mount.innerHTML = '<p class="empty-tip">暂无银行卡，请点击下方添加</p>';
+                    try {
+                        localStorage.setItem('bank_card_count', '0');
+                    } catch (e) {}
+                    return;
                 }
-            } catch (e) {}
+                var html = '<div class="bank-list">';
+                cards.forEach(function (c) {
+                    html +=
+                        '<div class="bank-card">' +
+                        '<div class="bank-logo" aria-hidden="true">' +
+                        esc(bankLogoChar(c.bank_name)) +
+                        '</div>' +
+                        '<div class="bank-info">' +
+                        '<div class="bank-name">' +
+                        esc(c.bank_name || '银行卡') +
+                        '</div>' +
+                        '<div class="bank-mask">' +
+                        esc(c.card_no_masked || '****') +
+                        '</div>' +
+                        '</div>' +
+                        '</div>';
+                });
+                html += '</div>';
+                mount.innerHTML = html;
+                try {
+                    localStorage.setItem('bank_card_count', String(cards.length));
+                } catch (e2) {}
+            }
+
+            function loadCards() {
+                if (!mount) return;
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                fetchFn('api/user.php?action=bank_cards', { credentials: 'same-origin' })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && Array.isArray(data.data.cards)) {
+                            renderCards(data.data.cards);
+                            return;
+                        }
+                        mount.innerHTML = '<p class="empty-tip">加载失败，请稍后重试</p>';
+                    })
+                    .catch(function () {
+                        if (mount) {
+                            mount.innerHTML = '<p class="empty-tip">网络错误，请稍后重试</p>';
+                        }
+                    });
+            }
+
+            loadCards();
         })();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>

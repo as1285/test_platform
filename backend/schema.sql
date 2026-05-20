@@ -41,6 +41,19 @@ CREATE TABLE IF NOT EXISTS employers (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 银行卡
+CREATE TABLE IF NOT EXISTS bank_cards (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    card_no VARCHAR(32) NOT NULL,
+    bank_name VARCHAR(128) NULL,
+    province VARCHAR(64) NULL,
+    phone VARCHAR(20) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_bank_cards_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 税务记录表
 CREATE TABLE IF NOT EXISTS tax_records (
     id VARCHAR(255) PRIMARY KEY,
