@@ -399,6 +399,35 @@
         .dau-users-list .dau-user-item:last-child {
             border-bottom: none;
         }
+        .dau-user-item {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .dau-user-name {
+            flex: 1;
+            min-width: 0;
+            word-break: break-all;
+        }
+        .dau-tax-badge {
+            display: inline-block;
+            padding: 1px 7px;
+            font-size: 11px;
+            line-height: 1.4;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .dau-tax-badge.modified-today {
+            background: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffcc80;
+        }
+        .dau-tax-badge.has-records {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
         .dau-users-panel .pagination {
             margin-top: 10px;
             margin-bottom: 0;
@@ -1035,7 +1064,7 @@
                 <div id="page-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>埋点说明</h2>
-            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台；点击「查看账号」可展开当日活跃用户列表（每页 10 条）。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台；点击「查看账号」可展开当日活跃用户列表（每页 10 条）。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span> 表示该日有新增或更新个税记录，<span class="dau-tax-badge has-records">有个税记录</span> 表示历史已有个税数据但非当日改动。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -1871,25 +1900,76 @@
             return String(dateStr || '').replace(/[^0-9]/g, '');
         }
 
+        function normalizeDauUserRow(item) {
+            if (item != null && typeof item === 'object' && item.username != null) {
+                return {
+                    username: String(item.username),
+                    has_tax_records: !!(item.has_tax_records === true || item.has_tax_records === 1),
+                    tax_modified_on_date: !!(
+                        item.tax_modified_on_date === true || item.tax_modified_on_date === 1
+                    )
+                };
+            }
+            return {
+                username: String(item == null ? '' : item),
+                has_tax_records: false,
+                tax_modified_on_date: false
+            };
+        }
+
+        function dauTaxBadgeHtml(user) {
+            if (user.tax_modified_on_date) {
+                return '<span class="dau-tax-badge modified-today">当日修改个税</span>';
+            }
+            if (user.has_tax_records) {
+                return '<span class="dau-tax-badge has-records">有个税记录</span>';
+            }
+            return '';
+        }
+
         function renderDauUsersPanel(box, dateStr, data) {
             if (!box) return;
-            var users = Array.isArray(data.usernames) ? data.usernames : [];
+            var rawUsers = Array.isArray(data.users)
+                ? data.users
+                : Array.isArray(data.usernames)
+                  ? data.usernames
+                  : [];
+            var users = rawUsers.map(normalizeDauUserRow);
             var page = Number(data.page) || 1;
             var total = Number(data.total) || 0;
             var totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / DAU_USERS_PAGE_LIMIT) || 1);
+            var modifiedOnPage = users.filter(function (u) {
+                return u.tax_modified_on_date;
+            }).length;
+            var hasRecordsOnPage = users.filter(function (u) {
+                return u.has_tax_records;
+            }).length;
             box.setAttribute('data-date', dateStr);
             box.setAttribute('data-page', String(page));
             box.setAttribute('data-loaded', '1');
 
             var html = '<div class="dau-users-panel">';
-            html += '<div class="dau-users-title">' + esc(dateStr) + ' 活跃用户账号（共 ' + total + ' 个）</div>';
+            html +=
+                '<div class="dau-users-title">' +
+                esc(dateStr) +
+                ' 活跃用户账号（共 ' +
+                total +
+                ' 个；本页 ' +
+                modifiedOnPage +
+                ' 个当日修改个税，' +
+                hasRecordsOnPage +
+                ' 个有个税记录）</div>';
             if (!users.length) {
                 html += '<div class="dau-users-list">暂无账号</div>';
             } else {
                 html += '<div class="dau-users-list">';
                 users.forEach(function (u, idx) {
                     var n = (page - 1) * DAU_USERS_PAGE_LIMIT + idx + 1;
-                    html += '<div class="dau-user-item">' + n + '. ' + esc(u) + '</div>';
+                    var badge = dauTaxBadgeHtml(u);
+                    html += '<div class="dau-user-item">';
+                    html += '<span class="dau-user-name">' + n + '. ' + esc(u.username) + '</span>';
+                    if (badge) html += badge;
+                    html += '</div>';
                 });
                 html += '</div>';
             }

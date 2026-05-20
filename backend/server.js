@@ -5402,6 +5402,40 @@ async function handleAdminAnalyticsDeviceStats(req, res) {
   }
 }
 
+async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
+  var flags = {};
+  if (!usernames || !usernames.length) {
+    return flags;
+  }
+  usernames.forEach(function (u) {
+    flags[u] = { has_tax_records: false, tax_modified_on_date: false };
+  });
+  var ph = usernames.map(function () {
+    return '?';
+  }).join(',');
+  const [rows] = await conn.query(
+    'SELECT user_id, COUNT(*) AS record_cnt, ' +
+      'SUM(CASE WHEN DATE(updated_at) = ? THEN 1 ELSE 0 END) AS modified_on_date_cnt ' +
+      'FROM tax_records WHERE user_id IN (' +
+      ph +
+      ') GROUP BY user_id',
+    [activityDate].concat(usernames)
+  );
+  rows.forEach(function (r) {
+    var uname = String(r.user_id || '');
+    if (!uname || !flags[uname]) {
+      return;
+    }
+    var cnt = Number(r.record_cnt) || 0;
+    var modCnt = Number(r.modified_on_date_cnt) || 0;
+    flags[uname] = {
+      has_tax_records: cnt > 0,
+      tax_modified_on_date: modCnt > 0
+    };
+  });
+  return flags;
+}
+
 async function handleAdminAnalyticsDauUsers(req, res) {
   try {
     var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
@@ -5442,12 +5476,21 @@ async function handleAdminAnalyticsDauUsers(req, res) {
       if (total > 0 && totalPages < 1) {
         totalPages = 1;
       }
+      var pageUsernames = rows.map(function (r) {
+        return String(r.username || '');
+      });
+      var taxFlags = await loadTaxRecordFlagsForUsernames(conn, pageUsernames, dateStr);
       return res.json({
         code: 200,
         data: {
           date: dateStr,
-          usernames: rows.map(function (r) {
-            return String(r.username || '');
+          users: pageUsernames.map(function (uname) {
+            var f = taxFlags[uname] || { has_tax_records: false, tax_modified_on_date: false };
+            return {
+              username: uname,
+              has_tax_records: !!f.has_tax_records,
+              tax_modified_on_date: !!f.tax_modified_on_date
+            };
           }),
           total: total,
           page: page,
