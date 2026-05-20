@@ -109,6 +109,35 @@
    * iPhone 16 Pro（非 Max）：收入纳税明细「扣缴义务人」约 13 个汉字需完整展示。
    * UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别，避免影响其它 iPhone。
    */
+  /**
+   * iPhone 11 Pro：收入纳税明细汇总与「工资薪金」等标题在 PingFang 下偏粗，单独降字重。
+   * UA 含 iPhone12,3 或「iPhone 11 Pro」时精确匹配；否则按逻辑屏 375×812（容差）兜底。
+   */
+  function isIPhone11ProLikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*11\s*Pro\s*Max|iPhone12,5/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*11\s*Pro\b|iPhone12,3\b/i.test(ua)) {
+      return true;
+    }
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 372 && shortSide <= 378 && longSide >= 808 && longSide <= 816;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isIPhone16ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
@@ -188,6 +217,7 @@
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
+      var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
@@ -244,6 +274,9 @@
       }
       if (android25060RK16C) {
         document.documentElement.classList.add('app-android-25060rk16c');
+      }
+      if (iosIPhone11Pro) {
+        document.documentElement.classList.add('app-ios-iphone11pro');
       }
       if (iosIPhone16Pro) {
         document.documentElement.classList.add('app-ios-iphone16pro');
