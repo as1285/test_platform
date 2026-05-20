@@ -277,32 +277,30 @@
             flex: 1;
             min-width: 280px;
         }
-        .user-daily-conversion {
-            flex-shrink: 0;
-            text-align: right;
-            min-width: 200px;
-            padding: 8px 12px;
+        .analytics-daily-conversion {
+            max-width: 520px;
+            padding: 12px 16px;
             background: #fff;
             border: 1px solid #e3e8ef;
             border-radius: 8px;
         }
-        .user-daily-conversion .conv-label {
+        .analytics-daily-conversion .conv-label {
             font-size: 12px;
             color: #888;
             margin-bottom: 4px;
         }
-        .user-daily-conversion .conv-today {
+        .analytics-daily-conversion .conv-today {
             font-size: 22px;
             font-weight: 700;
             color: #1677ff;
             line-height: 1.2;
         }
-        .user-daily-conversion .conv-sub {
+        .analytics-daily-conversion .conv-sub {
             font-size: 12px;
             color: #666;
             margin-top: 4px;
         }
-        .user-daily-conversion .conv-recent {
+        .analytics-daily-conversion .conv-recent {
             font-size: 11px;
             color: #999;
             margin-top: 8px;
@@ -1019,7 +1017,6 @@
                     <button type="button" class="btn-page" id="btnResetUsers">重置</button>
                 </div>
                 </div>
-                <div id="userDailyConversion" class="user-daily-conversion" aria-live="polite">转化率加载中…</div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 取自登录记录与设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。勾选「精准查询」时账号、姓名为完全匹配；「风险账号」可筛仅风险或非风险用户。</p>
@@ -1096,6 +1093,11 @@
         <section>
             <h2>埋点说明</h2>
             <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台；点击「查看账号」可展开当日活跃用户列表（每页 10 条）。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span> 表示该日有新增或更新个税记录，<span class="dau-tax-badge has-records">有个税记录</span> 表示历史已有个税数据但非当日改动。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
+        </section>
+        <section>
+            <h2>注册转化率</h2>
+            <p class="hint" style="margin-top:0;">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准）。</p>
+            <div id="analyticsDailyConversion" class="analytics-daily-conversion" aria-live="polite" style="margin-top:12px;">转化率加载中…</div>
         </section>
         <section>
             <h2>用户日活与登录趋势</h2>
@@ -2056,6 +2058,7 @@
         }
 
         function loadAnalyticsDashboard() {
+            loadAnalyticsDailyConversion();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -2525,8 +2528,8 @@
             });
         }
 
-        function renderUserDailyConversion(data) {
-            var el = document.getElementById('userDailyConversion');
+        function renderAnalyticsDailyConversion(data) {
+            var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
             if (!data || !data.today) {
                 el.textContent = '转化率暂无数据';
@@ -2551,21 +2554,21 @@
                     html += '<div class="conv-recent">近' + esc(String(data.days || series.length)) + '日：' + esc(parts.join(' · ')) + '</div>';
                 }
             }
-            html += '<div class="conv-recent" style="margin-top:4px;color:#bbb;">统计按北京时间；转化率 = 当日激活数 ÷ 当日注册数</div>';
             el.innerHTML = html;
         }
 
-        function loadUserDailyConversion() {
-            var el = document.getElementById('userDailyConversion');
+        function loadAnalyticsDailyConversion() {
+            var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
-            adminFetch('api/admin/users/daily-conversion?days=7')
+            el.textContent = '转化率加载中…';
+            adminFetch('api/admin/analytics/daily-conversion?days=7')
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         el.textContent = '转化率加载失败';
                         return;
                     }
-                    renderUserDailyConversion(j.data);
+                    renderAnalyticsDailyConversion(j.data);
                 })
                 .catch(function () {
                     el.textContent = '转化率加载失败';
@@ -2574,7 +2577,6 @@
 
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
-            loadUserDailyConversion();
             if (p != null) userPage = p;
             
             var username = document.getElementById('filterUsername').value.trim();
