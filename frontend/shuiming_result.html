@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260520-shuiming-iphone11pro"></script>
+    <script src="/js/auth.js?v=20260520-shuiming-iphone11pro-font"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -432,7 +432,13 @@
             line-height: 1.4;
         }
 
-        /* iPhone 11 Pro：汇总「收入合计」与列表主标题（工资薪金）PingFang 600 偏厚，降为 400/500 */
+        /* iPhone 11 Pro：顶栏标题、列表主标题（工资薪金）及汇总 PingFang 偏厚，单独降字重 */
+        html.app-ios-iphone11pro body.page-shuiming-result .header-title {
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.01em;
+        }
+
         html.app-ios-iphone11pro body.page-shuiming-result .summary-label,
         html.app-ios-iphone11pro body.page-shuiming-result .summary-value {
             font-weight: 400;
@@ -441,7 +447,7 @@
         }
 
         html.app-ios-iphone11pro body.page-shuiming-result .list-title {
-            font-weight: 500;
+            font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.012em;
         }
