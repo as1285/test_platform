@@ -5588,7 +5588,7 @@ async function handleAdminAnalyticsApi(req, res) {
          WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
            AND biz_category <> '管理后台'
          GROUP BY route_key
-         ORDER BY total DESC LIMIT 300`,
+         ORDER BY total DESC LIMIT 10`,
         [span]
       );
       return res.json({
