@@ -2,8 +2,24 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+                if (
+                    /iPhone|iPad|iPod/i.test(u) ||
+                    (typeof navigator !== 'undefined' &&
+                        navigator.platform === 'MacIntel' &&
+                        (navigator.maxTouchPoints || 0) > 1)
+                ) {
+                    document.documentElement.classList.add('platform-ios');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260520-shuiming-iphone11pro-top"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
         * {
@@ -48,6 +64,24 @@
             font-size: 17px;
             font-weight: 500;
             color: #333;
+        }
+
+        /* iPhone 11 Pro：状态栏区与顶栏同为白底，避免安全区露出灰底或色差（auth.js 亦注入） */
+        html.app-ios-iphone11pro.app-top-safe-shell body.page-shuiming > .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 120;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        html.app-ios-iphone11pro.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(46px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
         }
         
         /* 内容区域 */
@@ -423,7 +457,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-shuiming">
     <!-- 顶部导航 -->
     <div class="header">
         <a href="shouye.html" class="back-btn">
