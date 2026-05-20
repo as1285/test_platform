@@ -290,11 +290,18 @@
             font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
 
-        /* iOS：汇总区「收入合计」「已申报税额合计」两行加粗；Android 保持原字重 */
+        /* iOS：汇总区字号/字重对齐官方（Android 保持 15px） */
         html.platform-ios .summary-label,
         html.platform-ios .summary-value {
+            font-size: 17px;
             font-weight: 600;
             font-synthesis: none;
+        }
+
+        html.platform-ios .summary-label .icon {
+            width: 17px;
+            height: 17px;
+            font-size: 13px;
         }
 
         html.platform-ios .list-item {
@@ -307,8 +314,9 @@
         }
 
         html.platform-ios .list-title {
+            font-size: 17px;
             line-height: 1.18;
-            font-weight: 500;
+            font-weight: 600;
             letter-spacing: -0.01em;
         }
 
