@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260520-shuiming-rk16c"></script>
+    <script src="/js/auth.js?v=20260520-shuiming-iphone16pro"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -402,11 +402,32 @@
             text-overflow: ellipsis;
         }
 
-        /* 25060RK16C：扣缴义务人完整展示（其它机型保持单行省略） */
-        html.app-android-25060rk16c body.page-shuiming-result .list-company {
-            white-space: normal;
+        /* 25060RK16C / iPhone 16 Pro：扣缴义务人完整展示（其它机型保持单行省略） */
+        html.app-android-25060rk16c body.page-shuiming-result .list-company,
+        html.app-ios-iphone16pro body.page-shuiming-result .list-company {
+            white-space: nowrap;
             overflow: visible;
             text-overflow: clip;
+            line-height: 1.32;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .list-row-with-arrow {
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .list-row-left {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        html.app-ios-iphone16pro body.page-shuiming-result .list-arrow {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        html.app-android-25060rk16c body.page-shuiming-result .list-company {
+            white-space: normal;
             word-break: break-all;
             line-height: 1.4;
         }
@@ -636,10 +657,10 @@
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                var companyShow =
-                    document.documentElement.classList.contains('app-android-25060rk16c')
-                        ? company
-                        : truncateDisplayWidth(company, 22);
+                var companyFullWidth =
+                    document.documentElement.classList.contains('app-android-25060rk16c') ||
+                    document.documentElement.classList.contains('app-ios-iphone16pro');
+                var companyShow = companyFullWidth ? company : truncateDisplayWidth(company, 22);
                 var id = record.id != null ? record.id : '';
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';

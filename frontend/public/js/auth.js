@@ -105,6 +105,35 @@
     return /25060RK16C/i.test(navigator.userAgent || '');
   }
 
+  /**
+   * iPhone 16 Pro（非 Max）：收入纳税明细「扣缴义务人」约 13 个汉字需完整展示。
+   * UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别，避免影响其它 iPhone。
+   */
+  function isIPhone16ProLikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*16\s*Pro\s*Max|iPhone17,2/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*16\s*Pro\b|iPhone17,1\b/i.test(ua)) {
+      return true;
+    }
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 399 && shortSide <= 405 && longSide >= 868 && longSide <= 878;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
   function isHonorAnnAn00Client() {
     return /ANN-AN00/i.test(navigator.userAgent || '');
@@ -159,6 +188,7 @@
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
+      var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
@@ -214,6 +244,9 @@
       }
       if (android25060RK16C) {
         document.documentElement.classList.add('app-android-25060rk16c');
+      }
+      if (iosIPhone16Pro) {
+        document.documentElement.classList.add('app-ios-iphone16pro');
       }
       if (huaweiPura70Client) {
         document.documentElement.classList.add('app-huawei-pura70');
