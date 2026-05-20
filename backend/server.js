@@ -1220,20 +1220,101 @@ async function saveRecord(userId, record) {
   }
 }
 
+/** 批量写入专用：仅新增，若 id 已被本用户占用则自动换号，不覆盖已有记录 */
+async function resolveUniqueTaxRecordId(conn, userId, preferredId) {
+  var base =
+    preferredId != null && String(preferredId).trim() !== ''
+      ? String(preferredId).trim()
+      : 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+  var id = base;
+  var n = 0;
+  while (true) {
+    const [rows] = await conn.execute('SELECT id FROM tax_records WHERE id = ? AND user_id = ?', [
+      id,
+      userId
+    ]);
+    if (rows.length === 0) {
+      return id;
+    }
+    n += 1;
+    id = base + '_n' + n;
+  }
+}
+
+async function insertRecordInConn(conn, userId, record) {
+  var preferredId = record.id != null ? String(record.id) : '';
+  const id = await resolveUniqueTaxRecordId(conn, userId, preferredId);
+  await conn.execute(
+    `
+      INSERT INTO tax_records (
+        id, user_id, year, month, income_type, income_subtype,
+        company_name, company_tax_id, tax_authority,
+        report_channel, report_date, tax_period,
+        income, tax_reported, income_this_period,
+        tax_free_income, deduction_fee, special_deduction,
+        other_deduction, donation_deduction,
+        pension_insurance, medical_insurance,
+        unemployment_insurance, housing_fund
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      id,
+      userId,
+      record.year,
+      record.month,
+      record.income_type || '工资薪金',
+      record.income_subtype || '正常工资薪金',
+      record.company_name,
+      record.company_tax_id,
+      record.tax_authority,
+      record.report_channel || '其他',
+      record.report_date,
+      record.tax_period,
+      record.income,
+      record.tax_reported,
+      record.income_this_period,
+      record.tax_free_income,
+      record.deduction_fee,
+      record.special_deduction,
+      record.other_deduction,
+      record.donation_deduction,
+      record.pension_insurance,
+      record.medical_insurance,
+      record.unemployment_insurance,
+      record.housing_fund
+    ]
+  );
+  return {
+    id: id,
+    id_reassigned: preferredId !== '' && id !== preferredId
+  };
+}
+
 async function batchSaveRecords(userId, records) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const saved = [];
+    var reassigned = 0;
     for (let i = 0; i < records.length; i++) {
       const rec = records[i];
       if (!rec || typeof rec !== 'object') {
         throw new Error('第 ' + (i + 1) + ' 条记录无效');
       }
-      saved.push(await saveRecordInConn(conn, userId, rec));
+      const out = await insertRecordInConn(conn, userId, rec);
+      if (out.id_reassigned) {
+        reassigned += 1;
+      }
+      saved.push(out);
     }
     await conn.commit();
-    return { saved: saved.length, ids: saved.map(function (x) { return x.id; }) };
+    return {
+      saved: saved.length,
+      ids: saved.map(function (x) {
+        return x.id;
+      }),
+      reassigned_ids: reassigned
+    };
   } catch (e) {
     try {
       await conn.rollback();

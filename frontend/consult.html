@@ -2737,7 +2737,7 @@
                 lines.join('\n'),
                 '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
                 bonusLine,
-                '税额总计约 ' + totalTax + ' 元（同编号记录将覆盖）。是否写入？'
+                '税额总计约 ' + totalTax + ' 元。将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
             ];
             if (!confirm(msgParts.join('\n'))) return;
 
@@ -2754,7 +2754,7 @@
 
             setBatchSubmitBtnLoading(true);
             postBatchTaxRecordsPromise(records)
-                .then(function () {
+                .then(function (data) {
                     var histNames = employments.map(function (e) {
                         return e.company;
                     });
@@ -2767,6 +2767,10 @@
                         writes.length +
                         ' 条月薪记录';
                     if (yearEndBonus > 0) tip += '（另含 1 条年终奖）';
+                    var reassigned = data && data.reassigned_ids != null ? Number(data.reassigned_ids) : 0;
+                    if (reassigned > 0) {
+                        tip += '（' + reassigned + ' 条因编号已存在已另存为新记录，未覆盖原记录）';
+                    }
                     showMsg(tip, true);
                     return refreshRecordList();
                 })
