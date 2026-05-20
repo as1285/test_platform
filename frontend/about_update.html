@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>关于&amp;更新</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f2f2f7;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .brand {
+            padding: 28px 16px 22px;
+            text-align: center;
+            background: #f2f2f7;
+        }
+        .app-icon {
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 14px;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(30, 111, 255, 0.25);
+        }
+        .app-icon svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .version {
+            font-size: 15px;
+            color: #8e8e93;
+            letter-spacing: 0.02em;
+        }
+        .list-wrap {
+            margin: 0;
+            background: #fff;
+            border-top: 1px solid #e8e8ed;
+            border-bottom: 1px solid #e8e8ed;
+        }
+        .list-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 16px;
+            min-height: 48px;
+            border-bottom: 1px solid #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            font-size: 16px;
+            background: #fff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .list-row:last-child { border-bottom: none; }
+        .list-row:active { background: #f7f7f7; }
+        .list-row .label { flex-shrink: 0; color: #333; }
+        .list-row .value {
+            flex: 1;
+            text-align: right;
+            font-size: 15px;
+            color: #8e8e93;
+            margin-left: 12px;
+            line-height: 1.35;
+        }
+        .list-row .arrow {
+            color: #c7c7cc;
+            font-size: 14px;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+        .list-row-link .value { color: transparent; width: 0; margin: 0; padding: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="mine.html" class="back-btn">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">关于&amp;更新</span>
+    </div>
+
+    <div class="brand">
+        <div class="app-icon" aria-hidden="true">
+            <svg viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#4d9aff"/>
+                        <stop offset="100%" style="stop-color:#1e6fff"/>
+                    </linearGradient>
+                </defs>
+                <rect width="88" height="88" rx="18" fill="url(#bg)"/>
+                <path d="M44 18 L58 28 V48 C58 58 52 66 44 70 C36 66 30 58 30 48 V28 Z" fill="#fff" opacity="0.95"/>
+                <text x="44" y="52" text-anchor="middle" font-size="22" font-weight="700" fill="#1e6fff" font-family="PingFang SC, Microsoft YaHei, sans-serif">税</text>
+                <text x="44" y="78" text-anchor="middle" font-size="7" fill="#fff" font-family="PingFang SC, Microsoft YaHei, sans-serif">国家税务总局</text>
+                <text x="44" y="84" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.9)" font-family="PingFang SC, sans-serif">—发布—</text>
+            </svg>
+        </div>
+        <p class="version">版本号：2.3.0</p>
+    </div>
+
+    <div class="list-wrap">
+        <div class="list-row">
+            <span class="label">基本信息</span>
+            <span class="value">自然人办税服务平台</span>
+        </div>
+        <div class="list-row">
+            <span class="label">版本更新</span>
+            <span class="value">已是最新版本</span>
+        </div>
+        <a class="list-row list-row-link" href="about_update_notes.html">
+            <span class="label">更新说明</span>
+            <span class="value"></span>
+            <span class="arrow">&gt;</span>
+        </a>
+        <div class="list-row">
+            <span class="label">版权所有</span>
+            <span class="value">国家税务总局</span>
+        </div>
+        <a class="list-row list-row-link" href="about_agreement.html">
+            <span class="label">协议</span>
+            <span class="value"></span>
+            <span class="arrow">&gt;</span>
+        </a>
+    </div>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>
