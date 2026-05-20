@@ -207,10 +207,10 @@
     } catch (e) {}
   }
 
-  /** iPhone 11 Pro：白顶栏页（收入纳税明细筛选）状态栏与导航栏同色 */
-  function applyIPhone11ProPageChrome() {
+  /** iPhone 16 Pro：白顶栏页（收入纳税明细筛选）状态栏与导航栏同色（覆盖首页蓝 theme-color） */
+  function applyIPhone16ProPageChrome() {
     try {
-      if (!document.documentElement.classList.contains('app-ios-iphone11pro')) {
+      if (!document.documentElement.classList.contains('app-ios-iphone16pro')) {
         return;
       }
       var body = document.body;
@@ -398,9 +398,9 @@
           /* iPhone 16 Pro：首页固定搜索条上方安全区铺蓝，消除状态栏下白边 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          /* iPhone 11 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
-          'html.app-ios-iphone11pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone11pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
+          /* iPhone 16 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
@@ -413,9 +413,9 @@
   }
 
   setupMobileStatusBar();
-  applyIPhone11ProPageChrome();
+  applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyIPhone11ProPageChrome);
+    document.addEventListener('DOMContentLoaded', applyIPhone16ProPageChrome);
   }
 
   function currentPageName() {
