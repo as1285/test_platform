@@ -290,6 +290,13 @@
             font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
 
+        /* iOS：汇总区「收入合计」「已申报税额合计」两行加粗；Android 保持原字重 */
+        html.platform-ios .summary-label,
+        html.platform-ios .summary-value {
+            font-weight: 600;
+            font-synthesis: none;
+        }
+
         html.platform-ios .list-item {
             /* 水平 16px（--list-inline-pad）；上下略不对称，视觉更稳 */
             padding: 17px var(--list-inline-pad) 16px;
