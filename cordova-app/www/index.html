@@ -10,7 +10,10 @@
     <style>
         /* 与 iframe 内 H5 壳内白底一致，避免 iOS 叠层状态栏透出外层蓝色 */
         html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+        html.app-huawei-pura70-shell,
+        html.app-huawei-pura70-shell body { background: #f5f6fa !important; }
         #app-frame { border: 0; width: 100%; height: 100%; display: block; }
+        html.app-huawei-pura70-shell #app-frame { width: 100vw; max-width: 100%; }
         /* WebView 启动层：按视口与安全区缩放，避免「大白屏中间一小点」 */
         #startup-screen {
             position: fixed;
@@ -80,8 +83,26 @@
                 var ua = navigator.userAgent || '';
                 return /TaxPlatformCordovaApp/i.test(ua) && /23127PN0CC|23127PN\b/i.test(ua);
             }
+            function isHuaweiPura70Shell() {
+                var ua = navigator.userAgent || '';
+                if (!/Huawei|HUAWEI|HarmonyOS/i.test(ua)) {
+                    return false;
+                }
+                return /HBN-AL00|HBN-AL80|HBN-AL10|HBN-LX9|ADY-AL00|ADY-AL80|ADY-LX9|HLY-AL00|HLY-AL80|HLY-LX9|LNA-AL00|MLA-AL00|MLA-AL10|Pura\s*70|Pura70/i.test(
+                    ua
+                );
+            }
+            if (isHuaweiPura70Shell()) {
+                document.documentElement.classList.add('app-huawei-pura70-shell');
+            }
             document.addEventListener('deviceready', function () {
                 if (!window.StatusBar) {
+                    return;
+                }
+                if (isHuaweiPura70Shell()) {
+                    StatusBar.overlaysWebView(true);
+                    StatusBar.backgroundColorByHexString('#f5f6fa00');
+                    StatusBar.styleDefault();
                     return;
                 }
                 if (isCordovaXiaomi23127()) {
