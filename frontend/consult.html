@@ -3172,7 +3172,7 @@
 
         document.getElementById('btnHeaderActivate').addEventListener('click', function () {
             if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_consult_qq_add_click', { page: 'consult' });
+                window.trackUserAction('track_qq_add_click', { page: 'consult', source: 'header' });
             }
             openConsultQqAddUrl();
         });
@@ -3210,6 +3210,12 @@
             }
             if (xyBtn) {
                 xyBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_xianyu_purchase_click', {
+                            page: 'consult',
+                            source: 'activate_modal'
+                        });
+                    }
                     fetch('/api/public/install-packages', { credentials: 'same-origin' })
                         .then(function (r) {
                             return r.json();

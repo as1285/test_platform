@@ -1290,7 +1290,15 @@
                 });
             }
             if (mineXyBtn) {
-                mineXyBtn.addEventListener('click', openMineXianyuPurchase);
+                mineXyBtn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_xianyu_purchase_click', {
+                            page: 'mine',
+                            source: 'activate_modal'
+                        });
+                    }
+                    openMineXianyuPurchase();
+                });
             }
 
             var consultModifyOk = document.getElementById('btnMineConsultModifyOk');
@@ -1310,7 +1318,15 @@
                 consultModifyMask.addEventListener('click', closeMineConsultModifyModal);
             }
             if (consultModifyXy) {
-                consultModifyXy.addEventListener('click', openMineQqAddUrl);
+                consultModifyXy.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_qq_add_click', {
+                            page: 'mine',
+                            source: 'consult_modify_modal'
+                        });
+                    }
+                    openMineQqAddUrl();
+                });
             }
 
             document.getElementById('mineLogout').addEventListener('click', function () {

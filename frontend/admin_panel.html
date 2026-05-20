@@ -1507,6 +1507,12 @@
             if (k === 'track_activate_prompt_cancel') {
                 return { button: '激活弹窗-取消', page: '我的/我要咨询（弹窗）' };
             }
+            if (k === 'track_xianyu_purchase_click') {
+                return { button: '闲鱼购买', page: '我的/我要咨询（激活弹窗）' };
+            }
+            if (k === 'track_qq_add_click' || k === 'track_consult_qq_add_click') {
+                return { button: '添加QQ号', page: '我的/我要咨询（顶栏或咨询修改弹窗）' };
+            }
             if (k.indexOf('track_jump_') === 0) {
                 var raw = k.substring('track_jump_'.length);
                 if (raw === '_history_back__' || raw === '__history_back__') {
