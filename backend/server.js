@@ -4015,6 +4015,84 @@ async function handleAdminAccountsUpdate(req, res) {
   }
 }
 
+async function handleAdminAccountActivatedUsers(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
+  }
+  var ownerAdmin = String(req.query.owner_admin || '').trim();
+  if (!ownerAdmin) {
+    return res.status(400).json({ code: 400, msg: 'owner_admin required' });
+  }
+  var page = parseInt(req.query.page, 10) || 1;
+  var limit = parseInt(req.query.limit, 10) || 10;
+  if (page < 1) page = 1;
+  if (limit < 1) limit = 10;
+  if (limit > 50) limit = 50;
+  var offset = (page - 1) * limit;
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var adminRow = await loadAdminAccountByUsername(conn, ownerAdmin);
+      if (!adminRow) {
+        return res.status(404).json({ code: 404, msg: '管理账号不存在' });
+      }
+      var countSql =
+        'SELECT COUNT(*) AS cnt FROM (' +
+        'SELECT DISTINCT used_by_username FROM activation_codes ' +
+        'WHERE owner_admin_username = ? AND used_by_username IS NOT NULL AND TRIM(used_by_username) <> \'\'' +
+        ') t';
+      const [countRows] = await conn.execute(countSql, [ownerAdmin]);
+      var total = countRows.length ? Number(countRows[0].cnt) || 0 : 0;
+
+      const [rows] = await conn.query(
+        `SELECT u.username, u.real_name, u.account_active, u.banned, u.created_at,
+                agg.activated_at, agg.activation_code
+         FROM (
+           SELECT used_by_username,
+                  MAX(last_used_at) AS activated_at,
+                  SUBSTRING_INDEX(GROUP_CONCAT(code ORDER BY last_used_at DESC, id DESC), ',', 1) AS activation_code
+           FROM activation_codes
+           WHERE owner_admin_username = ?
+             AND used_by_username IS NOT NULL
+             AND TRIM(used_by_username) <> ''
+           GROUP BY used_by_username
+         ) agg
+         INNER JOIN users u ON u.username = agg.used_by_username
+         ORDER BY agg.activated_at DESC, u.id DESC
+         LIMIT ${limit} OFFSET ${offset}`,
+        [ownerAdmin]
+      );
+
+      var out = rows.map(function (r) {
+        return {
+          username: String(r.username || ''),
+          real_name: r.real_name != null ? String(r.real_name) : '',
+          account_active: r.account_active === 1 || r.account_active === true,
+          banned: r.banned === 1 || r.banned === true,
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          activated_at: r.activated_at ? r.activated_at.toISOString() : '',
+          activation_code: r.activation_code != null ? String(r.activation_code) : ''
+        };
+      });
+      return res.json({
+        code: 200,
+        data: {
+          owner_admin: ownerAdmin,
+          users: out,
+          total: total,
+          page: page,
+          limit: limit
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminAccountsDelete(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -5934,6 +6012,7 @@ app.get('/api/admin/admin-operation-logs', requireAdminAuth, requireAdminMenu('l
 app.get('/api/admin/feedback', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackList);
 app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackReply);
 app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);
+app.get('/api/admin/accounts/activated-users', requireAdminAuth, handleAdminAccountActivatedUsers);
 app.post('/api/admin/accounts/create', requireAdminAuth, handleAdminAccountsCreate);
 app.post('/api/admin/accounts/update', requireAdminAuth, handleAdminAccountsUpdate);
 app.post('/api/admin/accounts/delete', requireAdminAuth, handleAdminAccountsDelete);

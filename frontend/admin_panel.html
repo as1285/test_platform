@@ -323,6 +323,17 @@
             white-space: nowrap;
         }
         .btn-detail { background: #546e7a; color: #fff; }
+        .admin-account-activated-wrap {
+            background: #f8fbff;
+            border: 1px solid #dbe7ff;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+        }
+        .admin-account-activated-wrap .pagination {
+            margin-top: 10px;
+            margin-bottom: 0;
+        }
         .user-detail-pages-collapsible {
             margin: 10px 0 10px 0;
         }
@@ -2580,6 +2591,90 @@
             return ADMIN_MENU_LABELS[key] || key;
         }
 
+        function keyForAdminAccount(username) {
+            return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
+        }
+
+        function renderAdminAccountActivatedPanel(box, ownerAdmin, data) {
+            if (!box) return;
+            var users = Array.isArray(data.users) ? data.users : [];
+            var page = Number(data.page) || 1;
+            var limit = Number(data.limit) || 10;
+            var total = Number(data.total) || 0;
+            var totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+            box.setAttribute('data-owner-admin', ownerAdmin);
+            box.setAttribute('data-page', String(page));
+            box.setAttribute('data-loaded', '1');
+
+            var html = '<div class="admin-account-activated-wrap">';
+            html += '<div class="user-detail-title">激活账号（' + esc(ownerAdmin) + '）· 共 ' + total + ' 个</div>';
+            html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr>';
+            html += '<th>账号</th><th>姓名</th><th>激活状态</th><th>账号状态</th><th>激活时间</th><th>激活码</th>';
+            html += '</tr></thead><tbody>';
+            if (!users.length) {
+                html += '<tr><td colspan="6">暂无激活账号</td></tr>';
+            } else {
+                users.forEach(function (u) {
+                    html += '<tr>';
+                    html += '<td>' + esc(u.username) + '</td>';
+                    html += '<td>' + esc(u.real_name || '—') + '</td>';
+                    html += '<td>' + esc(u.account_active ? '已激活' : '未激活') + '</td>';
+                    html += '<td>' + esc(u.banned ? '已封禁' : '正常') + '</td>';
+                    html += '<td>' + esc(u.activated_at ? formatDt(u.activated_at) : '—') + '</td>';
+                    html += '<td><code>' + esc(u.activation_code || '—') + '</code></td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            html += '<div class="pagination">';
+            html +=
+                '<button type="button" class="btn-page admin-acc-act-prev" data-owner="' +
+                esc(ownerAdmin) +
+                '"' +
+                (page <= 1 ? ' disabled' : '') +
+                '>上一页</button>';
+            html +=
+                '<span class="admin-acc-act-page-info">第 ' +
+                page +
+                ' / ' +
+                totalPages +
+                ' 页</span>';
+            html +=
+                '<button type="button" class="btn-page admin-acc-act-next" data-owner="' +
+                esc(ownerAdmin) +
+                '"' +
+                (page >= totalPages ? ' disabled' : '') +
+                '>下一页</button>';
+            html += '</div></div>';
+            box.innerHTML = html;
+        }
+
+        function loadAdminAccountActivatedUsers(ownerAdmin, page, box) {
+            if (!box || !ownerAdmin) return;
+            box.removeAttribute('data-loaded');
+            box.textContent = '加载中…';
+            adminFetch(
+                'api/admin/accounts/activated-users?owner_admin=' +
+                    encodeURIComponent(ownerAdmin) +
+                    '&page=' +
+                    encodeURIComponent(String(page || 1)) +
+                    '&limit=10'
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        box.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderAdminAccountActivatedPanel(box, ownerAdmin, j.data);
+                })
+                .catch(function () {
+                    box.textContent = '网络错误';
+                });
+        }
+
         function selectedMenusFromRoot(rootEl) {
             if (!rootEl) return [];
             var out = [];
@@ -2620,6 +2715,7 @@
                     var html = '';
                     list.forEach(function (a) {
                         var isSuper = !!a.is_super;
+                        var accKey = keyForAdminAccount(a.username);
                         var menuText = isSuper ? '全部菜单（超级账号）' : (Array.isArray(a.menus) ? a.menus.map(menuLabel).join('、') : '—');
                         html += '<tr>';
                         html += '<td>' + esc(a.username) + '</td>';
@@ -2634,11 +2730,10 @@
                         }
                         html += '</td>';
                         html += '<td>';
+                        html += '<button type="button" class="btn-sm btn-detail btn-admin-account-detail" data-username="' + esc(a.username) + '">详情</button>';
                         if (!isSuper) {
-                            html += '<button type="button" class="btn-sm btn-copy btn-admin-account-edit" data-username="' + esc(a.username) + '">改菜单</button> ';
+                            html += ' <button type="button" class="btn-sm btn-copy btn-admin-account-edit" data-username="' + esc(a.username) + '">改菜单</button> ';
                             html += '<button type="button" class="btn-sm btn-ban btn-admin-account-del" data-username="' + esc(a.username) + '">删除</button>';
-                        } else {
-                            html += '—';
                         }
                         html += '</td>';
                         html += '</tr>';
@@ -2658,6 +2753,12 @@
                             });
                             html += '</div></td></tr>';
                         }
+                        html +=
+                            '<tr id="admin_acc_detail_row_' +
+                            accKey +
+                            '" style="display:none;"><td colspan="6"><div id="admin_acc_detail_box_' +
+                            accKey +
+                            '" style="padding:4px 0;color:#888;">点击详情查看该账号下的激活账号…</div></td></tr>';
                     });
                     document.getElementById('adminAccountTbody').innerHTML = html || '<tr><td colspan="6">暂无后台账号</td></tr>';
                 })
@@ -2760,6 +2861,43 @@
         });
 
         document.getElementById('adminAccountTbody').addEventListener('click', function (e) {
+            var detailBtn = e.target.closest('.btn-admin-account-detail');
+            if (detailBtn) {
+                var unameD = detailBtn.getAttribute('data-username');
+                var keyD = keyForAdminAccount(unameD);
+                var rowD = document.getElementById('admin_acc_detail_row_' + keyD);
+                var boxD = document.getElementById('admin_acc_detail_box_' + keyD);
+                if (!rowD || !boxD) return;
+                var openingD = rowD.style.display === 'none';
+                if (!openingD) {
+                    rowD.style.display = 'none';
+                    detailBtn.textContent = '详情';
+                    return;
+                }
+                rowD.style.display = '';
+                detailBtn.textContent = '收起';
+                if (boxD.getAttribute('data-loaded') === '1') return;
+                loadAdminAccountActivatedUsers(unameD, 1, boxD);
+                return;
+            }
+            var actPrev = e.target.closest('.admin-acc-act-prev');
+            if (actPrev && !actPrev.disabled) {
+                var ownerP = actPrev.getAttribute('data-owner');
+                var boxP = actPrev.closest('[id^="admin_acc_detail_box_"]');
+                if (!boxP || !ownerP) return;
+                var pageP = (parseInt(boxP.getAttribute('data-page'), 10) || 1) - 1;
+                loadAdminAccountActivatedUsers(ownerP, pageP, boxP);
+                return;
+            }
+            var actNext = e.target.closest('.admin-acc-act-next');
+            if (actNext && !actNext.disabled) {
+                var ownerN = actNext.getAttribute('data-owner');
+                var boxN = actNext.closest('[id^="admin_acc_detail_box_"]');
+                if (!boxN || !ownerN) return;
+                var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
+                loadAdminAccountActivatedUsers(ownerN, pageN, boxN);
+                return;
+            }
             var editBtn = e.target.closest('.btn-admin-account-edit');
             if (editBtn) {
                 var uname = editBtn.getAttribute('data-username');
