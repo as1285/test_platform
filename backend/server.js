@@ -5460,6 +5460,123 @@ var DEVICE_STATS_OS_ICON_KEY = {
   other: 'other'
 };
 
+var DEVICE_STATS_MODEL_ICON_LABEL = {
+  iphone: 'iPhone',
+  ipad: 'iPad',
+  android_phone: 'Android 手机',
+  xiaomi: '小米 / Redmi',
+  huawei: '华为 / 鸿蒙',
+  honor: '荣耀',
+  oppo: 'OPPO / 一加',
+  vivo: 'vivo',
+  samsung: '三星',
+  google: 'Google / Nexus',
+  windows_pc: 'Windows 电脑',
+  mac: 'Mac',
+  linux_pc: 'Linux 电脑',
+  chromebook: 'Chromebook',
+  ios: 'iOS 设备',
+  android: 'Android',
+  windows: 'Windows',
+  macos: 'macOS',
+  linux: 'Linux',
+  chromeos: 'Chrome OS',
+  other: '其他'
+};
+
+/** 机型图标：结合展示名、UA、上报 JSON 做规则匹配 */
+function resolveModelIconKey(osKey, modelLabel, ua, detail) {
+  var label = String(modelLabel || '').trim();
+  var u = String(ua || '');
+  var brand = detail && detail.brand ? String(detail.brand).trim() : '';
+  var model = detail && detail.model ? String(detail.model).trim() : '';
+  var combined = (label + ' ' + brand + ' ' + model + ' ' + u);
+
+  if (/^iphone$/i.test(label) || /\biPhone\b/i.test(u) && !/iPad/i.test(u)) {
+    return 'iphone';
+  }
+  if (/^ipad$/i.test(label) || /\biPad\b/i.test(u)) {
+    return 'ipad';
+  }
+  if (/windows\s*pc/i.test(label) || (osKey === 'windows' && !/phone/i.test(label))) {
+    return 'windows_pc';
+  }
+  if (/^mac$/i.test(label) || (osKey === 'macos' && !/iPhone|iPad/i.test(u))) {
+    return 'mac';
+  }
+  if (/chromebook/i.test(label) || osKey === 'chromeos') {
+    return 'chromebook';
+  }
+  if (/linux\s*pc/i.test(label) || (osKey === 'linux' && !/Android/i.test(u))) {
+    return 'linux_pc';
+  }
+  if (/nexus|pixel/i.test(combined)) {
+    return 'google';
+  }
+  if (/23127PN|2201PN|2211133C|PKB110|25060RK16C|2410DPN|24117RK|24122RK|Redmi|Xiaomi|Miui|HyperOS|小米/i.test(combined)) {
+    return 'xiaomi';
+  }
+  if (/PGT-AN|ANN-AN|Honor|HONOR|Magic|荣耀/i.test(combined)) {
+    return 'honor';
+  }
+  if (/HBN-AL|HLY-AL|ADY-AL|MLA-AL|Huawei|HUAWEI|HarmonyOS|Mate|Pura|华为/i.test(combined)) {
+    return 'huawei';
+  }
+  if (/OPPO|CPH\d|OnePlus|ONEPLUS|一加/i.test(combined)) {
+    return 'oppo';
+  }
+  if (/\bvivo\b|V\d{4}[A-Z]{2,}/i.test(combined)) {
+    return 'vivo';
+  }
+  if (/SM-[A-Z]\d|Samsung|Galaxy|三星/i.test(combined)) {
+    return 'samsung';
+  }
+  if (osKey === 'ios') {
+    return 'iphone';
+  }
+  if (osKey === 'android') {
+    return 'android_phone';
+  }
+  return DEVICE_STATS_OS_ICON_KEY[osKey] || 'other';
+}
+
+function resolveModelIconHint(iconKey, modelLabel, ua) {
+  var hints = {
+    iphone: 'UA/平台含 iPhone',
+    ipad: 'UA/平台含 iPad',
+    android_phone: 'Android 机型代号或未知品牌',
+    xiaomi: '小米 / Redmi 型号或 UA（如 23127PN、PKB110）',
+    huawei: '华为 / 鸿蒙 型号或 UA（如 HBN-AL、Pura）',
+    honor: '荣耀 型号或 UA（如 PGT-AN、ANN-AN00）',
+    oppo: 'OPPO / 一加 型号或 UA',
+    vivo: 'vivo 型号或 UA',
+    samsung: '三星 Galaxy 型号或 UA',
+    google: 'Nexus / Pixel 等',
+    windows_pc: 'Windows 桌面端',
+    mac: 'macOS 桌面端',
+    chromebook: 'Chrome OS',
+    linux_pc: 'Linux 桌面端'
+  };
+  var base = hints[iconKey] || '未能识别品牌，按系统家族显示';
+  if (modelLabel) {
+    return base + ' · ' + String(modelLabel).substring(0, 80);
+  }
+  return base;
+}
+
+function resolveOsIconHint(iconKey, osLabel) {
+  var hints = {
+    ios: 'iOS 系统（含版本号来自上报或 UA）',
+    android: 'Android 系统',
+    windows: 'Windows 系统',
+    macos: 'macOS 系统',
+    linux: 'Linux 系统',
+    chromeos: 'Chrome OS',
+    other: '其他或未识别系统'
+  };
+  return (hints[iconKey] || hints.other) + ' · ' + String(osLabel || '');
+}
+
 function sortDeviceStatList(map) {
   var arr = Object.keys(map).map(function (k) {
     var o = map[k];
@@ -5467,6 +5584,7 @@ function sortDeviceStatList(map) {
       key: k,
       label: o.label,
       icon_key: o.icon_key,
+      icon_hint: o.icon_hint || '',
       count: o.count
     };
   });
@@ -5488,38 +5606,72 @@ async function handleAdminAnalyticsDeviceStats(req, res) {
       );
       var osMap = {};
       var modelMap = {};
+      var modelIconSummary = {};
       rows.forEach(function (r) {
         var c = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
+        var detail = parseDeviceDetailJsonForStats(r.device_detail_json);
+        var ua = detail && detail.user_agent ? String(detail.user_agent) : String(r.user_agent_short || '');
         var ok = c.os_key;
         var family = DEVICE_STATS_OS_FAMILY_LABEL[ok] || DEVICE_STATS_OS_FAMILY_LABEL.other;
         var ver = c.os_version ? String(c.os_version).trim() : '';
         var osLabel = ver ? family + ' ' + ver : family;
         var osAggKey = ok + '\0' + (ver || '');
+        var osIconKey = DEVICE_STATS_OS_ICON_KEY[ok] || 'other';
         if (!osMap[osAggKey]) {
           osMap[osAggKey] = {
             label: osLabel,
-            icon_key: DEVICE_STATS_OS_ICON_KEY[ok] || 'other',
+            icon_key: osIconKey,
+            icon_hint: resolveOsIconHint(osIconKey, osLabel),
             count: 0
           };
         }
         osMap[osAggKey].count += 1;
 
         var mk = c.model_key;
+        var modelIconKey = resolveModelIconKey(c.os_key, c.model_label, ua, detail);
         if (!modelMap[mk]) {
           modelMap[mk] = {
             label: c.model_label,
-            icon_key: DEVICE_STATS_OS_ICON_KEY[c.os_key] || 'other',
+            icon_key: modelIconKey,
+            icon_hint: resolveModelIconHint(modelIconKey, c.model_label, ua),
             count: 0
           };
         }
         modelMap[mk].count += 1;
+        modelIconSummary[modelIconKey] = (modelIconSummary[modelIconKey] || 0) + 1;
+      });
+      var iconSummaryList = Object.keys(modelIconSummary)
+        .map(function (ik) {
+          return {
+            icon_key: ik,
+            label: DEVICE_STATS_MODEL_ICON_LABEL[ik] || ik,
+            count: modelIconSummary[ik]
+          };
+        })
+        .sort(function (a, b) {
+          return b.count - a.count;
+        });
+      var osFamilyMap = {};
+      Object.keys(osMap).forEach(function (k) {
+        var o = osMap[k];
+        var fk = o.icon_key || 'other';
+        if (!osFamilyMap[fk]) {
+          osFamilyMap[fk] = {
+            icon_key: fk,
+            label: DEVICE_STATS_OS_FAMILY_LABEL[fk] || DEVICE_STATS_OS_FAMILY_LABEL.other,
+            count: 0
+          };
+        }
+        osFamilyMap[fk].count += o.count;
       });
       return res.json({
         code: 200,
         data: {
           total_devices: rows.length,
           by_os: sortDeviceStatList(osMap),
-          by_model: sortDeviceStatList(modelMap)
+          by_os_family: sortDeviceStatList(osFamilyMap),
+          by_model: sortDeviceStatList(modelMap),
+          icon_summary: iconSummaryList
         }
       });
     } finally {

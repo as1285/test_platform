@@ -232,6 +232,94 @@
             height: 22px;
             vertical-align: middle;
         }
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .stat-badge-xiaomi { background: #ff6900; }
+        .stat-badge-huawei { background: #cf0a2c; }
+        .stat-badge-honor { background: #1e6fff; }
+        .stat-badge-oppo { background: #1ba784; }
+        .stat-badge-vivo { background: #415fff; }
+        .stat-badge-samsung { background: #1428a0; }
+        .stat-badge-google { background: #4285f4; }
+        .stat-badge-android_phone { background: #3ddc84; color: #0a3d22; font-size: 14px; }
+        .device-stats-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            background: #f8fbff;
+            border: 1px solid #e8eef5;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #555;
+        }
+        .device-stats-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .device-stats-legend-item .count {
+            color: #888;
+            font-size: 11px;
+        }
+        .device-stats-charts-wrap {
+            margin: 0 0 18px;
+        }
+        .device-stats-charts-wrap h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #444;
+            font-weight: 600;
+        }
+        .device-stats-charts {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        @media (max-width: 1100px) {
+            .device-stats-charts { grid-template-columns: 1fr; }
+        }
+        .device-stats-chart-card {
+            background: #fff;
+            border: 1px solid #e8eef5;
+            border-radius: 10px;
+            padding: 14px 14px 10px;
+            min-height: 280px;
+        }
+        .device-stats-chart-card h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 8px;
+        }
+        .device-stats-chart-card .chart-canvas-wrap {
+            position: relative;
+            height: 240px;
+            width: 100%;
+        }
+        .device-stats-chart-card.chart-card-wide {
+            grid-column: 1 / -1;
+        }
+        .device-stats-chart-card.chart-card-wide .chart-canvas-wrap {
+            height: 300px;
+        }
+        #deviceStatsChartsEmpty {
+            font-size: 13px;
+            color: #888;
+            padding: 12px 0;
+        }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
         .user-filter-bar {
             display: flex;
@@ -1191,14 +1279,37 @@
         </section>
         <section>
             <h2>机型与操作系统分布</h2>
-            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code> 含 <code>os_version</code>），否则从 UA 推断系统版本（如 iOS 17.4、Android 13）。图标仍表示系统家族。</p>
-            <p id="deviceStatsSummary" class="hint" style="margin:0 0 12px;">加载中…</p>
+            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code> 含 <code>os_version</code>、<code>model</code>、<code>brand</code>），否则从 UA 推断。操作系统列按<strong>系统+版本</strong>展示图标；机型列按<strong>品牌/机型规则</strong>匹配图标（如 iPhone、小米代号 23127PN、荣耀 PGT-AN 等），悬停行可查看识别说明。</p>
+            <p id="deviceStatsSummary" class="hint" style="margin:0 0 8px;">加载中…</p>
+            <div id="deviceStatsLegend" class="device-stats-legend" style="display:none;"></div>
+            <div id="deviceStatsChartsWrap" class="device-stats-charts-wrap" style="display:none;">
+                <h3>图表分析</h3>
+                <p id="deviceStatsChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
+                <div class="device-stats-charts" id="deviceStatsChartsGrid">
+                    <div class="device-stats-chart-card">
+                        <h4>平台 / 品牌占比</h4>
+                        <div class="chart-canvas-wrap"><canvas id="deviceChartPlatform" aria-label="平台品牌占比饼图"></canvas></div>
+                    </div>
+                    <div class="device-stats-chart-card">
+                        <h4>操作系统家族占比</h4>
+                        <div class="chart-canvas-wrap"><canvas id="deviceChartOsFamily" aria-label="操作系统家族占比饼图"></canvas></div>
+                    </div>
+                    <div class="device-stats-chart-card chart-card-wide">
+                        <h4>操作系统版本 TOP 12</h4>
+                        <div class="chart-canvas-wrap"><canvas id="deviceChartOsVersion" aria-label="操作系统版本排行"></canvas></div>
+                    </div>
+                    <div class="device-stats-chart-card chart-card-wide">
+                        <h4>机型 / 平台 TOP 15</h4>
+                        <div class="chart-canvas-wrap"><canvas id="deviceChartModel" aria-label="机型排行"></canvas></div>
+                    </div>
+                </div>
+            </div>
             <div class="device-stats-grid">
                 <div>
                     <h3>操作系统</h3>
                     <div class="scroll-x">
                         <table>
-                            <thead><tr><th style="width:40px;"></th><th>系统</th><th>设备数</th></tr></thead>
+                            <thead><tr><th style="width:40px;">图标</th><th>系统</th><th>设备数</th></tr></thead>
                             <tbody id="deviceStatsOsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
                         </table>
                     </div>
@@ -1207,7 +1318,7 @@
                     <h3>机型 / 平台</h3>
                     <div class="scroll-x">
                         <table>
-                            <thead><tr><th style="width:40px;"></th><th>机型</th><th>设备数</th></tr></thead>
+                            <thead><tr><th style="width:40px;">图标</th><th>机型</th><th>设备数</th></tr></thead>
                             <tbody id="deviceStatsModelTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
                         </table>
                     </div>
@@ -1370,27 +1481,366 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script>
         function esc(s) {
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        /** 操作系统家族图标（与接口 icon_key 对应） */
+        /** 设备统计图标（与接口 icon_key 对应，含机型品牌分析） */
         function statIconHtml(iconKey) {
             var k = String(iconKey || 'other');
             var W = '<span class="stat-svg-wrap">';
             var Z = '</span>';
+            var badges = {
+                xiaomi: '<span class="stat-badge stat-badge-xiaomi">MI</span>',
+                huawei: '<span class="stat-badge stat-badge-huawei">HW</span>',
+                honor: '<span class="stat-badge stat-badge-honor">荣耀</span>',
+                oppo: '<span class="stat-badge stat-badge-oppo">OP</span>',
+                vivo: '<span class="stat-badge stat-badge-vivo">v</span>',
+                samsung: '<span class="stat-badge stat-badge-samsung">S</span>',
+                google: '<span class="stat-badge stat-badge-google">G</span>',
+                android_phone: '<span class="stat-badge stat-badge-android_phone">📱</span>'
+            };
+            if (badges[k]) {
+                return W + badges[k] + Z;
+            }
             var icons = {
+                iphone: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#1c1c1e" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>',
+                ipad: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="#1c1c1e" stroke-width="1.6"/><circle cx="12" cy="17.5" r="1" fill="#1c1c1e"/></svg>',
                 ios: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#1c1c1e" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>',
                 android: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#3DDC84" d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm4.86-9.01c.03-.55.47-.99 1.02-1.01.56.02 1.02.46 1.02 1.01 0 .57-.46 1.03-1.03 1.03-.56 0-1.01-.46-1.01-1.03zm4.28 0c0-.55.45-.99 1-1.01.55.02.99.46 1.01 1.01 0 .57-.45 1.03-1.01 1.03-.57 0-1-.46-1-1.03zM17.5 6h-1.71A4.49 4.49 0 0012 3.5 4.49 4.49 0 008.21 6H6.5c-.83 0-1.5.67-1.5 1.5S5.67 9 6.5 9H17.5c.83 0 1.5-.67 1.5-1.5S18.33 6 17.5 6z"/></svg>',
                 windows: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#0078D4" d="M3 3h8.5v8.5H3V3zm9.5 0H21v8.5h-8.5V3zM3 12.5h8.5V21H3v-8.5zm9.5 0H21V21h-8.5v-8.5z"/></svg>',
+                windows_pc: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#0078D4" d="M3 3h8.5v8.5H3V3zm9.5 0H21v8.5h-8.5V3zM3 12.5h8.5V21H3v-8.5zm9.5 0H21V21h-8.5v-8.5z"/></svg>',
+                mac: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#555" d="M4 5h16v11H4V5zm2 2v7h12V7H6zm1 13h10v2H7v-2z"/></svg>',
                 macos: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#555" d="M4 5h16v11H4V5zm2 2v7h12V7H6zm1 13h10v2H7v-2z"/></svg>',
                 linux: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#333" d="M8 4l-3 16h2.2l.6-3h5.2l.7 3H16l-3-16H8zm.9 10l1.7-7.5h.1l1.6 7.5H8.9z"/></svg>',
+                linux_pc: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><path fill="#333" d="M8 4l-3 16h2.2l.6-3h5.2l.7 3H16l-3-16H8zm.9 10l1.7-7.5h.1l1.6 7.5H8.9z"/></svg>',
                 chromeos: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#4285F4" stroke-width="1.8"/><path fill="#EA4335" d="M12 7.5l4.3 7.5H7.7z" opacity=".85"/></svg>',
+                chromebook: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#4285F4" stroke-width="1.8"/><path fill="#EA4335" d="M12 7.5l4.3 7.5H7.7z" opacity=".85"/></svg>',
                 other: '<svg class="stat-svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#aaa" stroke-width="1.5"/><circle cx="12" cy="12" r="2.5" fill="#aaa"/></svg>'
             };
             return W + (icons[k] || icons.other) + Z;
+        }
+
+        function renderDeviceStatsLegend(iconSummary) {
+            var box = document.getElementById('deviceStatsLegend');
+            if (!box) {
+                return;
+            }
+            var rows = iconSummary || [];
+            if (!rows.length) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+                return;
+            }
+            var html = '<strong style="margin-right:4px;">机型图标分析：</strong>';
+            rows.forEach(function (row) {
+                html +=
+                    '<span class="device-stats-legend-item" title="' +
+                    esc(row.label || row.icon_key) +
+                    '">' +
+                    statIconHtml(row.icon_key) +
+                    '<span>' +
+                    esc(row.label || row.icon_key) +
+                    '</span><span class="count">(' +
+                    esc(String(row.count)) +
+                    ')</span></span>';
+            });
+            box.innerHTML = html;
+            box.style.display = 'flex';
+        }
+
+        function deviceStatRowHtml(row) {
+            var hint = row.icon_hint ? ' title="' + esc(row.icon_hint) + '"' : '';
+            return (
+                '<tr' +
+                hint +
+                '><td>' +
+                statIconHtml(row.icon_key) +
+                '</td><td class="cell-break">' +
+                esc(row.label) +
+                '</td><td>' +
+                esc(String(row.count)) +
+                '</td></tr>'
+            );
+        }
+
+        var _deviceStatsChartInstances = [];
+        var DEVICE_CHART_COLORS = {
+            iphone: '#1c1c1e',
+            ipad: '#5c5c5e',
+            ios: '#1c1c1e',
+            android: '#3ddc84',
+            android_phone: '#3ddc84',
+            xiaomi: '#ff6900',
+            huawei: '#cf0a2c',
+            honor: '#1e6fff',
+            oppo: '#1ba784',
+            vivo: '#415fff',
+            samsung: '#1428a0',
+            google: '#4285f4',
+            windows: '#0078d4',
+            windows_pc: '#0078d4',
+            mac: '#555555',
+            macos: '#555555',
+            linux: '#333333',
+            linux_pc: '#333333',
+            chromeos: '#4285f4',
+            chromebook: '#4285f4',
+            other: '#9aa5b1'
+        };
+        var DEVICE_CHART_FALLBACK = [
+            '#1e6fff', '#3ddc84', '#ff6900', '#cf0a2c', '#415fff', '#1428a0', '#0078d4', '#9aa5b1'
+        ];
+
+        function destroyDeviceStatsCharts() {
+            _deviceStatsChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _deviceStatsChartInstances = [];
+        }
+
+        function chartColorForIconKey(iconKey, index) {
+            var k = String(iconKey || 'other');
+            if (DEVICE_CHART_COLORS[k]) {
+                return DEVICE_CHART_COLORS[k];
+            }
+            return DEVICE_CHART_FALLBACK[index % DEVICE_CHART_FALLBACK.length];
+        }
+
+        function groupChartSlices(rows, maxSlices, labelField) {
+            var list = (rows || [])
+                .map(function (r) {
+                    return {
+                        label: r[labelField] || r.label || '—',
+                        count: Number(r.count) || 0,
+                        icon_key: r.icon_key
+                    };
+                })
+                .filter(function (r) {
+                    return r.count > 0;
+                })
+                .sort(function (a, b) {
+                    return b.count - a.count;
+                });
+            if (list.length <= maxSlices) {
+                return list;
+            }
+            var top = list.slice(0, maxSlices - 1);
+            var otherCount = 0;
+            for (var i = maxSlices - 1; i < list.length; i++) {
+                otherCount += list[i].count;
+            }
+            top.push({ label: '其他', count: otherCount, icon_key: 'other' });
+            return top;
+        }
+
+        function renderDeviceStatsCharts(data) {
+            destroyDeviceStatsCharts();
+            var wrap = document.getElementById('deviceStatsChartsWrap');
+            var grid = document.getElementById('deviceStatsChartsGrid');
+            var emptyEl = document.getElementById('deviceStatsChartsEmpty');
+            if (!wrap || !grid) {
+                return;
+            }
+            if (typeof Chart === 'undefined') {
+                wrap.style.display = 'block';
+                if (emptyEl) {
+                    emptyEl.style.display = 'block';
+                    emptyEl.textContent = '图表库未加载，请刷新页面后重试';
+                }
+                grid.style.display = 'none';
+                return;
+            }
+            var total = Number(data && data.total_devices) || 0;
+            var iconSummary = (data && data.icon_summary) || [];
+            var byOsFamily = (data && data.by_os_family) || [];
+            var byOs = (data && data.by_os) || [];
+            var byModel = (data && data.by_model) || [];
+            if (!total || (!iconSummary.length && !byOs.length)) {
+                wrap.style.display = 'block';
+                if (emptyEl) {
+                    emptyEl.style.display = 'block';
+                    emptyEl.textContent = '暂无足够数据生成图表';
+                }
+                grid.style.display = 'none';
+                return;
+            }
+            wrap.style.display = 'block';
+            if (emptyEl) {
+                emptyEl.style.display = 'none';
+            }
+            grid.style.display = 'grid';
+
+            var pieLegend = {
+                position: 'bottom',
+                labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+            };
+            var pieTooltip = {
+                callbacks: {
+                    label: function (ctx) {
+                        var v = ctx.parsed || 0;
+                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                        return ' ' + ctx.label + ': ' + v + ' (' + pct + '%)';
+                    }
+                }
+            };
+
+            var platformSlices = groupChartSlices(iconSummary, 10, 'label');
+            var platformColors = platformSlices.map(function (r, i) {
+                return chartColorForIconKey(r.icon_key, i);
+            });
+            _deviceStatsChartInstances.push(
+                new Chart(document.getElementById('deviceChartPlatform'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: platformSlices.map(function (r) {
+                            return r.label;
+                        }),
+                        datasets: [
+                            {
+                                data: platformSlices.map(function (r) {
+                                    return r.count;
+                                }),
+                                backgroundColor: platformColors,
+                                borderWidth: 1,
+                                borderColor: '#fff'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: pieLegend, tooltip: pieTooltip }
+                    }
+                })
+            );
+
+            var osFamilySlices = groupChartSlices(byOsFamily, 8, 'label');
+            var osFamilyColors = osFamilySlices.map(function (r, i) {
+                return chartColorForIconKey(r.icon_key, i);
+            });
+            _deviceStatsChartInstances.push(
+                new Chart(document.getElementById('deviceChartOsFamily'), {
+                    type: 'pie',
+                    data: {
+                        labels: osFamilySlices.map(function (r) {
+                            return r.label;
+                        }),
+                        datasets: [
+                            {
+                                data: osFamilySlices.map(function (r) {
+                                    return r.count;
+                                }),
+                                backgroundColor: osFamilyColors,
+                                borderWidth: 1,
+                                borderColor: '#fff'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: pieLegend, tooltip: pieTooltip }
+                    }
+                })
+            );
+
+            var osVerSlices = groupChartSlices(byOs, 12, 'label');
+            _deviceStatsChartInstances.push(
+                new Chart(document.getElementById('deviceChartOsVersion'), {
+                    type: 'bar',
+                    data: {
+                        labels: osVerSlices.map(function (r) {
+                            return r.label;
+                        }),
+                        datasets: [
+                            {
+                                label: '设备数',
+                                data: osVerSlices.map(function (r) {
+                                    return r.count;
+                                }),
+                                backgroundColor: osVerSlices.map(function (r, i) {
+                                    return chartColorForIconKey(r.icon_key, i) + 'cc';
+                                }),
+                                borderRadius: 4,
+                                maxBarThickness: 28
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        var v = ctx.parsed.x || 0;
+                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                        return ' 设备数: ' + v + ' (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { beginAtZero: true, ticks: { precision: 0 } },
+                            y: { ticks: { font: { size: 11 }, autoSkip: false } }
+                        }
+                    }
+                })
+            );
+
+            var modelSlices = groupChartSlices(byModel, 15, 'label');
+            _deviceStatsChartInstances.push(
+                new Chart(document.getElementById('deviceChartModel'), {
+                    type: 'bar',
+                    data: {
+                        labels: modelSlices.map(function (r) {
+                            return r.label;
+                        }),
+                        datasets: [
+                            {
+                                label: '设备数',
+                                data: modelSlices.map(function (r) {
+                                    return r.count;
+                                }),
+                                backgroundColor: modelSlices.map(function (r, i) {
+                                    return chartColorForIconKey(r.icon_key, i) + 'cc';
+                                }),
+                                borderRadius: 4,
+                                maxBarThickness: 26
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        var v = ctx.parsed.x || 0;
+                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                        return ' 设备数: ' + v + ' (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { beginAtZero: true, ticks: { precision: 0 } },
+                            y: { ticks: { font: { size: 10 }, autoSkip: false } }
+                        }
+                    }
+                })
+            );
         }
 
         function formatDt(iso) {
@@ -2109,6 +2559,12 @@
             document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('deviceStatsSummary').textContent = '加载中…';
+            destroyDeviceStatsCharts();
+            var chartsWrapInit = document.getElementById('deviceStatsChartsWrap');
+            if (chartsWrapInit) {
+                chartsWrapInit.style.display = 'none';
+            }
+            renderDeviceStatsLegend([]);
             var _mHint = document.getElementById('deviceStatsModelHint');
             if (_mHint) {
                 _mHint.textContent = '';
@@ -2204,11 +2660,17 @@
                     var totalDev = dev.data.total_devices != null ? Number(dev.data.total_devices) : 0;
                     document.getElementById('deviceStatsSummary').textContent =
                         '当前共有 ' + totalDev + ' 条设备指纹记录。';
+                    renderDeviceStatsLegend(dev.data.icon_summary || []);
+                    renderDeviceStatsCharts(dev.data);
+
                     var osRows = dev.data.by_os || [];
                     var oh = '';
                     osRows.forEach(function (row) {
+                        var hint = row.icon_hint ? ' title="' + esc(row.icon_hint) + '"' : '';
                         oh +=
-                            '<tr><td>' +
+                            '<tr' +
+                            hint +
+                            '><td>' +
                             statIconHtml(row.icon_key) +
                             '</td><td>' +
                             esc(row.label) +
@@ -2224,14 +2686,7 @@
                     var slice = modelRows.slice(0, maxModelRows);
                     var mh = '';
                     slice.forEach(function (row) {
-                        mh +=
-                            '<tr><td>' +
-                            statIconHtml(row.icon_key) +
-                            '</td><td class="cell-break">' +
-                            esc(row.label) +
-                            '</td><td>' +
-                            esc(String(row.count)) +
-                            '</td></tr>';
+                        mh += deviceStatRowHtml(row);
                     });
                     document.getElementById('deviceStatsModelTbody').innerHTML =
                         mh || '<tr><td colspan="3">暂无数据</td></tr>';
@@ -2249,6 +2704,12 @@
                         }
                     }
                 } else {
+                    renderDeviceStatsLegend([]);
+                    destroyDeviceStatsCharts();
+                    var chartsWrapFail = document.getElementById('deviceStatsChartsWrap');
+                    if (chartsWrapFail) {
+                        chartsWrapFail.style.display = 'none';
+                    }
                     document.getElementById('deviceStatsSummary').textContent =
                         esc(dev.msg || '设备分布加载失败');
                     document.getElementById('deviceStatsOsTbody').innerHTML =
@@ -2268,6 +2729,12 @@
                 document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                 var evtHintErr = document.getElementById('analyticsEventsHint');
                 if (evtHintErr) evtHintErr.textContent = '埋点统计加载失败（网络错误）';
+                renderDeviceStatsLegend([]);
+                destroyDeviceStatsCharts();
+                var chartsWrapErr = document.getElementById('deviceStatsChartsWrap');
+                if (chartsWrapErr) {
+                    chartsWrapErr.style.display = 'none';
+                }
                 document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
                 document.getElementById('deviceStatsOsTbody').innerHTML =
                     '<tr><td colspan="3">网络错误</td></tr>';
