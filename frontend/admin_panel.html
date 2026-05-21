@@ -1061,6 +1061,10 @@
             <h2>激活码列表</h2>
             <div class="form-row" style="margin-bottom:12px;flex-wrap:wrap;">
                 <div>
+                    <label for="codeCodeFilter">激活码</label>
+                    <input type="text" id="codeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
+                </div>
+                <div>
                     <label for="codeOwnerAdminFilter">管理员账号</label>
                     <input type="text" id="codeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
                 </div>
@@ -1076,7 +1080,10 @@
                         <option value="used">已使用</option>
                     </select>
                 </div>
-                <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
+                <div style="display:flex;align-items:flex-end;padding-bottom:2px;gap:12px;flex-wrap:wrap;">
+                    <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" id="codeCodeExact"> 激活码精准查询
+                    </label>
                     <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
                         <input type="checkbox" id="codeUsedByExact"> 使用账号精准查询
                     </label>
@@ -3758,8 +3765,13 @@
             var usedExact = !!(usedExactEl && usedExactEl.checked);
             var usageFilterEl = document.getElementById('codeUsageFilter');
             var usageStatus = usageFilterEl ? String(usageFilterEl.value || '').trim() : '';
+            var codeQ = '';
+            var codeInput = document.getElementById('codeCodeFilter');
+            if (codeInput) codeQ = String(codeInput.value || '').trim();
+            var codeExactEl = document.getElementById('codeCodeExact');
+            var codeExact = !!(codeExactEl && codeExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var hasFilter = !!(ownerAdmin || usedBy || usageStatus);
+            var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
             var limit = isSuper && !hasFilter ? 20 : codeLimit;
             var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit;
             if (ownerAdmin) {
@@ -3771,6 +3783,10 @@
             }
             if (usageStatus) {
                 q += '&usage_status=' + encodeURIComponent(usageStatus);
+            }
+            if (codeQ) {
+                q += '&code=' + encodeURIComponent(codeQ);
+                if (codeExact) q += '&code_exact=1';
             }
             adminFetch(q)
                 .then(function (r) { return r.json(); })
@@ -3785,6 +3801,11 @@
                         if (usedBy) {
                             filterParts.push(
                                 (usedExact ? '使用账号精准「' : '使用账号「') + usedBy + '」'
+                            );
+                        }
+                        if (codeQ) {
+                            filterParts.push(
+                                (codeExact ? '激活码精准「' : '激活码「') + codeQ + '」'
                             );
                         }
                         if (usageStatus === 'unused') {
@@ -4089,6 +4110,10 @@
             if (usedExactEl) usedExactEl.checked = false;
             var usageFilterReset = document.getElementById('codeUsageFilter');
             if (usageFilterReset) usageFilterReset.value = '';
+            var codeFilterReset = document.getElementById('codeCodeFilter');
+            if (codeFilterReset) codeFilterReset.value = '';
+            var codeExactReset = document.getElementById('codeCodeExact');
+            if (codeExactReset) codeExactReset.checked = false;
             loadCodes(1);
         });
 
