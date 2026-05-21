@@ -1,12 +1,11 @@
 /**
- * 收入纳税明细 / 收入纳税明细详情：用户自定义字体（大小、粗细、颜色）
- * localStorage 持久化；未设置时保持页面原有样式；支持一键恢复默认。
- * 悬浮「字」入口支持手动隐藏、截图/录屏时尽量自动隐藏（纯 H5 无法 100% 拦截系统截图）。
+ * 收入纳税明细 / 详情：用户自定义字体（全局或按区域分项）
  */
 (function (global) {
     var STORAGE_KEY = 'h5_user_font_tax_pages';
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
+    var STYLE_ID = 'ufs-dynamic-rules';
 
     var PRESETS = {
         size: [
@@ -28,29 +27,130 @@
         ]
     };
 
+    var ROLES_RESULT = [
+        { id: 'all', label: '全局', selectors: null },
+        { id: 'header', label: '顶栏', selectors: '.header-title, .back-btn, .header-right' },
+        { id: 'summary', label: '汇总区', selectors: '.summary-label, .summary-value' },
+        { id: 'listTitle', label: '列表标题', selectors: '.list-title, .list-date' },
+        { id: 'listBody', label: '列表正文', selectors: '.list-label, .list-value, .list-company' }
+    ];
+
+    var ROLES_DETAIL = [
+        { id: 'all', label: '全局', selectors: null },
+        { id: 'header', label: '顶栏', selectors: '.header-title, .back-btn, .header-right' },
+        { id: 'section', label: '区块标题', selectors: '.section-title' },
+        { id: 'info', label: '纳税信息', selectors: '.info-label, .info-value, .info-link' },
+        { id: 'tips', label: '温馨提示', selectors: '.tips, .tips-link' },
+        { id: 'detail', label: '收入扣除', selectors: '.detail-label, .detail-value' }
+    ];
+
+    var EXCLUDE_SEL =
+        ':not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *):not(#__wm_layer__):not(#__wm_layer__ *)';
+
     var captureHideTimer = null;
     var toastTimer = null;
+    var panelUi = null;
+
+    function getRoles() {
+        var p = (location.pathname || '').toLowerCase();
+        if (p.indexOf('xiangqing') !== -1) return ROLES_DETAIL;
+        return ROLES_RESULT;
+    }
+
+    function getRestoreLinkLabel() {
+        var p = (location.pathname || '').toLowerCase();
+        return p.indexOf('xiangqing') !== -1 ? '申诉' : '批量申诉';
+    }
+
+    function normalizeConfig(raw) {
+        if (!raw || typeof raw !== 'object') {
+            return { activeTarget: 'all', targets: {} };
+        }
+        if (raw.targets && typeof raw.targets === 'object') {
+            return {
+                activeTarget: raw.activeTarget || 'all',
+                targets: raw.targets
+            };
+        }
+        if (raw.size || raw.weight || raw.color) {
+            return {
+                activeTarget: 'all',
+                targets: {
+                    all: {
+                        size: raw.size || undefined,
+                        weight: raw.weight || undefined,
+                        color: raw.color || undefined
+                    }
+                }
+            };
+        }
+        return { activeTarget: 'all', targets: {} };
+    }
+
+    function targetHasStyle(t) {
+        return !!(t && (t.size || t.weight || t.color));
+    }
+
+    function configIsEmpty(cfg) {
+        if (!cfg || !cfg.targets) return true;
+        return !Object.keys(cfg.targets).some(function (k) {
+            return targetHasStyle(cfg.targets[k]);
+        });
+    }
 
     function loadConfig() {
         try {
             var raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return null;
-            var o = JSON.parse(raw);
-            if (!o || typeof o !== 'object') return null;
-            return o;
+            if (!raw) return normalizeConfig(null);
+            return normalizeConfig(JSON.parse(raw));
         } catch (e) {
-            return null;
+            return normalizeConfig(null);
         }
     }
 
     function saveConfig(cfg) {
         try {
-            if (!cfg || (!cfg.size && !cfg.weight && !cfg.color)) {
+            if (configIsEmpty(cfg)) {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
             }
         } catch (e) {}
+    }
+
+    function getTargetState(cfg, targetId) {
+        return (cfg.targets && cfg.targets[targetId]) || {};
+    }
+
+    function setTargetState(cfg, targetId, patch) {
+        var next = {
+            activeTarget: cfg.activeTarget || 'all',
+            targets: Object.assign({}, cfg.targets || {})
+        };
+        var cur = Object.assign({}, next.targets[targetId] || {});
+        if (patch.size === null) delete cur.size;
+        else if (patch.size) cur.size = patch.size;
+        if (patch.weight === null) delete cur.weight;
+        else if (patch.weight) cur.weight = patch.weight;
+        if (patch.color === null) delete cur.color;
+        else if (patch.color) cur.color = patch.color;
+        if (!targetHasStyle(cur)) {
+            delete next.targets[targetId];
+        } else {
+            next.targets[targetId] = cur;
+        }
+        return next;
+    }
+
+    function toggleProp(cfg, targetId, key, value) {
+        var cur = getTargetState(cfg, targetId);
+        var patch = {};
+        if (cur[key] === value) {
+            patch[key] = null;
+        } else {
+            patch[key] = value;
+        }
+        return setTargetState(cfg, targetId, patch);
     }
 
     function isManualFabHidden() {
@@ -63,11 +163,8 @@
 
     function setManualFabHidden(hidden) {
         try {
-            if (hidden) {
-                localStorage.setItem(FAB_MANUAL_HIDDEN_KEY, '1');
-            } else {
-                localStorage.removeItem(FAB_MANUAL_HIDDEN_KEY);
-            }
+            if (hidden) localStorage.setItem(FAB_MANUAL_HIDDEN_KEY, '1');
+            else localStorage.removeItem(FAB_MANUAL_HIDDEN_KEY);
         } catch (e) {}
         syncFabVisibility();
     }
@@ -84,12 +181,11 @@
         try {
             localStorage.setItem(FAB_CAPTURE_AUTO_KEY, on ? '1' : '0');
         } catch (e) {}
-        syncCaptureHideButtons();
+        if (panelUi) syncCaptureHideButtons();
     }
 
     function syncFabVisibility() {
-        var html = document.documentElement;
-        html.classList.toggle('ufs-fab-hidden', isManualFabHidden());
+        document.documentElement.classList.toggle('ufs-fab-hidden', isManualFabHidden());
     }
 
     function setCaptureHideTemporary(ms) {
@@ -131,41 +227,69 @@
     }
 
     function markScope() {
-        var sel = getScopeSelector();
-        var el = document.querySelector(sel);
-        if (el) {
-            el.setAttribute('data-ufs-target', '1');
+        var el = document.querySelector(getScopeSelector());
+        if (el) el.setAttribute('data-ufs-target', '1');
+    }
+
+    function buildSelectorList(role) {
+        var scope = '[data-ufs-target]';
+        if (role.id === 'all') {
+            return [scope + ' *' + EXCLUDE_SEL, scope];
         }
+        if (!role.selectors) return [];
+        return role.selectors.split(',').map(function (s) {
+            return scope + ' ' + s.trim() + EXCLUDE_SEL;
+        });
     }
 
     function applyConfig(cfg) {
+        cfg = normalizeConfig(cfg);
         var html = document.documentElement;
-        html.classList.remove('user-font-custom', 'ufs-has-size', 'ufs-has-weight', 'ufs-has-color');
-        html.style.removeProperty('--ufs-font-size');
-        html.style.removeProperty('--ufs-font-weight');
-        html.style.removeProperty('--ufs-font-color');
+        var styleEl = document.getElementById(STYLE_ID);
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = STYLE_ID;
+            document.head.appendChild(styleEl);
+        }
 
-        if (!cfg) return;
+        if (configIsEmpty(cfg)) {
+            html.classList.remove('user-font-custom');
+            styleEl.textContent = '';
+            return;
+        }
 
-        var hasAny = false;
-        if (cfg.size) {
-            html.classList.add('ufs-has-size');
-            html.style.setProperty('--ufs-font-size', cfg.size);
-            hasAny = true;
-        }
-        if (cfg.weight) {
-            html.classList.add('ufs-has-weight');
-            html.style.setProperty('--ufs-font-weight', String(cfg.weight));
-            hasAny = true;
-        }
-        if (cfg.color) {
-            html.classList.add('ufs-has-color');
-            html.style.setProperty('--ufs-font-color', cfg.color);
-            hasAny = true;
-        }
-        if (hasAny) {
-            html.classList.add('user-font-custom');
-        }
+        html.classList.add('user-font-custom');
+        var roles = getRoles();
+        var roleMap = {};
+        roles.forEach(function (r) {
+            roleMap[r.id] = r;
+        });
+
+        var order = ['all'];
+        roles.forEach(function (r) {
+            if (r.id !== 'all' && cfg.targets[r.id] && targetHasStyle(cfg.targets[r.id])) {
+                order.push(r.id);
+            }
+        });
+
+        var css = [];
+        order.forEach(function (rid) {
+            var t = cfg.targets[rid];
+            if (!targetHasStyle(t)) return;
+            var role = roleMap[rid];
+            if (!role) return;
+            var decl = [];
+            if (t.size) decl.push('font-size:' + t.size + ' !important');
+            if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
+            if (t.color) decl.push('color:' + t.color + ' !important');
+            if (!decl.length) return;
+            var sels = buildSelectorList(role);
+            if (sels.length) {
+                css.push(sels.join(',\n') + ' {\n  ' + decl.join(';\n  ') + ';\n}');
+            }
+        });
+
+        styleEl.textContent = css.join('\n\n');
     }
 
     function bindLongPress(el, ms, onFire) {
@@ -197,44 +321,17 @@
         function onCaptureSignal() {
             setCaptureHideTemporary(4000);
         }
-
         window.addEventListener('blur', onCaptureSignal);
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) onCaptureSignal();
         });
         window.addEventListener('pagehide', onCaptureSignal);
-
         ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
             document.addEventListener(name, onCaptureSignal);
             window.addEventListener(name, onCaptureSignal);
         });
-
         window.onUserCaptureScreen = onCaptureSignal;
         window.onScreenRecordStart = onCaptureSignal;
-        if (window.UserFontSettingsBridge && typeof window.UserFontSettingsBridge.onCapture === 'function') {
-            window.UserFontSettingsBridge.onCapture = onCaptureSignal;
-        }
-
-        try {
-            var mq = window.matchMedia && window.matchMedia('(display-capture: active)');
-            if (mq) {
-                var applyMq = function () {
-                    if (mq.matches) {
-                        document.documentElement.classList.add('ufs-capture-hide');
-                    } else if (!captureHideTimer) {
-                        document.documentElement.classList.remove('ufs-capture-hide');
-                    }
-                };
-                applyMq();
-                if (typeof mq.addEventListener === 'function') {
-                    mq.addEventListener('change', applyMq);
-                } else if (typeof mq.addListener === 'function') {
-                    mq.addListener(applyMq);
-                }
-            }
-        } catch (eMq) {}
-
-        /* 部分 WebView 在系统截图瞬间会触发 resize（高度略变） */
         var lastH = window.innerHeight;
         window.addEventListener('resize', function () {
             if (!isCaptureAutoHideEnabled()) return;
@@ -247,14 +344,60 @@
     var captureHideButtonsBound = false;
 
     function syncCaptureHideButtons() {
-        var btn = document.getElementById('ufs-capture-auto-btn');
-        if (!btn) return;
+        if (!panelUi || !panelUi.captureBtn) return;
         var on = isCaptureAutoHideEnabled();
-        btn.classList.toggle('is-on', on);
-        btn.textContent = on ? '截图/录屏时自动隐藏：开' : '截图/录屏时自动隐藏：关';
+        panelUi.captureBtn.classList.toggle('is-on', on);
+        panelUi.captureBtn.textContent = on ? '截图/录屏时自动隐藏：开' : '截图/录屏时自动隐藏：关';
     }
 
-    function buildPanel(host, state, onChange) {
+    function refreshPanelUi(host, cfg) {
+        if (!panelUi) return;
+        cfg = normalizeConfig(cfg);
+        var roles = getRoles();
+        var active = cfg.activeTarget || 'all';
+        var activeRole = roles.filter(function (r) {
+            return r.id === active;
+        })[0];
+        panelUi.editingLabel.textContent = '正在调整：' + (activeRole ? activeRole.label : '全局');
+
+        panelUi.chips.innerHTML = '';
+        roles.forEach(function (role) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'ufs-target-chip';
+            if (role.id === active) chip.classList.add('is-active');
+            if (targetHasStyle(getTargetState(cfg, role.id))) chip.classList.add('has-custom');
+            chip.textContent = role.label;
+            chip.addEventListener('click', function () {
+                cfg.activeTarget = role.id;
+                saveConfig(cfg);
+                refreshPanelUi(host, cfg);
+                refreshPresetButtons(host, cfg);
+            });
+            panelUi.chips.appendChild(chip);
+        });
+
+        refreshPresetButtons(host, cfg);
+    }
+
+    function refreshPresetButtons(host, cfg) {
+        if (!panelUi) return;
+        var targetId = cfg.activeTarget || 'all';
+        var state = getTargetState(cfg, targetId);
+        host.querySelectorAll('.ufs-preset-group').forEach(function (group) {
+            var key = group.getAttribute('data-key');
+            var presets = PRESETS[key];
+            if (!presets) return;
+            var btns = group.querySelectorAll('.ufs-opt');
+            presets.forEach(function (p, idx) {
+                if (btns[idx]) {
+                    btns[idx].classList.toggle('is-active', state[key] === p.value);
+                }
+            });
+        });
+    }
+
+    function buildPanel(host, cfg, onConfigChange) {
         var panel = document.createElement('div');
         panel.className = 'ufs-panel';
         panel.setAttribute('role', 'dialog');
@@ -265,16 +408,25 @@
         title.textContent = '字体设置';
         panel.appendChild(title);
 
-        function addGroup(label, key, presets, isColor) {
+        var chips = document.createElement('div');
+        chips.className = 'ufs-target-chips';
+        panel.appendChild(chips);
+
+        var editingLabel = document.createElement('div');
+        editingLabel.className = 'ufs-editing-label';
+        panel.appendChild(editingLabel);
+
+        function addPresetGroup(label, key, isColor) {
             var group = document.createElement('div');
-            group.className = 'ufs-group';
+            group.className = 'ufs-group ufs-preset-group';
+            group.setAttribute('data-key', key);
             var lab = document.createElement('div');
             lab.className = 'ufs-group-label';
             lab.textContent = label;
             group.appendChild(lab);
             var opts = document.createElement('div');
             opts.className = 'ufs-options';
-            presets.forEach(function (p) {
+            PRESETS[key].forEach(function (p) {
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'ufs-opt' + (isColor ? ' ufs-opt-swatch' : '');
@@ -284,20 +436,10 @@
                 } else {
                     btn.textContent = p.label;
                 }
-                if (state[key] === p.value) {
-                    btn.classList.add('is-active');
-                }
                 btn.addEventListener('click', function () {
-                    var next = {};
-                    if (state.size) next.size = state.size;
-                    if (state.weight) next.weight = state.weight;
-                    if (state.color) next.color = state.color;
-                    if (state[key] === p.value) {
-                        delete next[key];
-                    } else {
-                        next[key] = p.value;
-                    }
-                    onChange(next);
+                    var tid = cfg.activeTarget || 'all';
+                    var next = toggleProp(cfg, tid, key, p.value);
+                    onConfigChange(next);
                 });
                 opts.appendChild(btn);
             });
@@ -305,9 +447,21 @@
             panel.appendChild(group);
         }
 
-        addGroup('字号', 'size', PRESETS.size, false);
-        addGroup('粗细', 'weight', PRESETS.weight, false);
-        addGroup('颜色', 'color', PRESETS.color, true);
+        addPresetGroup('字号', 'size', false);
+        addPresetGroup('粗细', 'weight', false);
+        addPresetGroup('颜色', 'color', true);
+
+        var clearTargetBtn = document.createElement('button');
+        clearTargetBtn.type = 'button';
+        clearTargetBtn.className = 'ufs-action-btn';
+        clearTargetBtn.textContent = '清除当前区域设置';
+        clearTargetBtn.addEventListener('click', function () {
+            var tid = cfg.activeTarget || 'all';
+            var next = Object.assign({}, cfg, { targets: Object.assign({}, cfg.targets) });
+            delete next.targets[tid];
+            onConfigChange(next);
+        });
+        panel.appendChild(clearTargetBtn);
 
         var actions = document.createElement('div');
         actions.className = 'ufs-row-actions';
@@ -319,7 +473,7 @@
         hideNowBtn.addEventListener('click', function () {
             setManualFabHidden(true);
             host.classList.remove('is-open');
-            showToast('已隐藏；长按顶部标题可恢复');
+            showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
         });
         actions.appendChild(hideNowBtn);
 
@@ -336,60 +490,52 @@
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
         resetBtn.className = 'ufs-reset';
-        resetBtn.textContent = '一键恢复默认字体';
+        resetBtn.textContent = '一键恢复全部默认字体';
         resetBtn.addEventListener('click', function () {
-            onChange(null);
+            onConfigChange(normalizeConfig(null));
         });
         panel.appendChild(resetBtn);
 
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
         hint.textContent =
-            '长按「字」约 0.6 秒也可隐藏。截图/录屏时系统不一定通知网页，已尽量在切后台、失焦时自动隐藏；录屏全程隐藏需壳子原生支持。';
+            '先选区域再调字号/粗细/颜色；未设项保持原样式。分项优先于全局。隐藏后点「' +
+            getRestoreLinkLabel() +
+            '」恢复入口。';
         panel.appendChild(hint);
 
+        panelUi = {
+            chips: chips,
+            editingLabel: editingLabel,
+            captureBtn: captureBtn
+        };
+
         host.appendChild(panel);
+        refreshPanelUi(host, cfg);
         syncCaptureHideButtons();
         return panel;
     }
 
-    function refreshActiveButtons(host, state) {
-        state = state || {};
-        host.querySelectorAll('.ufs-opt').forEach(function (btn) {
-            btn.classList.remove('is-active');
-        });
-        host.querySelectorAll('.ufs-group').forEach(function (group, gi) {
-            var keys = ['size', 'weight', 'color'];
-            var key = keys[gi];
-            if (!key) return;
-            var presets = PRESETS[key];
-            var btns = group.querySelectorAll('.ufs-opt');
-            presets.forEach(function (p, idx) {
-                if (state[key] === p.value && btns[idx]) {
-                    btns[idx].classList.add('is-active');
-                }
-            });
-        });
-    }
-
-    function bindTitleRestore() {
-        var titles = document.querySelectorAll('.header-title');
-        titles.forEach(function (title) {
-            bindLongPress(title, 800, function () {
-                if (!isManualFabHidden()) {
-                    showToast('字体入口已显示');
-                    return;
-                }
-                setManualFabHidden(false);
-                showToast('已恢复「字」按钮');
-            });
+    function bindHeaderRightRestore() {
+        document.querySelectorAll('.header-right').forEach(function (el) {
+            el.addEventListener(
+                'click',
+                function (e) {
+                    if (!isManualFabHidden()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setManualFabHidden(false);
+                    showToast('已恢复「字」按钮');
+                },
+                true
+            );
         });
     }
 
     function mountUi() {
         if (document.getElementById('ufs-host')) return;
 
-        var state = loadConfig() || {};
+        var cfg = loadConfig();
 
         var host = document.createElement('div');
         host.id = 'ufs-host';
@@ -404,15 +550,15 @@
         bindLongPress(fab, 600, function () {
             setManualFabHidden(true);
             host.classList.remove('is-open');
-            showToast('已隐藏；长按顶部标题可恢复');
+            showToast('已隐藏；点击「' + getRestoreLinkLabel() + '」可恢复');
         });
 
-        var panel = buildPanel(host, state, function (next) {
-            state = next || {};
-            saveConfig(state);
-            applyConfig(state);
-            refreshActiveButtons(host, state);
-            if (!next || (!next.size && !next.weight && !next.color)) {
+        buildPanel(host, cfg, function (next) {
+            cfg = normalizeConfig(next);
+            saveConfig(cfg);
+            applyConfig(cfg);
+            refreshPanelUi(host, cfg);
+            if (configIsEmpty(cfg)) {
                 host.classList.remove('is-open');
             }
         });
@@ -420,21 +566,21 @@
         fab.addEventListener('click', function (e) {
             e.stopPropagation();
             host.classList.toggle('is-open');
+            if (host.classList.contains('is-open')) {
+                refreshPanelUi(host, cfg);
+            }
         });
 
         document.addEventListener('click', function (e) {
             if (!host.classList.contains('is-open')) return;
-            if (!host.contains(e.target)) {
-                host.classList.remove('is-open');
-            }
+            if (!host.contains(e.target)) host.classList.remove('is-open');
         });
 
         host.appendChild(fab);
         document.body.appendChild(host);
         markScope();
-        refreshActiveButtons(host, state);
         syncFabVisibility();
-        bindTitleRestore();
+        bindHeaderRightRestore();
 
         if (!captureHideButtonsBound) {
             captureHideButtonsBound = true;
@@ -462,8 +608,8 @@
         save: saveConfig,
         apply: applyConfig,
         reset: function () {
-            saveConfig(null);
-            applyConfig(null);
+            saveConfig(normalizeConfig(null));
+            applyConfig(normalizeConfig(null));
         },
         setFabVisible: function (visible) {
             setManualFabHidden(!visible);
@@ -471,7 +617,8 @@
         hideFabForCapture: function (ms) {
             setCaptureHideTemporary(ms || 4000);
         },
-        showToast: showToast
+        showToast: showToast,
+        getRoles: getRoles
     };
 
     boot();

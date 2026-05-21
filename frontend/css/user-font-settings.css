@@ -34,7 +34,10 @@
     position: absolute;
     right: 0;
     bottom: 52px;
-    width: min(280px, calc(100vw - 28px));
+    width: min(300px, calc(100vw - 28px));
+    max-height: min(72vh, 520px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
@@ -50,7 +53,47 @@
     font-size: 15px;
     font-weight: 600;
     color: #333;
+    margin-bottom: 8px;
+}
+
+.ufs-target-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     margin-bottom: 10px;
+}
+
+.ufs-target-chip {
+    padding: 5px 10px;
+    border-radius: 16px;
+    border: 1px solid #e0e0e0;
+    background: #fafafa;
+    color: #555;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.ufs-target-chip.is-active {
+    border-color: #1e6fff;
+    background: #eef4ff;
+    color: #1e6fff;
+}
+
+.ufs-target-chip.has-custom::after {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: #1e6fff;
+    vertical-align: middle;
+}
+
+.ufs-editing-label {
+    font-size: 12px;
+    color: #1e6fff;
+    margin-bottom: 8px;
 }
 
 .ufs-group {
@@ -153,13 +196,18 @@
     background: #f5f6fa;
 }
 
-/* 手动隐藏 / 截图录屏临时隐藏：不占位、不参与点击 */
 html.ufs-fab-hidden .ufs-host,
 html.ufs-capture-hide .ufs-host {
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
     transform: scale(0.01);
+}
+
+/* 隐藏「字」后仍可通过右上角批量申诉/申诉点击恢复 */
+html.ufs-fab-hidden [data-ufs-target] .header-right,
+html.ufs-fab-hidden body.page-xiangqing .header-right {
+    display: block !important;
 }
 
 .ufs-toast {
@@ -183,20 +231,4 @@ html.ufs-capture-hide .ufs-host {
 
 .ufs-toast.is-show {
     opacity: 1;
-}
-
-/* 用户自定义：仅在有设置且 html 带对应 class 时覆盖正文 */
-html.user-font-custom.ufs-has-size [data-ufs-target],
-html.user-font-custom.ufs-has-size [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
-    font-size: var(--ufs-font-size) !important;
-}
-
-html.user-font-custom.ufs-has-weight [data-ufs-target],
-html.user-font-custom.ufs-has-weight [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
-    font-weight: var(--ufs-font-weight) !important;
-}
-
-html.user-font-custom.ufs-has-color [data-ufs-target],
-html.user-font-custom.ufs-has-color [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
-    color: var(--ufs-font-color) !important;
 }
