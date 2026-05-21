@@ -368,7 +368,8 @@
             if (role.id === active) chip.classList.add('is-active');
             if (targetHasStyle(getTargetState(cfg, role.id))) chip.classList.add('has-custom');
             chip.textContent = role.label;
-            chip.addEventListener('click', function () {
+            chip.addEventListener('click', function (e) {
+                e.stopPropagation();
                 cfg.activeTarget = role.id;
                 saveConfig(cfg);
                 refreshPanelUi(host, cfg);
@@ -436,7 +437,8 @@
                 } else {
                     btn.textContent = p.label;
                 }
-                btn.addEventListener('click', function () {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
                     var tid = cfg.activeTarget || 'all';
                     var next = toggleProp(cfg, tid, key, p.value);
                     onConfigChange(next);
@@ -455,13 +457,24 @@
         clearTargetBtn.type = 'button';
         clearTargetBtn.className = 'ufs-action-btn';
         clearTargetBtn.textContent = '清除当前区域设置';
-        clearTargetBtn.addEventListener('click', function () {
+        clearTargetBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             var tid = cfg.activeTarget || 'all';
             var next = Object.assign({}, cfg, { targets: Object.assign({}, cfg.targets) });
             delete next.targets[tid];
             onConfigChange(next);
         });
         panel.appendChild(clearTargetBtn);
+
+        var closePanelBtn = document.createElement('button');
+        closePanelBtn.type = 'button';
+        closePanelBtn.className = 'ufs-action-btn';
+        closePanelBtn.textContent = '收起面板';
+        closePanelBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            host.classList.remove('is-open');
+        });
+        panel.appendChild(closePanelBtn);
 
         var actions = document.createElement('div');
         actions.className = 'ufs-row-actions';
@@ -470,7 +483,8 @@
         hideNowBtn.type = 'button';
         hideNowBtn.className = 'ufs-action-btn';
         hideNowBtn.textContent = '立即隐藏「字」按钮';
-        hideNowBtn.addEventListener('click', function () {
+        hideNowBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             setManualFabHidden(true);
             host.classList.remove('is-open');
             showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
@@ -481,7 +495,8 @@
         captureBtn.type = 'button';
         captureBtn.className = 'ufs-action-btn';
         captureBtn.id = 'ufs-capture-auto-btn';
-        captureBtn.addEventListener('click', function () {
+        captureBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             setCaptureAutoHideEnabled(!isCaptureAutoHideEnabled());
         });
         actions.appendChild(captureBtn);
@@ -491,7 +506,8 @@
         resetBtn.type = 'button';
         resetBtn.className = 'ufs-reset';
         resetBtn.textContent = '一键恢复全部默认字体';
-        resetBtn.addEventListener('click', function () {
+        resetBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             onConfigChange(normalizeConfig(null));
         });
         panel.appendChild(resetBtn);
@@ -499,9 +515,7 @@
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
         hint.textContent =
-            '先选区域再调字号/粗细/颜色；未设项保持原样式。分项优先于全局。隐藏后点「' +
-            getRestoreLinkLabel() +
-            '」恢复入口。';
+            '先点顶栏/汇总区等切换区域，再调字号；面板保持打开，可逐项设置。再次点「字」或「收起面板」关闭。';
         panel.appendChild(hint);
 
         panelUi = {
@@ -509,6 +523,12 @@
             editingLabel: editingLabel,
             captureBtn: captureBtn
         };
+
+        function stopPanelEvent(e) {
+            e.stopPropagation();
+        }
+        panel.addEventListener('click', stopPanelEvent);
+        panel.addEventListener('touchstart', stopPanelEvent, { passive: true });
 
         host.appendChild(panel);
         refreshPanelUi(host, cfg);
@@ -571,10 +591,12 @@
             }
         });
 
-        document.addEventListener('click', function (e) {
-            if (!host.classList.contains('is-open')) return;
-            if (!host.contains(e.target)) host.classList.remove('is-open');
+        host.addEventListener('click', function (e) {
+            e.stopPropagation();
         });
+        host.addEventListener('touchstart', function (e) {
+            e.stopPropagation();
+        }, { passive: true });
 
         host.appendChild(fab);
         document.body.appendChild(host);
