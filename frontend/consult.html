@@ -1248,6 +1248,14 @@
                 loadFeedbackWechatPayQr();
                 loadFeedbackList();
             }
+            if (tab === 'records') {
+                syncAllCompanyProfiles().then(function () {
+                    refreshBatchCompanyHistoryDatalist();
+                    document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
+                        tryApplyBatchCompanyProfileFromInput
+                    );
+                });
+            }
         }
 
         function renderFeedbackWechatPayQr(displayUrl) {
@@ -1789,8 +1797,9 @@
         }
 
         function refreshRecordList() {
-            return apiFetchRecords().then(function (list) {
-                syncCompanyProfilesFromTaxRecords(list);
+            return syncAllCompanyProfiles().then(function () {
+                return apiFetchRecords();
+            }).then(function (list) {
                 refreshBatchCompanyHistoryDatalist();
                 document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
                     tryApplyBatchCompanyProfileFromInput
@@ -2050,14 +2059,26 @@
             });
         }
 
+        function companyNameMatchKey(name) {
+            return String(name || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '');
+        }
+
         function getBatchCompanyProfile(companyName) {
-            var key = String(companyName || '').trim();
-            if (!key) return null;
+            var raw = String(companyName || '').trim();
+            if (!raw) return null;
+            var fuzzy = companyNameMatchKey(raw);
             var list = loadBatchCompanyProfiles();
+            var fuzzyHit = null;
             for (var i = 0; i < list.length; i++) {
-                if (list[i].name === key) return list[i];
+                if (list[i].name === raw) return list[i];
+                if (fuzzy && companyNameMatchKey(list[i].name) === fuzzy) {
+                    fuzzyHit = fuzzyHit || list[i];
+                }
             }
-            return null;
+            return fuzzyHit;
         }
 
         /** 从已有税务记录补全本地公司档案（税号、机关） */
@@ -2076,6 +2097,44 @@
                     tax_authority: auth || (old ? old.tax_authority : '')
                 });
             });
+        }
+
+        /** 从任职受雇列表补全纳税人识别号（统一社会信用代码 → 工作经历税号字段） */
+        function syncCompanyProfilesFromEmployers(employers) {
+            if (!employers || !employers.length) return;
+            employers.forEach(function (e) {
+                var name = String(e.company_name || '').trim();
+                var code = String(e.credit_code || '').trim();
+                if (!name || !code) return;
+                var old = getBatchCompanyProfile(name);
+                rememberBatchCompanyProfile({
+                    name: name,
+                    company_tax_id: code || (old ? old.company_tax_id : ''),
+                    tax_authority: old ? old.tax_authority : ''
+                });
+            });
+        }
+
+        function syncAllCompanyProfiles() {
+            return Promise.all([apiFetchRecords(), apiFetchEmployers()]).then(function (res) {
+                syncCompanyProfilesFromTaxRecords(res[0] || []);
+                syncCompanyProfilesFromEmployers(res[1] || []);
+            });
+        }
+
+        function setFormFieldValue(el, val) {
+            if (!el) return;
+            var v = val == null ? '' : String(val);
+            el.value = v;
+            try {
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            } catch (e0) {
+                try {
+                    var ev = document.createEvent('HTMLEvents');
+                    ev.initEvent('input', true, false);
+                    el.dispatchEvent(ev);
+                } catch (e1) {}
+            }
         }
 
         /** 记住公司全称及纳税人识别号、主管税务机关（点选历史或生成记录时写入） */
@@ -2124,8 +2183,8 @@
             if (!prof.company_tax_id && !prof.tax_authority) return;
             var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
             var authEl = row.querySelector('.batch-emp-tax-authority');
-            if (taxIdEl) taxIdEl.value = prof.company_tax_id || '';
-            if (authEl) authEl.value = prof.tax_authority || '';
+            if (taxIdEl && prof.company_tax_id) setFormFieldValue(taxIdEl, prof.company_tax_id);
+            if (authEl && prof.tax_authority) setFormFieldValue(authEl, prof.tax_authority);
         }
 
         function tryApplyBatchCompanyProfileFromInput(inputEl) {
@@ -2193,9 +2252,8 @@
         }
 
         function initBatchCompanyHistoryUi() {
-            return apiFetchRecords()
-                .then(function (records) {
-                    syncCompanyProfilesFromTaxRecords(records);
+            return syncAllCompanyProfiles()
+                .then(function () {
                     refreshBatchCompanyHistoryDatalist();
                     document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
                         bindBatchEmpCompanyHistoryInput
@@ -3089,6 +3147,11 @@
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
                     if (res.code === 200) {
+                        rememberBatchCompanyProfile({
+                            name: String(data.company_name || '').trim(),
+                            company_tax_id: String(data.credit_code || '').trim(),
+                            tax_authority: ''
+                        });
                         document.getElementById('employerForm').reset();
                         showMsg('添加成功', true);
                         return refreshEmployerList();
@@ -3102,6 +3165,11 @@
 
         function refreshEmployerList() {
             return apiFetchEmployers().then(function (list) {
+                syncCompanyProfilesFromEmployers(list);
+                refreshBatchCompanyHistoryDatalist();
+                document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
+                    tryApplyBatchCompanyProfileFromInput
+                );
                 renderEmployerListFromArray(list);
             });
         }
