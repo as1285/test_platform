@@ -1,0 +1,142 @@
+/* 收入纳税明细 / 详情：用户自定义字体（悬浮入口，不占位） */
+.ufs-host {
+    position: fixed;
+    right: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index: 1000015;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ufs-fab {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(30, 111, 255, 0.92);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: 0 4px 14px rgba(30, 111, 255, 0.35);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ufs-fab:active {
+    transform: scale(0.96);
+}
+
+.ufs-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    bottom: 52px;
+    width: min(280px, calc(100vw - 28px));
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+    padding: 14px 14px 12px;
+    box-sizing: border-box;
+}
+
+.ufs-host.is-open .ufs-panel {
+    display: block;
+}
+
+.ufs-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.ufs-group {
+    margin-bottom: 10px;
+}
+
+.ufs-group-label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.ufs-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ufs-opt {
+    min-width: 44px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: #fafafa;
+    color: #333;
+    font-size: 13px;
+    line-height: 1.2;
+    cursor: pointer;
+    text-align: center;
+}
+
+.ufs-opt.is-active {
+    border-color: #1e6fff;
+    background: #eef4ff;
+    color: #1e6fff;
+}
+
+.ufs-opt-swatch {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid #e8e8e8;
+}
+
+.ufs-opt-swatch.is-active {
+    border-color: #1e6fff;
+    box-shadow: 0 0 0 2px #eef4ff;
+}
+
+.ufs-reset {
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 0;
+    border: none;
+    border-radius: 8px;
+    background: #f5f6fa;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.ufs-reset:active {
+    background: #ebecef;
+}
+
+.ufs-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+}
+
+/* 用户自定义：仅在有设置且 html 带对应 class 时覆盖正文 */
+html.user-font-custom.ufs-has-size [data-ufs-target],
+html.user-font-custom.ufs-has-size [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
+    font-size: var(--ufs-font-size) !important;
+}
+
+html.user-font-custom.ufs-has-weight [data-ufs-target],
+html.user-font-custom.ufs-has-weight [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
+    font-weight: var(--ufs-font-weight) !important;
+}
+
+html.user-font-custom.ufs-has-color [data-ufs-target],
+html.user-font-custom.ufs-has-color [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
+    color: var(--ufs-font-color) !important;
+}
