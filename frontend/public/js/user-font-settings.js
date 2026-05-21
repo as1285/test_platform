@@ -29,19 +29,51 @@
 
     var ROLES_RESULT = [
         { id: 'all', label: '全局', selectors: null },
-        { id: 'header', label: '顶栏', selectors: '.header-title, .back-btn, .header-right' },
-        { id: 'summary', label: '汇总区', selectors: '.summary-label, .summary-value' },
-        { id: 'listTitle', label: '列表标题', selectors: '.list-title, .list-date' },
-        { id: 'listBody', label: '列表正文', selectors: '.list-label, .list-value, .list-company' }
+        {
+            id: 'header',
+            label: '顶栏',
+            selectors:
+                '.top-fixed .header-title, .top-fixed .back-btn, .top-fixed .back-btn span, .top-fixed .header-right'
+        },
+        {
+            id: 'summary',
+            label: '汇总区',
+            selectors:
+                '.top-fixed .summary-label, .top-fixed .summary-value, .top-fixed .summary-label span, .top-fixed .summary-help-with-colon'
+        },
+        {
+            id: 'listTitle',
+            label: '列表标题',
+            selectors: '#recordList .list-title, #recordList .list-date'
+        },
+        {
+            id: 'listBody',
+            label: '列表正文',
+            selectors: '#recordList .list-label, #recordList .list-company'
+        }
     ];
 
     var ROLES_DETAIL = [
         { id: 'all', label: '全局', selectors: null },
-        { id: 'header', label: '顶栏', selectors: '.header-title, .back-btn, .header-right' },
-        { id: 'section', label: '区块标题', selectors: '.section-title' },
-        { id: 'info', label: '纳税信息', selectors: '.info-label, .info-value, .info-link' },
-        { id: 'tips', label: '温馨提示', selectors: '.tips, .tips-link' },
-        { id: 'detail', label: '收入扣除', selectors: '.detail-label, .detail-value' }
+        {
+            id: 'header',
+            label: '顶栏',
+            selectors:
+                'body.page-xiangqing .header-title, body.page-xiangqing .back-btn, body.page-xiangqing .back-btn span, body.page-xiangqing .header-right'
+        },
+        { id: 'section', label: '区块标题', selectors: 'body.page-xiangqing .section-title' },
+        {
+            id: 'info',
+            label: '纳税信息',
+            selectors: 'body.page-xiangqing .info-label, body.page-xiangqing .info-value, body.page-xiangqing .info-link'
+        },
+        { id: 'tips', label: '温馨提示', selectors: 'body.page-xiangqing .tips, body.page-xiangqing .tips-link' },
+        {
+            id: 'detail',
+            label: '收入扣除',
+            selectors:
+                'body.page-xiangqing .detail-label, body.page-xiangqing .detail-value, body.page-xiangqing .detail-summary-row .detail-label'
+        }
     ];
 
     var EXCLUDE_SEL =
@@ -98,11 +130,48 @@
         });
     }
 
+    /** 已有分区设置时，去掉全局上同名字段，避免 [data-ufs-target] * 继续作用于整页 */
+    function sanitizeConfig(cfg) {
+        cfg = normalizeConfig(cfg);
+        if (!cfg.targets.all || !targetHasStyle(cfg.targets.all)) return cfg;
+        var roles = getRoles();
+        var all = Object.assign({}, cfg.targets.all);
+        var changed = false;
+        roles.forEach(function (role) {
+            if (role.id === 'all') return;
+            var t = cfg.targets[role.id];
+            if (!t || !targetHasStyle(t)) return;
+            if (t.size && all.size) {
+                delete all.size;
+                changed = true;
+            }
+            if (t.weight && all.weight) {
+                delete all.weight;
+                changed = true;
+            }
+            if (t.color && all.color) {
+                delete all.color;
+                changed = true;
+            }
+        });
+        if (!changed) return cfg;
+        var next = {
+            activeTarget: cfg.activeTarget || 'all',
+            targets: Object.assign({}, cfg.targets)
+        };
+        if (!targetHasStyle(all)) {
+            delete next.targets.all;
+        } else {
+            next.targets.all = all;
+        }
+        return next;
+    }
+
     function loadConfig() {
         try {
             var raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return normalizeConfig(null);
-            return normalizeConfig(JSON.parse(raw));
+            return sanitizeConfig(normalizeConfig(JSON.parse(raw)));
         } catch (e) {
             return normalizeConfig(null);
         }
@@ -110,6 +179,7 @@
 
     function saveConfig(cfg) {
         try {
+            cfg = sanitizeConfig(normalizeConfig(cfg));
             if (configIsEmpty(cfg)) {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
@@ -284,7 +354,7 @@
     }
 
     function applyConfig(cfg) {
-        cfg = normalizeConfig(cfg);
+        cfg = sanitizeConfig(normalizeConfig(cfg));
         var html = document.documentElement;
         var styleEl = document.getElementById(STYLE_ID);
         if (!styleEl) {
