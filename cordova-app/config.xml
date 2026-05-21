@@ -47,7 +47,7 @@
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
-        <!-- Android 12+ 系统闪屏：白底 + 透明占位图（勿用桌面 icon，避免中间小图标） -->
+        <!-- Android 12+ 系统闪屏：白底 + start.png 居中（冷启动 WebView 未就绪前即显示） -->
         <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/splash/splash.png" />
     </platform>

@@ -575,19 +575,6 @@
             <div class="wrap">
                 <div id="page-settings" class="page-panel active" role="tabpanel">
         <section>
-            <h2>系统设置</h2>
-            <div class="form-row" style="flex-direction: column; align-items: stretch;">
-                <div style="width:100%;max-width:640px;">
-                    <label for="testCompanyName">测试账号默认「扣缴义务人名称」（接口参考）</label>
-                    <input type="text" id="testCompanyName" maxlength="500" placeholder="加载中…" style="width:100%;max-width:640px;">
-                </div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-                    <button type="button" class="btn-primary" id="btnSaveTestCompany">保存</button>
-                </div>
-            </div>
-            <p class="hint">此处名称通过用户资料接口下发（test_company_locked_name），便于前端展示或作为占位参考；测试账号可在个人中心自行填写真实姓名、公司名称与扣缴义务人名称，保存本设置不会批量改写用户已有任职或税务记录。</p>
-        </section>
-        <section style="margin-top:24px;">
             <h2>QQ 添加链接（个人中心顶栏）</h2>
             <p class="hint">用户在「我要咨询 / 个人中心」页顶栏点击「添加QQ号」时打开此链接（如 QQ 群/好友加群页，须为 https 完整地址）。留空并保存则点击时提示未配置。</p>
             <div class="form-row" style="flex-direction: column; align-items: stretch;">
@@ -3339,10 +3326,6 @@
             adminFetch('api/admin/settings')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.code === 200 && data.data && data.data.test_account_company_name != null) {
-                        document.getElementById('testCompanyName').value = data.data.test_account_company_name;
-                        document.getElementById('testCompanyName').placeholder = '';
-                    }
                     if (data.code === 200 && data.data) {
                         var qrEl = document.getElementById('wechatPayQrcodeUrl');
                         if (qrEl) {
@@ -3393,9 +3376,7 @@
                         syncMineUiDefaultToggle();
                     }
                 })
-                .catch(function () {
-                    document.getElementById('testCompanyName').placeholder = '加载失败';
-                });
+                .catch(function () {});
         }
 
         document.getElementById('btnSaveQqAddUrl').addEventListener('click', function () {
@@ -3483,31 +3464,6 @@
                     fileInput.disabled = false;
                     fileInput.value = '';
                 });
-        });
-
-        document.getElementById('btnSaveTestCompany').addEventListener('click', function () {
-            var btn = document.getElementById('btnSaveTestCompany');
-            var name = document.getElementById('testCompanyName').value.trim();
-            if (!name) {
-                alert('名称不能为空');
-                return;
-            }
-            btn.disabled = true;
-            adminFetch('api/admin/settings', {
-                method: 'POST',
-                body: JSON.stringify({ test_account_company_name: name })
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code === 200) {
-                        alert('已保存');
-                        loadAdminSettings();
-                    } else {
-                        alert(data.msg || '保存失败');
-                    }
-                })
-                .catch(function () { alert('网络错误'); })
-                .finally(function () { btn.disabled = false; });
         });
 
         document.getElementById('btnSaveInstallPackages').addEventListener('click', function () {

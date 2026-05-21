@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-- res/icon/icon.png：APK 桌面图标（保持仓库内文件，本脚本不覆盖已有 icon）
-- res/splash/splash.png：Android 12+ 系统闪屏用透明图（避免显示桌面小图标）
-- www/start.png：WebView 全屏启动图（仅 index.html 使用，本脚本不修改）
+- res/icon/icon.png：APK 桌面图标（保持仓库内文件，不覆盖）
+- res/splash/splash.png：Android 12+ 系统闪屏居中图（由 www/start.png 生成，冷启动即显示）
+- www/start.png：WebView 全屏启动图（index.html 使用）
 
 依赖：pip install Pillow
 """
@@ -37,14 +37,28 @@ def render_icon(size: int) -> Image.Image:
     return img
 
 
-def write_transparent_splash_icon(path: str, size: int = 48) -> None:
-    """系统闪屏中间图标：透明，仅保留白底，全屏启动交给 www/start.png。"""
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    img.save(path, "PNG", optimize=True)
+def compose_square_emblem(src_path: str, canvas: int, fill_ratio: float) -> Image.Image:
+    emblem = Image.open(src_path).convert("RGBA")
+    target = int(canvas * fill_ratio)
+    tw = max(emblem.size)
+    scale = target / tw
+    nw = max(1, int(round(emblem.width * scale)))
+    nh = max(1, int(round(emblem.height * scale)))
+    emblem = emblem.resize((nw, nh), Image.Resampling.LANCZOS)
+    out = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    x = (canvas - nw) // 2
+    y = (canvas - nh) // 2
+    out.paste(emblem, (x, y), emblem)
+    return out
 
 
 def main() -> int:
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    www_start = os.path.join(root, "www", "start.png")
+    if not os.path.isfile(www_start):
+        print("missing", www_start, file=sys.stderr)
+        return 1
+
     icon_dir = os.path.join(root, "res", "icon")
     os.makedirs(icon_dir, exist_ok=True)
     icon_path = os.path.join(icon_dir, "icon.png")
@@ -57,14 +71,8 @@ def main() -> int:
     splash_dir = os.path.join(root, "res", "splash")
     os.makedirs(splash_dir, exist_ok=True)
     android_splash = os.path.join(splash_dir, "splash.png")
-    write_transparent_splash_icon(android_splash, 48)
-    print("wrote", android_splash, "(transparent, native splash icon hidden)")
-
-    www_start = os.path.join(root, "www", "start.png")
-    if os.path.isfile(www_start):
-        print("keep www/start.png for WebView fullscreen startup")
-    else:
-        print("warning: missing", www_start, file=sys.stderr)
+    compose_square_emblem(www_start, 512, fill_ratio=0.92).save(android_splash, "PNG", optimize=True)
+    print("wrote", android_splash, "(from start.png for native cold start)")
 
     return 0
 

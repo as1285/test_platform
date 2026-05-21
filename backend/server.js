@@ -73,8 +73,7 @@ function isPlaceholderTaxId(taxId) {
   return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT || s === LEGACY_TAX_ID_HINT;
 }
 /** 环境变量或内置默认；首次写入 app_settings 及库中无配置时使用 */
-const TEST_ACCOUNT_COMPANY_NAME_DEFAULT =
-  process.env.TEST_ACCOUNT_COMPANY_NAME || '购买+Tangdong 购买++V : Tangdong6832';
+const TEST_ACCOUNT_COMPANY_NAME_DEFAULT = process.env.TEST_ACCOUNT_COMPANY_NAME || '';
 const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
 const SETTING_KEY_MINE_UI = 'mine_ui_json';
 const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';

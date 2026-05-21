@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="preload" as="image" href="start.png">
     <style>
         html, body {
             margin: 0;
@@ -19,15 +20,11 @@
         html.app-huawei-pura70-shell body {
             background: #f5f6fa !important;
         }
-        /* 全屏启动图（与 start.png 同目录） */
         #startPage {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            inset: 0;
             z-index: 99999;
-            background: #fff;
+            background: #fff url('start.png') center center / contain no-repeat;
         }
         #startPage img {
             width: 100%;
@@ -35,7 +32,6 @@
             object-fit: contain;
             object-position: center center;
             display: block;
-            background: #fff;
         }
         #main {
             display: none;
@@ -56,17 +52,16 @@
             max-width: 100%;
         }
     </style>
+</head>
+<body>
+    <div id="startPage" aria-hidden="false">
+        <img src="start.png" alt="启动图" fetchpriority="high" decoding="sync">
+    </div>
+    <div id="main"></div>
     <script>
         (function () {
-            /* 启动页显示时长：1000=1秒，2000=2秒，3000=3秒 */
             var START_PAGE_MS = 2000;
-
             var APP_ORIGIN = 'http://139.199.191.204/';
-            if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
-                document.body.innerHTML =
-                    '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 后重新打包 APK。</p>';
-                return;
-            }
 
             function isCordovaXiaomi23127() {
                 var ua = navigator.userAgent || '';
@@ -81,8 +76,22 @@
                     ua
                 );
             }
+
+            if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
+                document.body.innerHTML =
+                    '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 cordova-app/www/index.html 中的 APP_ORIGIN 后重新打包 APK。</p>';
+                return;
+            }
             if (isHuaweiPura70Shell()) {
                 document.documentElement.classList.add('app-huawei-pura70-shell');
+            }
+
+            function hideNativeSplash() {
+                try {
+                    if (navigator.splashscreen && typeof navigator.splashscreen.hide === 'function') {
+                        navigator.splashscreen.hide();
+                    }
+                } catch (e0) {}
             }
 
             function hideStartShowMain() {
@@ -110,36 +119,9 @@
                 main.appendChild(f);
             }
 
-            function hideNativeSplash() {
-                try {
-                    if (navigator.splashscreen && typeof navigator.splashscreen.hide === 'function') {
-                        navigator.splashscreen.hide();
-                    }
-                } catch (e0) {}
-            }
-
-            function boot() {
-                var img = document.querySelector('#startPage img');
-                if (img) {
-                    img.decoding = 'sync';
-                    if (!img.complete) {
-                        img.addEventListener('load', function () {}, { once: true });
-                        img.addEventListener('error', function () {}, { once: true });
-                    }
-                }
-                hideNativeSplash();
-                mountApp();
-                setTimeout(function () {
-                    hideStartShowMain();
-                    hideNativeSplash();
-                }, START_PAGE_MS);
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', boot);
-            } else {
-                boot();
-            }
+            hideNativeSplash();
+            mountApp();
+            setTimeout(hideStartShowMain, START_PAGE_MS);
 
             document.addEventListener('deviceready', function () {
                 hideNativeSplash();
@@ -164,11 +146,5 @@
             });
         })();
     </script>
-</head>
-<body>
-    <div id="startPage" aria-hidden="false">
-        <img src="start.png" alt="启动图">
-    </div>
-    <div id="main"></div>
 </body>
 </html>
