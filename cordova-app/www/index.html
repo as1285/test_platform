@@ -32,8 +32,10 @@
         #startPage img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            object-position: center center;
             display: block;
+            background: #fff;
         }
         #main {
             display: none;
@@ -108,9 +110,29 @@
                 main.appendChild(f);
             }
 
+            function hideNativeSplash() {
+                try {
+                    if (navigator.splashscreen && typeof navigator.splashscreen.hide === 'function') {
+                        navigator.splashscreen.hide();
+                    }
+                } catch (e0) {}
+            }
+
             function boot() {
+                var img = document.querySelector('#startPage img');
+                if (img) {
+                    img.decoding = 'sync';
+                    if (!img.complete) {
+                        img.addEventListener('load', function () {}, { once: true });
+                        img.addEventListener('error', function () {}, { once: true });
+                    }
+                }
+                hideNativeSplash();
                 mountApp();
-                setTimeout(hideStartShowMain, START_PAGE_MS);
+                setTimeout(function () {
+                    hideStartShowMain();
+                    hideNativeSplash();
+                }, START_PAGE_MS);
             }
 
             if (document.readyState === 'loading') {
@@ -120,6 +142,7 @@
             }
 
             document.addEventListener('deviceready', function () {
+                hideNativeSplash();
                 if (!window.StatusBar) {
                     return;
                 }

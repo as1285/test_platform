@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 """
-桌面/APK 图标与 Android 系统启动屏：始终基于 res/icon/icon.png（原蓝色图标逻辑）。
-www/start.png 仅由壳内 index.html 作 WebView 全屏启动图，本脚本不读取、不覆盖 start.png。
-
-若尚无 res/icon/icon.png，则用程序绘制默认图标并保存。
-每次运行会基于 icon.png 重新生成：
-- res/splash/splash.png → AndroidWindowSplashScreenAnimatedIcon
-- www/splash.png → 历史兼容（index.html 已改用 start.png，可不使用）
+- res/icon/icon.png：APK 桌面图标（保持仓库内文件，本脚本不覆盖已有 icon）
+- res/splash/splash.png：Android 12+ 系统闪屏用透明图（避免显示桌面小图标）
+- www/start.png：WebView 全屏启动图（仅 index.html 使用，本脚本不修改）
 
 依赖：pip install Pillow
 """
@@ -41,36 +37,10 @@ def render_icon(size: int) -> Image.Image:
     return img
 
 
-def compose_square_emblem(src_path: str, canvas: int, fill_ratio: float) -> Image.Image:
-    """将图标缩放后居中贴在正方形透明画布上（供 Android 12+ 启动图标）。"""
-    emblem = Image.open(src_path).convert("RGBA")
-    target = int(canvas * fill_ratio)
-    tw = max(emblem.size)
-    scale = target / tw
-    nw = max(1, int(round(emblem.width * scale)))
-    nh = max(1, int(round(emblem.height * scale)))
-    emblem = emblem.resize((nw, nh), Image.Resampling.LANCZOS)
-    out = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-    x = (canvas - nw) // 2
-    y = (canvas - nh) // 2
-    out.paste(emblem, (x, y), emblem)
-    return out
-
-
-def compose_portrait_splash(src_path: str, width: int, height: int, fill_ratio: float) -> Image.Image:
-    """竖屏白底， emblem 按屏宽比例放大居中（供 www/splash.png）。"""
-    emblem = Image.open(src_path).convert("RGBA")
-    canvas = Image.new("RGB", (width, height), WHITE)
-    target = int(min(width, height) * fill_ratio)
-    tw = max(emblem.size)
-    scale = target / tw
-    nw = max(1, int(round(emblem.width * scale)))
-    nh = max(1, int(round(emblem.height * scale)))
-    emblem = emblem.resize((nw, nh), Image.Resampling.LANCZOS)
-    x = (width - nw) // 2
-    y = (height - nh) // 2
-    canvas.paste(emblem, (x, y), emblem)
-    return canvas
+def write_transparent_splash_icon(path: str, size: int = 48) -> None:
+    """系统闪屏中间图标：透明，仅保留白底，全屏启动交给 www/start.png。"""
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    img.save(path, "PNG", optimize=True)
 
 
 def main() -> int:
@@ -87,12 +57,14 @@ def main() -> int:
     splash_dir = os.path.join(root, "res", "splash")
     os.makedirs(splash_dir, exist_ok=True)
     android_splash = os.path.join(splash_dir, "splash.png")
-    compose_square_emblem(icon_path, 512, fill_ratio=0.86).save(android_splash, "PNG", optimize=True)
-    print("wrote", android_splash)
+    write_transparent_splash_icon(android_splash, 48)
+    print("wrote", android_splash, "(transparent, native splash icon hidden)")
 
-    www_splash = os.path.join(root, "www", "splash.png")
-    compose_portrait_splash(icon_path, 1080, 1920, fill_ratio=0.5).save(www_splash, "PNG", optimize=True)
-    print("wrote", www_splash)
+    www_start = os.path.join(root, "www", "start.png")
+    if os.path.isfile(www_start):
+        print("keep www/start.png for WebView fullscreen startup")
+    else:
+        print("warning: missing", www_start, file=sys.stderr)
 
     return 0
 
