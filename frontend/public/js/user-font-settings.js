@@ -1,9 +1,12 @@
 /**
  * 收入纳税明细 / 收入纳税明细详情：用户自定义字体（大小、粗细、颜色）
  * localStorage 持久化；未设置时保持页面原有样式；支持一键恢复默认。
+ * 悬浮「字」入口支持手动隐藏、截图/录屏时尽量自动隐藏（纯 H5 无法 100% 拦截系统截图）。
  */
 (function (global) {
     var STORAGE_KEY = 'h5_user_font_tax_pages';
+    var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
+    var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
 
     var PRESETS = {
         size: [
@@ -25,6 +28,9 @@
         ]
     };
 
+    var captureHideTimer = null;
+    var toastTimer = null;
+
     function loadConfig() {
         try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -45,6 +51,72 @@
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
             }
         } catch (e) {}
+    }
+
+    function isManualFabHidden() {
+        try {
+            return localStorage.getItem(FAB_MANUAL_HIDDEN_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function setManualFabHidden(hidden) {
+        try {
+            if (hidden) {
+                localStorage.setItem(FAB_MANUAL_HIDDEN_KEY, '1');
+            } else {
+                localStorage.removeItem(FAB_MANUAL_HIDDEN_KEY);
+            }
+        } catch (e) {}
+        syncFabVisibility();
+    }
+
+    function isCaptureAutoHideEnabled() {
+        try {
+            return localStorage.getItem(FAB_CAPTURE_AUTO_KEY) !== '0';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function setCaptureAutoHideEnabled(on) {
+        try {
+            localStorage.setItem(FAB_CAPTURE_AUTO_KEY, on ? '1' : '0');
+        } catch (e) {}
+        syncCaptureHideButtons();
+    }
+
+    function syncFabVisibility() {
+        var html = document.documentElement;
+        html.classList.toggle('ufs-fab-hidden', isManualFabHidden());
+    }
+
+    function setCaptureHideTemporary(ms) {
+        if (!isCaptureAutoHideEnabled() || isManualFabHidden()) return;
+        var html = document.documentElement;
+        html.classList.add('ufs-capture-hide');
+        if (captureHideTimer) clearTimeout(captureHideTimer);
+        captureHideTimer = setTimeout(function () {
+            html.classList.remove('ufs-capture-hide');
+            captureHideTimer = null;
+        }, ms || 3500);
+    }
+
+    function showToast(msg) {
+        var el = document.getElementById('ufs-toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'ufs-toast';
+            el.className = 'ufs-toast';
+            document.body.appendChild(el);
+        }
+        el.textContent = msg;
+        el.classList.add('is-show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+            el.classList.remove('is-show');
+        }, 2200);
     }
 
     function getScopeSelector() {
@@ -94,6 +166,92 @@
         if (hasAny) {
             html.classList.add('user-font-custom');
         }
+    }
+
+    function bindLongPress(el, ms, onFire) {
+        if (!el) return;
+        var timer = null;
+        function clear() {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        }
+        function start() {
+            clear();
+            timer = setTimeout(function () {
+                timer = null;
+                onFire();
+            }, ms);
+        }
+        el.addEventListener('touchstart', start, { passive: true });
+        el.addEventListener('touchend', clear);
+        el.addEventListener('touchcancel', clear);
+        el.addEventListener('touchmove', clear);
+        el.addEventListener('mousedown', start);
+        el.addEventListener('mouseup', clear);
+        el.addEventListener('mouseleave', clear);
+    }
+
+    function initCaptureHideListeners() {
+        function onCaptureSignal() {
+            setCaptureHideTemporary(4000);
+        }
+
+        window.addEventListener('blur', onCaptureSignal);
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) onCaptureSignal();
+        });
+        window.addEventListener('pagehide', onCaptureSignal);
+
+        ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
+            document.addEventListener(name, onCaptureSignal);
+            window.addEventListener(name, onCaptureSignal);
+        });
+
+        window.onUserCaptureScreen = onCaptureSignal;
+        window.onScreenRecordStart = onCaptureSignal;
+        if (window.UserFontSettingsBridge && typeof window.UserFontSettingsBridge.onCapture === 'function') {
+            window.UserFontSettingsBridge.onCapture = onCaptureSignal;
+        }
+
+        try {
+            var mq = window.matchMedia && window.matchMedia('(display-capture: active)');
+            if (mq) {
+                var applyMq = function () {
+                    if (mq.matches) {
+                        document.documentElement.classList.add('ufs-capture-hide');
+                    } else if (!captureHideTimer) {
+                        document.documentElement.classList.remove('ufs-capture-hide');
+                    }
+                };
+                applyMq();
+                if (typeof mq.addEventListener === 'function') {
+                    mq.addEventListener('change', applyMq);
+                } else if (typeof mq.addListener === 'function') {
+                    mq.addListener(applyMq);
+                }
+            }
+        } catch (eMq) {}
+
+        /* 部分 WebView 在系统截图瞬间会触发 resize（高度略变） */
+        var lastH = window.innerHeight;
+        window.addEventListener('resize', function () {
+            if (!isCaptureAutoHideEnabled()) return;
+            var dh = Math.abs(window.innerHeight - lastH);
+            lastH = window.innerHeight;
+            if (dh > 0 && dh < 80) onCaptureSignal();
+        });
+    }
+
+    var captureHideButtonsBound = false;
+
+    function syncCaptureHideButtons() {
+        var btn = document.getElementById('ufs-capture-auto-btn');
+        if (!btn) return;
+        var on = isCaptureAutoHideEnabled();
+        btn.classList.toggle('is-on', on);
+        btn.textContent = on ? '截图/录屏时自动隐藏：开' : '截图/录屏时自动隐藏：关';
     }
 
     function buildPanel(host, state, onChange) {
@@ -151,10 +309,34 @@
         addGroup('粗细', 'weight', PRESETS.weight, false);
         addGroup('颜色', 'color', PRESETS.color, true);
 
+        var actions = document.createElement('div');
+        actions.className = 'ufs-row-actions';
+
+        var hideNowBtn = document.createElement('button');
+        hideNowBtn.type = 'button';
+        hideNowBtn.className = 'ufs-action-btn';
+        hideNowBtn.textContent = '立即隐藏「字」按钮';
+        hideNowBtn.addEventListener('click', function () {
+            setManualFabHidden(true);
+            host.classList.remove('is-open');
+            showToast('已隐藏；长按顶部标题可恢复');
+        });
+        actions.appendChild(hideNowBtn);
+
+        var captureBtn = document.createElement('button');
+        captureBtn.type = 'button';
+        captureBtn.className = 'ufs-action-btn';
+        captureBtn.id = 'ufs-capture-auto-btn';
+        captureBtn.addEventListener('click', function () {
+            setCaptureAutoHideEnabled(!isCaptureAutoHideEnabled());
+        });
+        actions.appendChild(captureBtn);
+        panel.appendChild(actions);
+
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
         resetBtn.className = 'ufs-reset';
-        resetBtn.textContent = '一键恢复默认';
+        resetBtn.textContent = '一键恢复默认字体';
         resetBtn.addEventListener('click', function () {
             onChange(null);
         });
@@ -162,10 +344,12 @@
 
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
-        hint.textContent = '设置即时生效并自动保存；两页共用。再次点击选项可取消该项。';
+        hint.textContent =
+            '长按「字」约 0.6 秒也可隐藏。截图/录屏时系统不一定通知网页，已尽量在切后台、失焦时自动隐藏；录屏全程隐藏需壳子原生支持。';
         panel.appendChild(hint);
 
         host.appendChild(panel);
+        syncCaptureHideButtons();
         return panel;
     }
 
@@ -188,6 +372,20 @@
         });
     }
 
+    function bindTitleRestore() {
+        var titles = document.querySelectorAll('.header-title');
+        titles.forEach(function (title) {
+            bindLongPress(title, 800, function () {
+                if (!isManualFabHidden()) {
+                    showToast('字体入口已显示');
+                    return;
+                }
+                setManualFabHidden(false);
+                showToast('已恢复「字」按钮');
+            });
+        });
+    }
+
     function mountUi() {
         if (document.getElementById('ufs-host')) return;
 
@@ -202,6 +400,12 @@
         fab.className = 'ufs-fab';
         fab.setAttribute('aria-label', '字体设置');
         fab.textContent = '字';
+
+        bindLongPress(fab, 600, function () {
+            setManualFabHidden(true);
+            host.classList.remove('is-open');
+            showToast('已隐藏；长按顶部标题可恢复');
+        });
 
         var panel = buildPanel(host, state, function (next) {
             state = next || {};
@@ -229,10 +433,18 @@
         document.body.appendChild(host);
         markScope();
         refreshActiveButtons(host, state);
+        syncFabVisibility();
+        bindTitleRestore();
+
+        if (!captureHideButtonsBound) {
+            captureHideButtonsBound = true;
+            initCaptureHideListeners();
+        }
     }
 
     function boot() {
         applyConfig(loadConfig());
+        syncFabVisibility();
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
                 markScope();
@@ -252,7 +464,14 @@
         reset: function () {
             saveConfig(null);
             applyConfig(null);
-        }
+        },
+        setFabVisible: function (visible) {
+            setManualFabHidden(!visible);
+        },
+        hideFabForCapture: function (ms) {
+            setCaptureHideTemporary(ms || 4000);
+        },
+        showToast: showToast
     };
 
     boot();

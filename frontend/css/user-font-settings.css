@@ -125,6 +125,66 @@
     line-height: 1.4;
 }
 
+.ufs-row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.ufs-action-btn {
+    width: 100%;
+    padding: 9px 0;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    color: #333;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ufs-action-btn.is-on {
+    border-color: #1e6fff;
+    color: #1e6fff;
+    background: #eef4ff;
+}
+
+.ufs-action-btn:active {
+    background: #f5f6fa;
+}
+
+/* 手动隐藏 / 截图录屏临时隐藏：不占位、不参与点击 */
+html.ufs-fab-hidden .ufs-host,
+html.ufs-capture-hide .ufs-host {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.01);
+}
+
+.ufs-toast {
+    position: fixed;
+    left: 50%;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    transform: translateX(-50%);
+    z-index: 1000020;
+    max-width: 88vw;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ufs-toast.is-show {
+    opacity: 1;
+}
+
 /* 用户自定义：仅在有设置且 html 带对应 class 时覆盖正文 */
 html.user-font-custom.ufs-has-size [data-ufs-target],
 html.user-font-custom.ufs-has-size [data-ufs-target] *:not(svg):not(path):not(img):not(.ufs-host):not(.ufs-host *) {
