@@ -76,29 +76,6 @@
             background: #1e6fff;
             border-radius: 2px;
         }
-
-        .daiban-empty {
-            text-align: center;
-            padding: 36px 24px 48px;
-            background: #fff;
-        }
-
-        .daiban-empty-illustration {
-            max-width: min(320px, 78vw);
-            margin: 0 auto 16px;
-        }
-
-        .daiban-empty-illustration img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .daiban-empty-text {
-            font-size: 15px;
-            color: #999;
-            line-height: 1.5;
-        }
     </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
@@ -112,12 +89,6 @@
             <div class="daiban-tabs" role="tablist">
                 <button type="button" class="daiban-tab active" data-tab="pending" role="tab" aria-selected="true">未办结</button>
                 <button type="button" class="daiban-tab" data-tab="done" role="tab" aria-selected="false">已办结</button>
-            </div>
-            <div class="daiban-empty" id="daibanEmptyPanel" role="tabpanel">
-                <div class="daiban-empty-illustration">
-                    <img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">
-                </div>
-                <p class="daiban-empty-text" id="daibanEmptyText">暂无未办结事项</p>
             </div>
         </div>
     </div>
@@ -157,11 +128,6 @@
     <script>
         (function () {
             var tabs = document.querySelectorAll('.daiban-tab');
-            var emptyText = document.getElementById('daibanEmptyText');
-            var labels = {
-                pending: '暂无未办结事项',
-                done: '暂无已办结事项'
-            };
 
             function setTab(name) {
                 tabs.forEach(function (btn) {
@@ -169,9 +135,6 @@
                     btn.classList.toggle('active', on);
                     btn.setAttribute('aria-selected', on ? 'true' : 'false');
                 });
-                if (emptyText && labels[name]) {
-                    emptyText.textContent = labels[name];
-                }
             }
 
             var tabFromUrl = '';
