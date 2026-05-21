@@ -6088,6 +6088,36 @@ async function handleAdminAnalyticsApi(req, res) {
 var ANALYTICS_TRACK_EVENT_SQL =
   "(route_key LIKE 'EVENT %' OR route_key LIKE '%#track\\_%')";
 
+/** 激活弹窗相关埋点（单独统计，不计入通用 C 端埋点列表） */
+var ACTIVATE_TRACK_EVENT_KEYS = [
+  'track_activate_prompt_open',
+  'track_activate_prompt_cancel',
+  'track_activate_prompt_confirm',
+  'track_xianyu_purchase_click'
+];
+
+var ACTIVATE_TRACK_EVENT_KEY_SET = {};
+ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
+  ACTIVATE_TRACK_EVENT_KEY_SET[k] = true;
+});
+
+var ACTIVATE_TRACK_EVENT_SQL =
+  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click')";
+
+function isActivateTrackEventKey(eventKey) {
+  return !!ACTIVATE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
+}
+
+function activateTrackEventLabel(eventKey) {
+  var labels = {
+    track_activate_prompt_open: '激活弹窗打开',
+    track_activate_prompt_cancel: '激活弹窗-取消',
+    track_activate_prompt_confirm: '激活弹窗-确定',
+    track_xianyu_purchase_click: '闲鱼购买'
+  };
+  return labels[eventKey] || eventKey;
+}
+
 async function handleAdminAnalyticsEventsClear(req, res) {
   try {
     var days = clampAnalyticsDays(
@@ -6162,6 +6192,9 @@ async function handleAdminAnalyticsEvents(req, res) {
       topEvents.sort(function (a, b) {
         return b.total - a.total;
       });
+      topEvents = topEvents.filter(function (row) {
+        return !isActivateTrackEventKey(row.event_key);
+      });
       var byDay = Object.keys(dayMap)
         .sort()
         .map(function (d) {
@@ -6174,6 +6207,205 @@ async function handleAdminAnalyticsEvents(req, res) {
           total_events: rows.length,
           by_day: byDay,
           top_events: topEvents.slice(0, 200)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsActivateEvents(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 14, 90);
+    var span = Math.max(0, days - 1);
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        `SELECT DATE(created_at) AS stat_date, username,
+                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
+                COUNT(*) AS cnt
+         FROM user_page_events
+         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND ${ACTIVATE_TRACK_EVENT_SQL}
+         GROUP BY DATE(created_at), username, event_key
+         ORDER BY stat_date DESC`,
+        [span]
+      );
+      var eventTotals = {};
+      ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
+        eventTotals[k] = 0;
+      });
+      var dayMap = {};
+      rows.forEach(function (r) {
+        var ek = String(r.event_key || '').trim();
+        if (!isActivateTrackEventKey(ek)) {
+          return;
+        }
+        var c = Number(r.cnt) || 0;
+        if (c <= 0) {
+          return;
+        }
+        eventTotals[ek] = (eventTotals[ek] || 0) + c;
+        var d = '';
+        if (r.stat_date instanceof Date) {
+          d = r.stat_date.toISOString().slice(0, 10);
+        } else {
+          d = String(r.stat_date || '').slice(0, 10);
+        }
+        if (!d) {
+          return;
+        }
+        if (!dayMap[d]) {
+          dayMap[d] = { date: d, events: {}, total: 0, user_set: {} };
+          ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k2) {
+            dayMap[d].events[k2] = 0;
+          });
+        }
+        dayMap[d].events[ek] = (dayMap[d].events[ek] || 0) + c;
+        dayMap[d].total += c;
+        if (r.username) {
+          dayMap[d].user_set[String(r.username)] = true;
+        }
+      });
+      var summary = ACTIVATE_TRACK_EVENT_KEYS.map(function (k) {
+        return {
+          event_key: k,
+          label: activateTrackEventLabel(k),
+          total: eventTotals[k] || 0
+        };
+      });
+      var byDay = Object.keys(dayMap)
+        .sort()
+        .reverse()
+        .map(function (d) {
+          var o = dayMap[d];
+          return {
+            date: o.date,
+            events: o.events,
+            total: o.total,
+            unique_users: Object.keys(o.user_set).length
+          };
+        });
+      var grandTotal = 0;
+      summary.forEach(function (s) {
+        grandTotal += s.total;
+      });
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          event_keys: ACTIVATE_TRACK_EVENT_KEYS.slice(),
+          summary: summary,
+          total_clicks: grandTotal,
+          by_day: byDay
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminAnalyticsActivateEventUsers(req, res) {
+  try {
+    var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res.status(400).json({ code: 400, msg: 'date required (YYYY-MM-DD)' });
+    }
+    var eventKey = req.query.event_key != null ? String(req.query.event_key).trim() : '';
+    if (eventKey && !isActivateTrackEventKey(eventKey)) {
+      return res.status(400).json({ code: 400, msg: 'invalid event_key' });
+    }
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) {
+      page = 1;
+    }
+    if (limit < 1) {
+      limit = 20;
+    }
+    if (limit > 100) {
+      limit = 100;
+    }
+    const conn = await pool.getConnection();
+    try {
+      var eventFilterSql = ACTIVATE_TRACK_EVENT_SQL;
+      var params = [dateStr];
+      if (eventKey) {
+        eventFilterSql = 'route_key LIKE ?';
+        params = [dateStr, '%#' + eventKey];
+      }
+      const [aggRows] = await conn.execute(
+        `SELECT username,
+                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
+                COUNT(*) AS cnt,
+                MAX(created_at) AS last_at
+         FROM user_page_events
+         WHERE DATE(created_at) = ?
+           AND ${eventFilterSql}
+         GROUP BY username, event_key`,
+        params
+      );
+      var userMap = {};
+      aggRows.forEach(function (r) {
+        var ek = String(r.event_key || '').trim();
+        if (!isActivateTrackEventKey(ek)) {
+          return;
+        }
+        var uname = String(r.username || '').trim();
+        if (!uname) {
+          return;
+        }
+        if (!userMap[uname]) {
+          userMap[uname] = {
+            username: uname,
+            events: {},
+            total: 0,
+            last_at: ''
+          };
+          ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
+            userMap[uname].events[k] = 0;
+          });
+        }
+        var c = Number(r.cnt) || 0;
+        userMap[uname].events[ek] = (userMap[uname].events[ek] || 0) + c;
+        userMap[uname].total += c;
+        var la = r.last_at ? (r.last_at instanceof Date ? r.last_at.toISOString() : String(r.last_at)) : '';
+        if (la && (!userMap[uname].last_at || la > userMap[uname].last_at)) {
+          userMap[uname].last_at = la;
+        }
+      });
+      var users = Object.keys(userMap)
+        .map(function (k) {
+          return userMap[k];
+        })
+        .sort(function (a, b) {
+          return b.total - a.total || String(a.username).localeCompare(String(b.username));
+        });
+      var total = users.length;
+      var totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+      if (page > totalPages) {
+        page = totalPages;
+      }
+      var offset = (page - 1) * limit;
+      var pageUsers = users.slice(offset, offset + limit);
+      return res.json({
+        code: 200,
+        data: {
+          date: dateStr,
+          event_key: eventKey || '',
+          users: pageUsers,
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
         }
       });
     } finally {
@@ -6611,6 +6843,18 @@ app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('ana
 app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
 app.get('/api/admin/analytics/events', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsEvents);
+app.get(
+  '/api/admin/analytics/activate-events',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminAnalyticsActivateEvents
+);
+app.get(
+  '/api/admin/analytics/activate-events/users',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminAnalyticsActivateEventUsers
+);
 app.post(
   '/api/admin/analytics/events/clear',
   requireAdminAuth,

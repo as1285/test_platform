@@ -1326,10 +1326,44 @@
             <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
         </section>
         <section>
+            <h2>激活相关埋点</h2>
+            <p class="hint" style="margin-top:0;margin-bottom:8px;">单独统计激活弹窗与闲鱼购买按钮（<code>track_activate_prompt_*</code>、<code>track_xianyu_purchase_click</code>）。按<strong>北京时间自然日</strong>汇总点击次数；可展开查看当日点击过的账号及每人各按钮次数。数据来自用户上报流水 <code>user_page_events</code>。</p>
+            <div class="scroll-x" style="margin-bottom:10px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>按钮</th>
+                            <th>事件名</th>
+                            <th>区间合计</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                </table>
+            </div>
+            <p id="activateEventsHint" class="stat" style="margin-bottom:8px;">—</p>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>打开</th>
+                            <th>取消</th>
+                            <th>确定</th>
+                            <th>闲鱼</th>
+                            <th>合计</th>
+                            <th>去重用户</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activateEventsDailyTbody"><tr><td colspan="8">加载中…</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+        <section>
             <div class="section-head-actions">
                 <div>
                     <h2>C端行为埋点</h2>
-                    <p class="hint" style="margin-top:8px;margin-bottom:0;">展示 C 端上报的埋点事件（如 <code>track_jump_*</code>、激活弹窗、<code>track_xianyu_purchase_click</code> 闲鱼购买、<code>track_qq_add_click</code> 添加QQ号、注册成功）。统计区间与上方“统计天数”一致。</p>
+                    <p class="hint" style="margin-top:8px;margin-bottom:0;">展示 C 端其它埋点（<code>track_jump_*</code> 页面跳转、<code>track_qq_add_click</code> 添加QQ、注册成功等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
                 </div>
                 <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
             </div>
@@ -2586,6 +2620,168 @@
         }
 
         var DAU_USERS_PAGE_LIMIT = 10;
+        var ACTIVATE_USERS_PAGE_LIMIT = 15;
+        var ACTIVATE_EVENT_KEYS = [
+            'track_activate_prompt_open',
+            'track_activate_prompt_cancel',
+            'track_activate_prompt_confirm',
+            'track_xianyu_purchase_click'
+        ];
+
+        function activateDateDomKey(dateStr) {
+            return String(dateStr || '').replace(/[^0-9]/g, '');
+        }
+
+        function activateEventCount(row, key) {
+            if (!row || !row.events) {
+                return 0;
+            }
+            return Number(row.events[key]) || 0;
+        }
+
+        function renderActivateUsersPanel(box, dateStr, data) {
+            if (!box) {
+                return;
+            }
+            var users = Array.isArray(data.users) ? data.users : [];
+            var page = Number(data.page) || 1;
+            var total = Number(data.total) || 0;
+            var totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / ACTIVATE_USERS_PAGE_LIMIT) || 1);
+            box.setAttribute('data-date', dateStr);
+            box.setAttribute('data-page', String(page));
+            box.setAttribute('data-loaded', '1');
+
+            var html = '<div class="dau-users-panel">';
+            html +=
+                '<div class="dau-users-title">' +
+                esc(dateStr) +
+                ' 点击用户（共 ' +
+                total +
+                ' 个账号；本页 ' +
+                users.length +
+                ' 个）</div>';
+            if (!users.length) {
+                html += '<div class="dau-users-list">暂无点击记录</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr>';
+                html += '<th>账号</th><th>打开</th><th>取消</th><th>确定</th><th>闲鱼</th><th>合计</th><th>最近点击</th>';
+                html += '</tr></thead><tbody>';
+                users.forEach(function (u) {
+                    html += '<tr>';
+                    html += '<td class="cell-break"><code>' + esc(u.username) + '</code></td>';
+                    ACTIVATE_EVENT_KEYS.forEach(function (k) {
+                        html += '<td>' + esc(String(activateEventCount(u, k))) + '</td>';
+                    });
+                    html += '<td><strong>' + esc(String(u.total || 0)) + '</strong></td>';
+                    html += '<td>' + esc(u.last_at ? formatDt(u.last_at) : '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+            if (totalPages > 1) {
+                html +=
+                    '<div class="pagination">' +
+                    '<button type="button" class="btn-page activate-users-prev" data-date="' +
+                    esc(dateStr) +
+                    '"' +
+                    (page <= 1 ? ' disabled' : '') +
+                    '>上一页</button>' +
+                    '<span>第 ' +
+                    esc(String(page)) +
+                    ' / ' +
+                    esc(String(totalPages)) +
+                    ' 页</span>' +
+                    '<button type="button" class="btn-page activate-users-next" data-date="' +
+                    esc(dateStr) +
+                    '"' +
+                    (page >= totalPages ? ' disabled' : '') +
+                    '>下一页</button></div>';
+            }
+            html += '</div>';
+            box.innerHTML = html;
+        }
+
+        function loadActivateUsersForDate(dateStr, page, box) {
+            if (!box) {
+                return;
+            }
+            box.removeAttribute('data-loaded');
+            box.innerHTML = '<div class="dau-users-panel" style="color:#888;">加载中…</div>';
+            adminFetch(
+                'api/admin/analytics/activate-events/users?date=' +
+                    encodeURIComponent(dateStr) +
+                    '&page=' +
+                    encodeURIComponent(String(page || 1)) +
+                    '&limit=' +
+                    encodeURIComponent(String(ACTIVATE_USERS_PAGE_LIMIT))
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        box.innerHTML =
+                            '<div class="dau-users-panel" style="color:#c00;">' + esc(j.msg || '加载失败') + '</div>';
+                        return;
+                    }
+                    renderActivateUsersPanel(box, dateStr, j.data);
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="dau-users-panel" style="color:#c00;">网络错误</div>';
+                });
+        }
+
+        function renderActivateEventsAnalytics(data) {
+            var summary = Array.isArray(data.summary) ? data.summary : [];
+            var byDay = Array.isArray(data.by_day) ? data.by_day : [];
+            var sh = '';
+            summary.forEach(function (row) {
+                var meta = parseTrackEventMeta(row.event_key || '');
+                sh +=
+                    '<tr><td>' +
+                    esc(meta.button || row.label || '—') +
+                    '</td><td class="cell-break"><code>' +
+                    esc(row.event_key || '') +
+                    '</code></td><td>' +
+                    esc(String(row.total || 0)) +
+                    '</td></tr>';
+            });
+            document.getElementById('activateEventsSummaryTbody').innerHTML =
+                sh || '<tr><td colspan="3">暂无数据</td></tr>';
+            var hintEl = document.getElementById('activateEventsHint');
+            if (hintEl) {
+                hintEl.textContent =
+                    '统计区间内共 ' +
+                    (data.total_clicks != null ? data.total_clicks : 0) +
+                    ' 次点击，' +
+                    byDay.length +
+                    ' 天有记录。';
+            }
+            var dh = '';
+            byDay.forEach(function (row) {
+                var dk = activateDateDomKey(row.date);
+                dh += '<tr class="activate-summary-row">';
+                dh += '<td>' + esc(row.date) + '</td>';
+                ACTIVATE_EVENT_KEYS.forEach(function (k) {
+                    dh += '<td>' + esc(String(activateEventCount(row, k))) + '</td>';
+                });
+                dh += '<td><strong>' + esc(String(row.total || 0)) + '</strong></td>';
+                dh += '<td>' + esc(String(row.unique_users != null ? row.unique_users : 0)) + '</td>';
+                dh +=
+                    '<td><button type="button" class="btn-sm btn-detail btn-activate-users-toggle" data-date="' +
+                    esc(row.date) +
+                    '">查看用户</button></td>';
+                dh += '</tr>';
+                dh +=
+                    '<tr id="activate_users_row_' +
+                    dk +
+                    '" class="activate-users-detail-row" style="display:none;"><td colspan="8"><div id="activate_users_box_' +
+                    dk +
+                    '" class="activate-users-box">点击「查看用户」加载列表…</div></td></tr>';
+            });
+            document.getElementById('activateEventsDailyTbody').innerHTML =
+                dh || '<tr><td colspan="8">暂无数据</td></tr>';
+        }
 
         function dauDateDomKey(dateStr) {
             return String(dateStr || '').replace(/[^0-9]/g, '');
@@ -2733,14 +2929,27 @@
                 _mHint.textContent = '';
             }
 
+            document.getElementById('activateEventsSummaryTbody').innerHTML =
+                '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('activateEventsDailyTbody').innerHTML =
+                '<tr><td colspan="8">加载中…</td></tr>';
+            var activateHintInit = document.getElementById('activateEventsHint');
+            if (activateHintInit) {
+                activateHintInit.textContent = '加载中…';
+            }
+
             Promise.all([
                 adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
                 adminFetch('api/admin/analytics/device-stats').then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); })
+                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/activate-events?days=' + encodeURIComponent(daysO)).then(function (r) {
+                    return r.json();
+                })
             ]).then(function (results) {
                 var ov = results[0];
                 var dev = results[1];
                 var ev = results[2];
+                var act = results[3];
 
                 if (ov.code === 200 && ov.data && ov.data.dau) {
                     var dh = '';
@@ -2790,6 +2999,19 @@
                 } else {
                     document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">—</td></tr>';
                 }
+                if (act.code === 200 && act.data) {
+                    renderActivateEventsAnalytics(act.data);
+                } else {
+                    document.getElementById('activateEventsSummaryTbody').innerHTML =
+                        '<tr><td colspan="3">' + esc((act && act.msg) || '加载失败') + '</td></tr>';
+                    document.getElementById('activateEventsDailyTbody').innerHTML =
+                        '<tr><td colspan="8">—</td></tr>';
+                    var actHintE = document.getElementById('activateEventsHint');
+                    if (actHintE) {
+                        actHintE.textContent = '激活埋点加载失败';
+                    }
+                }
+
                 if (ev.code === 200 && ev.data) {
                     var eRows = Array.isArray(ev.data.top_events) ? ev.data.top_events : [];
                     var eh = '';
@@ -2903,6 +3125,14 @@
                     '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('deviceStatsModelTbody').innerHTML =
                     '<tr><td colspan="3">网络错误</td></tr>';
+                document.getElementById('activateEventsSummaryTbody').innerHTML =
+                    '<tr><td colspan="3">网络错误</td></tr>';
+                document.getElementById('activateEventsDailyTbody').innerHTML =
+                    '<tr><td colspan="8">网络错误</td></tr>';
+                var actHintErr = document.getElementById('activateEventsHint');
+                if (actHintErr) {
+                    actHintErr.textContent = '激活埋点加载失败（网络错误）';
+                }
             });
         }
 
@@ -4388,6 +4618,52 @@
                 if (!boxN || !dateN) return;
                 var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
                 loadDauUsersPage(dateN, pageN, boxN);
+            }
+        });
+        document.getElementById('activateEventsDailyTbody').addEventListener('click', function (e) {
+            var toggleBtn = e.target.closest('.btn-activate-users-toggle');
+            if (toggleBtn) {
+                var dateT = toggleBtn.getAttribute('data-date');
+                var keyT = activateDateDomKey(dateT);
+                var rowT = document.getElementById('activate_users_row_' + keyT);
+                var boxT = document.getElementById('activate_users_box_' + keyT);
+                if (!rowT || !boxT) {
+                    return;
+                }
+                var opening = rowT.style.display === 'none';
+                if (!opening) {
+                    rowT.style.display = 'none';
+                    toggleBtn.textContent = '查看用户';
+                    return;
+                }
+                rowT.style.display = '';
+                toggleBtn.textContent = '收起';
+                if (boxT.getAttribute('data-loaded') === '1') {
+                    return;
+                }
+                loadActivateUsersForDate(dateT, 1, boxT);
+                return;
+            }
+            var prevBtn = e.target.closest('.activate-users-prev');
+            if (prevBtn && !prevBtn.disabled) {
+                var dateP = prevBtn.getAttribute('data-date');
+                var boxP = prevBtn.closest('.activate-users-box');
+                if (!boxP || !dateP) {
+                    return;
+                }
+                var pageP = (parseInt(boxP.getAttribute('data-page'), 10) || 1) - 1;
+                loadActivateUsersForDate(dateP, pageP, boxP);
+                return;
+            }
+            var nextBtn = e.target.closest('.activate-users-next');
+            if (nextBtn && !nextBtn.disabled) {
+                var dateN = nextBtn.getAttribute('data-date');
+                var boxN = nextBtn.closest('.activate-users-box');
+                if (!boxN || !dateN) {
+                    return;
+                }
+                var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
+                loadActivateUsersForDate(dateN, pageN, boxN);
             }
         });
         document.getElementById('btnGotoLoginLog').addEventListener('click', function () {
