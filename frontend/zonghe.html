@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>综合所得年度汇算</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,40 +11,33 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-bottom: 24px;
         }
-        .header {
-            background: #fff;
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            border-bottom: 1px solid #eee;
+        /* erji.jpg 已含顶栏与插画，不再叠一层 HTML 标题栏 */
+        .page-hero {
+            position: relative;
+            width: 100%;
+            line-height: 0;
         }
-        .back-btn {
-            position: absolute;
-            left: 12px;
-            color: #1e6fff;
-            font-size: 16px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-        }
-        .header-title {
-            font-size: 17px;
-            font-weight: 600;
-            color: #333;
-        }
-        .hero {
+        .page-hero-img {
             width: 100%;
             display: block;
             vertical-align: top;
+        }
+        .page-hero-hit {
+            position: absolute;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            z-index: 2;
+        }
+        /* 顶栏「返回」热区（与切图内导航对齐，略放大便于点按） */
+        .page-hero-hit-back {
+            left: 0;
+            top: 0;
+            width: 28%;
+            height: 11%;
+            min-height: 44px;
         }
         .panel {
             margin: -12px 12px 0;
@@ -116,16 +109,18 @@
             color: #1e6fff;
             border: 1px solid #1e6fff;
         }
+        html.app-top-safe-shell body.page-zonghe {
+            padding-top: 0;
+        }
     </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
 </head>
-<body>
-    <div class="header">
-        <a href="shouye.html" class="back-btn" aria-label="返回">&lt; 返回</a>
-        <div class="header-title">综合所得年度汇算</div>
+<body class="page-zonghe">
+    <div class="page-hero">
+        <img class="page-hero-img" src="erji.jpg" alt="综合所得年度汇算">
+        <a href="shouye.html" class="page-hero-hit page-hero-hit-back" aria-label="返回"></a>
     </div>
-    <img class="hero" src="erji.jpg" alt="">
     <div class="panel">
         <h2 class="warm-title">温馨提示</h2>
         <ul class="warm-list">
