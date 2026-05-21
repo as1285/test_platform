@@ -1174,6 +1174,9 @@
         }
 
         function switchTab(tab, pushHistory) {
+            if (typeof window.forceHidePageLoading === 'function') {
+                window.forceHidePageLoading();
+            }
             document.querySelectorAll('.tabs .tab').forEach(function(a) {
                 a.classList.toggle('active', a.getAttribute('data-tab') === tab);
             });

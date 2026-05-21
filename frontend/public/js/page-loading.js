@@ -5,7 +5,7 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260521-nav';
+  var CSS_HREF = '/css/page-loading.css?v=20260521-consult-tab';
   var MIN_DISPLAY_MS = 280;
   var ABSOLUTE_MAX_MS = 12000;
   var count = 0;
@@ -153,6 +153,14 @@
     } catch (e) {}
   }
 
+  function normalizePagePath(pathname) {
+    var p = String(pathname || '/');
+    if (p.length > 1 && p.charAt(p.length - 1) === '/') {
+      p = p.slice(0, -1);
+    }
+    return p.toLowerCase();
+  }
+
   function isInternalNavHref(href) {
     href = String(href || '').trim();
     if (!href || href.charAt(0) === '#') {
@@ -167,6 +175,10 @@
     try {
       var u = new URL(href, window.location.href);
       if (u.origin !== window.location.origin) {
+        return false;
+      }
+      /* 同 HTML 仅改 query/hash（如 consult 切换 TAB）不算页面跳转，避免转圈不消失 */
+      if (normalizePagePath(u.pathname) === normalizePagePath(window.location.pathname)) {
         return false;
       }
       if (u.pathname === window.location.pathname && !u.search && u.hash) {
