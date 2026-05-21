@@ -1075,6 +1075,58 @@
             return (n < 10 ? '0' : '') + n;
         }
 
+        /** 税款所属期 YYYY-MM */
+        function taxPeriodFromYearMonth(year, month) {
+            var y = parseInt(year, 10);
+            var m = parseInt(month, 10);
+            if (!y || !m || m < 1 || m > 12) return '';
+            return y + '-' + pad2(m);
+        }
+
+        /** 申报日期比所属期（年-月）晚一个月，默认每月 15 日 */
+        function reportDateOneMonthAfterBelonging(year, month, day) {
+            var y = parseInt(year, 10);
+            var m = parseInt(month, 10);
+            var d = day != null && day !== '' ? parseInt(day, 10) : 15;
+            if (!y || !m || m < 1 || m > 12) return '';
+            m += 1;
+            if (m > 12) {
+                m = 1;
+                y += 1;
+            }
+            return y + '-' + pad2(m) + '-' + pad2(d);
+        }
+
+        function syncBelongingPeriodFromForm() {
+            var yearEl = document.getElementById('f_year');
+            var monthEl = document.getElementById('f_month');
+            var tpEl = document.getElementById('f_tax_period');
+            var rdEl = document.getElementById('f_report_date');
+            if (!yearEl || !monthEl) return;
+            var y = parseInt(yearEl.value, 10);
+            var m = parseInt(monthEl.value, 10);
+            if (!y || !m || m < 1 || m > 12) return;
+            if (tpEl) tpEl.value = taxPeriodFromYearMonth(y, m);
+            if (rdEl) rdEl.value = reportDateOneMonthAfterBelonging(y, m, 15);
+        }
+
+        function initBelongingPeriodSync() {
+            var yearEl = document.getElementById('f_year');
+            var monthEl = document.getElementById('f_month');
+            if (!yearEl || !monthEl) return;
+            if (!window.__belongingPeriodSyncInited) {
+                window.__belongingPeriodSyncInited = true;
+                function onYmChange() {
+                    syncBelongingPeriodFromForm();
+                }
+                yearEl.addEventListener('change', onYmChange);
+                yearEl.addEventListener('input', onYmChange);
+                monthEl.addEventListener('change', onYmChange);
+                monthEl.addEventListener('input', onYmChange);
+            }
+            syncBelongingPeriodFromForm();
+        }
+
         function getUrlParam(name) {
             var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
             var r = window.location.search.substr(1).match(reg);
@@ -1460,10 +1512,7 @@
                 var pfBankCardCount = document.getElementById('pf_bank_card_count');
                 if (pfBankCardCount) pfBankCardCount.value = localStorage.getItem('bank_card_count') || '';
 
-                var d = new Date();
-                var ds = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-                var fd = document.getElementById('f_report_date');
-                if (fd && !fd.value) fd.value = ds;
+                initBelongingPeriodSync();
                 var bonusYearEl = document.getElementById('batch_bonus_year');
                 var fYear = document.getElementById('f_year');
                 if (bonusYearEl && fYear && fYear.value) bonusYearEl.value = fYear.value;
@@ -2433,8 +2482,8 @@
             o.tax_authority = w.tax_authority != null ? String(w.tax_authority) : '';
             o.year = w.year;
             o.month = w.month;
-            o.tax_period = w.year + '-' + pad2(w.month);
-            o.report_date = w.year + '-' + pad2(w.month) + '-15';
+            o.tax_period = taxPeriodFromYearMonth(w.year, w.month);
+            o.report_date = reportDateOneMonthAfterBelonging(w.year, w.month, 15);
             o.id = 'tr_' + uidKey + '_' + w.year + '_' + pad2(w.month) + '_e' + w.empIdx;
             var inc = round2(w.salary);
             o.income = String(inc);
@@ -2458,8 +2507,8 @@
             b.company_name = companyForBatch;
             b.year = year;
             b.month = bonusMonth;
-            b.tax_period = year + '-' + pad2(bonusMonth);
-            b.report_date = year + '-' + pad2(bonusMonth) + '-15';
+            b.tax_period = taxPeriodFromYearMonth(year, bonusMonth);
+            b.report_date = reportDateOneMonthAfterBelonging(year, bonusMonth, 15);
             b.id = 'tr_' + uidKey + '_' + year + '_' + bonusMonth + '_bonus';
             b.income_type = '工资薪金';
             b.income_subtype = '全年一次性奖金收入';
