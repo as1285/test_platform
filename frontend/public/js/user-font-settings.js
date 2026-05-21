@@ -20,10 +20,10 @@
             { id: '700', label: '更粗', value: '700' }
         ],
         color: [
-            { id: '333', label: '黑', value: '#333333' },
-            { id: 'e53935', label: '红', value: '#e53935' },
-            { id: '1e6fff', label: '蓝', value: '#1e6fff' },
-            { id: '2e7d32', label: '绿', value: '#2e7d32' }
+            { id: '000', label: '纯黑', value: '#000000' },
+            { id: '333', label: '深灰', value: '#333333' },
+            { id: '666', label: '中灰', value: '#666666' },
+            { id: '999', label: '浅灰', value: '#999999' }
         ]
     };
 
