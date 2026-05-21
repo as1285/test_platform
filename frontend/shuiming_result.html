@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260521-shuiming-ios16-pingfang"></script>
+    <script src="/js/auth.js?v=20260521-iphone12-17-promax-font"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -554,6 +554,106 @@
 
         html.app-ios-iphone17pro body.page-shuiming-result .top-fixed .header .header-right {
             font-size: 17px;
+        }
+
+        /*
+         * iPhone 12 Pro Max / 17 Pro Max：大屏物理尺寸下默认 14–16px 偏小，明细页整体 +2px。
+         */
+        html.app-ios-iphone-promax-font body.page-shuiming-result .header-title {
+            font-size: 19px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .back-btn {
+            font-size: 18px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .back-btn svg {
+            width: 10px;
+            height: 16px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .header-right {
+            font-size: 17px;
+        }
+
+        html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label,
+        html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-value,
+        html.app-ios-iphone-promax-font body.page-shuiming-result .summary-label,
+        html.app-ios-iphone-promax-font body.page-shuiming-result .summary-value {
+            font-size: 18px;
+        }
+
+        html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone-promax-font body.page-shuiming-result .summary-label .icon {
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+        }
+
+        html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-title {
+            font-size: 18px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-date {
+            font-size: 18px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-label,
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-company {
+            font-size: 17px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-value {
+            font-size: 16px;
+        }
+
+        /* Pro Max：扣缴义务人约 13 字完整展示（与 16 Pro 一致） */
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-company {
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+            line-height: 1.32;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-row-with-arrow {
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-row-left {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        html.app-ios-iphone-promax-font body.page-shuiming-result .list-arrow {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
+            --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+        }
+
+        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            top: 0;
+            height: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)) 16px 0;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            height: var(--header-height, 52px);
+            display: flex;
+            align-items: center;
+        }
+
+        html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            background: #fff;
         }
 
         .list-arrow {

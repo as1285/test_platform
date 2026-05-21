@@ -156,6 +156,62 @@
     return false;
   }
 
+  /**
+   * iPhone 12 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
+   * UA：iPhone13,4；逻辑屏约 428×926（容差）。
+   */
+  function isIPhone12ProMaxClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua)) {
+      return true;
+    }
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 426 && shortSide <= 430 && longSide >= 922 && longSide <= 930;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * iPhone 17 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
+   * UA：iPhone18,2 / iPhone19,2（预留）；逻辑屏约 440×956（容差）。
+   */
+  function isIPhone17ProMaxClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua)) {
+      return true;
+    }
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 436 && shortSide <= 444 && longSide >= 948 && longSide <= 962;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isIPhoneProMaxLargeFontClient() {
+    return isIPhone12ProMaxClient() || isIPhone17ProMaxClient();
+  }
+
   function isIPhone16ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
@@ -238,7 +294,8 @@
     try {
       if (
         !document.documentElement.classList.contains('app-ios-iphone16pro') &&
-        !document.documentElement.classList.contains('app-ios-iphone17pro')
+        !document.documentElement.classList.contains('app-ios-iphone17pro') &&
+        !document.documentElement.classList.contains('app-ios-iphone-promax-font')
       ) {
         return;
       }
@@ -270,6 +327,7 @@
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
+      var iosIPhoneProMaxFont = iosClient && isIPhoneProMaxLargeFontClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
@@ -348,6 +406,9 @@
         /* 16 Pro 状态栏区易露出 html 白底；首页顶栏为蓝，与 theme-color 对齐 */
         upsertMeta('theme-color', '#2c80f4');
         upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      }
+      if (iosIPhoneProMaxFont) {
+        document.documentElement.classList.add('app-ios-iphone-promax-font');
       }
       if (huaweiPura70Client) {
         document.documentElement.classList.add('app-huawei-pura70');
@@ -477,6 +538,16 @@
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          /* iPhone 12/17 Pro Max：收入纳税明细顶栏安全区 + 正文字号（见 shuiming_result.html） */
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn{font-size:18px !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
+          'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }
