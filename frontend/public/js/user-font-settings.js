@@ -122,6 +122,31 @@
         return (cfg.targets && cfg.targets[targetId]) || {};
     }
 
+    /** 分区设置某属性时，去掉「全局」上同名字段，避免 scope * 仍作用于整页 */
+    function stripGlobalTargetOnRegionalSet(next, targetId, patch) {
+        if (targetId === 'all' || !next.targets.all) return;
+        var allCur = Object.assign({}, next.targets.all);
+        var touched = false;
+        if (patch.size) {
+            delete allCur.size;
+            touched = true;
+        }
+        if (patch.weight) {
+            delete allCur.weight;
+            touched = true;
+        }
+        if (patch.color) {
+            delete allCur.color;
+            touched = true;
+        }
+        if (!touched) return;
+        if (!targetHasStyle(allCur)) {
+            delete next.targets.all;
+        } else {
+            next.targets.all = allCur;
+        }
+    }
+
     function setTargetState(cfg, targetId, patch) {
         var next = {
             activeTarget: cfg.activeTarget || 'all',
@@ -139,7 +164,30 @@
         } else {
             next.targets[targetId] = cur;
         }
+        stripGlobalTargetOnRegionalSet(next, targetId, patch);
         return next;
+    }
+
+    function getApplyOrder(cfg, roles) {
+        var specificIds = [];
+        var i;
+        for (i = 0; i < roles.length; i++) {
+            var r = roles[i];
+            if (r.id !== 'all' && cfg.targets[r.id] && targetHasStyle(cfg.targets[r.id])) {
+                specificIds.push(r.id);
+            }
+        }
+        var hasAll = cfg.targets.all && targetHasStyle(cfg.targets.all);
+        if (specificIds.length && !hasAll) {
+            return specificIds;
+        }
+        if (specificIds.length && hasAll) {
+            return ['all'].concat(specificIds);
+        }
+        if (hasAll) {
+            return ['all'];
+        }
+        return [];
     }
 
     function toggleProp(cfg, targetId, key, value) {
@@ -258,12 +306,7 @@
             roleMap[r.id] = r;
         });
 
-        var order = ['all'];
-        roles.forEach(function (r) {
-            if (r.id !== 'all' && cfg.targets[r.id] && targetHasStyle(cfg.targets[r.id])) {
-                order.push(r.id);
-            }
-        });
+        var order = getApplyOrder(cfg, roles);
 
         var css = [];
         order.forEach(function (rid) {
