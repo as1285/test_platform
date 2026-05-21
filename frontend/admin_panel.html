@@ -1049,6 +1049,14 @@
                     <label for="codeUsedByFilter">使用账号</label>
                     <input type="text" id="codeUsedByFilter" placeholder="按使用账号查询">
                 </div>
+                <div>
+                    <label for="codeUsageFilter">使用状态</label>
+                    <select id="codeUsageFilter" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="unused">未使用</option>
+                        <option value="used">已使用</option>
+                    </select>
+                </div>
                 <div style="display:flex;align-items:flex-end;padding-bottom:2px;">
                     <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
                         <input type="checkbox" id="codeUsedByExact"> 使用账号精准查询
@@ -3728,8 +3736,10 @@
             if (usedInput) usedBy = String(usedInput.value || '').trim();
             var usedExactEl = document.getElementById('codeUsedByExact');
             var usedExact = !!(usedExactEl && usedExactEl.checked);
+            var usageFilterEl = document.getElementById('codeUsageFilter');
+            var usageStatus = usageFilterEl ? String(usageFilterEl.value || '').trim() : '';
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var hasFilter = !!(ownerAdmin || usedBy);
+            var hasFilter = !!(ownerAdmin || usedBy || usageStatus);
             var limit = isSuper && !hasFilter ? 20 : codeLimit;
             var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit;
             if (ownerAdmin) {
@@ -3738,6 +3748,9 @@
             if (usedBy) {
                 q += '&used_by=' + encodeURIComponent(usedBy);
                 if (usedExact) q += '&used_by_exact=1';
+            }
+            if (usageStatus) {
+                q += '&usage_status=' + encodeURIComponent(usageStatus);
             }
             adminFetch(q)
                 .then(function (r) { return r.json(); })
@@ -3753,6 +3766,11 @@
                             filterParts.push(
                                 (usedExact ? '使用账号精准「' : '使用账号「') + usedBy + '」'
                             );
+                        }
+                        if (usageStatus === 'unused') {
+                            filterParts.push('未使用');
+                        } else if (usageStatus === 'used') {
+                            filterParts.push('已使用');
                         }
                         if (isSuper && !hasFilter) {
                             statEl.textContent = '共 ' + total + ' 条（全部管理员，按最新在前）';
@@ -4049,6 +4067,8 @@
             if (usedInput) usedInput.value = '';
             var usedExactEl = document.getElementById('codeUsedByExact');
             if (usedExactEl) usedExactEl.checked = false;
+            var usageFilterReset = document.getElementById('codeUsageFilter');
+            if (usageFilterReset) usageFilterReset.value = '';
             loadCodes(1);
         });
 

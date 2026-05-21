@@ -4830,6 +4830,7 @@ async function handleAdminCodes(req, res) {
       req.query.used_by_exact === '1' ||
       req.query.used_by_exact === 'true' ||
       req.query.used_by_exact === true;
+    var qUsageStatus = req.query.usage_status != null ? String(req.query.usage_status).trim() : '';
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
     var offset = (page - 1) * limit;
@@ -4853,6 +4854,11 @@ async function handleAdminCodes(req, res) {
         params.push('%' + qUsedBy + '%');
       }
     }
+    if (qUsageStatus === 'unused') {
+      conditions.push('used_count = 0');
+    } else if (qUsageStatus === 'used') {
+      conditions.push('used_count > 0');
+    }
     var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
       'SELECT COUNT(*) as count FROM activation_codes' + whereSql,
@@ -4860,7 +4866,7 @@ async function handleAdminCodes(req, res) {
     );
     const total = totalRows[0].count;
 
-    var hasListFilter = !!(qOwnerAdmin || qUsedBy);
+    var hasListFilter = !!(qOwnerAdmin || qUsedBy || qUsageStatus);
     var orderSql =
       req.admin && req.admin.is_super && !hasListFilter
         ? ' ORDER BY id DESC'
