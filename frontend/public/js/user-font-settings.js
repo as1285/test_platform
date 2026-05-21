@@ -177,13 +177,6 @@
         }
     }
 
-    function setCaptureAutoHideEnabled(on) {
-        try {
-            localStorage.setItem(FAB_CAPTURE_AUTO_KEY, on ? '1' : '0');
-        } catch (e) {}
-        if (panelUi) syncCaptureHideButtons();
-    }
-
     function syncFabVisibility() {
         document.documentElement.classList.toggle('ufs-fab-hidden', isManualFabHidden());
     }
@@ -343,13 +336,6 @@
 
     var captureHideButtonsBound = false;
 
-    function syncCaptureHideButtons() {
-        if (!panelUi || !panelUi.captureBtn) return;
-        var on = isCaptureAutoHideEnabled();
-        panelUi.captureBtn.classList.toggle('is-on', on);
-        panelUi.captureBtn.textContent = on ? '截图/录屏时自动隐藏：开' : '截图/录屏时自动隐藏：关';
-    }
-
     function refreshPanelUi(host, cfg) {
         if (!panelUi) return;
         cfg = normalizeConfig(cfg);
@@ -490,16 +476,6 @@
             showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
         });
         actions.appendChild(hideNowBtn);
-
-        var captureBtn = document.createElement('button');
-        captureBtn.type = 'button';
-        captureBtn.className = 'ufs-action-btn';
-        captureBtn.id = 'ufs-capture-auto-btn';
-        captureBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            setCaptureAutoHideEnabled(!isCaptureAutoHideEnabled());
-        });
-        actions.appendChild(captureBtn);
         panel.appendChild(actions);
 
         var resetBtn = document.createElement('button');
@@ -520,8 +496,7 @@
 
         panelUi = {
             chips: chips,
-            editingLabel: editingLabel,
-            captureBtn: captureBtn
+            editingLabel: editingLabel
         };
 
         function stopPanelEvent(e) {
@@ -532,7 +507,6 @@
 
         host.appendChild(panel);
         refreshPanelUi(host, cfg);
-        syncCaptureHideButtons();
         return panel;
     }
 
