@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 冷启动全屏铺满（与 www/start.png 一致） -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/launch_bg" />
+    </item>
+</layer-list>

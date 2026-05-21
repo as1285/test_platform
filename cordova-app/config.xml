@@ -35,6 +35,7 @@
     <!-- 供 H5 识别壳内环境（iframe 内页面同源 UA），保留给设备上报/后续兼容逻辑使用 -->
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
         <!-- 桌面图标：同一 PNG 须为每个 density 各写一条，否则只会写入 mdpi，其它密度仍为模板默认「i」图标 -->
@@ -47,8 +48,11 @@
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
-        <!-- Android 12+ 系统闪屏：白底 + start.png 居中（冷启动 WebView 未就绪前即显示） -->
+        <!-- Android 12+ 冷启动：全屏 launch_splash（与 www/start.png 一致），中间图标透明占位 -->
+        <resource-file src="res/android/launch_bg.png" target="app/src/main/res/drawable-nodpi/launch_bg.png" />
+        <resource-file src="res/android/launch_splash.xml" target="app/src/main/res/drawable/launch_splash.xml" />
+        <resource-file src="res/android/splash_icon_empty.xml" target="app/src/main/res/drawable/splash_icon_empty.xml" />
         <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/splash/splash.png" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/splash_icon_empty.xml" />
     </platform>
 </widget>

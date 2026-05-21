@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 - res/icon/icon.png：APK 桌面图标（保持仓库内文件，不覆盖）
-- res/splash/splash.png：Android 12+ 系统闪屏居中图（由 www/start.png 生成，冷启动即显示）
-- www/start.png：WebView 全屏启动图（index.html 使用）
+- res/android/launch_bg.png + launch_splash.xml：Android 冷启动全屏启动图
+- www/start.png：WebView 全屏启动图（index.html）
 
 依赖：pip install Pillow
 """
@@ -37,19 +37,18 @@ def render_icon(size: int) -> Image.Image:
     return img
 
 
-def compose_square_emblem(src_path: str, canvas: int, fill_ratio: float) -> Image.Image:
-    emblem = Image.open(src_path).convert("RGBA")
-    target = int(canvas * fill_ratio)
-    tw = max(emblem.size)
-    scale = target / tw
-    nw = max(1, int(round(emblem.width * scale)))
-    nh = max(1, int(round(emblem.height * scale)))
-    emblem = emblem.resize((nw, nh), Image.Resampling.LANCZOS)
-    out = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-    x = (canvas - nw) // 2
-    y = (canvas - nh) // 2
-    out.paste(emblem, (x, y), emblem)
-    return out
+def write_fullscreen_launch_bg(src_path: str, out_path: str, width: int = 1080, height: int = 2340) -> None:
+    """竖屏全屏 cover 裁剪，与 WebView object-fit:cover 一致。"""
+    img = Image.open(src_path).convert("RGB")
+    scale = max(width / img.width, height / img.height)
+    nw = max(1, int(round(img.width * scale)))
+    nh = max(1, int(round(img.height * scale)))
+    resized = img.resize((nw, nh), Image.Resampling.LANCZOS)
+    x = (nw - width) // 2
+    y = (nh - height) // 2
+    canvas = resized.crop((x, y, x + width, y + height))
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    canvas.save(out_path, "PNG", optimize=True)
 
 
 def main() -> int:
@@ -68,11 +67,17 @@ def main() -> int:
     else:
         print("keep existing", icon_path)
 
+    android_dir = os.path.join(root, "res", "android")
+    launch_bg = os.path.join(android_dir, "launch_bg.png")
+    write_fullscreen_launch_bg(www_start, launch_bg)
+    print("wrote", launch_bg, "(fullscreen cover for Android cold start)")
+
+    # 兼容旧配置路径：透明占位，不再生成缩小版 emblem
     splash_dir = os.path.join(root, "res", "splash")
     os.makedirs(splash_dir, exist_ok=True)
-    android_splash = os.path.join(splash_dir, "splash.png")
-    compose_square_emblem(www_start, 512, fill_ratio=0.92).save(android_splash, "PNG", optimize=True)
-    print("wrote", android_splash, "(from start.png for native cold start)")
+    empty = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+    empty.save(os.path.join(splash_dir, "splash.png"), "PNG", optimize=True)
+    print("wrote", os.path.join(splash_dir, "splash.png"), "(transparent placeholder)")
 
     return 0
 
