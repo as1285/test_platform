@@ -5,7 +5,7 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260521-consult-tab';
+  var CSS_HREF = '/css/page-loading.css?v=20260521-ios12bar';
   var MIN_DISPLAY_MS = 280;
   var ABSOLUTE_MAX_MS = 12000;
   var count = 0;
@@ -30,9 +30,26 @@
     return !!SKIP_PAGES[currentPage()];
   }
 
+  function buildSpinnerHtml() {
+    var barsHtml = '';
+    for (var bi = 0; bi < 12; bi++) {
+      barsHtml += '<span class="app-page-loading-bar"></span>';
+    }
+    return (
+      '<div class="app-page-loading-box" role="status" aria-label="加载中">' +
+      '<div class="app-page-loading-spinner">' +
+      barsHtml +
+      '</div></div>'
+    );
+  }
+
   function ensureDom() {
-    if (document.getElementById(ROOT_ID)) {
-      return document.getElementById(ROOT_ID);
+    var existing = document.getElementById(ROOT_ID);
+    if (existing) {
+      if (!existing.querySelector('.app-page-loading-bar')) {
+        existing.innerHTML = buildSpinnerHtml();
+      }
+      return existing;
     }
     if (!document.querySelector('link[data-app-page-loading-css]')) {
       var link = document.createElement('link');
@@ -45,9 +62,7 @@
     root.id = ROOT_ID;
     root.className = 'app-page-loading';
     root.setAttribute('aria-hidden', 'true');
-    root.innerHTML =
-      '<div class="app-page-loading-box" role="status" aria-label="加载中">' +
-      '<div class="app-page-loading-spinner"></div></div>';
+    root.innerHTML = buildSpinnerHtml();
     (document.body || document.documentElement).appendChild(root);
     return root;
   }

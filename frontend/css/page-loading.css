@@ -1,4 +1,4 @@
-/* 页面数据加载中：居中深灰圆角 HUD + 白色放射 spinner（类似 iOS） */
+/* 页面加载：居中深灰圆角 HUD + iOS 12 辐条 Activity Indicator */
 .app-page-loading {
   position: fixed;
   inset: 0;
@@ -19,48 +19,97 @@
 }
 
 .app-page-loading-box {
-  width: 88px;
-  height: 88px;
-  border-radius: 12px;
-  background: rgba(60, 60, 60, 0.82);
+  width: 90px;
+  height: 90px;
+  border-radius: 14px;
+  background: rgba(51, 51, 51, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.22);
 }
 
 .app-page-loading-spinner {
-  width: 36px;
-  height: 36px;
+  width: 37px;
+  height: 37px;
   position: relative;
 }
 
-.app-page-loading-spinner::before {
-  content: '';
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(255, 255, 255, 0.95) 0deg,
-    rgba(255, 255, 255, 0.12) 50deg,
-    rgba(255, 255, 255, 0.04) 120deg,
-    rgba(255, 255, 255, 0.95) 360deg
-  );
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-  animation: app-page-loading-spin 0.85s linear infinite;
+.app-page-loading-bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.5px;
+  height: 8px;
+  margin-left: -1.25px;
+  margin-top: -15px;
+  border-radius: 1.5px;
+  background: #fff;
+  transform-origin: 50% 15px;
+  opacity: 0.22;
+  animation: app-page-loading-ios-bar 1s linear infinite;
 }
 
-@keyframes app-page-loading-spin {
-  to {
-    transform: rotate(360deg);
+.app-page-loading-bar:nth-child(1) {
+  transform: rotate(0deg);
+  animation-delay: -1s;
+}
+.app-page-loading-bar:nth-child(2) {
+  transform: rotate(30deg);
+  animation-delay: -0.9167s;
+}
+.app-page-loading-bar:nth-child(3) {
+  transform: rotate(60deg);
+  animation-delay: -0.8333s;
+}
+.app-page-loading-bar:nth-child(4) {
+  transform: rotate(90deg);
+  animation-delay: -0.75s;
+}
+.app-page-loading-bar:nth-child(5) {
+  transform: rotate(120deg);
+  animation-delay: -0.6667s;
+}
+.app-page-loading-bar:nth-child(6) {
+  transform: rotate(150deg);
+  animation-delay: -0.5833s;
+}
+.app-page-loading-bar:nth-child(7) {
+  transform: rotate(180deg);
+  animation-delay: -0.5s;
+}
+.app-page-loading-bar:nth-child(8) {
+  transform: rotate(210deg);
+  animation-delay: -0.4167s;
+}
+.app-page-loading-bar:nth-child(9) {
+  transform: rotate(240deg);
+  animation-delay: -0.3333s;
+}
+.app-page-loading-bar:nth-child(10) {
+  transform: rotate(270deg);
+  animation-delay: -0.25s;
+}
+.app-page-loading-bar:nth-child(11) {
+  transform: rotate(300deg);
+  animation-delay: -0.1667s;
+}
+.app-page-loading-bar:nth-child(12) {
+  transform: rotate(330deg);
+  animation-delay: -0.0833s;
+}
+
+@keyframes app-page-loading-ios-bar {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-page-loading-spinner::before {
-    animation-duration: 1.4s;
+  .app-page-loading-bar {
+    animation-duration: 1.35s;
   }
 }
