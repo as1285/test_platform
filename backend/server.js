@@ -661,6 +661,20 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS tax_record_change_logs (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      record_id VARCHAR(255) NOT NULL,
+      action VARCHAR(16) NOT NULL COMMENT 'insert|update|delete',
+      before_json JSON NULL,
+      after_json JSON NULL,
+      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_tax_chg_user_date (user_id, changed_at),
+      INDEX idx_tax_chg_record (record_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS tax_issue_applications (
       id VARCHAR(128) NOT NULL,
       user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
@@ -1130,12 +1144,133 @@ async function getRecords(userId, year) {
   };
 }
 
+var TAX_CHANGE_LOG_FIELDS = [
+  { key: 'tax_period', label: '税款所属期' },
+  { key: 'year', label: '年' },
+  { key: 'month', label: '月' },
+  { key: 'income_type', label: '所得项目' },
+  { key: 'income_subtype', label: '所得小类' },
+  { key: 'company_name', label: '扣缴义务人' },
+  { key: 'income', label: '收入' },
+  { key: 'tax_reported', label: '已申报税额' },
+  { key: 'report_date', label: '申报日期' },
+  { key: 'company_tax_id', label: '统一社会信用代码' }
+];
+
+function taxRecordPayloadToSnapshot(record, recordId) {
+  var r = record || {};
+  var y = r.year != null ? Number(r.year) : null;
+  var m = r.month != null ? Number(r.month) : null;
+  var period =
+    r.tax_period != null && String(r.tax_period).trim() !== ''
+      ? String(r.tax_period).trim()
+      : y != null && m != null
+        ? y + '-' + String(m).padStart(2, '0')
+        : '';
+  return {
+    id: recordId != null ? String(recordId) : r.id != null ? String(r.id) : '',
+    tax_period: period,
+    year: y,
+    month: m,
+    income_type: r.income_type != null ? String(r.income_type) : '',
+    income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
+    company_name: r.company_name != null ? String(r.company_name) : '',
+    income: r.income != null ? String(r.income) : '0',
+    tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
+    report_date: r.report_date != null ? String(r.report_date) : '',
+    company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : ''
+  };
+}
+
+function taxRecordRowToSnapshot(row) {
+  if (!row) {
+    return null;
+  }
+  return taxRecordPayloadToSnapshot(row, row.id);
+}
+
+function buildTaxChangeFieldDiffs(beforeSnap, afterSnap) {
+  var diffs = [];
+  TAX_CHANGE_LOG_FIELDS.forEach(function (f) {
+    var b = beforeSnap && beforeSnap[f.key] != null ? String(beforeSnap[f.key]) : '';
+    var a = afterSnap && afterSnap[f.key] != null ? String(afterSnap[f.key]) : '';
+    if (b === a) {
+      return;
+    }
+    diffs.push({
+      field: f.key,
+      label: f.label,
+      before: b,
+      after: a
+    });
+  });
+  return diffs;
+}
+
+async function insertTaxChangeLog(conn, userId, recordId, action, beforeSnap, afterSnap) {
+  try {
+    await conn.execute(
+      'INSERT INTO tax_record_change_logs (user_id, record_id, action, before_json, after_json) VALUES (?, ?, ?, ?, ?)',
+      [
+        String(userId),
+        String(recordId),
+        String(action),
+        beforeSnap ? JSON.stringify(beforeSnap) : null,
+        afterSnap ? JSON.stringify(afterSnap) : null
+      ]
+    );
+  } catch (e) {
+    console.error('insertTaxChangeLog', e);
+  }
+}
+
+async function loadTaxRecordChangesForUser(conn, username, dateStr) {
+  var day = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : chinaDateKeyNow();
+  const [rows] = await conn.execute(
+    `SELECT id, record_id, action, before_json, after_json, changed_at
+     FROM tax_record_change_logs
+     WHERE user_id = ? AND DATE(changed_at) = ?
+     ORDER BY changed_at DESC
+     LIMIT 80`,
+    [String(username), day]
+  );
+  return rows.map(function (r) {
+    var beforeSnap = null;
+    var afterSnap = null;
+    try {
+      if (r.before_json) {
+        beforeSnap = typeof r.before_json === 'object' ? r.before_json : JSON.parse(String(r.before_json));
+      }
+    } catch (e1) {}
+    try {
+      if (r.after_json) {
+        afterSnap = typeof r.after_json === 'object' ? r.after_json : JSON.parse(String(r.after_json));
+      }
+    } catch (e2) {}
+    var action = r.action != null ? String(r.action) : 'update';
+    return {
+      id: Number(r.id),
+      record_id: r.record_id != null ? String(r.record_id) : '',
+      action: action,
+      action_label: action === 'insert' ? '新增' : action === 'delete' ? '删除' : '修改',
+      changed_at: r.changed_at ? r.changed_at.toISOString() : '',
+      before: beforeSnap,
+      after: afterSnap,
+      field_diffs: buildTaxChangeFieldDiffs(beforeSnap, afterSnap)
+    };
+  });
+}
+
 async function saveRecordInConn(conn, userId, record) {
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
 
-  const [existing] = await conn.execute('SELECT id FROM tax_records WHERE id = ?', [id]);
+  const [existing] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [
+    id,
+    userId
+  ]);
 
   if (existing.length > 0) {
+    var beforeSnap = taxRecordRowToSnapshot(existing[0]);
     await conn.execute(
       `
       UPDATE tax_records SET
@@ -1175,6 +1310,14 @@ async function saveRecordInConn(conn, userId, record) {
         id,
         userId
       ]
+    );
+    await insertTaxChangeLog(
+      conn,
+      userId,
+      id,
+      'update',
+      beforeSnap,
+      taxRecordPayloadToSnapshot(record, id)
     );
   } else {
     await conn.execute(
@@ -1217,6 +1360,7 @@ async function saveRecordInConn(conn, userId, record) {
         record.housing_fund
       ]
     );
+    await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
   }
 
   return { id: id };
@@ -1295,6 +1439,7 @@ async function insertRecordInConn(conn, userId, record) {
       record.housing_fund
     ]
   );
+  await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
   return {
     id: id,
     id_reassigned: preferredId !== '' && id !== preferredId
@@ -1338,8 +1483,15 @@ async function batchSaveRecords(userId, records) {
 
 async function deleteRecord(userId, id) {
   const conn = await pool.getConnection();
-  await conn.execute('DELETE FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
-  conn.release();
+  try {
+    const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+    if (rows.length) {
+      await insertTaxChangeLog(conn, userId, id, 'delete', taxRecordRowToSnapshot(rows[0]), null);
+    }
+    await conn.execute('DELETE FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+  } finally {
+    conn.release();
+  }
 }
 
 async function deleteAllRecords(userId) {
@@ -4454,7 +4606,9 @@ async function handleAdminUsers(req, res) {
     var qRisk = req.query.risk; // '1' 仅风险, '0' 非风险
     var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
     var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
+    var qTaxModifiedToday = req.query.tax_modified_today; // '1' 当日有改动, '0' 当日无改动
     var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
+    var todayKey = chinaDateKeyNow();
     if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
       return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
     }
@@ -4492,6 +4646,17 @@ async function handleAdminUsers(req, res) {
     if (qBanned === '1' || qBanned === '0') {
       whereClauses.push('banned = ?');
       params.push(qBanned === '1' ? 1 : 0);
+    }
+    if (qTaxModifiedToday === '1') {
+      whereClauses.push(
+        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND DATE(tr.updated_at) = ?)'
+      );
+      params.push(todayKey);
+    } else if (qTaxModifiedToday === '0') {
+      whereClauses.push(
+        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND DATE(tr.updated_at) = ?)'
+      );
+      params.push(todayKey);
     }
     if (!req.admin || !req.admin.is_super) {
       whereClauses.push(
@@ -4581,6 +4746,7 @@ async function handleAdminUsers(req, res) {
       return r.username;
     });
     var riskMaps = await buildUserLoginRiskMaps(conn, usernamesForRisk);
+    var taxFlagsToday = await loadTaxRecordFlagsForUsernames(conn, usernamesForRisk, todayKey);
     conn.release();
 
     var out = rows.map(function (r) {
@@ -4614,10 +4780,20 @@ async function handleAdminUsers(req, res) {
         risk_messages: riskInfo.risk_messages,
         avg_salary_6m: salInfo.avg_salary_6m,
         avg_salary_6m_label: salInfo.avg_salary_6m_label,
-        salary_month_count: salInfo.salary_month_count
+        salary_month_count: salInfo.salary_month_count,
+        tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date)
       };
     });
-    res.json({ code: 200, data: { users: out, total: total, page: page, limit: limit } });
+    res.json({
+      code: 200,
+      data: {
+        users: out,
+        total: total,
+        page: page,
+        limit: limit,
+        tax_modified_date: todayKey
+      }
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
@@ -5062,7 +5238,7 @@ async function handleAdminUserTaxRecords(req, res) {
         return res.status(403).json({ code: 403, msg: '无权限查看该用户详情' });
       }
       const [rows] = await conn.execute(
-        `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at
+        `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at, updated_at
          FROM tax_records
          WHERE user_id = ?
          ORDER BY year DESC, month DESC, id DESC
@@ -5106,7 +5282,8 @@ async function handleAdminUserTaxRecords(req, res) {
           tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0.00',
           tax_period: r.tax_period != null ? String(r.tax_period) : '',
           report_date: r.report_date != null ? String(r.report_date) : '',
-          created_at: r.created_at ? r.created_at.toISOString() : ''
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          updated_at: r.updated_at ? r.updated_at.toISOString() : ''
         };
       });
       var devOut = devices.map(function (r) {
@@ -5160,6 +5337,13 @@ async function handleAdminUserTaxRecords(req, res) {
         };
       });
       var salaryInfo = computeTaxRecordsAvgSalary6m(out);
+      var changeDate =
+        req.query.change_date != null && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.change_date).trim())
+          ? String(req.query.change_date).trim()
+          : chinaDateKeyNow();
+      var todayChanges = await loadTaxRecordChangesForUser(conn, username, changeDate);
+      var taxFlagsOne = await loadTaxRecordFlagsForUsernames(conn, [username], changeDate);
+      var taxFlag = taxFlagsOne[username] || { tax_modified_on_date: false };
       return res.json({
         code: 200,
         data: {
@@ -5169,7 +5353,10 @@ async function handleAdminUserTaxRecords(req, res) {
           issue_applications: issueOut,
           avg_salary_6m: salaryInfo.avg_salary_6m,
           avg_salary_6m_label: salaryInfo.avg_salary_6m_label,
-          salary_month_count: salaryInfo.salary_month_count
+          salary_month_count: salaryInfo.salary_month_count,
+          change_date: changeDate,
+          tax_modified_on_date: !!taxFlag.tax_modified_on_date,
+          today_tax_changes: todayChanges
         }
       });
     } finally {
