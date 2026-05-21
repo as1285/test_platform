@@ -1620,6 +1620,23 @@
             return resolveLegacyCompanyFromForm();
         }
 
+        function getLastBatchEmpRowFromDom() {
+            var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
+            return rows.length ? rows[rows.length - 1] : null;
+        }
+
+        function getBatchEmpProfileFromRow(row) {
+            if (!row) return { name: '', company_tax_id: '', tax_authority: '' };
+            var companyEl = row.querySelector('.batch-emp-company');
+            var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
+            var authEl = row.querySelector('.batch-emp-tax-authority');
+            return {
+                name: companyEl ? String(companyEl.value || '').trim() : '',
+                company_tax_id: taxIdEl ? String(taxIdEl.value || '').trim() : '',
+                tax_authority: authEl ? String(authEl.value || '').trim() : ''
+            };
+        }
+
         function requireBonusCompanyOrAlert() {
             var name = resolveBonusCompanyName();
             if (!name) {
@@ -1955,71 +1972,170 @@
             return 0;
         }
 
-        var BATCH_COMPANY_HISTORY_KEY = 'consult_batch_company_history_v1';
+        var BATCH_COMPANY_HISTORY_KEY_V1 = 'consult_batch_company_history_v1';
+        var BATCH_COMPANY_PROFILES_KEY = 'consult_batch_company_history_v2';
         var BATCH_COMPANY_HISTORY_MAX = 40;
 
-        function loadBatchCompanyHistoryList() {
-            try {
-                var raw = localStorage.getItem(BATCH_COMPANY_HISTORY_KEY);
-                var arr = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(arr)) return [];
-                return arr
-                    .map(function (s) {
-                        return String(s || '').trim();
-                    })
-                    .filter(Boolean);
-            } catch (e0) {
-                return [];
+        function normalizeBatchCompanyProfile(item) {
+            if (typeof item === 'string') {
+                var n0 = String(item || '').trim();
+                return n0 ? { name: n0, company_tax_id: '', tax_authority: '' } : null;
             }
+            if (!item || typeof item !== 'object') return null;
+            var name = String(item.name || item.company || '').trim();
+            if (!name) return null;
+            return {
+                name: name,
+                company_tax_id: String(item.company_tax_id != null ? item.company_tax_id : '').trim(),
+                tax_authority: String(item.tax_authority != null ? item.tax_authority : '').trim()
+            };
         }
 
-        function saveBatchCompanyHistoryList(arr) {
+        function loadBatchCompanyProfiles() {
             try {
-                localStorage.setItem(BATCH_COMPANY_HISTORY_KEY, JSON.stringify(arr.slice(0, BATCH_COMPANY_HISTORY_MAX)));
+                var raw = localStorage.getItem(BATCH_COMPANY_PROFILES_KEY);
+                if (raw) {
+                    var arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) {
+                        var out = [];
+                        arr.forEach(function (it) {
+                            var p = normalizeBatchCompanyProfile(it);
+                            if (p) out.push(p);
+                        });
+                        return out;
+                    }
+                }
+                var rawV1 = localStorage.getItem(BATCH_COMPANY_HISTORY_KEY_V1);
+                if (rawV1) {
+                    var arrV1 = JSON.parse(rawV1);
+                    if (Array.isArray(arrV1)) {
+                        return arrV1
+                            .map(normalizeBatchCompanyProfile)
+                            .filter(Boolean);
+                    }
+                }
             } catch (e0) {}
+            return [];
+        }
+
+        function saveBatchCompanyProfiles(profiles) {
+            try {
+                localStorage.setItem(
+                    BATCH_COMPANY_PROFILES_KEY,
+                    JSON.stringify((profiles || []).slice(0, BATCH_COMPANY_HISTORY_MAX))
+                );
+            } catch (e0) {}
+        }
+
+        function loadBatchCompanyHistoryList() {
+            return loadBatchCompanyProfiles().map(function (p) {
+                return p.name;
+            });
+        }
+
+        function getBatchCompanyProfile(companyName) {
+            var key = String(companyName || '').trim();
+            if (!key) return null;
+            var list = loadBatchCompanyProfiles();
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].name === key) return list[i];
+            }
+            return null;
+        }
+
+        /** 记住公司全称及纳税人识别号、主管税务机关（点选历史或生成记录时写入） */
+        function rememberBatchCompanyProfile(entry) {
+            var p = normalizeBatchCompanyProfile(entry);
+            if (!p) return;
+            var cur = loadBatchCompanyProfiles();
+            var out = [p];
+            cur.forEach(function (x) {
+                if (x.name !== p.name) out.push(x);
+            });
+            var old = getBatchCompanyProfile(p.name);
+            if (old) {
+                if (!p.company_tax_id && old.company_tax_id) p.company_tax_id = old.company_tax_id;
+                if (!p.tax_authority && old.tax_authority) p.tax_authority = old.tax_authority;
+                out[0] = p;
+            }
+            saveBatchCompanyProfiles(out);
+            refreshBatchCompanyHistoryDatalist();
+        }
+
+        function rememberBatchCompanyProfileFromRow(row) {
+            if (!row) return;
+            var companyEl = row.querySelector('.batch-emp-company');
+            if (!companyEl) return;
+            var name = String(companyEl.value || '').trim();
+            if (!name) return;
+            var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
+            var authEl = row.querySelector('.batch-emp-tax-authority');
+            rememberBatchCompanyProfile({
+                name: name,
+                company_tax_id: taxIdEl ? taxIdEl.value : '',
+                tax_authority: authEl ? authEl.value : ''
+            });
+        }
+
+        function applyBatchCompanyProfileToRow(row, companyName) {
+            if (!row) return;
+            var name = String(companyName != null ? companyName : '').trim();
+            if (!name) {
+                var companyEl0 = row.querySelector('.batch-emp-company');
+                name = companyEl0 ? String(companyEl0.value || '').trim() : '';
+            }
+            if (!name) return;
+            var prof = getBatchCompanyProfile(name);
+            if (!prof) return;
+            var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
+            var authEl = row.querySelector('.batch-emp-tax-authority');
+            if (taxIdEl) taxIdEl.value = prof.company_tax_id || '';
+            if (authEl) authEl.value = prof.tax_authority || '';
         }
 
         function refreshBatchCompanyHistoryDatalist() {
             var dl = document.getElementById('batchCompanyHistoryDatalist');
             if (!dl) return;
             dl.innerHTML = '';
-            loadBatchCompanyHistoryList().forEach(function (name) {
+            loadBatchCompanyProfiles().forEach(function (p) {
                 var opt = document.createElement('option');
-                opt.value = name;
+                opt.value = p.name;
                 dl.appendChild(opt);
             });
         }
 
-        /** 将本次出现的公司名插到列表最前（去重），用于 datalist 与本地缓存 */
         function rememberBatchCompanyNames(names) {
             if (!names || !names.length) return;
-            var incoming = [];
             names.forEach(function (s) {
                 var t = String(s || '').trim();
-                if (t) incoming.push(t);
+                if (t) rememberBatchCompanyProfile({ name: t });
             });
-            if (!incoming.length) return;
-            var cur = loadBatchCompanyHistoryList();
-            var seen = {};
-            var out = [];
-            incoming.concat(cur).forEach(function (t) {
-                if (!t || seen[t]) return;
-                seen[t] = true;
-                out.push(t);
-            });
-            saveBatchCompanyHistoryList(out);
-            refreshBatchCompanyHistoryDatalist();
         }
 
         function bindBatchEmpCompanyHistoryInput(inputEl) {
             if (!inputEl || inputEl.getAttribute('data-batch-history-bound') === '1') return;
             inputEl.setAttribute('data-batch-history-bound', '1');
+            var row = inputEl.closest('.batch-emp-row');
             inputEl.addEventListener('focus', function () {
                 refreshBatchCompanyHistoryDatalist();
             });
+            inputEl.addEventListener('change', function () {
+                applyBatchCompanyProfileToRow(row, inputEl.value);
+            });
             inputEl.addEventListener('blur', function () {
-                var v = String(inputEl.value || '').trim();
-                if (v) rememberBatchCompanyNames([v]);
+                rememberBatchCompanyProfileFromRow(row);
+            });
+        }
+
+        function bindBatchEmpCompanyMetaInputs(row) {
+            if (!row) return;
+            ['.batch-emp-company-tax-id', '.batch-emp-tax-authority'].forEach(function (sel) {
+                var el = row.querySelector(sel);
+                if (!el || el.getAttribute('data-batch-meta-bound') === '1') return;
+                el.setAttribute('data-batch-meta-bound', '1');
+                el.addEventListener('blur', function () {
+                    rememberBatchCompanyProfileFromRow(row);
+                });
             });
         }
 
@@ -2049,6 +2165,7 @@
             }
             var cin = node.querySelector('.batch-emp-company');
             bindBatchEmpCompanyHistoryInput(cin);
+            bindBatchEmpCompanyMetaInputs(node);
             var msBtn = node.querySelector('.batch-emp-month-salary-btn');
             if (msBtn) {
                 msBtn.addEventListener('click', function () {
@@ -2603,7 +2720,12 @@
             setBatchSubmitBtnLoading(true);
             postBatchTaxRecordsPromise([bonusRec])
                 .then(function () {
-                    rememberBatchCompanyNames([companyForBatch]);
+                    var lastRowProf = getBatchEmpProfileFromRow(getLastBatchEmpRowFromDom());
+                    rememberBatchCompanyProfile({
+                        name: companyForBatch,
+                        company_tax_id: lastRowProf.company_tax_id || '',
+                        tax_authority: lastRowProf.tax_authority || ''
+                    });
                     showMsg('年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）', true);
                     return refreshRecordList();
                 })
@@ -2824,11 +2946,21 @@
             setBatchSubmitBtnLoading(true);
             postBatchTaxRecordsPromise(records)
                 .then(function (data) {
-                    var histNames = employments.map(function (e) {
-                        return e.company;
+                    employments.forEach(function (e) {
+                        rememberBatchCompanyProfile({
+                            name: e.company,
+                            company_tax_id: e.company_tax_id || '',
+                            tax_authority: e.tax_authority || ''
+                        });
                     });
-                    if (yearEndBonus > 0 && bonusCompany) histNames.push(bonusCompany);
-                    rememberBatchCompanyNames(histNames);
+                    if (yearEndBonus > 0 && bonusCompany) {
+                        var lastE = employments[employments.length - 1];
+                        rememberBatchCompanyProfile({
+                            name: bonusCompany,
+                            company_tax_id: lastE ? lastE.company_tax_id : '',
+                            tax_authority: lastE ? lastE.tax_authority : ''
+                        });
+                    }
                     var tip =
                         '已按工作经历生成 ' +
                         employments.length +
