@@ -90,6 +90,7 @@ const ADMIN_MENU_KEYS = [
   'appearance',
   'codes',
   'users',
+  'user-data',
   'feedback',
   'login-log',
   'analytics',
@@ -4800,6 +4801,556 @@ async function handleAdminUsers(req, res) {
   }
 }
 
+var USER_DATA_GC_DELIM = '\x1f';
+
+function splitGcList(raw) {
+  if (raw == null || raw === '') return [];
+  return String(raw)
+    .split(USER_DATA_GC_DELIM)
+    .map(function (s) {
+      return s.trim();
+    })
+    .filter(Boolean);
+}
+
+function mergeUniqueStrings() {
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < arguments.length; i++) {
+    var arr = arguments[i];
+    if (!arr || !arr.length) continue;
+    for (var j = 0; j < arr.length; j++) {
+      var s = String(arr[j] || '').trim();
+      if (!s || seen[s]) continue;
+      seen[s] = 1;
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+function summarizeTextList(items, maxItems, maxChars) {
+  maxItems = maxItems == null ? 3 : maxItems;
+  maxChars = maxChars == null ? 160 : maxChars;
+  var list = mergeUniqueStrings(items || []);
+  if (!list.length) return '—';
+  var head = list.slice(0, maxItems);
+  var text = head.join('；');
+  if (list.length > maxItems) {
+    text += ' 等' + list.length + '项';
+  }
+  if (text.length > maxChars) {
+    text = text.substring(0, maxChars - 1) + '…';
+  }
+  return text;
+}
+
+function maskBankCardNo(cardNo) {
+  var s = String(cardNo || '').replace(/\s+/g, '');
+  if (!s) return '—';
+  if (s.length <= 8) return s;
+  return s.slice(0, 4) + '****' + s.slice(-4);
+}
+
+function appendAdminUserScope(whereClauses, params, admin, userCol) {
+  if (!admin || admin.is_super) return;
+  whereClauses.push(
+    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      userCol +
+      ' AND ac.owner_admin_username = ?)'
+  );
+  params.push(admin.username);
+}
+
+function sqlScopeAnd(scopeSql, clause) {
+  if (scopeSql) return scopeSql + ' AND ' + clause;
+  return ' WHERE ' + clause;
+}
+
+async function buildUserDataBatchMaps(conn, usernames) {
+  var map = {};
+  if (!conn || !usernames || !usernames.length) return map;
+  var uniq = [];
+  var seen = {};
+  usernames.forEach(function (u) {
+    var id = String(u || '').trim();
+    if (!id || seen[id]) return;
+    seen[id] = 1;
+    uniq.push(id);
+    map[id] = {
+      companies: [],
+      company_tax_ids: [],
+      tax_authorities: [],
+      employers: [],
+      family_members: [],
+      family_count: 0,
+      bank_cards: [],
+      bank_count: 0,
+      tax_record_count: 0
+    };
+  });
+  if (!uniq.length) return map;
+  var ph = uniq.map(function () {
+    return '?';
+  }).join(',');
+
+  const [taxRows] = await conn.query(
+    `SELECT user_id,
+            COUNT(*) AS record_count,
+            GROUP_CONCAT(DISTINCT NULLIF(TRIM(company_name), '') ORDER BY company_name SEPARATOR ?) AS companies,
+            GROUP_CONCAT(DISTINCT NULLIF(TRIM(company_tax_id), '') ORDER BY company_tax_id SEPARATOR ?) AS tax_ids,
+            GROUP_CONCAT(DISTINCT NULLIF(TRIM(tax_authority), '') ORDER BY tax_authority SEPARATOR ?) AS authorities
+     FROM tax_records
+     WHERE user_id IN (` +
+      ph +
+      `)
+     GROUP BY user_id`,
+    [USER_DATA_GC_DELIM, USER_DATA_GC_DELIM, USER_DATA_GC_DELIM].concat(uniq)
+  );
+  taxRows.forEach(function (r) {
+    var uid = String(r.user_id);
+    if (!map[uid]) return;
+    map[uid].tax_record_count = Number(r.record_count) || 0;
+    map[uid].companies = splitGcList(r.companies);
+    map[uid].company_tax_ids = splitGcList(r.tax_ids);
+    map[uid].tax_authorities = splitGcList(r.authorities);
+  });
+
+  const [empRows] = await conn.query(
+    'SELECT user_id, company_name, credit_code, position, hire_date FROM employers WHERE user_id IN (' + ph + ')',
+    uniq
+  );
+  empRows.forEach(function (r) {
+    var uid = String(r.user_id);
+    if (!map[uid]) return;
+    var cn = r.company_name != null ? String(r.company_name).trim() : '';
+    if (cn) {
+      map[uid].companies = mergeUniqueStrings(map[uid].companies, [cn]);
+    }
+    map[uid].employers.push({
+      company_name: cn,
+      credit_code: r.credit_code != null ? String(r.credit_code) : '',
+      position: r.position != null ? String(r.position) : '',
+      hire_date: r.hire_date != null ? String(r.hire_date) : ''
+    });
+  });
+
+  const [famAgg] = await conn.query(
+    `SELECT user_id, COUNT(*) AS cnt,
+            GROUP_CONCAT(CONCAT(IFNULL(real_name,''),'(',IFNULL(relation,''),')')
+              ORDER BY created_at SEPARATOR ?) AS preview
+     FROM family_members WHERE user_id IN (` +
+      ph +
+      `) GROUP BY user_id`,
+    [USER_DATA_GC_DELIM].concat(uniq)
+  );
+  famAgg.forEach(function (r) {
+    var uid = String(r.user_id);
+    if (!map[uid]) return;
+    map[uid].family_count = Number(r.cnt) || 0;
+    map[uid].family_members = splitGcList(r.preview).map(function (line) {
+      var m = /^(.+)\((.+)\)$/.exec(line);
+      return { real_name: m ? m[1] : line, relation: m ? m[2] : '' };
+    });
+  });
+
+  const [famDetail] = await conn.query(
+    `SELECT user_id, real_name, relation, id_type_label, id_no, birth_date
+     FROM family_members WHERE user_id IN (` +
+      ph +
+      `) ORDER BY user_id, created_at ASC`,
+    uniq
+  );
+  famDetail.forEach(function (r) {
+    var uid = String(r.user_id);
+    if (!map[uid]) return;
+    if (!map[uid]._family_full) map[uid]._family_full = [];
+    map[uid]._family_full.push({
+      real_name: r.real_name != null ? String(r.real_name) : '',
+      relation: r.relation != null ? String(r.relation) : '',
+      id_type_label: r.id_type_label != null ? String(r.id_type_label) : '',
+      id_no: r.id_no != null ? String(r.id_no) : '',
+      birth_date: r.birth_date != null ? String(r.birth_date) : ''
+    });
+  });
+
+  const [bankRows] = await conn.query(
+    'SELECT user_id, card_no, bank_name, province, phone FROM bank_cards WHERE user_id IN (' +
+      ph +
+      ') ORDER BY user_id, created_at ASC',
+    uniq
+  );
+  bankRows.forEach(function (r) {
+    var uid = String(r.user_id);
+    if (!map[uid]) return;
+    map[uid].bank_count = (map[uid].bank_count || 0) + 1;
+    map[uid].bank_cards.push({
+      card_no_masked: maskBankCardNo(r.card_no),
+      card_no: r.card_no != null ? String(r.card_no) : '',
+      bank_name: r.bank_name != null ? String(r.bank_name) : '',
+      province: r.province != null ? String(r.province) : '',
+      phone: r.phone != null ? String(r.phone) : ''
+    });
+  });
+
+  uniq.forEach(function (uid) {
+    var item = map[uid];
+    if (!item) return;
+    if (item._family_full) {
+      item.family_members = item._family_full;
+      delete item._family_full;
+    }
+    item.companies_summary = summarizeTextList(item.companies, 3, 140);
+    item.company_tax_ids_summary = summarizeTextList(item.company_tax_ids, 2, 120);
+    item.tax_authorities_summary = summarizeTextList(item.tax_authorities, 2, 120);
+    item.family_summary =
+      item.family_count > 0
+        ? summarizeTextList(
+            item.family_members.map(function (f) {
+              return (f.real_name || '—') + '(' + (f.relation || '—') + ')';
+            }),
+            3,
+            120
+          )
+        : '—';
+    item.bank_summary =
+      item.bank_count > 0
+        ? summarizeTextList(
+            item.bank_cards.map(function (b) {
+              return (b.card_no_masked || '—') + (b.bank_name ? ' ' + b.bank_name : '');
+            }),
+            2,
+            120
+          )
+        : '—';
+  });
+
+  return map;
+}
+
+async function handleAdminUserDataAnalytics(req, res) {
+  try {
+    const conn = await pool.getConnection();
+    var where = [];
+    var params = [];
+    appendAdminUserScope(where, params, req.admin, 'u.username');
+    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+
+    const [totalUserRows] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scopeSql, params);
+    var totalUsers = Number(totalUserRows[0].c) || 0;
+
+    const [taxStats] = await conn.query(
+      `SELECT COUNT(DISTINCT tr.user_id) AS users_with_tax,
+              COUNT(*) AS total_records,
+              COUNT(DISTINCT NULLIF(TRIM(tr.company_name), '')) AS distinct_companies,
+              COUNT(DISTINCT NULLIF(TRIM(tr.tax_authority), '')) AS distinct_authorities
+       FROM tax_records tr
+       INNER JOIN users u ON u.username = tr.user_id` + scopeSql,
+      params
+    );
+
+    const [famRows] = await conn.query(
+      `SELECT COUNT(DISTINCT fm.user_id) AS c FROM family_members fm
+       INNER JOIN users u ON u.username = fm.user_id` + scopeSql,
+      params
+    );
+    const [bankRows] = await conn.query(
+      `SELECT COUNT(DISTINCT bc.user_id) AS c FROM bank_cards bc
+       INNER JOIN users u ON u.username = bc.user_id` + scopeSql,
+      params
+    );
+
+    const [topCompanies] = await conn.query(
+      `SELECT NULLIF(TRIM(tr.company_name), '') AS name, COUNT(DISTINCT tr.user_id) AS user_count
+       FROM tax_records tr
+       INNER JOIN users u ON u.username = tr.user_id` +
+        sqlScopeAnd(scopeSql, "NULLIF(TRIM(tr.company_name), '') IS NOT NULL") +
+        ` GROUP BY name ORDER BY user_count DESC, name ASC LIMIT 12`,
+      params
+    );
+
+    const [topAuthorities] = await conn.query(
+      `SELECT NULLIF(TRIM(tr.tax_authority), '') AS name, COUNT(*) AS cnt
+       FROM tax_records tr
+       INNER JOIN users u ON u.username = tr.user_id` +
+        sqlScopeAnd(scopeSql, "NULLIF(TRIM(tr.tax_authority), '') IS NOT NULL") +
+        ` GROUP BY name ORDER BY cnt DESC, name ASC LIMIT 10`,
+      params
+    );
+
+    const [allScoped] = await conn.query('SELECT u.username FROM users u' + scopeSql + ' ORDER BY u.id DESC LIMIT 3000', params);
+    var scopedNames = allScoped.map(function (r) {
+      return String(r.username);
+    });
+    var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
+    var buckets = [
+      { label: '未填写', min: null, max: null, count: 0 },
+      { label: '5000以下', min: 0, max: 5000, count: 0 },
+      { label: '5000–1万', min: 5000, max: 10000, count: 0 },
+      { label: '1万–2万', min: 10000, max: 20000, count: 0 },
+      { label: '2万以上', min: 20000, max: null, count: 0 }
+    ];
+    scopedNames.forEach(function (uname) {
+      var sal = avgMaps[uname];
+      var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
+      if (v == null || !isFinite(v)) {
+        buckets[0].count++;
+        return;
+      }
+      if (v < 5000) buckets[1].count++;
+      else if (v < 10000) buckets[2].count++;
+      else if (v < 20000) buckets[3].count++;
+      else buckets[4].count++;
+    });
+
+    conn.release();
+    var ts = taxStats[0] || {};
+    res.json({
+      code: 200,
+      data: {
+        total_users: totalUsers,
+        users_with_tax_records: Number(ts.users_with_tax) || 0,
+        total_tax_records: Number(ts.total_records) || 0,
+        distinct_companies: Number(ts.distinct_companies) || 0,
+        distinct_tax_authorities: Number(ts.distinct_authorities) || 0,
+        users_with_family: Number(famRows[0].c) || 0,
+        users_with_bank: Number(bankRows[0].c) || 0,
+        salary_buckets: buckets,
+        top_companies: topCompanies.map(function (r) {
+          return { name: String(r.name), user_count: Number(r.user_count) || 0 };
+        }),
+        top_tax_authorities: topAuthorities.map(function (r) {
+          return { name: String(r.name), count: Number(r.cnt) || 0 };
+        })
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminUserDataList(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 15;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 15;
+    if (limit > 50) limit = 50;
+    var offset = (page - 1) * limit;
+
+    var qUsername = String(req.query.username || '').trim();
+    var qRealName = String(req.query.real_name || '').trim();
+    var qCompany = String(req.query.company || '').trim();
+    var qHasFamily = req.query.has_family;
+    var qHasBank = req.query.has_bank;
+    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
+    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
+    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
+    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
+      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
+    }
+
+    var whereClauses = [];
+    var params = [];
+    if (qUsername) {
+      whereClauses.push('users.username LIKE ?');
+      params.push('%' + qUsername + '%');
+    }
+    if (qRealName) {
+      whereClauses.push('users.real_name LIKE ?');
+      params.push('%' + qRealName + '%');
+    }
+    if (qCompany) {
+      whereClauses.push(
+        `(EXISTS (SELECT 1 FROM tax_records trc WHERE trc.user_id = users.username AND trc.company_name LIKE ?)
+          OR EXISTS (SELECT 1 FROM employers ec WHERE ec.user_id = users.username AND ec.company_name LIKE ?))`
+      );
+      params.push('%' + qCompany + '%', '%' + qCompany + '%');
+    }
+    if (qHasFamily === '1') {
+      whereClauses.push('EXISTS (SELECT 1 FROM family_members fm WHERE fm.user_id = users.username)');
+    } else if (qHasFamily === '0') {
+      whereClauses.push('NOT EXISTS (SELECT 1 FROM family_members fm WHERE fm.user_id = users.username)');
+    }
+    if (qHasBank === '1') {
+      whereClauses.push('EXISTS (SELECT 1 FROM bank_cards bc WHERE bc.user_id = users.username)');
+    } else if (qHasBank === '0') {
+      whereClauses.push('NOT EXISTS (SELECT 1 FROM bank_cards bc WHERE bc.user_id = users.username)');
+    }
+    appendAdminUserScope(whereClauses, params, req.admin, 'users.username');
+
+    var whereSql = whereClauses.length ? ' WHERE ' + whereClauses.join(' AND ') : '';
+    const conn = await pool.getConnection();
+    var rows = [];
+    var total = 0;
+    var avgSalaryMaps = {};
+
+    if (hasSalaryFilter) {
+      const [allUserRows] = await conn.query(
+        'SELECT username FROM users' + whereSql + ' ORDER BY id DESC',
+        params
+      );
+      var allNames = allUserRows.map(function (r) {
+        return String(r.username);
+      });
+      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, allNames);
+      var filtered = [];
+      for (var fi = 0; fi < allNames.length; fi++) {
+        var fn = allNames[fi];
+        var fs = avgSalaryMaps[fn] || { avg_salary_6m: null };
+        if (userMatchesSalaryRange(fs, qSalaryMin, qSalaryMax)) {
+          filtered.push(fn);
+        }
+      }
+      total = filtered.length;
+      var pageNames = filtered.slice(offset, offset + limit);
+      if (pageNames.length) {
+        var ph = pageNames.map(function () {
+          return '?';
+        }).join(',');
+        const [pageRows] = await conn.query(
+          'SELECT id, username, real_name, tax_id FROM users WHERE username IN (' + ph + ') ORDER BY id DESC',
+          pageNames
+        );
+        rows = pageRows;
+      }
+    } else {
+      const [totalRows] = await conn.execute('SELECT COUNT(*) AS count FROM users' + whereSql, params);
+      total = totalRows[0].count;
+      const [pageRows] = await conn.query(
+        'SELECT id, username, real_name, tax_id FROM users' + whereSql + ' ORDER BY id DESC LIMIT ? OFFSET ?',
+        params.concat([limit, offset])
+      );
+      rows = pageRows;
+      var pageNames2 = rows.map(function (r) {
+        return r.username;
+      });
+      avgSalaryMaps = await buildUserTaxAvgSalaryMap(conn, pageNames2);
+    }
+
+    var usernames = rows.map(function (r) {
+      return r.username;
+    });
+    var dataMaps = await buildUserDataBatchMaps(conn, usernames);
+    conn.release();
+
+    var list = rows.map(function (r) {
+      var uname = String(r.username);
+      var dm = dataMaps[uname] || {};
+      var sal = avgSalaryMaps[uname] || {
+        avg_salary_6m: null,
+        avg_salary_6m_label: '未填写',
+        salary_month_count: 0
+      };
+      return {
+        id: r.id,
+        username: uname,
+        real_name: r.real_name != null ? String(r.real_name) : '',
+        user_tax_id: r.tax_id != null ? String(r.tax_id) : '',
+        avg_salary_6m: sal.avg_salary_6m,
+        avg_salary_6m_label: sal.avg_salary_6m_label,
+        salary_month_count: sal.salary_month_count,
+        companies_summary: dm.companies_summary || '—',
+        company_tax_ids_summary: dm.company_tax_ids_summary || '—',
+        tax_authorities_summary: dm.tax_authorities_summary || '—',
+        family_count: dm.family_count || 0,
+        family_summary: dm.family_summary || '—',
+        bank_count: dm.bank_count || 0,
+        bank_summary: dm.bank_summary || '—',
+        tax_record_count: dm.tax_record_count || 0
+      };
+    });
+
+    res.json({
+      code: 200,
+      data: { items: list, total: total, page: page, limit: limit }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminUserDataDetail(req, res) {
+  var username = req.query.username != null ? String(req.query.username).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
+      }
+      const [userRows] = await conn.execute(
+        'SELECT username, real_name, tax_id, created_at FROM users WHERE username = ? LIMIT 1',
+        [username]
+      );
+      if (!userRows.length) {
+        return res.json({ code: 404, msg: '用户不存在' });
+      }
+      var u = userRows[0];
+      var maps = await buildUserDataBatchMaps(conn, [username]);
+      var dm = maps[username] || {};
+      var avgMap = await buildUserTaxAvgSalaryMap(conn, [username]);
+      var sal = avgMap[username] || { avg_salary_6m: null, avg_salary_6m_label: '未填写' };
+
+      const [taxRows] = await conn.execute(
+        `SELECT year, month, company_name, company_tax_id, tax_authority, income, tax_reported, tax_period
+         FROM tax_records WHERE user_id = ? ORDER BY year DESC, month DESC LIMIT 120`,
+        [username]
+      );
+
+      res.json({
+        code: 200,
+        data: {
+          user: {
+            username: String(u.username),
+            real_name: u.real_name != null ? String(u.real_name) : '',
+            user_tax_id: u.tax_id != null ? String(u.tax_id) : '',
+            created_at: u.created_at ? u.created_at.toISOString() : ''
+          },
+          avg_salary_6m: sal.avg_salary_6m,
+          avg_salary_6m_label: sal.avg_salary_6m_label,
+          salary_month_count: sal.salary_month_count,
+          companies: dm.companies || [],
+          company_tax_ids: dm.company_tax_ids || [],
+          tax_authorities: dm.tax_authorities || [],
+          employers: dm.employers || [],
+          family_members: dm.family_members || [],
+          bank_cards: (dm.bank_cards || []).map(function (b) {
+            return {
+              card_no_masked: b.card_no_masked,
+              bank_name: b.bank_name,
+              province: b.province,
+              phone: b.phone
+            };
+          }),
+          tax_records: taxRows.map(function (r) {
+            return {
+              year: r.year,
+              month: r.month,
+              company_name: r.company_name != null ? String(r.company_name) : '',
+              company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : '',
+              tax_authority: r.tax_authority != null ? String(r.tax_authority) : '',
+              income: r.income != null ? String(r.income) : '0',
+              tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
+              tax_period: r.tax_period != null ? String(r.tax_period) : ''
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
@@ -6852,6 +7403,19 @@ app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
+app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);
+app.get(
+  '/api/admin/user-data/analytics',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminUserDataAnalytics
+);
+app.get(
+  '/api/admin/user-data/detail',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminUserDataDetail
+);
 app.get('/api/admin/analytics/daily-conversion', requireAdminAuth, requireAdminMenu('analytics'), handleAdminUsersDailyConversion);
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);

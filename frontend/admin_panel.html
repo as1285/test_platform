@@ -533,6 +533,40 @@
         .user-detail-pages-panel {
             margin-top: 8px;
         }
+        .user-data-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+            gap: 12px;
+            margin: 12px 0 18px;
+        }
+        .user-data-stat-card {
+            background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+            border: 1px solid #e5ecf5;
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+        .user-data-stat-card .ud-label {
+            font-size: 12px;
+            color: #888;
+        }
+        .user-data-stat-card .ud-val {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e6fff;
+            margin-top: 4px;
+            line-height: 1.2;
+        }
+        .user-data-analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .users-data-table th,
+        .users-data-table td {
+            font-size: 13px;
+            vertical-align: top;
+        }
         .dau-users-panel {
             background: #f8fbff;
             border: 1px solid #dbe7ff;
@@ -731,6 +765,7 @@
                 <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
                 <button type="button" class="nav-item" data-page="admin-accounts" data-title="后台账号权限">后台账号权限</button>
                 <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                <button type="button" class="nav-item" data-page="user-data" data-title="用户数据">用户数据</button>
                 <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
                 <button type="button" class="nav-item" data-page="login-log" data-title="管理账号登录流水">管理账号登录流水</button>
                 <button type="button" class="nav-item" data-page="user-login-log" data-title="普通用户登录流水">普通用户登录流水</button>
@@ -1263,6 +1298,107 @@
                 <button type="button" class="btn-page" id="userPrev">上一页</button>
                 <span id="userPageInfo">第 1 页</span>
                 <button type="button" class="btn-page" id="userNext">下一页</button>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-user-data" class="page-panel" role="tabpanel">
+        <section>
+            <h2>用户数据</h2>
+            <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>近六个月平均工资</strong>（来自个税记录收入）、<strong>纳税人识别号</strong>、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与数据分析。非超级管理员仅能看到自己激活码关联的账号。</p>
+            <div id="userDataAnalytics" class="user-data-stats" aria-live="polite">分析数据加载中…</div>
+            <div class="user-data-analytics-grid" id="userDataAnalyticsTables" style="display:none;">
+                <div class="scroll-x">
+                    <p class="stat">工资收入分布（近6月平均）</p>
+                    <table>
+                        <thead><tr><th>区间</th><th>用户数</th></tr></thead>
+                        <tbody id="userDataSalaryBucketsTbody"></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x">
+                    <p class="stat">扣缴义务人 TOP（按关联用户数）</p>
+                    <table>
+                        <thead><tr><th>公司名称</th><th>用户数</th></tr></thead>
+                        <tbody id="userDataTopCompaniesTbody"></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x">
+                    <p class="stat">税务机关 TOP</p>
+                    <table>
+                        <thead><tr><th>税务机关</th><th>出现次数</th></tr></thead>
+                        <tbody id="userDataTopAuthTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="user-filter-bar" style="margin-top:16px;">
+                <div class="user-filter-fields">
+                    <div>
+                        <label>账号</label>
+                        <input type="text" id="udFilterUsername" placeholder="搜索账号" style="width:130px;">
+                    </div>
+                    <div>
+                        <label>姓名</label>
+                        <input type="text" id="udFilterRealName" placeholder="搜索姓名" style="width:130px;">
+                    </div>
+                    <div>
+                        <label>公司名称</label>
+                        <input type="text" id="udFilterCompany" placeholder="扣缴义务人/任职" style="width:140px;">
+                    </div>
+                    <div>
+                        <label>家人信息</label>
+                        <select id="udFilterFamily" class="filter-select">
+                            <option value="">全部</option>
+                            <option value="1">已填写</option>
+                            <option value="0">未填写</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>银行卡</label>
+                        <select id="udFilterBank" class="filter-select">
+                            <option value="">全部</option>
+                            <option value="1">已绑定</option>
+                            <option value="0">未绑定</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>工资收入（元）</label>
+                        <div class="filter-salary-range" style="display:flex;align-items:center;gap:6px;">
+                            <input type="number" id="udFilterSalaryMin" min="0" step="0.01" placeholder="最低" style="width:90px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                            <span style="color:#999;">—</span>
+                            <input type="number" id="udFilterSalaryMax" min="0" step="0.01" placeholder="最高" style="width:90px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button type="button" class="btn-primary" id="btnSearchUserData">查询</button>
+                        <button type="button" class="btn-page" id="btnResetUserData">重置</button>
+                        <button type="button" class="btn-page" id="btnRefreshUserDataAnalytics">刷新分析</button>
+                    </div>
+                </div>
+            </div>
+            <p class="stat" id="userDataStat">列表加载中…</p>
+            <div class="scroll-x">
+                <table class="users-data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">账号</th>
+                            <th style="width:72px;">姓名</th>
+                            <th style="width:120px;">近6月平均工资</th>
+                            <th style="width:160px;">公司（扣缴义务人）</th>
+                            <th style="width:130px;">纳税人识别号</th>
+                            <th style="width:130px;">税务机关</th>
+                            <th style="width:120px;">家人信息</th>
+                            <th style="width:120px;">银行卡</th>
+                            <th style="width:56px;">税记录</th>
+                            <th class="col-ops">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userDataTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="userDataPagination">
+                <button type="button" class="btn-page" id="userDataPrev">上一页</button>
+                <span id="userDataPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="userDataNext">下一页</button>
             </div>
         </section>
                 </div>
@@ -2378,6 +2514,9 @@
         var _adminAccountsLoaded = false;
 
         var _adminUsersLoaded = false;
+        var _adminUserDataLoaded = false;
+        var userDataPage = 1;
+        var userDataLimit = 15;
         var _adminCodesLoaded = false;
         var _adminAnalyticsSeen = false;
         var _adminApiAnalyticsSeen = false;
@@ -2390,7 +2529,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'feedback', 'login-log', 'user-login-log', 'analytics', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'feedback', 'login-log', 'user-login-log', 'analytics', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -2431,6 +2570,7 @@
                 codes: 1,
                 'admin-accounts': 1,
                 users: 1,
+                'user-data': 1,
                 feedback: 1,
                 analytics: 1,
                 'api-analytics': 1,
@@ -2459,6 +2599,11 @@
             if (pageKey === 'users' && !_adminUsersLoaded) {
                 _adminUsersLoaded = true;
                 loadUsers(1);
+            }
+            if (pageKey === 'user-data' && !_adminUserDataLoaded) {
+                _adminUserDataLoaded = true;
+                loadUserDataAnalytics();
+                loadUserDataList(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
@@ -3577,6 +3722,309 @@
                 });
         }
 
+        function keyForUserData(username) {
+            return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
+        }
+
+        function renderUserDataAnalytics(data) {
+            var wrap = document.getElementById('userDataAnalytics');
+            var tablesWrap = document.getElementById('userDataAnalyticsTables');
+            if (!wrap || !data) return;
+            var cards = [
+                { label: '注册用户', val: data.total_users },
+                { label: '有个税记录', val: data.users_with_tax_records },
+                { label: '个税条数', val: data.total_tax_records },
+                { label: '已填家人', val: data.users_with_family },
+                { label: '已绑银行卡', val: data.users_with_bank },
+                { label: '不同公司数', val: data.distinct_companies },
+                { label: '税务机关数', val: data.distinct_tax_authorities }
+            ];
+            var html = '';
+            cards.forEach(function (c) {
+                html +=
+                    '<div class="user-data-stat-card"><div class="ud-label">' +
+                    esc(c.label) +
+                    '</div><div class="ud-val">' +
+                    esc(String(c.val != null ? c.val : '—')) +
+                    '</div></div>';
+            });
+            wrap.innerHTML = html;
+            if (tablesWrap) tablesWrap.style.display = '';
+
+            var buckTb = document.getElementById('userDataSalaryBucketsTbody');
+            if (buckTb) {
+                var bhtml = '';
+                (data.salary_buckets || []).forEach(function (b) {
+                    bhtml += '<tr><td>' + esc(b.label) + '</td><td>' + esc(b.count) + '</td></tr>';
+                });
+                buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+            var compTb = document.getElementById('userDataTopCompaniesTbody');
+            if (compTb) {
+                var chtml = '';
+                (data.top_companies || []).forEach(function (c) {
+                    chtml += '<tr><td class="cell-break">' + esc(c.name) + '</td><td>' + esc(c.user_count) + '</td></tr>';
+                });
+                compTb.innerHTML = chtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+            var authTb = document.getElementById('userDataTopAuthTbody');
+            if (authTb) {
+                var ahtml = '';
+                (data.top_tax_authorities || []).forEach(function (a) {
+                    ahtml += '<tr><td class="cell-break">' + esc(a.name) + '</td><td>' + esc(a.count) + '</td></tr>';
+                });
+                authTb.innerHTML = ahtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+        }
+
+        function loadUserDataAnalytics() {
+            var wrap = document.getElementById('userDataAnalytics');
+            if (wrap) wrap.textContent = '分析数据加载中…';
+            adminFetch('api/admin/user-data/analytics')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (wrap) wrap.textContent = j.msg || '分析加载失败';
+                        return;
+                    }
+                    renderUserDataAnalytics(j.data);
+                })
+                .catch(function () {
+                    if (wrap) wrap.textContent = '分析加载失败';
+                });
+        }
+
+        function buildUserDataDetailHtml(username, data) {
+            var html = '<div class="user-detail-wrap">';
+            html += '<div class="user-detail-title">账号「' + esc(username) + '」数据档案</div>';
+            html +=
+                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">近六个月平均工资：<strong>' +
+                esc(data.avg_salary_6m_label || '未填写') +
+                '</strong></div>';
+
+            html += '<div style="margin:8px 0;color:#666;">扣缴义务人 / 公司（' + (data.companies || []).length + '）</div>';
+            if (!(data.companies || []).length) {
+                html += '<div style="color:#999;margin-bottom:10px;">暂无</div>';
+            } else {
+                html += '<div class="scroll-x"><table class="user-detail-table"><tbody>';
+                (data.companies || []).forEach(function (c) {
+                    html += '<tr><td class="cell-break">' + esc(c) + '</td></tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            if ((data.employers || []).length) {
+                html += '<div style="margin:10px 0 6px;color:#666;">任职受雇（' + data.employers.length + '）</div>';
+                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>公司</th><th>信用代码</th><th>岗位</th><th>入职</th></tr></thead><tbody>';
+                data.employers.forEach(function (e) {
+                    html += '<tr>';
+                    html += '<td class="cell-break">' + esc(e.company_name || '—') + '</td>';
+                    html += '<td class="cell-break">' + esc(e.credit_code || '—') + '</td>';
+                    html += '<td>' + esc(e.position || '—') + '</td>';
+                    html += '<td>' + esc(e.hire_date || '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 6px;color:#666;">纳税人识别号（' + (data.company_tax_ids || []).length + '）</div>';
+            html += '<div class="scroll-x"><table class="user-detail-table"><tbody>';
+            (data.company_tax_ids || []).forEach(function (t) {
+                html += '<tr><td class="cell-break"><code>' + esc(t) + '</code></td></tr>';
+            });
+            if (!(data.company_tax_ids || []).length) {
+                html += '<tr><td>—</td></tr>';
+            }
+            html += '</tbody></table></div>';
+
+            html += '<div style="margin:10px 0 6px;color:#666;">税务机关（' + (data.tax_authorities || []).length + '）</div>';
+            html += '<div class="scroll-x"><table class="user-detail-table"><tbody>';
+            (data.tax_authorities || []).forEach(function (t) {
+                html += '<tr><td class="cell-break">' + esc(t) + '</td></tr>';
+            });
+            if (!(data.tax_authorities || []).length) {
+                html += '<tr><td>—</td></tr>';
+            }
+            html += '</tbody></table></div>';
+
+            html += '<div style="margin:10px 0 6px;color:#666;">家人信息（' + (data.family_members || []).length + '）</div>';
+            if (!(data.family_members || []).length) {
+                html += '<div style="color:#999;margin-bottom:10px;">未填写</div>';
+            } else {
+                html +=
+                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>姓名</th><th>关系</th><th>证件类型</th><th>证件号</th><th>出生日期</th></tr></thead><tbody>';
+                (data.family_members || []).forEach(function (f) {
+                    html += '<tr>';
+                    html += '<td>' + esc(f.real_name || '—') + '</td>';
+                    html += '<td>' + esc(f.relation || '—') + '</td>';
+                    html += '<td>' + esc(f.id_type_label || '—') + '</td>';
+                    html += '<td class="cell-break"><code>' + esc(f.id_no || '—') + '</code></td>';
+                    html += '<td>' + esc(f.birth_date || '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 6px;color:#666;">银行卡（' + (data.bank_cards || []).length + '）</div>';
+            if (!(data.bank_cards || []).length) {
+                html += '<div style="color:#999;margin-bottom:10px;">未绑定</div>';
+            } else {
+                html +=
+                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>卡号</th><th>银行</th><th>省份</th><th>预留手机</th></tr></thead><tbody>';
+                (data.bank_cards || []).forEach(function (b) {
+                    html += '<tr>';
+                    html += '<td><code>' + esc(b.card_no_masked || '—') + '</code></td>';
+                    html += '<td>' + esc(b.bank_name || '—') + '</td>';
+                    html += '<td>' + esc(b.province || '—') + '</td>';
+                    html += '<td>' + esc(b.phone || '—') + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+
+            html += '<div style="margin:10px 0 6px;color:#666;">个税记录（' + (data.tax_records || []).length + ' 条）</div>';
+            if (!(data.tax_records || []).length) {
+                html += '<div style="color:#999;">暂无</div>';
+            } else {
+                html +=
+                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>所属期</th><th>公司</th><th>识别号</th><th>税务机关</th><th>收入</th><th>税额</th></tr></thead><tbody>';
+                (data.tax_records || []).forEach(function (r) {
+                    var period = r.tax_period || (r.year ? r.year + '-' + String(r.month || '').padStart(2, '0') : '—');
+                    html += '<tr>';
+                    html += '<td>' + esc(period) + '</td>';
+                    html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
+                    html += '<td class="cell-break"><code>' + esc(r.company_tax_id || '—') + '</code></td>';
+                    html += '<td class="cell-break">' + esc(r.tax_authority || '—') + '</td>';
+                    html += '<td>' + formatMoneyLike(r.income) + '</td>';
+                    html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function loadUserDataList(p) {
+            if (p != null) userDataPage = p;
+            var stat = document.getElementById('userDataStat');
+            var username = document.getElementById('udFilterUsername').value.trim();
+            var realName = document.getElementById('udFilterRealName').value.trim();
+            var company = document.getElementById('udFilterCompany').value.trim();
+            var hasFamily = document.getElementById('udFilterFamily').value;
+            var hasBank = document.getElementById('udFilterBank').value;
+            var salaryMin = document.getElementById('udFilterSalaryMin').value.trim();
+            var salaryMax = document.getElementById('udFilterSalaryMax').value.trim();
+
+            var url =
+                'api/admin/user-data?page=' +
+                userDataPage +
+                '&limit=' +
+                userDataLimit;
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (realName) url += '&real_name=' + encodeURIComponent(realName);
+            if (company) url += '&company=' + encodeURIComponent(company);
+            if (hasFamily !== '') url += '&has_family=' + encodeURIComponent(hasFamily);
+            if (hasBank !== '') url += '&has_bank=' + encodeURIComponent(hasBank);
+            if (salaryMin !== '') url += '&salary_min=' + encodeURIComponent(salaryMin);
+            if (salaryMax !== '') url += '&salary_max=' + encodeURIComponent(salaryMax);
+
+            adminFetch(url)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        if (stat) stat.textContent = data.msg || '加载失败';
+                        return;
+                    }
+                    var list = data.data.items || [];
+                    var total = data.data.total || 0;
+                    if (stat) stat.textContent = '共 ' + total + ' 条用户数据';
+                    var totalPages = Math.ceil(total / userDataLimit) || 1;
+                    document.getElementById('userDataPageInfo').textContent =
+                        '第 ' + userDataPage + ' 页 / 共 ' + totalPages + ' 页';
+                    document.getElementById('userDataPrev').disabled = userDataPage <= 1;
+                    document.getElementById('userDataNext').disabled = userDataPage >= totalPages;
+
+                    var html = '';
+                    list.forEach(function (row) {
+                        var key = keyForUserData(row.username);
+                        var fam =
+                            row.family_count > 0
+                                ? esc(row.family_summary) + ' <span style="color:#888;">(' + row.family_count + ')</span>'
+                                : '<span style="color:#bbb;">未填写</span>';
+                        var bank =
+                            row.bank_count > 0
+                                ? esc(row.bank_summary) + ' <span style="color:#888;">(' + row.bank_count + ')</span>'
+                                : '<span style="color:#bbb;">未绑定</span>';
+                        html += '<tr>';
+                        html += '<td class="cell-break">' + esc(row.username) + '</td>';
+                        html += '<td>' + esc(row.real_name || '—') + '</td>';
+                        html += '<td class="cell-break">' + esc(row.avg_salary_6m_label || '未填写') + '</td>';
+                        html += '<td class="cell-break">' + esc(row.companies_summary || '—') + '</td>';
+                        html += '<td class="cell-break">' + esc(row.company_tax_ids_summary || '—') + '</td>';
+                        html += '<td class="cell-break">' + esc(row.tax_authorities_summary || '—') + '</td>';
+                        html += '<td class="cell-break">' + fam + '</td>';
+                        html += '<td class="cell-break">' + bank + '</td>';
+                        html += '<td>' + esc(row.tax_record_count) + '</td>';
+                        html +=
+                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-user-data-detail" data-u="' +
+                            esc(row.username) +
+                            '" data-k="' +
+                            key +
+                            '">档案</button></td>';
+                        html += '</tr>';
+                        html += '<tr id="ud_detail_row_' + key + '" class="users-detail-row" style="display:none;">';
+                        html +=
+                            '<td colspan="10"><div id="ud_detail_box_' +
+                            key +
+                            '" style="padding:4px 0;color:#888;">点击「档案」加载完整数据…</div></td>';
+                        html += '</tr>';
+                    });
+                    document.getElementById('userDataTbody').innerHTML =
+                        html || '<tr><td colspan="10">暂无数据</td></tr>';
+
+                    document.getElementById('userDataTbody').querySelectorAll('.btn-user-data-detail').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var key = btn.getAttribute('data-k');
+                            var row = document.getElementById('ud_detail_row_' + key);
+                            var box = document.getElementById('ud_detail_box_' + key);
+                            if (!row || !box) return;
+                            var opening = row.style.display === 'none';
+                            if (!opening) {
+                                row.style.display = 'none';
+                                btn.textContent = '档案';
+                                return;
+                            }
+                            row.style.display = '';
+                            btn.textContent = '收起';
+                            box.textContent = '加载中…';
+                            adminFetch('api/admin/user-data/detail?username=' + encodeURIComponent(name))
+                                .then(function (r) {
+                                    return r.json();
+                                })
+                                .then(function (d) {
+                                    if (d.code !== 200 || !d.data) {
+                                        box.textContent = d.msg || '加载失败';
+                                        return;
+                                    }
+                                    box.innerHTML = buildUserDataDetailHtml(name, d.data);
+                                })
+                                .catch(function () {
+                                    box.textContent = '网络错误';
+                                });
+                        };
+                    });
+                })
+                .catch(function () {
+                    if (stat) stat.textContent = '加载失败';
+                });
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -3867,6 +4315,7 @@
             appearance: '用户端外观',
             codes: '激活码',
             users: '注册用户',
+            'user-data': '用户数据',
             feedback: '用户反馈',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
@@ -4059,6 +4508,43 @@
         document.getElementById('userNext').onclick = function() { loadUsers(userPage + 1); };
         
         document.getElementById('btnSearchUsers').onclick = function() { loadUsers(1); };
+        var btnSearchUserData = document.getElementById('btnSearchUserData');
+        if (btnSearchUserData) {
+            btnSearchUserData.onclick = function () {
+                loadUserDataList(1);
+            };
+        }
+        var btnResetUserData = document.getElementById('btnResetUserData');
+        if (btnResetUserData) {
+            btnResetUserData.onclick = function () {
+                document.getElementById('udFilterUsername').value = '';
+                document.getElementById('udFilterRealName').value = '';
+                document.getElementById('udFilterCompany').value = '';
+                document.getElementById('udFilterFamily').value = '';
+                document.getElementById('udFilterBank').value = '';
+                document.getElementById('udFilterSalaryMin').value = '';
+                document.getElementById('udFilterSalaryMax').value = '';
+                loadUserDataList(1);
+            };
+        }
+        var btnRefreshUserDataAnalytics = document.getElementById('btnRefreshUserDataAnalytics');
+        if (btnRefreshUserDataAnalytics) {
+            btnRefreshUserDataAnalytics.onclick = function () {
+                loadUserDataAnalytics();
+            };
+        }
+        var userDataPrev = document.getElementById('userDataPrev');
+        if (userDataPrev) {
+            userDataPrev.onclick = function () {
+                if (userDataPage > 1) loadUserDataList(userDataPage - 1);
+            };
+        }
+        var userDataNext = document.getElementById('userDataNext');
+        if (userDataNext) {
+            userDataNext.onclick = function () {
+                loadUserDataList(userDataPage + 1);
+            };
+        }
         document.getElementById('btnResetUsers').onclick = function() {
             document.getElementById('filterUsername').value = '';
             document.getElementById('filterRealName').value = '';
