@@ -3155,7 +3155,6 @@
         }
 
         function boot() {
-            refreshConsultInstallPackageUrls();
             if (window.__refreshNavFromMineUi) {
                 window.__refreshNavFromMineUi();
             }
@@ -3164,9 +3163,18 @@
             initBatchCompanyHistoryUi();
             initTabs();
             setDefaultMsgDate();
-            refreshRecordList();
-            refreshEmployerList();
-            refreshMessageList();
+            Promise.all([
+                refreshConsultInstallPackageUrls(),
+                refreshRecordList(),
+                refreshEmployerList(),
+                refreshMessageList()
+            ])
+                .catch(function () {})
+                .finally(function () {
+                    if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
+                        window.appPageLoadingDispatchConsultDone();
+                    }
+                });
             tryEditFromUrl();
         }
 

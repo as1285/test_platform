@@ -23,7 +23,7 @@
     <preference name="InspectableWebview" value="false" />
     <!-- 启动屏：cordova-android 11+ 使用 Android 12+ SplashScreen API（见下方 Android 专用 preference） -->
     <preference name="AutoHideSplashScreen" value="true" />
-    <preference name="SplashScreenDelay" value="2500" />
+    <preference name="SplashScreenDelay" value="2000" />
     <preference name="FadeSplashScreen" value="true" />
     <preference name="FadeSplashScreenDuration" value="400" />
     <!-- 透明状态栏叠在 WebView 上；H5 用固定兜底变量给顶部内容让位，避免 Android env() 取 0 -->

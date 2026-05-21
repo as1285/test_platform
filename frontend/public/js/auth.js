@@ -189,6 +189,11 @@
     return /ANN-AN00/i.test(navigator.userAgent || '');
   }
 
+  /** 荣耀 Magic5 Pro（PGT-AN20 / Android 16 Cordova）首页顶栏与通知条单独适配 */
+  function isHonorPgtAn20Client() {
+    return /PGT-AN20/i.test(navigator.userAgent || '');
+  }
+
   /**
    * 华为 Pura 70 / P70 系列（如 HBN-AL00）：系统录屏画布常宽于 WebView，右侧易露黑边。
    * 仅按 UA 型号匹配，避免影响其它华为机型。
@@ -257,6 +262,7 @@
       var iosClient = isLikelyIOSViewportClient();
       var androidClient = isLikelyAndroidViewportClient();
       var annAn00Client = androidClient && isHonorAnnAn00Client();
+      var honorPgtAn20Client = androidClient && isHonorPgtAn20Client();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
@@ -293,7 +299,13 @@
        */
       var useTopSafeInset = cordovaShell || iosClient || androidClient;
       var statusInsetCss = androidClient
-        ? (annAn00Client ? '32px' : (tallAndroidStatusBar ? '56px' : '24px'))
+        ? (honorPgtAn20Client
+            ? '36px'
+            : annAn00Client
+              ? '32px'
+              : tallAndroidStatusBar
+                ? '56px'
+                : '24px')
         : cordovaShell
           ? '48px'
           : iosClient
@@ -307,6 +319,9 @@
       }
       if (annAn00Client) {
         document.documentElement.classList.add('app-android-ann-an00');
+      }
+      if (honorPgtAn20Client) {
+        document.documentElement.classList.add('app-android-honor-pgt-an20');
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
@@ -377,6 +392,17 @@
           'html.app-android-xiaomi-14.app-top-safe-shell .notice-bar{top:calc(60px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .notice-bar{top:calc(53px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell{--app-shell-statusbar-top:36px !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .notice-bar{top:calc(58px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-pgt-an20.app-top-safe-shell .message-header-builtin{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
           'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
@@ -873,6 +899,36 @@
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };
   autoTrackJumpButtons();
+
+  (function injectPageLoadingAssets() {
+    if (isPublicPage()) {
+      return;
+    }
+    var page = currentPageName();
+    if (page === 'admin_panel.html') {
+      return;
+    }
+    window.__pageLoadingQueue = window.__pageLoadingQueue || [];
+    if (typeof window.showPageLoading !== 'function') {
+      window.showPageLoading = function () {
+        window.__pageLoadingQueue.push(['show']);
+      };
+      window.hidePageLoading = function () {
+        window.__pageLoadingQueue.push(['hide']);
+      };
+      window.forceHidePageLoading = function () {
+        window.__pageLoadingQueue.push(['force']);
+      };
+    }
+    window.__pageLoadingQueue.push(['show']);
+    if (!document.querySelector('script[data-app-page-loading-js]')) {
+      var s = document.createElement('script');
+      s.src = '/js/page-loading.js?v=20260521-nav';
+      s.setAttribute('data-app-page-loading-js', '1');
+      s.async = false;
+      document.head.appendChild(s);
+    }
+  })();
 
   if (!isPublicPage()) {
     if (!getToken()) {

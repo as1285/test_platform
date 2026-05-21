@@ -198,6 +198,28 @@
     return false;
   }
 
+  function isShouyePage() {
+    return !!(document.body && document.body.classList.contains('page-shouye'));
+  }
+
+  function finishPageLoadingAfterTheme() {
+    function notifyThemeDone() {
+      window.__appPageLoadingThemeDone = true;
+      if (typeof window.appPageLoadingDispatchThemeDone === 'function') {
+        window.appPageLoadingDispatchThemeDone();
+      }
+    }
+    if (isShouyePage() && typeof window.waitForPageElementImages === 'function') {
+      window.waitForPageElementImages(
+        ['assetShouyeBanner', 'assetShouyeZdfwdb', 'assetShouyeLb'],
+        notifyThemeDone,
+        10000
+      );
+      return;
+    }
+    notifyThemeDone();
+  }
+
   document.documentElement.setAttribute('data-app-theme', 'blue');
   document.documentElement.style.setProperty('--app-accent', '#1e6fff');
   document.documentElement.style.setProperty('--app-accent-mid', '#008afd');
@@ -214,5 +236,8 @@
         applyThemeAndStore(body.data);
       }
     })
-    .catch(function () {});
+    .catch(function () {})
+    .finally(function () {
+      finishPageLoadingAfterTheme();
+    });
 })();

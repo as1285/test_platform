@@ -2,83 +2,70 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-    <title>加载中</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+    <title>个人所得税</title>
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <style>
-        /* 与 iframe 内 H5 壳内白底一致，避免 iOS 叠层状态栏透出外层蓝色 */
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
-        html.app-huawei-pura70-shell,
-        html.app-huawei-pura70-shell body { background: #f5f6fa !important; }
-        #app-frame { border: 0; width: 100%; height: 100%; display: block; }
-        html.app-huawei-pura70-shell #app-frame { width: 100vw; max-width: 100%; }
-        /* WebView 启动层：按视口与安全区缩放，避免「大白屏中间一小点」 */
-        #startup-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 10;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
             background: #fff;
-            padding:
-                max(12px, env(safe-area-inset-top, 0px))
-                max(12px, env(safe-area-inset-right, 0px))
-                max(12px, env(safe-area-inset-bottom, 0px))
-                max(12px, env(safe-area-inset-left, 0px));
-            transition: opacity 0.25s ease;
         }
-        #startup-screen .startup-art {
+        html.app-huawei-pura70-shell,
+        html.app-huawei-pura70-shell body {
+            background: #f5f6fa !important;
+        }
+        /* 全屏启动图（与 start.png 同目录） */
+        #startPage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99999;
+            background: #fff;
+        }
+        #startPage img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             display: block;
-            width: auto;
-            height: auto;
-            max-width: min(94vw, 92vmin);
-            max-height: min(72vh, 72dvh, 88vmin);
-            object-fit: contain;
         }
-        #startup-screen.hide {
-            opacity: 0;
-            pointer-events: none;
+        #main {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        #main.is-ready {
+            display: block;
+        }
+        #app-frame {
+            border: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        html.app-huawei-pura70-shell #app-frame {
+            width: 100vw;
+            max-width: 100%;
         }
     </style>
     <script>
         (function () {
-            // 远程站点 URL。若可配置 HTTPS，建议改用 https://，iframe 内子页面也会更「干净」。
+            /* 启动页显示时长：1000=1秒，2000=2秒，3000=3秒 */
+            var START_PAGE_MS = 2000;
+
             var APP_ORIGIN = 'http://139.199.191.204/';
             if (!APP_ORIGIN || !/^https?:\/\//i.test(APP_ORIGIN)) {
-                document.body.innerHTML = '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 为实际站点 URL 后重新打包 APK。</p>';
+                document.body.innerHTML =
+                    '<p style="padding:24px;font-family:system-ui,sans-serif;color:#666;text-align:center">请编辑 <code>cordova-app/www/index.html</code> 中的 <code>APP_ORIGIN</code> 后重新打包 APK。</p>';
                 return;
             }
-            // 使用全屏 iframe 嵌入远程页，主文档仍停留在壳内资源，避免「整页跳转到 http」时
-            // WebView 在顶部对主框架显示「不安全」等系统级连接提示（与用 location.replace 打开不同）。
-            function mount() {
-                var f = document.createElement('iframe');
-                f.id = 'app-frame';
-                f.setAttribute('title', '应用');
-                f.setAttribute('importance', 'high');
-                f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-                f.src = APP_ORIGIN;
-                f.addEventListener('load', function () {
-                    var s = document.getElementById('startup-screen');
-                    if (s) {
-                        s.classList.add('hide');
-                        setTimeout(function () {
-                            if (s && s.parentNode) {
-                                s.parentNode.removeChild(s);
-                            }
-                        }, 300);
-                    }
-                });
-                document.body.appendChild(f);
-            }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', mount);
-            } else {
-                mount();
-            }
+
             function isCordovaXiaomi23127() {
                 var ua = navigator.userAgent || '';
                 return /TaxPlatformCordovaApp/i.test(ua) && /23127PN0CC|23127PN\b/i.test(ua);
@@ -95,6 +82,43 @@
             if (isHuaweiPura70Shell()) {
                 document.documentElement.classList.add('app-huawei-pura70-shell');
             }
+
+            function hideStartShowMain() {
+                var start = document.getElementById('startPage');
+                var main = document.getElementById('main');
+                if (start) {
+                    start.style.display = 'none';
+                }
+                if (main) {
+                    main.classList.add('is-ready');
+                }
+            }
+
+            function mountApp() {
+                var main = document.getElementById('main');
+                if (!main || document.getElementById('app-frame')) {
+                    return;
+                }
+                var f = document.createElement('iframe');
+                f.id = 'app-frame';
+                f.setAttribute('title', '应用');
+                f.setAttribute('importance', 'high');
+                f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+                f.src = APP_ORIGIN;
+                main.appendChild(f);
+            }
+
+            function boot() {
+                mountApp();
+                setTimeout(hideStartShowMain, START_PAGE_MS);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot);
+            } else {
+                boot();
+            }
+
             document.addEventListener('deviceready', function () {
                 if (!window.StatusBar) {
                     return;
@@ -106,7 +130,6 @@
                     return;
                 }
                 if (isCordovaXiaomi23127()) {
-                    /* 23127PN0CC / Android 16：避免透明沉浸式顶栏呈黑条，与 H5 蓝头一致 */
                     StatusBar.overlaysWebView(false);
                     StatusBar.backgroundColorByHexString('#1e6fff');
                     StatusBar.styleLightContent();
@@ -119,5 +142,10 @@
         })();
     </script>
 </head>
-<body><div id="startup-screen" aria-hidden="true"><img class="startup-art" src="splash.png" alt="" /></div></body>
+<body>
+    <div id="startPage" aria-hidden="false">
+        <img src="start.png" alt="启动图">
+    </div>
+    <div id="main"></div>
+</body>
 </html>

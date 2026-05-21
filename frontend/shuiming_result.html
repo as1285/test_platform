@@ -921,6 +921,11 @@
                     document.getElementById('recordList').innerHTML =
                         '<div class="list-empty">无法加载数据，请确认已登录且税务记录服务可用</div>';
                     syncRecordEmptyUi(false);
+                })
+                .finally(function () {
+                    if (typeof window.appPageLoadingDispatchDataDone === 'function') {
+                        window.appPageLoadingDispatchDataDone();
+                    }
                 });
         }
 
