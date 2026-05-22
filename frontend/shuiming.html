@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260520-shuiming-iphone16pro-top"></script>
+    <script src="/js/auth.js?v=20260522-shuiming-year-ref"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -128,17 +128,18 @@
             flex-shrink: 0;
         }
         
-        /* 年度选择：三栏 flex，左右箭头用 SVG，避免系统字体 > 粗细不一 */
+        /* 年度选择：三栏 flex（左标签 / 中年份居中 / 右箭头），与参考图一致 */
         .year-select {
             background: #fff;
             margin: 0;
             border-radius: 0;
-            padding: 14px var(--form-card-pad-x);
+            padding: 14px var(--form-card-pad-x, 16px);
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
             min-height: 48px;
+            box-sizing: border-box;
         }
         
         .year-label {
@@ -151,7 +152,7 @@
         .year-value {
             flex: 1;
             text-align: center;
-            color: #000000;
+            color: #000;
             font-size: 15px;
             font-weight: 400;
         }
@@ -169,9 +170,10 @@
         .year-chevron {
             width: 18px;
             height: 18px;
-            color: #cccccc;
+            color: #ccc;
             flex-shrink: 0;
         }
+
         .year-chevron path {
             stroke: currentColor;
             stroke-width: 1.5;
@@ -282,8 +284,9 @@
         }
         
         .query-btn-wrapper {
-            padding: 30px 0;
-            padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+            padding: 24px 16px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            background: #f5f6fa;
         }
         
         .query-btn {
@@ -292,12 +295,13 @@
             background: #1e6fff;
             color: #fff;
             border: none;
-            border-radius: 0;
+            border-radius: 6px;
             padding: 14px;
             font-size: 16px;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
         
         /* 日期选择器遮罩 */
@@ -473,13 +477,13 @@
         <div class="form-section-card form-section-card--first">
             <div class="form-section-card-title">请选择纳税年度</div>
             <div class="year-select" id="yearSelect">
-            <span class="year-label">年度</span>
-            <span class="year-value" id="yearDisplay">2026</span>
-            <span class="year-chevron-wrap" aria-hidden="true">
-                <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </span>
+                <span class="year-label">年度</span>
+                <span class="year-value" id="yearDisplay">2026</span>
+                <span class="year-chevron-wrap" aria-hidden="true">
+                    <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
             </div>
         </div>
         

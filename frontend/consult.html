@@ -1765,13 +1765,20 @@
             document.getElementById('f_tax_reported').value = r.tax_reported != null ? r.tax_reported : '0.00';
             document.getElementById('f_income_this_period').value = r.income_this_period != null ? r.income_this_period : '0.00';
             document.getElementById('f_tax_free_income').value = r.tax_free_income != null ? r.tax_free_income : '0.00';
-            document.getElementById('f_deduction_fee').value = r.deduction_fee != null ? r.deduction_fee : '5000.00';
+            var dfRaw = parseFloat(r.deduction_fee) || 5000;
+            var otherRaw = parseFloat(r.other_deduction) || 0;
+            if (otherRaw <= 0 && dfRaw > 5000) {
+                document.getElementById('f_deduction_fee').value = '5000.00';
+                document.getElementById('f_other_deduction').value = round2(dfRaw - 5000).toFixed(2);
+            } else {
+                document.getElementById('f_deduction_fee').value = r.deduction_fee != null ? r.deduction_fee : '5000.00';
+                document.getElementById('f_other_deduction').value = r.other_deduction != null ? r.other_deduction : '0.00';
+            }
             document.getElementById('f_special_deduction').value = r.special_deduction != null ? r.special_deduction : '0.00';
             document.getElementById('f_pension_insurance').value = r.pension_insurance != null ? r.pension_insurance : '0.00';
             document.getElementById('f_medical_insurance').value = r.medical_insurance != null ? r.medical_insurance : '0.00';
             document.getElementById('f_unemployment_insurance').value = r.unemployment_insurance != null ? r.unemployment_insurance : '0.00';
             document.getElementById('f_housing_fund').value = r.housing_fund != null ? r.housing_fund : '0.00';
-            document.getElementById('f_other_deduction').value = r.other_deduction != null ? r.other_deduction : '0.00';
             document.getElementById('f_donation_deduction').value = r.donation_deduction != null ? r.donation_deduction : '0.00';
         }
 
@@ -2865,7 +2872,8 @@
             o.income = String(inc);
             o.income_this_period = String(inc);
             o.tax_reported = String(w.tax);
-            o.deduction_fee = String(round2(5000 + w.specialAdd));
+            o.deduction_fee = '5000.00';
+            o.other_deduction = String(round2(w.specialAdd));
             o.special_deduction = String(w.specFour);
             o.pension_insurance = String(w.pension);
             o.medical_insurance = String(w.medical);

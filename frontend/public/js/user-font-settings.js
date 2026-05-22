@@ -38,8 +38,12 @@
         {
             id: 'summary',
             label: '汇总区',
+            /* 仅顶栏下 .summary 白底汇总两行；不含问号圆圈（.icon） */
             selectors:
-                '.top-fixed .summary-label, .top-fixed .summary-value, .top-fixed .summary-label span, .top-fixed .summary-help-with-colon'
+                'body.page-shuiming-result .top-fixed .summary .summary-label, ' +
+                'body.page-shuiming-result .top-fixed .summary .summary-value, ' +
+                'body.page-shuiming-result .top-fixed .summary .summary-label-text, ' +
+                'body.page-shuiming-result .top-fixed .summary .summary-colon'
         },
         {
             id: 'listTitle',
@@ -385,7 +389,16 @@
             var role = roleMap[rid];
             if (!role) return;
             var decl = [];
-            if (t.size) decl.push('font-size:' + t.size + ' !important');
+            if (t.size) {
+                decl.push('font-size:' + t.size + ' !important');
+                /* 汇总区随字号同步行高，避免顶栏下两行文字被裁切或挤在一起 */
+                if (rid === 'summary') {
+                    var px = parseFloat(String(t.size));
+                    if (!isNaN(px) && px > 0) {
+                        decl.push('line-height:' + Math.round(px * 1.43) + 'px !important');
+                    }
+                }
+            }
             if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
             if (t.color) decl.push('color:' + t.color + ' !important');
             if (!decl.length) return;

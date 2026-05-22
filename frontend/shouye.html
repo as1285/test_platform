@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260522-honor-ptp-an00-top"></script>
+    <script src="/js/auth.js?v=20260522-shouye-notice-flow2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>首页</title>
     <style>
@@ -23,11 +23,14 @@
             background: #f6f7fb;
         }
         
-        .shouye-header {
-            background: rgb(var(--shouye-top-bar-rgb));
+        /* 为固定搜索条留白；顶栏区用蓝色铺满，避免 padding 露出 #f6f7fb 白条 */
+        body.page-shouye .shouye-header {
+            margin-top: calc(-1 * var(--shouye-fixed-top-h, 52px));
+            padding-top: var(--shouye-fixed-top-h, 52px);
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
         
-        /* 搜索框容器 */
+        /* 搜索框容器：横幅在搜索条下方（非叠层），顶栏须始终铺蓝，避免首屏透明露灰底 */
         .search-bar-wrapper {
             position: fixed;
             top: 0;
@@ -37,13 +40,9 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 6px 12px 6px 14px;
-            background: transparent;
-            transition: background 0.3s ease;
-        }
-        
-        .search-bar-wrapper.scrolled {
-            background: rgb(var(--shouye-top-bar-rgb));
+            padding: 4px 12px 4px 14px;
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+            box-shadow: none;
         }
 
         /* iPhone 16 Pro：状态栏安全区与顶栏同色（auth.js 亦注入，此处兜底） */
@@ -58,21 +57,26 @@
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
 
-        html.app-top-safe-shell body.page-shouye .shouye-page {
-            padding-top: calc(50px + var(--app-shell-statusbar-top, 0px));
+        /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */
+        html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 6px;
+            padding-bottom: 6px;
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+            box-shadow: none;
         }
 
-        html.app-top-safe-shell body.page-shouye .notice-bar {
-            top: 52px;
+        html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper {
+            padding-top: calc(6px + var(--app-shell-statusbar-top, 32px));
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+            box-shadow: none;
         }
 
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .shouye-page {
-            padding-top: calc(54px + var(--app-shell-statusbar-top, 44px));
+        /* 内容区顶距由 JS 写入 --shouye-fixed-top-h，与固定搜索条等高 */
+        html.app-top-safe-shell body.page-shouye .shouye-page,
+        body.page-shouye .shouye-page {
+            padding-top: var(--shouye-fixed-top-h, 52px);
         }
 
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .notice-bar {
-            top: 48px;
-        }
         
         .search-bar {
             flex: 1;
@@ -128,20 +132,45 @@
             padding-bottom: var(--bottom-nav-clearance);
         }
         
-        /* 消息滚动条 */
-        .notice-bar {
-            position: absolute;
-            top: 57px;
-            left: 12px;
-            right: 12px;
+        /* 通知条独立占位 + 下边距；横幅图裁掉顶部蓝条，避免与通知条叠层重合 */
+        .shouye-banner-wrap {
+            position: relative;
+            margin-top: 0;
+        }
+
+        .shouye-banner-wrap .notice-bar {
+            position: relative;
+            margin: 2px 12px 14px;
             background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
             border-radius: 10px;
-            padding: 8px 16px;
+            padding: 7px 12px 7px 10px;
             display: flex;
             align-items: center;
-            z-index: 999;
+            z-index: 12;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+        }
+
+        html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            margin: 2px 12px 14px !important;
+        }
+
+        .shouye-banner-viewport {
+            position: relative;
+            overflow: hidden;
+            line-height: 0;
+        }
+
+        .shouye-banner-viewport img {
+            width: 100%;
+            display: block;
+            vertical-align: top;
+            transform: translateY(var(--shouye-banner-shift, 0));
+            will-change: transform;
         }
         
         .notice-icon {
@@ -258,9 +287,9 @@
         .sy-banner-zonghe-hit {
             position: absolute;
             left: 4%;
-            width: 68%;
-            top: 42%;
-            bottom: 10%;
+            width: 52%;
+            top: 38%;
+            height: 26%;
             z-index: 10;
             -webkit-tap-highlight-color: transparent;
             outline: none;
@@ -297,10 +326,7 @@
     
     <div class="shouye-page">
         <div class="shouye-header">
-            <div style="position: relative;">
-                <img id="assetShouyeBanner" src="sydb-v2.jpg?v=4" alt="首页">
-                <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
-                <!-- 消息滚动条 -->
+            <div class="shouye-banner-wrap">
                 <div class="notice-bar">
                     <div class="notice-icon" style="flex-shrink:0;"><img src="ld.png" style="width:21px;object-fit:contain;"></div>
                     <div class="notice-slider">
@@ -389,6 +415,10 @@
                     setTimeout(startScroll, 500);
                 })();
                 </script>
+                <div class="shouye-banner-viewport" id="shouyeBannerViewport">
+                    <img id="assetShouyeBanner" src="sydb-v2.jpg?v=8" alt="首页">
+                    <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
+                </div>
             </div>
             <div class="svc-cards-wrap">
                 <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=2" alt="置顶服务">
@@ -441,24 +471,116 @@
         </a>
     </div>
     <script>
-        // 监听滚动事件：固定搜索条底色随主题（蓝/金）渐显，与 .shouye-header 一致
+        // 顶栏主题色（蓝/金）与内容区顶距：横幅在搜索条下方，顶栏始终实色蓝
         var searchWrapper = document.querySelector('.search-bar-wrapper');
-        var scrollThreshold = 200;
 
         function shouyeTopBarRgb() {
             var raw = getComputedStyle(document.documentElement).getPropertyValue('--shouye-top-bar-rgb').trim();
             return raw || '44, 128, 244';
         }
 
-        function updateSearchBarScrollBg() {
-            var scrollY = window.scrollY || window.pageYOffset;
-            var opacity = Math.min(scrollY / scrollThreshold, 1);
-            searchWrapper.style.background = 'rgba(' + shouyeTopBarRgb() + ', ' + opacity + ')';
+        function updateSearchBarTopBg() {
+            if (!searchWrapper) return;
+            searchWrapper.style.background = 'rgb(' + shouyeTopBarRgb() + ')';
         }
 
-        window.addEventListener('scroll', updateSearchBarScrollBg);
-        window.addEventListener('mineUiConfig', updateSearchBarScrollBg);
-        updateSearchBarScrollBg();
+        window.addEventListener('mineUiConfig', function () {
+            updateSearchBarTopBg();
+            syncShouyeBannerCrop();
+        });
+        window.syncShouyeBannerCrop = syncShouyeBannerCrop;
+        updateSearchBarTopBg();
+
+        /** Web / Android / iOS：测量固定搜索条高度，内容区顶距与其一致，消除顶栏下灰白条 */
+        /** 裁掉 sydb 顶部蓝条（通知条已在图外独立占位，从白卡片处起显） */
+        var SHOUYE_BANNER_WHITE_RATIO = 0.315;
+
+        function syncShouyeBannerCrop() {
+            var img = document.getElementById('assetShouyeBanner');
+            var viewport = document.getElementById('shouyeBannerViewport');
+            if (!img || !viewport) {
+                return;
+            }
+            function apply() {
+                var fullH = img.offsetHeight || img.getBoundingClientRect().height || 0;
+                if (fullH <= 0) {
+                    return;
+                }
+                var shift = Math.round(fullH * SHOUYE_BANNER_WHITE_RATIO);
+                var visibleH = Math.max(0, fullH - shift);
+                img.style.transform = 'translateY(-' + shift + 'px)';
+                viewport.style.height = visibleH + 'px';
+                document.documentElement.style.setProperty('--shouye-banner-shift', (-shift) + 'px');
+            }
+            if (img.complete) {
+                apply();
+            } else {
+                img.addEventListener('load', apply, { once: true });
+            }
+            requestAnimationFrame(function () {
+                apply();
+                requestAnimationFrame(apply);
+            });
+        }
+
+        function syncShouyeTopPadding() {
+            var page = document.querySelector('.shouye-page');
+            if (!searchWrapper || !page) {
+                return;
+            }
+            var html = document.documentElement;
+            function apply() {
+                if (html.classList.contains('app-cordova-huawei-pura70')) {
+                    var vv = window.visualViewport;
+                    var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
+                    searchWrapper.style.paddingTop = (6 + topInset) + 'px';
+                }
+                var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
+                if (h > 0) {
+                    html.style.setProperty('--shouye-fixed-top-h', h + 'px');
+                    page.style.paddingTop = h + 'px';
+                }
+                syncShouyeBannerCrop();
+                window.scrollTo(0, 0);
+            }
+            apply();
+            requestAnimationFrame(function () {
+                apply();
+                requestAnimationFrame(apply);
+            });
+        }
+
+        function applyCordovaHuaweiShouyeChrome() {
+            if (!document.documentElement.classList.contains('app-cordova-huawei-pura70')) {
+                return;
+            }
+            var names = ['theme-color', 'msapplication-navbutton-color'];
+            for (var i = 0; i < names.length; i++) {
+                var el = document.querySelector('meta[name="' + names[i] + '"]');
+                if (!el) {
+                    el = document.createElement('meta');
+                    el.setAttribute('name', names[i]);
+                    document.head.appendChild(el);
+                }
+                el.setAttribute('content', '#2c80f4');
+            }
+        }
+
+        applyCordovaHuaweiShouyeChrome();
+        syncShouyeTopPadding();
+        window.addEventListener('load', syncShouyeTopPadding);
+        window.addEventListener('pageshow', function (ev) {
+            if (ev.persisted) {
+                syncShouyeTopPadding();
+            }
+        });
+        window.addEventListener('resize', function () {
+            syncShouyeTopPadding();
+            syncShouyeBannerCrop();
+        });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', syncShouyeTopPadding);
+        }
         
         // 更新底部导航图标状态
         function updateNavIcons() {

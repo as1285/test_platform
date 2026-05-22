@@ -18,9 +18,9 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260521-iphone12-17-promax-font"></script>
-    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260521-font-region3">
-    <script src="/js/user-font-settings.js?v=20260521-font-region3" data-scope=".page-root"></script>
+    <script src="/js/auth.js?v=20260522-ios-summary-icon"></script>
+    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260522-ios-summary-icon">
+    <script src="/js/user-font-settings.js?v=20260522-ios-summary-icon" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -173,29 +173,44 @@
             color: #000;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 0;
             flex: 1;
             min-width: 0;
+            line-height: 20px;
+        }
+
+        .summary-label-text {
+            flex-shrink: 0;
         }
 
         .summary-label .icon {
-            width: 16px;
-            height: 16px;
+            width: 13px;
+            height: 13px;
             border: 1px solid #0e60f1;
             border-radius: 50%;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 9px;
+            font-weight: 500;
             line-height: 1;
             color: #0e60f1;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            vertical-align: middle;
         }
 
-        /* 问号与冒号之间无 flex gap，标点紧贴图标 */
+        /* 问号与冒号紧贴；与「收入合计」仅留极小间距，贴近官方 */
         .summary-help-with-colon {
             display: inline-flex;
             align-items: center;
             gap: 0;
+            margin-left: 2px;
+            line-height: 20px;
+        }
+
+        .summary-help-with-colon .summary-colon {
+            line-height: 20px;
         }
 
         .summary-value {
@@ -204,6 +219,7 @@
             color: #111;
             letter-spacing: -0.02em;
             text-align: right;
+            line-height: 20px;
             min-width: 5.5em;
             white-space: nowrap;
             flex-shrink: 0;
@@ -300,10 +316,13 @@
             font-synthesis: none;
         }
 
+        /* iOS 汇总 16px：问号圆与字高一致（16×16），「?」字略小居中 */
         html.platform-ios .summary-label .icon {
-            width: 17px;
-            height: 17px;
-            font-size: 13px;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            font-size: 11px;
         }
 
         html.platform-ios .list-item {
@@ -341,7 +360,7 @@
         }
 
         /*
-         * iOS 16.x 等 Safari（PingFang）：汇总/列表主标题 font-weight 600 偏厚，本页统一降为 400；问号缩小。
+         * iOS 16.x 等 Safari（PingFang）：汇总/列表主标题 font-weight 600 偏厚，本页统一降为 400；问号与汇总字号同高（1em）。
          * 作用域仅限 page-shuiming-result，不影响其它页面。
          */
         html.platform-ios body.page-shuiming-result .header-title {
@@ -364,9 +383,11 @@
         }
 
         html.platform-ios body.page-shuiming-result .summary-label .icon {
-            width: 14px;
-            height: 14px;
-            font-size: 10px;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            font-size: 11px;
             flex-shrink: 0;
         }
 
@@ -464,6 +485,51 @@
             line-height: 1.4;
         }
 
+        /*
+         * 华为 CLS-AL00（Android 12 Cordova）：收入纳税明细顶栏 + 汇总区对齐官方稿
+         * UA: CLS-AL00 Build/HUAWEICLS-AL00 … TaxPlatformCordovaApp
+         */
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            letter-spacing: 0;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .back-btn {
+            font-size: 16px;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .header-right {
+            font-size: 15px;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-label,
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-value {
+            font-size: 15px;
+            line-height: 22px;
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: 0;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-help-with-colon,
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-help-with-colon .summary-colon {
+            line-height: 22px;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-label .icon {
+            width: 12px;
+            height: 12px;
+            font-size: 8px;
+            font-weight: 500;
+            border-width: 1px;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-item {
+            padding: 7px 0 10px;
+            margin-bottom: 2px;
+        }
+
         /* iPhone 11 Pro：顶栏标题、列表主标题（工资薪金）及汇总 PingFang 偏厚，单独降字重 */
         html.app-ios-iphone11pro body.page-shuiming-result .header-title {
             font-weight: 400;
@@ -484,13 +550,6 @@
             letter-spacing: -0.012em;
         }
 
-        /* iPhone 11 Pro：汇总「?」在 PingFang 下偏大，略缩小以贴近官方 */
-        html.app-ios-iphone11pro body.page-shuiming-result .summary-label .icon {
-            width: 14px;
-            height: 14px;
-            font-size: 10px;
-            flex-shrink: 0;
-        }
 
         /* iPhone 16 Pro：状态栏与顶栏/汇总区同为白底（auth.js 亦注入） */
         html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .page-root {
@@ -583,12 +642,15 @@
         html.app-ios-iphone-promax-font body.page-shuiming-result .summary-label,
         html.app-ios-iphone-promax-font body.page-shuiming-result .summary-value {
             font-size: 18px;
+            line-height: 25px;
         }
 
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label .icon,
         html.app-ios-iphone-promax-font body.page-shuiming-result .summary-label .icon {
             width: 18px;
             height: 18px;
+            min-width: 18px;
+            min-height: 18px;
             font-size: 12px;
         }
 
@@ -742,7 +804,7 @@
         <div class="summary">
             <div class="summary-item">
                 <span class="summary-label">
-                    <span>收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明">?</span>：</span>
+                    <span class="summary-label-text">收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明">?</span><span class="summary-colon">：</span></span>
                 </span>
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
