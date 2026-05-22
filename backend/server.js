@@ -1592,6 +1592,27 @@ function sumRowMoney(r, field) {
   return Number.isNaN(n) ? 0 : n;
 }
 
+/** 基本减除 5000 与专项附加扣除拆分（旧数据曾把专项附加并入 deduction_fee） */
+function splitBasicAndSpecialAdditionalDeduction(rec) {
+  const sub = String(rec.income_subtype || '').trim();
+  if (sub === '全年一次性奖金收入') {
+    return { basic: sumRowMoney(rec, 'deduction_fee'), specialAdditional: 0 };
+  }
+  const df = sumRowMoney(rec, 'deduction_fee');
+  const other = sumRowMoney(rec, 'other_deduction');
+  if (other > 0) {
+    return {
+      basic: Math.min(5000, df > 0 ? df : 5000),
+      specialAdditional: other
+    };
+  }
+  if (df > 5000) {
+    const sadd = Math.max(0, Math.round((df - 5000) * 100) / 100);
+    return { basic: Math.round((df - sadd) * 100) / 100, specialAdditional: sadd };
+  }
+  return { basic: df, specialAdditional: 0 };
+}
+
 function rowPeriodIncome(r) {
   if (r.income_this_period != null && String(r.income_this_period).trim() !== '') {
     return sumRowMoney(r, 'income_this_period');
@@ -1654,7 +1675,7 @@ async function getTaxCalculationData(userId, recordId) {
   let totalOther = 0;
   let totalDonation = 0;
   let totalTaxPaidBefore = 0;
-  /** 累计减除费用（基本减除，每月 5000 部分）与累计专项附加扣除（超出 5000 计入减除费用的部分），仅用于展示拆分 */
+  /** 累计减除费用（基本减除 5000）与累计专项附加扣除（other_deduction，旧数据从 deduction_fee 拆分） */
   let totalBasicDeductionFee = 0;
   let totalSpecialAdditionalFromFee = 0;
   const anchorMonth = month != null && !Number.isNaN(month) ? month : null;
@@ -1662,16 +1683,15 @@ async function getTaxCalculationData(userId, recordId) {
   rows.forEach(function (r) {
     totalIncome += rowPeriodIncome(r);
     totalTaxFree += sumRowMoney(r, 'tax_free_income');
-    const df = sumRowMoney(r, 'deduction_fee');
-    totalDeductionFee += df;
+    const split = splitBasicAndSpecialAdditionalDeduction(r);
+    totalDeductionFee += sumRowMoney(r, 'deduction_fee');
     totalSpecial += sumRowMoney(r, 'special_deduction');
     totalOther += sumRowMoney(r, 'other_deduction');
     totalDonation += sumRowMoney(r, 'donation_deduction');
     const sub = String(r.income_subtype || '').trim();
     if (sub !== '全年一次性奖金收入') {
-      const sadd = Math.max(0, Math.round((df - 5000) * 100) / 100);
-      totalSpecialAdditionalFromFee += sadd;
-      totalBasicDeductionFee += Math.round((df - sadd) * 100) / 100;
+      totalSpecialAdditionalFromFee += split.specialAdditional;
+      totalBasicDeductionFee += split.basic;
     }
     const m = r.month != null ? parseInt(r.month, 10) : null;
     if (anchorMonth != null && m != null && !Number.isNaN(m) && m < anchorMonth) {
@@ -1682,7 +1702,6 @@ async function getTaxCalculationData(userId, recordId) {
   const totalSpecialAdditional = totalSpecialAdditionalFromFee;
   const totalPersonalPension = 0;
 
-  /** 专项附加已并入 deduction_fee 时，不得再单独从应纳税所得额中扣减 total_special_additional */
   const taxable =
     totalIncome -
     totalTaxFree -
@@ -1742,9 +1761,15 @@ function formatTaxDetailResponse(rec, userIdStr) {
     tax_reported: formatTaxAmt(rec.tax_reported, '0.00'),
     income_this_period: formatTaxAmt(rec.income_this_period, '0.00'),
     tax_free_income: formatTaxAmt(rec.tax_free_income, '0.00'),
-    deduction_fee: formatTaxAmt(rec.deduction_fee, '5000.00'),
+    deduction_fee: (function () {
+      var sp = splitBasicAndSpecialAdditionalDeduction(rec);
+      return formatTaxAmt(sp.basic, '5000.00');
+    })(),
     special_deduction: formatTaxAmt(rec.special_deduction, '0.00'),
-    other_deduction: formatTaxAmt(rec.other_deduction, '0.00'),
+    other_deduction: (function () {
+      var sp = splitBasicAndSpecialAdditionalDeduction(rec);
+      return formatTaxAmt(sp.specialAdditional, '0.00');
+    })(),
     donation_deduction: formatTaxAmt(rec.donation_deduction, '0.00'),
     pension_insurance: formatTaxAmt(rec.pension_insurance, '0.00'),
     medical_insurance: formatTaxAmt(rec.medical_insurance, '0.00'),
@@ -5201,6 +5226,136 @@ async function handleAdminUserDataAnalytics(req, res) {
   }
 }
 
+const HIGH_SALARY_CHART_DEFAULT_MIN = 20000;
+
+function buildHighSalaryDistributionBuckets(values) {
+  var defs = [
+    { label: '2万–2.5万', min: 20000, max: 25000 },
+    { label: '2.5万–3万', min: 25000, max: 30000 },
+    { label: '3万–4万', min: 30000, max: 40000 },
+    { label: '4万–5万', min: 40000, max: 50000 },
+    { label: '5万以上', min: 50000, max: null }
+  ];
+  return defs.map(function (d) {
+    var count = 0;
+    values.forEach(function (v) {
+      if (v < d.min) return;
+      if (d.max != null && v >= d.max) return;
+      count++;
+    });
+    return { label: d.label, min: d.min, max: d.max, count: count };
+  });
+}
+
+function medianOfNumbers(nums) {
+  if (!nums || !nums.length) return null;
+  var s = nums.slice().sort(function (a, b) {
+    return a - b;
+  });
+  var mid = Math.floor(s.length / 2);
+  if (s.length % 2 === 1) return s[mid];
+  return Math.round(((s[mid - 1] + s[mid]) / 2) * 100) / 100;
+}
+
+async function handleAdminUserDataSalaryHighCharts(req, res) {
+  try {
+    var threshold = parseSalaryRangeFilterParam(req.query.min_salary);
+    if (threshold == null) threshold = HIGH_SALARY_CHART_DEFAULT_MIN;
+
+    const conn = await pool.getConnection();
+    var where = [];
+    var params = [];
+    appendAdminUserScope(where, params, req.admin, 'u.username');
+    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+
+    const [scopedWithTax] = await conn.query(
+      `SELECT DISTINCT u.username FROM users u
+       INNER JOIN tax_records tr ON tr.user_id = u.username` + scopeSql,
+      params
+    );
+    var scopedNames = scopedWithTax.map(function (r) {
+      return String(r.username);
+    });
+    var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
+
+    var highEarners = [];
+    scopedNames.forEach(function (uname) {
+      var sal = avgMaps[uname];
+      var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
+      if (v == null || !isFinite(v) || v < threshold) return;
+      highEarners.push({
+        username: uname,
+        avg_salary_6m: v,
+        salary_month_count: sal.salary_month_count || 0
+      });
+    });
+    highEarners.sort(function (a, b) {
+      return b.avg_salary_6m - a.avg_salary_6m;
+    });
+
+    var salaries = highEarners.map(function (e) {
+      return e.avg_salary_6m;
+    });
+    var sum = 0;
+    for (var i = 0; i < salaries.length; i++) {
+      sum += salaries[i];
+    }
+    var avgAll =
+      salaries.length > 0 ? Math.round((sum / salaries.length) * 100) / 100 : null;
+
+    var topCompanies = [];
+    if (highEarners.length) {
+      var highNames = highEarners.map(function (e) {
+        return e.username;
+      });
+      var ph = highNames.map(function () {
+        return '?';
+      }).join(',');
+      const [compRows] = await conn.query(
+        `SELECT NULLIF(TRIM(tr.company_name), '') AS name, COUNT(DISTINCT tr.user_id) AS user_count
+         FROM tax_records tr
+         WHERE tr.user_id IN (` +
+          ph +
+          `) AND NULLIF(TRIM(tr.company_name), '') IS NOT NULL
+         GROUP BY name ORDER BY user_count DESC, name ASC LIMIT 12`,
+        highNames
+      );
+      topCompanies = compRows.map(function (r) {
+        return { name: String(r.name), user_count: Number(r.user_count) || 0 };
+      });
+    }
+
+    conn.release();
+
+    var distBuckets = buildHighSalaryDistributionBuckets(salaries);
+    var topUsers = highEarners.slice(0, 12).map(function (e) {
+      return {
+        username: e.username,
+        avg_salary_6m: e.avg_salary_6m,
+        salary_month_count: e.salary_month_count
+      };
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        min_salary: threshold,
+        total_count: highEarners.length,
+        avg_salary: avgAll,
+        median_salary: medianOfNumbers(salaries),
+        max_salary: salaries.length ? Math.max.apply(null, salaries) : null,
+        min_salary_in_cohort: salaries.length ? Math.min.apply(null, salaries) : null,
+        salary_distribution: distBuckets,
+        top_companies: topCompanies,
+        top_users: topUsers
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminUserDataList(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -6805,7 +6960,8 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_activate_prompt_open',
   'track_activate_prompt_cancel',
   'track_activate_prompt_confirm',
-  'track_xianyu_purchase_click'
+  'track_xianyu_purchase_click',
+  'track_qq_add_click'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -6814,7 +6970,7 @@ ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
 });
 
 var ACTIVATE_TRACK_EVENT_SQL =
-  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click')";
+  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click' OR route_key LIKE '%#track_qq_add_click')";
 
 function isActivateTrackEventKey(eventKey) {
   return !!ACTIVATE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
@@ -6825,7 +6981,8 @@ function activateTrackEventLabel(eventKey) {
     track_activate_prompt_open: '激活弹窗打开',
     track_activate_prompt_cancel: '激活弹窗-取消',
     track_activate_prompt_confirm: '激活弹窗-确定',
-    track_xianyu_purchase_click: '闲鱼购买'
+    track_xianyu_purchase_click: '闲鱼购买',
+    track_qq_add_click: '添加QQ号'
   };
   return labels[eventKey] || eventKey;
 }
@@ -7550,6 +7707,12 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('user-data'),
   handleAdminUserDataAnalytics
+);
+app.get(
+  '/api/admin/user-data/salary-high/charts',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminUserDataSalaryHighCharts
 );
 app.get(
   '/api/admin/user-data/detail',
