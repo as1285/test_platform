@@ -268,14 +268,8 @@
             min-width: 0;
             display: flex;
             align-items: center;
-            cursor: pointer;
+            pointer-events: none;
             -webkit-tap-highlight-color: transparent;
-        }
-
-        .month-picker-hit:focus-visible {
-            outline: 2px solid #1677ff;
-            outline-offset: 2px;
-            border-radius: 4px;
         }
 
         .mp-title-wrap {
@@ -293,7 +287,7 @@
             left: 116px;
             top: 50%;
             transform: translateY(-50%);
-            z-index: 2;
+            z-index: 5;
             padding: 0;
             margin: 0;
             background: transparent;
@@ -303,18 +297,25 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* 透明 input 铺满整行，Android WebView 才能可靠弹出月份选择 */
         .month-picker-native {
             position: absolute;
-            width: 1px;
-            height: 1px;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
             padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
             border: 0;
             opacity: 0;
-            pointer-events: none;
+            z-index: 3;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            font-size: 16px;
         }
 
         .record-page {
@@ -547,7 +548,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260515-remark-line"></script>
+    <script src="/js/najilu.js?v=20260522-android-month"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

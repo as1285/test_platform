@@ -486,24 +486,28 @@
         clampOrder();
         rangeStartLabel.textContent = rangeStartInput.value;
       });
-      document.querySelectorAll('.month-picker-hit').forEach(function (lab) {
-        function openPicker(e) {
-          var fid = lab.getAttribute('for');
-          var inp = fid ? document.getElementById(fid) : null;
-          if (!inp) return;
+      document.querySelectorAll('.info-row-month-picker').forEach(function (row) {
+        var inp = row.querySelector('.month-picker-native');
+        if (!inp) return;
+        function enhanceMonthPicker(e) {
+          if (e && e.preventDefault) e.preventDefault();
+          inp.focus({ preventScroll: true });
           if (typeof inp.showPicker === 'function') {
-            e.preventDefault();
-            inp.focus();
             try {
               inp.showPicker();
             } catch (err) {}
           }
         }
-        lab.addEventListener('click', openPicker);
-        lab.addEventListener('keydown', function (e) {
-          if (e.key !== 'Enter' && e.key !== ' ') return;
-          openPicker(e);
-        });
+        if (typeof inp.showPicker === 'function') {
+          inp.addEventListener('click', enhanceMonthPicker);
+        }
+        var lab = row.querySelector('.month-picker-hit');
+        if (lab) {
+          lab.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            enhanceMonthPicker(e);
+          });
+        }
       });
       document.querySelectorAll('.info-row-month-picker .mp-help-btn').forEach(function (el) {
         el.addEventListener('click', function (e) {
