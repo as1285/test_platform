@@ -94,7 +94,7 @@
                     }
                     var leaveVal = item.leave_date;
                     if (!leaveVal && (item.status === '1' || item.status === 1)) {
-                        leaveVal = '在职';
+                        leaveVal = '-';
                     }
                     var statusText = (item.status === '1' || item.status === 1 || item.status === '在职') ? '在职' : '离职';
                     mount.innerHTML =

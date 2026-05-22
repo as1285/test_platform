@@ -176,7 +176,7 @@
                 var idAttr = escAttr(item.id);
                 var leaveVal = item.leave_date;
                 if (!leaveVal && (item.status === '1' || item.status === 1)) {
-                    leaveVal = '在职';
+                    leaveVal = '-';
                 }
                 html += '<div class="company-card" onclick="goDetail(\'' + idAttr + '\')" style="cursor:pointer;">';
                 html += '<div class="company-name">' + escapeHtml(item.company_name || '-') + '</div>';
