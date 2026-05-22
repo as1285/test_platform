@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <script src="/js/auth.js?v=20260522-register-track"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -152,6 +152,10 @@
                 return;
             }
 
+            if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction('track_register_submit', { page: 'register' });
+            }
+
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
 
@@ -168,6 +172,9 @@
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
+                        if (typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_register_success', { page: 'register' });
+                        }
                         if (d.token) {
                             localStorage.setItem('token', d.token);
                         }

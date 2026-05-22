@@ -1544,7 +1544,7 @@
             <div class="section-head-actions">
                 <div>
                     <h2>C端行为埋点</h2>
-                    <p class="hint" style="margin-top:8px;margin-bottom:0;">展示 C 端其它埋点（<code>track_jump_*</code> 页面跳转、<code>track_qq_add_click</code> 添加QQ、注册成功等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
+                    <p class="hint" style="margin-top:8px;margin-bottom:0;">展示 C 端其它埋点（<code>track_jump_*</code> 页面跳转、<code>track_qq_add_click</code> 添加QQ、<code>track_register_*</code>/<code>register_*</code> 注册等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
                 </div>
                 <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
             </div>
@@ -2212,7 +2212,16 @@
                 return { button: '—', page: '—' };
             }
             if (k === 'register_success') {
-                return { button: '注册提交按钮', page: '注册（register.html）' };
+                return { button: '注册成功', page: '注册（register.html，服务端入库）' };
+            }
+            if (k === 'register_submit') {
+                return { button: '注册提交', page: '注册（register.html，服务端收到请求）' };
+            }
+            if (k === 'track_register_submit') {
+                return { button: '注册提交按钮', page: '注册（register.html，前端点击）' };
+            }
+            if (k === 'track_register_success') {
+                return { button: '注册成功', page: '注册（register.html，前端收到成功）' };
             }
             if (k === 'track_activate_prompt_open') {
                 return { button: '激活弹窗打开', page: '我的/我要咨询（弹窗）' };

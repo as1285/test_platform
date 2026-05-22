@@ -929,6 +929,25 @@
     }).catch(function () {});
   }
 
+  /** 未登录也可上报（注册页等），走 auth.php#track_* */
+  function firePublicTrack(action, pagePath, meta) {
+    var act = sanitizeTrackKey(action);
+    if (!/^track_[a-z0-9_]{1,80}$/.test(act)) return;
+    var payload = { action: act };
+    if (meta && typeof meta === 'object') payload.meta = meta;
+    var headers = { 'Content-Type': 'application/json' };
+    if (typeof getClientDeviceHeaders === 'function') {
+      headers = Object.assign(headers, getClientDeviceHeaders());
+    }
+    headers['X-Page-Path'] = normalizeTrackPath(pagePath || '/event/' + act);
+    fetch('api/auth.php', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(function () {});
+  }
+
   function firstText(node) {
     if (!node) return '';
     var t = String(node.getAttribute && (node.getAttribute('aria-label') || node.getAttribute('title')) || '').trim();
@@ -992,6 +1011,9 @@
   window.buildClientDevicePayload = buildClientDevicePayload;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
+  };
+  window.trackPublicAction = function (action, meta) {
+    firePublicTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };
   autoTrackJumpButtons();
 

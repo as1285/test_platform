@@ -3989,6 +3989,9 @@ async function handleAuthPost(req, res) {
   var body = req.body || {};
   var action = body.action;
   try {
+    if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      return res.json({ code: 200, data: { ok: true } });
+    }
     if (action === 'admin_issue_code') {
       var adm = body.admin_key || req.headers['x-admin-key'];
       if (!ADMIN_ACTIVATION_KEY || adm !== ADMIN_ACTIVATION_KEY) {
@@ -4008,6 +4011,7 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
+      incrementApiDailyCounter('EVENT register_submit', '认证注册');
       var out = await registerUser(body.username, body.password);
       out.token = signAccessToken(out);
       return res.json({ code: 200, data: out });
