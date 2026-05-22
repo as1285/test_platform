@@ -250,6 +250,15 @@
     return /PGT-AN20/i.test(navigator.userAgent || '');
   }
 
+  /** 荣耀 Magic7 等（PTP-AN00 / Android 16 Cordova）顶部安全区与首页通知条 */
+  function isHonorPtpAn00Client() {
+    return /PTP-AN00/i.test(navigator.userAgent || '');
+  }
+
+  function isHonorMagicAndroidClient() {
+    return isHonorPgtAn20Client() || isHonorPtpAn00Client();
+  }
+
   /**
    * 华为 Pura 70 / P70 系列（如 HBN-AL00）：系统录屏画布常宽于 WebView，右侧易露黑边。
    * 仅按 UA 型号匹配，避免影响其它华为机型。
@@ -320,6 +329,8 @@
       var androidClient = isLikelyAndroidViewportClient();
       var annAn00Client = androidClient && isHonorAnnAn00Client();
       var honorPgtAn20Client = androidClient && isHonorPgtAn20Client();
+      var honorPtpAn00Client = androidClient && isHonorPtpAn00Client();
+      var honorMagicAndroidClient = androidClient && isHonorMagicAndroidClient();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
@@ -357,13 +368,15 @@
        */
       var useTopSafeInset = cordovaShell || iosClient || androidClient;
       var statusInsetCss = androidClient
-        ? (honorPgtAn20Client
-            ? '36px'
-            : annAn00Client
-              ? '32px'
-              : tallAndroidStatusBar
-                ? '56px'
-                : '24px')
+        ? (honorPtpAn00Client
+            ? '44px'
+            : honorPgtAn20Client
+              ? '36px'
+              : annAn00Client
+                ? '32px'
+                : tallAndroidStatusBar
+                  ? '56px'
+                  : '24px')
         : cordovaShell
           ? '48px'
           : iosClient
@@ -380,6 +393,12 @@
       }
       if (honorPgtAn20Client) {
         document.documentElement.classList.add('app-android-honor-pgt-an20');
+      }
+      if (honorPtpAn00Client) {
+        document.documentElement.classList.add('app-android-honor-ptp-an00');
+      }
+      if (honorMagicAndroidClient) {
+        document.documentElement.classList.add('app-android-honor-magic');
       }
       if (androidClient && isXiaomi14LikeClient()) {
         document.documentElement.classList.add('app-android-xiaomi-14');
@@ -448,22 +467,27 @@
           'html.app-android-client.app-top-safe-shell .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-top-safe-shell .notice-bar{top:calc(57px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(50px + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-top-safe-shell body.page-shouye .notice-bar{top:52px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell .notice-bar{top:calc(60px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(60px + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .notice-bar{top:52px !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-ann-an00.app-top-safe-shell .notice-bar{top:calc(53px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(53px + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .notice-bar{top:52px !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
           'html.app-android-honor-pgt-an20.app-top-safe-shell{--app-shell-statusbar-top:36px !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .notice-bar{top:calc(58px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-android-honor-pgt-an20.app-top-safe-shell .message-header-builtin{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-ptp-an00.app-top-safe-shell{--app-shell-statusbar-top:44px !important;}' +
+          'html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(54px + var(--app-shell-statusbar-top,44px)) !important;}' +
+          'html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .notice-bar{top:48px !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .message-header-builtin{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
           'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:transparent !important;overflow:visible;}' +
