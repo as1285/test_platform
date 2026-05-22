@@ -33,63 +33,14 @@
             width: 100%;
             display: block;
         }
-
-        .daiban-panel {
-            position: relative;
-            z-index: 2;
-            margin: -14px 0 0;
-            background: #fff;
-            border-radius: 16px 16px 0 0;
-            min-height: calc(100vh - 200px);
-        }
-
-        .daiban-tabs {
-            display: flex;
-            border-bottom: 1px solid #eee;
-        }
-
-        .daiban-tab {
-            flex: 1;
-            border: none;
-            background: none;
-            padding: 14px 8px 12px;
-            font-size: 16px;
-            color: #666;
-            font-family: inherit;
-            position: relative;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .daiban-tab.active {
-            color: #333;
-            font-weight: 600;
-        }
-
-        .daiban-tab.active::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 0;
-            transform: translateX(-50%);
-            width: 32px;
-            height: 3px;
-            background: #1e6fff;
-            border-radius: 2px;
-        }
     </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
 </head>
-<body>
+<body class="page-daiban">
     <div class="daiban-page">
         <div class="daiban-header">
-            <img id="assetDaibanHeader" src="daiban.jpg" alt="待办">
-        </div>
-        <div class="daiban-panel">
-            <div class="daiban-tabs" role="tablist">
-                <button type="button" class="daiban-tab active" data-tab="pending" role="tab" aria-selected="true">未办结</button>
-                <button type="button" class="daiban-tab" data-tab="done" role="tab" aria-selected="false">已办结</button>
-            </div>
+            <img id="assetDaibanHeader" src="daiban.jpg?v=2" alt="待办">
         </div>
     </div>
 
@@ -126,32 +77,6 @@
         </a>
     </div>
     <script>
-        (function () {
-            var tabs = document.querySelectorAll('.daiban-tab');
-
-            function setTab(name) {
-                tabs.forEach(function (btn) {
-                    var on = btn.getAttribute('data-tab') === name;
-                    btn.classList.toggle('active', on);
-                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
-                });
-            }
-
-            var tabFromUrl = '';
-            try {
-                tabFromUrl = new URLSearchParams(window.location.search).get('tab') || '';
-            } catch (e) {}
-            if (tabFromUrl === 'done' || tabFromUrl === 'pending') {
-                setTab(tabFromUrl);
-            }
-
-            tabs.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    setTab(btn.getAttribute('data-tab'));
-                });
-            });
-        })();
-
         function updateNavIcons() {
             var navItems = document.querySelectorAll('.bottom-nav .nav-item');
             navItems.forEach(function (item) {

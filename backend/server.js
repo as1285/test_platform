@@ -2246,8 +2246,9 @@ async function registerUser(username, password) {
     if (existing.length > 0) {
       throw new Error('该账号已注册');
     }
+    /* 管理后台需展示用户密码；默认存明文，仅当 REGISTER_STORE_PLAIN_PASSWORD=0 时关闭 */
     var storePlain =
-      String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '0') === '1' ? password : null;
+      String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
     await conn.execute(
       `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
        VALUES (?, ?, ?, ?, 0, ?, ?)`,
@@ -2283,11 +2284,25 @@ async function loginUser(username, password) {
   
   const rec = rows[0];
   const check = hashPassword(password, rec.salt);
-  conn.release();
-  
+
   if (check !== rec.hash) {
+    conn.release();
     throw new Error('账号或密码错误');
   }
+
+  /* 历史账号未存明文时，登录成功即回填，供管理后台展示 */
+  if (String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0') {
+    var plainCur = rec.plain_password != null ? String(rec.plain_password) : '';
+    if (plainCur !== password) {
+      try {
+        await conn.execute('UPDATE users SET plain_password = ? WHERE username = ?', [password, username]);
+      } catch (plainErr) {
+        console.warn('plain_password backfill failed for', username, plainErr.message);
+      }
+    }
+  }
+
+  conn.release();
 
   if (rec.banned === 1 || rec.banned === true) {
     throw new Error('账号已被封禁');
@@ -4870,7 +4885,12 @@ async function handleAdminUsers(req, res) {
             ? String(r.upline_admin_username).trim()
             : '',
         created_at: r.created_at ? r.created_at.toISOString() : '',
-        password: r.plain_password || (r.hash ? '历史账号(密文)' : '—'), // 统一返回明文或提示
+        password:
+          r.plain_password != null && String(r.plain_password).trim() !== ''
+            ? String(r.plain_password)
+            : r.hash
+              ? '—（未记录，用户再次登录后显示）'
+              : '—',
         distinct_ip_count: riskInfo.distinct_ip_count,
         device_count: riskInfo.device_count,
         risk: riskInfo.risk,

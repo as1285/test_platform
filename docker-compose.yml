@@ -37,6 +37,8 @@ services:
       # 管理后台登录（务必在生产修改密码）
       ADMIN_PANEL_USER: ${ADMIN_PANEL_USER:-admin}
       ADMIN_PANEL_PASSWORD: ${ADMIN_PANEL_PASSWORD:-640810}
+      # 用户注册/登录时写入 plain_password，供管理后台「用户管理」展示密码（设为 0 可关闭）
+      REGISTER_STORE_PLAIN_PASSWORD: ${REGISTER_STORE_PLAIN_PASSWORD:-1}
     ports:
       - "0.0.0.0:3000:3000"
     depends_on:

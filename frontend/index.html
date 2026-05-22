@@ -56,9 +56,9 @@
         }
         
         .avatar {
-            width: 90px;
-            height: 90px;
-            background: linear-gradient(180deg, #a8d4ff 0%, #e8f4ff 100%);
+            width: 96px;
+            height: 96px;
+            background: linear-gradient(180deg, #b8dcff 0%, #e8f4ff 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -103,28 +103,114 @@
             color: #999;
         }
         
-        .form-icon {
-            width: 20px;
-            height: 20px;
-            color: #ccc;
+        .form-help {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1.5px solid #1e6fff;
+            color: #1e6fff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 20px;
+            text-align: center;
             flex-shrink: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 滑块验证 */
+        .slider-section {
+            padding: 8px 24px 0;
+        }
+        .slider-lane {
+            position: relative;
+            height: 48px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .slider-hint {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            line-height: 48px;
+            text-align: center;
+            font-size: 15px;
+            color: #c0c0c0;
+            pointer-events: none;
+            user-select: none;
+        }
+        .slider-arrows {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 52px;
+            height: 48px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            cursor: grab;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slider-arrows:active {
+            cursor: grabbing;
+        }
+        .slider-arrows svg {
+            width: 26px;
+            height: 26px;
+            fill: #999;
+        }
+        .slider-arrows.verified {
+            background: #e8f5e9;
+        }
+        .slider-arrows.verified svg {
+            fill: #52c41a;
+        }
+
+        .login-aux {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px 0;
+            font-size: 15px;
+        }
+        .login-aux a {
+            color: #1e6fff;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-aux-sep {
+            color: #d0d0d0;
+            user-select: none;
         }
         
         /* 按钮区域 */
         .btn-section {
-            padding: 30px 24px 20px;
+            padding: 24px 24px 20px;
         }
         
         .login-btn {
             width: 100%;
             height: 48px;
-            background: #1e6fff;
+            background: #5aa3ff;
             border: none;
             border-radius: 24px;
             font-size: 17px;
             color: #fff;
             cursor: pointer;
             margin-bottom: 16px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-btn:disabled {
+            background: #b8d4f5;
+            cursor: not-allowed;
         }
         
         .register-btn {
@@ -134,7 +220,7 @@
             width: 100%;
             height: 48px;
             background: #fff;
-            border: 1px solid #e0e0e0;
+            border: 1px solid #1e6fff;
             border-radius: 24px;
             font-size: 17px;
             color: #1e6fff;
@@ -305,10 +391,7 @@
             <div class="form-item">
                 <span class="form-label">账号</span>
                 <input type="text" id="loginUsername" class="form-input" placeholder="手机号码/证件号码" autocomplete="username" value="">
-                <svg class="form-icon" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="#ccc" stroke-width="2"/>
-                    <text x="12" y="16" font-size="12" fill="#ccc" text-anchor="middle">?</text>
-                </svg>
+                <span class="form-help" id="loginAccountHelp" role="button" tabindex="0" aria-label="账号说明">?</span>
             </div>
             <div class="form-item">
                 <span class="form-label">密码</span>
@@ -316,9 +399,23 @@
             </div>
         </div>
 
+        <div class="slider-section">
+            <div class="slider-lane" id="loginSliderLane">
+                <span class="slider-hint" id="loginSliderHint">请按住滑块，拖动到最右边</span>
+                <div class="slider-arrows" id="loginSliderHandle" aria-label="拖动滑块完成验证">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6l8 6-8 6V6z"/><path d="M14 6l8 6-8 6V6z" opacity="0.85"/></svg>
+                </div>
+            </div>
+        </div>
+        <div class="login-aux">
+            <a href="javascript:void(0)" id="linkFaceLogin">扫脸登录</a>
+            <span class="login-aux-sep">|</span>
+            <a href="javascript:void(0)" id="linkForgotPwd">找回密码</a>
+        </div>
+
         <!-- 按钮区域 -->
         <div class="btn-section">
-            <button type="button" class="login-btn" onclick="doLogin()">登录</button>
+            <button type="button" class="login-btn" id="loginSubmitBtn" onclick="doLogin()" disabled>登录</button>
             <a href="register.html" class="register-btn">注册</a>
         </div>
     </div>
@@ -544,9 +641,105 @@
             window.location.href = 'index.html';
         });
 
+        function initLoginSlider() {
+            var lane = document.getElementById('loginSliderLane');
+            var handle = document.getElementById('loginSliderHandle');
+            var hint = document.getElementById('loginSliderHint');
+            var loginBtn = document.getElementById('loginSubmitBtn');
+            if (!lane || !handle || !hint || !loginBtn) return;
+
+            var maxX = 0;
+            var startLeft = 0;
+            var startClientX = 0;
+            var dragging = false;
+
+            function layout() {
+                maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth);
+            }
+            function setHandle(x) {
+                x = Math.max(0, Math.min(x, maxX));
+                handle.style.left = x + 'px';
+            }
+            function resetSlider() {
+                handle.style.left = '0px';
+                handle.classList.remove('verified');
+                hint.textContent = '请按住滑块，拖动到最右边';
+                hint.style.color = '#c0c0c0';
+                loginBtn.disabled = true;
+            }
+            function onPointerDown(e) {
+                if (handle.classList.contains('verified')) return;
+                dragging = true;
+                layout();
+                startLeft = handle.offsetLeft;
+                startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
+                e.preventDefault();
+            }
+            function onPointerMove(e) {
+                if (!dragging) return;
+                var cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                setHandle(startLeft + cx - startClientX);
+                e.preventDefault();
+            }
+            function onPointerUp() {
+                if (!dragging) return;
+                dragging = false;
+                layout();
+                if (handle.offsetLeft >= maxX - 2) {
+                    handle.classList.add('verified');
+                    hint.textContent = '验证通过';
+                    hint.style.color = '#52c41a';
+                    loginBtn.disabled = false;
+                } else {
+                    resetSlider();
+                }
+            }
+
+            handle.addEventListener('mousedown', onPointerDown);
+            handle.addEventListener('touchstart', onPointerDown, { passive: false });
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchend', onPointerUp);
+            document.addEventListener('touchcancel', onPointerUp);
+            window.addEventListener('resize', function () {
+                if (!handle.classList.contains('verified')) {
+                    layout();
+                    setHandle(handle.offsetLeft);
+                }
+            });
+            layout();
+            resetSlider();
+        }
+        initLoginSlider();
+
+        var loginAccountHelp = document.getElementById('loginAccountHelp');
+        if (loginAccountHelp) {
+            loginAccountHelp.addEventListener('click', function () {
+                alert('可使用手机号码或居民身份证号码作为账号登录。');
+            });
+        }
+        var linkFaceLogin = document.getElementById('linkFaceLogin');
+        if (linkFaceLogin) {
+            linkFaceLogin.addEventListener('click', function () {
+                alert('扫脸登录功能暂未开放，请使用账号密码登录。');
+            });
+        }
+        var linkForgotPwd = document.getElementById('linkForgotPwd');
+        if (linkForgotPwd) {
+            linkForgotPwd.addEventListener('click', function () {
+                alert('请联系管理员重置密码，或使用注册账号重新注册。');
+            });
+        }
+
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;
+            var loginBtn = document.getElementById('loginSubmitBtn');
+            if (loginBtn && loginBtn.disabled) {
+                alert('请先完成滑块验证');
+                return;
+            }
 
             if (!username) {
                 alert('请输入账号');
