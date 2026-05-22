@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260522-register-track"></script>
+    <script src="/js/auth.js?v=20260523-register-guard"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -119,6 +119,14 @@
                 <label>确认密码 <span class="req">*</span></label>
                 <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
             </div>
+            <div class="field">
+                <label>验证码 <span class="req">*</span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" style="flex:1;" autocomplete="off" required>
+                    <span id="captchaQuestion" style="flex-shrink:0;min-width:88px;font-size:15px;color:#1e6fff;font-weight:600;">加载中…</span>
+                    <button type="button" id="btnCaptchaRefresh" style="flex-shrink:0;padding:10px 12px;border:1px solid #d9d9d9;border-radius:10px;background:#fff;font-size:13px;color:#666;cursor:pointer;">换一题</button>
+                </div>
+            </div>
             <p class="hint" style="margin:-6px 0 14px;color:#666;line-height:1.5;">注册成功后账号为<strong>未激活</strong>状态；请登录后在<strong>个人中心</strong>右上角使用激活码开通。</p>
             <button type="button" class="btn-submit" id="btnSubmit">注 册</button>
         </form>
@@ -126,6 +134,8 @@
     </div>
 
     <script>
+        var regCaptchaId = '';
+
         function showErr(msg) {
             var el = document.getElementById('errBox');
             if (!msg) {
@@ -136,6 +146,41 @@
             el.textContent = msg;
             el.classList.add('show');
         }
+
+        function registerRequestHeaders() {
+            var h = { 'Content-Type': 'application/json' };
+            if (typeof getClientDeviceHeaders === 'function') {
+                h = Object.assign(h, getClientDeviceHeaders());
+            }
+            return h;
+        }
+
+        function loadRegisterCaptcha() {
+            return fetch('api/auth.php?action=register_captcha', { method: 'GET' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 200 && data.data) {
+                        regCaptchaId = data.data.captcha_id || '';
+                        var q = document.getElementById('captchaQuestion');
+                        if (q) q.textContent = data.data.question || '—';
+                        var ans = document.getElementById('captchaAnswer');
+                        if (ans) ans.value = '';
+                        return;
+                    }
+                    throw new Error(data.msg || '验证码加载失败');
+                });
+        }
+
+        loadRegisterCaptcha().catch(function () {
+            var q = document.getElementById('captchaQuestion');
+            if (q) q.textContent = '加载失败';
+        });
+
+        document.getElementById('btnCaptchaRefresh').addEventListener('click', function () {
+            loadRegisterCaptcha().catch(function () {
+                showErr('验证码加载失败，请稍后重试');
+            });
+        });
 
         document.getElementById('btnSubmit').addEventListener('click', function () {
             var username = document.getElementById('username').value.trim();
@@ -151,6 +196,11 @@
                 showErr('两次输入的密码不一致');
                 return;
             }
+            var captchaAns = document.getElementById('captchaAnswer').value.trim();
+            if (!regCaptchaId || !captchaAns) {
+                showErr('请填写验证码');
+                return;
+            }
 
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', { page: 'register' });
@@ -161,11 +211,13 @@
 
             fetch('api/auth.php', {
                 method: 'POST',
-                headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                headers: registerRequestHeaders(),
                 body: JSON.stringify({
                     action: 'register',
                     username: username,
-                    password: password
+                    password: password,
+                    captcha_id: regCaptchaId,
+                    captcha_answer: captchaAns
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -188,6 +240,7 @@
                         return;
                     }
                     showErr(data.msg || '注册失败');
+                    loadRegisterCaptcha().catch(function () {});
                 })
                 .catch(function () {
                     showErr('网络错误，请稍后重试');

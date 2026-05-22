@@ -1265,14 +1265,17 @@
                         <option value="0">当日无修改</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                     <button type="button" class="btn-page" id="btnResetUsers">重置</button>
+                    <button type="button" class="btn-page" id="btnPurgeBotsPreview" title="统计待清理的刷号账号">预览清理刷号</button>
+                    <button type="button" class="btn-sm btn-del-user" id="btnPurgeBotsRun" title="永久删除匹配的刷号账号">执行删除刷号</button>
                 </div>
                 </div>
             </div>
             <p class="stat" id="userStat">加载中…</p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 取自登录记录与设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。</p>
+            <p class="stat" id="purgeBotsStat" style="display:none;"></p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。</p>
             <div class="scroll-x">
                 <table class="users-registry-table">
                     <thead>
@@ -4571,6 +4574,93 @@
             if (taxModReset) taxModReset.value = '';
             loadUsers(1);
         };
+
+        function purgeBotsPayload(dryRun) {
+            return {
+                dry_run: !!dryRun,
+                mode: 'delete',
+                start_bj: '2026-05-22 00:00:00',
+                end_bj: '2026-05-22 01:00:00',
+                only_eight_char: true,
+                only_inactive: true
+            };
+        }
+
+        function runPurgeBotsPreview() {
+            var stat = document.getElementById('purgeBotsStat');
+            if (stat) {
+                stat.style.display = 'block';
+                stat.textContent = '正在统计待清理刷号账号…';
+            }
+            adminFetch('api/admin/users/purge-bots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(purgeBotsPayload(true))
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (stat) stat.textContent = '预览失败：' + (j.msg || '');
+                        return;
+                    }
+                    var d = j.data;
+                    if (stat) {
+                        stat.textContent =
+                            '预览：' +
+                            (d.window ? d.window.start_bj + ' ~ ' + d.window.end_bj : '') +
+                            ' 内匹配 ' +
+                            (d.matched != null ? d.matched : 0) +
+                            ' 个账号（8位随机名、未激活）。点击「执行删除刷号」将永久删除。';
+                    }
+                })
+                .catch(function () {
+                    if (stat) stat.textContent = '预览失败（网络错误）';
+                });
+        }
+
+        function runPurgeBotsExecute() {
+            var stat = document.getElementById('purgeBotsStat');
+            if (
+                !confirm(
+                    '确定永久删除 2026-05-22 00:00–01:00（北京）内、8位随机字母数字账号名且未激活的刷号账号？\n此操作不可恢复，建议先点「预览清理刷号」。'
+                )
+            ) {
+                return;
+            }
+            if (stat) {
+                stat.style.display = 'block';
+                stat.textContent = '正在批量删除，请稍候…';
+            }
+            adminFetch('api/admin/users/purge-bots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(purgeBotsPayload(false))
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        alert(j.msg || '删除失败');
+                        if (stat) stat.textContent = '删除失败：' + (j.msg || '');
+                        return;
+                    }
+                    var d = j.data;
+                    if (stat) {
+                        stat.textContent =
+                            '已删除 ' + (d.deleted != null ? d.deleted : 0) + ' 个账号（匹配 ' + (d.matched != null ? d.matched : 0) + '）。';
+                    }
+                    alert('清理完成：已删除 ' + (d.deleted != null ? d.deleted : 0) + ' 个账号');
+                    loadUsers(1);
+                })
+                .catch(function () {
+                    alert('网络错误');
+                    if (stat) stat.textContent = '删除失败（网络错误）';
+                });
+        }
+
+        var btnPurgeBotsPreview = document.getElementById('btnPurgeBotsPreview');
+        if (btnPurgeBotsPreview) btnPurgeBotsPreview.onclick = runPurgeBotsPreview;
+        var btnPurgeBotsRun = document.getElementById('btnPurgeBotsRun');
+        if (btnPurgeBotsRun) btnPurgeBotsRun.onclick = runPurgeBotsExecute;
 
         document.getElementById('codePrev').onclick = function() { if (codePage > 1) loadCodes(codePage - 1); };
         document.getElementById('codeNext').onclick = function() { loadCodes(codePage + 1); };

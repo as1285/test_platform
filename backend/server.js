@@ -10,6 +10,7 @@ const multer = require('multer');
 const geoip = require('geoip-lite');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
+const registerGuard = require('./register-guard');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -552,6 +553,7 @@ async function initDatabase() {
     });
     
     await createTables();
+    registerGuard.initRegisterGuard(pool);
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -937,6 +939,8 @@ async function createTables() {
       INDEX idx_u_d (username, activity_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await registerGuard.ensureRegisterGuardTables(conn);
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_login_events (
@@ -2217,10 +2221,12 @@ async function registerUser(username, password) {
     if (existing.length > 0) {
       throw new Error('该账号已注册');
     }
+    var storePlain =
+      String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '0') === '1' ? password : null;
     await conn.execute(
       `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
        VALUES (?, ?, ?, ?, 0, ?, ?)`,
-      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, password]
+      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, storePlain]
     );
     // 注册成功埋点（用于后台接口统计看转化）
     incrementApiDailyCounter('EVENT register_success', '认证注册');
@@ -3188,6 +3194,14 @@ function syncUserDeviceFromClientJson(req, username) {
     });
 }
 
+async function recordUserRegistrationAttempt(username, ok, req, reason) {
+  var uname = username != null && String(username).trim() !== '' ? String(username).trim() : '(register)';
+  await recordUserLoginAttempt(uname, ok, req, reason);
+  if (ok && username) {
+    await syncUserDeviceFromClientJson(req, String(username).trim());
+  }
+}
+
 async function recordUserLoginAttempt(username, ok, req, reason) {
   if (!pool || !username) {
     return;
@@ -3254,7 +3268,16 @@ function userLoginReasonLabel(reason) {
     invalid_credentials: '账号或密码错误',
     invalid_username: '账号格式错误',
     other_error: '其他错误',
-    unknown_error: '未知错误'
+    unknown_error: '未知错误',
+    register_ok: '注册成功',
+    'register_fail:duplicate': '注册-账号已存在',
+    'register_fail:rate_burst': '注册-频率过快',
+    'register_fail:rate_ip_day': '注册-IP日上限',
+    'register_fail:rate_fp_day': '注册-设备日上限',
+    'register_fail:backoff': '注册-失败退避',
+    'register_fail:captcha': '注册-验证码错误',
+    'register_fail:invalid_client': '注册-非官方客户端',
+    'register_fail:validation': '注册-参数校验失败'
   };
   return map[k] || k || '未知错误';
 }
@@ -3909,6 +3932,9 @@ app.get('/feedback.php', requireAuth, handleFeedbackGet);
 app.post('/feedback.php', requireAuth, handleFeedbackPost);
 
 async function handleAuthGet(req, res) {
+  if (req.query.action === 'register_captcha') {
+    return res.json({ code: 200, data: registerGuard.issueRegisterCaptcha() });
+  }
   if (req.query.action !== 'status') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
@@ -4011,10 +4037,51 @@ async function handleAuthPost(req, res) {
       });
     }
     if (action === 'register') {
+      var regUser = body.username != null ? String(body.username).trim() : '';
+      var regGuardKeys = null;
+      if (registerGuard.guardEnabled()) {
+        var clientChk = registerGuard.checkRegisterClient(req);
+        if (!clientChk.ok) {
+          await recordUserRegistrationAttempt(regUser, false, req, clientChk.reason);
+          return res.status(403).json({ code: 403, msg: clientChk.msg });
+        }
+        var rateChk = await registerGuard.checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint);
+        if (!rateChk.ok) {
+          await recordUserRegistrationAttempt(regUser, false, req, rateChk.reason);
+          return res.status(429).json({
+            code: 429,
+            msg: rateChk.msg,
+            retry_after_ms: rateChk.backoff_ms || 0
+          });
+        }
+        if (!registerGuard.verifyRegisterCaptcha(body.captcha_id, body.captcha_answer)) {
+          if (rateChk.keys) {
+            await registerGuard.markRegisterAttemptFail(rateChk.keys);
+          }
+          await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:captcha');
+          return res.status(400).json({ code: 400, msg: '验证码错误或已过期，请刷新后重试' });
+        }
+        regGuardKeys = rateChk.keys;
+      }
       incrementApiDailyCounter('EVENT register_submit', '认证注册');
-      var out = await registerUser(body.username, body.password);
-      out.token = signAccessToken(out);
-      return res.json({ code: 200, data: out });
+      try {
+        var out = await registerUser(body.username, body.password);
+        if (regGuardKeys) {
+          await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
+        }
+        await recordUserRegistrationAttempt(out.username, true, req, 'register_ok');
+        out.token = signAccessToken(out);
+        return res.json({ code: 200, data: out });
+      } catch (regErr) {
+        if (regGuardKeys) {
+          await registerGuard.markRegisterAttemptFail(regGuardKeys);
+        }
+        var rMsg = regErr && regErr.message ? String(regErr.message) : '';
+        var rReason =
+          rMsg.indexOf('已注册') >= 0 ? 'register_fail:duplicate' : 'register_fail:validation';
+        await recordUserRegistrationAttempt(regUser, false, req, rReason);
+        throw regErr;
+      }
     }
     if (action === 'login') {
       var out2 = await loginUser(body.username, body.password);
@@ -4404,7 +4471,7 @@ function userLoginRiskIpUnionSubquery(usernameExpr) {
   return (
     '(SELECT TRIM(ip) AS ip_val FROM user_login_events WHERE username = ' +
     u +
-    " AND ok = 1 AND ip IS NOT NULL AND TRIM(ip) <> '' UNION ALL SELECT TRIM(ip_last) AS ip_val FROM user_devices WHERE username = " +
+    " AND ip IS NOT NULL AND TRIM(ip) <> '' AND (ok = 1 OR reason LIKE 'register_%') UNION ALL SELECT TRIM(ip_last) AS ip_val FROM user_devices WHERE username = " +
     u +
     " AND ip_last IS NOT NULL AND TRIM(ip_last) <> '')"
   );
@@ -4433,7 +4500,7 @@ async function buildUserLoginRiskMaps(conn, usernames) {
   var ipParams = uniq.concat(uniq);
   var [ipRows] = await conn.execute(
     'SELECT username, COUNT(DISTINCT ip_val) AS cnt FROM (' +
-      'SELECT username, TRIM(ip) AS ip_val FROM user_login_events WHERE ok = 1 AND username IN (' +
+      "SELECT username, TRIM(ip) AS ip_val FROM user_login_events WHERE (ok = 1 OR reason LIKE 'register_%') AND username IN (" +
       ph +
       ") AND ip IS NOT NULL AND TRIM(ip) <> '' UNION ALL " +
       'SELECT username, TRIM(ip_last) AS ip_val FROM user_devices WHERE username IN (' +
@@ -5943,6 +6010,51 @@ async function handleAdminUserTaxRecords(req, res) {
   }
 }
 
+/** 批量清理刷号机器人账号（默认：2026-05-22 00:00–01:00 北京、8位随机名、未激活） */
+async function handleAdminPurgeBotUsers(req, res) {
+  var body = req.body || {};
+  var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+  var mode = body.mode === 'ban' ? 'ban' : 'delete';
+  const conn = await pool.getConnection();
+  try {
+    var preview = await registerGuard.countBotPurgeCandidates(conn, body);
+    if (dryRun) {
+      conn.release();
+      return res.json({
+        code: 200,
+        data: {
+          dry_run: true,
+          matched: preview.count,
+          mode: mode,
+          window: preview.window
+        }
+      });
+    }
+    if (!preview.count) {
+      conn.release();
+      return res.json({ code: 200, data: { matched: 0, deleted: 0, banned: 0, mode: mode } });
+    }
+    await conn.beginTransaction();
+    var result = await registerGuard.purgeBotUsersBatch(conn, body, {
+      dry_run: false,
+      mode: mode,
+      batch_size: body.batch_size
+    });
+    await conn.commit();
+    conn.release();
+    return res.json({ code: 200, data: result });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rbErr) {
+      console.error(rbErr);
+    }
+    conn.release();
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 永久删除用户及其任职受雇、税务记录、消息（不可恢复） */
 async function handleAdminDeleteUser(req, res) {
   var body = req.body || {};
@@ -7427,6 +7539,7 @@ app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleA
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-type', requireAdminAuth, requireAdminMenu('users'), handleAdminUserType);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
+app.post('/api/admin/users/purge-bots', requireAdminAuth, requireAdminMenu('users'), handleAdminPurgeBotUsers);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
 app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
