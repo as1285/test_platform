@@ -556,6 +556,20 @@
             margin-top: 4px;
             line-height: 1.2;
         }
+        .ud-certificate-wrap {
+            margin: 8px 0 16px;
+            padding: 12px;
+            background: #fafafa;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .ud-certificate-wrap img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            background: #fff;
+        }
         .user-data-analytics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -3896,6 +3910,13 @@
                 html += '</tbody></table></div>';
             }
 
+            html +=
+                '<div style="margin:14px 0 6px;color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（管理端预览，含右下角公章；C 端用户下载版不含章）</span></div>';
+            html +=
+                '<div class="ud-certificate-wrap" id="ud_certificate_' +
+                esc(username).replace(/[^a-zA-Z0-9_-]/g, '_') +
+                '">正在生成凭证预览…</div>';
+
             html += '<div style="margin:10px 0 6px;color:#666;">个税记录（' + (data.tax_records || []).length + ' 条）</div>';
             if (!(data.tax_records || []).length) {
                 html += '<div style="color:#999;">暂无</div>';
@@ -3917,6 +3938,35 @@
             }
             html += '</div>';
             return html;
+        }
+
+        function mountUserDataCertificate(username, data) {
+            var safeKey = String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            var el = document.getElementById('ud_certificate_' + safeKey);
+            if (!el) return;
+            if (!data || !(data.tax_records || []).length) {
+                el.textContent = '暂无个税记录，无法生成凭证预览';
+                return;
+            }
+            if (!window.TaxIssueCertificate || typeof window.TaxIssueCertificate.renderDataUrl !== 'function') {
+                el.textContent = '凭证组件未加载，请刷新页面';
+                return;
+            }
+            try {
+                var app = window.TaxIssueCertificate.buildAppFromAdminDetail(data);
+                window.TaxIssueCertificate.renderDataUrl(app, { showStamp: true })
+                    .then(function (url) {
+                        el.innerHTML =
+                            '<img src="' +
+                            url +
+                            '" alt="纳税记录凭证（管理端）" title="管理端预览含公章">';
+                    })
+                    .catch(function (err) {
+                        el.textContent = (err && err.message) || '凭证生成失败';
+                    });
+            } catch (e) {
+                el.textContent = (e && e.message) || '凭证生成失败';
+            }
         }
 
         function loadUserDataList(p) {
@@ -4025,6 +4075,7 @@
                                         return;
                                     }
                                     box.innerHTML = buildUserDataDetailHtml(name, d.data);
+                                    mountUserDataCertificate(name, d.data);
                                 })
                                 .catch(function () {
                                     box.textContent = '网络错误';
@@ -5482,5 +5533,7 @@
         window.addEventListener('hashchange', applyAdminRoute);
         initAdminSession();
     </script>
+    <script src="/js/vendor/qrcode.min.js"></script>
+    <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>
 </html>

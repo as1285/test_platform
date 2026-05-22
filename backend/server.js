@@ -5374,6 +5374,30 @@ async function handleAdminUserDataDetail(req, res) {
         [username]
       );
 
+      var latestIssue = null;
+      try {
+        const [issueRows] = await conn.execute(
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code
+           FROM tax_issue_applications WHERE user_id = ? ORDER BY apply_time DESC LIMIT 1`,
+          [username]
+        );
+        if (issueRows.length) {
+          var ir = issueRows[0];
+          latestIssue = {
+            id: ir.id != null ? String(ir.id) : '',
+            apply_time: ir.apply_time ? String(ir.apply_time) : '',
+            period_start: ir.period_start != null ? String(ir.period_start) : '',
+            period_end: ir.period_end != null ? String(ir.period_end) : '',
+            record_no: ir.record_no != null ? String(ir.record_no) : '',
+            scope: ir.scope != null ? String(ir.scope) : '',
+            status: ir.status != null ? String(ir.status) : '',
+            query_code: ir.query_code != null ? String(ir.query_code) : ''
+          };
+        }
+      } catch (issueErr) {
+        console.error('user-data detail issue', issueErr);
+      }
+
       res.json({
         code: 200,
         data: {
@@ -5410,7 +5434,8 @@ async function handleAdminUserDataDetail(req, res) {
               tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
               tax_period: r.tax_period != null ? String(r.tax_period) : ''
             };
-          })
+          }),
+          latest_issue_application: latestIssue
         }
       });
     } finally {

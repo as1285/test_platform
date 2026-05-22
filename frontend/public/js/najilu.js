@@ -697,7 +697,9 @@
     }
   }
 
-  function renderCertificateDataUrl(app) {
+  function renderCertificateDataUrl(app, options) {
+    options = options || {};
+    var showStamp = options.showStamp === true;
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
 
@@ -831,7 +833,9 @@
       drawText(ctx, '开具机关（盖章）', width - 430, explainY + 138, { size: 20, color: '#555' });
       drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 205, { size: 20, color: '#555' });
       drawText(ctx, '当前第1页，共1页', width - 230, explainY + 265, { size: 18, color: '#555' });
-      drawStamp(ctx, width - 275, explainY + 126, stampAuthority(rows));
+      if (showStamp) {
+        drawStamp(ctx, width - 275, explainY + 126, stampAuthority(rows));
+      }
       return canvas.toDataURL('image/png');
     }
 
@@ -1092,14 +1096,76 @@
       });
   }
 
-  var view = getParam('view');
-  if (view === 'records') {
-    renderApplicationsPage();
-  } else if (view === 'preview') {
-    renderPreviewPage(getParam('id'));
-  } else if (view === 'verify') {
-    renderVerifyPage();
-  } else {
-    initForm();
+  /** 管理后台用户数据：由档案数据组装凭证 app 对象 */
+  function buildAppFromAdminDetail(data) {
+    data = data || {};
+    var user = data.user || {};
+    var records = normalizeRecords(
+      (data.tax_records || []).map(function (r) {
+        return {
+          year: r.year,
+          month: r.month,
+          company_name: r.company_name,
+          company_tax_id: r.company_tax_id,
+          tax_authority: r.tax_authority,
+          income: r.income,
+          tax_reported: r.tax_reported,
+          tax_period: r.tax_period,
+          income_type: r.income_type || '工资薪金所得',
+          remark: r.remark
+        };
+      })
+    );
+    var issue = data.latest_issue_application || null;
+    var yms = records.map(recordYm).filter(Boolean).sort();
+    var periodStart = issue && issue.period_start ? String(issue.period_start) : yms[0] || yearFirstYm();
+    var periodEnd = issue && issue.period_end ? String(issue.period_end) : yms[yms.length - 1] || todayYm();
+    var now = new Date();
+    var applyTime =
+      issue && issue.apply_time
+        ? String(issue.apply_time)
+        : fmtDateTime(now);
+    return {
+      id: issue && issue.id ? String(issue.id) : 'admin_' + String(user.username || 'user'),
+      record_no:
+        issue && issue.record_no
+          ? String(issue.record_no)
+          : 'ADM' + compactDate(now) + String(user.username || '').substring(0, 8),
+      query_code: issue && issue.query_code ? String(issue.query_code) : '',
+      apply_time: applyTime,
+      apply_date_compact: compactDate(new Date(applyTime.replace(/-/g, '/') || Date.now())),
+      period_start: periodStart,
+      period_end: periodEnd,
+      scope: issue && issue.scope ? String(issue.scope) : '全国',
+      status: issue && issue.status ? String(issue.status) : '制作成功',
+      user: {
+        real_name: user.real_name || user.username || '',
+        tax_id: user.user_tax_id || user.tax_id || ''
+      },
+      records: records
+    };
+  }
+
+  function isNajiluPage() {
+    var p = String(window.location.pathname || '');
+    return /(?:^|\/)najilu\.html$/i.test(p);
+  }
+
+  window.TaxIssueCertificate = {
+    renderDataUrl: renderCertificateDataUrl,
+    buildAppFromAdminDetail: buildAppFromAdminDetail
+  };
+
+  if (isNajiluPage()) {
+    var view = getParam('view');
+    if (view === 'records') {
+      renderApplicationsPage();
+    } else if (view === 'preview') {
+      renderPreviewPage(getParam('id'));
+    } else if (view === 'verify') {
+      renderVerifyPage();
+    } else {
+      initForm();
+    }
   }
 })();
