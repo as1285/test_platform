@@ -303,6 +303,21 @@
     } catch (e) {}
   }
 
+  /** iOS 个人中心：状态栏区铺蓝、顶图上移填满安全区 */
+  function applyMinePageChrome() {
+    try {
+      if (!document.body || !document.body.classList.contains('page-mine')) {
+        return;
+      }
+      if (!isLikelyIOSViewportClient()) {
+        return;
+      }
+      upsertMeta('theme-color', '#2c80f4');
+      upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+    } catch (e) {}
+  }
+
   /** iPhone 16/17 Pro：白顶栏页状态栏与导航栏同色（覆盖全局蓝 theme-color） */
   function applyIPhone16ProPageChrome() {
     try {
@@ -423,6 +438,9 @@
       if (android25060RK16C) {
         document.documentElement.classList.add('app-android-25060rk16c');
       }
+      if (iosClient) {
+        document.documentElement.classList.add('app-ios-client');
+      }
       if (iosIPhone11Pro) {
         document.documentElement.classList.add('app-ios-iphone11pro');
       }
@@ -521,6 +539,12 @@
           'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          /* iOS 我的：顶图再上移，安全区用 env 与蓝底补条填满 */
+          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,48px) !important;--mine-ios-header-lift:12px;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 100%);z-index:8;pointer-events:none;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-header-lift,12px)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(10px + var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card{margin:-70px 16px 0 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:40px !important;}' +
@@ -608,8 +632,10 @@
   }
 
   setupMobileStatusBar();
+  applyMinePageChrome();
   applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyMinePageChrome);
     document.addEventListener('DOMContentLoaded', applyIPhone16ProPageChrome);
   }
 
