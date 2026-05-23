@@ -142,14 +142,24 @@
         return syncListAmountFields(rec);
     }
 
+    function setDesignView(on) {
+        document.body.classList.toggle('detail-design-mode', on);
+        var design = document.getElementById('detailDesignView');
+        if (design) {
+            design.setAttribute('aria-hidden', on ? 'false' : 'true');
+        }
+    }
+
     function setEditing(on) {
         document.body.classList.toggle('is-editing', on);
+        setDesignView(!on);
     }
 
     function enterEdit() {
         state.snapshot = JSON.parse(JSON.stringify(state.record));
         fillView(state.record);
         setEditing(true);
+        window.scrollTo(0, 0);
     }
 
     function cancelEdit() {
@@ -157,6 +167,7 @@
         fillView(state.record);
         setEditing(false);
         state.snapshot = null;
+        window.scrollTo(0, 0);
     }
 
     function saveEdit() {
@@ -167,6 +178,7 @@
         fillView(state.record);
         setEditing(false);
         state.snapshot = null;
+        window.scrollTo(0, 0);
     }
 
     function bindTabs() {
@@ -205,9 +217,14 @@
             state.tab = 'done';
         }
 
+        var backHref = 'shenbao_jilu.html?tab=' + encodeURIComponent(state.tab);
         var back = document.getElementById('detailBackBtn');
         if (back) {
-            back.href = 'shenbao_jilu.html?tab=' + encodeURIComponent(state.tab);
+            back.href = backHref;
+        }
+        var designBack = document.getElementById('designBackBtn');
+        if (designBack) {
+            designBack.href = backHref;
         }
 
         if (!state.id) {
@@ -229,6 +246,7 @@
 
         fillView(state.record);
         bindTabs();
+        setDesignView(true);
 
         document.getElementById('btnCorrect').addEventListener('click', enterEdit);
         document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
