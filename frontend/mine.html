@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-mine-official-layout"></script>
+    <script src="/js/auth.js?v=20260523-mine-header-user-card"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -39,16 +39,16 @@
         }
 
         html.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)) - 10px);
         }
 
         /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) + 8px);
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) - 2px);
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin: calc(-70px + 8px) 16px 0;
+            margin: calc(-88px + 8px) 12px 0;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
@@ -121,6 +121,8 @@
             width: 100%;
             display: block;
             vertical-align: top;
+            /* 顶图内头像区整体上移 */
+            margin-top: -10px;
         }
 
         .mine-activate-btn {
@@ -259,13 +261,13 @@
             padding-bottom: 12px;
         }
 
-        /* 米色个人信息卡：底边贴白面板顶边（与官方第二张参考图一致） */
+        /* 米色个人信息卡：与顶图上移后的叠放位置对齐 */
         .user-card {
-            background: #eed3aa;
-            margin: -70px 16px 0;
+            background: #fee6aa;
+            margin: -88px 12px 0;
             border-radius: 12px 12px 0 0;
             padding: 14px 0 14px 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
             overflow: hidden;
