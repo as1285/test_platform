@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-mine-menu-arrow-svg"></script>
+    <script src="/js/auth.js?v=20260523-mine-user-card-align"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -48,7 +48,7 @@
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin-top: calc(-76px + 8px);
+            margin: calc(-92px + 8px) 16px -12px;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
@@ -65,12 +65,12 @@
 
         /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper {
-            margin-top: -6px;
-            padding-top: 14px;
+            margin-top: -12px;
+            padding-top: 8px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
-            margin: -38px 16px 0;
+            margin: -46px 16px -10px;
             border-radius: 12px 12px 0 0;
             padding: 16px 14px 14px;
         }
@@ -252,17 +252,17 @@
         .content-wrapper {
             background: #f5f6fa;
             border-radius: 20px 20px 0 0;
-            margin-top: -20px;
+            margin-top: -32px;
             position: relative;
             z-index: 10;
-            padding-top: 6px;
+            padding-top: 0;
             padding-bottom: 12px;
         }
 
-        /* 米色用户信息卡：底部贴齐下方白区顶边，不留缝 */
+        /* 米色用户信息卡：底部贴齐下方白区顶边，负底边距拉上功能入口 */
         .user-card {
             background: #eed3aa;
-            margin: -76px 16px 0;
+            margin: -92px 16px -12px;
             border-radius: 12px 12px 0 0;
             padding: 14px 0 14px 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -380,7 +380,9 @@
             display: flex;
             justify-content: space-between;
             gap: 12px;
-            margin: 0 16px;
+            margin: -8px 16px 0;
+            position: relative;
+            z-index: 12;
         }
 
         .function-card {
