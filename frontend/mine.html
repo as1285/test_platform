@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260522-mine-menu-arrow"></script>
+    <script src="/js/auth.js?v=20260523-mine-menu-arrow-svg"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -264,7 +264,7 @@
             background: #eed3aa;
             margin: -70px 16px 9px;
             border-radius: 12px 12px 0 0;
-            padding: 14px 0 14px 14px;
+            padding: 14px 0 14px 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
@@ -521,20 +521,35 @@
             min-width: 0;
         }
 
-        /* 与官方一致：右箭头 #000、14px，贴菜单行右内边距对齐 */
+        /* 与参考图一致：右箭头纯黑 SVG，避免 iOS 上文字 > 发灰偏细 */
         .menu-arrow {
-            color: #000;
-            font-size: 14px;
-            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
             flex-shrink: 0;
+            margin-left: 2px;
+            color: #000;
         }
 
-        /* iOS：Safari 对文字「>」偏细，加粗并描边 */
-        html.app-top-safe-shell:not(.app-android-client) body.page-mine .menu-arrow,
-        html[class*="app-ios"] body.page-mine .menu-arrow {
-            font-weight: 700;
-            -webkit-text-stroke: 0.4px currentColor;
-            paint-order: stroke fill;
+        .menu-arrow svg {
+            width: 8px;
+            height: 14px;
+            display: block;
+        }
+
+        .menu-arrow svg path {
+            stroke: currentColor;
+            stroke-width: 1.75;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        html.app-top-safe-shell:not(.app-android-client) body.page-mine .menu-arrow svg path,
+        html[class*="app-ios"] body.page-mine .menu-arrow svg path {
+            stroke-width: 2;
         }
 
         /* 退出登录 */
@@ -622,11 +637,11 @@
         </div>
 
         <div class="menu-list">
-            <a class="menu-item" href="consult.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow">&gt;</span></a>
-            <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow">&gt;</span></a>
-            <a class="menu-item" href="consult.html?tab=feedback" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow">&gt;</span></a>
-            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow">&gt;</span></a>
-            <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow">&gt;</span></a>
+            <a class="menu-item" href="consult.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="consult.html?tab=feedback" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
         </div>
 
         <div class="logout-section">
