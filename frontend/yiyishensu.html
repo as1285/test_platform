@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>申诉记录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-icon { width: 9px; height: auto; display: block; }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            padding: 0 48px;
+            text-align: center;
+        }
+        .filters {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+        .filter-btn {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 6px;
+            font-size: 14px;
+            color: #333;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .filter-btn::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid #999;
+            margin-top: 2px;
+        }
+        .empty-wrap {
+            padding: 32px 16px 48px;
+        }
+        .empty-illustration {
+            max-width: min(480px, 88vw);
+            margin: 0 auto;
+        }
+        .empty-illustration img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .empty-text {
+            text-align: center;
+            color: #999;
+            font-size: 15px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body class="page-yiyishensu">
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">
+            <img src="jt.png" class="back-icon" alt="">
+            <span>返回</span>
+        </a>
+        <h1 class="header-title">申诉记录</h1>
+    </header>
+
+    <div class="filters">
+        <button type="button" class="filter-btn" data-filter="matter">申诉事项</button>
+        <button type="button" class="filter-btn" data-filter="type">申诉类型</button>
+        <button type="button" class="filter-btn" data-filter="status">申诉状态</button>
+    </div>
+
+    <div class="empty-wrap">
+        <div class="empty-illustration">
+            <img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">
+            <p class="empty-text">页面空空如也</p>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.filter-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var labels = { matter: '申诉事项', type: '申诉类型', status: '申诉状态' };
+                var k = btn.getAttribute('data-filter');
+                alert((labels[k] || '筛选') + '筛选功能开发中');
+            });
+        });
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>
