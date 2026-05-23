@@ -79,6 +79,7 @@ COPY lb.jpg /usr/share/nginx/html/
 COPY ld.png /usr/share/nginx/html/
 COPY jt.png /usr/share/nginx/html/
 COPY message_item_icon.png /usr/share/nginx/html/
+COPY msg_clear_unread_icon.png /usr/share/nginx/html/
 COPY sydb-v2.jpg /usr/share/nginx/html/sydb-v2.jpg
 COPY sydb-v2.jpg /usr/share/nginx/html/sydb.jpg
 COPY zdb.jpg /usr/share/nginx/html/
