@@ -97,6 +97,9 @@
             if (row.getAttribute('data-chev') === '1') {
                 valEl.classList.add('with-chev');
             }
+            if (row.getAttribute('data-expand') === '1') {
+                valEl.classList.add('with-expand');
+            }
             writeInput(key, rec[key]);
         });
     }

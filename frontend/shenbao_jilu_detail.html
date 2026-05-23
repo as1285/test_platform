@@ -92,31 +92,50 @@
             height: 16px;
             background: #1e6fff;
             border-radius: 2px;
+            flex-shrink: 0;
         }
         .card {
             background: #fff;
             margin-bottom: 10px;
             position: relative;
         }
-        .stamp-done {
-            position: absolute;
-            right: 16px;
-            top: 12px;
-            width: 72px;
-            height: 72px;
-            border: 2px solid #52c41a;
-            border-radius: 50%;
-            color: #52c41a;
-            font-size: 13px;
+        .payment-card {
+            padding-top: 2px;
+        }
+        .payment-card-head {
+            position: relative;
+            min-height: 44px;
+            padding: 12px 100px 4px 16px;
+        }
+        .section-title-inline {
+            font-size: 15px;
             font-weight: 600;
+            color: #333;
             display: flex;
             align-items: center;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.25;
-            transform: rotate(-12deg);
-            opacity: 0.9;
+            gap: 8px;
+        }
+        .section-title-inline::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: #1e6fff;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .stamp-done {
+            position: absolute;
+            right: 10px;
+            top: 2px;
+            width: 88px;
+            height: 88px;
             pointer-events: none;
+            z-index: 2;
+        }
+        .stamp-done svg {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
         .info-row {
             display: flex;
@@ -147,6 +166,23 @@
             content: '›';
             margin-left: 4px;
             color: #ccc;
+            font-size: 18px;
+            font-weight: 300;
+            vertical-align: middle;
+        }
+        .info-value.with-expand::after {
+            content: '▼';
+            margin-left: 4px;
+            color: #bbb;
+            font-size: 10px;
+            vertical-align: middle;
+        }
+        body.is-editing .info-value.with-chev::after,
+        body.is-editing .info-value.with-expand::after {
+            display: none;
+        }
+        body:not(.is-editing) .edit-only-field {
+            display: none;
         }
         .info-row input,
         .info-row select,
@@ -186,14 +222,15 @@
             display: inline-flex;
             width: 16px;
             height: 16px;
-            border: 1px solid #ccc;
+            border: 1px solid #1e6fff;
             border-radius: 50%;
             font-size: 11px;
-            color: #999;
+            color: #1e6fff;
             align-items: center;
             justify-content: center;
             margin-left: 4px;
             vertical-align: middle;
+            font-weight: 500;
         }
         .tab-placeholder {
             padding: 48px 24px;
@@ -210,34 +247,37 @@
             z-index: 40;
             background: #fff;
             border-top: 1px solid #eee;
-            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            padding: 0;
             display: flex;
-            gap: 10px;
+            gap: 0;
         }
         .footer-bar button {
             flex: 1;
             border: none;
-            border-radius: 8px;
-            padding: 13px;
+            border-radius: 0;
+            padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
             font-size: 16px;
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
+            background: #fff;
         }
         .btn-primary {
-            background: #fff;
             color: #1e6fff;
-            font-weight: 500;
+            font-weight: 400;
+            text-align: center;
         }
         body.is-editing .btn-primary { display: none; }
         .btn-save {
             display: none;
             background: #1e6fff;
             color: #fff;
+            font-weight: 500;
         }
         .btn-cancel {
             display: none;
-            background: #f5f6fa;
+            background: #fff;
             color: #333;
+            border-right: 1px solid #eee;
         }
         body.is-editing .btn-save,
         body.is-editing .btn-cancel { display: block; }
@@ -258,9 +298,20 @@
     </header>
 
     <div id="panelDeclare" class="panel active" role="tabpanel">
-        <div class="section-title">缴款信息</div>
-        <div class="card" id="paymentCard">
-            <div class="stamp-done" aria-hidden="true">申报<br>已完成</div>
+        <div class="card payment-card" id="paymentCard">
+            <div class="payment-card-head">
+                <div class="section-title-inline">缴款信息：</div>
+                <div class="stamp-done" aria-hidden="true">
+                    <svg viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="申报已完成">
+                        <g transform="translate(44 44) rotate(-16) translate(-44 -44)">
+                            <ellipse cx="44" cy="44" rx="36" ry="32" fill="none" stroke="#58b67a" stroke-width="2.2"/>
+                            <ellipse cx="44" cy="44" rx="31" ry="27" fill="none" stroke="#58b67a" stroke-width="1.2"/>
+                            <text x="44" y="39" text-anchor="middle" fill="#58b67a" font-size="14" font-weight="700" font-family="PingFang SC, Microsoft YaHei, sans-serif">申报</text>
+                            <text x="44" y="56" text-anchor="middle" fill="#58b67a" font-size="14" font-weight="700" font-family="PingFang SC, Microsoft YaHei, sans-serif">已完成</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
             <div class="info-row" data-field="supplementTax">
                 <span class="info-label">应补税额</span>
                 <span class="info-value" data-suffix="元"></span>
@@ -309,17 +360,17 @@
                 <span class="info-value"></span>
                 <input type="text" data-input="employer">
             </div>
-            <div class="info-row" data-field="title">
+            <div class="info-row edit-only-field" data-field="title">
                 <span class="info-label">申报事项</span>
                 <span class="info-value"></span>
                 <input type="text" data-input="title">
             </div>
-            <div class="info-row" data-field="groupMonth">
+            <div class="info-row edit-only-field" data-field="groupMonth">
                 <span class="info-label">列表分组（年-月）</span>
                 <span class="info-value"></span>
                 <input type="text" data-input="groupMonth">
             </div>
-            <div class="info-row" data-field="amountType">
+            <div class="info-row edit-only-field" data-field="amountType">
                 <span class="info-label">税额类型</span>
                 <span class="info-value"></span>
                 <select data-input="amountType">
@@ -328,7 +379,7 @@
                     <option value="paid">已缴税额</option>
                 </select>
             </div>
-            <div class="info-row" data-field="amount">
+            <div class="info-row edit-only-field" data-field="amount">
                 <span class="info-label">列表展示金额</span>
                 <span class="info-value" data-suffix="元"></span>
                 <input type="text" inputmode="decimal" data-input="amount">
@@ -347,7 +398,7 @@
                 <span class="info-value" data-suffix="元"></span>
                 <input type="text" inputmode="decimal" data-input="totalExpense">
             </div>
-            <div class="info-row" data-field="exemptIncome" data-chev="1">
+            <div class="info-row" data-field="exemptIncome" data-expand="1">
                 <span class="info-label">免税收入</span>
                 <span class="info-value" data-suffix="元"></span>
                 <input type="text" inputmode="decimal" data-input="exemptIncome">
@@ -415,6 +466,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260523-detail"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260523-detail"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260523-stamp-ui"></script>
 </body>
 </html>
