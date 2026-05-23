@@ -3,7 +3,7 @@
  */
 (function (global) {
     var AMOUNT_TYPES = {
-        refunded: '已退税额',
+        refunded: '应退税额',
         refundable: '可申请退税额',
         paid: '已缴税额'
     };
