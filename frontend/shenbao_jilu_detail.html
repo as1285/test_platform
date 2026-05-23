@@ -125,17 +125,18 @@
         }
         .stamp-done {
             position: absolute;
-            right: 10px;
-            top: 2px;
-            width: 88px;
-            height: 88px;
+            right: 8px;
+            top: 0;
+            width: 96px;
+            height: 96px;
             pointer-events: none;
             z-index: 2;
         }
-        .stamp-done svg {
+        .stamp-done img {
             width: 100%;
             height: 100%;
             display: block;
+            object-fit: contain;
         }
         .info-row {
             display: flex;
@@ -302,14 +303,7 @@
             <div class="payment-card-head">
                 <div class="section-title-inline">缴款信息：</div>
                 <div class="stamp-done" aria-hidden="true">
-                    <svg viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="申报已完成">
-                        <g transform="translate(44 44) rotate(-16) translate(-44 -44)">
-                            <ellipse cx="44" cy="44" rx="36" ry="32" fill="none" stroke="#58b67a" stroke-width="2.2"/>
-                            <ellipse cx="44" cy="44" rx="31" ry="27" fill="none" stroke="#58b67a" stroke-width="1.2"/>
-                            <text x="44" y="39" text-anchor="middle" fill="#58b67a" font-size="14" font-weight="700" font-family="PingFang SC, Microsoft YaHei, sans-serif">申报</text>
-                            <text x="44" y="56" text-anchor="middle" fill="#58b67a" font-size="14" font-weight="700" font-family="PingFang SC, Microsoft YaHei, sans-serif">已完成</text>
-                        </g>
-                    </svg>
+                    <img src="shenbao_stamp_done.png" width="96" height="96" alt="申报已完成">
                 </div>
             </div>
             <div class="info-row" data-field="supplementTax">
@@ -466,6 +460,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260523-detail"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260523-stamp-ui"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260523-stamp-png"></script>
 </body>
 </html>
