@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-mine-header-user-card"></script>
+    <script src="/js/auth.js?v=20260523-mine-official-ui"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -24,14 +24,17 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 顶部背景图：头像已经包含在 grdb/nx 这张整图里，不再额外叠头像层 */
+        /* 顶区：状态栏白底 + 蓝底图 + 卡底约 10px 蓝缝 + 个人信息卡 */
         .header-bg {
             position: relative;
             width: 100%;
-            overflow: hidden;
+            overflow: visible;
             --mine-safe-top: env(safe-area-inset-top, 0px);
-            /* 与 grdb/nx 顶图顶部蓝色接近，状态栏区不露灰底 */
-            background: linear-gradient(180deg, #5eb3ff 0%, #3d94f7 55%, #2d7ae8 100%);
+            padding-top: var(--mine-safe-top);
+            padding-bottom: 10px;
+            background:
+                linear-gradient(#fff, #fff) top / 100% var(--mine-safe-top) no-repeat,
+                linear-gradient(180deg, #5eb3ff 0%, #3d94f7 55%, #2d7ae8 100%);
         }
 
         html.app-top-safe-shell body.page-mine .header-bg {
@@ -39,16 +42,16 @@
         }
 
         html.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)) - 10px);
+            margin-top: -6px;
         }
 
         /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) - 2px);
+            margin-top: 2px;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin: calc(-88px + 8px) 12px 0;
+            margin: -64px 12px 0;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
@@ -64,14 +67,19 @@
         }
 
         /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
+            padding-top: 0;
+            padding-bottom: 10px;
+        }
+
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper {
-            margin-top: -6px;
-            padding-top: 14px;
+            margin-top: 0;
+            padding-top: 12px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
-            margin: -38px 16px 0;
-            border-radius: 12px 12px 0 0;
+            margin: -52px 12px 0;
+            border-radius: 12px;
             padding: 16px 14px 14px;
         }
 
@@ -86,9 +94,9 @@
 
         /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
         html.app-android-xiaomi-14:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin-left: 0;
-            margin-right: 0;
-            border-radius: 0;
+            margin-left: 12px;
+            margin-right: 12px;
+            border-radius: 12px;
         }
 
         html.app-android-xiaomi-14 body.page-mine .function-cards {
@@ -121,8 +129,7 @@
             width: 100%;
             display: block;
             vertical-align: top;
-            /* 顶图内头像区整体上移 */
-            margin-top: -10px;
+            margin-top: -6px;
         }
 
         .mine-activate-btn {
@@ -250,24 +257,24 @@
             margin-right: auto;
         }
 
-        /* 官方布局：大白圆角面板承接功能入口与菜单（灰底仅在两侧露出） */
+        /* 白面板：与个人信息卡底边留约 10px 蓝底间隔（官方） */
         .content-wrapper {
             background: #fff;
-            border-radius: 20px 20px 0 0;
-            margin-top: -20px;
+            border-radius: 24px 24px 0 0;
+            margin-top: 0;
             position: relative;
             z-index: 10;
-            padding-top: 10px;
+            padding-top: 12px;
             padding-bottom: 12px;
         }
 
-        /* 米色个人信息卡：与顶图上移后的叠放位置对齐 */
+        /* 个人信息卡：暖杏色渐变、四角圆角，叠在顶图下沿 */
         .user-card {
-            background: #fee6aa;
-            margin: -88px 12px 0;
-            border-radius: 12px 12px 0 0;
+            background: linear-gradient(180deg, #fff1d6 0%, #ffe5a3 46%, #ffd78e 100%);
+            margin: -64px 12px 0;
+            border-radius: 12px;
             padding: 14px 0 14px 16px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 12px rgba(180, 120, 40, 0.12);
             position: relative;
             z-index: 11;
             overflow: hidden;
@@ -352,7 +359,7 @@
         }
 
         .personal-info-btn {
-            background: #edaa66;
+            background: rgba(240, 158, 72, 0.92);
             border: none;
             border-radius: 20px 0 0 20px;
             padding: 5px 12px 5px 14px;
@@ -578,9 +585,6 @@
     <div class="header-bg">
         <img id="headerImg" src="grdb.jpg" alt="个人中心">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
-    </div>
-
-    <div class="content-wrapper">
         <div class="user-card">
             <div class="user-info">
                 <div
@@ -608,7 +612,9 @@
                 <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             </div>
         </div>
+    </div>
 
+    <div class="content-wrapper">
         <div class="function-cards">
             <div class="function-card function-card--split">
                 <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
