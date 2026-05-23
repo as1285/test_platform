@@ -16,11 +16,15 @@
             position: relative;
             width: 100%;
             line-height: 0;
+            z-index: 1;
         }
         .page-hero-img {
             width: 100%;
             display: block;
             vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
         }
         .page-hero-hit {
             position: absolute;
@@ -28,27 +32,29 @@
             background: transparent;
             -webkit-tap-highlight-color: transparent;
             outline: none;
-            z-index: 2;
+            z-index: 10;
+            touch-action: manipulation;
+            cursor: pointer;
         }
         .page-hero-hit-back {
             left: 0;
             top: 0;
-            width: 28%;
-            height: 11%;
+            width: 30%;
+            height: 12%;
             min-height: 44px;
         }
-        /* 切图内「开始申报」「查看申报记录」按钮热区（相对 erji.jpg） */
+        /* erji.jpg 整页切图：开始申报 / 查看申报记录 */
         .page-hero-hit-start,
         .page-hero-hit-records {
-            left: 8%;
-            width: 84%;
-            height: 9%;
+            left: 6%;
+            width: 88%;
+            height: 10%;
         }
         .page-hero-hit-start {
-            top: 63%;
+            top: 60%;
         }
         .page-hero-hit-records {
-            top: 74%;
+            top: 72%;
         }
         html.app-top-safe-shell body.page-zonghe {
             padding-top: 0;
@@ -59,8 +65,8 @@
 </head>
 <body class="page-zonghe">
     <div class="page-hero">
-        <img class="page-hero-img" src="erji.jpg" alt="综合所得年度汇算">
-        <a href="shouye.html" class="page-hero-hit page-hero-hit-back" aria-label="返回"></a>
+        <img class="page-hero-img" src="erji.jpg?v=2" alt="综合所得年度汇算">
+        <a href="bancha.html" class="page-hero-hit page-hero-hit-back" aria-label="返回"></a>
         <a href="shenbao_jilu.html" class="page-hero-hit page-hero-hit-start" aria-label="开始申报"></a>
         <a href="shenbao_jilu.html" class="page-hero-hit page-hero-hit-records" aria-label="查看申报记录"></a>
     </div>
