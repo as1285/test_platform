@@ -312,29 +312,35 @@
             font-size: 16px;
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
-            background: #fff;
         }
         .btn-primary {
+            display: block;
+            background: #fff;
             color: #1e6fff;
             font-weight: 400;
             text-align: center;
         }
-        body.is-editing .btn-primary { display: none; }
         .btn-save {
             display: none;
             background: #1e6fff;
             color: #fff;
             font-weight: 500;
+            text-align: center;
         }
         .btn-cancel {
             display: none;
             background: #fff;
             color: #333;
             border-right: 1px solid #eee;
+            text-align: center;
+        }
+        body.is-editing .btn-primary {
+            display: none;
         }
         body.is-editing .btn-save,
-        body.is-editing .btn-cancel { display: block; }
-        body.is-editing .btn-primary { display: none; }
+        body.is-editing .btn-cancel {
+            display: block;
+        }
     </style>
 </head>
 <body class="page-shenbao-detail detail-design-mode">
@@ -514,11 +520,11 @@
     <div class="footer-bar">
         <button type="button" class="btn-primary" id="btnCorrect">更正</button>
         <button type="button" class="btn-cancel" id="btnCancelEdit">取消</button>
-        <button type="button" class="btn-save" id="btnSaveEdit">保存</button>
+        <button type="button" class="btn-save" id="btnSaveEdit">确认保存</button>
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260523-correct-save"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260523-correct-save"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260523-save-btn"></script>
 </body>
 </html>
