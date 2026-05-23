@@ -345,6 +345,25 @@
             gap: 6px;
         }
 
+        /* iOS：纳税人识别号行略放大，避免系统字体偏小发虚 */
+        html.app-ios-client body.page-mine .user-id,
+        html[class*='app-ios'] body.page-mine .user-id {
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+
+        html.app-ios-client body.page-mine .tax-eye-btn,
+        html[class*='app-ios'] body.page-mine .tax-eye-btn {
+            width: 19px;
+            height: 19px;
+        }
+
+        html.app-ios-client body.page-mine .tax-eye-btn svg,
+        html[class*='app-ios'] body.page-mine .tax-eye-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+
         .tax-eye-btn {
             width: 18px;
             height: 18px;
