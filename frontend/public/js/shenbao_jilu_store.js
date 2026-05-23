@@ -9,9 +9,9 @@
     };
 
     var DETAIL_FIELD_DEFAULTS = {
-        supplementTax: '0.00',
+        supplementTax: '1632.86',
         lateFee: '0.00',
-        paidThisTime: '0.00',
+        paidThisTime: '1632.86',
         refundedThisTime: '0.00',
         taxAuthority: '国家税务总局昆明市税务局第一税务分局（重点税源企业税收服务和管理局）',
         employer: '云南白药集团股份有限公司',
@@ -37,7 +37,7 @@
             periodStart: '2025-01',
             periodEnd: '2025-12',
             amountType: 'refunded',
-            amount: '6109.82'
+            amount: '0.00'
         },
         {
             id: '2',
@@ -46,7 +46,7 @@
             periodStart: '2024-01',
             periodEnd: '2024-12',
             amountType: 'refunded',
-            amount: '16590.15'
+            amount: '0.00'
         },
         {
             id: '3',
@@ -55,7 +55,7 @@
             periodStart: '2023-01',
             periodEnd: '2023-12',
             amountType: 'refundable',
-            amount: '2400.00'
+            amount: '0.00'
         },
         {
             id: '4',
@@ -64,7 +64,7 @@
             periodStart: '2022-01',
             periodEnd: '2022-12',
             amountType: 'refundable',
-            amount: '60.00'
+            amount: '0.00'
         },
         {
             id: '5',
@@ -73,7 +73,7 @@
             periodStart: '2021-01',
             periodEnd: '2021-12',
             amountType: 'paid',
-            amount: '1450.86'
+            amount: '0.00'
         }
     ];
 
@@ -178,6 +178,30 @@
         return null;
     }
 
+    /** 详情页：使用设计稿默认税额，不受列表 0 元影响 */
+    function findRecordForDetail(tab, id) {
+        var r = findRecord(tab, id);
+        if (!r) {
+            return null;
+        }
+        if (r.detailCustomized) {
+            return enrichRecord(r, { preservePayment: true });
+        }
+        var out = Object.assign({}, DETAIL_FIELD_DEFAULTS, {
+            id: r.id,
+            groupMonth: r.groupMonth,
+            title: r.title,
+            periodStart: r.periodStart,
+            periodEnd: r.periodEnd,
+            amountType: r.amountType,
+            amount: r.amount,
+            taxAuthority: r.taxAuthority || DETAIL_FIELD_DEFAULTS.taxAuthority,
+            employer: r.employer || DETAIL_FIELD_DEFAULTS.employer
+        });
+        out.taxYear = taxYearFromRecord(r);
+        return out;
+    }
+
     function saveRecord(tab, record, opts) {
         var list = loadRecords(tab);
         var found = false;
@@ -192,17 +216,50 @@
         if (!found) {
             list.push(merged);
         }
+        merged.detailCustomized = true;
+        for (var j = 0; j < list.length; j++) {
+            if (String(list[j].id) === String(record.id)) {
+                list[j].detailCustomized = true;
+                break;
+            }
+        }
         saveRecords(tab, list);
         return list;
     }
 
     function amountLine(record) {
         var label = AMOUNT_TYPES[record.amountType] || AMOUNT_TYPES.refunded;
-        var val = record.amount != null ? String(record.amount).trim() : '0';
-        if (val && val.indexOf('元') === -1) {
-            val += '元';
-        }
-        return label + '：' + val;
+        return label + '：0.00元';
+    }
+
+    function zeroListAmountsOnce() {
+        try {
+            if (localStorage.getItem('shenbao_jilu_list_zero_v1') === '1') {
+                return;
+            }
+            ['done', 'void'].forEach(function (tab) {
+                var key = storageKey(tab);
+                var raw = localStorage.getItem(key);
+                if (!raw) {
+                    return;
+                }
+                var parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) {
+                    return;
+                }
+                var changed = false;
+                parsed.forEach(function (item) {
+                    if (item && String(item.amount) !== '0.00' && String(item.amount) !== '0') {
+                        item.amount = '0.00';
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    localStorage.setItem(key, JSON.stringify(parsed));
+                }
+            });
+            localStorage.setItem('shenbao_jilu_list_zero_v1', '1');
+        } catch (e) {}
     }
 
     function clearVoidTabSeedOnce() {
@@ -220,9 +277,11 @@
         loadRecords: loadRecords,
         saveRecords: saveRecords,
         findRecord: findRecord,
+        findRecordForDetail: findRecordForDetail,
         saveRecord: saveRecord,
         enrichRecord: enrichRecord,
         amountLine: amountLine,
-        clearVoidTabSeedOnce: clearVoidTabSeedOnce
+        clearVoidTabSeedOnce: clearVoidTabSeedOnce,
+        zeroListAmountsOnce: zeroListAmountsOnce
     };
 })(typeof window !== 'undefined' ? window : this);

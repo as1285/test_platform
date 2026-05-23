@@ -123,6 +123,7 @@
 
     function init() {
         Store.clearVoidTabSeedOnce();
+        Store.zeroListAmountsOnce();
         els.tabs = document.querySelectorAll('.tab');
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');

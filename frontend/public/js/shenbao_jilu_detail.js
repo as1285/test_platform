@@ -163,7 +163,7 @@
         var updated = collectForm();
         updated.id = state.id;
         Store.saveRecord(state.tab, updated, { preservePayment: true });
-        state.record = Store.findRecord(state.tab, state.id) || updated;
+        state.record = Store.findRecordForDetail(state.tab, state.id) || updated;
         fillView(state.record);
         setEditing(false);
         state.snapshot = null;
@@ -215,7 +215,8 @@
             return;
         }
 
-        state.record = Store.findRecord(state.tab, state.id);
+        state.record =
+            Store.findRecordForDetail(state.tab, state.id) || Store.findRecord(state.tab, state.id);
         if (!state.record) {
             window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
             return;
