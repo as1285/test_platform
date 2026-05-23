@@ -249,6 +249,9 @@
         if (!el || ev.defaultPrevented) {
           return;
         }
+        if (el.closest('[data-no-page-loading]')) {
+          return;
+        }
         if (el.tagName && el.tagName.toLowerCase() === 'a') {
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;

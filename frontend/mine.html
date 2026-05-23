@@ -1046,6 +1046,9 @@
             }
 
             function openMineConsultModifyModal() {
+                if (typeof window.forceHidePageLoading === 'function') {
+                    window.forceHidePageLoading();
+                }
                 var root = document.getElementById('mineConsultModifyModal');
                 if (root) root.classList.add('is-open');
             }
@@ -1311,6 +1314,9 @@
             function handleConsultMenuClick(e) {
                 e.preventDefault();
                 if (isInactiveAccount() && !hasTaxRecords()) {
+                    if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    }
                     confirmModifyTaxData();
                     return;
                 }
