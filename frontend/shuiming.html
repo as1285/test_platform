@@ -128,27 +128,18 @@
             flex-shrink: 0;
         }
         
-        /* 年度行：「年度」+ 年份左对齐（与标题文字起始线对齐），箭头靠右 */
+        /* 年度行：左「年度」、年份居中（与参考图红线位置）、右箭头 */
         .year-select {
+            position: relative;
             background: #fff;
             margin: 0;
             border-radius: 0;
             padding: 14px var(--form-card-pad-x, 16px);
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            gap: 0;
+            justify-content: space-between;
             min-height: 48px;
             box-sizing: border-box;
-        }
-
-        .year-select-main {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            min-width: 0;
-            /* 与 .form-section-card-title 文字起始对齐（蓝条 3px + 间距 8px） */
-            padding-left: 11px;
         }
         
         .year-label {
@@ -156,26 +147,31 @@
             font-weight: 400;
             color: #333;
             flex: 0 0 auto;
-            margin-right: 10px;
+            position: relative;
+            z-index: 1;
         }
         
         .year-value {
-            flex: 0 0 auto;
-            text-align: left;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
             color: #000;
             font-size: 15px;
             font-weight: 400;
+            pointer-events: none;
         }
         
         .year-chevron-wrap {
             flex: 0 0 auto;
             width: 28px;
             height: 28px;
-            margin-left: 8px;
+            margin-left: auto;
             display: flex;
             align-items: center;
             justify-content: center;
             pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
         
         .year-chevron {
@@ -488,10 +484,8 @@
         <div class="form-section-card form-section-card--first">
             <div class="form-section-card-title">请选择纳税年度</div>
             <div class="year-select" id="yearSelect">
-                <div class="year-select-main">
-                    <span class="year-label">年度</span>
-                    <span class="year-value" id="yearDisplay">2026</span>
-                </div>
+                <span class="year-label">年度</span>
+                <span class="year-value" id="yearDisplay">2026</span>
                 <span class="year-chevron-wrap" aria-hidden="true">
                     <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
