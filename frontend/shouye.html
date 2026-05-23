@@ -257,6 +257,19 @@
         .svc-hot-left { left: 0; width: 33.33%; }
         .svc-hot-mid { left: 33.33%; width: 33.33%; }
         .svc-hot-right { left: 66.66%; width: 33.34%; }
+        /* 重点服务推荐 · 专项附加扣除大横幅左半 → 收入纳税明细（高于三列热区，避免误跳汇算） */
+        .svc-zxk-banner-shuiming {
+            position: absolute;
+            z-index: 5;
+            left: 0;
+            width: 50%;
+            top: 10%;
+            height: 38%;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+            background: transparent;
+        }
 
         /* 轮播图内「重点服务推荐」三卡热区（相对 lb 图比例，与常见稿式对齐；若与设计稿有偏差可微调 top/height） */
         .shouye-lb-wrap {
@@ -435,6 +448,7 @@
             </div>
             <div class="svc-cards-wrap">
                 <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=2" alt="置顶服务">
+                <a href="shuiming.html?reset=1" class="svc-zxk-banner-shuiming" aria-label="收入纳税明细"></a>
                 <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
                 <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
                 <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
