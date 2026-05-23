@@ -657,6 +657,26 @@ async function createTables() {
       INDEX idx_bank_cards_user_id (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
+      user_id VARCHAR(255) NOT NULL,
+      tab VARCHAR(16) NOT NULL,
+      id VARCHAR(64) NOT NULL,
+      group_month VARCHAR(32) NULL,
+      title VARCHAR(255) NULL,
+      period_start VARCHAR(32) NULL,
+      period_end VARCHAR(32) NULL,
+      amount_type VARCHAR(32) NULL,
+      amount VARCHAR(64) NULL,
+      detail_json MEDIUMTEXT NULL,
+      detail_customized TINYINT NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, tab, id),
+      INDEX idx_shenbao_user_tab (user_id, tab)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
   
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS tax_records (
@@ -3897,6 +3917,377 @@ async function handleFeedbackPost(req, res) {
   }
 }
 
+var SHENBAO_DEFAULT_RECORDS = [
+  {
+    id: '1',
+    groupMonth: '2026-03',
+    title: '2025年度综合所得年度汇算',
+    periodStart: '2025-01',
+    periodEnd: '2025-12',
+    amountType: 'refunded',
+    amount: '0.00'
+  },
+  {
+    id: '2',
+    groupMonth: '2025-03',
+    title: '2024年度综合所得年度汇算',
+    periodStart: '2024-01',
+    periodEnd: '2024-12',
+    amountType: 'refunded',
+    amount: '0.00'
+  },
+  {
+    id: '3',
+    groupMonth: '2024-03',
+    title: '2023年度综合所得年度汇算',
+    periodStart: '2023-01',
+    periodEnd: '2023-12',
+    amountType: 'refundable',
+    amount: '0.00'
+  },
+  {
+    id: '4',
+    groupMonth: '2023-05',
+    title: '2022年度综合所得年度汇算',
+    periodStart: '2022-01',
+    periodEnd: '2022-12',
+    amountType: 'refundable',
+    amount: '0.00'
+  },
+  {
+    id: '5',
+    groupMonth: '2022-06',
+    title: '2021年度综合所得年度汇算',
+    periodStart: '2021-01',
+    periodEnd: '2021-12',
+    amountType: 'paid',
+    amount: '0.00'
+  }
+];
+
+var SHENBAO_DETAIL_FIELD_DEFAULTS = {
+  supplementTax: '1632.86',
+  lateFee: '0.00',
+  paidThisTime: '1632.86',
+  refundedThisTime: '0.00',
+  taxAuthority: '国家税务总局昆明市税务局第一税务分局（重点税源企业税收服务和管理局）',
+  employer: '云南白药集团股份有限公司',
+  totalIncome: '194168.17',
+  totalExpense: '0.00',
+  exemptIncome: '0.00',
+  basicDeduction: '60000.00',
+  specialDeduction: '21686.88',
+  specialAdditionalDeduction: '37000.00',
+  otherDeduction: '665.56',
+  donationDeduction: '0.00',
+  taxableIncome: '74815.73',
+  taxPayable: '4961.57',
+  taxReduction: '0.00',
+  taxPaid: '3328.71'
+};
+
+var SHENBAO_LIST_KEYS = {
+  id: 1,
+  groupMonth: 1,
+  title: 1,
+  periodStart: 1,
+  periodEnd: 1,
+  amountType: 1,
+  amount: 1,
+  detailCustomized: 1
+};
+
+function shenbaoTaxYearFromRecord(r) {
+  if (r.taxYear) {
+    return String(r.taxYear);
+  }
+  if (r.periodEnd && /^\d{4}/.test(String(r.periodEnd))) {
+    return String(r.periodEnd).slice(0, 4);
+  }
+  if (r.groupMonth && /^\d{4}/.test(String(r.groupMonth))) {
+    return String(r.groupMonth).slice(0, 4);
+  }
+  return '';
+}
+
+function shenbaoRecordFromRow(row) {
+  var detail = {};
+  if (row.detail_json) {
+    try {
+      detail = JSON.parse(row.detail_json);
+    } catch (e) {
+      detail = {};
+    }
+  }
+  return Object.assign(
+    {
+      id: row.id,
+      groupMonth: row.group_month || '',
+      title: row.title || '',
+      periodStart: row.period_start || '',
+      periodEnd: row.period_end || '',
+      amountType: row.amount_type || 'refunded',
+      amount: row.amount != null ? String(row.amount) : '0.00',
+      detailCustomized: !!row.detail_customized
+    },
+    detail
+  );
+}
+
+function shenbaoMergeDetailRecord(r) {
+  var out = Object.assign({}, SHENBAO_DETAIL_FIELD_DEFAULTS, r);
+  out.taxYear = shenbaoTaxYearFromRecord(r);
+  return out;
+}
+
+function shenbaoDesignDetailTemplate(r) {
+  var out = Object.assign({}, SHENBAO_DETAIL_FIELD_DEFAULTS, {
+    id: r.id,
+    groupMonth: r.groupMonth,
+    title: r.title,
+    periodStart: r.periodStart,
+    periodEnd: r.periodEnd,
+    amountType: r.amountType,
+    amount: r.amount,
+    taxAuthority: r.taxAuthority || SHENBAO_DETAIL_FIELD_DEFAULTS.taxAuthority,
+    employer: r.employer || SHENBAO_DETAIL_FIELD_DEFAULTS.employer
+  });
+  out.taxYear = shenbaoTaxYearFromRecord(r);
+  return out;
+}
+
+function shenbaoRecordForDetail(rec) {
+  if (!rec) {
+    return null;
+  }
+  if (rec.detailCustomized) {
+    return shenbaoMergeDetailRecord(rec);
+  }
+  return shenbaoDesignDetailTemplate(rec);
+}
+
+function shenbaoBuildDetailJson(record) {
+  var detail = {};
+  Object.keys(record || {}).forEach(function (k) {
+    if (!SHENBAO_LIST_KEYS[k]) {
+      detail[k] = record[k];
+    }
+  });
+  return JSON.stringify(detail);
+}
+
+function shenbaoNormalizeIncomingRecord(record) {
+  var rec = Object.assign({}, record || {});
+  rec.id = String(rec.id != null ? rec.id : '').trim();
+  if (!rec.id) {
+    return null;
+  }
+  rec.groupMonth = String(rec.groupMonth != null ? rec.groupMonth : '').trim();
+  rec.title = String(rec.title != null ? rec.title : '').trim();
+  rec.periodStart = String(rec.periodStart != null ? rec.periodStart : '').trim();
+  rec.periodEnd = String(rec.periodEnd != null ? rec.periodEnd : '').trim();
+  rec.amountType = String(rec.amountType != null ? rec.amountType : 'refunded').trim() || 'refunded';
+  var amt = String(rec.amount != null ? rec.amount : '0').replace(/元/g, '').trim() || '0.00';
+  rec.amount = amt;
+  rec.detailCustomized = rec.detailCustomized ? 1 : 0;
+  return rec;
+}
+
+async function upsertShenbaoRecordInConn(conn, userId, tab, record) {
+  var rec = shenbaoNormalizeIncomingRecord(record);
+  if (!rec) {
+    throw new Error('record.id required');
+  }
+  var detailJson = shenbaoBuildDetailJson(rec);
+  await conn.execute(
+    `INSERT INTO shenbao_jilu_records
+      (user_id, tab, id, group_month, title, period_start, period_end, amount_type, amount, detail_json, detail_customized)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+      group_month = VALUES(group_month),
+      title = VALUES(title),
+      period_start = VALUES(period_start),
+      period_end = VALUES(period_end),
+      amount_type = VALUES(amount_type),
+      amount = VALUES(amount),
+      detail_json = VALUES(detail_json),
+      detail_customized = VALUES(detail_customized)`,
+    [
+      String(userId),
+      tab,
+      rec.id,
+      rec.groupMonth,
+      rec.title,
+      rec.periodStart,
+      rec.periodEnd,
+      rec.amountType,
+      rec.amount,
+      detailJson,
+      rec.detailCustomized ? 1 : 0
+    ]
+  );
+  return rec;
+}
+
+async function seedShenbaoDefaultsIfEmpty(conn, userId, tab) {
+  if (tab !== 'done') {
+    return;
+  }
+  const [cntRows] = await conn.execute(
+    'SELECT COUNT(*) AS c FROM shenbao_jilu_records WHERE user_id = ? AND tab = ?',
+    [String(userId), tab]
+  );
+  var c = cntRows.length && cntRows[0].c != null ? Number(cntRows[0].c) : 0;
+  if (c > 0) {
+    return;
+  }
+  for (var i = 0; i < SHENBAO_DEFAULT_RECORDS.length; i++) {
+    await upsertShenbaoRecordInConn(conn, userId, tab, SHENBAO_DEFAULT_RECORDS[i]);
+  }
+}
+
+async function listShenbaoRecords(userId, tab) {
+  const conn = await pool.getConnection();
+  try {
+    await seedShenbaoDefaultsIfEmpty(conn, userId, tab);
+    const [rows] = await conn.execute(
+      `SELECT * FROM shenbao_jilu_records WHERE user_id = ? AND tab = ?
+       ORDER BY group_month DESC, id DESC`,
+      [String(userId), tab]
+    );
+    return rows.map(shenbaoRecordFromRow);
+  } finally {
+    conn.release();
+  }
+}
+
+async function getShenbaoRecord(userId, tab, id) {
+  const conn = await pool.getConnection();
+  try {
+    await seedShenbaoDefaultsIfEmpty(conn, userId, tab);
+    const [rows] = await conn.execute(
+      'SELECT * FROM shenbao_jilu_records WHERE user_id = ? AND tab = ? AND id = ? LIMIT 1',
+      [String(userId), tab, String(id)]
+    );
+    if (!rows.length) {
+      return null;
+    }
+    return shenbaoRecordFromRow(rows[0]);
+  } finally {
+    conn.release();
+  }
+}
+
+async function saveShenbaoRecord(userId, tab, record) {
+  var rec = shenbaoNormalizeIncomingRecord(record);
+  if (!rec) {
+    throw new Error('record.id required');
+  }
+  rec.detailCustomized = 1;
+  const conn = await pool.getConnection();
+  try {
+    await upsertShenbaoRecordInConn(conn, userId, tab, rec);
+    const [rows] = await conn.execute(
+      'SELECT * FROM shenbao_jilu_records WHERE user_id = ? AND tab = ? AND id = ? LIMIT 1',
+      [String(userId), tab, rec.id]
+    );
+    if (!rows.length) {
+      return shenbaoMergeDetailRecord(rec);
+    }
+    return shenbaoRecordForDetail(shenbaoRecordFromRow(rows[0]));
+  } finally {
+    conn.release();
+  }
+}
+
+async function batchSaveShenbaoRecords(userId, tab, records) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (var i = 0; i < records.length; i++) {
+      await upsertShenbaoRecordInConn(conn, userId, tab, records[i]);
+    }
+    await conn.commit();
+    return { count: records.length };
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+async function handleShenbaoJiluGet(req, res) {
+  var action = req.query.action;
+  var userId = req.authUserId;
+  if (!userId) {
+    return res.status(400).json({ code: 400, msg: 'user_id required' });
+  }
+  var tab = String(req.query.tab || 'done').trim();
+  if (tab !== 'done' && tab !== 'void') {
+    return res.status(400).json({ code: 400, msg: 'invalid tab' });
+  }
+  try {
+    if (action === 'list') {
+      var list = await listShenbaoRecords(userId, tab);
+      return res.json({ code: 200, data: { records: list } });
+    }
+    if (action === 'get') {
+      var id = String(req.query.id || '').trim();
+      if (!id) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      var row = await getShenbaoRecord(userId, tab, id);
+      if (!row) {
+        return res.status(404).json({ code: 404, msg: 'record not found' });
+      }
+      return res.json({ code: 200, data: { record: shenbaoRecordForDetail(row) } });
+    }
+    return res.status(400).json({ code: 400, msg: 'unknown action' });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleShenbaoJiluPost(req, res) {
+  var body = req.body || {};
+  var action = body.action;
+  var userId = req.authUserId;
+  if (!userId) {
+    return res.status(400).json({ code: 400, msg: 'user_id required' });
+  }
+  var tab = String(body.tab || 'done').trim();
+  if (tab !== 'done' && tab !== 'void') {
+    return res.status(400).json({ code: 400, msg: 'invalid tab' });
+  }
+  try {
+    if (action === 'save_record') {
+      var record = body.record;
+      if (!record || typeof record !== 'object') {
+        return res.status(400).json({ code: 400, msg: 'record required' });
+      }
+      var saved = await saveShenbaoRecord(userId, tab, record);
+      return res.json({ code: 200, data: { record: saved } });
+    }
+    if (action === 'batch_save') {
+      var records = body.records;
+      if (!Array.isArray(records) || !records.length) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (records.length > 100) {
+        return res.status(400).json({ code: 400, msg: '单次最多写入 100 条' });
+      }
+      var batchOut = await batchSaveShenbaoRecords(userId, tab, records);
+      return res.json({ code: 200, data: batchOut });
+    }
+    return res.status(400).json({ code: 400, msg: 'unknown action' });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -4044,6 +4435,10 @@ app.get('/api/feedback.php', requireAuth, handleFeedbackGet);
 app.post('/api/feedback.php', requireAuth, handleFeedbackPost);
 app.get('/feedback.php', requireAuth, handleFeedbackGet);
 app.post('/feedback.php', requireAuth, handleFeedbackPost);
+app.get('/api/shenbao_jilu.php', requireAuth, handleShenbaoJiluGet);
+app.post('/api/shenbao_jilu.php', requireAuth, handleShenbaoJiluPost);
+app.get('/shenbao_jilu.php', requireAuth, handleShenbaoJiluGet);
+app.post('/shenbao_jilu.php', requireAuth, handleShenbaoJiluPost);
 
 async function handleAuthGet(req, res) {
   if (req.query.action === 'register_captcha') {

@@ -107,7 +107,7 @@
     function syncListAmountFields(rec) {
         var amountFromForm = stripYuan(rec.amount);
         var typeFromForm = rec.amountType;
-        if (amountFromForm && typeFromForm) {
+        if (amountFromForm && typeFromForm && parseFloat(amountFromForm) > 0) {
             rec.amount = amountFromForm;
             rec.amountType = typeFromForm;
             return rec;
@@ -118,9 +118,12 @@
         if (refunded > 0) {
             rec.amountType = 'refunded';
             rec.amount = stripYuan(rec.refundedThisTime) || rec.amount;
-        } else if (paid > 0 || supplement > 0) {
+        } else if (supplement > 0) {
+            rec.amountType = 'refunded';
+            rec.amount = stripYuan(rec.supplementTax);
+        } else if (paid > 0) {
             rec.amountType = 'paid';
-            rec.amount = stripYuan(rec.paidThisTime || rec.supplementTax);
+            rec.amount = stripYuan(rec.paidThisTime);
         } else if (!rec.amountType) {
             rec.amountType = 'refundable';
             rec.amount = rec.amount || '0.00';
@@ -151,10 +154,7 @@
     }
 
     function shouldShowDesign() {
-        if (document.body.classList.contains('is-editing')) {
-            return false;
-        }
-        return !(state.record && state.record.detailCustomized);
+        return false;
     }
 
     function updateDisplayMode() {
@@ -162,9 +162,10 @@
     }
 
     function reloadRecord() {
-        state.record =
-            Store.findRecordForDetail(state.tab, state.id) || Store.findRecord(state.tab, state.id);
-        return state.record;
+        return Store.loadRecordForDetail(state.tab, state.id).then(function (rec) {
+            state.record = rec;
+            return rec;
+        });
     }
 
     function setEditing(on) {
@@ -177,11 +178,15 @@
     }
 
     function enterEdit() {
-        reloadRecord();
-        state.snapshot = JSON.parse(JSON.stringify(state.record));
-        fillView(state.record);
-        setEditing(true);
-        window.scrollTo(0, 0);
+        reloadRecord().then(function (rec) {
+            if (!rec) {
+                return;
+            }
+            state.snapshot = JSON.parse(JSON.stringify(state.record));
+            fillView(state.record);
+            setEditing(true);
+            window.scrollTo(0, 0);
+        });
     }
 
     function cancelEdit() {
@@ -193,15 +198,30 @@
     }
 
     function saveEdit() {
+        var btn = document.getElementById('btnSaveEdit');
+        if (btn) {
+            btn.disabled = true;
+        }
         var updated = collectForm();
         updated.id = state.id;
-        state.record = Store.saveRecord(state.tab, updated);
-        state.record.detailCustomized = true;
-        fillView(state.record);
-        setEditing(false);
-        state.snapshot = null;
-        updateDisplayMode();
-        window.scrollTo(0, 0);
+        Store.saveRecord(state.tab, updated)
+            .then(function (saved) {
+                state.record = saved;
+                state.record.detailCustomized = true;
+                fillView(state.record);
+                setEditing(false);
+                state.snapshot = null;
+                updateDisplayMode();
+                window.scrollTo(0, 0);
+            })
+            .catch(function (e) {
+                alert((e && e.message) || '保存失败');
+            })
+            .finally(function () {
+                if (btn) {
+                    btn.disabled = false;
+                }
+            });
     }
 
     function bindTabs() {
@@ -255,24 +275,29 @@
             return;
         }
 
-        Store.fixCorruptedDetailOnce();
-        if (!reloadRecord()) {
-            window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
-            return;
-        }
+        reloadRecord()
+            .then(function (rec) {
+                if (!rec) {
+                    window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
+                    return;
+                }
 
-        var stamp = document.querySelector('.stamp-done');
-        if (stamp) {
-            stamp.style.display = state.tab === 'done' ? '' : 'none';
-        }
+                var stamp = document.querySelector('.stamp-done');
+                if (stamp) {
+                    stamp.style.display = state.tab === 'done' ? '' : 'none';
+                }
 
-        fillView(state.record);
-        bindTabs();
-        updateDisplayMode();
+                fillView(state.record);
+                bindTabs();
+                updateDisplayMode();
 
-        document.getElementById('btnCorrect').addEventListener('click', enterEdit);
-        document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
-        document.getElementById('btnSaveEdit').addEventListener('click', saveEdit);
+                document.getElementById('btnCorrect').addEventListener('click', enterEdit);
+                document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
+                document.getElementById('btnSaveEdit').addEventListener('click', saveEdit);
+            })
+            .catch(function () {
+                window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
+            });
     }
 
     if (document.readyState === 'loading') {

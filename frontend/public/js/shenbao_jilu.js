@@ -51,9 +51,19 @@
         );
     }
 
+    function renderLoadError(msg) {
+        return (
+            '<div class="empty-wrap">' +
+            '<p class="empty-text">' +
+            esc(msg || '加载失败，请稍后重试') +
+            '</p></div>'
+        );
+    }
+
     var state = {
         tab: 'pending',
-        records: []
+        records: [],
+        loading: false
     };
 
     var els = {};
@@ -63,11 +73,18 @@
     }
 
     function goDetail(id) {
-        var url = 'shenbao_jilu_detail.html?id=' + encodeURIComponent(id) + '&tab=' + encodeURIComponent(state.tab);
+        var url =
+            'shenbao_jilu_detail.html?id=' + encodeURIComponent(id) + '&tab=' + encodeURIComponent(state.tab);
         window.location.href = url;
     }
 
     function renderTabContent() {
+        if (state.loading && isListTab(state.tab)) {
+            els.tabContent.innerHTML = '<div class="empty-wrap"><p class="empty-text">加载中…</p></div>';
+            els.tabContent.classList.add('is-empty');
+            els.notice.style.display = 'none';
+            return;
+        }
         if (isListTab(state.tab)) {
             if (!state.records.length) {
                 els.tabContent.innerHTML = renderEmpty();
@@ -97,19 +114,42 @@
         });
     }
 
+    function refreshListRecords() {
+        if (!isListTab(state.tab)) {
+            return;
+        }
+        state.loading = true;
+        renderTabContent();
+        Store.loadRecords(state.tab)
+            .then(function (records) {
+                state.records = records;
+                state.loading = false;
+                renderTabContent();
+            })
+            .catch(function (e) {
+                state.loading = false;
+                state.records = [];
+                els.tabContent.innerHTML = renderLoadError(e && e.message);
+                els.tabContent.classList.add('is-empty');
+            });
+    }
+
     function setTab(name) {
         state.tab = name;
         if (isListTab(name)) {
-            state.records = Store.loadRecords(name);
+            refreshListRecords();
         } else {
             state.records = [];
+            state.loading = false;
         }
         els.tabs.forEach(function (btn) {
             var on = btn.getAttribute('data-tab') === name;
             btn.classList.toggle('active', on);
             btn.setAttribute('aria-selected', on ? 'true' : 'false');
         });
-        renderTabContent();
+        if (!isListTab(name)) {
+            renderTabContent();
+        }
         try {
             var url = new URL(window.location.href);
             if (name === 'pending') {
@@ -122,9 +162,6 @@
     }
 
     function init() {
-        Store.clearVoidTabSeedOnce();
-        Store.zeroListAmountsOnce();
-        Store.fixCorruptedDetailOnce();
         els.tabs = document.querySelectorAll('.tab');
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');
@@ -144,6 +181,14 @@
             btn.addEventListener('click', function () {
                 setTab(btn.getAttribute('data-tab'));
             });
+        });
+
+        window.addEventListener('pageshow', function (ev) {
+            if (ev.persisted || document.visibilityState === 'visible') {
+                if (isListTab(state.tab)) {
+                    refreshListRecords();
+                }
+            }
         });
     }
 

@@ -120,6 +120,25 @@ CREATE TABLE IF NOT EXISTS messages (
     INDEX idx_msg_date (msg_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 申报记录（更正/作废列表与详情，按用户 + tab 隔离）
+CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
+    user_id VARCHAR(255) NOT NULL,
+    tab VARCHAR(16) NOT NULL,
+    id VARCHAR(64) NOT NULL,
+    group_month VARCHAR(32) NULL,
+    title VARCHAR(255) NULL,
+    period_start VARCHAR(32) NULL,
+    period_end VARCHAR(32) NULL,
+    amount_type VARCHAR(32) NULL,
+    amount VARCHAR(64) NULL,
+    detail_json MEDIUMTEXT NULL,
+    detail_customized TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, tab, id),
+    INDEX idx_shenbao_user_tab (user_id, tab)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 用户反馈（BUG / 意见优化；管理后台可回复）
 CREATE TABLE IF NOT EXISTS user_feedback (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -1,5 +1,5 @@
 /**
- * 申报记录列表与详情共用存储（localStorage）
+ * 申报记录列表与详情共用存储（服务端 api/shenbao_jilu.php）
  */
 (function (global) {
     var AMOUNT_TYPES = {
@@ -29,66 +29,16 @@
         taxPaid: '3328.71'
     };
 
-    var DEFAULT_RECORDS = [
-        {
-            id: '1',
-            groupMonth: '2026-03',
-            title: '2025年度综合所得年度汇算',
-            periodStart: '2025-01',
-            periodEnd: '2025-12',
-            amountType: 'refunded',
-            amount: '0.00'
-        },
-        {
-            id: '2',
-            groupMonth: '2025-03',
-            title: '2024年度综合所得年度汇算',
-            periodStart: '2024-01',
-            periodEnd: '2024-12',
-            amountType: 'refunded',
-            amount: '0.00'
-        },
-        {
-            id: '3',
-            groupMonth: '2024-03',
-            title: '2023年度综合所得年度汇算',
-            periodStart: '2023-01',
-            periodEnd: '2023-12',
-            amountType: 'refundable',
-            amount: '0.00'
-        },
-        {
-            id: '4',
-            groupMonth: '2023-05',
-            title: '2022年度综合所得年度汇算',
-            periodStart: '2022-01',
-            periodEnd: '2022-12',
-            amountType: 'refundable',
-            amount: '0.00'
-        },
-        {
-            id: '5',
-            groupMonth: '2022-06',
-            title: '2021年度综合所得年度汇算',
-            periodStart: '2021-01',
-            periodEnd: '2021-12',
-            amountType: 'paid',
-            amount: '0.00'
-        }
-    ];
-
     function userId() {
         return localStorage.getItem('user_id') || localStorage.getItem('userName') || 'guest';
     }
 
-    function storageKey(tab) {
+    function legacyStorageKey(tab) {
         return 'shenbao_jilu_' + tab + '_' + userId();
     }
 
-    function cloneDefaults() {
-        return DEFAULT_RECORDS.map(function (r) {
-            return enrichRecord(Object.assign({}, r));
-        });
+    function migrateFlagKey(tab) {
+        return 'shenbao_api_migrated_' + tab + '_' + userId();
     }
 
     function taxYearFromRecord(r) {
@@ -102,33 +52,6 @@
             return r.groupMonth.slice(0, 4);
         }
         return '';
-    }
-
-    function syncPaymentFromList(r) {
-        var out = Object.assign({}, DETAIL_FIELD_DEFAULTS, r);
-        var amt = String(r.amount || '0').replace(/元$/, '').trim() || '0.00';
-        if (r.amountType === 'refunded') {
-            out.refundedThisTime = amt;
-            out.paidThisTime = '0.00';
-            out.supplementTax = '0.00';
-        } else if (r.amountType === 'paid') {
-            out.paidThisTime = amt;
-            out.supplementTax = amt;
-            out.refundedThisTime = '0.00';
-        } else {
-            out.refundedThisTime = '0.00';
-            out.paidThisTime = '0.00';
-            out.supplementTax = '0.00';
-        }
-        out.taxYear = taxYearFromRecord(r);
-        return out;
-    }
-
-    function enrichRecord(r, opts) {
-        if (opts && opts.preservePayment) {
-            return mergeDetailRecord(r);
-        }
-        return syncPaymentFromList(r);
     }
 
     function mergeDetailRecord(r) {
@@ -153,203 +76,148 @@
         return out;
     }
 
-    function loadRawRecords(tab) {
-        if (tab === 'void') {
-            try {
-                var rawVoid = localStorage.getItem(storageKey(tab));
-                if (!rawVoid) {
-                    return [];
-                }
-                var parsedVoid = JSON.parse(rawVoid);
-                return Array.isArray(parsedVoid) ? parsedVoid : [];
-            } catch (e) {
-                return [];
-            }
+    function recordForDetail(rec) {
+        if (!rec) {
+            return null;
         }
+        if (rec.detailCustomized) {
+            return mergeDetailRecord(rec);
+        }
+        return designDetailTemplate(rec);
+    }
+
+    function apiJson(url, opts) {
+        if (typeof global.authFetch !== 'function') {
+            return Promise.reject(new Error('请先登录'));
+        }
+        return global.authFetch(url, opts).then(function (res) {
+            return res.json();
+        });
+    }
+
+    function migrateLegacyOnce(tab) {
         try {
-            var raw = localStorage.getItem(storageKey(tab));
+            if (localStorage.getItem(migrateFlagKey(tab)) === '1') {
+                return Promise.resolve();
+            }
+            var raw = localStorage.getItem(legacyStorageKey(tab));
             if (!raw) {
-                return null;
+                localStorage.setItem(migrateFlagKey(tab), '1');
+                return Promise.resolve();
             }
             var parsed = JSON.parse(raw);
             if (!Array.isArray(parsed) || !parsed.length) {
-                return null;
+                localStorage.setItem(migrateFlagKey(tab), '1');
+                return Promise.resolve();
             }
-            return parsed;
+            return apiJson('api/shenbao_jilu.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'batch_save', tab: tab, records: parsed })
+            }).then(function (data) {
+                if (data.code !== 200) {
+                    throw new Error(data.msg || '迁移失败');
+                }
+                localStorage.setItem(migrateFlagKey(tab), '1');
+            });
         } catch (e) {
-            return null;
+            return Promise.resolve();
         }
-    }
-
-    function mapRecordForUse(r) {
-        if (r.detailCustomized) {
-            return mergeDetailRecord(r);
-        }
-        return enrichRecord(r);
     }
 
     function loadRecords(tab) {
-        if (tab === 'void') {
-            return loadRawRecords(tab).map(mapRecordForUse);
-        }
-        var parsed = loadRawRecords(tab);
-        if (!parsed) {
-            return cloneDefaults();
-        }
-        return parsed.map(mapRecordForUse);
+        return migrateLegacyOnce(tab)
+            .then(function () {
+                return apiJson('api/shenbao_jilu.php?action=list&tab=' + encodeURIComponent(tab));
+            })
+            .then(function (data) {
+                if (data.code !== 200) {
+                    throw new Error(data.msg || '加载失败');
+                }
+                return (data.data && data.data.records) || [];
+            });
     }
 
-    function saveRecords(tab, list) {
-        localStorage.setItem(storageKey(tab), JSON.stringify(list));
+    function loadRecordForDetail(tab, id) {
+        return migrateLegacyOnce(tab)
+            .then(function () {
+                return apiJson(
+                    'api/shenbao_jilu.php?action=get&tab=' +
+                        encodeURIComponent(tab) +
+                        '&id=' +
+                        encodeURIComponent(id)
+                );
+            })
+            .then(function (data) {
+                if (data.code === 404) {
+                    return null;
+                }
+                if (data.code !== 200) {
+                    throw new Error(data.msg || '加载失败');
+                }
+                return (data.data && data.data.record) || null;
+            });
     }
 
     function findRecord(tab, id) {
-        var list = loadRecords(tab);
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === String(id)) {
-                return list[i];
+        return loadRecords(tab).then(function (list) {
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].id) === String(id)) {
+                    return list[i];
+                }
             }
-        }
-        return null;
-    }
-
-    function findRawRecord(tab, id) {
-        var list = loadRawRecords(tab);
-        if (!list) {
-            list = DEFAULT_RECORDS.map(function (r) {
-                return Object.assign({}, r);
-            });
-        }
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === String(id)) {
-                return list[i];
-            }
-        }
-        return null;
-    }
-
-    /** 详情页：已保存用用户数据；未保存用设计稿默认，不受列表 0 元影响 */
-    function findRecordForDetail(tab, id) {
-        var r = findRawRecord(tab, id);
-        if (!r) {
             return null;
-        }
-        if (r.detailCustomized) {
-            return mergeDetailRecord(r);
-        }
-        return designDetailTemplate(r);
+        });
     }
 
     function saveRecord(tab, record) {
-        var list = loadRawRecords(tab);
-        if (!list) {
-            list = DEFAULT_RECORDS.map(function (r) {
-                return Object.assign({}, r);
-            });
-        }
-        var toSave = Object.assign({}, record);
-        toSave.detailCustomized = true;
-        var found = false;
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === String(record.id)) {
-                list[i] = Object.assign({}, list[i], toSave);
-                found = true;
-                break;
+        var payload = Object.assign({}, record);
+        payload.detailCustomized = true;
+        return apiJson('api/shenbao_jilu.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'save_record', tab: tab, record: payload })
+        }).then(function (data) {
+            if (data.code !== 200) {
+                throw new Error(data.msg || '保存失败');
             }
+            var saved = (data.data && data.data.record) || payload;
+            saved.detailCustomized = true;
+            return saved;
+        });
+    }
+
+    function formatAmountDisplay(amount) {
+        var s = String(amount == null ? '' : amount)
+            .replace(/元/g, '')
+            .trim();
+        if (!s) {
+            s = '0.00';
         }
-        if (!found) {
-            list.push(toSave);
+        var n = parseFloat(s);
+        if (!isNaN(n)) {
+            s = n.toFixed(2);
         }
-        saveRecords(tab, list);
-        return mergeDetailRecord(toSave);
+        return s + '元';
     }
 
     function amountLine(record) {
         var label = AMOUNT_TYPES[record.amountType] || AMOUNT_TYPES.refunded;
-        return label + '：0.00元';
+        return label + '：' + formatAmountDisplay(record.amount);
     }
 
-    function zeroListAmountsOnce() {
-        try {
-            if (localStorage.getItem('shenbao_jilu_list_zero_v1') === '1') {
-                return;
-            }
-            ['done', 'void'].forEach(function (tab) {
-                var key = storageKey(tab);
-                var raw = localStorage.getItem(key);
-                if (!raw) {
-                    return;
-                }
-                var parsed = JSON.parse(raw);
-                if (!Array.isArray(parsed)) {
-                    return;
-                }
-                var changed = false;
-                parsed.forEach(function (item) {
-                    if (item && String(item.amount) !== '0.00' && String(item.amount) !== '0') {
-                        item.amount = '0.00';
-                        changed = true;
-                    }
-                });
-                if (changed) {
-                    localStorage.setItem(key, JSON.stringify(parsed));
-                }
-            });
-            localStorage.setItem('shenbao_jilu_list_zero_v1', '1');
-        } catch (e) {}
-    }
-
-    function fixCorruptedDetailOnce() {
-        try {
-            if (localStorage.getItem('shenbao_detail_fix_v2') === '1') {
-                return;
-            }
-            ['done', 'void'].forEach(function (tab) {
-                var list = loadRawRecords(tab);
-                if (!list || !list.length) {
-                    return;
-                }
-                var changed = false;
-                list.forEach(function (item) {
-                    if (!item || !item.detailCustomized) {
-                        return;
-                    }
-                    var sup = String(item.supplementTax || '0').replace(/元/g, '');
-                    var paid = String(item.paidThisTime || '0').replace(/元/g, '');
-                    if (parseFloat(sup) === 0 && parseFloat(paid) === 0) {
-                        delete item.detailCustomized;
-                        changed = true;
-                    }
-                });
-                if (changed) {
-                    saveRecords(tab, list);
-                }
-            });
-            localStorage.setItem('shenbao_detail_fix_v2', '1');
-        } catch (e) {}
-    }
-
-    function clearVoidTabSeedOnce() {
-        try {
-            if (localStorage.getItem('shenbao_jilu_void_seed_removed') === '1') {
-                return;
-            }
-            localStorage.removeItem(storageKey('void'));
-            localStorage.setItem('shenbao_jilu_void_seed_removed', '1');
-        } catch (e) {}
-    }
+    function noop() {}
 
     global.ShenbaoJiluStore = {
         AMOUNT_TYPES: AMOUNT_TYPES,
         loadRecords: loadRecords,
-        saveRecords: saveRecords,
+        loadRecordForDetail: loadRecordForDetail,
         findRecord: findRecord,
-        findRecordForDetail: findRecordForDetail,
+        findRecordForDetail: loadRecordForDetail,
         saveRecord: saveRecord,
-        enrichRecord: enrichRecord,
         amountLine: amountLine,
-        clearVoidTabSeedOnce: clearVoidTabSeedOnce,
-        zeroListAmountsOnce: zeroListAmountsOnce,
-        fixCorruptedDetailOnce: fixCorruptedDetailOnce
+        clearVoidTabSeedOnce: noop,
+        zeroListAmountsOnce: noop,
+        fixCorruptedDetailOnce: noop
     };
 })(typeof window !== 'undefined' ? window : this);
