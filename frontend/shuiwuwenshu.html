@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>税务文书</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-icon { width: 9px; height: auto; display: block; }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            padding: 0 48px;
+            text-align: center;
+        }
+        .notice {
+            background: #e8f4ff;
+            padding: 14px 16px 12px;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .notice-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #1677ff;
+            font-size: 14px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tabs {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+        .tab-btn {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 14px 8px 12px;
+            font-size: 15px;
+            color: #666;
+            font-family: inherit;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab-btn.active {
+            color: #1677ff;
+            font-weight: 500;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 3px;
+            background: #1677ff;
+            border-radius: 2px;
+        }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .empty-wrap {
+            padding: 32px 16px 48px;
+        }
+        .empty-illustration {
+            max-width: min(480px, 88vw);
+            margin: 0 auto;
+        }
+        .empty-illustration img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .empty-text {
+            text-align: center;
+            color: #999;
+            font-size: 15px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body class="page-shuiwuwenshu">
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">
+            <img src="jt.png" class="back-icon" alt="">
+            <span>返回</span>
+        </a>
+        <h1 class="header-title">税务文书</h1>
+    </header>
+
+    <div class="notice">
+        温馨提示：您已于2020-04-04 08:29签订《税务文书电子送达确认书》，电子送达与其他送达方式具有同等法律效力。受送达人可以据此办理涉税事宜，行使权利、履行义务。
+        <a href="javascript:void(0)" class="notice-link" id="btnConfirm">查看《税务文书电子送达确认书》</a>
+    </div>
+
+    <div class="tabs" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="pending" role="tab" aria-selected="true">待办</button>
+        <button type="button" class="tab-btn" data-tab="done" role="tab" aria-selected="false">已处理</button>
+    </div>
+
+    <div class="panel active" id="panel-pending" role="tabpanel">
+        <div class="empty-wrap">
+            <div class="empty-illustration">
+                <img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">
+                <p class="empty-text">页面空空如也</p>
+            </div>
+        </div>
+    </div>
+    <div class="panel" id="panel-done" role="tabpanel">
+        <div class="empty-wrap">
+            <div class="empty-illustration">
+                <img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">
+                <p class="empty-text">页面空空如也</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var tabs = document.querySelectorAll('.tab-btn');
+            var panels = {
+                pending: document.getElementById('panel-pending'),
+                done: document.getElementById('panel-done')
+            };
+            tabs.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var key = btn.getAttribute('data-tab');
+                    tabs.forEach(function (t) {
+                        var on = t === btn;
+                        t.classList.toggle('active', on);
+                        t.setAttribute('aria-selected', on ? 'true' : 'false');
+                    });
+                    Object.keys(panels).forEach(function (k) {
+                        panels[k].classList.toggle('active', k === key);
+                    });
+                });
+            });
+            document.getElementById('btnConfirm').addEventListener('click', function () {
+                alert('《税务文书电子送达确认书》查看功能开发中');
+            });
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>
