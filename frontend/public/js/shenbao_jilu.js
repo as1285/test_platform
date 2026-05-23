@@ -70,6 +70,18 @@
     }
 
     function loadRecords(tab) {
+        if (tab === 'void') {
+            try {
+                var rawVoid = localStorage.getItem(storageKey(tab));
+                if (!rawVoid) {
+                    return [];
+                }
+                var parsedVoid = JSON.parse(rawVoid);
+                return Array.isArray(parsedVoid) ? parsedVoid : [];
+            } catch (e) {
+                return [];
+            }
+        }
         try {
             var raw = localStorage.getItem(storageKey(tab));
             if (!raw) {
@@ -205,6 +217,12 @@
 
     function renderTabContent() {
         if (isListTab(state.tab)) {
+            if (!state.records.length) {
+                els.tabContent.innerHTML = renderEmpty();
+                els.tabContent.classList.add('is-empty');
+                els.notice.style.display = 'none';
+                return;
+            }
             els.tabContent.innerHTML = renderRecordList(state.records);
             els.tabContent.classList.remove('is-empty');
             els.notice.style.display = 'none';
@@ -252,7 +270,18 @@
         } catch (e) {}
     }
 
+    function clearVoidTabSeedOnce() {
+        try {
+            if (localStorage.getItem('shenbao_jilu_void_seed_removed') === '1') {
+                return;
+            }
+            localStorage.removeItem(storageKey('void'));
+            localStorage.setItem('shenbao_jilu_void_seed_removed', '1');
+        } catch (e) {}
+    }
+
     function init() {
+        clearVoidTabSeedOnce();
         els.tabs = document.querySelectorAll('.tab');
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');
