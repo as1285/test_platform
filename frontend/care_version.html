@@ -2,240 +2,126 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-care-version"></script>
+    <script src="/js/auth.js?v=20260523-care-img"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>关怀版</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(180deg, #fff5eb 0%, #fff9f3 28%, #f6f7fb 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #fff9f3;
             min-height: 100vh;
-            color: #333;
-            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
         }
-        .care-top {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 12px;
+        .care-page {
+            min-height: 100vh;
+            background: #fff9f3;
         }
-        html.app-top-safe-shell body.page-care-version .care-top {
-            padding-top: calc(16px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        /* 顶栏安全区：整图略下移，避免状态栏压住「切换标准版」 */
+        html.app-top-safe-shell body.page-care-version .care-wrap {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
-        .care-title-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .care-hearts {
-            display: flex;
-            align-items: center;
+        .care-wrap {
             position: relative;
-            width: 36px;
-            height: 28px;
-            flex-shrink: 0;
+            line-height: 0;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
         }
-        .care-hearts svg {
+        .care-wrap > img {
+            width: 100%;
+            display: block;
+            vertical-align: top;
+        }
+        .care-wrap a {
             position: absolute;
-            width: 22px;
-            height: 22px;
-        }
-        .care-hearts .h1 { left: 0; top: 2px; color: #ffb84d; }
-        .care-hearts .h2 { left: 10px; top: 0; color: #ff8f3d; }
-        .care-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: #5c3d1e;
-            letter-spacing: 1px;
-        }
-        .care-switch-std {
-            margin-top: 6px;
-            font-size: 15px;
-            color: #666;
-            text-decoration: none;
-            white-space: nowrap;
+            z-index: 6;
+            background: transparent;
             -webkit-tap-highlight-color: transparent;
-            padding: 4px 0;
+            touch-action: manipulation;
+            outline: none;
         }
-        .care-switch-std:active { opacity: 0.7; }
-        .care-hero-row {
-            display: flex;
-            gap: 12px;
-            padding: 0 16px 20px;
+        /* 右上角：切换标准版 → 我的 */
+        .care-hot-switch-std {
+            right: 0;
+            top: 0;
+            width: 38%;
+            height: 11%;
         }
-        .care-hero-card {
-            flex: 1;
-            min-height: 118px;
-            border-radius: 14px;
-            padding: 16px 14px 14px;
-            position: relative;
-            overflow: hidden;
-            text-decoration: none;
-            color: #fff;
-            -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        /* 双大卡 */
+        .care-hot-zonghe {
+            left: 3.5%;
+            width: 46%;
+            top: 13.5%;
+            height: 15.5%;
         }
-        .care-hero-card:active { opacity: 0.92; }
-        .care-hero-card.blue {
-            background: linear-gradient(145deg, #4d9dff 0%, #2b7fe8 55%, #1e6fff 100%);
+        .care-hot-zxk {
+            right: 3.5%;
+            width: 46%;
+            top: 13.5%;
+            height: 15.5%;
         }
-        .care-hero-card.orange {
-            background: linear-gradient(145deg, #ffb347 0%, #ff8f3d 55%, #f57c2a 100%);
+        /* 更多服务 2×2 */
+        .care-hot-shenbao {
+            left: 3.5%;
+            width: 46%;
+            top: 36.5%;
+            height: 14.5%;
         }
-        .care-hero-text {
-            font-size: 22px;
-            font-weight: 700;
-            line-height: 1.35;
-            position: relative;
-            z-index: 2;
+        .care-hot-shuiming {
+            right: 3.5%;
+            width: 46%;
+            top: 36.5%;
+            height: 14.5%;
         }
-        .care-hero-go {
-            position: absolute;
-            left: 14px;
-            bottom: 14px;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
+        .care-hot-message {
+            left: 3.5%;
+            width: 46%;
+            top: 52%;
+            height: 14.5%;
         }
-        .care-hero-go svg {
-            width: 14px;
-            height: 14px;
-            color: #1e6fff;
+        .care-hot-najilu {
+            right: 3.5%;
+            width: 46%;
+            top: 52%;
+            height: 14.5%;
         }
-        .care-hero-card.orange .care-hero-go svg { color: #f57c2a; }
-        .care-hero-deco {
-            position: absolute;
-            right: 8px;
-            bottom: 8px;
-            opacity: 0.35;
-            z-index: 1;
+        /* 更多服务 · 查看更多 */
+        .care-hot-more {
+            right: 0;
+            top: 31%;
+            width: 28%;
+            height: 5%;
         }
-        .care-hero-deco svg { width: 52px; height: 52px; }
-        .care-section {
-            padding: 0 16px 18px;
+        /* 热点问题 · 查看更多 */
+        .care-hot-hot-more {
+            right: 0;
+            top: 67%;
+            width: 28%;
+            height: 4%;
         }
-        .care-section-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-        .care-section-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: #333;
-        }
-        .care-section-more {
-            font-size: 14px;
-            color: #999;
-            text-decoration: none;
-        }
-        .care-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        .care-grid-item {
-            border-radius: 12px;
-            padding: 16px 12px;
-            min-height: 88px;
-            text-decoration: none;
-            color: #333;
-            position: relative;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .care-grid-item:active { opacity: 0.9; }
-        .care-grid-item.blue-bg { background: #eef5ff; }
-        .care-grid-item.orange-bg { background: #fff3e8; }
-        .care-grid-label {
-            font-size: 18px;
-            font-weight: 600;
-            line-height: 1.35;
-            max-width: 72%;
-        }
-        .care-grid-icon {
-            position: absolute;
-            right: 10px;
-            bottom: 10px;
-            width: 40px;
-            height: 40px;
-            opacity: 0.85;
-        }
-        .care-hot-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 16px;
-            font-size: 16px;
-            line-height: 1.55;
-            color: #444;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        .care-hot-hot-q {
+            left: 3%;
+            right: 3%;
+            top: 71%;
+            height: 12%;
         }
     </style>
 </head>
 <body class="page-care-version">
-    <header class="care-top">
-        <div class="care-title-wrap">
-            <div class="care-hearts" aria-hidden="true">
-                <svg class="h1" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.2-4.35-8.5-7.8C1.4 10.2 2.5 6.5 6 6c1.7-.3 3.2.4 4 1.6.8-1.2 2.3-1.9 4-1.6 3.5.5 4.6 4.2 2.5 7.2C18.2 16.65 12 21 12 21z"/></svg>
-                <svg class="h2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-6.2-4.35-8.5-7.8C1.4 10.2 2.5 6.5 6 6c1.7-.3 3.2.4 4 1.6.8-1.2 2.3-1.9 4-1.6 3.5.5 4.6 4.2 2.5 7.2C18.2 16.65 12 21 12 21z"/></svg>
-            </div>
-            <h1 class="care-title">关怀版</h1>
+    <div class="care-page">
+        <div class="care-wrap">
+            <img src="guanhuai.jpg?v=1" alt="关怀版" width="496" height="1024">
+            <a href="mine.html" class="care-hot-switch-std" aria-label="切换标准版"></a>
+            <a href="zonghe.html" class="care-hot-zonghe" aria-label="综合所得年度汇算"></a>
+            <a href="zxkouchu.html" class="care-hot-zxk" aria-label="专项附加扣除"></a>
+            <a href="bancha.html" class="care-hot-more" aria-label="查看更多服务"></a>
+            <a href="shenbao_jilu.html" class="care-hot-shenbao" aria-label="申报记录"></a>
+            <a href="shuiming_result.html" class="care-hot-shuiming" aria-label="收入纳税明细"></a>
+            <a href="message.html" class="care-hot-message" aria-label="消息中心"></a>
+            <a href="najilu.html" class="care-hot-najilu" aria-label="纳税记录开具"></a>
+            <a href="help_center.html" class="care-hot-hot-more" aria-label="查看更多热点问题"></a>
+            <a href="help_center.html" class="care-hot-hot-q" aria-label="热点问题"></a>
         </div>
-        <a href="mine.html" class="care-switch-std" id="careSwitchStandard">切换标准版 &gt;</a>
-    </header>
-
-    <div class="care-hero-row">
-        <a href="zonghe.html" class="care-hero-card blue" aria-label="综合所得年度汇算">
-            <div class="care-hero-text">综合所得<br>年度汇算</div>
-            <span class="care-hero-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6l6 6-6 6V6z"/></svg></span>
-            <span class="care-hero-deco" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="10" y="10" width="28" height="28" rx="4" stroke="#fff" stroke-width="3"/><path d="M18 22h12M22 18v12" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></span>
-        </a>
-        <a href="zxkouchu.html" class="care-hero-card orange" aria-label="专项附加扣除">
-            <div class="care-hero-text">专项附加<br>扣除</div>
-            <span class="care-hero-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6l6 6-6 6V6z"/></svg></span>
-            <span class="care-hero-deco" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M14 36l20-20M28 8l8 8M20 16l8 8" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></span>
-        </a>
     </div>
-
-    <section class="care-section">
-        <div class="care-section-head">
-            <h2 class="care-section-title">更多服务</h2>
-            <a href="bancha.html" class="care-section-more">查看更多 &gt;</a>
-        </div>
-        <div class="care-grid">
-            <a href="shenbao_jilu.html" class="care-grid-item blue-bg">
-                <div class="care-grid-label">申报<br>记录</div>
-                <svg class="care-grid-icon" viewBox="0 0 48 48" fill="none"><rect x="10" y="8" width="28" height="32" rx="3" fill="#1e6fff" opacity="0.2"/><path d="M18 20h12M18 28h8" stroke="#1e6fff" stroke-width="3" stroke-linecap="round"/></svg>
-            </a>
-            <a href="shuiming_result.html" class="care-grid-item orange-bg">
-                <div class="care-grid-label">收入纳税<br>明细</div>
-                <svg class="care-grid-icon" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="14" fill="#ff8f3d" opacity="0.25"/><text x="24" y="30" text-anchor="middle" fill="#ff8f3d" font-size="18" font-weight="bold">¥</text></svg>
-            </a>
-            <a href="message.html" class="care-grid-item orange-bg">
-                <div class="care-grid-label">消息<br>中心</div>
-                <svg class="care-grid-icon" viewBox="0 0 48 48" fill="none"><path d="M10 14h28v18H26l-4 4-4-4H10V14z" fill="#ff8f3d" opacity="0.25"/><path d="M10 14h28v16H26l-4 4-4-4H10V14z" stroke="#ff8f3d" stroke-width="2.5"/></svg>
-            </a>
-            <a href="najilu.html" class="care-grid-item blue-bg">
-                <div class="care-grid-label">纳税记录<br>开具</div>
-                <svg class="care-grid-icon" viewBox="0 0 48 48" fill="none"><rect x="12" y="8" width="24" height="32" rx="2" fill="#1e6fff" opacity="0.2"/><path d="M18 18h12M18 26h8" stroke="#1e6fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-            </a>
-        </div>
-    </section>
-
-    <section class="care-section">
-        <div class="care-section-head">
-            <h2 class="care-section-title">热点问题</h2>
-            <a href="help_center.html" class="care-section-more">查看更多 &gt;</a>
-        </div>
-        <div class="care-hot-card">
-            纳税人填报专项附加扣除信息有哪些注意事项？
-        </div>
-    </section>
 </body>
 </html>
