@@ -404,6 +404,11 @@
             flex: 1;
             min-width: 280px;
         }
+        .user-filter-bar input.filter-text-wide {
+            width: 240px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
         .analytics-conv-wrap {
             margin-top: 12px;
         }
@@ -1283,7 +1288,7 @@
                 <div>
                     <label>账号</label>
                     <div class="filter-account-row">
-                        <input type="text" id="filterUsername" placeholder="搜索账号" style="width: 140px;">
+                        <input type="text" id="filterUsername" class="filter-text-wide" placeholder="搜索账号">
                         <label class="filter-inline-check">
                             <input type="checkbox" id="filterExact"> 精准查询
                         </label>
@@ -1291,7 +1296,7 @@
                 </div>
                 <div>
                     <label>姓名</label>
-                    <input type="text" id="filterRealName" placeholder="搜索姓名" style="width: 140px;">
+                    <input type="text" id="filterRealName" class="filter-text-wide" placeholder="搜索姓名">
                 </div>
                 <div>
                     <label>风险账号</label>
