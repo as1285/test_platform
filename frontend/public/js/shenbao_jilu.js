@@ -5,7 +5,7 @@
         paid: '已缴税额'
     };
 
-    var DEFAULT_DONE = [
+    var DEFAULT_RECORDS = [
         {
             id: '1',
             groupMonth: '2026-03',
@@ -53,35 +53,40 @@
         }
     ];
 
-    function storageKey() {
-        var uid = localStorage.getItem('user_id') || localStorage.getItem('userName') || 'guest';
-        return 'shenbao_jilu_done_' + uid;
+    var LIST_TABS = { done: 1, void: 1 };
+
+    function userId() {
+        return localStorage.getItem('user_id') || localStorage.getItem('userName') || 'guest';
     }
 
-    function loadDoneRecords() {
+    function storageKey(tab) {
+        return 'shenbao_jilu_' + tab + '_' + userId();
+    }
+
+    function cloneDefaults() {
+        return DEFAULT_RECORDS.map(function (r) {
+            return Object.assign({}, r);
+        });
+    }
+
+    function loadRecords(tab) {
         try {
-            var raw = localStorage.getItem(storageKey());
+            var raw = localStorage.getItem(storageKey(tab));
             if (!raw) {
-                return DEFAULT_DONE.map(function (r) {
-                    return Object.assign({}, r);
-                });
+                return cloneDefaults();
             }
             var parsed = JSON.parse(raw);
             if (!Array.isArray(parsed) || !parsed.length) {
-                return DEFAULT_DONE.map(function (r) {
-                    return Object.assign({}, r);
-                });
+                return cloneDefaults();
             }
             return parsed;
         } catch (e) {
-            return DEFAULT_DONE.map(function (r) {
-                return Object.assign({}, r);
-            });
+            return cloneDefaults();
         }
     }
 
-    function saveDoneRecords(list) {
-        localStorage.setItem(storageKey(), JSON.stringify(list));
+    function saveRecords(tab, list) {
+        localStorage.setItem(storageKey(tab), JSON.stringify(list));
     }
 
     function esc(s) {
@@ -101,7 +106,7 @@
         return label + '：' + val;
     }
 
-    function renderDoneList(records) {
+    function renderRecordList(records) {
         var html = '<div class="record-list">';
         var lastGroup = '';
         records.forEach(function (r) {
@@ -151,6 +156,10 @@
 
     var els = {};
 
+    function isListTab(tab) {
+        return !!LIST_TABS[tab];
+    }
+
     function findRecord(id) {
         return state.records.filter(function (r) {
             return String(r.id) === String(id);
@@ -189,14 +198,14 @@
             alert('请填写申报标题与分组月份');
             return;
         }
-        saveDoneRecords(state.records);
+        saveRecords(state.tab, state.records);
         closeEditModal();
         renderTabContent();
     }
 
     function renderTabContent() {
-        if (state.tab === 'done') {
-            els.tabContent.innerHTML = renderDoneList(state.records);
+        if (isListTab(state.tab)) {
+            els.tabContent.innerHTML = renderRecordList(state.records);
             els.tabContent.classList.remove('is-empty');
             els.notice.style.display = 'none';
             bindRecordClicks();
@@ -221,6 +230,11 @@
 
     function setTab(name) {
         state.tab = name;
+        if (isListTab(name)) {
+            state.records = loadRecords(name);
+        } else {
+            state.records = [];
+        }
         els.tabs.forEach(function (btn) {
             var on = btn.getAttribute('data-tab') === name;
             btn.classList.toggle('active', on);
@@ -252,8 +266,6 @@
         els.modalSave = document.getElementById('shenbaoEditSave');
         els.modalCancel = document.getElementById('shenbaoEditCancel');
 
-        state.records = loadDoneRecords();
-
         var tabFromUrl = '';
         try {
             tabFromUrl = new URLSearchParams(window.location.search).get('tab') || '';
@@ -261,6 +273,7 @@
         if (tabFromUrl === 'done' || tabFromUrl === 'void' || tabFromUrl === 'pending') {
             setTab(tabFromUrl);
         } else {
+            state.records = [];
             renderTabContent();
         }
 
