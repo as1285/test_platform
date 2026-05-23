@@ -78,6 +78,23 @@
         window.location.href = url;
     }
 
+    function goAddNew() {
+        if (!isListTab(state.tab)) {
+            return;
+        }
+        goDetail('new');
+    }
+
+    function updateHeaderTitleAddMode() {
+        var btn = els.headerTitleBtn;
+        if (!btn) {
+            return;
+        }
+        var canAdd = isListTab(state.tab);
+        btn.classList.toggle('header-title--add', canAdd);
+        btn.setAttribute('aria-label', canAdd ? '申报记录（更正/作废申报），点击新增' : '申报记录（更正/作废申报）');
+    }
+
     function renderTabContent() {
         if (state.loading && isListTab(state.tab)) {
             els.tabContent.innerHTML = '<div class="empty-wrap"><p class="empty-text">加载中…</p></div>';
@@ -150,6 +167,7 @@
         if (!isListTab(name)) {
             renderTabContent();
         }
+        updateHeaderTitleAddMode();
         try {
             var url = new URL(window.location.href);
             if (name === 'pending') {
@@ -165,6 +183,15 @@
         els.tabs = document.querySelectorAll('.tab');
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');
+        els.headerTitleBtn = document.getElementById('headerTitleBtn');
+        if (els.headerTitleBtn) {
+            els.headerTitleBtn.addEventListener('click', function () {
+                if (!isListTab(state.tab)) {
+                    return;
+                }
+                goAddNew();
+            });
+        }
 
         var tabFromUrl = '';
         try {
@@ -176,6 +203,7 @@
             state.records = [];
             renderTabContent();
         }
+        updateHeaderTitleAddMode();
 
         els.tabs.forEach(function (btn) {
             btn.addEventListener('click', function () {

@@ -36,7 +36,8 @@
         tab: 'done',
         id: '',
         record: null,
-        snapshot: null
+        snapshot: null,
+        isNew: false
     };
 
     function stripYuan(s) {
@@ -108,6 +109,12 @@
         var supplement = stripYuan(rec.supplementTax);
         rec.amountType = 'refunded';
         rec.amount = supplement !== '' ? supplement : '0.00';
+        if (!rec.groupMonth && rec.periodEnd && /^\d{4}-\d{2}/.test(rec.periodEnd)) {
+            rec.groupMonth = rec.periodEnd.slice(0, 7);
+        }
+        if (!rec.title && rec.taxYear) {
+            rec.title = rec.taxYear + '年度综合所得年度汇算';
+        }
         return rec;
     }
 
@@ -141,7 +148,15 @@
         setDesignView(shouldShowDesign());
     }
 
+    function listBackUrl() {
+        return 'shenbao_jilu.html?tab=' + encodeURIComponent(state.tab);
+    }
+
     function reloadRecord() {
+        if (state.isNew) {
+            state.record = Store.createNewRecordTemplate(state.tab);
+            return Promise.resolve(state.record);
+        }
         return Store.loadRecordForDetail(state.tab, state.id).then(function (rec) {
             state.record = rec;
             return rec;
@@ -170,6 +185,10 @@
     }
 
     function cancelEdit() {
+        if (state.isNew) {
+            window.location.href = listBackUrl();
+            return;
+        }
         state.record = state.snapshot ? JSON.parse(JSON.stringify(state.snapshot)) : state.record;
         fillView(state.record);
         setEditing(false);
@@ -183,10 +202,25 @@
             btn.disabled = true;
         }
         var updated = collectForm();
-        updated.id = state.id;
+        if (!String(updated.title || '').trim()) {
+            alert('请填写申报事项');
+            if (btn) {
+                btn.disabled = false;
+            }
+            return;
+        }
+        if (state.isNew) {
+            updated.id = Store.generateNewRecordId();
+        } else {
+            updated.id = state.id;
+        }
         Store.saveRecord(state.tab, updated)
             .then(function (saved) {
-                state.record = saved;
+                if (state.isNew) {
+                    window.location.href = listBackUrl();
+                    return;
+                }
+                state.record = saved || updated;
                 state.record.detailCustomized = true;
                 fillView(state.record);
                 setEditing(false);
@@ -226,6 +260,30 @@
         });
     }
 
+    function bindFooterActions() {
+        document.getElementById('btnCorrect').addEventListener('click', enterEdit);
+        document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
+        document.getElementById('btnSaveEdit').addEventListener('click', saveEdit);
+    }
+
+    function startCreateFlow() {
+        state.isNew = true;
+        state.record = Store.createNewRecordTemplate(state.tab);
+        document.body.classList.remove('detail-design-mode');
+        setDesignView(false);
+
+        var stamp = document.querySelector('.stamp-done');
+        if (stamp) {
+            stamp.style.display = 'none';
+        }
+
+        fillView(state.record);
+        bindTabs();
+        bindFooterActions();
+        setEditing(true);
+        window.scrollTo(0, 0);
+    }
+
     function init() {
         try {
             var params = new URLSearchParams(window.location.search);
@@ -240,7 +298,7 @@
             state.tab = 'done';
         }
 
-        var backHref = 'shenbao_jilu.html?tab=' + encodeURIComponent(state.tab);
+        var backHref = listBackUrl();
         var back = document.getElementById('detailBackBtn');
         if (back) {
             back.href = backHref;
@@ -251,14 +309,19 @@
         }
 
         if (!state.id) {
-            window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
+            window.location.replace(backHref);
+            return;
+        }
+
+        if (state.id === 'new') {
+            startCreateFlow();
             return;
         }
 
         reloadRecord()
             .then(function (rec) {
                 if (!rec) {
-                    window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
+                    window.location.replace(backHref);
                     return;
                 }
 
@@ -270,13 +333,10 @@
                 fillView(state.record);
                 bindTabs();
                 updateDisplayMode();
-
-                document.getElementById('btnCorrect').addEventListener('click', enterEdit);
-                document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
-                document.getElementById('btnSaveEdit').addEventListener('click', saveEdit);
+                bindFooterActions();
             })
             .catch(function () {
-                window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
+                window.location.replace(backHref);
             });
     }
 

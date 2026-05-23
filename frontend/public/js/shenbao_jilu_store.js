@@ -140,7 +140,56 @@
             });
     }
 
+    function pad2(n) {
+        return n < 10 ? '0' + n : String(n);
+    }
+
+    function generateNewRecordId() {
+        return 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function createNewRecordTemplate(tab) {
+        var now = new Date();
+        var y = now.getFullYear();
+        var taxYear = String(y - 1);
+        var groupMonth = y + '-' + pad2(now.getMonth() + 1);
+        var blankMoney = {
+            supplementTax: '0.00',
+            lateFee: '0.00',
+            paidThisTime: '0.00',
+            refundedThisTime: '0.00',
+            totalIncome: '0.00',
+            totalExpense: '0.00',
+            exemptIncome: '0.00',
+            basicDeduction: '0.00',
+            specialDeduction: '0.00',
+            specialAdditionalDeduction: '0.00',
+            otherDeduction: '0.00',
+            donationDeduction: '0.00',
+            taxableIncome: '0.00',
+            taxPayable: '0.00',
+            taxReduction: '0.00',
+            taxPaid: '0.00',
+            amount: '0.00'
+        };
+        return Object.assign({}, DETAIL_FIELD_DEFAULTS, blankMoney, {
+            id: 'new',
+            groupMonth: groupMonth,
+            title: taxYear + '年度综合所得年度汇算',
+            periodStart: taxYear + '-01',
+            periodEnd: taxYear + '-12',
+            taxYear: taxYear,
+            amountType: 'refunded',
+            taxAuthority: DETAIL_FIELD_DEFAULTS.taxAuthority,
+            employer: DETAIL_FIELD_DEFAULTS.employer,
+            detailCustomized: false
+        });
+    }
+
     function loadRecordForDetail(tab, id) {
+        if (String(id) === 'new') {
+            return Promise.resolve(createNewRecordTemplate(tab));
+        }
         return migrateLegacyOnce(tab)
             .then(function () {
                 return apiJson(
@@ -232,6 +281,8 @@
         AMOUNT_TYPES: AMOUNT_TYPES,
         loadRecords: loadRecords,
         loadRecordForDetail: loadRecordForDetail,
+        createNewRecordTemplate: createNewRecordTemplate,
+        generateNewRecordId: generateNewRecordId,
         findRecord: findRecord,
         findRecordForDetail: loadRecordForDetail,
         saveRecord: saveRecord,
