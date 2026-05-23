@@ -23,6 +23,7 @@ COPY about_update_notes.html /usr/share/nginx/html/
 COPY about_agreement.html /usr/share/nginx/html/
 COPY 个人.mobileconfig /usr/share/nginx/html/personal.mobileconfig
 COPY consult.html /usr/share/nginx/html/
+COPY help_center.html /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
 COPY shuiming.html /usr/share/nginx/html/
 COPY shuiming_result.html /usr/share/nginx/html/
