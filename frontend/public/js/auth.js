@@ -660,8 +660,19 @@
     }
   }
 
+  function isForgotPwdFromLoginPage() {
+    if (currentPageName() !== 'xiugaimima.html') {
+      return false;
+    }
+    try {
+      return new URLSearchParams(window.location.search).get('from') === 'login';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isPublicPage() {
-    return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView();
+    return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
   }
 
   function isActivationPage() {

@@ -436,7 +436,7 @@
         <div class="login-aux">
             <a href="javascript:void(0)" id="linkFaceLogin">扫脸登录</a>
             <span class="login-aux-sep">|</span>
-            <a href="javascript:void(0)" id="linkForgotPwd">找回密码</a>
+            <a href="xiugaimima.html?from=login" id="linkForgotPwd">找回密码</a>
         </div>
 
         <!-- 按钮区域 -->
@@ -793,13 +793,6 @@
                 alert('扫脸登录功能暂未开放，请使用账号密码登录。');
             });
         }
-        var linkForgotPwd = document.getElementById('linkForgotPwd');
-        if (linkForgotPwd) {
-            linkForgotPwd.addEventListener('click', function () {
-                alert('请联系管理员重置密码，或使用注册账号重新注册。');
-            });
-        }
-
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;

@@ -120,7 +120,7 @@
 </head>
 <body>
     <div class="header">
-        <a href="aqzx.html" class="back-btn">
+        <a href="aqzx.html" class="back-btn" id="pwdBackBtn">
             <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
             <span>返回</span>
         </a>
@@ -147,6 +147,15 @@
     </div>
     <script>
         (function () {
+            var backBtn = document.getElementById('pwdBackBtn');
+            var fromLogin = false;
+            try {
+                fromLogin = new URLSearchParams(window.location.search).get('from') === 'login';
+            } catch (e) {}
+            if (backBtn && fromLogin) {
+                backBtn.href = 'index.html';
+            }
+
             var msgEl = document.getElementById('pwdMsg');
             var btn = document.getElementById('btnPwdSubmit');
             var oldEl = document.getElementById('pwdOld');
@@ -228,8 +237,12 @@
                             if (x.status === 200 && x.body && x.body.code === 200) {
                                 setMsg('密码修改成功', false);
                                 setTimeout(function () {
-                                    window.location.href = 'aqzx.html';
+                                    window.location.href = fromLogin ? 'index.html' : 'aqzx.html';
                                 }, 800);
+                                return;
+                            }
+                            if (x.status === 401) {
+                                setMsg('请先登录后再修改密码', true);
                                 return;
                             }
                             setMsg((x.body && x.body.msg) || '修改失败', true);
