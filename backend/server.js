@@ -1816,10 +1816,40 @@ function validateUsername(u) {
   return null;
 }
 
+/** 常见 SQL 注入探测串（作密码提交时仅记录为明文，不执行；注册/改密时拒绝） */
+function passwordLooksLikeSqlProbe(p) {
+  if (!p || typeof p !== 'string') return false;
+  var s = p.toLowerCase().replace(/\s+/g, ' ');
+  if (/\bselect\b[\s\S]*\bfrom\b/.test(s)) return true;
+  if (/\bunion\b[\s\S]*\bselect\b/.test(s)) return true;
+  if (/\binsert\b[\s\S]*\binto\b/.test(s)) return true;
+  if (/\bdelete\b[\s\S]*\bfrom\b/.test(s)) return true;
+  if (/\bdrop\b[\s\S]*\btable\b/.test(s)) return true;
+  if (/\bupdate\b[\s\S]*\bset\b/.test(s)) return true;
+  if (/\bor\s+['"]?\d+['"]?\s*=\s*['"]?\d+/.test(s)) return true;
+  if (/'\s*or\s*'|"\s*or\s*"/.test(s)) return true;
+  if (/--\s*$|;\s*--/.test(s)) return true;
+  return false;
+}
+
 function validatePassword(p) {
   if (!p || typeof p !== 'string') return '密码不能为空';
   if (p.length < 1 || p.length > 64) return '密码长度为 1～64 位';
+  if (passwordLooksLikeSqlProbe(p)) return '密码包含不允许的内容';
   return null;
+}
+
+function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword) {
+  var info = computeUserLoginRisk(ipDistinctCount, deviceCount);
+  if (passwordLooksLikeSqlProbe(plainPassword)) {
+    info = {
+      distinct_ip_count: info.distinct_ip_count,
+      device_count: info.device_count,
+      risk: true,
+      risk_messages: info.risk_messages.concat(['可疑密码(SQL探测)'])
+    };
+  }
+  return info;
 }
 
 function userSessionRevFromRow(rec) {
@@ -4864,7 +4894,11 @@ async function handleAdminUsers(req, res) {
     var out = rows.map(function (r) {
       var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var uname = String(r.username || '');
-      var riskInfo = computeUserLoginRisk(riskMaps.ipDistinct[uname] || 0, riskMaps.deviceCnt[uname] || 0);
+      var riskInfo = mergeUserRiskInfo(
+        riskMaps.ipDistinct[uname] || 0,
+        riskMaps.deviceCnt[uname] || 0,
+        r.plain_password != null ? String(r.plain_password) : ''
+      );
       var salInfo = avgSalaryMaps[uname] || {
         avg_salary_6m: null,
         avg_salary_6m_label: '未填写',
