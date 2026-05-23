@@ -157,20 +157,20 @@
             outline: none;
             background: transparent;
         }
-        /* 综合卡片在图上偏上，专项卡片在其下；原 44% 过高会把专项整块压在「综合」热区下导致误跳 zonghe.html */
+        /* 综合 / 专项为上下两张卡，热区勿重叠（综合 z-index 低、高度仅首卡） */
         .bancha-bs-hot-zonghe {
-            left: 0;
-            right: 0;
-            top: 0%;
-            height: 34%;
-            z-index: 10;
+            left: 2%;
+            right: 2%;
+            top: 9%;
+            height: 20%;
+            z-index: 5;
         }
         .bancha-bs-hot-zxk {
             left: 2%;
             right: 2%;
-            top: 31%;
-            height: 42%;
-            z-index: 7;
+            top: 30%;
+            height: 20%;
+            z-index: 12;
         }
         /* 办税网格首格：个人养老金扣除管理 */
         .bancha-bs-hot-yanglao {
