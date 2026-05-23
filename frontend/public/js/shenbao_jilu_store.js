@@ -2,10 +2,12 @@
  * 申报记录列表与详情共用存储（服务端 api/shenbao_jilu.php）
  */
 (function (global) {
+    var LIST_AMOUNT_LABEL = '应退税额';
+
     var AMOUNT_TYPES = {
-        refunded: '应退税额',
-        refundable: '可申请退税额',
-        paid: '已缴税额'
+        refunded: LIST_AMOUNT_LABEL,
+        refundable: LIST_AMOUNT_LABEL,
+        paid: LIST_AMOUNT_LABEL
     };
 
     var DETAIL_FIELD_DEFAULTS = {
@@ -201,9 +203,27 @@
         return s + '元';
     }
 
+    /** 列表展示：与详情「应退税额」(supplementTax) 一致 */
+    function listSupplementTaxAmount(record) {
+        var sup = String(record.supplementTax != null ? record.supplementTax : '')
+            .replace(/元/g, '')
+            .trim();
+        if (record.detailCustomized && sup !== '') {
+            return sup;
+        }
+        if (record.detailCustomized) {
+            var amt = String(record.amount != null ? record.amount : '')
+                .replace(/元/g, '')
+                .trim();
+            return amt || '0.00';
+        }
+        return String(record.amount != null ? record.amount : '0')
+            .replace(/元/g, '')
+            .trim() || '0.00';
+    }
+
     function amountLine(record) {
-        var label = AMOUNT_TYPES[record.amountType] || AMOUNT_TYPES.refunded;
-        return label + '：' + formatAmountDisplay(record.amount);
+        return LIST_AMOUNT_LABEL + '：' + formatAmountDisplay(listSupplementTaxAmount(record));
     }
 
     function noop() {}

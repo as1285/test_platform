@@ -105,29 +105,9 @@
     }
 
     function syncListAmountFields(rec) {
-        var amountFromForm = stripYuan(rec.amount);
-        var typeFromForm = rec.amountType;
-        if (amountFromForm && typeFromForm && parseFloat(amountFromForm) > 0) {
-            rec.amount = amountFromForm;
-            rec.amountType = typeFromForm;
-            return rec;
-        }
-        var refunded = parseFloat(stripYuan(rec.refundedThisTime)) || 0;
-        var paid = parseFloat(stripYuan(rec.paidThisTime)) || 0;
-        var supplement = parseFloat(stripYuan(rec.supplementTax)) || 0;
-        if (refunded > 0) {
-            rec.amountType = 'refunded';
-            rec.amount = stripYuan(rec.refundedThisTime) || rec.amount;
-        } else if (supplement > 0) {
-            rec.amountType = 'refunded';
-            rec.amount = stripYuan(rec.supplementTax);
-        } else if (paid > 0) {
-            rec.amountType = 'paid';
-            rec.amount = stripYuan(rec.paidThisTime);
-        } else if (!rec.amountType) {
-            rec.amountType = 'refundable';
-            rec.amount = rec.amount || '0.00';
-        }
+        var supplement = stripYuan(rec.supplementTax);
+        rec.amountType = 'refunded';
+        rec.amount = supplement !== '' ? supplement : '0.00';
         return rec;
     }
 

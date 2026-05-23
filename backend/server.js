@@ -3942,7 +3942,7 @@ var SHENBAO_DEFAULT_RECORDS = [
     title: '2023年度综合所得年度汇算',
     periodStart: '2023-01',
     periodEnd: '2023-12',
-    amountType: 'refundable',
+    amountType: 'refunded',
     amount: '0.00'
   },
   {
@@ -3951,7 +3951,7 @@ var SHENBAO_DEFAULT_RECORDS = [
     title: '2022年度综合所得年度汇算',
     periodStart: '2022-01',
     periodEnd: '2022-12',
-    amountType: 'refundable',
+    amountType: 'refunded',
     amount: '0.00'
   },
   {
@@ -4010,6 +4010,22 @@ function shenbaoTaxYearFromRecord(r) {
   return '';
 }
 
+function shenbaoSyncListAmountFromSupplement(rec) {
+  if (!rec) {
+    return rec;
+  }
+  rec.amountType = 'refunded';
+  if (rec.detailCustomized) {
+    var sup = String(rec.supplementTax != null ? rec.supplementTax : '')
+      .replace(/元/g, '')
+      .trim();
+    if (sup) {
+      rec.amount = sup;
+    }
+  }
+  return rec;
+}
+
 function shenbaoRecordFromRow(row) {
   var detail = {};
   if (row.detail_json) {
@@ -4019,7 +4035,7 @@ function shenbaoRecordFromRow(row) {
       detail = {};
     }
   }
-  return Object.assign(
+  var rec = Object.assign(
     {
       id: row.id,
       groupMonth: row.group_month || '',
@@ -4032,6 +4048,7 @@ function shenbaoRecordFromRow(row) {
     },
     detail
   );
+  return shenbaoSyncListAmountFromSupplement(rec);
 }
 
 function shenbaoMergeDetailRecord(r) {
@@ -4086,8 +4103,11 @@ function shenbaoNormalizeIncomingRecord(record) {
   rec.title = String(rec.title != null ? rec.title : '').trim();
   rec.periodStart = String(rec.periodStart != null ? rec.periodStart : '').trim();
   rec.periodEnd = String(rec.periodEnd != null ? rec.periodEnd : '').trim();
-  rec.amountType = String(rec.amountType != null ? rec.amountType : 'refunded').trim() || 'refunded';
-  var amt = String(rec.amount != null ? rec.amount : '0').replace(/元/g, '').trim() || '0.00';
+  rec.amountType = 'refunded';
+  var supplement = String(rec.supplementTax != null ? rec.supplementTax : '')
+    .replace(/元/g, '')
+    .trim();
+  var amt = supplement || String(rec.amount != null ? rec.amount : '0').replace(/元/g, '').trim() || '0.00';
   rec.amount = amt;
   rec.detailCustomized = rec.detailCustomized ? 1 : 0;
   return rec;
