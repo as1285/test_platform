@@ -1,16 +1,31 @@
 ---
-description: 修改可部署代码后自动执行 Docker 部署脚本
+description: 修改可部署代码后自动执行 Docker 部署，无需用户点 RUN
 alwaysApply: true
 ---
 
 # 自动部署（test_platform）
 
-在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），在结束任务前从仓库根目录执行：
+在本仓库中完成**会影响运行结果**的修改后（例如 `backend/`、`frontend/`、`docker-compose.yml`、任一 `Dockerfile`、nginx 配置等），**必须在当前任务内、回复用户之前**自动完成部署，**不要**把 `./scripts/deploy.sh` 留给用户手动执行，也**不要**因需权限而停顿等待用户点 RUN。
+
+## 执行方式
+
+从仓库根目录运行：
 
 ```bash
 ./scripts/deploy.sh
 ```
 
-若用户明确表示本次不要部署、或仅改文档/注释，可跳过。
+使用 Shell 工具时**一律带上** `required_permissions: ["all"]`（Docker 需访问 `docker.sock`，沙箱内会失败）。
 
-若因环境限制无法执行 Docker，向用户说明并已准备好脚本即可。
+若部署失败：自行重试一次（仍用 `all` 权限）；仍失败则向用户说明原因与日志要点，**不要**仅说「请运行 deploy.sh」。
+
+## 跳过条件
+
+仅在以下情况可跳过部署：
+
+- 用户明确表示本次不要部署
+- 仅改文档、注释、`.cursor/` 规则等不影响运行产物的内容
+
+## 与提交的关系
+
+若同时适用 `git-commit-after-changes.mdc`：先提交再部署（部署失败时一般保留已提交内容，除非用户要求回滚）。
