@@ -34,6 +34,10 @@
                     <button type="button" class="nav-item" data-page="login-log" data-title="管理账号登录流水">管理账号登录流水</button>
                     <button type="button" class="nav-item" data-page="user-login-log" data-title="普通用户登录流水">普通用户登录流水</button>
                 </div>
+                <div class="nav-group" data-nav-group="ops">
+                    <div class="nav-group-label">系统运维</div>
+                    <button type="button" class="nav-item" data-page="server-monitor" data-title="服务器监控">服务器监控</button>
+                </div>
                 <div class="nav-group" data-nav-group="stats">
                     <div class="nav-group-label">数据统计</div>
                     <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
@@ -1053,6 +1057,43 @@
                 <button type="button" class="btn-page" id="userLoginLogPrev">上一页</button>
                 <span id="userLoginLogPageInfo">第 1 页 · 共 0 条</span>
                 <button type="button" class="btn-page" id="userLoginLogNext">下一页</button>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-server-monitor" class="page-panel" role="tabpanel">
+        <section>
+            <h2>服务状态</h2>
+            <p class="hint">每 60 秒自动探活 API、MySQL、前端 Nginx。服务异常时将向 <strong id="monitorAlertEmail">—</strong> 发送邮件（需配置 SMTP）。</p>
+            <div class="form-row" style="align-items:center;margin-top:8px;">
+                <button type="button" class="btn-primary" id="btnRefreshServerMonitor">刷新</button>
+                <button type="button" class="btn-page" id="btnMonitorTestEmail">发送测试邮件</button>
+                <span id="monitorSmtpStatus" class="stat" style="margin:0;">—</span>
+            </div>
+            <div id="monitorServicesGrid" class="monitor-services-grid" aria-live="polite">加载中…</div>
+        </section>
+        <section>
+            <h2>主机资源</h2>
+            <div id="monitorHostGrid" class="monitor-stat-grid">加载中…</div>
+        </section>
+        <section>
+            <h2>网络与磁盘</h2>
+            <div id="monitorNetDiskGrid" class="monitor-stat-grid">加载中…</div>
+        </section>
+        <section>
+            <h2>告警记录</h2>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>服务</th>
+                            <th>说明</th>
+                            <th>邮件</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitorAlertsTbody"><tr><td colspan="4">暂无记录</td></tr></tbody>
+                </table>
             </div>
         </section>
                 </div>

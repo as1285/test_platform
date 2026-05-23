@@ -11,6 +11,7 @@ const geoip = require('geoip-lite');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('./register-guard');
+const serverMonitor = require('./serverMonitor');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -125,7 +126,8 @@ const ADMIN_MENU_KEYS = [
   'login-log',
   'analytics',
   'api-analytics',
-  'admin-accounts'
+  'admin-accounts',
+  'server-monitor'
 ];
 
 /** 个人中心默认外观（管理后台可覆盖） */
@@ -8293,6 +8295,26 @@ app.post('/api/admin/accounts/create', requireAdminAuth, handleAdminAccountsCrea
 app.post('/api/admin/accounts/update', requireAdminAuth, handleAdminAccountsUpdate);
 app.post('/api/admin/accounts/delete', requireAdminAuth, handleAdminAccountsDelete);
 
+async function handleAdminMonitorOverview(req, res) {
+  try {
+    res.json({ code: 200, data: serverMonitor.getMonitorOverview() });
+  } catch (e) {
+    res.status(500).json({ code: 500, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+async function handleAdminMonitorTestEmail(req, res) {
+  try {
+    var result = await serverMonitor.sendTestAlertEmail();
+    res.json({ code: 200, msg: '测试邮件已发送', data: result });
+  } catch (e) {
+    res.status(400).json({ code: 400, msg: String(e && e.message ? e.message : e) });
+  }
+}
+
+app.get('/api/admin/monitor/overview', requireAdminAuth, requireAdminMenu('server-monitor'), handleAdminMonitorOverview);
+app.post('/api/admin/monitor/test-email', requireAdminAuth, requireAdminMenu('server-monitor'), handleAdminMonitorTestEmail);
+
 function healthHandler(req, res) {
   res.json({ ok: true });
 }
@@ -8307,6 +8329,8 @@ async function startServer() {
   } catch (e) {
     console.error('UPLOAD_DIR mkdir', UPLOAD_DIR, e);
   }
+  serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
+  serverMonitor.startServerMonitor();
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

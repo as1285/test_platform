@@ -950,3 +950,74 @@
         .modal-actions {
             margin-top: 14px;
         }
+
+        /* 服务器监控 */
+        .monitor-services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .monitor-service-card {
+            border-radius: 10px;
+            padding: 14px 16px;
+            border: 1px solid #e0e6ed;
+            background: #f8fafc;
+        }
+        .monitor-service-card.is-ok {
+            border-color: #a5d6a7;
+            background: #f1f8f2;
+        }
+        .monitor-service-card.is-down {
+            border-color: #ef9a9a;
+            background: #fff5f5;
+        }
+        .monitor-service-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 6px;
+        }
+        .monitor-service-status {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .monitor-service-card.is-ok .monitor-service-status {
+            color: #2e7d32;
+        }
+        .monitor-service-card.is-down .monitor-service-status {
+            color: #c62828;
+        }
+        .monitor-service-meta {
+            font-size: 12px;
+            color: #666;
+            word-break: break-word;
+        }
+        .monitor-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .monitor-stat-card {
+            border: 1px solid #e8ecf0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #fff;
+        }
+        .monitor-stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .monitor-stat-val {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+        .monitor-stat-sub {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }

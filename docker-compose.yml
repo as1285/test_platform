@@ -39,6 +39,15 @@ services:
       ADMIN_PANEL_PASSWORD: ${ADMIN_PANEL_PASSWORD:-640810}
       # 用户注册/登录时写入 plain_password，供管理后台「用户管理」展示密码（设为 0 可关闭）
       REGISTER_STORE_PLAIN_PASSWORD: ${REGISTER_STORE_PLAIN_PASSWORD:-1}
+      # 服务器监控告警收件人
+      MONITOR_ALERT_EMAIL: ${MONITOR_ALERT_EMAIL:-498771018@qq.com}
+      MONITOR_CHECK_INTERVAL_MS: ${MONITOR_CHECK_INTERVAL_MS:-60000}
+      MONITOR_FRONTEND_URL: ${MONITOR_FRONTEND_URL:-http://frontend/}
+      # QQ 邮箱 SMTP（发件邮箱与 SMTP_PASS 授权码，未配置时仅后台展示监控、不发邮件）
+      SMTP_HOST: ${SMTP_HOST:-smtp.qq.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
     ports:
       - "0.0.0.0:3000:3000"
     depends_on:
