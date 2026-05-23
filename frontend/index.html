@@ -208,9 +208,34 @@
             margin-bottom: 16px;
             -webkit-tap-highlight-color: transparent;
         }
-        .login-btn:disabled {
+        .login-btn:disabled,
+        .login-btn.login-btn--locked {
             background: #b8d4f5;
-            cursor: not-allowed;
+            cursor: pointer;
+        }
+        .login-form-tip {
+            display: none;
+            margin: 10px 24px 0;
+            padding: 10px 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #d46b08;
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .login-form-tip.show {
+            display: block;
+        }
+        .slider-lane.slider-warn {
+            animation: loginSliderShake 0.45s ease;
+            box-shadow: inset 0 0 0 1px #ffa940;
+        }
+        @keyframes loginSliderShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
         }
         
         .register-btn {
@@ -407,6 +432,7 @@
                 </div>
             </div>
         </div>
+        <p class="login-form-tip" id="loginFormTip" role="alert" aria-live="polite"></p>
         <div class="login-aux">
             <a href="javascript:void(0)" id="linkFaceLogin">扫脸登录</a>
             <span class="login-aux-sep">|</span>
@@ -415,7 +441,7 @@
 
         <!-- 按钮区域 -->
         <div class="btn-section">
-            <button type="button" class="login-btn" id="loginSubmitBtn" onclick="doLogin()" disabled>登录</button>
+            <button type="button" class="login-btn login-btn--locked" id="loginSubmitBtn" onclick="doLogin()">登录</button>
             <a href="register.html" class="register-btn">注册</a>
         </div>
     </div>
@@ -641,6 +667,47 @@
             window.location.href = 'index.html';
         });
 
+        function isLoginSliderVerified() {
+            var handle = document.getElementById('loginSliderHandle');
+            return !!(handle && handle.classList.contains('verified'));
+        }
+
+        function showLoginFormTip(msg) {
+            var tip = document.getElementById('loginFormTip');
+            if (!tip) {
+                if (msg) alert(msg);
+                return;
+            }
+            if (!msg) {
+                tip.textContent = '';
+                tip.classList.remove('show');
+                return;
+            }
+            tip.textContent = msg;
+            tip.classList.add('show');
+        }
+
+        function warnLoginSlider() {
+            var lane = document.getElementById('loginSliderLane');
+            if (!lane) return;
+            lane.classList.remove('slider-warn');
+            void lane.offsetWidth;
+            lane.classList.add('slider-warn');
+            window.setTimeout(function () {
+                lane.classList.remove('slider-warn');
+            }, 500);
+        }
+
+        function setLoginSubmitReady(ready) {
+            var loginBtn = document.getElementById('loginSubmitBtn');
+            if (!loginBtn) return;
+            if (ready) {
+                loginBtn.classList.remove('login-btn--locked');
+            } else {
+                loginBtn.classList.add('login-btn--locked');
+            }
+        }
+
         function initLoginSlider() {
             var lane = document.getElementById('loginSliderLane');
             var handle = document.getElementById('loginSliderHandle');
@@ -665,7 +732,7 @@
                 handle.classList.remove('verified');
                 hint.textContent = '请按住滑块，拖动到最右边';
                 hint.style.color = '#c0c0c0';
-                loginBtn.disabled = true;
+                setLoginSubmitReady(false);
             }
             function onPointerDown(e) {
                 if (handle.classList.contains('verified')) return;
@@ -689,7 +756,8 @@
                     handle.classList.add('verified');
                     hint.textContent = '验证通过';
                     hint.style.color = '#52c41a';
-                    loginBtn.disabled = false;
+                    setLoginSubmitReady(true);
+                    showLoginFormTip('');
                 } else {
                     resetSlider();
                 }
@@ -735,18 +803,19 @@
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;
-            var loginBtn = document.getElementById('loginSubmitBtn');
-            if (loginBtn && loginBtn.disabled) {
-                alert('请先完成滑块验证');
-                return;
-            }
+            showLoginFormTip('');
 
             if (!username) {
-                alert('请输入账号');
+                showLoginFormTip('请输入账号');
                 return;
             }
             if (!password) {
-                alert('请输入密码');
+                showLoginFormTip('请输入密码');
+                return;
+            }
+            if (!isLoginSliderVerified()) {
+                showLoginFormTip('请先按住滑块，拖动到最右边完成验证');
+                warnLoginSlider();
                 return;
             }
 
