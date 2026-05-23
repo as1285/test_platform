@@ -12,7 +12,6 @@
             background: #f5f6fa;
             min-height: 100vh;
         }
-        /* erji.jpg 已含顶栏与插画，不再叠一层 HTML 标题栏 */
         .page-hero {
             position: relative;
             width: 100%;
@@ -31,83 +30,12 @@
             outline: none;
             z-index: 2;
         }
-        /* 顶栏「返回」热区（与切图内导航对齐，略放大便于点按） */
         .page-hero-hit-back {
             left: 0;
             top: 0;
             width: 28%;
             height: 11%;
             min-height: 44px;
-        }
-        .panel {
-            margin: -12px 12px 0;
-            position: relative;
-            z-index: 2;
-            background: #fff;
-            border-radius: 12px;
-            padding: 18px 16px 22px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-        }
-        .warm-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 12px;
-        }
-        .warm-list {
-            font-size: 14px;
-            color: #888;
-            line-height: 1.65;
-            padding-left: 18px;
-            margin-bottom: 20px;
-        }
-        .warm-list li { margin-bottom: 8px; }
-        .year-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 4px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 20px;
-            font-size: 15px;
-            color: #333;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .year-row .year-val {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #333;
-            font-weight: 500;
-        }
-        .year-row .chev {
-            color: #ccc;
-            font-size: 18px;
-            font-weight: 300;
-        }
-        .btn {
-            display: block;
-            width: 100%;
-            text-align: center;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            text-decoration: none;
-            margin-bottom: 14px;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-        }
-        .btn-primary {
-            background: linear-gradient(180deg, #3d8dff 0%, #1e6fff 100%);
-            color: #fff;
-            border: none;
-            box-shadow: 0 4px 12px rgba(30, 111, 255, 0.35);
-        }
-        .btn-outline {
-            background: #fff;
-            color: #1e6fff;
-            border: 1px solid #1e6fff;
         }
         html.app-top-safe-shell body.page-zonghe {
             padding-top: 0;
@@ -121,38 +49,6 @@
         <img class="page-hero-img" src="erji.jpg" alt="综合所得年度汇算">
         <a href="shouye.html" class="page-hero-hit page-hero-hit-back" aria-label="返回"></a>
     </div>
-    <div class="panel">
-        <h2 class="warm-title">温馨提示</h2>
-        <ul class="warm-list">
-            <li>如您仅有境内所得且需要办理汇算，请选择申报年度后点击下方「开始申报」。</li>
-            <li>您可点击「查看申报记录」查询以往申报情况。</li>
-        </ul>
-        <div class="year-row" id="yearRow" role="button" tabindex="0">
-            <span>申报年度</span>
-            <span class="year-val"><span id="yearDisplay">2025</span><span class="chev">›</span></span>
-        </div>
-        <a class="btn btn-primary" href="shenbao_jilu.html">开始申报</a>
-        <a class="btn btn-outline" href="shenbao_jilu.html">查看申报记录</a>
-    </div>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script>
-        (function () {
-            var row = document.getElementById('yearRow');
-            var years = ['2025', '2024', '2023'];
-            var idx = 0;
-            var disp = document.getElementById('yearDisplay');
-            function cycle() {
-                idx = (idx + 1) % years.length;
-                disp.textContent = years[idx];
-            }
-            row.addEventListener('click', cycle);
-            row.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    cycle();
-                }
-            });
-        })();
-    </script>
 </body>
 </html>
