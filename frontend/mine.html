@@ -48,7 +48,7 @@
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin-top: calc(-70px + 8px);
+            margin-top: calc(-76px + 8px);
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
@@ -70,7 +70,7 @@
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
-            margin: -38px 16px 12px;
+            margin: -38px 16px 0;
             border-radius: 12px 12px 0 0;
             padding: 16px 14px 14px;
         }
@@ -255,14 +255,14 @@
             margin-top: -20px;
             position: relative;
             z-index: 10;
-            padding-top: 10px;
+            padding-top: 6px;
             padding-bottom: 12px;
         }
 
-        /* 米色用户信息卡：直接照参考代码上移，不再和额外头像层计算避让 */
+        /* 米色用户信息卡：底部贴齐下方白区顶边，不留缝 */
         .user-card {
             background: #eed3aa;
-            margin: -70px 16px 9px;
+            margin: -76px 16px 0;
             border-radius: 12px 12px 0 0;
             padding: 14px 0 14px 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -380,8 +380,7 @@
             display: flex;
             justify-content: space-between;
             gap: 12px;
-            margin-left: 16px;
-            margin-right: 16px;
+            margin: 0 16px;
         }
 
         .function-card {
