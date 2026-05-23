@@ -33,6 +33,191 @@
     return d.getFullYear() + '-01';
   }
 
+  function ymParts(ym) {
+    var p = String(ym || '').split('-');
+    return { y: parseInt(p[0], 10) || 2019, m: parseInt(p[1], 10) || 1 };
+  }
+
+  function buildYm(y, m) {
+    return String(y) + '-' + pad2(m);
+  }
+
+  function isAndroidWebView() {
+    var ua = navigator.userAgent || '';
+    return /Android/i.test(ua) && (/;\s*wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
+  }
+
+  /** Cordova / Android WebView 上 type=month 的 showPicker 常失败，用自定义面板 */
+  function shouldUseCustomMonthPicker() {
+    var ua = navigator.userAgent || '';
+    if (/TaxPlatformCordovaApp\//i.test(ua)) return true;
+    if (isAndroidWebView()) return true;
+    return false;
+  }
+
+  var monthPickerOverlay = null;
+  var monthPickerYearSel = null;
+  var monthPickerMonthSel = null;
+  var monthPickerTargetInput = null;
+  var monthPickerOnConfirm = null;
+  var monthPickerOverlayBound = false;
+
+  function ensureMonthPickerOverlay() {
+    if (monthPickerOverlay) return;
+    monthPickerOverlay = document.getElementById('monthPickerOverlay');
+    monthPickerYearSel = document.getElementById('monthPickerYear');
+    monthPickerMonthSel = document.getElementById('monthPickerMonth');
+    if (!monthPickerOverlay || !monthPickerYearSel || !monthPickerMonthSel) return;
+    if (monthPickerOverlayBound) return;
+    monthPickerOverlayBound = true;
+
+    function closeMonthPicker() {
+      monthPickerOverlay.classList.remove('is-open');
+      monthPickerOverlay.setAttribute('aria-hidden', 'true');
+      monthPickerTargetInput = null;
+      monthPickerOnConfirm = null;
+    }
+
+    document.getElementById('monthPickerCancel').addEventListener('click', closeMonthPicker);
+    monthPickerOverlay.addEventListener('click', function (e) {
+      if (e.target === monthPickerOverlay) closeMonthPicker();
+    });
+    document.getElementById('monthPickerOk').addEventListener('click', function () {
+      if (!monthPickerTargetInput) {
+        closeMonthPicker();
+        return;
+      }
+      var y = parseInt(monthPickerYearSel.value, 10);
+      var m = parseInt(monthPickerMonthSel.value, 10);
+      if (!y || !m) {
+        closeMonthPicker();
+        return;
+      }
+      monthPickerTargetInput.value = buildYm(y, m);
+      monthPickerTargetInput.dispatchEvent(new Event('change', { bubbles: true }));
+      var cb = monthPickerOnConfirm;
+      closeMonthPicker();
+      if (typeof cb === 'function') cb();
+    });
+  }
+
+  function fillMonthPickerSelects(inp) {
+    var minP = ymParts(inp.min || '2019-01');
+    var maxP = ymParts(inp.max || todayYm());
+    var cur = ymParts(inp.value || todayYm());
+    var y;
+    monthPickerYearSel.innerHTML = '';
+    for (y = minP.y; y <= maxP.y; y++) {
+      var optY = document.createElement('option');
+      optY.value = String(y);
+      optY.textContent = y + '年';
+      if (y === cur.y) optY.selected = true;
+      monthPickerYearSel.appendChild(optY);
+    }
+    function refreshMonths() {
+      var selY = parseInt(monthPickerYearSel.value, 10) || cur.y;
+      var mStart = selY === minP.y ? minP.m : 1;
+      var mEnd = selY === maxP.y ? maxP.m : 12;
+      var prevM = parseInt(monthPickerMonthSel.value, 10) || cur.m;
+      monthPickerMonthSel.innerHTML = '';
+      var m;
+      for (m = mStart; m <= mEnd; m++) {
+        var optM = document.createElement('option');
+        optM.value = String(m);
+        optM.textContent = m + '月';
+        monthPickerMonthSel.appendChild(optM);
+      }
+      var pick = prevM;
+      if (pick < mStart) pick = mStart;
+      if (pick > mEnd) pick = mEnd;
+      monthPickerMonthSel.value = String(pick);
+    }
+    monthPickerYearSel.onchange = refreshMonths;
+    refreshMonths();
+  }
+
+  function openCustomMonthPicker(inp, onAfter) {
+    ensureMonthPickerOverlay();
+    if (!monthPickerOverlay || !monthPickerYearSel || !monthPickerMonthSel) return;
+    monthPickerTargetInput = inp;
+    monthPickerOnConfirm = onAfter;
+    fillMonthPickerSelects(inp);
+    monthPickerOverlay.classList.add('is-open');
+    monthPickerOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function openMonthPickerForInput(inp, onAfter) {
+    if (shouldUseCustomMonthPicker()) {
+      openCustomMonthPicker(inp, onAfter);
+      return;
+    }
+    inp.focus({ preventScroll: true });
+    if (typeof inp.showPicker === 'function') {
+      try {
+        var ret = inp.showPicker();
+        if (ret && typeof ret.then === 'function') {
+          ret.catch(function () {
+            openCustomMonthPicker(inp, onAfter);
+          });
+        }
+        return;
+      } catch (err) {
+        openCustomMonthPicker(inp, onAfter);
+        return;
+      }
+    }
+    try {
+      inp.click();
+    } catch (e2) {
+      openCustomMonthPicker(inp, onAfter);
+    }
+  }
+
+  function bindMonthPickerRows(clampOrderFn) {
+    document.querySelectorAll('.info-row-month-picker').forEach(function (row) {
+      var inp = row.querySelector('.month-picker-native');
+      if (!inp) return;
+      var touchOpened = false;
+
+      function afterPick() {
+        var startInp = document.getElementById('rangeStartInput');
+        var endInp = document.getElementById('rangeEndInput');
+        var startLab = document.getElementById('rangeStartLabel');
+        var endLab = document.getElementById('rangeEndLabel');
+        if (inp === startInp && startLab) startLab.textContent = startInp.value;
+        if (inp === endInp && endLab) endLab.textContent = endInp.value;
+        if (typeof clampOrderFn === 'function') clampOrderFn();
+        if (startLab && startInp) startLab.textContent = startInp.value;
+        if (endLab && endInp) endLab.textContent = endInp.value;
+      }
+
+      function onRowActivate(e) {
+        if (e.target.closest && e.target.closest('.mp-help-btn')) return;
+        if (e.type === 'click' && touchOpened) return;
+        if (e.type === 'touchend') {
+          e.preventDefault();
+          touchOpened = true;
+          setTimeout(function () {
+            touchOpened = false;
+          }, 450);
+        }
+        openMonthPickerForInput(inp, afterPick);
+      }
+
+      row.addEventListener('click', onRowActivate);
+      row.addEventListener('touchend', onRowActivate, { passive: false });
+
+      var lab = row.querySelector('.month-picker-hit');
+      if (lab) {
+        lab.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          openMonthPickerForInput(inp, afterPick);
+        });
+      }
+    });
+  }
+
   function fmtDateTime(d) {
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' +
       pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
@@ -487,29 +672,7 @@
         clampOrder();
         rangeStartLabel.textContent = rangeStartInput.value;
       });
-      document.querySelectorAll('.info-row-month-picker').forEach(function (row) {
-        var inp = row.querySelector('.month-picker-native');
-        if (!inp) return;
-        function enhanceMonthPicker(e) {
-          if (e && e.preventDefault) e.preventDefault();
-          inp.focus({ preventScroll: true });
-          if (typeof inp.showPicker === 'function') {
-            try {
-              inp.showPicker();
-            } catch (err) {}
-          }
-        }
-        if (typeof inp.showPicker === 'function') {
-          inp.addEventListener('click', enhanceMonthPicker);
-        }
-        var lab = row.querySelector('.month-picker-hit');
-        if (lab) {
-          lab.addEventListener('keydown', function (e) {
-            if (e.key !== 'Enter' && e.key !== ' ') return;
-            enhanceMonthPicker(e);
-          });
-        }
-      });
+      bindMonthPickerRows(clampOrder);
       document.querySelectorAll('.info-row-month-picker .mp-help-btn').forEach(function (el) {
         el.addEventListener('click', function (e) {
           e.stopPropagation();

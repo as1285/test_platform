@@ -261,6 +261,7 @@
         .info-row-month-picker {
             position: relative;
             -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
         }
 
         .month-picker-hit {
@@ -297,7 +298,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 透明 input 铺满整行，Android WebView 才能可靠弹出月份选择 */
+        /* 透明 input 铺满整行；opacity 不可为 0，部分 Android WebView 不响应点击 */
         .month-picker-native {
             position: absolute;
             left: 0;
@@ -309,13 +310,86 @@
             margin: 0;
             padding: 0;
             border: 0;
-            opacity: 0;
-            z-index: 3;
+            opacity: 0.01;
+            z-index: 6;
             cursor: pointer;
+            touch-action: manipulation;
             -webkit-appearance: none;
             appearance: none;
             background: transparent;
+            color: transparent;
             font-size: 16px;
+        }
+
+        .mp-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.45);
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .mp-overlay.is-open {
+            display: flex;
+        }
+
+        .mp-sheet {
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            border-radius: 12px 12px 0 0;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        .mp-sheet-hd {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+        }
+
+        .mp-sheet-hd button {
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            padding: 4px 8px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mp-sheet-hd .mp-cancel {
+            color: #666;
+        }
+
+        .mp-sheet-hd .mp-ok {
+            color: #1677ff;
+            font-weight: 500;
+        }
+
+        .mp-sheet-hd .mp-title-center {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .mp-sheet-bd {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .mp-sheet-bd select {
+            flex: 1;
+            height: 44px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 17px;
+            padding: 0 10px;
+            background: #fff;
+            color: #333;
         }
 
         .record-page {
@@ -547,8 +621,22 @@
 
     </div>
 
+    <div id="monthPickerOverlay" class="mp-overlay" aria-hidden="true">
+        <div class="mp-sheet" role="dialog" aria-modal="true" aria-labelledby="monthPickerTitle">
+            <div class="mp-sheet-hd">
+                <button type="button" class="mp-cancel" id="monthPickerCancel">取消</button>
+                <span class="mp-title-center" id="monthPickerTitle">选择年月</span>
+                <button type="button" class="mp-ok" id="monthPickerOk">确定</button>
+            </div>
+            <div class="mp-sheet-bd">
+                <select id="monthPickerYear" aria-label="年"></select>
+                <select id="monthPickerMonth" aria-label="月"></select>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
+    <script src="/js/najilu.js?v=20260523-month-picker-android"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>
