@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>涉税服务人员信息管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            color: #333;
+            background: linear-gradient(180deg, #dceeff 0%, #eef5ff 35%, #f5f8fc 100%);
+        }
+        .header {
+            background: transparent;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .back-btn {
+            position: absolute;
+            left: 14px;
+            color: #333;
+            font-size: 22px;
+            line-height: 1;
+            text-decoration: none;
+            padding: 4px 8px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            max-width: 72%;
+            text-align: center;
+            line-height: 1.25;
+        }
+        .page-body {
+            padding: 4px 14px 24px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+        .card-list {
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px 12px 16px;
+            box-shadow: 0 2px 12px rgba(22, 119, 255, 0.06);
+        }
+        .menu-card {
+            display: block;
+            width: 100%;
+            border: none;
+            text-align: left;
+            font-family: inherit;
+            border-radius: 10px;
+            padding: 16px 14px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+            min-height: 100px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .menu-card:last-child { margin-bottom: 0; }
+        .menu-card:active { opacity: 0.92; }
+        .menu-card-basic {
+            background: linear-gradient(135deg, #fff5e0 0%, #ffe8c8 55%, #ffddb0 100%);
+        }
+        .menu-card-credit {
+            background: linear-gradient(135deg, #f0ecff 0%, #e6dcff 55%, #ddd0ff 100%);
+        }
+        .menu-card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1a3a5c;
+            margin-bottom: 10px;
+            padding-right: 72px;
+            line-height: 1.35;
+        }
+        .menu-card-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.55;
+            padding-right: 64px;
+        }
+        .menu-card-mark {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 56px;
+            height: 56px;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="page-sheshuifuwu">
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">&lt;</a>
+        <h1 class="header-title">涉税服务人员信息管理</h1>
+    </header>
+
+    <main class="page-body">
+        <div class="card-list">
+            <button type="button" class="menu-card menu-card-basic" data-action="basic">
+                <div class="menu-card-title">涉税服务人员基本信息填报</div>
+                <p class="menu-card-desc">依照法律法规、部门规章规定提供涉税专业服务的其他人员可填报或变更个人涉税服务人员基本信息</p>
+                <svg class="menu-card-mark" viewBox="0 0 56 56" aria-hidden="true">
+                    <rect x="10" y="8" width="36" height="44" rx="4" fill="#f5a623"/>
+                    <rect x="16" y="16" width="24" height="4" rx="1" fill="#fff"/>
+                    <rect x="16" y="24" width="20" height="4" rx="1" fill="#fff"/>
+                    <rect x="16" y="32" width="22" height="4" rx="1" fill="#fff"/>
+                </svg>
+            </button>
+            <button type="button" class="menu-card menu-card-credit" data-action="credit">
+                <div class="menu-card-title">涉税服务人员信用码申领</div>
+                <p class="menu-card-desc">依照法律法规、部门规章规定提供涉税专业服务的其他人员，在完成基本信息填报后，可申领涉税服务人员信用码。</p>
+                <svg class="menu-card-mark" viewBox="0 0 56 56" aria-hidden="true">
+                    <rect x="12" y="12" width="32" height="32" rx="4" fill="#9b7fe8"/>
+                    <rect x="16" y="16" width="8" height="8" fill="#fff"/>
+                    <rect x="26" y="16" width="8" height="8" fill="#fff"/>
+                    <rect x="16" y="26" width="8" height="8" fill="#fff"/>
+                    <rect x="26" y="26" width="8" height="8" fill="#fff"/>
+                </svg>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        document.querySelectorAll('.menu-card').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var action = btn.getAttribute('data-action');
+                if (action === 'basic') {
+                    alert('基本信息填报功能开发中');
+                } else {
+                    alert('信用码申领功能开发中');
+                }
+            });
+        });
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>
