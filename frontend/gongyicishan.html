@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>公益慈善捐赠扣除填报</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: #fff;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-icon { width: 9px; height: auto; display: block; }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            max-width: 72%;
+            text-align: center;
+            line-height: 1.25;
+        }
+        .hero {
+            height: 128px;
+            overflow: hidden;
+            background: linear-gradient(160deg, #9ec5ff 0%, #c5deff 50%, #e8f2ff 100%);
+            position: relative;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 120'%3E%3Crect x='140' y='22' width='72' height='52' rx='6' fill='%23fff' opacity='.85'/%3E%3Ccircle cx='72' cy='48' r='22' fill='%23fff' opacity='.8'/%3E%3Cpath d='M62 70 Q72 50 82 70' stroke='%237eb0f5' stroke-width='3' fill='none'/%3E%3Ccircle cx='168' cy='88' r='14' fill='%23f5c542' opacity='.9'/%3E%3Ctext x='168' y='93' text-anchor='middle' fill='%23fff' font-size='14' font-weight='700'%3E¥%3C/text%3E%3C/svg%3E") no-repeat center / 88% auto;
+            pointer-events: none;
+        }
+        .tips-box {
+            background: #fff;
+            padding: 16px 18px;
+            margin-top: 8px;
+        }
+        .tips-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .tips-item {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.65;
+        }
+        .form-card {
+            background: #fff;
+            margin-top: 8px;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            min-height: 56px;
+            padding: 0 18px;
+            border: none;
+            width: 100%;
+            background: #fff;
+            font-family: inherit;
+            text-align: left;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .form-label {
+            font-size: 18px;
+            color: #333;
+            flex-shrink: 0;
+        }
+        .form-value {
+            flex: 1;
+            text-align: right;
+            font-size: 18px;
+            color: #bbb;
+            padding: 0 8px;
+        }
+        .form-value.has-val { color: #333; }
+        .form-arrow {
+            color: #c8c8c8;
+            font-size: 22px;
+            line-height: 1;
+        }
+        .footer-actions {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+            background: #f5f6fa;
+            z-index: 50;
+        }
+        .btn-primary {
+            display: block;
+            width: 100%;
+            height: 50px;
+            border: none;
+            border-radius: 6px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .footer-link {
+            display: block;
+            text-align: center;
+            color: #1677ff;
+            font-size: 16px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .year-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.45);
+            align-items: flex-end;
+        }
+        .year-overlay.is-open { display: flex; }
+        .year-sheet {
+            width: 100%;
+            background: #fff;
+            border-radius: 12px 12px 0 0;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .year-sheet-hd {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+        }
+        .year-sheet-hd button {
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: #1677ff;
+        }
+        .year-sheet-hd .cancel { color: #666; }
+        .year-list { max-height: 240px; overflow-y: auto; }
+        .year-opt {
+            display: block;
+            width: 100%;
+            border: none;
+            background: #fff;
+            padding: 14px 16px;
+            font-size: 17px;
+            text-align: center;
+            font-family: inherit;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .year-opt:active { background: #f5f8ff; }
+    </style>
+</head>
+<body class="page-gongyicishan">
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">
+            <img src="jt.png" class="back-icon" alt="">
+            <span>返回</span>
+        </a>
+        <h1 class="header-title">公益慈善捐赠扣除填报</h1>
+    </header>
+
+    <div class="hero" aria-hidden="true"></div>
+
+    <section class="tips-box">
+        <h2 class="tips-title">温馨提示</h2>
+        <p class="tips-item">税款所属年度自2025年起，您可通过本功能录入准予扣除的捐赠记录，并支持选择由扣缴义务人逐月扣除或年度汇算时扣除。</p>
+    </section>
+
+    <div class="form-card">
+        <button type="button" class="form-row" id="pickYearBtn">
+            <span class="form-label">填报年度</span>
+            <span class="form-value" id="yearLabel">请选择填报年度</span>
+            <span class="form-arrow" aria-hidden="true">›</span>
+        </button>
+    </div>
+
+    <div class="footer-actions">
+        <button type="button" class="btn-primary" id="btnFile">填报捐赠扣除</button>
+        <a href="javascript:void(0)" class="footer-link" id="viewDeductionLink">查看我的扣除信息</a>
+    </div>
+
+    <div class="year-overlay" id="yearOverlay" aria-hidden="true">
+        <div class="year-sheet" role="dialog">
+            <div class="year-sheet-hd">
+                <button type="button" class="cancel" id="yearCancel">取消</button>
+                <span>选择填报年度</span>
+                <button type="button" id="yearOk">确定</button>
+            </div>
+            <div class="year-list" id="yearList"></div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var yearLabel = document.getElementById('yearLabel');
+            var overlay = document.getElementById('yearOverlay');
+            var yearList = document.getElementById('yearList');
+            var selectedYear = '';
+            var pendingYear = '';
+
+            var now = new Date().getFullYear();
+            var years = [];
+            for (var y = now; y >= 2025; y--) years.push(String(y));
+
+            years.forEach(function (yr) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'year-opt';
+                btn.textContent = yr + '年';
+                btn.setAttribute('data-year', yr);
+                btn.addEventListener('click', function () {
+                    pendingYear = yr;
+                    yearList.querySelectorAll('.year-opt').forEach(function (el) {
+                        el.style.color = el.getAttribute('data-year') === yr ? '#1677ff' : '#333';
+                        el.style.fontWeight = el.getAttribute('data-year') === yr ? '600' : '400';
+                    });
+                });
+                yearList.appendChild(btn);
+            });
+
+            function openYearPicker() {
+                pendingYear = selectedYear || String(now);
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+            function closeYearPicker() {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+
+            document.getElementById('pickYearBtn').addEventListener('click', openYearPicker);
+            document.getElementById('yearCancel').addEventListener('click', closeYearPicker);
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) closeYearPicker();
+            });
+            document.getElementById('yearOk').addEventListener('click', function () {
+                if (pendingYear) {
+                    selectedYear = pendingYear;
+                    yearLabel.textContent = selectedYear + '年';
+                    yearLabel.classList.add('has-val');
+                }
+                closeYearPicker();
+            });
+
+            document.getElementById('btnFile').addEventListener('click', function () {
+                if (!selectedYear) {
+                    alert('请选择填报年度');
+                    return;
+                }
+                alert('填报捐赠扣除功能开发中');
+            });
+            document.getElementById('viewDeductionLink').addEventListener('click', function () {
+                alert('暂无扣除信息');
+            });
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

@@ -47,6 +47,7 @@ COPY najilu.html /usr/share/nginx/html/
 COPY gerenyanglao.html /usr/share/nginx/html/
 COPY gerenyanglao_banner.jpg /usr/share/nginx/html/
 COPY jingyingsuode.html /usr/share/nginx/html/
+COPY gongyicishan.html /usr/share/nginx/html/
 COPY renzhi.html /usr/share/nginx/html/
 COPY renzhi_detail.html /usr/share/nginx/html/
 COPY personal_info.html /usr/share/nginx/html/
