@@ -126,14 +126,34 @@
 
     function enrichRecord(r, opts) {
         if (opts && opts.preservePayment) {
-            var kept = Object.assign({}, DETAIL_FIELD_DEFAULTS, r);
-            kept.taxYear = taxYearFromRecord(r);
-            return kept;
+            return mergeDetailRecord(r);
         }
         return syncPaymentFromList(r);
     }
 
-    function loadRecords(tab) {
+    function mergeDetailRecord(r) {
+        var out = Object.assign({}, DETAIL_FIELD_DEFAULTS, r);
+        out.taxYear = taxYearFromRecord(r);
+        return out;
+    }
+
+    function designDetailTemplate(r) {
+        var out = Object.assign({}, DETAIL_FIELD_DEFAULTS, {
+            id: r.id,
+            groupMonth: r.groupMonth,
+            title: r.title,
+            periodStart: r.periodStart,
+            periodEnd: r.periodEnd,
+            amountType: r.amountType,
+            amount: r.amount,
+            taxAuthority: r.taxAuthority || DETAIL_FIELD_DEFAULTS.taxAuthority,
+            employer: r.employer || DETAIL_FIELD_DEFAULTS.employer
+        });
+        out.taxYear = taxYearFromRecord(r);
+        return out;
+    }
+
+    function loadRawRecords(tab) {
         if (tab === 'void') {
             try {
                 var rawVoid = localStorage.getItem(storageKey(tab));
@@ -141,10 +161,7 @@
                     return [];
                 }
                 var parsedVoid = JSON.parse(rawVoid);
-                if (!Array.isArray(parsedVoid)) {
-                    return [];
-                }
-                return parsedVoid.map(enrichRecord);
+                return Array.isArray(parsedVoid) ? parsedVoid : [];
             } catch (e) {
                 return [];
             }
@@ -152,16 +169,34 @@
         try {
             var raw = localStorage.getItem(storageKey(tab));
             if (!raw) {
-                return cloneDefaults();
+                return null;
             }
             var parsed = JSON.parse(raw);
             if (!Array.isArray(parsed) || !parsed.length) {
-                return cloneDefaults();
+                return null;
             }
-            return parsed.map(enrichRecord);
+            return parsed;
         } catch (e) {
+            return null;
+        }
+    }
+
+    function mapRecordForUse(r) {
+        if (r.detailCustomized) {
+            return mergeDetailRecord(r);
+        }
+        return enrichRecord(r);
+    }
+
+    function loadRecords(tab) {
+        if (tab === 'void') {
+            return loadRawRecords(tab).map(mapRecordForUse);
+        }
+        var parsed = loadRawRecords(tab);
+        if (!parsed) {
             return cloneDefaults();
         }
+        return parsed.map(mapRecordForUse);
     }
 
     function saveRecords(tab, list) {
@@ -178,53 +213,55 @@
         return null;
     }
 
-    /** 详情页：使用设计稿默认税额，不受列表 0 元影响 */
+    function findRawRecord(tab, id) {
+        var list = loadRawRecords(tab);
+        if (!list) {
+            list = DEFAULT_RECORDS.map(function (r) {
+                return Object.assign({}, r);
+            });
+        }
+        for (var i = 0; i < list.length; i++) {
+            if (String(list[i].id) === String(id)) {
+                return list[i];
+            }
+        }
+        return null;
+    }
+
+    /** 详情页：已保存用用户数据；未保存用设计稿默认，不受列表 0 元影响 */
     function findRecordForDetail(tab, id) {
-        var r = findRecord(tab, id);
+        var r = findRawRecord(tab, id);
         if (!r) {
             return null;
         }
         if (r.detailCustomized) {
-            return enrichRecord(r, { preservePayment: true });
+            return mergeDetailRecord(r);
         }
-        var out = Object.assign({}, DETAIL_FIELD_DEFAULTS, {
-            id: r.id,
-            groupMonth: r.groupMonth,
-            title: r.title,
-            periodStart: r.periodStart,
-            periodEnd: r.periodEnd,
-            amountType: r.amountType,
-            amount: r.amount,
-            taxAuthority: r.taxAuthority || DETAIL_FIELD_DEFAULTS.taxAuthority,
-            employer: r.employer || DETAIL_FIELD_DEFAULTS.employer
-        });
-        out.taxYear = taxYearFromRecord(r);
-        return out;
+        return designDetailTemplate(r);
     }
 
-    function saveRecord(tab, record, opts) {
-        var list = loadRecords(tab);
+    function saveRecord(tab, record) {
+        var list = loadRawRecords(tab);
+        if (!list) {
+            list = DEFAULT_RECORDS.map(function (r) {
+                return Object.assign({}, r);
+            });
+        }
+        var toSave = Object.assign({}, record);
+        toSave.detailCustomized = true;
         var found = false;
-        var merged = enrichRecord(record, opts);
         for (var i = 0; i < list.length; i++) {
             if (String(list[i].id) === String(record.id)) {
-                list[i] = merged;
+                list[i] = Object.assign({}, list[i], toSave);
                 found = true;
                 break;
             }
         }
         if (!found) {
-            list.push(merged);
-        }
-        merged.detailCustomized = true;
-        for (var j = 0; j < list.length; j++) {
-            if (String(list[j].id) === String(record.id)) {
-                list[j].detailCustomized = true;
-                break;
-            }
+            list.push(toSave);
         }
         saveRecords(tab, list);
-        return list;
+        return mergeDetailRecord(toSave);
     }
 
     function amountLine(record) {
@@ -262,6 +299,36 @@
         } catch (e) {}
     }
 
+    function fixCorruptedDetailOnce() {
+        try {
+            if (localStorage.getItem('shenbao_detail_fix_v2') === '1') {
+                return;
+            }
+            ['done', 'void'].forEach(function (tab) {
+                var list = loadRawRecords(tab);
+                if (!list || !list.length) {
+                    return;
+                }
+                var changed = false;
+                list.forEach(function (item) {
+                    if (!item || !item.detailCustomized) {
+                        return;
+                    }
+                    var sup = String(item.supplementTax || '0').replace(/元/g, '');
+                    var paid = String(item.paidThisTime || '0').replace(/元/g, '');
+                    if (parseFloat(sup) === 0 && parseFloat(paid) === 0) {
+                        delete item.detailCustomized;
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    saveRecords(tab, list);
+                }
+            });
+            localStorage.setItem('shenbao_detail_fix_v2', '1');
+        } catch (e) {}
+    }
+
     function clearVoidTabSeedOnce() {
         try {
             if (localStorage.getItem('shenbao_jilu_void_seed_removed') === '1') {
@@ -282,6 +349,7 @@
         enrichRecord: enrichRecord,
         amountLine: amountLine,
         clearVoidTabSeedOnce: clearVoidTabSeedOnce,
-        zeroListAmountsOnce: zeroListAmountsOnce
+        zeroListAmountsOnce: zeroListAmountsOnce,
+        fixCorruptedDetailOnce: fixCorruptedDetailOnce
     };
 })(typeof window !== 'undefined' ? window : this);

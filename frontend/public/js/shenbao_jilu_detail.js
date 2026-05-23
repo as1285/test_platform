@@ -150,12 +150,34 @@
         }
     }
 
+    function shouldShowDesign() {
+        if (document.body.classList.contains('is-editing')) {
+            return false;
+        }
+        return !(state.record && state.record.detailCustomized);
+    }
+
+    function updateDisplayMode() {
+        setDesignView(shouldShowDesign());
+    }
+
+    function reloadRecord() {
+        state.record =
+            Store.findRecordForDetail(state.tab, state.id) || Store.findRecord(state.tab, state.id);
+        return state.record;
+    }
+
     function setEditing(on) {
         document.body.classList.toggle('is-editing', on);
-        setDesignView(!on);
+        if (on) {
+            setDesignView(false);
+        } else {
+            updateDisplayMode();
+        }
     }
 
     function enterEdit() {
+        reloadRecord();
         state.snapshot = JSON.parse(JSON.stringify(state.record));
         fillView(state.record);
         setEditing(true);
@@ -173,11 +195,12 @@
     function saveEdit() {
         var updated = collectForm();
         updated.id = state.id;
-        Store.saveRecord(state.tab, updated, { preservePayment: true });
-        state.record = Store.findRecordForDetail(state.tab, state.id) || updated;
+        state.record = Store.saveRecord(state.tab, updated);
+        state.record.detailCustomized = true;
         fillView(state.record);
         setEditing(false);
         state.snapshot = null;
+        updateDisplayMode();
         window.scrollTo(0, 0);
     }
 
@@ -232,9 +255,8 @@
             return;
         }
 
-        state.record =
-            Store.findRecordForDetail(state.tab, state.id) || Store.findRecord(state.tab, state.id);
-        if (!state.record) {
+        Store.fixCorruptedDetailOnce();
+        if (!reloadRecord()) {
             window.location.replace('shenbao_jilu.html?tab=' + encodeURIComponent(state.tab));
             return;
         }
@@ -246,7 +268,7 @@
 
         fillView(state.record);
         bindTabs();
-        setDesignView(true);
+        updateDisplayMode();
 
         document.getElementById('btnCorrect').addEventListener('click', enterEdit);
         document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
