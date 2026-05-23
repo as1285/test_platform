@@ -529,6 +529,14 @@
             flex-shrink: 0;
         }
 
+        /* iOS：Safari 对文字「>」偏细，加粗并描边 */
+        html.app-top-safe-shell:not(.app-android-client) body.page-mine .menu-arrow,
+        html[class*="app-ios"] body.page-mine .menu-arrow {
+            font-weight: 700;
+            -webkit-text-stroke: 0.4px currentColor;
+            paint-order: stroke fill;
+        }
+
         /* 退出登录 */
         .logout-section {
             background: #fff;
