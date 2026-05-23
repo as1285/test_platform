@@ -257,8 +257,8 @@
         .svc-hot-left { left: 0; width: 33.33%; }
         .svc-hot-mid { left: 33.33%; width: 33.33%; }
         .svc-hot-right { left: 66.66%; width: 33.34%; }
-        /* 重点服务推荐 · 专项附加扣除大横幅左半 → 收入纳税明细（高于三列热区，避免误跳汇算） */
-        .svc-zxk-banner-shuiming {
+        /* 重点服务推荐 · 专项附加扣除大横幅左半：仅占位拦截点击，不跳转 */
+        .svc-zxk-banner-noop {
             position: absolute;
             z-index: 5;
             left: 0;
@@ -269,6 +269,7 @@
             outline: none;
             touch-action: manipulation;
             background: transparent;
+            cursor: default;
         }
         /* 专项附加扣除横幅 ·「我要填报」→ 专项附加扣除页 */
         .svc-zxk-banner-fill {
@@ -461,7 +462,7 @@
             </div>
             <div class="svc-cards-wrap">
                 <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=2" alt="置顶服务">
-                <a href="shuiming.html?reset=1" class="svc-zxk-banner-shuiming" aria-label="收入纳税明细"></a>
+                <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
                 <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="我要填报"></a>
                 <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
                 <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
