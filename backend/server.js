@@ -58,6 +58,35 @@ const MINE_UI_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
 const USER_TYPE_TEST = 1;
+
+/** 注册来源渠道（C 端下拉 value → 展示名） */
+const REGISTER_SOURCE_CHANNELS = {
+  douyin: '抖音',
+  bilibili: 'B站',
+  tieba: '百度贴吧',
+  zhihu: '知乎',
+  friend: '朋友介绍',
+  other: '其他'
+};
+
+function validateRegisterSourceChannel(channel) {
+  var c = channel != null ? String(channel).trim() : '';
+  if (!c) {
+    return '请选择来源渠道';
+  }
+  if (!REGISTER_SOURCE_CHANNELS[c]) {
+    return '来源渠道无效';
+  }
+  return null;
+}
+
+function registerSourceChannelLabel(channel) {
+  var c = channel != null ? String(channel).trim() : '';
+  if (!c) {
+    return '—';
+  }
+  return REGISTER_SOURCE_CHANNELS[c] || c;
+}
 /** 历史注册默认税号；对外展示为 DEFAULT_TAX_ID_HINT */
 const LEGACY_DEFAULT_TAX_ID = '620000000000000000';
 const DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
@@ -754,6 +783,16 @@ async function createTables() {
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN plain_password VARCHAR(255) NULL COMMENT '原始密码明文'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN register_source_channel VARCHAR(32) NULL COMMENT '注册来源渠道'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
@@ -2251,7 +2290,7 @@ async function buildUserTaxAvgSalaryMap(conn, usernames) {
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password) {
+async function registerUser(username, password, registerSourceChannel) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -2260,6 +2299,11 @@ async function registerUser(username, password) {
   if (p) {
     throw new Error(p);
   }
+  var srcErr = validateRegisterSourceChannel(registerSourceChannel);
+  if (srcErr) {
+    throw new Error(srcErr);
+  }
+  registerSourceChannel = String(registerSourceChannel).trim();
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
@@ -2280,9 +2324,9 @@ async function registerUser(username, password) {
     var storePlain =
       String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
-       VALUES (?, ?, ?, ?, 0, ?, ?)`,
-      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, storePlain]
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
+      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, storePlain, registerSourceChannel]
     );
     // 注册成功埋点（用于后台接口统计看转化）
     incrementApiDailyCounter('EVENT register_success', '认证注册');
@@ -4135,7 +4179,11 @@ async function handleAuthPost(req, res) {
       }
       incrementApiDailyCounter('EVENT register_submit', '认证注册');
       try {
-        var out = await registerUser(body.username, body.password);
+        var regSource =
+          body.register_source_channel != null
+            ? body.register_source_channel
+            : body.source_channel;
+        var out = await registerUser(body.username, body.password, regSource);
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
@@ -4843,7 +4891,7 @@ async function handleAdminUsers(req, res) {
         }).join(',');
         const [pageRows] = await conn.query(
           `SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-                  last_login_city, created_at, hash, plain_password,
+                  last_login_city, created_at, hash, plain_password, register_source_channel,
                   (SELECT ac.owner_admin_username
                    FROM activation_codes ac
                    WHERE ac.used_by_username = users.username
@@ -4865,7 +4913,7 @@ async function handleAdminUsers(req, res) {
       const [pageRows] = await conn.query(
         `
       SELECT id, username, real_name, tax_id, account_active, banned, user_type,
-             last_login_city, created_at, hash, plain_password,
+             last_login_city, created_at, hash, plain_password, register_source_channel,
              (SELECT ac.owner_admin_username
               FROM activation_codes ac
               WHERE ac.used_by_username = users.username
@@ -4932,7 +4980,10 @@ async function handleAdminUsers(req, res) {
         avg_salary_6m: salInfo.avg_salary_6m,
         avg_salary_6m_label: salInfo.avg_salary_6m_label,
         salary_month_count: salInfo.salary_month_count,
-        tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date)
+        tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),
+        register_source_channel:
+          r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
+        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel)
       };
     });
     res.json({
@@ -5490,7 +5541,9 @@ async function handleAdminUserDataList(req, res) {
           return '?';
         }).join(',');
         const [pageRows] = await conn.query(
-          'SELECT id, username, real_name, tax_id FROM users WHERE username IN (' + ph + ') ORDER BY id DESC',
+          'SELECT id, username, real_name, tax_id, register_source_channel FROM users WHERE username IN (' +
+            ph +
+            ') ORDER BY id DESC',
           pageNames
         );
         rows = pageRows;
@@ -5499,7 +5552,9 @@ async function handleAdminUserDataList(req, res) {
       const [totalRows] = await conn.execute('SELECT COUNT(*) AS count FROM users' + whereSql, params);
       total = totalRows[0].count;
       const [pageRows] = await conn.query(
-        'SELECT id, username, real_name, tax_id FROM users' + whereSql + ' ORDER BY id DESC LIMIT ? OFFSET ?',
+        'SELECT id, username, real_name, tax_id, register_source_channel FROM users' +
+          whereSql +
+          ' ORDER BY id DESC LIMIT ? OFFSET ?',
         params.concat([limit, offset])
       );
       rows = pageRows;
@@ -5538,7 +5593,10 @@ async function handleAdminUserDataList(req, res) {
         family_summary: dm.family_summary || '—',
         bank_count: dm.bank_count || 0,
         bank_summary: dm.bank_summary || '—',
-        tax_record_count: dm.tax_record_count || 0
+        tax_record_count: dm.tax_record_count || 0,
+        register_source_channel:
+          r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
+        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel)
       };
     });
 
@@ -5565,7 +5623,7 @@ async function handleAdminUserDataDetail(req, res) {
         return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
       }
       const [userRows] = await conn.execute(
-        'SELECT username, real_name, tax_id, created_at FROM users WHERE username = ? LIMIT 1',
+        'SELECT username, real_name, tax_id, created_at, register_source_channel FROM users WHERE username = ? LIMIT 1',
         [username]
       );
       if (!userRows.length) {
@@ -5614,7 +5672,10 @@ async function handleAdminUserDataDetail(req, res) {
             username: String(u.username),
             real_name: u.real_name != null ? String(u.real_name) : '',
             user_tax_id: u.tax_id != null ? String(u.tax_id) : '',
-            created_at: u.created_at ? u.created_at.toISOString() : ''
+            created_at: u.created_at ? u.created_at.toISOString() : '',
+            register_source_channel:
+              u.register_source_channel != null ? String(u.register_source_channel).trim() : '',
+            register_source_channel_label: registerSourceChannelLabel(u.register_source_channel)
           },
           avg_salary_6m: sal.avg_salary_6m,
           avg_salary_6m_label: sal.avg_salary_6m_label,

@@ -16,15 +16,15 @@
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 28px;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px;
             text-align: center;
             position: relative;
-            border-radius: 0 0 24px 24px;
+            border-radius: 0 0 20px 20px;
         }
         .back-btn {
             position: absolute;
             left: 16px;
-            top: calc(14px + env(safe-area-inset-top, 0px));
+            top: calc(10px + env(safe-area-inset-top, 0px));
             color: #fff;
             font-size: 15px;
             text-decoration: none;
@@ -32,11 +32,11 @@
             align-items: center;
             gap: 4px;
         }
-        .header h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
-        .header p { font-size: 13px; opacity: 0.9; }
+        .header h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .header p { font-size: 12px; opacity: 0.9; }
         .card {
             background: #fff;
-            margin: -18px 16px 0;
+            margin: -12px 16px 0;
             border-radius: 16px;
             padding: 22px 20px 8px;
             box-shadow: 0 8px 24px rgba(30, 111, 255, 0.08);
@@ -57,10 +57,25 @@
             font-size: 16px;
             background: #fafafa;
         }
-        .field input:focus {
+        .field input:focus,
+        .field select:focus {
             outline: none;
             border-color: #1e6fff;
             background: #fff;
+        }
+        .field select {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #fafafa;
+            color: #333;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23999' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
         }
         .hint { font-size: 12px; color: #999; margin-top: 6px; }
         .btn-submit {
@@ -118,6 +133,18 @@
             <div class="field">
                 <label>确认密码 <span class="req">*</span></label>
                 <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+                <label>来源渠道 <span class="req">*</span></label>
+                <select id="registerSourceChannel" name="register_source_channel" required>
+                    <option value="">请选择来源渠道</option>
+                    <option value="douyin">1. 抖音</option>
+                    <option value="bilibili">2. B站</option>
+                    <option value="tieba">3. 百度贴吧</option>
+                    <option value="zhihu">4. 知乎</option>
+                    <option value="friend">5. 朋友介绍</option>
+                    <option value="other">6. 其他</option>
+                </select>
             </div>
             <div class="field">
                 <label>验证码 <span class="req">*</span></label>
@@ -201,6 +228,11 @@
                 showErr('请填写验证码');
                 return;
             }
+            var sourceChannel = document.getElementById('registerSourceChannel').value.trim();
+            if (!sourceChannel) {
+                showErr('请选择来源渠道');
+                return;
+            }
 
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', { page: 'register' });
@@ -216,6 +248,7 @@
                     action: 'register',
                     username: username,
                     password: password,
+                    register_source_channel: sourceChannel,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns
                 })

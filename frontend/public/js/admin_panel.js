@@ -2339,8 +2339,14 @@
         function buildUserDataDetailHtml(username, data) {
             var html = '<div class="user-detail-wrap">';
             html += '<div class="user-detail-title">账号「' + esc(username) + '」数据档案</div>';
+            var srcLabel =
+                (data.user && data.user.register_source_channel_label) ||
+                data.register_source_channel_label ||
+                '—';
             html +=
-                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">近六个月平均工资：<strong>' +
+                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">来源渠道：<strong>' +
+                esc(srcLabel) +
+                '</strong> · 近六个月平均工资：<strong>' +
                 esc(data.avg_salary_6m_label || '未填写') +
                 '</strong></div>';
 
@@ -2539,6 +2545,10 @@
                         html += '<tr>';
                         html += '<td class="cell-break">' + esc(row.username) + '</td>';
                         html += '<td>' + esc(row.real_name || '—') + '</td>';
+                        html +=
+                            '<td class="cell-break">' +
+                            esc(row.register_source_channel_label || '—') +
+                            '</td>';
                         html += '<td class="cell-break">' + esc(row.avg_salary_6m_label || '未填写') + '</td>';
                         html += '<td class="cell-break">' + esc(row.companies_summary || '—') + '</td>';
                         html += '<td class="cell-break">' + esc(row.company_tax_ids_summary || '—') + '</td>';
@@ -2555,13 +2565,13 @@
                         html += '</tr>';
                         html += '<tr id="ud_detail_row_' + key + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="10"><div id="ud_detail_box_' +
+                            '<td colspan="11"><div id="ud_detail_box_' +
                             key +
                             '" style="padding:4px 0;color:#888;">点击「档案」加载完整数据…</div></td>';
                         html += '</tr>';
                     });
                     document.getElementById('userDataTbody').innerHTML =
-                        html || '<tr><td colspan="10">暂无数据</td></tr>';
+                        html || '<tr><td colspan="11">暂无数据</td></tr>';
 
                     document.getElementById('userDataTbody').querySelectorAll('.btn-user-data-detail').forEach(function (btn) {
                         btn.onclick = function () {
@@ -2686,6 +2696,10 @@
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
+                        html +=
+                            '<td class="cell-break">' +
+                            esc(u.register_source_channel_label || '—') +
+                            '</td>';
                         html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
@@ -2699,10 +2713,10 @@
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="12"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="13"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="12">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="13">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
