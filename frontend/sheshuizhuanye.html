@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>涉税专业服务机构</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-icon { width: 9px; height: auto; display: block; }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            padding: 0 48px;
+            text-align: center;
+        }
+        .region-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 14px 16px;
+            font-size: 15px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .region-row .chev { color: #ccc; font-size: 18px; font-weight: 300; }
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+        .search-input-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #f5f6fa;
+            border-radius: 6px;
+            padding: 0 12px;
+            height: 40px;
+        }
+        .search-input-wrap::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            flex-shrink: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") center/contain no-repeat;
+        }
+        .search-input {
+            flex: 1;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            color: #333;
+        }
+        .search-input::placeholder { color: #bbb; }
+        .btn-search {
+            flex-shrink: 0;
+            border: none;
+            background: #1677ff;
+            color: #fff;
+            font-size: 15px;
+            font-family: inherit;
+            padding: 0 18px;
+            height: 40px;
+            border-radius: 6px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .filters {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+        .filter-btn {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 8px;
+            font-size: 14px;
+            color: #333;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .filter-btn .arrow {
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid #999;
+        }
+        .filter-btn .filter-icon {
+            width: 14px;
+            height: 14px;
+            opacity: 0.55;
+        }
+        .list { padding: 12px 12px 20px; }
+        .org-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 14px 14px 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+        .org-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .org-name {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.4;
+        }
+        .org-score {
+            flex-shrink: 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: #ff8c00;
+            white-space: nowrap;
+        }
+        .org-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        .org-stats span { color: #333; }
+        .org-footer {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.55;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .org-footer p { margin-bottom: 6px; }
+        .org-footer p:last-child { margin-bottom: 0; }
+        .btn-entrust {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 11px;
+            border: none;
+            border-radius: 6px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-entrust:active { opacity: 0.92; }
+    </style>
+</head>
+<body class="page-sheshuizhuanye">
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">
+            <img src="jt.png" class="back-icon" alt="">
+            <span>返回</span>
+        </a>
+        <h1 class="header-title">涉税专业服务机构</h1>
+    </header>
+
+    <div class="region-row" id="regionRow" role="button" tabindex="0">
+        <span>地区 <strong id="regionName">广东省</strong></span>
+        <span class="chev">›</span>
+    </div>
+
+    <div class="search-bar">
+        <div class="search-input-wrap">
+            <input type="search" class="search-input" id="searchInput" placeholder="请输入机构名称" enterkeyhint="search">
+        </div>
+        <button type="button" class="btn-search" id="btnSearch">搜索</button>
+    </div>
+
+    <div class="filters">
+        <button type="button" class="filter-btn" data-filter="sort">
+            信用积分降序 <span class="arrow"></span>
+        </button>
+        <button type="button" class="filter-btn" data-filter="category">
+            机构类别
+            <svg class="filter-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6h16v2H4V6zm3 5h10v2H7v-2zm4 5h2v2h-2v-2z"/></svg>
+        </button>
+    </div>
+
+    <div class="list" id="orgList"></div>
+
+    <script>
+        var ORGS = [
+            {
+                name: '河源市万弘财税服务有限公司',
+                score: '421.46分',
+                staff: '3人',
+                households: '81户',
+                persons: '0人',
+                founded: '2018-03-21',
+                legal: '钟衍玲',
+                address: '河源市区建设大道以南文昌路东侧万隆都市100-3栋2501号（仅供办公场所使用）'
+            },
+            {
+                name: '河源市诺金财税代理有限公司',
+                score: '418.67分',
+                staff: '6人',
+                households: '206户',
+                persons: '0人',
+                founded: '2016-07-28',
+                legal: '李惠',
+                address: '河源市新市区黄沙大道回迁点北六排东起第十、十一卡'
+            }
+        ];
+
+        function renderList(items) {
+            var list = document.getElementById('orgList');
+            if (!items.length) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:40px 16px;font-size:15px;">未找到相关机构</p>';
+                return;
+            }
+            list.innerHTML = items.map(function (o) {
+                return '<article class="org-card">' +
+                    '<div class="org-top">' +
+                    '<h2 class="org-name">' + o.name + '</h2>' +
+                    '<span class="org-score">' + o.score + '</span>' +
+                    '</div>' +
+                    '<div class="org-stats">' +
+                    '<div>机构人员数：<span>' + o.staff + '</span></div>' +
+                    '<div>当年服务户数：<span>' + o.households + '</span></div>' +
+                    '<div>当前服务自然人数：<span>' + o.persons + '</span></div>' +
+                    '<div>成立时间：<span>' + o.founded + '</span></div>' +
+                    '</div>' +
+                    '<div class="org-footer">' +
+                    '<p>法定代表人：' + o.legal + '</p>' +
+                    '<p>注册地址：' + o.address + '</p>' +
+                    '</div>' +
+                    '<button type="button" class="btn-entrust" data-name="' + o.name.replace(/"/g, '&quot;') + '">我要委托</button>' +
+                    '</article>';
+            }).join('');
+            list.querySelectorAll('.btn-entrust').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    alert('「我要委托」功能开发中\n' + btn.getAttribute('data-name'));
+                });
+            });
+        }
+
+        function doSearch() {
+            var q = (document.getElementById('searchInput').value || '').trim();
+            if (!q) {
+                renderList(ORGS);
+                return;
+            }
+            var lower = q.toLowerCase();
+            renderList(ORGS.filter(function (o) {
+                return o.name.indexOf(q) !== -1 || o.name.toLowerCase().indexOf(lower) !== -1;
+            }));
+        }
+
+        renderList(ORGS);
+
+        document.getElementById('btnSearch').addEventListener('click', doSearch);
+        document.getElementById('searchInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') doSearch();
+        });
+        document.getElementById('regionRow').addEventListener('click', function () {
+            alert('地区选择功能开发中');
+        });
+        document.querySelectorAll('.filter-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var labels = { sort: '信用积分排序', category: '机构类别' };
+                alert((labels[btn.getAttribute('data-filter')] || '筛选') + '功能开发中');
+            });
+        });
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

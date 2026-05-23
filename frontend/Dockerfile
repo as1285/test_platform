@@ -52,6 +52,7 @@ COPY weituodaili.html /usr/share/nginx/html/
 COPY sheshuifuwu.html /usr/share/nginx/html/
 COPY yiyishensu.html /usr/share/nginx/html/
 COPY shuiwuwenshu.html /usr/share/nginx/html/
+COPY sheshuizhuanye.html /usr/share/nginx/html/
 COPY renzhi.html /usr/share/nginx/html/
 COPY renzhi_detail.html /usr/share/nginx/html/
 COPY personal_info.html /usr/share/nginx/html/
