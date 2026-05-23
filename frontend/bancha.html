@@ -66,17 +66,35 @@
             padding-bottom: var(--bottom-nav-clearance);
         }
 
-        /* 整张切片图作为入口，跳转收入纳税明细 */
-        .bancha-tile-link {
+        /* 查询切片 cx.jpg：网格分热区 */
+        .bancha-cx-wrap {
+            position: relative;
             display: block;
             line-height: 0;
-            -webkit-tap-highlight-color: transparent;
-            text-decoration: none;
-            color: inherit;
         }
-        .bancha-tile-link img {
+        .bancha-cx-wrap > img {
             width: 100%;
             display: block;
+        }
+        .bancha-cx-wrap a {
+            position: absolute;
+            z-index: 6;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            outline: none;
+            background: transparent;
+        }
+        .bancha-cx-hot-shuiming {
+            left: 1%;
+            width: 32%;
+            top: 10%;
+            height: 22%;
+        }
+        .bancha-cx-hot-shenbao {
+            left: 34%;
+            width: 32%;
+            top: 10%;
+            height: 22%;
         }
 
         /* 发票管理 ·「我的票夹」卡片热区（相对 fp.jpg，可按设计微调） */
@@ -206,9 +224,11 @@
                 <a href="weituodaili.html" class="bancha-bs-hot-weituo" aria-label="委托代理关系管理"></a>
                 <a href="sheshuifuwu.html" class="bancha-bs-hot-sheshui" aria-label="涉税服务人员信息管理"></a>
             </div>
-            <a href="shuiming.html" class="bancha-tile-link" aria-label="收入纳税明细">
+            <div class="bancha-cx-wrap">
                 <img src="cx.jpg" alt="查询">
-            </a>
+                <a href="shuiming.html" class="bancha-cx-hot-shuiming" aria-label="收入纳税明细"></a>
+                <a href="shenbao_jilu.html" class="bancha-cx-hot-shenbao" aria-label="申报记录"></a>
+            </div>
             <div class="bancha-fp-wrap">
                 <img src="fp.jpg" alt="发票">
                 <a href="wodepiaojia.html" class="bancha-fp-hot-piaojia" aria-label="我的票夹"></a>
