@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>个人养老金扣除管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: #fff;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-icon { width: 9px; height: auto; display: block; }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            max-width: 58%;
+            text-align: center;
+            line-height: 1.25;
+        }
+        .header-link {
+            position: absolute;
+            right: 14px;
+            color: #1677ff;
+            font-size: 15px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hero {
+            background: #e8f2ff;
+            height: 148px;
+            overflow: hidden;
+        }
+        .hero img {
+            width: 100%;
+            height: 148px;
+            object-fit: cover;
+            object-position: top center;
+            display: block;
+        }
+        .tips-box {
+            background: #fff;
+            padding: 16px 18px 20px;
+            margin-top: 8px;
+        }
+        .tips-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .tips-item {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.65;
+            margin-bottom: 12px;
+        }
+        .tips-item:last-child { margin-bottom: 0; }
+        .tips-item a {
+            color: #1677ff;
+            text-decoration: none;
+        }
+        .footer-actions {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+            background: #f5f6fa;
+            z-index: 50;
+        }
+        .btn-primary {
+            display: block;
+            width: 100%;
+            height: 50px;
+            border: none;
+            border-radius: 6px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-outline {
+            display: block;
+            width: 100%;
+            height: 50px;
+            border: 1px solid #1677ff;
+            border-radius: 6px;
+            background: #fff;
+            color: #1677ff;
+            font-size: 17px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .footer-link {
+            display: block;
+            text-align: center;
+            color: #1677ff;
+            font-size: 16px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="bancha.html" class="back-btn" aria-label="返回">
+            <img src="jt.png" class="back-icon" alt="">
+            <span>返回</span>
+        </a>
+        <h1 class="header-title">个人养老金扣除管理</h1>
+        <a href="javascript:void(0)" class="header-link" id="authManageLink">授权管理</a>
+    </header>
+
+    <div class="hero">
+        <img src="gerenyanglao_banner.jpg" alt="">
+    </div>
+
+    <section class="tips-box">
+        <h2 class="tips-title">温馨提示</h2>
+        <p class="tips-item">1.个人养老金制度，是国家政策支持、个人自愿参加、市场化运营的补充养老保险制度。</p>
+        <p class="tips-item">2.您可通过「一站式」申报，直接获取个人养老金管理平台缴费信息，无需下载<a href="javascript:void(0)">个人养老金缴费凭证</a>。您也可通过<a href="javascript:void(0)">扫码</a>或<a href="javascript:void(0)">手动录入</a>的方式申报。</p>
+        <p class="tips-item">3.若您无法查询到相关数据或数据不准确，请您与开立账户的商业银行联系核实。</p>
+    </section>
+
+    <div class="footer-actions">
+        <button type="button" class="btn-primary" id="btnOneStop">“一站式”申报（免下载凭证）</button>
+        <button type="button" class="btn-outline" id="btnManual">录入凭证申报</button>
+        <a href="javascript:void(0)" class="footer-link" id="viewDeductionLink">查看我的扣除信息</a>
+    </div>
+
+    <script>
+        function toast(msg) {
+            alert(msg || '功能开发中');
+        }
+        document.getElementById('authManageLink').addEventListener('click', function () {
+            toast('授权管理功能开发中');
+        });
+        document.getElementById('btnOneStop').addEventListener('click', function () {
+            toast('“一站式”申报功能开发中');
+        });
+        document.getElementById('btnManual').addEventListener('click', function () {
+            toast('录入凭证申报功能开发中');
+        });
+        document.getElementById('viewDeductionLink').addEventListener('click', function () {
+            toast('暂无扣除信息');
+        });
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>
