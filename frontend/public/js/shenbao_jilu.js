@@ -1,105 +1,5 @@
 (function () {
-    var AMOUNT_TYPES = {
-        refunded: '已退税额',
-        refundable: '可申请退税额',
-        paid: '已缴税额'
-    };
-
-    var DEFAULT_RECORDS = [
-        {
-            id: '1',
-            groupMonth: '2026-03',
-            title: '2025年度综合所得年度汇算',
-            periodStart: '2025-01',
-            periodEnd: '2025-12',
-            amountType: 'refunded',
-            amount: '6109.82'
-        },
-        {
-            id: '2',
-            groupMonth: '2025-03',
-            title: '2024年度综合所得年度汇算',
-            periodStart: '2024-01',
-            periodEnd: '2024-12',
-            amountType: 'refunded',
-            amount: '16590.15'
-        },
-        {
-            id: '3',
-            groupMonth: '2024-03',
-            title: '2023年度综合所得年度汇算',
-            periodStart: '2023-01',
-            periodEnd: '2023-12',
-            amountType: 'refundable',
-            amount: '2400.00'
-        },
-        {
-            id: '4',
-            groupMonth: '2023-05',
-            title: '2022年度综合所得年度汇算',
-            periodStart: '2022-01',
-            periodEnd: '2022-12',
-            amountType: 'refundable',
-            amount: '60.00'
-        },
-        {
-            id: '5',
-            groupMonth: '2022-06',
-            title: '2021年度综合所得年度汇算',
-            periodStart: '2021-01',
-            periodEnd: '2021-12',
-            amountType: 'paid',
-            amount: '1450.86'
-        }
-    ];
-
-    var LIST_TABS = { done: 1, void: 1 };
-
-    function userId() {
-        return localStorage.getItem('user_id') || localStorage.getItem('userName') || 'guest';
-    }
-
-    function storageKey(tab) {
-        return 'shenbao_jilu_' + tab + '_' + userId();
-    }
-
-    function cloneDefaults() {
-        return DEFAULT_RECORDS.map(function (r) {
-            return Object.assign({}, r);
-        });
-    }
-
-    function loadRecords(tab) {
-        if (tab === 'void') {
-            try {
-                var rawVoid = localStorage.getItem(storageKey(tab));
-                if (!rawVoid) {
-                    return [];
-                }
-                var parsedVoid = JSON.parse(rawVoid);
-                return Array.isArray(parsedVoid) ? parsedVoid : [];
-            } catch (e) {
-                return [];
-            }
-        }
-        try {
-            var raw = localStorage.getItem(storageKey(tab));
-            if (!raw) {
-                return cloneDefaults();
-            }
-            var parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed) || !parsed.length) {
-                return cloneDefaults();
-            }
-            return parsed;
-        } catch (e) {
-            return cloneDefaults();
-        }
-    }
-
-    function saveRecords(tab, list) {
-        localStorage.setItem(storageKey(tab), JSON.stringify(list));
-    }
+    var Store = window.ShenbaoJiluStore;
 
     function esc(s) {
         return String(s == null ? '' : s)
@@ -107,15 +7,6 @@
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
-    }
-
-    function amountLine(record) {
-        var label = AMOUNT_TYPES[record.amountType] || AMOUNT_TYPES.refunded;
-        var val = record.amount != null ? String(record.amount).trim() : '0';
-        if (val && val.indexOf('元') === -1) {
-            val += '元';
-        }
-        return label + '：' + val;
     }
 
     function renderRecordList(records) {
@@ -140,7 +31,7 @@
                 esc(r.periodEnd) +
                 '</div>' +
                 '<div class="record-sub record-amount">' +
-                esc(amountLine(r)) +
+                esc(Store.amountLine(r)) +
                 '</div>' +
                 '</div>' +
                 '<span class="record-chevron" aria-hidden="true">›</span>' +
@@ -162,57 +53,18 @@
 
     var state = {
         tab: 'pending',
-        records: [],
-        editingId: null
+        records: []
     };
 
     var els = {};
 
     function isListTab(tab) {
-        return !!LIST_TABS[tab];
+        return tab === 'done' || tab === 'void';
     }
 
-    function findRecord(id) {
-        return state.records.filter(function (r) {
-            return String(r.id) === String(id);
-        })[0];
-    }
-
-    function openEditModal(record) {
-        state.editingId = record.id;
-        els.modalTitle.value = record.title || '';
-        els.modalGroupMonth.value = record.groupMonth || '';
-        els.modalPeriodStart.value = record.periodStart || '';
-        els.modalPeriodEnd.value = record.periodEnd || '';
-        els.modalAmountType.value = record.amountType || 'refunded';
-        els.modalAmount.value = String(record.amount || '').replace(/元$/, '');
-        els.modalBackdrop.removeAttribute('hidden');
-    }
-
-    function closeEditModal() {
-        state.editingId = null;
-        els.modalBackdrop.setAttribute('hidden', '');
-    }
-
-    function saveEditModal() {
-        var record = findRecord(state.editingId);
-        if (!record) {
-            return;
-        }
-        record.title = els.modalTitle.value.trim();
-        record.groupMonth = els.modalGroupMonth.value.trim();
-        record.periodStart = els.modalPeriodStart.value.trim();
-        record.periodEnd = els.modalPeriodEnd.value.trim();
-        record.amountType = els.modalAmountType.value;
-        var amt = els.modalAmount.value.trim();
-        record.amount = amt.replace(/元$/, '');
-        if (!record.title || !record.groupMonth) {
-            alert('请填写申报标题与分组月份');
-            return;
-        }
-        saveRecords(state.tab, state.records);
-        closeEditModal();
-        renderTabContent();
+    function goDetail(id) {
+        var url = 'shenbao_jilu_detail.html?id=' + encodeURIComponent(id) + '&tab=' + encodeURIComponent(state.tab);
+        window.location.href = url;
     }
 
     function renderTabContent() {
@@ -238,9 +90,8 @@
         els.tabContent.querySelectorAll('.record-item').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-id');
-                var record = findRecord(id);
-                if (record) {
-                    openEditModal(record);
+                if (id) {
+                    goDetail(id);
                 }
             });
         });
@@ -249,7 +100,7 @@
     function setTab(name) {
         state.tab = name;
         if (isListTab(name)) {
-            state.records = loadRecords(name);
+            state.records = Store.loadRecords(name);
         } else {
             state.records = [];
         }
@@ -270,30 +121,11 @@
         } catch (e) {}
     }
 
-    function clearVoidTabSeedOnce() {
-        try {
-            if (localStorage.getItem('shenbao_jilu_void_seed_removed') === '1') {
-                return;
-            }
-            localStorage.removeItem(storageKey('void'));
-            localStorage.setItem('shenbao_jilu_void_seed_removed', '1');
-        } catch (e) {}
-    }
-
     function init() {
-        clearVoidTabSeedOnce();
+        Store.clearVoidTabSeedOnce();
         els.tabs = document.querySelectorAll('.tab');
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');
-        els.modalBackdrop = document.getElementById('shenbaoEditBackdrop');
-        els.modalTitle = document.getElementById('shenbaoEditTitle');
-        els.modalGroupMonth = document.getElementById('shenbaoEditGroupMonth');
-        els.modalPeriodStart = document.getElementById('shenbaoEditPeriodStart');
-        els.modalPeriodEnd = document.getElementById('shenbaoEditPeriodEnd');
-        els.modalAmountType = document.getElementById('shenbaoEditAmountType');
-        els.modalAmount = document.getElementById('shenbaoEditAmount');
-        els.modalSave = document.getElementById('shenbaoEditSave');
-        els.modalCancel = document.getElementById('shenbaoEditCancel');
 
         var tabFromUrl = '';
         try {
@@ -310,14 +142,6 @@
             btn.addEventListener('click', function () {
                 setTab(btn.getAttribute('data-tab'));
             });
-        });
-
-        els.modalSave.addEventListener('click', saveEditModal);
-        els.modalCancel.addEventListener('click', closeEditModal);
-        els.modalBackdrop.addEventListener('click', function (e) {
-            if (e.target === els.modalBackdrop) {
-                closeEditModal();
-            }
         });
     }
 

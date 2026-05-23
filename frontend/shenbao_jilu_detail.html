@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260523-shenbao-detail"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>申报记录详情</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: #fff;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            border-bottom: 1px solid #eee;
+        }
+        html.app-top-safe-shell body.page-shenbao-detail .header {
+            padding-top: calc(12px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 44px;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 16px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            padding: 0 56px;
+        }
+        .detail-tabs {
+            display: flex;
+            margin-top: 4px;
+        }
+        .detail-tab {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 10px 6px;
+            font-size: 15px;
+            color: #333;
+            font-family: inherit;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .detail-tab.active {
+            color: #1e6fff;
+            font-weight: 500;
+        }
+        .detail-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 3px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .section-title {
+            padding: 14px 16px 10px;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+        }
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+        .card {
+            background: #fff;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .stamp-done {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            width: 72px;
+            height: 72px;
+            border: 2px solid #52c41a;
+            border-radius: 50%;
+            color: #52c41a;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.25;
+            transform: rotate(-12deg);
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 13px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            gap: 12px;
+            min-height: 48px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label {
+            flex-shrink: 0;
+            width: 42%;
+            font-size: 15px;
+            color: #333;
+            line-height: 1.45;
+        }
+        .info-value {
+            flex: 1;
+            text-align: right;
+            font-size: 15px;
+            color: #333;
+            line-height: 1.45;
+            word-break: break-all;
+        }
+        .info-value.with-chev::after {
+            content: '›';
+            margin-left: 4px;
+            color: #ccc;
+        }
+        .info-row input,
+        .info-row select,
+        .info-row textarea {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 15px;
+            font-family: inherit;
+            text-align: right;
+            background: #fff;
+        }
+        .info-row textarea {
+            min-height: 56px;
+            text-align: left;
+            resize: vertical;
+        }
+        .info-row select {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 15px;
+            font-family: inherit;
+            background: #fff;
+        }
+        body:not(.is-editing) .info-row input,
+        body:not(.is-editing) .info-row select,
+        body:not(.is-editing) .info-row textarea {
+            display: none;
+        }
+        body.is-editing .info-value { display: none; }
+        .help-q {
+            display: inline-flex;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            font-size: 11px;
+            color: #999;
+            align-items: center;
+            justify-content: center;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .tab-placeholder {
+            padding: 48px 24px;
+            text-align: center;
+            color: #999;
+            font-size: 15px;
+            background: #fff;
+        }
+        .footer-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 40;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            display: flex;
+            gap: 10px;
+        }
+        .footer-bar button {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            padding: 13px;
+            font-size: 16px;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-primary {
+            background: #fff;
+            color: #1e6fff;
+            font-weight: 500;
+        }
+        body.is-editing .btn-primary { display: none; }
+        .btn-save {
+            display: none;
+            background: #1e6fff;
+            color: #fff;
+        }
+        .btn-cancel {
+            display: none;
+            background: #f5f6fa;
+            color: #333;
+        }
+        body.is-editing .btn-save,
+        body.is-editing .btn-cancel { display: block; }
+        body.is-editing .btn-primary { display: none; }
+    </style>
+</head>
+<body class="page-shenbao-detail">
+    <header class="header">
+        <div class="header-top">
+            <a href="shenbao_jilu.html?tab=done" class="back-btn" id="detailBackBtn">&lt; 返回</a>
+            <h1 class="header-title">申报记录详情</h1>
+        </div>
+        <div class="detail-tabs" role="tablist">
+            <button type="button" class="detail-tab active" data-panel="declare" role="tab">申报记录</button>
+            <button type="button" class="detail-tab" data-panel="pay" role="tab">缴税记录</button>
+            <button type="button" class="detail-tab" data-panel="refund" role="tab">退税记录</button>
+        </div>
+    </header>
+
+    <div id="panelDeclare" class="panel active" role="tabpanel">
+        <div class="section-title">缴款信息</div>
+        <div class="card" id="paymentCard">
+            <div class="stamp-done" aria-hidden="true">申报<br>已完成</div>
+            <div class="info-row" data-field="supplementTax">
+                <span class="info-label">应补税额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="supplementTax">
+            </div>
+            <div class="info-row" data-field="lateFee">
+                <span class="info-label">滞纳金</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="lateFee">
+            </div>
+            <div class="info-row" data-field="paidThisTime">
+                <span class="info-label">本次申报已缴税额<span class="help-q">?</span></span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="paidThisTime">
+            </div>
+            <div class="info-row" data-field="refundedThisTime">
+                <span class="info-label">本次申报已退税额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="refundedThisTime">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-row" data-field="taxYear">
+                <span class="info-label">税款所属年度</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="taxYear">
+            </div>
+            <div class="info-row" data-field="periodStart">
+                <span class="info-label">税款所属期起</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="periodStart">
+            </div>
+            <div class="info-row" data-field="periodEnd">
+                <span class="info-label">税款所属期止</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="periodEnd">
+            </div>
+            <div class="info-row" data-field="taxAuthority">
+                <span class="info-label">汇算地主管税务机关</span>
+                <span class="info-value"></span>
+                <textarea data-input="taxAuthority"></textarea>
+            </div>
+            <div class="info-row" data-field="employer">
+                <span class="info-label">任职受雇单位</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="employer">
+            </div>
+            <div class="info-row" data-field="title">
+                <span class="info-label">申报事项</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="title">
+            </div>
+            <div class="info-row" data-field="groupMonth">
+                <span class="info-label">列表分组（年-月）</span>
+                <span class="info-value"></span>
+                <input type="text" data-input="groupMonth">
+            </div>
+            <div class="info-row" data-field="amountType">
+                <span class="info-label">税额类型</span>
+                <span class="info-value"></span>
+                <select data-input="amountType">
+                    <option value="refunded">已退税额</option>
+                    <option value="refundable">可申请退税额</option>
+                    <option value="paid">已缴税额</option>
+                </select>
+            </div>
+            <div class="info-row" data-field="amount">
+                <span class="info-label">列表展示金额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="amount">
+            </div>
+        </div>
+
+        <div class="section-title">综合所得年度汇算申报明细</div>
+        <div class="card" id="detailCard">
+            <div class="info-row" data-field="totalIncome" data-chev="1">
+                <span class="info-label">收入合计</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="totalIncome">
+            </div>
+            <div class="info-row" data-field="totalExpense">
+                <span class="info-label">费用合计</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="totalExpense">
+            </div>
+            <div class="info-row" data-field="exemptIncome" data-chev="1">
+                <span class="info-label">免税收入</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="exemptIncome">
+            </div>
+            <div class="info-row" data-field="basicDeduction">
+                <span class="info-label">减除费用</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="basicDeduction">
+            </div>
+            <div class="info-row" data-field="specialDeduction" data-chev="1">
+                <span class="info-label">专项扣除合计</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="specialDeduction">
+            </div>
+            <div class="info-row" data-field="specialAdditionalDeduction" data-chev="1">
+                <span class="info-label">专项附加扣除合计</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="specialAdditionalDeduction">
+            </div>
+            <div class="info-row" data-field="otherDeduction" data-chev="1">
+                <span class="info-label">其他扣除合计</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="otherDeduction">
+            </div>
+            <div class="info-row" data-field="donationDeduction" data-chev="1">
+                <span class="info-label">准予扣除的捐赠额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="donationDeduction">
+            </div>
+            <div class="info-row" data-field="taxableIncome">
+                <span class="info-label">应纳税所得额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="taxableIncome">
+            </div>
+            <div class="info-row" data-field="taxPayable">
+                <span class="info-label">应纳税额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="taxPayable">
+            </div>
+            <div class="info-row" data-field="taxReduction" data-chev="1">
+                <span class="info-label">减免税额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="taxReduction">
+            </div>
+            <div class="info-row" data-field="taxPaid">
+                <span class="info-label">已缴税额</span>
+                <span class="info-value" data-suffix="元"></span>
+                <input type="text" inputmode="decimal" data-input="taxPaid">
+            </div>
+        </div>
+    </div>
+
+    <div id="panelPay" class="panel" role="tabpanel">
+        <div class="tab-placeholder">暂无缴税记录</div>
+    </div>
+    <div id="panelRefund" class="panel" role="tabpanel">
+        <div class="tab-placeholder">暂无退税记录</div>
+    </div>
+
+    <div class="footer-bar">
+        <button type="button" class="btn-primary" id="btnCorrect">更正</button>
+        <button type="button" class="btn-cancel" id="btnCancelEdit">取消</button>
+        <button type="button" class="btn-save" id="btnSaveEdit">保存</button>
+    </div>
+
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260523-detail"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260523-detail"></script>
+</body>
+</html>

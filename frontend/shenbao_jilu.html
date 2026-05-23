@@ -160,84 +160,6 @@
             font-weight: 300;
             line-height: 1;
         }
-        .shenbao-modal-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            align-items: flex-end;
-            justify-content: center;
-            padding: 0;
-            background: rgba(0, 0, 0, 0.45);
-        }
-        .shenbao-modal-backdrop[hidden] {
-            display: none !important;
-        }
-        .shenbao-modal-backdrop:not([hidden]) {
-            display: flex;
-        }
-        .shenbao-modal-sheet {
-            width: 100%;
-            max-width: 480px;
-            max-height: 88vh;
-            overflow: auto;
-            background: #fff;
-            border-radius: 14px 14px 0 0;
-            padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
-            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
-        }
-        .shenbao-modal-sheet h2 {
-            font-size: 17px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .field {
-            margin-bottom: 14px;
-        }
-        .field label {
-            display: block;
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 6px;
-        }
-        .field input,
-        .field select {
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 15px;
-            font-family: inherit;
-            background: #fff;
-        }
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
-        .modal-actions button {
-            flex: 1;
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 16px;
-            font-family: inherit;
-            cursor: pointer;
-        }
-        .btn-save {
-            background: #1e6fff;
-            color: #fff;
-        }
-        .btn-cancel {
-            background: #f5f6fa;
-            color: #333;
-        }
     </style>
 </head>
 <body class="page-shenbao-jilu">
@@ -262,47 +184,8 @@
         </div>
     </div>
 
-    <div id="shenbaoEditBackdrop" class="shenbao-modal-backdrop" hidden>
-        <div class="shenbao-modal-sheet" onclick="event.stopPropagation()">
-            <h2>修改申报记录</h2>
-            <div class="field">
-                <label for="shenbaoEditTitle">申报事项</label>
-                <input type="text" id="shenbaoEditTitle" maxlength="120" placeholder="如 2025年度综合所得年度汇算">
-            </div>
-            <div class="field">
-                <label for="shenbaoEditGroupMonth">列表分组（年-月）</label>
-                <input type="text" id="shenbaoEditGroupMonth" maxlength="16" placeholder="如 2026-03">
-            </div>
-            <div class="field-row">
-                <div class="field">
-                    <label for="shenbaoEditPeriodStart">所属期起</label>
-                    <input type="text" id="shenbaoEditPeriodStart" maxlength="16" placeholder="2025-01">
-                </div>
-                <div class="field">
-                    <label for="shenbaoEditPeriodEnd">所属期止</label>
-                    <input type="text" id="shenbaoEditPeriodEnd" maxlength="16" placeholder="2025-12">
-                </div>
-            </div>
-            <div class="field">
-                <label for="shenbaoEditAmountType">税额类型</label>
-                <select id="shenbaoEditAmountType">
-                    <option value="refunded">已退税额</option>
-                    <option value="refundable">可申请退税额</option>
-                    <option value="paid">已缴税额</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="shenbaoEditAmount">金额（元）</label>
-                <input type="text" id="shenbaoEditAmount" inputmode="decimal" maxlength="20" placeholder="6109.82">
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" id="shenbaoEditCancel">取消</button>
-                <button type="button" class="btn-save" id="shenbaoEditSave">保存</button>
-            </div>
-        </div>
-    </div>
-
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script src="/js/shenbao_jilu.js?v=20260523-void-empty"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260523-detail"></script>
+    <script src="/js/shenbao_jilu.js?v=20260523-detail-nav"></script>
 </body>
 </html>
