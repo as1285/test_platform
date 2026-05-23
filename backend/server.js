@@ -1178,7 +1178,30 @@ async function createTables() {
     }
   }
 
+  await migrateActivationCodesNoExpiry(conn);
+
   conn.release();
+}
+
+/** 一次性：清除激活码过期时间，并删除历史未使用激活码 */
+async function migrateActivationCodesNoExpiry(conn) {
+  var migrationKey = 'migration_activation_codes_no_expiry_v1';
+  const [flagRows] = await conn.execute(
+    'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+    [migrationKey]
+  );
+  if (flagRows.length && String(flagRows[0].setting_value) === '1') {
+    return;
+  }
+  await conn.execute('UPDATE activation_codes SET expires_at = NULL WHERE expires_at IS NOT NULL');
+  const [delResult] = await conn.execute('DELETE FROM activation_codes WHERE used_count = 0');
+  await conn.execute(
+    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+    [migrationKey, '1']
+  );
+  var deleted = delResult && delResult.affectedRows != null ? delResult.affectedRows : 0;
+  console.log('[migration] activation_codes: no expiry; removed ' + deleted + ' unused codes');
 }
 
 async function getRecords(userId, year) {
@@ -1950,7 +1973,7 @@ async function applyActivationCode(username, rawCode) {
   try {
     await conn.beginTransaction();
     const [rows] = await conn.execute(
-      'SELECT id, max_uses, used_count, expires_at FROM activation_codes WHERE code = ? FOR UPDATE',
+      'SELECT id, max_uses, used_count FROM activation_codes WHERE code = ? FOR UPDATE',
       [code]
     );
     if (rows.length === 0) {
@@ -1958,10 +1981,6 @@ async function applyActivationCode(username, rawCode) {
       throw new Error('激活码无效');
     }
     var r = rows[0];
-    if (r.expires_at && new Date(r.expires_at) < new Date()) {
-      await conn.rollback();
-      throw new Error('激活码已过期');
-    }
     if (Number(r.used_count) >= Number(r.max_uses)) {
       await conn.rollback();
       throw new Error('激活码已用完');

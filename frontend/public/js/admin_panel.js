@@ -3443,7 +3443,7 @@
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.code) {
                         var el = document.getElementById('issueOut');
-                        el.textContent = '激活码：' + data.data.code + '（单次有效，仅可激活一个账号）';
+                        el.textContent = '激活码：' + data.data.code + '（单次有效、永不过期，仅可激活一个账号）';
                         el.classList.add('show');
                         loadCodes(1);
                     } else {
