@@ -291,7 +291,7 @@
 
     <div class="section-title">用户基础信息</div>
     <div class="info-card">
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openRealNameEditor()">
             <span class="info-label">姓名</span>
             <div class="info-value">
                 <span id="realName">--</span>
@@ -305,28 +305,28 @@
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openIdNumberEditor()">
             <span class="info-label">证件号码</span>
             <div class="info-value">
                 <span id="idNumber">--</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openTaxIdEditor(event)">
             <span class="info-label">纳税人识别号</span>
             <div class="info-value">
                 <span id="taxId">--</span>
-                <a href="javascript:;" class="info-link" onclick="viewTaxId()">查看</a>
+                <a href="javascript:;" class="info-link" onclick="viewTaxId(event)">查看</a>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openBirthDateEditor()">
             <span class="info-label">出生日期</span>
             <div class="info-value">
                 <span id="birthDate">--</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
-        <div class="info-row">
+        <div class="info-row info-row--tap" onclick="openGenderEditor()">
             <span class="info-label">性别</span>
             <div class="info-value">
                 <span id="gender">--</span>
@@ -458,6 +458,34 @@
         </div>
     </div>
 
+    <div id="textSheetMask" class="sheet-mask" onclick="closeTextSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeTextSheet()">取消</button>
+                <span class="sheet-title" id="textSheetTitle">修改</span>
+                <button type="button" class="sheet-btn sheet-btn-primary" onclick="confirmTextFieldInput()">保存</button>
+            </div>
+            <div class="address-sheet-body">
+                <label for="textFieldInput" id="textFieldLabel">内容</label>
+                <input type="text" id="textFieldInput" class="email-input" maxlength="64" placeholder="">
+            </div>
+        </div>
+    </div>
+
+    <div id="birthSheetMask" class="sheet-mask" onclick="closeBirthSheetBackdrop(event)">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-bar">
+                <button type="button" class="sheet-btn" onclick="closeBirthSheet()">取消</button>
+                <span class="sheet-title">出生日期</span>
+                <button type="button" class="sheet-btn sheet-btn-primary" onclick="confirmBirthDateInput()">保存</button>
+            </div>
+            <div class="address-sheet-body">
+                <label for="birthDateInput">选择日期</label>
+                <input type="date" id="birthDateInput" class="email-input">
+            </div>
+        </div>
+    </div>
+
     <div id="emailSheetMask" class="sheet-mask" onclick="closeEmailSheetBackdrop(event)">
         <div class="sheet" onclick="event.stopPropagation()">
             <div class="sheet-bar">
@@ -494,13 +522,207 @@
             return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
         }
 
-        function viewTaxId() {
+        var __textCtx = { apiField: '', title: '', validate: null };
+
+        function viewTaxId(ev) {
+            if (ev && ev.stopPropagation) {
+                ev.stopPropagation();
+            }
             var taxId = lastTaxId || localStorage.getItem('tax_id');
             if (taxId) {
                 alert('纳税人识别号: ' + taxId);
             } else {
                 alert('暂无纳税人识别号');
             }
+        }
+
+        function validateIdNumber(val) {
+            var s = String(val || '').replace(/\s/g, '').toUpperCase();
+            if (!s) {
+                return '请填写证件号码';
+            }
+            if (
+                (s.length === 18 && /^\d{17}[\dX]$/.test(s)) ||
+                (s.length === 15 && /^\d{15}$/.test(s))
+            ) {
+                return null;
+            }
+            return '居民身份证号码格式不正确';
+        }
+
+        function genderFromId18(idStr) {
+            if (!idStr || String(idStr).length !== 18) {
+                return null;
+            }
+            var c = parseInt(String(idStr).charAt(16), 10);
+            if (isNaN(c)) {
+                return null;
+            }
+            return c % 2 === 1 ? 1 : 2;
+        }
+
+        function openTextSheet(title, label, value, apiField, opts) {
+            opts = opts || {};
+            __textCtx = {
+                apiField: apiField,
+                title: title,
+                validate: opts.validate || null,
+                inputMode: opts.inputMode || 'text',
+                maxLength: opts.maxLength || 64
+            };
+            document.getElementById('textSheetTitle').textContent = title;
+            document.getElementById('textFieldLabel').textContent = label;
+            var inp = document.getElementById('textFieldInput');
+            inp.value = value || '';
+            inp.maxLength = __textCtx.maxLength;
+            inp.setAttribute('inputmode', __textCtx.inputMode);
+            if (opts.uppercase) {
+                inp.style.textTransform = 'uppercase';
+            } else {
+                inp.style.textTransform = 'none';
+            }
+            document.getElementById('textSheetMask').classList.add('show');
+            setTimeout(function () {
+                inp.focus();
+                inp.select();
+            }, 200);
+        }
+
+        function closeTextSheet() {
+            document.getElementById('textSheetMask').classList.remove('show');
+        }
+
+        function closeTextSheetBackdrop(ev) {
+            if (ev.target.id === 'textSheetMask') {
+                closeTextSheet();
+            }
+        }
+
+        function confirmTextFieldInput() {
+            var val = document.getElementById('textFieldInput').value.trim();
+            if (__textCtx.validate) {
+                var err = __textCtx.validate(val);
+                if (err) {
+                    alert(err);
+                    return;
+                }
+            }
+            if (__textCtx.apiField === 'real_name' && !val) {
+                alert('请填写姓名');
+                return;
+            }
+            var payload = { action: 'save_profile' };
+            if (__textCtx.apiField === 'tax_id') {
+                payload.tax_id = String(val).replace(/\s/g, '').toUpperCase();
+            } else {
+                payload[__textCtx.apiField] = val;
+            }
+            saveProfileFields(payload, function () {
+                closeTextSheet();
+                loadUserInfo();
+            });
+        }
+
+        function openRealNameEditor() {
+            authFetch('api/user.php?action=info')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var cur = '';
+                    if (data.code === 200 && data.data) {
+                        cur = data.data.real_name || '';
+                    }
+                    openTextSheet('修改姓名', '姓名', cur, 'real_name', { maxLength: 64 });
+                })
+                .catch(function () {
+                    openTextSheet('修改姓名', '姓名', '', 'real_name', { maxLength: 64 });
+                });
+        }
+
+        function openIdNumberEditor() {
+            var cur = lastTaxId || '';
+            openTextSheet('修改证件号码', '证件号码', cur, 'tax_id', {
+                maxLength: 18,
+                inputMode: 'text',
+                uppercase: true,
+                validate: validateIdNumber
+            });
+        }
+
+        function openTaxIdEditor(ev) {
+            if (ev && ev.stopPropagation) {
+                ev.stopPropagation();
+            }
+            var cur = lastTaxId || '';
+            openTextSheet('修改纳税人识别号', '纳税人识别号', cur, 'tax_id', {
+                maxLength: 20,
+                inputMode: 'text',
+                uppercase: true,
+                validate: validateIdNumber
+            });
+        }
+
+        function openBirthDateEditor() {
+            authFetch('api/user.php?action=info')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var cur = '';
+                    if (data.code === 200 && data.data) {
+                        cur = data.data.birth_date || '';
+                        if (!cur && data.data.tax_id) {
+                            cur = birthFromId18(data.data.tax_id);
+                        }
+                    }
+                    document.getElementById('birthDateInput').value = cur || '';
+                    document.getElementById('birthSheetMask').classList.add('show');
+                })
+                .catch(function () {
+                    document.getElementById('birthDateInput').value = '';
+                    document.getElementById('birthSheetMask').classList.add('show');
+                });
+        }
+
+        function closeBirthSheet() {
+            document.getElementById('birthSheetMask').classList.remove('show');
+        }
+
+        function closeBirthSheetBackdrop(ev) {
+            if (ev.target.id === 'birthSheetMask') {
+                closeBirthSheet();
+            }
+        }
+
+        function confirmBirthDateInput() {
+            var val = document.getElementById('birthDateInput').value.trim();
+            saveProfileFields({ action: 'save_profile', birth_date: val }, function () {
+                closeBirthSheet();
+                loadUserInfo();
+            });
+        }
+
+        function openGenderEditor() {
+            var list = document.getElementById('optionSheetList');
+            document.getElementById('optionSheetTitle').textContent = '选择性别';
+            list.innerHTML = '';
+            [
+                { label: '男性', value: 1 },
+                { label: '女性', value: 2 }
+            ].forEach(function (opt) {
+                var el = document.createElement('div');
+                el.className = 'region-item';
+                el.textContent = opt.label;
+                el.onclick = function () {
+                    saveProfileFields({ action: 'save_profile', gender: opt.value }, function () {
+                        closeOptionSheet();
+                        loadUserInfo();
+                    });
+                };
+                list.appendChild(el);
+            });
+            document.getElementById('optionSheetMask').classList.add('show');
         }
 
         function setPlaceholder(wrapId, spanId, value, emptyPlaceholder) {
@@ -899,6 +1121,15 @@
                     if (user.tax_id) {
                         document.getElementById('idNumber').textContent = maskId(user.tax_id);
                         document.getElementById('taxId').textContent = maskId(user.tax_id);
+                    } else {
+                        document.getElementById('idNumber').textContent = '--';
+                        document.getElementById('taxId').textContent = '--';
+                    }
+
+                    if (user.real_name) {
+                        try {
+                            localStorage.setItem('real_name', user.real_name);
+                        } catch (e) {}
                     }
 
                     var birth = user.birth_date || '';
