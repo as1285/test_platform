@@ -539,11 +539,11 @@
           'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
-          /* iOS 我的：safe-top + 额外上移，使 grdb/nx 内头像进入状态栏（图顶为蓝条） */
-          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:max(env(safe-area-inset-top,0px),47px) !important;--mine-ios-avatar-pull:clamp(68px,18vw,96px);}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:visible !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{position:relative;z-index:1;margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-avatar-pull,72px)) !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .content-wrapper{margin-top:calc(-20px - var(--mine-ios-avatar-pull,72px) * 0.35) !important;}' +
+          /* iOS 我的：顶图再上移，安全区用 env 与蓝底补条填满 */
+          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,48px) !important;--mine-ios-header-lift:12px;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 100%);z-index:8;pointer-events:none;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-header-lift,12px)) !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(10px + var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card{margin:-70px 16px 0 !important;}' +
