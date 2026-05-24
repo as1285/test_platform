@@ -21,10 +21,12 @@
         if (!n) return '';
         if (ICON_MAP[n]) return n;
         if (ALIASES[n]) return ALIASES[n];
-        var keys = Object.keys(ICON_MAP);
+        var keys = Object.keys(ICON_MAP).sort(function (a, b) {
+            return b.length - a.length;
+        });
         for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
-            if (n.indexOf(key) >= 0 || key.indexOf(n) >= 0) return key;
+            if (n.indexOf(key) >= 0) return key;
         }
         return n;
     }
@@ -32,7 +34,7 @@
     function getBankIconSrc(name) {
         var key = normalizeBankName(name);
         if (ICON_MAP[key]) {
-            return ICON_BASE + ICON_MAP[key] + '?v=1';
+            return ICON_BASE + ICON_MAP[key] + '?v=2';
         }
         return '';
     }

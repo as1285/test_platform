@@ -4331,6 +4331,18 @@ async function batchSaveShenbaoRecords(userId, tab, records) {
   }
 }
 
+async function deleteShenbaoRecord(userId, tab, id) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      'DELETE FROM shenbao_jilu_records WHERE user_id = ? AND tab = ? AND id = ?',
+      [String(userId), tab, String(id)]
+    );
+  } finally {
+    conn.release();
+  }
+}
+
 async function handleShenbaoJiluGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -4394,6 +4406,14 @@ async function handleShenbaoJiluPost(req, res) {
       }
       var batchOut = await batchSaveShenbaoRecords(userId, tab, records);
       return res.json({ code: 200, data: batchOut });
+    }
+    if (action === 'delete_record') {
+      var delId = body.id;
+      if (delId == null || String(delId).trim() === '') {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      await deleteShenbaoRecord(userId, tab, delId);
+      return res.json({ code: 200, data: {} });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {

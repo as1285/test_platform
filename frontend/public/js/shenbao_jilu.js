@@ -65,6 +65,9 @@
         loading: false
     };
 
+    var longPressTimer = null;
+    var longPressTriggered = false;
+
     var els = {};
 
     function isListTab(tab) {
@@ -111,7 +114,6 @@
             els.tabContent.innerHTML = renderRecordList(state.records);
             els.tabContent.classList.remove('is-empty');
             els.notice.style.display = 'none';
-            bindRecordClicks();
             return;
         }
         els.tabContent.innerHTML = renderEmpty();
@@ -119,15 +121,82 @@
         els.notice.style.display = state.tab === 'pending' ? '' : 'none';
     }
 
-    function bindRecordClicks() {
-        els.tabContent.querySelectorAll('.record-item').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var id = btn.getAttribute('data-id');
-                if (id) {
-                    goDetail(id);
-                }
+    function deleteRecord(id) {
+        if (!confirm('确定删除这条申报记录？')) {
+            return;
+        }
+        Store.deleteRecord(state.tab, id)
+            .then(function () {
+                refreshListRecords();
+            })
+            .catch(function (e) {
+                alert((e && e.message) || '删除失败');
             });
+    }
+
+    function clearLongPress() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        document.querySelectorAll('.record-item.is-longpress').forEach(function (el) {
+            el.classList.remove('is-longpress');
         });
+    }
+
+    function startLongPress(btn, id) {
+        clearLongPress();
+        longPressTriggered = false;
+        if (btn) {
+            btn.classList.add('is-longpress');
+        }
+        longPressTimer = setTimeout(function () {
+            longPressTriggered = true;
+            clearLongPress();
+            deleteRecord(id);
+        }, 550);
+    }
+
+    function bindRecordEvents() {
+        if (!els.tabContent || els.tabContent.getAttribute('data-record-bound') === '1') {
+            return;
+        }
+        els.tabContent.setAttribute('data-record-bound', '1');
+
+        els.tabContent.addEventListener('click', function (ev) {
+            if (longPressTriggered) {
+                longPressTriggered = false;
+                ev.preventDefault();
+                return;
+            }
+            var btn = ev.target.closest('.record-item');
+            if (!btn) {
+                return;
+            }
+            var id = btn.getAttribute('data-id');
+            if (id) {
+                goDetail(id);
+            }
+        });
+
+        function onPressStart(ev) {
+            var btn = ev.target.closest('.record-item');
+            if (!btn) {
+                return;
+            }
+            var id = btn.getAttribute('data-id');
+            if (id) {
+                startLongPress(btn, id);
+            }
+        }
+
+        els.tabContent.addEventListener('touchstart', onPressStart, { passive: true });
+        els.tabContent.addEventListener('mousedown', onPressStart);
+        els.tabContent.addEventListener('touchend', clearLongPress);
+        els.tabContent.addEventListener('touchcancel', clearLongPress);
+        els.tabContent.addEventListener('touchmove', clearLongPress);
+        els.tabContent.addEventListener('mouseup', clearLongPress);
+        els.tabContent.addEventListener('mouseleave', clearLongPress);
     }
 
     function refreshListRecords() {
@@ -183,6 +252,7 @@
         els.tabContent = document.getElementById('tabContent');
         els.notice = document.querySelector('.notice');
         els.headerTitleBtn = document.getElementById('headerTitleBtn');
+        bindRecordEvents();
         if (els.headerTitleBtn) {
             els.headerTitleBtn.addEventListener('click', function () {
                 if (!isListTab(state.tab)) {

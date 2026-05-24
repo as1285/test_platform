@@ -436,6 +436,18 @@
         });
     }
 
+    function deleteRecord(tab, id) {
+        return apiJson('api/shenbao_jilu.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete_record', tab: tab, id: id })
+        }).then(function (data) {
+            if (data.code !== 200) {
+                throw new Error(data.msg || '删除失败');
+            }
+        });
+    }
+
     function formatAmountDisplay(amount) {
         var s = String(amount == null ? '' : amount)
             .replace(/元/g, '')
@@ -494,6 +506,7 @@
         findRecord: findRecord,
         findRecordForDetail: loadRecordForDetail,
         saveRecord: saveRecord,
+        deleteRecord: deleteRecord,
         amountLine: amountLine,
         clearVoidTabSeedOnce: noop,
         zeroListAmountsOnce: noop,
