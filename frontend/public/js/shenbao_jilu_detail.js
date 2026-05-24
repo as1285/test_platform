@@ -129,6 +129,7 @@
         if (!rec.taxYear && rec.periodEnd) {
             rec.taxYear = String(rec.periodEnd).slice(0, 4);
         }
+        rec.refundRecords = ensureRefundRecords();
         return syncListAmountFields(rec);
     }
 
@@ -238,6 +239,414 @@
             });
     }
 
+    var refundEditCtx = null;
+
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatRefundAmount(val) {
+        var s = String(val == null ? '' : val)
+            .replace(/元/g, '')
+            .trim();
+        if (!s) {
+            return '0.00元';
+        }
+        var n = parseFloat(s);
+        if (!isNaN(n)) {
+            return n.toFixed(2) + '元';
+        }
+        return s + '元';
+    }
+
+    function ensureRefundRecords() {
+        if (!state.record) {
+            return [];
+        }
+        state.record.refundRecords = Store.normalizeRefundRecords(state.record.refundRecords);
+        return state.record.refundRecords;
+    }
+
+    function persistRefundRecords() {
+        if (!state.record || state.isNew) {
+            return Promise.resolve();
+        }
+        var payload = Object.assign({}, state.record, {
+            refundRecords: ensureRefundRecords(),
+            detailCustomized: true
+        });
+        return Store.saveRecord(state.tab, payload).then(function (saved) {
+            state.record = saved || payload;
+            ensureRefundRecords();
+        });
+    }
+
+    function findRefundById(id) {
+        var list = ensureRefundRecords();
+        for (var i = 0; i < list.length; i++) {
+            if (String(list[i].id) === String(id)) {
+                return list[i];
+            }
+        }
+        return null;
+    }
+
+    function renderRefundPanel() {
+        var root = document.getElementById('refundListRoot');
+        if (!root) {
+            return;
+        }
+        var list = ensureRefundRecords();
+        if (!list.length) {
+            root.innerHTML = '<div class="refund-empty">暂无退税记录</div>';
+            return;
+        }
+        var html = '';
+        list.forEach(function (item) {
+            var expanded = !!item.expanded;
+            html += '<article class="refund-card' + (expanded ? ' is-expanded' : '') + '" data-refund-id="' + escHtml(item.id) + '">';
+            html += '<div class="refund-card-head">退税信息</div>';
+            html +=
+                '<div class="refund-row"><span class="refund-label">退税金额</span><span class="refund-value is-editable" data-edit="amount" data-refund-id="' +
+                escHtml(item.id) +
+                '">' +
+                escHtml(formatRefundAmount(item.amount)) +
+                '</span></div>';
+            html +=
+                '<div class="refund-row"><span class="refund-label">申请时间</span><span class="refund-value is-editable" data-edit="applyTime" data-refund-id="' +
+                escHtml(item.id) +
+                '">' +
+                escHtml(item.applyTime || '—') +
+                '</span></div>';
+            html += '<div class="refund-row"><span class="refund-label">当前状态</span><span class="refund-value">';
+            html += '<span class="refund-status-wrap">';
+            html +=
+                '<span class="refund-status-icon is-editable" data-edit="status" data-refund-id="' +
+                escHtml(item.id) +
+                '" aria-hidden="true">✓</span>';
+            html +=
+                '<span class="is-editable" data-edit="status" data-refund-id="' +
+                escHtml(item.id) +
+                '">' +
+                escHtml(item.statusLabel || '—') +
+                '</span>';
+            html +=
+                '<span class="refund-chev' +
+                (expanded ? ' expanded' : '') +
+                '" data-toggle-expand="' +
+                escHtml(item.id) +
+                '" role="button" aria-label="展开进度">▼</span>';
+            html += '</span></span></div>';
+            html += '<div class="refund-timeline-wrap"><div class="refund-timeline">';
+            (item.steps || []).forEach(function (step, si) {
+                html += '<div class="refund-step" data-step-index="' + si + '">';
+                html += '<span class="refund-step-dot" aria-hidden="true">✓</span>';
+                html +=
+                    '<div class="refund-step-title is-editable" data-edit="stepTitle" data-refund-id="' +
+                    escHtml(item.id) +
+                    '" data-step-index="' +
+                    si +
+                    '">' +
+                    escHtml(step.title || '—') +
+                    '</div>';
+                html +=
+                    '<div class="refund-step-date is-editable" data-edit="stepDate" data-refund-id="' +
+                    escHtml(item.id) +
+                    '" data-step-index="' +
+                    si +
+                    '">' +
+                    escHtml(step.date || '—') +
+                    '</div>';
+                if (step.hint) {
+                    html +=
+                        '<div class="refund-step-hint is-editable" data-edit="stepHint" data-refund-id="' +
+                        escHtml(item.id) +
+                        '" data-step-index="' +
+                        si +
+                        '">' +
+                        escHtml(step.hint) +
+                        '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div></div></article>';
+        });
+        html +=
+            '<button type="button" class="refund-add-btn" id="btnAddRefundRecord">+ 添加退税记录</button>';
+        root.innerHTML = html;
+    }
+
+    function toDatetimeLocalValue(s) {
+        var t = String(s || '').trim();
+        if (!t) {
+            return '';
+        }
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(t)) {
+            return t.slice(0, 16).replace(' ', 'T');
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+            return t + 'T00:00';
+        }
+        return t;
+    }
+
+    function fromDatetimeLocalValue(s) {
+        var t = String(s || '').trim();
+        if (!t) {
+            return '';
+        }
+        if (t.indexOf('T') >= 0) {
+            return t.replace('T', ' ').slice(0, 16);
+        }
+        return t;
+    }
+
+    function closeRefundEditSheet() {
+        var mask = document.getElementById('refundEditMask');
+        if (mask) {
+            mask.classList.remove('show');
+            mask.setAttribute('aria-hidden', 'true');
+        }
+        refundEditCtx = null;
+        var body = document.getElementById('refundEditBody');
+        if (body) {
+            body.innerHTML = '';
+        }
+    }
+
+    function openRefundEditSheet(ctx) {
+        refundEditCtx = ctx;
+        var mask = document.getElementById('refundEditMask');
+        var titleEl = document.getElementById('refundEditTitle');
+        var body = document.getElementById('refundEditBody');
+        if (!mask || !body || !titleEl) {
+            return;
+        }
+        titleEl.textContent = ctx.title || '编辑';
+        var html = '<label for="refundEditField">' + escHtml(ctx.label || '') + '</label>';
+        if (ctx.type === 'status') {
+            html += '<select id="refundEditField">';
+            Store.REFUND_STATUS_OPTIONS.forEach(function (opt) {
+                html +=
+                    '<option value="' +
+                    escHtml(opt.value) +
+                    '"' +
+                    (ctx.value === opt.value ? ' selected' : '') +
+                    '>' +
+                    escHtml(opt.label) +
+                    '</option>';
+            });
+            html += '</select>';
+        } else if (ctx.type === 'datetime') {
+            html +=
+                '<input type="datetime-local" id="refundEditField" value="' +
+                escHtml(toDatetimeLocalValue(ctx.value)) +
+                '">';
+        } else if (ctx.type === 'date') {
+            html +=
+                '<input type="date" id="refundEditField" value="' +
+                escHtml(String(ctx.value || '').slice(0, 10)) +
+                '">';
+        } else if (ctx.type === 'textarea') {
+            html +=
+                '<textarea id="refundEditField" rows="3">' +
+                escHtml(ctx.value || '') +
+                '</textarea>';
+        } else {
+            html +=
+                '<input type="text" id="refundEditField" inputmode="' +
+                escHtml(ctx.inputmode || 'text') +
+                '" value="' +
+                escHtml(ctx.value || '') +
+                '">';
+        }
+        body.innerHTML = html;
+        mask.classList.add('show');
+        mask.setAttribute('aria-hidden', 'false');
+        var field = document.getElementById('refundEditField');
+        if (field) {
+            field.focus();
+        }
+    }
+
+    function applyRefundEditValue() {
+        if (!refundEditCtx) {
+            return;
+        }
+        var field = document.getElementById('refundEditField');
+        if (!field) {
+            return;
+        }
+        var item = findRefundById(refundEditCtx.refundId);
+        if (!item) {
+            return;
+        }
+        var raw = field.value;
+        var kind = refundEditCtx.kind;
+        if (kind === 'amount') {
+            item.amount = String(raw).replace(/元/g, '').trim();
+        } else if (kind === 'applyTime') {
+            item.applyTime = fromDatetimeLocalValue(raw);
+        } else if (kind === 'status') {
+            item.status = raw;
+            var opt = Store.REFUND_STATUS_OPTIONS.filter(function (o) {
+                return o.value === raw;
+            })[0];
+            item.statusLabel = opt ? opt.label : raw;
+            if (item.steps && item.steps.length >= 3) {
+                item.steps[2].title = item.statusLabel;
+            }
+        } else if (kind === 'stepTitle') {
+            item.steps[refundEditCtx.stepIndex].title = String(raw).trim();
+        } else if (kind === 'stepDate') {
+            item.steps[refundEditCtx.stepIndex].date = String(raw).trim();
+        } else if (kind === 'stepHint') {
+            item.steps[refundEditCtx.stepIndex].hint = String(raw).trim();
+        }
+    }
+
+    function saveRefundEditSheet() {
+        if (!refundEditCtx) {
+            return;
+        }
+        applyRefundEditValue();
+        closeRefundEditSheet();
+        renderRefundPanel();
+        persistRefundRecords().catch(function (e) {
+            alert((e && e.message) || '保存失败');
+        });
+    }
+
+    function bindRefundPanelEvents() {
+        var root = document.getElementById('refundListRoot');
+        if (!root || root.getAttribute('data-bound') === '1') {
+            return;
+        }
+        root.setAttribute('data-bound', '1');
+        root.addEventListener('click', function (ev) {
+            if (ev.target.id === 'btnAddRefundRecord') {
+                var list = ensureRefundRecords();
+                list.unshift(Store.createRefundRecord({ expanded: true }));
+                renderRefundPanel();
+                persistRefundRecords().catch(function (e) {
+                    alert((e && e.message) || '保存失败');
+                });
+                ev.preventDefault();
+                return;
+            }
+            var toggle = ev.target.closest('[data-toggle-expand]');
+            if (toggle) {
+                var rid = toggle.getAttribute('data-toggle-expand');
+                var item = findRefundById(rid);
+                if (item) {
+                    item.expanded = !item.expanded;
+                    renderRefundPanel();
+                    persistRefundRecords().catch(function () {});
+                }
+                ev.preventDefault();
+                return;
+            }
+            var editEl = ev.target.closest('[data-edit]');
+            if (!editEl) {
+                return;
+            }
+            var kind = editEl.getAttribute('data-edit');
+            var refundId = editEl.getAttribute('data-refund-id');
+            var item = findRefundById(refundId);
+            if (!item) {
+                return;
+            }
+            var stepIndex = parseInt(editEl.getAttribute('data-step-index'), 10);
+            if (kind === 'amount') {
+                openRefundEditSheet({
+                    kind: 'amount',
+                    refundId: refundId,
+                    title: '退税金额',
+                    label: '金额（元）',
+                    type: 'text',
+                    inputmode: 'decimal',
+                    value: item.amount
+                });
+            } else if (kind === 'applyTime') {
+                openRefundEditSheet({
+                    kind: 'applyTime',
+                    refundId: refundId,
+                    title: '申请时间',
+                    label: '申请时间',
+                    type: 'datetime',
+                    value: item.applyTime
+                });
+            } else if (kind === 'status') {
+                openRefundEditSheet({
+                    kind: 'status',
+                    refundId: refundId,
+                    title: '当前状态',
+                    label: '状态',
+                    type: 'status',
+                    value: item.status || 'treasury_done'
+                });
+            } else if (kind === 'stepTitle') {
+                openRefundEditSheet({
+                    kind: 'stepTitle',
+                    refundId: refundId,
+                    stepIndex: stepIndex,
+                    title: '进度标题',
+                    label: '标题',
+                    type: 'text',
+                    value: item.steps[stepIndex].title
+                });
+            } else if (kind === 'stepDate') {
+                openRefundEditSheet({
+                    kind: 'stepDate',
+                    refundId: refundId,
+                    stepIndex: stepIndex,
+                    title: '进度日期',
+                    label: '日期',
+                    type: 'date',
+                    value: item.steps[stepIndex].date
+                });
+            } else if (kind === 'stepHint') {
+                openRefundEditSheet({
+                    kind: 'stepHint',
+                    refundId: refundId,
+                    stepIndex: stepIndex,
+                    title: '提示说明',
+                    label: '说明（可留空）',
+                    type: 'textarea',
+                    value: item.steps[stepIndex].hint || ''
+                });
+            }
+            ev.preventDefault();
+        });
+    }
+
+    function bindRefundEditSheet() {
+        var mask = document.getElementById('refundEditMask');
+        var cancel = document.getElementById('refundEditCancel');
+        var save = document.getElementById('refundEditSave');
+        if (mask) {
+            mask.addEventListener('click', closeRefundEditSheet);
+        }
+        if (cancel) {
+            cancel.addEventListener('click', closeRefundEditSheet);
+        }
+        if (save) {
+            save.addEventListener('click', saveRefundEditSheet);
+        }
+    }
+
+    function updateFooterForTab(panelName) {
+        var bar = document.querySelector('.footer-bar');
+        if (!bar) {
+            return;
+        }
+        bar.style.display = panelName === 'refund' || panelName === 'pay' ? 'none' : '';
+    }
+
     function bindTabs() {
         var tabs = document.querySelectorAll('.detail-tab');
         var panels = {
@@ -256,6 +665,10 @@
                 Object.keys(panels).forEach(function (k) {
                     panels[k].classList.toggle('active', k === name);
                 });
+                updateFooterForTab(name);
+                if (name === 'refund') {
+                    renderRefundPanel();
+                }
             });
         });
     }
@@ -277,8 +690,11 @@
             stamp.style.display = 'none';
         }
 
+        ensureRefundRecords();
         fillView(state.record);
         bindTabs();
+        bindRefundPanelEvents();
+        bindRefundEditSheet();
         bindFooterActions();
         setEditing(true);
         window.scrollTo(0, 0);
@@ -330,10 +746,14 @@
                     stamp.style.display = state.tab === 'done' ? '' : 'none';
                 }
 
+                ensureRefundRecords();
                 fillView(state.record);
                 bindTabs();
+                bindRefundPanelEvents();
+                bindRefundEditSheet();
                 updateDisplayMode();
                 bindFooterActions();
+                updateFooterForTab('declare');
             })
             .catch(function () {
                 window.location.replace(backHref);

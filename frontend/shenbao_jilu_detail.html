@@ -341,9 +341,229 @@
         body.is-editing .btn-cancel {
             display: block;
         }
+
+        /* 退税记录 */
+        #panelRefund { background: #f5f6fa; min-height: 40vh; }
+        .refund-list { padding-bottom: 16px; }
+        .refund-card {
+            background: #fff;
+            margin-bottom: 10px;
+        }
+        .refund-card-head {
+            padding: 12px 16px 4px;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .refund-card-head::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: #1e6fff;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .refund-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            gap: 12px;
+            min-height: 48px;
+        }
+        .refund-row:last-child { border-bottom: none; }
+        .refund-label {
+            flex-shrink: 0;
+            font-size: 15px;
+            color: #333;
+        }
+        .refund-value {
+            flex: 1;
+            text-align: right;
+            font-size: 15px;
+            color: #333;
+            word-break: break-all;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-value.is-editable {
+            color: #1e6fff;
+            cursor: pointer;
+        }
+        .refund-status-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .refund-status-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #52c41a;
+            color: #fff;
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .refund-chev {
+            color: #bbb;
+            font-size: 10px;
+            margin-left: 2px;
+            flex-shrink: 0;
+            padding: 8px 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-chev.expanded { transform: rotate(180deg); }
+        .refund-timeline-wrap {
+            display: none;
+            padding: 8px 16px 14px 40px;
+            border-top: 1px dashed #e8e8e8;
+            position: relative;
+        }
+        .refund-card.is-expanded .refund-timeline-wrap { display: block; }
+        .refund-timeline {
+            position: relative;
+            padding-left: 4px;
+        }
+        .refund-timeline::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: #1e6fff;
+            border-radius: 1px;
+        }
+        .refund-step {
+            position: relative;
+            padding: 0 0 18px 22px;
+        }
+        .refund-step:last-child { padding-bottom: 4px; }
+        .refund-step-dot {
+            position: absolute;
+            left: 0;
+            top: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+        }
+        .refund-step-title {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.4;
+        }
+        .refund-step-title.is-editable { color: #1e6fff; }
+        .refund-step-date {
+            font-size: 13px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .refund-step-date.is-editable { color: #1e6fff; }
+        .refund-step-hint {
+            font-size: 13px;
+            color: #999;
+            margin-top: 2px;
+        }
+        .refund-step-hint.is-editable { color: #1e6fff; }
+        .refund-foot-hint {
+            padding: 12px 16px 20px;
+            font-size: 12px;
+            color: #999;
+            line-height: 1.55;
+            background: #f5f6fa;
+        }
+        .refund-add-btn {
+            display: block;
+            margin: 0 16px 12px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed #1e6fff;
+            border-radius: 8px;
+            color: #1e6fff;
+            font-size: 15px;
+            background: #fff;
+            width: calc(100% - 32px);
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-empty {
+            padding: 48px 24px;
+            text-align: center;
+            color: #999;
+            font-size: 15px;
+            background: #fff;
+        }
+
+        /* 字段编辑浮层 */
+        .refund-edit-mask {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .refund-edit-mask.show { display: block; }
+        .refund-edit-sheet {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #fff;
+            border-radius: 12px 12px 0 0;
+            padding: 0 0 calc(12px + env(safe-area-inset-bottom, 0px));
+            max-height: 70vh;
+            overflow: auto;
+        }
+        .refund-edit-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .refund-edit-head button {
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-family: inherit;
+            padding: 4px 8px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refund-edit-cancel { color: #666; }
+        .refund-edit-save { color: #1e6fff; font-weight: 500; }
+        .refund-edit-title { font-size: 16px; font-weight: 500; }
+        .refund-edit-body { padding: 16px; }
+        .refund-edit-body label {
+            display: block;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .refund-edit-body input,
+        .refund-edit-body select,
+        .refund-edit-body textarea {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        .refund-edit-body textarea { min-height: 72px; resize: vertical; }
     </style>
 </head>
-<body class="page-shenbao-detail detail-design-mode">
+<body class="page-shenbao-detail">
     <a href="shenbao_jilu.html?tab=done" class="design-back-btn" id="designBackBtn" aria-label="返回">&nbsp;</a>
     <div class="detail-design-view" id="detailDesignView" aria-hidden="false">
         <img src="shenbao_jilu_detail_design.png?v=20260523-v2" width="414" alt="申报记录详情">
@@ -513,7 +733,19 @@
             <div class="tab-placeholder">暂无缴税记录</div>
         </div>
         <div id="panelRefund" class="panel" role="tabpanel">
-            <div class="tab-placeholder">暂无退税记录</div>
+            <div id="refundListRoot" class="refund-list" aria-live="polite"></div>
+            <p class="refund-foot-hint">税务机关仅通过本系统向您推送相关信息，您可在「申报记录」中查询退税进度</p>
+        </div>
+    </div>
+
+    <div id="refundEditMask" class="refund-edit-mask" aria-hidden="true">
+        <div class="refund-edit-sheet" onclick="event.stopPropagation()">
+            <div class="refund-edit-head">
+                <button type="button" class="refund-edit-cancel" id="refundEditCancel">取消</button>
+                <span class="refund-edit-title" id="refundEditTitle">编辑</span>
+                <button type="button" class="refund-edit-save" id="refundEditSave">确定</button>
+            </div>
+            <div class="refund-edit-body" id="refundEditBody"></div>
         </div>
     </div>
 
@@ -524,7 +756,7 @@
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script src="/js/shenbao_jilu_store.js?v=20260523-title-add"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260523-title-add"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260524-refund-tab"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-tab"></script>
 </body>
 </html>

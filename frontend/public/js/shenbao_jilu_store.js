@@ -78,14 +78,100 @@
         return out;
     }
 
+    var REFUND_STATUS_OPTIONS = [
+        { value: 'submitted', label: '提交申请成功' },
+        { value: 'audit_passed', label: '税务审核通过' },
+        { value: 'treasury_done', label: '国库处理完成' }
+    ];
+
+    function defaultRefundSteps() {
+        return [
+            { title: '提交申请成功', date: '2026-03-28', hint: '' },
+            { title: '税务审核通过', date: '2026-03-28', hint: '' },
+            { title: '国库处理完成', date: '2026-03-31', hint: '请关注退税到账情况' }
+        ];
+    }
+
+    function createRefundRecord(partial) {
+        return Object.assign(
+            {
+                id: 'rf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                amount: '2400.00',
+                applyTime: '2026-03-28 14:35',
+                status: 'treasury_done',
+                statusLabel: '国库处理完成',
+                expanded: false,
+                steps: defaultRefundSteps()
+            },
+            partial || {}
+        );
+    }
+
+    function defaultRefundRecords() {
+        return [
+            createRefundRecord({ id: 'rf_default_1', expanded: true }),
+            createRefundRecord({ id: 'rf_default_2' })
+        ];
+    }
+
+    function normalizeRefundRecord(r) {
+        var item = Object.assign(createRefundRecord(), r || {});
+        item.id = String(item.id || createRefundRecord().id);
+        item.amount = String(item.amount != null ? item.amount : '0.00')
+            .replace(/元/g, '')
+            .trim();
+        if (item.amount && !isNaN(parseFloat(item.amount))) {
+            item.amount = parseFloat(item.amount).toFixed(2);
+        }
+        item.applyTime = String(item.applyTime != null ? item.applyTime : '').trim();
+        item.statusLabel = String(item.statusLabel != null ? item.statusLabel : '').trim();
+        if (!item.statusLabel) {
+            var opt = REFUND_STATUS_OPTIONS.filter(function (o) {
+                return o.value === item.status;
+            })[0];
+            item.statusLabel = opt ? opt.label : '国库处理完成';
+        }
+        item.expanded = !!item.expanded;
+        if (!Array.isArray(item.steps) || !item.steps.length) {
+            item.steps = defaultRefundSteps();
+        } else {
+            item.steps = item.steps.map(function (s) {
+                return {
+                    title: String((s && s.title) || '').trim() || '—',
+                    date: String((s && s.date) || '').trim(),
+                    hint: String((s && s.hint) || '').trim()
+                };
+            });
+        }
+        return item;
+    }
+
+    function normalizeRefundRecords(raw) {
+        if (!Array.isArray(raw) || !raw.length) {
+            return defaultRefundRecords();
+        }
+        return raw.map(normalizeRefundRecord);
+    }
+
+    function attachRefundRecords(rec) {
+        if (!rec) {
+            return rec;
+        }
+        rec.refundRecords = normalizeRefundRecords(rec.refundRecords);
+        return rec;
+    }
+
     function recordForDetail(rec) {
         if (!rec) {
             return null;
         }
+        var base;
         if (rec.detailCustomized) {
-            return mergeDetailRecord(rec);
+            base = mergeDetailRecord(rec);
+        } else {
+            base = designDetailTemplate(rec);
         }
-        return designDetailTemplate(rec);
+        return attachRefundRecords(base);
     }
 
     function apiJson(url, opts) {
@@ -172,18 +258,21 @@
             taxPaid: '0.00',
             amount: '0.00'
         };
-        return Object.assign({}, DETAIL_FIELD_DEFAULTS, blankMoney, {
-            id: 'new',
-            groupMonth: groupMonth,
-            title: taxYear + '年度综合所得年度汇算',
-            periodStart: taxYear + '-01',
-            periodEnd: taxYear + '-12',
-            taxYear: taxYear,
-            amountType: 'refunded',
-            taxAuthority: DETAIL_FIELD_DEFAULTS.taxAuthority,
-            employer: DETAIL_FIELD_DEFAULTS.employer,
-            detailCustomized: false
-        });
+        return attachRefundRecords(
+            Object.assign({}, DETAIL_FIELD_DEFAULTS, blankMoney, {
+                id: 'new',
+                groupMonth: groupMonth,
+                title: taxYear + '年度综合所得年度汇算',
+                periodStart: taxYear + '-01',
+                periodEnd: taxYear + '-12',
+                taxYear: taxYear,
+                amountType: 'refunded',
+                taxAuthority: DETAIL_FIELD_DEFAULTS.taxAuthority,
+                employer: DETAIL_FIELD_DEFAULTS.employer,
+                detailCustomized: false,
+                refundRecords: defaultRefundRecords()
+            })
+        );
     }
 
     function loadRecordForDetail(tab, id) {
@@ -206,7 +295,8 @@
                 if (data.code !== 200) {
                     throw new Error(data.msg || '加载失败');
                 }
-                return (data.data && data.data.record) || null;
+                var rec = (data.data && data.data.record) || null;
+                return attachRefundRecords(rec);
             });
     }
 
@@ -279,6 +369,10 @@
 
     global.ShenbaoJiluStore = {
         AMOUNT_TYPES: AMOUNT_TYPES,
+        REFUND_STATUS_OPTIONS: REFUND_STATUS_OPTIONS,
+        defaultRefundRecords: defaultRefundRecords,
+        normalizeRefundRecords: normalizeRefundRecords,
+        createRefundRecord: createRefundRecord,
         loadRecords: loadRecords,
         loadRecordForDetail: loadRecordForDetail,
         createNewRecordTemplate: createNewRecordTemplate,
