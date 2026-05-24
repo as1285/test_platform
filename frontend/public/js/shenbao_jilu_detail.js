@@ -759,6 +759,25 @@
         });
     }
 
+    function bindIncomeNavigate() {
+        var row = document.querySelector('[data-field="totalIncome"]');
+        if (!row || row.getAttribute('data-bound') === '1') {
+            return;
+        }
+        row.setAttribute('data-bound', '1');
+        row.addEventListener('click', function () {
+            if (document.body.classList.contains('is-editing')) {
+                return;
+            }
+            window.location.href =
+                'shenbao_income_detail.html?tab=' +
+                encodeURIComponent(state.tab) +
+                '&id=' +
+                encodeURIComponent(state.id) +
+                '&category=salary';
+        });
+    }
+
     function bindFooterActions() {
         document.getElementById('btnCorrect').addEventListener('click', enterEdit);
         document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
@@ -782,6 +801,7 @@
         bindRefundPanelEvents();
         bindRefundEditSheet();
         bindHeaderTitleAdd();
+        bindIncomeNavigate();
         bindFooterActions();
         updateHeaderTitleForTab('declare');
         setEditing(true);
@@ -840,6 +860,7 @@
                 bindRefundPanelEvents();
                 bindRefundEditSheet();
                 bindHeaderTitleAdd();
+                bindIncomeNavigate();
                 updateDisplayMode();
                 bindFooterActions();
                 updateFooterForTab('declare');

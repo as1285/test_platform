@@ -47,6 +47,7 @@ COPY profile.html /usr/share/nginx/html/
 COPY zonghe.html /usr/share/nginx/html/
 COPY shenbao_jilu.html /usr/share/nginx/html/
 COPY shenbao_jilu_detail.html /usr/share/nginx/html/
+COPY shenbao_income_detail.html /usr/share/nginx/html/
 COPY shenbao_stamp_done.png /usr/share/nginx/html/
 COPY shenbao_jilu_detail_design.png /usr/share/nginx/html/
 COPY zxkouchu.html /usr/share/nginx/html/

@@ -150,12 +150,123 @@
         return raw.map(normalizeRefundRecord);
     }
 
+    var INCOME_CATEGORIES = [
+        { key: 'salary', label: '工资薪金', defaultSubtype: '正常工资薪金' },
+        { key: 'labor', label: '劳务报酬', defaultSubtype: '一般劳务报酬' },
+        { key: 'author', label: '稿酬所得', defaultSubtype: '稿酬所得' },
+        { key: 'royalty', label: '特许权使用费', defaultSubtype: '特许权使用费所得' }
+    ];
+
+    function defaultSalaryIncomeItems() {
+        return [
+            { id: 'inc_s1', period: '2025-12', subtype: '正常工资薪金', employer: '深圳嘉信恒泰科技有限公司', amount: '15600.00' },
+            { id: 'inc_s2', period: '2025-11', subtype: '正常工资薪金', employer: '深圳嘉信恒泰科技有限公司', amount: '31200.00' },
+            { id: 'inc_s3', period: '2025-10', subtype: '正常工资薪金', employer: '深圳嘉信恒泰科技有限公司', amount: '31200.00' },
+            { id: 'inc_s4', period: '2025-09', subtype: '正常工资薪金', employer: '深圳市绿联科技股份有限公司', amount: '13161.43' },
+            { id: 'inc_s5', period: '2025-09', subtype: '正常工资薪金', employer: '深圳嘉信恒泰科技有限公司', amount: '5199.99' },
+            { id: 'inc_s6', period: '2025-08', subtype: '正常工资薪金', employer: '深圳嘉信恒泰科技有限公司', amount: '0.00' },
+            { id: 'inc_s7', period: '2025-07', subtype: '正常工资薪金', employer: '深圳市赢锋智能技术有限公司', amount: '28786.00' }
+        ];
+    }
+
+    function defaultRoyaltyIncomeItems() {
+        return [
+            {
+                id: 'inc_r1',
+                period: '2025-03',
+                subtype: '特许权使用费所得',
+                employer: '天津智锐人力资源有限公司',
+                amount: '100.00'
+            }
+        ];
+    }
+
+    function defaultIncomeBreakdown() {
+        return {
+            salary: defaultSalaryIncomeItems(),
+            labor: [],
+            author: [],
+            royalty: defaultRoyaltyIncomeItems()
+        };
+    }
+
+    function createIncomeItem(partial) {
+        return Object.assign(
+            {
+                id: 'inc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                period: '2025-12',
+                subtype: '正常工资薪金',
+                employer: '',
+                amount: '0.00'
+            },
+            partial || {}
+        );
+    }
+
+    function normalizeIncomeItem(item, defaultSubtype) {
+        var out = Object.assign(createIncomeItem({ subtype: defaultSubtype || '正常工资薪金' }), item || {});
+        out.id = String(out.id || createIncomeItem().id);
+        out.period = String(out.period != null ? out.period : '').trim();
+        out.subtype = String(out.subtype != null ? out.subtype : defaultSubtype || '').trim();
+        out.employer = String(out.employer != null ? out.employer : '').trim();
+        var amt = String(out.amount != null ? out.amount : '0.00')
+            .replace(/元/g, '')
+            .trim();
+        if (amt && !isNaN(parseFloat(amt))) {
+            amt = parseFloat(amt).toFixed(2);
+        } else {
+            amt = '0.00';
+        }
+        out.amount = amt;
+        return out;
+    }
+
+    function normalizeIncomeBreakdown(raw) {
+        var base = defaultIncomeBreakdown();
+        var src = raw && typeof raw === 'object' ? raw : {};
+        var out = {};
+        INCOME_CATEGORIES.forEach(function (cat) {
+            var list = Array.isArray(src[cat.key]) ? src[cat.key] : base[cat.key];
+            out[cat.key] = list.map(function (item) {
+                return normalizeIncomeItem(item, cat.defaultSubtype);
+            });
+        });
+        return out;
+    }
+
+    function sumIncomeBreakdown(breakdown) {
+        var total = 0;
+        INCOME_CATEGORIES.forEach(function (cat) {
+            (breakdown[cat.key] || []).forEach(function (item) {
+                var n = parseFloat(item.amount);
+                if (!isNaN(n)) {
+                    total += n;
+                }
+            });
+        });
+        return total.toFixed(2);
+    }
+
+    function attachIncomeBreakdown(rec) {
+        if (!rec) {
+            return rec;
+        }
+        if (!rec.incomeBreakdown || !Array.isArray(rec.incomeBreakdown.salary)) {
+            rec.incomeBreakdown = rec.detailCustomized
+                ? normalizeIncomeBreakdown(rec.incomeBreakdown)
+                : defaultIncomeBreakdown();
+        } else {
+            rec.incomeBreakdown = normalizeIncomeBreakdown(rec.incomeBreakdown);
+        }
+        return rec;
+    }
+
     function attachRefundRecords(rec) {
         if (!rec) {
             return rec;
         }
         rec.refundRecords = normalizeRefundRecords(rec.refundRecords);
-        return rec;
+        return attachIncomeBreakdown(rec);
     }
 
     function recordForDetail(rec) {
@@ -366,8 +477,14 @@
 
     global.ShenbaoJiluStore = {
         AMOUNT_TYPES: AMOUNT_TYPES,
+        INCOME_CATEGORIES: INCOME_CATEGORIES,
         REFUND_STATUS_OPTIONS: REFUND_STATUS_OPTIONS,
         defaultRefundRecords: defaultRefundRecords,
+        defaultIncomeBreakdown: defaultIncomeBreakdown,
+        normalizeIncomeBreakdown: normalizeIncomeBreakdown,
+        createIncomeItem: createIncomeItem,
+        normalizeIncomeItem: normalizeIncomeItem,
+        sumIncomeBreakdown: sumIncomeBreakdown,
         normalizeRefundRecords: normalizeRefundRecords,
         createRefundRecord: createRefundRecord,
         loadRecords: loadRecords,

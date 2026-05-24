@@ -196,7 +196,13 @@
             gap: 12px;
             min-height: 48px;
         }
-        .info-row:last-child { border-bottom: none; }
+        .info-row[data-field="totalIncome"] {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body.is-editing .info-row[data-field="totalIncome"] {
+            cursor: default;
+        }
         .info-label {
             flex-shrink: 0;
             width: 42%;
@@ -783,7 +789,7 @@
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script src="/js/shenbao_jilu_store.js?v=20260524-refund-add"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-toggle"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260524-income"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260524-income"></script>
 </body>
 </html>

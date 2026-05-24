@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260524-shenbao-income"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#3d94f7">
+    <title>工资薪金</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            min-height: 100%;
+            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            color: #333;
+        }
+        html.app-top-safe-shell body.page-shenbao-income {
+            padding-top: 0;
+        }
+        html.app-top-safe-shell body.page-shenbao-income .page-shell {
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px));
+        }
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shenbao-income .page-shell {
+            margin-top: calc(-1 * var(--app-cordova-statusbar-chrome, 40px));
+        }
+        .page-shell {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            position: relative;
+            padding: 8px 16px;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            border: none;
+            background: none;
+            font-family: inherit;
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+            padding: 4px 48px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title.header-title--add {
+            cursor: pointer;
+        }
+        .header-title.header-title--add:active {
+            opacity: 0.85;
+        }
+        .income-tabs {
+            display: flex;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .income-tabs::-webkit-scrollbar { display: none; }
+        .income-tab {
+            flex: 0 0 auto;
+            border: none;
+            background: none;
+            padding: 10px 14px;
+            font-size: 15px;
+            color: #999;
+            font-family: inherit;
+            white-space: nowrap;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .income-tab.active {
+            color: #1e6fff;
+            font-weight: 500;
+        }
+        .income-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 3px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+        .summary {
+            background: linear-gradient(135deg, #3d94f7 0%, #5eb3ff 55%, #7ec8ff 100%);
+            padding: 22px 20px 26px;
+            color: #fff;
+        }
+        .summary-label {
+            font-size: 14px;
+            opacity: 0.92;
+            margin-bottom: 8px;
+        }
+        .summary-value {
+            font-size: 32px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+        .summary-value .unit {
+            font-size: 16px;
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .list-wrap {
+            flex: 1;
+            background: #fff;
+            margin-top: 10px;
+        }
+        .income-list {
+            list-style: none;
+        }
+        .income-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            gap: 10px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+        .income-item.is-longpress {
+            background: #f0f6ff;
+        }
+        .income-item-main {
+            flex: 1;
+            min-width: 0;
+        }
+        .income-item-title {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .income-item-sub {
+            font-size: 13px;
+            color: #999;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .income-item-right {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 15px;
+            color: #333;
+            font-variant-numeric: tabular-nums;
+        }
+        .income-item-right .chev {
+            color: #ccc;
+            font-size: 18px;
+            font-weight: 300;
+        }
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 56px 24px 80px;
+            color: #bbb;
+        }
+        .empty-state svg {
+            width: 120px;
+            height: 100px;
+            margin-bottom: 16px;
+            opacity: 0.85;
+        }
+        .empty-state p {
+            font-size: 15px;
+            color: #999;
+        }
+        .edit-mask {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .edit-mask.show {
+            display: flex;
+        }
+        .edit-sheet {
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            border-radius: 12px 12px 0 0;
+            max-height: 85vh;
+            overflow: auto;
+        }
+        .edit-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .edit-head button {
+            border: none;
+            background: none;
+            font-family: inherit;
+            font-size: 16px;
+            padding: 4px 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .edit-cancel { color: #666; }
+        .edit-save { color: #1e6fff; font-weight: 500; }
+        .edit-title { font-size: 16px; font-weight: 500; }
+        .edit-body {
+            padding: 8px 16px 24px;
+        }
+        .edit-field {
+            margin-top: 16px;
+        }
+        .edit-field label {
+            display: block;
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .edit-field input {
+            width: 100%;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+        }
+        .edit-field input:focus {
+            border-color: #1e6fff;
+        }
+    </style>
+</head>
+<body class="page-shenbao-income">
+    <div class="page-shell">
+        <header class="header">
+            <div class="header-top">
+                <a href="#" class="back-btn" id="backBtn">
+                    <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+                    <span>返回</span>
+                </a>
+                <button type="button" class="header-title header-title--add" id="headerTitleBtn">工资薪金</button>
+            </div>
+            <div class="income-tabs" id="incomeTabs" role="tablist"></div>
+        </header>
+        <section class="summary" aria-live="polite">
+            <div class="summary-label">金额合计</div>
+            <div class="summary-value" id="summaryValue">0.00<span class="unit">元</span></div>
+        </section>
+        <section class="list-wrap">
+            <ul class="income-list" id="incomeList" aria-live="polite"></ul>
+            <div class="empty-state" id="emptyState" hidden>
+                <svg viewBox="0 0 120 100" aria-hidden="true">
+                    <rect x="28" y="18" width="64" height="58" rx="6" fill="#e3f2fd" stroke="#90caf9"/>
+                    <circle cx="88" cy="28" r="12" fill="#ffd54f"/>
+                    <path d="M84 28l3 3 6-6" stroke="#fff" stroke-width="2" fill="none"/>
+                </svg>
+                <p>暂无收入信息</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="edit-mask" id="editMask" aria-hidden="true">
+        <div class="edit-sheet" onclick="event.stopPropagation()">
+            <div class="edit-head">
+                <button type="button" class="edit-cancel" id="editCancel">取消</button>
+                <span class="edit-title" id="editTitle">编辑</span>
+                <button type="button" class="edit-save" id="editSave">确定</button>
+            </div>
+            <div class="edit-body">
+                <div class="edit-field">
+                    <label for="editPeriod">所属期（年-月）</label>
+                    <input type="text" id="editPeriod" placeholder="如 2025-12" maxlength="7">
+                </div>
+                <div class="edit-field">
+                    <label for="editSubtype">所得项目小类</label>
+                    <input type="text" id="editSubtype" placeholder="如 正常工资薪金">
+                </div>
+                <div class="edit-field">
+                    <label for="editEmployer">扣缴义务人</label>
+                    <input type="text" id="editEmployer" placeholder="单位名称">
+                </div>
+                <div class="edit-field">
+                    <label for="editAmount">收入（元）</label>
+                    <input type="text" id="editAmount" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260524-income"></script>
+    <script src="/js/shenbao_income_detail.js?v=20260524-income"></script>
+</body>
+</html>
