@@ -327,20 +327,15 @@
                 '</span></div>';
             html +=
                 '<div class="refund-row refund-row-status"><span class="refund-label">当前状态：</span><span class="refund-value">';
-            html += '<span class="refund-status-wrap">';
+            html +=
+                '<span class="refund-status-wrap" data-toggle-expand="' +
+                escHtml(item.id) +
+                '" role="button" aria-expanded="' +
+                (expanded ? 'true' : 'false') +
+                '" aria-label="展开或收起退税进度">';
             html += '<span class="refund-status-icon" aria-hidden="true">✓</span>';
-            html +=
-                '<span class="refund-status-text" data-edit="status" data-refund-id="' +
-                escHtml(item.id) +
-                '">' +
-                escHtml(item.statusLabel || '—') +
-                '</span>';
-            html +=
-                '<span class="refund-chev' +
-                (expanded ? ' expanded' : '') +
-                '" data-toggle-expand="' +
-                escHtml(item.id) +
-                '" role="button" aria-label="展开进度"></span>';
+            html += '<span class="refund-status-text">' + escHtml(item.statusLabel || '—') + '</span>';
+            html += '<span class="refund-chev' + (expanded ? ' expanded' : '') + '" aria-hidden="true"></span>';
             html += '</span></span></div>';
             html += '<div class="refund-timeline-wrap"><div class="refund-timeline">';
             (item.steps || []).forEach(function (step, si) {
