@@ -133,11 +133,10 @@
         }
 
         .msg-clear-icon {
-            width: 18px;
-            height: auto;
+            width: 17px;
+            height: 17px;
             flex-shrink: 0;
-            display: block;
-            object-fit: contain;
+            opacity: 0.9;
         }
 
         .message-header-custom-img {
@@ -240,7 +239,11 @@
                         </svg>
                     </button>
                     <button type="button" id="btnMsgClearUnread" class="msg-clear-unread" aria-label="清除未读">
-                        <img class="msg-clear-icon" src="msg_clear_unread_icon.png?v=1" width="18" height="16" alt="" aria-hidden="true" decoding="async">
+                        <svg class="msg-clear-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M6.8 18.2 16.2 8.8l3 3-9.4 9.4H6.8v-3Z" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>
+                            <path d="M9.2 13.6l5.2 5.2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/>
+                            <path d="M17.2 7.8 19.4 10" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
+                        </svg>
                         <span>清除未读</span>
                     </button>
                 </div>
