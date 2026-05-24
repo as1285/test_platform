@@ -88,6 +88,8 @@ COPY sydb-v2.jpg /usr/share/nginx/html/sydb-v2.jpg
 COPY sydb-v2.jpg /usr/share/nginx/html/sydb.jpg
 COPY zdb.jpg /usr/share/nginx/html/
 COPY zdfwdb.jpg /usr/share/nginx/html/
+COPY sy_svc_cards_1.jpg /usr/share/nginx/html/
+COPY sy_svc_cards_2.jpg /usr/share/nginx/html/
 COPY daiban.jpg /usr/share/nginx/html/
 COPY bs.jpg /usr/share/nginx/html/
 COPY cx.jpg /usr/share/nginx/html/
