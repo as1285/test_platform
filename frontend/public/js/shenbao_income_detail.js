@@ -109,6 +109,7 @@
     function renderList() {
         var listEl = document.getElementById('incomeList');
         var emptyEl = document.getElementById('emptyState');
+        var listWrap = document.getElementById('listWrap');
         var titleBtn = document.getElementById('headerTitleBtn');
         var cat = currentCat();
         if (titleBtn) {
@@ -119,19 +120,16 @@
             return;
         }
         var list = currentList();
+        if (listWrap) {
+            listWrap.classList.toggle('is-empty', !list.length);
+        }
         if (!list.length) {
             listEl.innerHTML = '';
-            if (emptyEl) {
-                emptyEl.hidden = false;
-            }
             if (titleBtn) {
                 titleBtn.classList.add('header-title--add');
             }
             renderSummary();
             return;
-        }
-        if (emptyEl) {
-            emptyEl.hidden = true;
         }
         if (titleBtn) {
             titleBtn.classList.add('header-title--add');

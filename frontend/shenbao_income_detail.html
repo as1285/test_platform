@@ -33,7 +33,6 @@
         }
         .header {
             background: #fff;
-            border-bottom: 1px solid #eee;
             position: sticky;
             top: 0;
             z-index: 30;
@@ -42,9 +41,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 48px;
+            min-height: 44px;
             position: relative;
-            padding: 8px 16px;
+            padding: 10px 16px 8px;
         }
         .back-btn {
             position: absolute;
@@ -75,21 +74,21 @@
         }
         .income-tabs {
             display: flex;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
+            background: #fff;
             border-bottom: 1px solid #f0f0f0;
         }
         .income-tabs::-webkit-scrollbar { display: none; }
         .income-tab {
-            flex: 0 0 auto;
+            flex: 1;
+            min-width: 0;
             border: none;
             background: none;
-            padding: 10px 14px;
-            font-size: 15px;
+            padding: 11px 2px;
+            font-size: 14px;
             color: #999;
             font-family: inherit;
             white-space: nowrap;
+            text-align: center;
             position: relative;
             -webkit-tap-highlight-color: transparent;
         }
@@ -109,30 +108,37 @@
             border-radius: 2px;
         }
         .summary {
-            background: linear-gradient(135deg, #3d94f7 0%, #5eb3ff 55%, #7ec8ff 100%);
-            padding: 22px 20px 26px;
+            background: linear-gradient(90deg, #3b92f6 0%, #52a8ff 45%, #79c0ff 100%);
+            padding: 18px 16px 22px;
             color: #fff;
         }
         .summary-label {
-            font-size: 14px;
-            opacity: 0.92;
-            margin-bottom: 8px;
+            font-size: 13px;
+            opacity: 0.95;
+            margin-bottom: 10px;
+            font-weight: 400;
         }
         .summary-value {
-            font-size: 32px;
+            font-size: 34px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.01em;
+            line-height: 1.15;
         }
         .summary-value .unit {
-            font-size: 16px;
-            font-weight: 400;
-            margin-left: 4px;
+            font-size: 17px;
+            font-weight: 500;
+            margin-left: 2px;
         }
         .list-wrap {
             flex: 1;
             background: #fff;
-            margin-top: 10px;
+        }
+        .list-wrap.is-empty {
+            background: #f5f6fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 320px;
         }
         .income-list {
             list-style: none;
@@ -140,12 +146,13 @@
         .income-item {
             display: flex;
             align-items: center;
-            padding: 14px 16px;
-            border-bottom: 1px solid #f5f5f5;
-            gap: 10px;
+            padding: 15px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 12px;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
             cursor: pointer;
+            background: #fff;
         }
         .income-item.is-longpress {
             background: #f0f6ff;
@@ -156,16 +163,16 @@
         }
         .income-item-title {
             font-size: 15px;
-            color: #333;
-            line-height: 1.4;
+            color: #222;
+            line-height: 1.35;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .income-item-sub {
             font-size: 13px;
-            color: #999;
-            margin-top: 4px;
+            color: #aaa;
+            margin-top: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -185,11 +192,16 @@
             font-weight: 300;
         }
         .empty-state {
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
-            padding: 56px 24px 80px;
+            justify-content: center;
+            padding: 48px 24px 80px;
             color: #bbb;
+            flex: 1;
+        }
+        .list-wrap.is-empty .empty-state {
+            display: flex;
         }
         .empty-state svg {
             width: 120px;
@@ -281,9 +293,9 @@
             <div class="summary-label">金额合计</div>
             <div class="summary-value" id="summaryValue">0.00<span class="unit">元</span></div>
         </section>
-        <section class="list-wrap">
+        <section class="list-wrap" id="listWrap">
             <ul class="income-list" id="incomeList" aria-live="polite"></ul>
-            <div class="empty-state" id="emptyState" hidden>
+            <div class="empty-state" id="emptyState">
                 <svg viewBox="0 0 120 100" aria-hidden="true">
                     <rect x="28" y="18" width="64" height="58" rx="6" fill="#e3f2fd" stroke="#90caf9"/>
                     <circle cx="88" cy="28" r="12" fill="#ffd54f"/>
@@ -323,7 +335,7 @@
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script src="/js/shenbao_jilu_store.js?v=20260524-income"></script>
-    <script src="/js/shenbao_income_detail.js?v=20260524-income"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260524-income-ui"></script>
+    <script src="/js/shenbao_income_detail.js?v=20260524-income-ui"></script>
 </body>
 </html>
