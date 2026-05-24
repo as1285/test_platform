@@ -3808,23 +3808,7 @@
         document.getElementById('mineUseDefaultImages').addEventListener('change', syncMineUiDefaultToggle);
 
         function adminUploadAsset(file) {
-            var fd = new FormData();
-            fd.append('file', file);
-            var t = window.adminGetToken ? window.adminGetToken() : '';
-            return fetch('api/admin/upload-asset', {
-                method: 'POST',
-                headers: t ? { Authorization: 'Bearer ' + t } : {},
-                body: fd
-            }).then(function (r) {
-                if (r.status === 401) {
-                    try {
-                        localStorage.removeItem('admin_token');
-                    } catch (e) {}
-                    window.location.href = 'admin_login.html';
-                    return Promise.reject(new Error('unauthorized'));
-                }
-                return r.json();
-            });
+            return window.adminUpload('api/admin/upload-asset', file);
         }
 
         function bindInstallPackageUploads() {

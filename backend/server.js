@@ -1178,30 +1178,7 @@ async function createTables() {
     }
   }
 
-  await migrateActivationCodesNoExpiry(conn);
-
   conn.release();
-}
-
-/** 一次性：清除激活码过期时间，并删除历史未使用激活码 */
-async function migrateActivationCodesNoExpiry(conn) {
-  var migrationKey = 'migration_activation_codes_no_expiry_v1';
-  const [flagRows] = await conn.execute(
-    'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
-    [migrationKey]
-  );
-  if (flagRows.length && String(flagRows[0].setting_value) === '1') {
-    return;
-  }
-  await conn.execute('UPDATE activation_codes SET expires_at = NULL WHERE expires_at IS NOT NULL');
-  const [delResult] = await conn.execute('DELETE FROM activation_codes WHERE used_count = 0');
-  await conn.execute(
-    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-    [migrationKey, '1']
-  );
-  var deleted = delResult && delResult.affectedRows != null ? delResult.affectedRows : 0;
-  console.log('[migration] activation_codes: no expiry; removed ' + deleted + ' unused codes');
 }
 
 async function getRecords(userId, year) {
@@ -5326,7 +5303,7 @@ async function handleAdminUsers(req, res) {
           return '?';
         }).join(',');
         const [pageRows] = await conn.query(
-          `SELECT id, username, real_name, tax_id, account_active, banned, user_type,
+          `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
                   (SELECT ac.owner_admin_username
                    FROM activation_codes ac
@@ -5376,7 +5353,6 @@ async function handleAdminUsers(req, res) {
     conn.release();
 
     var out = rows.map(function (r) {
-      var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
       var uname = String(r.username || '');
       var riskInfo = mergeUserRiskInfo(
         riskMaps.ipDistinct[uname] || 0,
@@ -5395,8 +5371,6 @@ async function handleAdminUsers(req, res) {
         tax_id: r.tax_id,
         account_active: r.account_active === 1 || r.account_active === true,
         banned: r.banned === 1 || r.banned === true,
-        user_type: ut,
-        is_test_account: ut === USER_TYPE_TEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         upline_admin:
           r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
@@ -6241,7 +6215,7 @@ async function handleAdminCodes(req, res) {
           ? ' ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), \'\'), \'—\') ASC, id DESC'
           : ' ORDER BY id DESC';
     const [rows] = await conn.query(
-      `SELECT id, code, max_uses, used_count, expires_at, note, created_at, last_used_at, used_by_username, owner_admin_username
+      `SELECT id, code, max_uses, used_count, note, created_at, last_used_at, used_by_username, owner_admin_username
        FROM activation_codes ${whereSql}${orderSql}
        LIMIT ${limit} OFFSET ${offset}`,
       params
@@ -6253,7 +6227,6 @@ async function handleAdminCodes(req, res) {
         code: r.code,
         max_uses: r.max_uses,
         used_count: r.used_count,
-        expires_at: r.expires_at ? r.expires_at.toISOString() : null,
         note: r.note,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null,
@@ -6312,48 +6285,14 @@ async function handleAdminBan(req, res) {
   }
 }
 
-async function handleAdminUserType(req, res) {
-  var body = req.body || {};
-  var target = body.username != null ? String(body.username).trim() : '';
-  var ut =
-    body.user_type === 1 || body.user_type === '1' || body.user_type === true ? USER_TYPE_TEST : USER_TYPE_NORMAL;
-  if (!target) {
-    return res.status(400).json({ code: 400, msg: 'username required' });
-  }
-  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
-    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    const [urows] = await conn.execute('SELECT id FROM users WHERE username = ?', [target]);
-    if (urows.length === 0) {
-      conn.release();
-      return res.status(404).json({ code: 404, msg: '用户不存在' });
-    }
-    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
-    if (!allowed) {
-      conn.release();
-      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
-    }
-    await conn.execute('UPDATE users SET user_type = ? WHERE username = ?', [ut, target]);
-    conn.release();
-    return res.json({ code: 200, data: { username: target, user_type: ut } });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 async function handleAdminSettingsGet(req, res) {
   try {
-    var name = await getTestAccountCompanyName();
     var mineUi = await getMineUiForAdminForm();
     var installRaw = await getInstallPackageSettingsFromDb();
     var qrRef = await getWechatPayQrcodeUrl();
     return res.json({
       code: 200,
       data: {
-        test_account_company_name: name,
         mine_ui: mineUi,
         android_apk_download_url: installRaw.android,
         ios_mobileconfig_download_url: installRaw.ios,
@@ -6371,43 +6310,21 @@ async function handleAdminSettingsGet(req, res) {
 
 async function handleAdminSettingsPost(req, res) {
   var body = req.body || {};
-  var hasCompany = Object.prototype.hasOwnProperty.call(body, 'test_account_company_name');
   var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
   var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
   var hasQqAdd = Object.prototype.hasOwnProperty.call(body, 'qq_add_url');
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
-  if (!hasCompany && !hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasQqAdd && !hasWechatPayQr) {
+  if (!hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasQqAdd && !hasWechatPayQr) {
     return res.status(400).json({
       code: 400,
-      msg:
-        '请提供 test_account_company_name、mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加链接或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加链接或微信收款码（wechat_pay_qrcode_url）'
     });
-  }
-
-  if (hasCompany) {
-    var name0 = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
-    if (!name0) {
-      return res.status(400).json({ code: 400, msg: '测试账号公司名称不能为空' });
-    }
-    if (name0.length > 500) {
-      return res.status(400).json({ code: 400, msg: '名称过长（最多 500 字）' });
-    }
   }
 
   const conn = await pool.getConnection();
   try {
-    if (hasCompany) {
-      var name = body.test_account_company_name != null ? String(body.test_account_company_name).trim() : '';
-      await conn.execute(
-        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-        [SETTING_KEY_TEST_COMPANY, name]
-      );
-      invalidateTestCompanyNameCache();
-    }
-
     if (hasMineUi) {
       var prev = await loadMineUiParsed();
       var merged = Object.assign({ use_default_images: false }, cloneMineUiDefaults());
@@ -6547,7 +6464,6 @@ async function handleAdminSettingsPost(req, res) {
     }
 
     var outData = { success: true };
-    outData.test_account_company_name = await getTestAccountCompanyName();
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
     outData.android_apk_download_url = installAfter.android;
@@ -8276,7 +8192,6 @@ app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
-app.post('/api/admin/user-type', requireAdminAuth, requireAdminMenu('users'), handleAdminUserType);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
 app.post('/api/admin/users/purge-bots', requireAdminAuth, requireAdminMenu('users'), handleAdminPurgeBotUsers);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);

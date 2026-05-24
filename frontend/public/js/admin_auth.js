@@ -30,18 +30,39 @@
     return h;
   }
 
+  function rejectUnauthorized() {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+    window.location.href = LOGIN_PAGE;
+    return Promise.reject(new Error('unauthorized'));
+  }
+
   function adminFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, adminHeaders(), opts.headers || {});
     return fetch(url, opts).then(function (r) {
       if (r.status === 401) {
-        try {
-          localStorage.removeItem(TOKEN_KEY);
-        } catch (e) {}
-        window.location.href = LOGIN_PAGE;
-        return Promise.reject(new Error('unauthorized'));
+        return rejectUnauthorized();
       }
       return r;
+    });
+  }
+
+  function adminUpload(url, file, fieldName) {
+    fieldName = fieldName || 'file';
+    var fd = new FormData();
+    fd.append(fieldName, file);
+    var t = getToken();
+    return fetch(url, {
+      method: 'POST',
+      headers: t ? { Authorization: 'Bearer ' + t } : {},
+      body: fd
+    }).then(function (r) {
+      if (r.status === 401) {
+        return rejectUnauthorized();
+      }
+      return r.json();
     });
   }
 
@@ -54,8 +75,8 @@
   }
 
   window.adminGetToken = getToken;
-  window.adminHeaders = adminHeaders;
   window.adminFetch = adminFetch;
+  window.adminUpload = adminUpload;
   window.adminLogout = adminLogout;
 
   var page = currentPageName();
