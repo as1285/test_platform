@@ -378,7 +378,7 @@
         .refund-label {
             flex-shrink: 0;
             font-size: 15px;
-            color: #333;
+            color: #888;
         }
         .refund-value {
             flex: 1;
@@ -388,15 +388,18 @@
             word-break: break-all;
             -webkit-tap-highlight-color: transparent;
         }
-        .refund-value.is-editable {
-            color: #1e6fff;
+        .refund-value[data-edit] {
             cursor: pointer;
+        }
+        .refund-row-status .refund-value {
+            flex: 1;
+            min-width: 0;
         }
         .refund-status-wrap {
             display: inline-flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 6px;
+            gap: 4px;
             max-width: 100%;
         }
         .refund-status-icon {
@@ -410,25 +413,40 @@
             text-align: center;
             flex-shrink: 0;
         }
+        .refund-status-text {
+            color: #52c41a;
+            font-size: 15px;
+            line-height: 1.4;
+        }
         .refund-chev {
-            color: #bbb;
-            font-size: 10px;
-            margin-left: 2px;
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 4px;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #7ed492;
             flex-shrink: 0;
-            padding: 8px 4px;
+            padding: 0;
+            transition: transform 0.2s ease;
             -webkit-tap-highlight-color: transparent;
         }
-        .refund-chev.expanded { transform: rotate(180deg); }
+        .refund-chev.expanded {
+            transform: rotate(180deg);
+        }
+        .refund-card.is-expanded .refund-row-status {
+            border-bottom: none;
+        }
         .refund-timeline-wrap {
             display: none;
-            padding: 8px 16px 14px 40px;
+            padding: 4px 16px 0;
             border-top: 1px dashed #e8e8e8;
             position: relative;
         }
         .refund-card.is-expanded .refund-timeline-wrap { display: block; }
         .refund-timeline {
             position: relative;
-            padding-left: 4px;
+            padding: 12px 0 8px 28px;
         }
         .refund-timeline::before {
             content: '';
@@ -463,25 +481,26 @@
             color: #333;
             line-height: 1.4;
         }
-        .refund-step-title.is-editable { color: #1e6fff; }
         .refund-step-date {
             font-size: 13px;
             color: #999;
             margin-top: 4px;
         }
-        .refund-step-date.is-editable { color: #1e6fff; }
         .refund-step-hint {
             font-size: 13px;
             color: #999;
             margin-top: 2px;
         }
-        .refund-step-hint.is-editable { color: #1e6fff; }
-        .refund-foot-hint {
-            padding: 12px 16px 20px;
+        .refund-step [data-edit] {
+            cursor: pointer;
+        }
+        .refund-card-foot-hint {
+            margin: 0;
+            padding: 10px 0 14px;
             font-size: 12px;
             color: #999;
             line-height: 1.55;
-            background: #f5f6fa;
+            background: #fff;
         }
         .refund-add-btn {
             display: block;
@@ -734,7 +753,6 @@
         </div>
         <div id="panelRefund" class="panel" role="tabpanel">
             <div id="refundListRoot" class="refund-list" aria-live="polite"></div>
-            <p class="refund-foot-hint">税务机关仅通过本系统向您推送相关信息，您可在「申报记录」中查询退税进度</p>
         </div>
     </div>
 
@@ -757,6 +775,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260524-refund-tab"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-tab"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-ui"></script>
 </body>
 </html>

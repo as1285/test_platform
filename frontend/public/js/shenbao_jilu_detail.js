@@ -311,25 +311,23 @@
             html += '<article class="refund-card' + (expanded ? ' is-expanded' : '') + '" data-refund-id="' + escHtml(item.id) + '">';
             html += '<div class="refund-card-head">退税信息</div>';
             html +=
-                '<div class="refund-row"><span class="refund-label">退税金额</span><span class="refund-value is-editable" data-edit="amount" data-refund-id="' +
+                '<div class="refund-row"><span class="refund-label">退税金额：</span><span class="refund-value" data-edit="amount" data-refund-id="' +
                 escHtml(item.id) +
                 '">' +
                 escHtml(formatRefundAmount(item.amount)) +
                 '</span></div>';
             html +=
-                '<div class="refund-row"><span class="refund-label">申请时间</span><span class="refund-value is-editable" data-edit="applyTime" data-refund-id="' +
+                '<div class="refund-row"><span class="refund-label">申请时间：</span><span class="refund-value" data-edit="applyTime" data-refund-id="' +
                 escHtml(item.id) +
                 '">' +
                 escHtml(item.applyTime || '—') +
                 '</span></div>';
-            html += '<div class="refund-row"><span class="refund-label">当前状态</span><span class="refund-value">';
+            html +=
+                '<div class="refund-row refund-row-status"><span class="refund-label">当前状态：</span><span class="refund-value">';
             html += '<span class="refund-status-wrap">';
+            html += '<span class="refund-status-icon" aria-hidden="true">✓</span>';
             html +=
-                '<span class="refund-status-icon is-editable" data-edit="status" data-refund-id="' +
-                escHtml(item.id) +
-                '" aria-hidden="true">✓</span>';
-            html +=
-                '<span class="is-editable" data-edit="status" data-refund-id="' +
+                '<span class="refund-status-text" data-edit="status" data-refund-id="' +
                 escHtml(item.id) +
                 '">' +
                 escHtml(item.statusLabel || '—') +
@@ -339,14 +337,14 @@
                 (expanded ? ' expanded' : '') +
                 '" data-toggle-expand="' +
                 escHtml(item.id) +
-                '" role="button" aria-label="展开进度">▼</span>';
+                '" role="button" aria-label="展开进度"></span>';
             html += '</span></span></div>';
             html += '<div class="refund-timeline-wrap"><div class="refund-timeline">';
             (item.steps || []).forEach(function (step, si) {
                 html += '<div class="refund-step" data-step-index="' + si + '">';
                 html += '<span class="refund-step-dot" aria-hidden="true">✓</span>';
                 html +=
-                    '<div class="refund-step-title is-editable" data-edit="stepTitle" data-refund-id="' +
+                    '<div class="refund-step-title" data-edit="stepTitle" data-refund-id="' +
                     escHtml(item.id) +
                     '" data-step-index="' +
                     si +
@@ -354,7 +352,7 @@
                     escHtml(step.title || '—') +
                     '</div>';
                 html +=
-                    '<div class="refund-step-date is-editable" data-edit="stepDate" data-refund-id="' +
+                    '<div class="refund-step-date" data-edit="stepDate" data-refund-id="' +
                     escHtml(item.id) +
                     '" data-step-index="' +
                     si +
@@ -363,7 +361,7 @@
                     '</div>';
                 if (step.hint) {
                     html +=
-                        '<div class="refund-step-hint is-editable" data-edit="stepHint" data-refund-id="' +
+                        '<div class="refund-step-hint" data-edit="stepHint" data-refund-id="' +
                         escHtml(item.id) +
                         '" data-step-index="' +
                         si +
@@ -373,6 +371,8 @@
                 }
                 html += '</div>';
             });
+            html +=
+                '<p class="refund-card-foot-hint">税务机关仅通过本系统向您推送相关信息，您可在「申报记录」中查询退税进度</p>';
             html += '</div></div></article>';
         });
         html +=
