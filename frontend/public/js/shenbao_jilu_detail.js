@@ -240,6 +240,9 @@
     }
 
     var refundEditCtx = null;
+    var activeDetailPanel = 'declare';
+    var refundLongPressTimer = null;
+    var refundLongPressTriggered = false;
 
     function escHtml(s) {
         return String(s == null ? '' : s)
@@ -375,9 +378,81 @@
                 '<p class="refund-card-foot-hint">税务机关仅通过本系统向您推送相关信息，您可在「申报记录」中查询退税进度</p>';
             html += '</div></div></article>';
         });
-        html +=
-            '<button type="button" class="refund-add-btn" id="btnAddRefundRecord">+ 添加退税记录</button>';
         root.innerHTML = html;
+    }
+
+    function addRefundRecord() {
+        var list = ensureRefundRecords();
+        list.unshift(Store.createRefundRecord({ expanded: true }));
+        renderRefundPanel();
+        persistRefundRecords().catch(function (e) {
+            alert((e && e.message) || '保存失败');
+        });
+    }
+
+    function deleteRefundRecord(refundId) {
+        if (!confirm('确定删除这条退税记录？')) {
+            return;
+        }
+        var list = ensureRefundRecords();
+        state.record.refundRecords = list.filter(function (r) {
+            return String(r.id) !== String(refundId);
+        });
+        renderRefundPanel();
+        persistRefundRecords().catch(function (e) {
+            alert((e && e.message) || '保存失败');
+        });
+    }
+
+    function clearRefundLongPress() {
+        if (refundLongPressTimer) {
+            clearTimeout(refundLongPressTimer);
+            refundLongPressTimer = null;
+        }
+        document.querySelectorAll('.refund-card.is-longpress').forEach(function (el) {
+            el.classList.remove('is-longpress');
+        });
+    }
+
+    function startRefundLongPress(cardEl, refundId) {
+        clearRefundLongPress();
+        refundLongPressTriggered = false;
+        if (cardEl) {
+            cardEl.classList.add('is-longpress');
+        }
+        refundLongPressTimer = setTimeout(function () {
+            refundLongPressTriggered = true;
+            clearRefundLongPress();
+            deleteRefundRecord(refundId);
+        }, 550);
+    }
+
+    function updateHeaderTitleForTab(panelName) {
+        activeDetailPanel = panelName || 'declare';
+        var btn = document.getElementById('detailHeaderTitleBtn');
+        if (!btn) {
+            return;
+        }
+        if (activeDetailPanel === 'refund') {
+            btn.classList.add('header-title--add');
+            btn.setAttribute('aria-label', '申报记录详情，点击添加退税记录');
+        } else {
+            btn.classList.remove('header-title--add');
+            btn.setAttribute('aria-label', '申报记录详情');
+        }
+    }
+
+    function bindHeaderTitleAdd() {
+        var btn = document.getElementById('detailHeaderTitleBtn');
+        if (!btn || btn.getAttribute('data-bound') === '1') {
+            return;
+        }
+        btn.setAttribute('data-bound', '1');
+        btn.addEventListener('click', function () {
+            if (activeDetailPanel === 'refund' && !document.body.classList.contains('is-editing')) {
+                addRefundRecord();
+            }
+        });
     }
 
     function toDatetimeLocalValue(s) {
@@ -528,13 +603,8 @@
         }
         root.setAttribute('data-bound', '1');
         root.addEventListener('click', function (ev) {
-            if (ev.target.id === 'btnAddRefundRecord') {
-                var list = ensureRefundRecords();
-                list.unshift(Store.createRefundRecord({ expanded: true }));
-                renderRefundPanel();
-                persistRefundRecords().catch(function (e) {
-                    alert((e && e.message) || '保存失败');
-                });
+            if (refundLongPressTriggered) {
+                refundLongPressTriggered = false;
                 ev.preventDefault();
                 return;
             }
@@ -622,6 +692,26 @@
             }
             ev.preventDefault();
         });
+
+        function onRefundPressStart(ev) {
+            var card = ev.target.closest('.refund-card');
+            if (!card) {
+                return;
+            }
+            var rid = card.getAttribute('data-refund-id');
+            if (!rid) {
+                return;
+            }
+            startRefundLongPress(card, rid);
+        }
+
+        root.addEventListener('touchstart', onRefundPressStart, { passive: true });
+        root.addEventListener('mousedown', onRefundPressStart);
+        root.addEventListener('touchend', clearRefundLongPress);
+        root.addEventListener('touchcancel', clearRefundLongPress);
+        root.addEventListener('touchmove', clearRefundLongPress);
+        root.addEventListener('mouseup', clearRefundLongPress);
+        root.addEventListener('mouseleave', clearRefundLongPress);
     }
 
     function bindRefundEditSheet() {
@@ -666,6 +756,7 @@
                     panels[k].classList.toggle('active', k === name);
                 });
                 updateFooterForTab(name);
+                updateHeaderTitleForTab(name);
                 if (name === 'refund') {
                     renderRefundPanel();
                 }
@@ -695,7 +786,9 @@
         bindTabs();
         bindRefundPanelEvents();
         bindRefundEditSheet();
+        bindHeaderTitleAdd();
         bindFooterActions();
+        updateHeaderTitleForTab('declare');
         setEditing(true);
         window.scrollTo(0, 0);
     }
@@ -751,9 +844,11 @@
                 bindTabs();
                 bindRefundPanelEvents();
                 bindRefundEditSheet();
+                bindHeaderTitleAdd();
                 updateDisplayMode();
                 bindFooterActions();
                 updateFooterForTab('declare');
+                updateHeaderTitleForTab('declare');
             })
             .catch(function () {
                 window.location.replace(backHref);

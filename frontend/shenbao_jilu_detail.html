@@ -70,6 +70,24 @@
             font-size: 17px;
             font-weight: 500;
             padding: 0 56px;
+            text-align: center;
+            line-height: 1.35;
+        }
+        button.header-title {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            font-family: inherit;
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button.header-title.header-title--add {
+            cursor: pointer;
+            color: #1e6fff;
+        }
+        button.header-title.header-title--add:active {
+            opacity: 0.88;
         }
         .detail-tabs {
             display: flex;
@@ -502,19 +520,8 @@
             line-height: 1.55;
             background: #fff;
         }
-        .refund-add-btn {
-            display: block;
-            margin: 0 16px 12px;
-            padding: 12px;
-            text-align: center;
-            border: 1px dashed #1e6fff;
-            border-radius: 8px;
-            color: #1e6fff;
-            font-size: 15px;
-            background: #fff;
-            width: calc(100% - 32px);
-            font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
+        .refund-card.is-longpress {
+            background: #f5f8ff;
         }
         .refund-empty {
             padding: 48px 24px;
@@ -592,7 +599,7 @@
         <header class="header">
             <div class="header-top">
                 <a href="shenbao_jilu.html?tab=done" class="back-btn" id="detailBackBtn">&lt; 返回</a>
-                <h1 class="header-title">申报记录详情</h1>
+                <button type="button" class="header-title" id="detailHeaderTitleBtn" aria-label="申报记录详情">申报记录详情</button>
             </div>
             <div class="detail-tabs" role="tablist">
                 <button type="button" class="detail-tab active" data-panel="declare" role="tab">申报记录</button>
@@ -774,7 +781,7 @@
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
-    <script src="/js/shenbao_jilu_store.js?v=20260524-refund-tab"></script>
-    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-ui"></script>
+    <script src="/js/shenbao_jilu_store.js?v=20260524-refund-add"></script>
+    <script src="/js/shenbao_jilu_detail.js?v=20260524-refund-add"></script>
 </body>
 </html>

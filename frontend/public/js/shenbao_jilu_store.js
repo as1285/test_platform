@@ -108,10 +108,7 @@
     }
 
     function defaultRefundRecords() {
-        return [
-            createRefundRecord({ id: 'rf_default_1', expanded: true }),
-            createRefundRecord({ id: 'rf_default_2' })
-        ];
+        return [createRefundRecord({ id: 'rf_default_1', expanded: false })];
     }
 
     function normalizeRefundRecord(r) {
