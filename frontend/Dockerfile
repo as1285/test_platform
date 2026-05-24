@@ -50,6 +50,8 @@ COPY shenbao_jilu_detail.html /usr/share/nginx/html/
 COPY shenbao_stamp_done.png /usr/share/nginx/html/
 COPY shenbao_jilu_detail_design.png /usr/share/nginx/html/
 COPY zxkouchu.html /usr/share/nginx/html/
+COPY zxk_zhengce.html /usr/share/nginx/html/
+COPY zxk_zhengce.jpg /usr/share/nginx/html/
 COPY najilu.html /usr/share/nginx/html/
 COPY gerenyanglao.html /usr/share/nginx/html/
 COPY gerenyanglao_banner.jpg /usr/share/nginx/html/
