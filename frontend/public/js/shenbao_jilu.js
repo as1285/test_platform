@@ -45,8 +45,7 @@
         return (
             '<div class="empty-wrap">' +
             '<div class="empty-illustration">' +
-            '<img src="shuiming_empty.png" alt="" loading="lazy" decoding="async">' +
-            '<p class="empty-text">页面空空如也</p>' +
+            '<img src="shuiming_empty.png" alt="页面空空如也" loading="lazy" decoding="async">' +
             '</div></div>'
         );
     }
