@@ -240,37 +240,133 @@
             transform: translateY(-100%);
         }
 
-        /* 置顶服务三卡片：与 zdfwdb 图、下方 lb 轮播一致 — 左综合所得汇算 | 中收入纳税明细 | 右纳税记录开具 */
+        /* 重点服务推荐 · 专项附加扣除（裁切 zdfwdb 上半，下半由 HTML 卡片轮播替代） */
         .svc-cards-wrap {
             position: relative;
             display: block;
+            background: #f6f7fb;
         }
-        .svc-cards-wrap > img {
-            width: 100%;
+        .svc-zdfw-viewport {
+            position: relative;
+            overflow: hidden;
+        }
+        .svc-zdfw-viewport::before {
+            content: '';
             display: block;
-            vertical-align: top;
+            padding-top: 51.6%;
         }
-        .svc-hot {
+        .svc-zdfw-viewport > img {
             position: absolute;
-            z-index: 4;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            top: 52%;
-            bottom: 2%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            display: block;
         }
-        .svc-hot-left { left: 0; width: 33.33%; }
-        .svc-hot-mid { left: 33.33%; width: 33.33%; }
-        .svc-hot-right { left: 66.66%; width: 33.34%; }
+        .svc-zdfw-viewport .svc-zxk-banner-noop,
+        .svc-zdfw-viewport .svc-zxk-banner-policy,
+        .svc-zdfw-viewport .svc-zxk-banner-fill,
+        .svc-zdfw-viewport .svc-zxk-banner-query {
+            position: absolute;
+        }
+        /* 轮播卡片区：左右滑动 */
+        .sy-svc-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            padding: 14px 12px 16px;
+            scrollbar-width: none;
+            touch-action: pan-x;
+        }
+        .sy-svc-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .sy-svc-card {
+            position: relative;
+            flex: 0 0 42%;
+            min-width: 148px;
+            max-width: 168px;
+            scroll-snap-align: start;
+            background: #fff;
+            border-radius: 12px;
+            padding: 22px 12px 10px;
+            min-height: 118px;
+            box-shadow: 0 2px 10px rgba(30, 80, 160, 0.07);
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        .sy-svc-card:active {
+            opacity: 0.94;
+        }
+        .sy-svc-card-icon {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+        .sy-svc-card-icon svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+        .sy-svc-card--blue .sy-svc-card-icon { background: linear-gradient(145deg, #3d94f7, #1e6fff); }
+        .sy-svc-card--purple .sy-svc-card-icon { background: linear-gradient(145deg, #9b7cf6, #7b5cf0); }
+        .sy-svc-card--teal .sy-svc-card-icon { background: linear-gradient(145deg, #3ecfb4, #22b8a0); }
+        .sy-svc-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.35;
+            margin-bottom: 4px;
+            padding-right: 4px;
+        }
+        .sy-svc-card-desc {
+            font-size: 11px;
+            color: #999;
+            line-height: 1.45;
+            min-height: 32px;
+            padding-right: 2px;
+        }
+        .sy-svc-card-btn {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 12px 6px 14px;
+            border-radius: 14px 0 12px 0;
+        }
+        .sy-svc-card--blue .sy-svc-card-btn {
+            color: #1e6fff;
+            background: rgba(30, 111, 255, 0.1);
+        }
+        .sy-svc-card--purple .sy-svc-card-btn {
+            color: #7b5cf0;
+            background: rgba(123, 92, 240, 0.1);
+        }
+        .sy-svc-card--teal .sy-svc-card-btn {
+            color: #22b8a0;
+            background: rgba(34, 184, 160, 0.1);
+        }
         /* 重点服务推荐 · 专项附加扣除卡片中部文案：拦截点击 */
         .svc-zxk-banner-noop {
             position: absolute;
             z-index: 5;
             left: 12%;
             width: 76%;
-            top: 21%;
-            height: 14%;
+            top: 40%;
+            height: 27%;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
@@ -283,8 +379,8 @@
             z-index: 6;
             right: 0;
             width: 38%;
-            top: 12%;
-            height: 9%;
+            top: 23%;
+            height: 17%;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
@@ -296,8 +392,8 @@
             z-index: 6;
             left: 5%;
             width: 43%;
-            top: 37%;
-            height: 13%;
+            top: 71%;
+            height: 25%;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
@@ -309,8 +405,8 @@
             z-index: 6;
             left: 52%;
             width: 43%;
-            top: 37%;
-            height: 13%;
+            top: 71%;
+            height: 25%;
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
@@ -493,14 +589,55 @@
                 </div>
             </div>
             <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=3" alt="置顶服务">
-                <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
-                <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-query" aria-label="我要查询"></a>
-                <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
-                <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
-                <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
+                <div class="svc-zdfw-viewport">
+                    <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=4" alt="重点服务推荐">
+                    <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
+                    <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
+                    <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
+                    <a href="zxkouchu.html" class="svc-zxk-banner-query" aria-label="我要查询"></a>
+                </div>
+                <div class="sy-svc-scroll" id="sySvcScroll" aria-label="重点服务推荐">
+                    <a href="zonghe.html" class="sy-svc-card sy-svc-card--blue">
+                        <span class="sy-svc-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="5" rx="1" fill="#fff" opacity="0.95"/><path d="M7 12h3M7 16h3M14 12h3M14 16h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+                        </span>
+                        <h3 class="sy-svc-card-title">综合所得年度汇算</h3>
+                        <p class="sy-svc-card-desc">申报与查询综合所得年度汇算</p>
+                        <span class="sy-svc-card-btn">去申报</span>
+                    </a>
+                    <a href="shuiming.html?reset=1" class="sy-svc-card sy-svc-card--purple">
+                        <span class="sy-svc-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="11" rx="2" stroke="#fff" stroke-width="1.6"/><path d="M8 7V6a4 4 0 118 0v1" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="13" r="2.5" fill="#fff"/></svg>
+                        </span>
+                        <h3 class="sy-svc-card-title">收入纳税明细</h3>
+                        <p class="sy-svc-card-desc">查看个人所得税纳税明细</p>
+                        <span class="sy-svc-card-btn">去查询</span>
+                    </a>
+                    <a href="najilu.html" class="sy-svc-card sy-svc-card--teal">
+                        <span class="sy-svc-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16H7z" stroke="#fff" stroke-width="1.6"/><path d="M9 8h6M9 12h4" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="16" cy="17" r="2" fill="#fff"/></svg>
+                        </span>
+                        <h3 class="sy-svc-card-title">纳税记录开具</h3>
+                        <p class="sy-svc-card-desc">生成或查看纳税记录</p>
+                        <span class="sy-svc-card-btn">去开具</span>
+                    </a>
+                    <a href="gerenyanglao.html" class="sy-svc-card sy-svc-card--blue">
+                        <span class="sy-svc-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="8" width="14" height="10" rx="2" stroke="#fff" stroke-width="1.6"/><circle cx="17" cy="9" r="2.5" fill="#fff"/><path d="M8 12h8" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
+                        </span>
+                        <h3 class="sy-svc-card-title">个人养老金扣除管理</h3>
+                        <p class="sy-svc-card-desc">录入或查看个人养老金扣除信息</p>
+                        <span class="sy-svc-card-btn">去填报</span>
+                    </a>
+                    <span class="sy-svc-card sy-svc-card--blue" role="presentation">
+                        <span class="sy-svc-card-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="5" width="6" height="6" rx="1.2" fill="#fff"/><rect x="13" y="5" width="6" height="6" rx="1.2" fill="#fff" opacity="0.85"/><rect x="5" y="13" width="6" height="6" rx="1.2" fill="#fff" opacity="0.85"/><rect x="13" y="13" width="6" height="6" rx="1.2" fill="#fff" opacity="0.7"/></svg>
+                        </span>
+                        <h3 class="sy-svc-card-title">更多功能</h3>
+                        <p class="sy-svc-card-desc">设置在首页展示的常用功能入口</p>
+                        <span class="sy-svc-card-btn">去使用</span>
+                    </span>
+                </div>
             </div>
         </div>
         <div class="shouye-content">
