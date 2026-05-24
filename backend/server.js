@@ -660,6 +660,16 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  try {
+    await conn.execute(`
+      ALTER TABLE bank_cards ADD COLUMN is_default TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=默认卡'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
       user_id VARCHAR(255) NOT NULL,
@@ -2555,10 +2565,18 @@ async function syncUserFamilyCount(conn, userId) {
 
 function maskBankCardNo(cardNo) {
   var d = String(cardNo || '').replace(/\D/g, '');
+  if (d.length < 8) {
+    return '****';
+  }
+  return d.slice(0, 4) + '****' + d.slice(-4);
+}
+
+function maskBankCardNoShort(cardNo) {
+  var d = String(cardNo || '').replace(/\D/g, '');
   if (d.length < 4) {
     return '****';
   }
-  return '**** **** **** ***' + d.charAt(d.length - 4) + ' ' + d.slice(-3);
+  return '**** ' + d.slice(-4);
 }
 
 function inferBankNameFromCardNo(cardNo) {
@@ -2594,8 +2612,8 @@ async function listBankCardsForUser(userId) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      `SELECT id, card_no, bank_name, province, phone, created_at
-       FROM bank_cards WHERE user_id = ? ORDER BY created_at ASC, id ASC`,
+      `SELECT id, card_no, bank_name, province, phone, created_at, is_default
+       FROM bank_cards WHERE user_id = ? ORDER BY is_default DESC, created_at ASC, id ASC`,
       [userId]
     );
     return rows.map(function (r) {
@@ -2604,6 +2622,8 @@ async function listBankCardsForUser(userId) {
         id: r.id,
         bank_name: bankName,
         card_no_masked: maskBankCardNo(r.card_no),
+        card_no_masked_short: maskBankCardNoShort(r.card_no),
+        is_default: !!(r.is_default && Number(r.is_default) === 1),
         province: r.province || '',
         phone: r.phone || ''
       };
@@ -2932,10 +2952,15 @@ async function handleUserPost(req, res) {
             );
           }
           var bcId = 'bc_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+          const [existBc] = await connBc.execute('SELECT COUNT(*) AS count FROM bank_cards WHERE user_id = ?', [
+            userId
+          ]);
+          var isFirstCard =
+            !(existBc.length && existBc[0].count != null && Number(existBc[0].count) > 0);
           await connBc.execute(
-            `INSERT INTO bank_cards (id, user_id, card_no, bank_name, province, phone)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [bcId, userId, cardNo, bankName, province || null, phone]
+            `INSERT INTO bank_cards (id, user_id, card_no, bank_name, province, phone, is_default)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [bcId, userId, cardNo, bankName, province || null, phone, isFirstCard ? 1 : 0]
           );
           var bankCardCount = await syncUserBankCardCount(connBc, userId);
           return res.json({
@@ -2946,6 +2971,8 @@ async function handleUserPost(req, res) {
                 id: bcId,
                 bank_name: bankName,
                 card_no_masked: maskBankCardNo(cardNo),
+                card_no_masked_short: maskBankCardNoShort(cardNo),
+                is_default: isFirstCard,
                 province: province,
                 phone: phone
               },
@@ -2954,6 +2981,75 @@ async function handleUserPost(req, res) {
           });
         } finally {
           connBc.release();
+        }
+      }
+
+      if (action === 'delete_bank_card') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var delCardId = String(body.card_id || body.id || '').trim();
+        if (!delCardId) {
+          return res.status(400).json({ code: 400, msg: 'card_id required' });
+        }
+        const connDelBc = await pool.getConnection();
+        try {
+          const [delRows] = await connDelBc.execute(
+            'SELECT id, is_default FROM bank_cards WHERE id = ? AND user_id = ? LIMIT 1',
+            [delCardId, userId]
+          );
+          if (!delRows.length) {
+            return res.status(404).json({ code: 404, msg: '银行卡不存在' });
+          }
+          var wasDefault = delRows[0].is_default && Number(delRows[0].is_default) === 1;
+          await connDelBc.execute('DELETE FROM bank_cards WHERE id = ? AND user_id = ?', [delCardId, userId]);
+          if (wasDefault) {
+            const [nextRows] = await connDelBc.execute(
+              'SELECT id FROM bank_cards WHERE user_id = ? ORDER BY created_at ASC, id ASC LIMIT 1',
+              [userId]
+            );
+            if (nextRows.length) {
+              await connDelBc.execute('UPDATE bank_cards SET is_default = 1 WHERE id = ? AND user_id = ?', [
+                nextRows[0].id,
+                userId
+              ]);
+            }
+          }
+          var delBankCardCount = await syncUserBankCardCount(connDelBc, userId);
+          return res.json({
+            code: 200,
+            data: { success: true, bank_card_count: delBankCardCount }
+          });
+        } finally {
+          connDelBc.release();
+        }
+      }
+
+      if (action === 'set_default_bank_card') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var defCardId = String(body.card_id || body.id || '').trim();
+        if (!defCardId) {
+          return res.status(400).json({ code: 400, msg: 'card_id required' });
+        }
+        const connDefBc = await pool.getConnection();
+        try {
+          const [defRows] = await connDefBc.execute(
+            'SELECT id FROM bank_cards WHERE id = ? AND user_id = ? LIMIT 1',
+            [defCardId, userId]
+          );
+          if (!defRows.length) {
+            return res.status(404).json({ code: 404, msg: '银行卡不存在' });
+          }
+          await connDefBc.execute('UPDATE bank_cards SET is_default = 0 WHERE user_id = ?', [userId]);
+          await connDefBc.execute('UPDATE bank_cards SET is_default = 1 WHERE id = ? AND user_id = ?', [
+            defCardId,
+            userId
+          ]);
+          return res.json({ code: 200, data: { success: true, card_id: defCardId } });
+        } finally {
+          connDefBc.release();
         }
       }
 
@@ -5325,7 +5421,7 @@ async function handleAdminUsers(req, res) {
 
       const [pageRows] = await conn.query(
         `
-      SELECT id, username, real_name, tax_id, account_active, banned, user_type,
+      SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              (SELECT ac.owner_admin_username
               FROM activation_codes ac

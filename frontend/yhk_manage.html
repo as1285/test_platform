@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .main { padding: 12px 0 24px; }
+        .panel {
+            background: #fff;
+            margin-bottom: 12px;
+        }
+        .card-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+        }
+        .bank-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(145deg, #003d82, #0066cc);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        html.platform-android .bank-logo { font-weight: 500; font-synthesis: none; }
+        .bank-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #111;
+        }
+        .bank-tail {
+            font-size: 15px;
+            color: #333;
+            flex-shrink: 0;
+        }
+        .action-default {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            text-align: left;
+            padding: 0 16px 16px;
+            font-size: 15px;
+            color: #1e6fff;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .action-default:disabled {
+            color: #bbb;
+        }
+        .action-unbind {
+            display: block;
+            width: 100%;
+            border: none;
+            background: #fff;
+            padding: 18px 16px;
+            font-size: 16px;
+            color: #e64545;
+            text-align: center;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .action-unbind:active,
+        .action-default:active:not(:disabled) { opacity: 0.88; }
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            padding: 48px 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="yhk.html" class="back-btn" id="backLink">
+            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回</span>
+        </a>
+        <span class="header-title">管理</span>
+    </div>
+    <div class="main" id="manageMount">
+        <p class="empty-tip">加载中…</p>
+    </div>
+    <script>
+        (function () {
+            var mount = document.getElementById('manageMount');
+            var params = new URLSearchParams(window.location.search);
+            var cardId = params.get('id') || '';
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function bankLogoChar(name) {
+                var n = String(name || '').trim();
+                return n ? n.charAt(0) : '卡';
+            }
+
+            function render(card) {
+                if (!mount || !card) {
+                    return;
+                }
+                var isDefault = !!card.is_default;
+                mount.innerHTML =
+                    '<div class="panel">' +
+                    '<div class="card-row">' +
+                    '<div class="bank-logo" aria-hidden="true">' +
+                    esc(bankLogoChar(card.bank_name)) +
+                    '</div>' +
+                    '<div class="bank-name">' +
+                    esc(card.bank_name || '银行卡') +
+                    '</div>' +
+                    '<div class="bank-tail">' +
+                    esc(card.card_no_masked_short || card.card_no_masked || '****') +
+                    '</div>' +
+                    '</div>' +
+                    '<button type="button" class="action-default" id="btnSetDefault"' +
+                    (isDefault ? ' disabled' : '') +
+                    '>' +
+                    (isDefault ? '已是默认卡' : '设为默认卡') +
+                    '</button>' +
+                    '</div>' +
+                    '<button type="button" class="action-unbind" id="btnUnbind">解绑</button>';
+
+                var btnDefault = document.getElementById('btnSetDefault');
+                var btnUnbind = document.getElementById('btnUnbind');
+                if (btnDefault && !isDefault) {
+                    btnDefault.addEventListener('click', function () {
+                        setDefault(card.id);
+                    });
+                }
+                if (btnUnbind) {
+                    btnUnbind.addEventListener('click', function () {
+                        if (!confirm('确定解绑该银行卡？')) {
+                            return;
+                        }
+                        unbind(card.id);
+                    });
+                }
+            }
+
+            function postAction(action, payload) {
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                return fetchFn('api/user.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+                }).then(function (r) {
+                    return r.json();
+                });
+            }
+
+            function setDefault(id) {
+                postAction('set_default_bank_card', { card_id: id })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            loadCard();
+                            return;
+                        }
+                        alert(data.msg || '设置失败');
+                    })
+                    .catch(function () {
+                        alert('网络错误，请稍后重试');
+                    });
+            }
+
+            function unbind(id) {
+                postAction('delete_bank_card', { card_id: id })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            try {
+                                if (data.data && data.data.bank_card_count != null) {
+                                    localStorage.setItem('bank_card_count', String(data.data.bank_card_count));
+                                }
+                            } catch (e) {}
+                            window.location.href = 'yhk.html';
+                            return;
+                        }
+                        alert(data.msg || '解绑失败');
+                    })
+                    .catch(function () {
+                        alert('网络错误，请稍后重试');
+                    });
+            }
+
+            function loadCard() {
+                if (!cardId) {
+                    if (mount) {
+                        mount.innerHTML = '<p class="empty-tip">未指定银行卡</p>';
+                    }
+                    return;
+                }
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                fetchFn('api/user.php?action=bank_cards', { credentials: 'same-origin' })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200 || !data.data || !Array.isArray(data.data.cards)) {
+                            if (mount) {
+                                mount.innerHTML = '<p class="empty-tip">加载失败，请稍后重试</p>';
+                            }
+                            return;
+                        }
+                        var card = data.data.cards.find(function (c) {
+                            return String(c.id) === String(cardId);
+                        });
+                        if (!card) {
+                            if (mount) {
+                                mount.innerHTML = '<p class="empty-tip">银行卡不存在</p>';
+                            }
+                            return;
+                        }
+                        render(card);
+                    })
+                    .catch(function () {
+                        if (mount) {
+                            mount.innerHTML = '<p class="empty-tip">网络错误，请稍后重试</p>';
+                        }
+                    });
+            }
+
+            loadCard();
+        })();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

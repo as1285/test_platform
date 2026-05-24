@@ -14,6 +14,7 @@ COPY jtcy.html /usr/share/nginx/html/
 COPY jtcy_add.html /usr/share/nginx/html/
 COPY yhk.html /usr/share/nginx/html/
 COPY yhk_add.html /usr/share/nginx/html/
+COPY yhk_manage.html /usr/share/nginx/html/
 COPY aqzx.html /usr/share/nginx/html/
 COPY xiugaimima.html /usr/share/nginx/html/
 COPY install_guide.html /usr/share/nginx/html/

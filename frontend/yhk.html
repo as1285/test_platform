@@ -176,7 +176,9 @@
                 var html = '<div class="bank-list">';
                 cards.forEach(function (c) {
                     html +=
-                        '<div class="bank-card">' +
+                        '<a class="bank-card" href="yhk_manage.html?id=' +
+                        encodeURIComponent(c.id) +
+                        '">' +
                         '<div class="bank-logo" aria-hidden="true">' +
                         esc(bankLogoChar(c.bank_name)) +
                         '</div>' +
@@ -188,7 +190,7 @@
                         esc(c.card_no_masked || '****') +
                         '</div>' +
                         '</div>' +
-                        '</div>';
+                        '</a>';
                 });
                 html += '</div>';
                 mount.innerHTML = html;

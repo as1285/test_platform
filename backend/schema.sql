@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS bank_cards (
     bank_name VARCHAR(128) NULL,
     province VARCHAR(64) NULL,
     phone VARCHAR(20) NULL,
+    is_default TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=默认卡',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_bank_cards_user_id (user_id)
