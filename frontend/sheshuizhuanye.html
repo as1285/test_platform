@@ -280,9 +280,7 @@
                     '</article>';
             }).join('');
             list.querySelectorAll('.btn-entrust').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    alert('「我要委托」功能开发中\n' + btn.getAttribute('data-name'));
-                });
+                btn.addEventListener('click', function () {});
             });
         }
 
@@ -304,14 +302,9 @@
         document.getElementById('searchInput').addEventListener('keydown', function (e) {
             if (e.key === 'Enter') doSearch();
         });
-        document.getElementById('regionRow').addEventListener('click', function () {
-            alert('地区选择功能开发中');
-        });
+        document.getElementById('regionRow').addEventListener('click', function () {});
         document.querySelectorAll('.filter-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var labels = { sort: '信用积分排序', category: '机构类别' };
-                alert((labels[btn.getAttribute('data-filter')] || '筛选') + '功能开发中');
-            });
+            btn.addEventListener('click', function () {});
         });
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
