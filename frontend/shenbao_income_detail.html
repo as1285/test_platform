@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260524-shenbao-income"></script>
+    <script src="/js/auth.js?v=20260524-shenbao-income-top"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e6fff">
     <title>工资薪金</title>
@@ -17,11 +17,11 @@
         html.app-top-safe-shell body.page-shenbao-income {
             padding-top: 0;
         }
-        html.app-top-safe-shell body.page-shenbao-income .page-shell {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px));
+        html.app-top-safe-shell body.page-shenbao-income .header {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shenbao-income .page-shell {
-            margin-top: calc(-1 * var(--app-cordova-statusbar-chrome, 40px));
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shenbao-income .header {
+            padding-top: var(--app-cordova-statusbar-chrome, 40px);
         }
         .page-shell {
             max-width: 480px;
@@ -36,6 +36,7 @@
             position: sticky;
             top: 0;
             z-index: 30;
+            flex-shrink: 0;
         }
         .header-top {
             display: flex;
@@ -75,6 +76,8 @@
         .income-tabs {
             display: flex;
             background: #fff;
+            position: relative;
+            z-index: 1;
         }
         .income-tabs::-webkit-scrollbar { display: none; }
         .income-tab {
@@ -110,6 +113,9 @@
             background: #1e6fff;
             padding: 16px 16px 20px;
             color: #fff;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 0;
         }
         .summary-label {
             font-size: 13px;
@@ -334,6 +340,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260524-income-color"></script>
-    <script src="/js/shenbao_income_detail.js?v=20260524-income-color"></script>
+    <script src="/js/shenbao_income_detail.js?v=20260524-income-top"></script>
 </body>
 </html>
