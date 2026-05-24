@@ -503,8 +503,8 @@
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
-          'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
-          'html.app-top-safe-shell body.page-shouye .shouye-header{margin-top:calc(-1 * var(--shouye-fixed-top-h,52px)) !important;padding-top:var(--shouye-fixed-top-h,52px) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
+          'html.app-top-safe-shell body.page-shouye .shouye-header{margin-top:calc(-1 * var(--shouye-fixed-top-h,78px)) !important;padding-top:var(--shouye-fixed-top-h,78px) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;left:auto !important;right:auto !important;margin:2px 12px 14px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(60px + var(--app-shell-statusbar-top,0px)) !important;}' +

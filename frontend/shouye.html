@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260522-shouye-notice-flow2"></script>
+    <script src="/js/auth.js?v=20260524-shouye-top78"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>首页</title>
     <style>
@@ -69,6 +69,11 @@
             padding-top: calc(6px + var(--app-shell-statusbar-top, 32px));
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
             box-shadow: none;
+        }
+
+        /* Android 壳/客户端：首屏顶距与实测搜索条高度对齐（约 78px），避免 JS 未跑完前错位 */
+        html.app-top-safe-shell.app-android-client {
+            --shouye-fixed-top-h: 78px;
         }
 
         /* 内容区顶距由 JS 写入 --shouye-fixed-top-h，与固定搜索条等高 */
@@ -163,6 +168,7 @@
             position: relative;
             overflow: hidden;
             line-height: 0;
+            aspect-ratio: 1024 / 610;
         }
 
         .shouye-banner-viewport img {
@@ -576,7 +582,11 @@
                 var shift = Math.round(fullH * SHOUYE_BANNER_WHITE_RATIO);
                 var visibleH = Math.max(0, fullH - shift);
                 img.style.transform = 'translateY(-' + shift + 'px)';
-                viewport.style.height = visibleH + 'px';
+                if (shift > 0) {
+                    viewport.style.height = visibleH + 'px';
+                } else {
+                    viewport.style.height = '';
+                }
                 document.documentElement.style.setProperty('--shouye-banner-shift', (-shift) + 'px');
             }
             if (img.complete) {
