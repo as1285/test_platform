@@ -76,16 +76,26 @@
             width: 44px;
             height: 44px;
             border-radius: 8px;
-            background: linear-gradient(145deg, #003d82, #0066cc);
-            color: #fff;
-            font-size: 18px;
-            font-weight: 600;
+            background: #fff;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        html.platform-android .bank-logo { font-weight: 500; font-synthesis: none; }
+        .bank-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .bank-logo--fallback {
+            background: linear-gradient(145deg, #003d82, #0066cc);
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        html.platform-android .bank-logo--fallback { font-weight: 500; font-synthesis: none; }
         .bank-info { flex: 1; min-width: 0; }
         .bank-name {
             font-size: 16px;
@@ -146,6 +156,7 @@
     <div class="footer">
         <a href="yhk_add.html" class="btn-add">添加</a>
     </div>
+    <script src="/js/bank_icons.js?v=20260524-bank-logo"></script>
     <script>
         (function () {
             var mount = document.getElementById('bankListMount');
@@ -158,10 +169,16 @@
                     .replace(/"/g, '&quot;');
             }
 
-            function bankLogoChar(name) {
+            function bankLogoHtml(name) {
+                if (window.BankIcons && typeof BankIcons.renderBankLogoHtml === 'function') {
+                    return BankIcons.renderBankLogoHtml(name);
+                }
                 var n = String(name || '').trim();
-                if (!n) return '卡';
-                return n.charAt(0);
+                return (
+                    '<div class="bank-logo bank-logo--fallback" aria-hidden="true">' +
+                    esc(n ? n.charAt(0) : '卡') +
+                    '</div>'
+                );
             }
 
             function renderCards(cards) {
@@ -179,9 +196,7 @@
                         '<a class="bank-card" href="yhk_manage.html?id=' +
                         encodeURIComponent(c.id) +
                         '">' +
-                        '<div class="bank-logo" aria-hidden="true">' +
-                        esc(bankLogoChar(c.bank_name)) +
-                        '</div>' +
+                        bankLogoHtml(c.bank_name) +
                         '<div class="bank-info">' +
                         '<div class="bank-name">' +
                         esc(c.bank_name || '银行卡') +

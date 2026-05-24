@@ -60,16 +60,26 @@
             width: 40px;
             height: 40px;
             border-radius: 8px;
-            background: linear-gradient(145deg, #003d82, #0066cc);
-            color: #fff;
-            font-size: 17px;
-            font-weight: 600;
+            background: #fff;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        html.platform-android .bank-logo { font-weight: 500; font-synthesis: none; }
+        .bank-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .bank-logo--fallback {
+            background: linear-gradient(145deg, #003d82, #0066cc);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+        }
+        html.platform-android .bank-logo--fallback { font-weight: 500; font-synthesis: none; }
         .bank-name {
             flex: 1;
             min-width: 0;
@@ -130,6 +140,7 @@
     <div class="main" id="manageMount">
         <p class="empty-tip">加载中…</p>
     </div>
+    <script src="/js/bank_icons.js?v=20260524-bank-logo"></script>
     <script>
         (function () {
             var mount = document.getElementById('manageMount');
@@ -144,9 +155,16 @@
                     .replace(/"/g, '&quot;');
             }
 
-            function bankLogoChar(name) {
+            function bankLogoHtml(name) {
+                if (window.BankIcons && typeof BankIcons.renderBankLogoHtml === 'function') {
+                    return BankIcons.renderBankLogoHtml(name);
+                }
                 var n = String(name || '').trim();
-                return n ? n.charAt(0) : '卡';
+                return (
+                    '<div class="bank-logo bank-logo--fallback" aria-hidden="true">' +
+                    esc(n ? n.charAt(0) : '卡') +
+                    '</div>'
+                );
             }
 
             function render(card) {
@@ -157,9 +175,7 @@
                 mount.innerHTML =
                     '<div class="panel">' +
                     '<div class="card-row">' +
-                    '<div class="bank-logo" aria-hidden="true">' +
-                    esc(bankLogoChar(card.bank_name)) +
-                    '</div>' +
+                    bankLogoHtml(card.bank_name) +
                     '<div class="bank-name">' +
                     esc(card.bank_name || '银行卡') +
                     '</div>' +
