@@ -180,6 +180,23 @@ CREATE TABLE IF NOT EXISTS activation_codes (
     INDEX idx_activation_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 专项附加扣除填报记录（用户端 zxkouchu.html）
+CREATE TABLE IF NOT EXISTS special_deduction_records (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    category VARCHAR(64) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    related_name VARCHAR(128) NULL,
+    last_modified_date DATE NULL,
+    filing_source VARCHAR(64) NOT NULL DEFAULT '本人',
+    deduction_year INT NOT NULL,
+    is_voided TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_sdr_user_year (user_id, deduction_year),
+    INDEX idx_sdr_user_void (user_id, is_voided)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 管理后台账号（admin 为超级账号，可管理后台子账号与菜单权限）
 CREATE TABLE IF NOT EXISTS admin_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -698,6 +698,24 @@ async function createTables() {
   }
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS special_deduction_records (
+      id VARCHAR(255) PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL,
+      category VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      related_name VARCHAR(128) NULL,
+      last_modified_date DATE NULL,
+      filing_source VARCHAR(64) NOT NULL DEFAULT '本人',
+      deduction_year INT NOT NULL,
+      is_voided TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_sdr_user_year (user_id, deduction_year),
+      INDEX idx_sdr_user_void (user_id, is_voided)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS shenbao_jilu_records (
       user_id VARCHAR(255) NOT NULL,
       tab VARCHAR(16) NOT NULL,
@@ -2658,9 +2676,114 @@ async function syncUserBankCardCount(conn, userId) {
   return n;
 }
 
+var ZXK_DEDUCTION_CATEGORIES = [
+  '子女教育',
+  '继续教育',
+  '大病医疗',
+  '住房贷款利息',
+  '住房租金',
+  '赡养老人',
+  '3岁以下婴幼儿照护'
+];
+
+function isValidZxkCategory(cat) {
+  return ZXK_DEDUCTION_CATEGORIES.indexOf(String(cat || '').trim()) >= 0;
+}
+
+function formatZxkRecordTitle(category, relatedName) {
+  var cat = String(category || '').trim();
+  var name = String(relatedName || '').trim();
+  if (!name) {
+    return cat;
+  }
+  if (
+    cat === '赡养老人' ||
+    cat === '子女教育' ||
+    cat === '3岁以下婴幼儿照护' ||
+    cat === '大病医疗'
+  ) {
+    return cat + '（' + name + '）';
+  }
+  return cat;
+}
+
+function formatZxkDateForApi(d) {
+  if (!d) {
+    return '';
+  }
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    var Y = d.getFullYear();
+    var M = String(d.getMonth() + 1).padStart(2, '0');
+    var D = String(d.getDate()).padStart(2, '0');
+    return Y + '-' + M + '-' + D;
+  }
+  var s = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.slice(0, 10);
+  }
+  return s;
+}
+
+function mapZxkRecordRow(r) {
+  return {
+    id: r.id,
+    category: r.category,
+    title: r.title,
+    related_name: r.related_name != null ? String(r.related_name) : '',
+    last_modified_date: formatZxkDateForApi(r.last_modified_date),
+    filing_source: r.filing_source != null ? String(r.filing_source) : '本人',
+    deduction_year: r.deduction_year != null ? Number(r.deduction_year) : 0,
+    is_voided: r.is_voided && Number(r.is_voided) === 1 ? 1 : 0,
+    created_at: r.created_at ? r.created_at.toISOString() : '',
+    updated_at: r.updated_at ? r.updated_at.toISOString() : ''
+  };
+}
+
+async function listSpecialDeductionRecordsForUser(userId, year, includeVoided) {
+  const conn = await pool.getConnection();
+  try {
+    var y = parseInt(year, 10);
+    if (!y || y < 2000 || y > 2100) {
+      y = new Date().getFullYear();
+    }
+    var voided = includeVoided === true || includeVoided === 1 || includeVoided === '1';
+    var sql =
+      'SELECT id, category, title, related_name, last_modified_date, filing_source, deduction_year, is_voided, created_at, updated_at ' +
+      'FROM special_deduction_records WHERE user_id = ? AND deduction_year = ?';
+    var params = [userId, y];
+    if (!voided) {
+      sql += ' AND is_voided = 0';
+    } else {
+      sql += ' AND is_voided = 1';
+    }
+    sql += ' ORDER BY last_modified_date DESC, updated_at DESC, id DESC';
+    const [rows] = await conn.execute(sql, params);
+    return rows.map(mapZxkRecordRow);
+  } finally {
+    conn.release();
+  }
+}
+
+async function ensureUserExistsForZxk(conn, userId) {
+  const [userRows] = await conn.execute('SELECT username FROM users WHERE username = ?', [userId]);
+  if (userRows.length === 0) {
+    await conn.execute(
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`,
+      [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']
+    );
+  }
+}
+
 async function handleUserGet(req, res) {
   var action = req.query.action;
-  if (action !== 'info' && action !== 'employers' && action !== 'family_members' && action !== 'bank_cards') {
+  if (
+    action !== 'info' &&
+    action !== 'employers' &&
+    action !== 'family_members' &&
+    action !== 'bank_cards' &&
+    action !== 'special_deduction_records'
+  ) {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
   var userId = req.authUserId;
@@ -2675,6 +2798,12 @@ async function handleUserGet(req, res) {
     if (action === 'bank_cards') {
       var cards = await listBankCardsForUser(userId);
       return res.json({ code: 200, data: { cards: cards } });
+    }
+    if (action === 'special_deduction_records') {
+      var voidedQ =
+        req.query.voided === '1' || req.query.voided === 'true' || req.query.voided === true;
+      var zxkList = await listSpecialDeductionRecordsForUser(userId, req.query.year, voidedQ);
+      return res.json({ code: 200, data: { records: zxkList } });
     }
     var data = await getUserInfoForApi(userId);
     if (!data) {
@@ -3068,6 +3197,164 @@ async function handleUserPost(req, res) {
           return res.json({ code: 200, data: { success: true, card_id: defCardId } });
         } finally {
           connDefBc.release();
+        }
+      }
+
+      if (action === 'add_special_deduction_record') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var zxkCat = String(body.category || '').trim();
+        if (!isValidZxkCategory(zxkCat)) {
+          return res.status(400).json({ code: 400, msg: '扣除类型无效' });
+        }
+        var zxkYear = parseInt(body.deduction_year, 10);
+        if (!zxkYear || zxkYear < 2000 || zxkYear > 2100) {
+          zxkYear = new Date().getFullYear();
+        }
+        var zxkRelated = String(body.related_name || '').trim();
+        var zxkSource = String(body.filing_source || '本人').trim() || '本人';
+        var zxkMod = String(body.last_modified_date || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(zxkMod)) {
+          var now = new Date();
+          zxkMod =
+            now.getFullYear() +
+            '-' +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            '-' +
+            String(now.getDate()).padStart(2, '0');
+        }
+        var zxkTitle = formatZxkRecordTitle(zxkCat, zxkRelated);
+        const connZxkAdd = await pool.getConnection();
+        try {
+          await ensureUserExistsForZxk(connZxkAdd, userId);
+          var zxkId = 'zxk_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+          await connZxkAdd.execute(
+            `INSERT INTO special_deduction_records
+             (id, user_id, category, title, related_name, last_modified_date, filing_source, deduction_year, is_voided)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+            [
+              zxkId,
+              userId,
+              zxkCat,
+              zxkTitle,
+              zxkRelated || null,
+              zxkMod,
+              zxkSource,
+              zxkYear
+            ]
+          );
+          const [zxkRows] = await connZxkAdd.execute(
+            'SELECT id, category, title, related_name, last_modified_date, filing_source, deduction_year, is_voided, created_at, updated_at FROM special_deduction_records WHERE id = ? AND user_id = ?',
+            [zxkId, userId]
+          );
+          return res.json({
+            code: 200,
+            data: { success: true, record: mapZxkRecordRow(zxkRows[0]) }
+          });
+        } finally {
+          connZxkAdd.release();
+        }
+      }
+
+      if (action === 'update_special_deduction_record') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var zxkUpId = String(body.record_id || body.id || '').trim();
+        if (!zxkUpId) {
+          return res.status(400).json({ code: 400, msg: 'record_id required' });
+        }
+        const connZxkUp = await pool.getConnection();
+        try {
+          const [existZxk] = await connZxkUp.execute(
+            'SELECT * FROM special_deduction_records WHERE id = ? AND user_id = ? LIMIT 1',
+            [zxkUpId, userId]
+          );
+          if (!existZxk.length) {
+            return res.status(404).json({ code: 404, msg: '记录不存在' });
+          }
+          var base = existZxk[0];
+          var upCat =
+            body.category != null && String(body.category).trim()
+              ? String(body.category).trim()
+              : base.category;
+          if (!isValidZxkCategory(upCat)) {
+            return res.status(400).json({ code: 400, msg: '扣除类型无效' });
+          }
+          var upRelated =
+            body.related_name != null ? String(body.related_name).trim() : base.related_name || '';
+          var upSource =
+            body.filing_source != null && String(body.filing_source).trim()
+              ? String(body.filing_source).trim()
+              : base.filing_source || '本人';
+          var upYear =
+            body.deduction_year != null ? parseInt(body.deduction_year, 10) : base.deduction_year;
+          if (!upYear || upYear < 2000 || upYear > 2100) {
+            upYear = base.deduction_year;
+          }
+          var upMod =
+            body.last_modified_date != null && String(body.last_modified_date).trim()
+              ? String(body.last_modified_date).trim()
+              : formatZxkDateForApi(base.last_modified_date);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(upMod)) {
+            return res.status(400).json({ code: 400, msg: '最后修改时间格式应为 YYYY-MM-DD' });
+          }
+          var upTitle = formatZxkRecordTitle(upCat, upRelated);
+          var upVoided =
+            body.is_voided != null && (body.is_voided === 1 || body.is_voided === true || body.is_voided === '1')
+              ? 1
+              : base.is_voided && Number(base.is_voided) === 1
+                ? 1
+                : 0;
+          await connZxkUp.execute(
+            `UPDATE special_deduction_records SET category = ?, title = ?, related_name = ?, last_modified_date = ?,
+             filing_source = ?, deduction_year = ?, is_voided = ? WHERE id = ? AND user_id = ?`,
+            [
+              upCat,
+              upTitle,
+              upRelated || null,
+              upMod,
+              upSource,
+              upYear,
+              upVoided,
+              zxkUpId,
+              userId
+            ]
+          );
+          const [upRows] = await connZxkUp.execute(
+            'SELECT id, category, title, related_name, last_modified_date, filing_source, deduction_year, is_voided, created_at, updated_at FROM special_deduction_records WHERE id = ? AND user_id = ?',
+            [zxkUpId, userId]
+          );
+          return res.json({
+            code: 200,
+            data: { success: true, record: mapZxkRecordRow(upRows[0]) }
+          });
+        } finally {
+          connZxkUp.release();
+        }
+      }
+
+      if (action === 'delete_special_deduction_record') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var zxkDelId = String(body.record_id || body.id || '').trim();
+        if (!zxkDelId) {
+          return res.status(400).json({ code: 400, msg: 'record_id required' });
+        }
+        const connZxkDel = await pool.getConnection();
+        try {
+          const [delZxk] = await connZxkDel.execute(
+            'DELETE FROM special_deduction_records WHERE id = ? AND user_id = ?',
+            [zxkDelId, userId]
+          );
+          if (!delZxk.affectedRows) {
+            return res.status(404).json({ code: 404, msg: '记录不存在' });
+          }
+          return res.json({ code: 200, data: { success: true } });
+        } finally {
+          connZxkDel.release();
         }
       }
 

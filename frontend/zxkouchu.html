@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <script src="/js/auth.js?v=20260525-zxk-crud"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>专项附加扣除</title>
     <style>
@@ -13,7 +13,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-bottom: env(safe-area-inset-bottom, 0);
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
         }
         .header {
             background: #fff;
@@ -36,50 +36,35 @@
             align-items: center;
             gap: 2px;
             -webkit-tap-highlight-color: transparent;
-            outline: none;
         }
         .header-title { font-size: 17px; font-weight: 600; color: #333; }
-        .notice {
-            margin: 12px 16px 0;
-            padding: 10px 12px;
-            background: #e8f4ff;
-            border-radius: 4px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            font-size: 14px;
-            line-height: 1.5;
-            color: #333;
-        }
-        .notice svg { flex-shrink: 0; margin-top: 2px; }
         .grid-wrap {
             background: #fff;
-            margin-top: 12px;
-            padding: 20px 12px 24px;
+            padding: 20px 12px 22px;
         }
         .zxk-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px 8px;
+            gap: 18px 8px;
             max-width: 420px;
             margin: 0 auto;
         }
         .zxk-item {
             border: none;
             background: transparent;
-            padding: 8px 4px;
+            padding: 6px 4px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             font-family: inherit;
         }
         .zxk-item:active { opacity: 0.85; }
         .zxk-item .icon-wrap {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -95,40 +80,181 @@
             margin-top: 8px;
             background: #fff;
             border-top: 8px solid #f5f6fa;
-            padding: 16px 16px 32px;
+            padding: 16px 0 8px;
         }
         .records-head {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            padding: 0 16px 14px;
             gap: 10px;
         }
-        .records-title { font-size: 16px; font-weight: 600; color: #333; }
-        .year-btn {
+        .records-title { font-size: 16px; font-weight: 600; color: #333; flex-shrink: 0; }
+        .year-select-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: #666;
+        }
+        .year-select-wrap select {
             border: none;
             background: transparent;
             font-size: 14px;
             color: #666;
-            display: flex;
-            align-items: center;
-            gap: 4px;
             font-family: inherit;
-            padding: 4px 0;
+            padding: 4px 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        .record-list { list-style: none; }
+        .record-item {
+            display: block;
+            width: 100%;
+            border: none;
+            background: #fff;
+            text-align: left;
+            padding: 14px 40px 14px 16px;
+            position: relative;
+            border-bottom: 1px solid #f0f0f0;
+            font-family: inherit;
+            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        .records-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px 16px 40px;
+        .record-item:active { background: #fafafa; }
+        .record-item-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.35;
         }
-        .records-empty svg { width: 220px; height: 140px; margin-bottom: 16px; }
-        .records-empty p { font-size: 15px; color: #999; }
+        .record-item-line {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.55;
+        }
+        .record-item-arrow {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ccc;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .records-empty {
+            padding: 32px 16px 48px;
+            text-align: center;
+            font-size: 15px;
+            color: #999;
+        }
+        .records-footer {
+            text-align: center;
+            padding: 20px 16px 12px;
+        }
+        .records-footer a,
+        .records-footer button {
+            border: none;
+            background: none;
+            color: #1e6fff;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-root.is-open { display: flex; }
+        .modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 360px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 16px 16px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+        .modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .form-field { margin-bottom: 14px; }
+        .form-field label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .form-field input,
+        .form-field select {
+            width: 100%;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #333;
+            background: #fff;
+        }
+        .form-field input:disabled,
+        .form-field select:disabled {
+            background: #f5f5f5;
+            color: #888;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .modal-btn {
+            flex: 1;
+            height: 42px;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .modal-btn.cancel { background: #f0f0f0; color: #333; }
+        .modal-btn.primary { background: #1e6fff; color: #fff; }
+        .modal-btn.danger {
+            width: 100%;
+            margin-top: 10px;
+            background: #fff;
+            color: #e53935;
+            border: 1px solid #ffcdd2;
+        }
+        .voided-banner {
+            display: none;
+            padding: 8px 16px;
+            background: #fff8e1;
+            color: #8d6e00;
+            font-size: 13px;
+            text-align: center;
+        }
+        .voided-banner.is-show { display: block; }
     </style>
 </head>
-<body>
+<body class="page-zxkouchu">
     <div class="header">
         <a href="bancha.html" class="back-btn">
             <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
@@ -136,47 +262,38 @@
         </a>
         <span class="header-title">专项附加扣除</span>
     </div>
-    <div class="notice">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#1e6fff" d="M12 3C8.5 3 5.5 5.2 4.3 8.3c-.2.5 0 1 .4 1.3l2.5 1.7v3.2c0 .6.4 1 1 1h3.6c.6 0 1-.4 1-1v-3.2l2.5-1.7c.4-.3.6-.8.4-1.3C18.5 5.2 15.5 3 12 3zm-1 16c0 .6.4 1 1 1s1-.4 1-1-.4-1-1-1-1 .4-1 1z"/>
-        </svg>
-        <span>按照规定，专项附加扣除信息需每年提交一次。</span>
-    </div>
+
     <div class="grid-wrap">
-        <div class="zxk-grid">
-            <button type="button" class="zxk-item" aria-label="子女教育">
+        <div class="zxk-grid" id="zxkCategoryGrid">
+            <button type="button" class="zxk-item" data-category="子女教育">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <rect x="8" y="14" width="14" height="28" rx="2" fill="#4a9eff"/>
                         <rect x="19" y="10" width="14" height="32" rx="2" fill="#5eb8ff"/>
                         <rect x="30" y="16" width="14" height="26" rx="2" fill="#7ec8ff"/>
-                        <line x1="12" y1="22" x2="18" y2="22" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
-                        <line x1="23" y1="18" x2="29" y2="18" stroke="#fff" stroke-width="1.2" opacity="0.7"/>
                     </svg>
                 </span>
                 <span class="label">子女教育</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="继续教育">
+            <button type="button" class="zxk-item" data-category="继续教育">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <path d="M26 8L8 16v8c0 8 7.5 14 18 18 10.5-4 18-10 18-18v-8L26 8z" fill="#7ec8ff"/>
                         <ellipse cx="26" cy="16" rx="18" ry="6" fill="#5eb8ff"/>
-                        <rect x="20" y="22" width="12" height="3" rx="1" fill="#fff" opacity="0.85"/>
                     </svg>
                 </span>
                 <span class="label">继续教育</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="大病医疗">
+            <button type="button" class="zxk-item" data-category="大病医疗">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <rect x="12" y="14" width="28" height="24" rx="3" fill="#f0f4f8" stroke="#cfd8e6"/>
                         <rect x="22" y="20" width="8" height="8" rx="1" fill="#e53935"/>
-                        <path d="M24 22h4v4h-4z" fill="#fff"/>
                     </svg>
                 </span>
                 <span class="label">大病医疗</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="住房贷款利息">
+            <button type="button" class="zxk-item" data-category="住房贷款利息">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <path d="M26 12L10 24v14h32V24L26 12z" fill="#9b7aff"/>
@@ -185,7 +302,7 @@
                 </span>
                 <span class="label">住房贷款利息</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="住房租金">
+            <button type="button" class="zxk-item" data-category="住房租金">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <path d="M26 12L10 24v14h32V24L26 12z" fill="#b39dff"/>
@@ -195,7 +312,7 @@
                 </span>
                 <span class="label">住房租金</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="赡养老人">
+            <button type="button" class="zxk-item" data-category="赡养老人">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <circle cx="26" cy="18" r="8" fill="#ffb74d"/>
@@ -204,7 +321,7 @@
                 </span>
                 <span class="label">赡养老人</span>
             </button>
-            <button type="button" class="zxk-item" aria-label="3岁以下婴幼儿照护">
+            <button type="button" class="zxk-item" data-category="3岁以下婴幼儿照护">
                 <span class="icon-wrap">
                     <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
                         <circle cx="22" cy="16" r="6" fill="#f48fb1"/>
@@ -216,27 +333,397 @@
             </button>
         </div>
     </div>
+
     <section class="records">
+        <div class="voided-banner" id="voidedBanner">当前查看已作废的扣除信息</div>
         <div class="records-head">
             <span class="records-title">填报记录</span>
-            <button type="button" class="year-btn" aria-label="选择查询年度">
-                选择查询年度：2026
-                <span aria-hidden="true">▼</span>
-            </button>
+            <div class="year-select-wrap">
+                <span>选择查询年度：</span>
+                <select id="yearSelect" aria-label="选择查询年度"></select>
+            </div>
         </div>
-        <div class="records-empty">
-            <svg viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="60" y="20" width="100" height="90" rx="6" fill="#e3f2fd" stroke="#90caf9" stroke-width="1.5"/>
-                <line x1="75" y1="38" x2="145" y2="38" stroke="#fff" stroke-width="3"/>
-                <line x1="75" y1="52" x2="135" y2="52" stroke="#fff" stroke-width="3"/>
-                <line x1="75" y1="66" x2="125" y2="66" stroke="#fff" stroke-width="3"/>
-                <polygon points="20,100 50,55 80,100" fill="#bbdefb" opacity="0.9"/>
-                <polygon points="140,100 170,60 200,100" fill="#bbdefb" opacity="0.9"/>
-                <polygon points="100,118 130,75 160,118" fill="#90caf9" opacity="0.7"/>
-            </svg>
-            <p>暂无扣除信息</p>
+        <ul class="record-list" id="recordList"></ul>
+        <div class="records-empty" id="recordsEmpty" style="display:none;">暂无扣除信息</div>
+        <div class="records-footer">
+            <button type="button" id="btnToggleVoided">查看已作废的扣除信息 &gt;</button>
         </div>
     </section>
+
+    <div id="recordModal" class="modal-root" role="dialog" aria-modal="true">
+        <div class="modal-mask" id="recordModalMask"></div>
+        <div class="modal-panel">
+            <p class="modal-title" id="recordModalTitle">添加扣除信息</p>
+            <div class="form-field">
+                <label for="fCategory">扣除类型</label>
+                <select id="fCategory"></select>
+            </div>
+            <div class="form-field" id="relatedNameWrap">
+                <label for="fRelatedName">关联人员姓名（选填）</label>
+                <input type="text" id="fRelatedName" placeholder="如赡养老人填写被赡养人姓名" maxlength="32">
+            </div>
+            <div class="form-field">
+                <label for="fLastModified">最后修改时间</label>
+                <input type="date" id="fLastModified">
+            </div>
+            <div class="form-field">
+                <label for="fFilingSource">填报来源</label>
+                <select id="fFilingSource">
+                    <option value="本人">本人</option>
+                    <option value="扣缴义务人">扣缴义务人</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="fDeductionYear">扣除年度</label>
+                <select id="fDeductionYear"></select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="modal-btn cancel" id="btnModalCancel">取消</button>
+                <button type="button" class="modal-btn primary" id="btnModalSave">保存</button>
+            </div>
+            <button type="button" class="modal-btn danger" id="btnModalDelete" style="display:none;">删除</button>
+            <button type="button" class="modal-btn danger" id="btnModalVoid" style="display:none;">作废此条扣除</button>
+        </div>
+    </div>
+
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script>
+        (function () {
+            var CATEGORIES = [
+                '子女教育',
+                '继续教育',
+                '大病医疗',
+                '住房贷款利息',
+                '住房租金',
+                '赡养老人',
+                '3岁以下婴幼儿照护'
+            ];
+            var NEED_RELATED = {
+                '赡养老人': true,
+                '子女教育': true,
+                '3岁以下婴幼儿照护': true,
+                '大病医疗': true
+            };
+
+            var queryYear = new Date().getFullYear();
+            var viewingVoided = false;
+            var editingId = null;
+            var recordsCache = [];
+
+            var yearSelect = document.getElementById('yearSelect');
+            var recordList = document.getElementById('recordList');
+            var recordsEmpty = document.getElementById('recordsEmpty');
+            var voidedBanner = document.getElementById('voidedBanner');
+            var btnToggleVoided = document.getElementById('btnToggleVoided');
+            var modal = document.getElementById('recordModal');
+            var fCategory = document.getElementById('fCategory');
+            var fDeductionYear = document.getElementById('fDeductionYear');
+
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function todayStr() {
+                var d = new Date();
+                return (
+                    d.getFullYear() +
+                    '-' +
+                    String(d.getMonth() + 1).padStart(2, '0') +
+                    '-' +
+                    String(d.getDate()).padStart(2, '0')
+                );
+            }
+
+            function fillYearOptions() {
+                var y = new Date().getFullYear();
+                var html = '';
+                for (var i = y + 1; i >= y - 5; i--) {
+                    html += '<option value="' + i + '">' + i + '</option>';
+                }
+                yearSelect.innerHTML = html;
+                yearSelect.value = String(queryYear);
+                fDeductionYear.innerHTML = html;
+            }
+
+            function fillCategoryOptions() {
+                var html = '';
+                CATEGORIES.forEach(function (c) {
+                    html += '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+                });
+                fCategory.innerHTML = html;
+            }
+
+            function authJson(url, opts) {
+                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                return fetchFn(url, opts || {}).then(function (r) {
+                    return r.json();
+                });
+            }
+
+            function loadRecords() {
+                var q =
+                    'api/user.php?action=special_deduction_records&year=' +
+                    encodeURIComponent(queryYear);
+                if (viewingVoided) {
+                    q += '&voided=1';
+                }
+                return authJson(q, { credentials: 'same-origin' }).then(function (body) {
+                    if (body && body.code === 200 && body.data && body.data.records) {
+                        recordsCache = body.data.records;
+                    } else {
+                        recordsCache = [];
+                    }
+                    renderRecords();
+                });
+            }
+
+            function renderRecords() {
+                voidedBanner.classList.toggle('is-show', viewingVoided);
+                btnToggleVoided.textContent = viewingVoided
+                    ? '返回有效扣除信息'
+                    : '查看已作废的扣除信息 >';
+
+                if (!recordsCache.length) {
+                    recordList.innerHTML = '';
+                    recordsEmpty.style.display = 'block';
+                    return;
+                }
+                recordsEmpty.style.display = 'none';
+                var html = '';
+                recordsCache.forEach(function (r) {
+                    html +=
+                        '<li><button type="button" class="record-item" data-id="' +
+                        esc(r.id) +
+                        '">' +
+                        '<div class="record-item-title">' +
+                        esc(r.title || r.category) +
+                        '</div>' +
+                        '<div class="record-item-line">最后修改时间：' +
+                        esc(r.last_modified_date || '—') +
+                        '</div>' +
+                        '<div class="record-item-line">填报来源：' +
+                        esc(r.filing_source || '本人') +
+                        '</div>' +
+                        '<div class="record-item-line">扣除年度：' +
+                        esc(r.deduction_year) +
+                        '年</div>' +
+                        '<span class="record-item-arrow" aria-hidden="true">›</span>' +
+                        '</button></li>';
+                });
+                recordList.innerHTML = html;
+            }
+
+            function syncRelatedVisibility() {
+                var cat = fCategory.value;
+                var need = !!NEED_RELATED[cat];
+                document.getElementById('relatedNameWrap').style.display = need ? 'block' : 'block';
+                document.getElementById('fRelatedName').placeholder = need
+                    ? '如「' + cat + '」请填写关联人员姓名'
+                    : '选填，部分类型用于标题展示';
+            }
+
+            function openModal(mode, record, presetCategory) {
+                editingId = record && record.id ? record.id : null;
+                document.getElementById('recordModalTitle').textContent =
+                    mode === 'edit' ? '编辑扣除信息' : '添加扣除信息';
+                document.getElementById('btnModalDelete').style.display =
+                    mode === 'edit' && !viewingVoided ? 'block' : 'none';
+                document.getElementById('btnModalVoid').style.display =
+                    mode === 'edit' && !viewingVoided ? 'block' : 'none';
+
+                fCategory.disabled = mode === 'edit';
+                if (record) {
+                    fCategory.value = record.category;
+                    document.getElementById('fRelatedName').value = record.related_name || '';
+                    document.getElementById('fLastModified').value =
+                        record.last_modified_date || todayStr();
+                    document.getElementById('fFilingSource').value = record.filing_source || '本人';
+                    fDeductionYear.value = String(record.deduction_year || queryYear);
+                } else {
+                    fCategory.disabled = false;
+                    fCategory.value = presetCategory || CATEGORIES[0];
+                    document.getElementById('fRelatedName').value = '';
+                    document.getElementById('fLastModified').value = todayStr();
+                    document.getElementById('fFilingSource').value = '本人';
+                    fDeductionYear.value = String(queryYear);
+                }
+                syncRelatedVisibility();
+                modal.classList.add('is-open');
+            }
+
+            function closeModal() {
+                modal.classList.remove('is-open');
+                editingId = null;
+            }
+
+            function saveRecord() {
+                var payload = {
+                    category: fCategory.value,
+                    related_name: document.getElementById('fRelatedName').value.trim(),
+                    last_modified_date: document.getElementById('fLastModified').value,
+                    filing_source: document.getElementById('fFilingSource').value,
+                    deduction_year: parseInt(fDeductionYear.value, 10)
+                };
+                if (!payload.last_modified_date) {
+                    alert('请填写最后修改时间');
+                    return;
+                }
+                var action = editingId ? 'update_special_deduction_record' : 'add_special_deduction_record';
+                if (editingId) {
+                    payload.record_id = editingId;
+                }
+                document.getElementById('btnModalSave').disabled = true;
+                authJson('api/user.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers:
+                        typeof authHeaders === 'function'
+                            ? authHeaders()
+                            : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.assign({ action: action }, payload))
+                })
+                    .then(function (body) {
+                        if (body && body.code === 200) {
+                            closeModal();
+                            var y = payload.deduction_year;
+                            if (y && y !== queryYear && !viewingVoided) {
+                                queryYear = y;
+                                yearSelect.value = String(queryYear);
+                            }
+                            return loadRecords();
+                        }
+                        alert((body && body.msg) || '保存失败');
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        document.getElementById('btnModalSave').disabled = false;
+                    });
+            }
+
+            function deleteRecord() {
+                if (!editingId || !confirm('确定删除该条扣除信息？')) {
+                    return;
+                }
+                authJson('api/user.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers:
+                        typeof authHeaders === 'function'
+                            ? authHeaders()
+                            : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'delete_special_deduction_record',
+                        record_id: editingId
+                    })
+                })
+                    .then(function (body) {
+                        if (body && body.code === 200) {
+                            closeModal();
+                            loadRecords();
+                        } else {
+                            alert((body && body.msg) || '删除失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            }
+
+            function voidRecord() {
+                if (!editingId || !confirm('确定作废该条扣除信息？作废后可在底部链接中查看。')) {
+                    return;
+                }
+                var rec = recordsCache.filter(function (r) {
+                    return r.id === editingId;
+                })[0];
+                if (!rec) {
+                    return;
+                }
+                authJson('api/user.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers:
+                        typeof authHeaders === 'function'
+                            ? authHeaders()
+                            : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_special_deduction_record',
+                        record_id: editingId,
+                        category: rec.category,
+                        related_name: rec.related_name,
+                        last_modified_date: rec.last_modified_date,
+                        filing_source: rec.filing_source,
+                        deduction_year: rec.deduction_year,
+                        is_voided: 1
+                    })
+                })
+                    .then(function (body) {
+                        if (body && body.code === 200) {
+                            closeModal();
+                            loadRecords();
+                        } else {
+                            alert((body && body.msg) || '作废失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            }
+
+            document.getElementById('zxkCategoryGrid').addEventListener('click', function (e) {
+                var btn = e.target.closest('.zxk-item');
+                if (!btn || viewingVoided) {
+                    return;
+                }
+                openModal('add', null, btn.getAttribute('data-category'));
+            });
+
+            recordList.addEventListener('click', function (e) {
+                var btn = e.target.closest('.record-item');
+                if (!btn) {
+                    return;
+                }
+                var id = btn.getAttribute('data-id');
+                var rec = recordsCache.filter(function (r) {
+                    return r.id === id;
+                })[0];
+                if (rec) {
+                    openModal('edit', rec);
+                }
+            });
+
+            yearSelect.addEventListener('change', function () {
+                queryYear = parseInt(yearSelect.value, 10) || new Date().getFullYear();
+                loadRecords();
+            });
+
+            btnToggleVoided.addEventListener('click', function () {
+                viewingVoided = !viewingVoided;
+                loadRecords();
+            });
+
+            fCategory.addEventListener('change', syncRelatedVisibility);
+
+            document.getElementById('btnModalCancel').addEventListener('click', closeModal);
+            document.getElementById('recordModalMask').addEventListener('click', closeModal);
+            document.getElementById('btnModalSave').addEventListener('click', saveRecord);
+            document.getElementById('btnModalDelete').addEventListener('click', deleteRecord);
+            document.getElementById('btnModalVoid').addEventListener('click', voidRecord);
+
+            fillYearOptions();
+            fillCategoryOptions();
+            queryYear = parseInt(yearSelect.value, 10);
+            loadRecords().catch(function () {
+                recordsEmpty.style.display = 'block';
+                recordsEmpty.textContent = '加载失败，请稍后重试';
+            });
+        })();
+    </script>
 </body>
 </html>
