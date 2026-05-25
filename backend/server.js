@@ -2870,6 +2870,52 @@ async function handleUserPost(req, res) {
       
       return res.json({ code: 200, data: { success: true, employer: employerData } });
     }
+
+    if (action === 'update_employer') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      if (!body.employer_id) {
+        return res.status(400).json({ code: 400, msg: 'employer_id required' });
+      }
+      const connUpd = await pool.getConnection();
+      try {
+        const [updRows] = await connUpd.execute(
+          `UPDATE employers SET company_name = ?, credit_code = ?, position = ?, hire_date = ?, leave_date = ?, status = ?
+           WHERE id = ? AND user_id = ?`,
+          [
+            body.company_name || '',
+            body.credit_code || '',
+            body.position || '',
+            body.hire_date || '',
+            body.leave_date || '',
+            body.status != null ? String(body.status) : '1',
+            body.employer_id,
+            userId
+          ]
+        );
+        if (!updRows || !updRows.affectedRows) {
+          return res.status(404).json({ code: 404, msg: '任职受雇记录不存在' });
+        }
+        return res.json({
+          code: 200,
+          data: {
+            success: true,
+            employer: {
+              id: body.employer_id,
+              company_name: body.company_name || '',
+              credit_code: body.credit_code || '',
+              position: body.position || '',
+              hire_date: body.hire_date || '',
+              leave_date: body.leave_date || '',
+              status: body.status != null ? String(body.status) : '1'
+            }
+          }
+        });
+      } finally {
+        connUpd.release();
+      }
+    }
     
     if (action === 'save_profile') {
         if (!userId) {

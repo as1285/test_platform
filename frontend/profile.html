@@ -315,7 +315,7 @@
             // 获取表单数据
             const formData = new FormData(this);
             const employerData = {
-                action: 'add_employer',
+                action: employerEditId ? 'update_employer' : 'add_employer',
                 user_id: userId,
                 company_name: formData.get('companyName'),
                 credit_code: formData.get('socialCreditCode'),
@@ -324,6 +324,9 @@
                 leave_date: formData.get('resignDate'),
                 status: formData.get('status') === '在职' ? '1' : '0'
             };
+            if (employerEditId) {
+                employerData.employer_id = employerEditId;
+            }
             
             // 提交到后端
             authFetch('api/user.php', {
@@ -348,8 +351,7 @@
                         msg.remove();
                     }, 3000);
                     
-                    // 重置表单
-                    this.reset();
+                    resetEmployerFormMode();
                     
                     // 重新加载任职受雇列表
                     loadEmployers(userId);
@@ -384,12 +386,87 @@
             });
         });
         
-        // 编辑任职受雇记录
-        function editEmployer(id) {}
+        var employerEditId = null;
 
-        function viewEmployerDetail(id) {}
+        function resetEmployerFormMode() {
+            employerEditId = null;
+            var form = document.getElementById('employerForm');
+            if (form) form.reset();
+            var submitBtn = form && form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = '添加任职受雇';
+        }
 
-        function copyEmployer(id) {}
+        function editEmployer(id) {
+            authFetch('api/user.php?action=employers')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data || !data.data.employers) return;
+                    var item = data.data.employers.find(function (x) {
+                        return String(x.id) === String(id);
+                    });
+                    if (!item) {
+                        alert('未找到该任职受雇记录');
+                        return;
+                    }
+                    employerEditId = String(item.id);
+                    document.getElementById('companyName').value = item.company_name || '';
+                    document.getElementById('socialCreditCode').value = item.credit_code || '';
+                    document.getElementById('position').value = item.position || '';
+                    document.getElementById('hireDate').value = item.hire_date || '';
+                    document.getElementById('resignDate').value = item.leave_date || '';
+                    document.getElementById('status').value =
+                        item.status === '0' || item.status === 0 ? '离职' : '在职';
+                    var submitBtn = document.querySelector('#employerForm button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = '保存修改';
+                    document.getElementById('employerForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+        }
+
+        function viewEmployerDetail(id) {
+            window.location.href = 'renzhi_detail.html?id=' + encodeURIComponent(String(id));
+        }
+
+        function copyEmployer(id) {
+            authFetch('api/user.php?action=employers')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data || !data.data.employers) return;
+                    var item = data.data.employers.find(function (x) {
+                        return String(x.id) === String(id);
+                    });
+                    if (!item) {
+                        alert('未找到该任职受雇记录');
+                        return;
+                    }
+                    var userId = localStorage.getItem('user_id') || '64';
+                    return authFetch('api/user.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'add_employer',
+                            user_id: userId,
+                            company_name: item.company_name || '',
+                            credit_code: item.credit_code || '',
+                            position: item.position || '',
+                            hire_date: item.hire_date || '',
+                            leave_date: item.leave_date || '',
+                            status: item.status === '0' || item.status === 0 ? '0' : '1'
+                        })
+                    });
+                })
+                .then(function (r) { return r && r.json ? r.json() : null; })
+                .then(function (data) {
+                    if (data && data.code === 200) {
+                        loadEmployers(localStorage.getItem('user_id') || '64');
+                        alert('已复制为新记录');
+                    } else if (data) {
+                        alert('复制失败：' + (data.msg || ''));
+                    }
+                })
+                .catch(function () {
+                    alert('复制失败：网络错误');
+                });
+        }
         
         // 删除任职受雇记录
         function deleteEmployer(id) {

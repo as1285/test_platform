@@ -703,8 +703,8 @@
         </div>
 
         <div id="panel-employers" class="tab-panel">
-            <div class="card">
-                <div class="card-title">添加任职受雇</div>
+            <div class="card" id="employerFormCard">
+                <div class="card-title" id="employerFormCardTitle">添加任职受雇</div>
                 <form id="employerForm" onsubmit="onSubmitEmployer(event)">
                     <div class="form-group">
                         <label>公司名称</label>
@@ -736,7 +736,8 @@
                             <option value="0">离职</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">添加任职受雇</button>
+                    <button type="submit" class="btn btn-primary btn-block" id="employerFormSubmitBtn">添加任职受雇</button>
+                    <button type="button" class="btn btn-secondary btn-block" id="employerFormCancelEditBtn" style="display:none;margin-top:8px;">取消编辑</button>
                 </form>
             </div>
             <div class="card">
@@ -3272,10 +3273,60 @@
                 });
         }
 
+        var employerEditId = null;
+
+        function resetEmployerFormMode() {
+            employerEditId = null;
+            var form = document.getElementById('employerForm');
+            if (form) {
+                form.reset();
+            }
+            var titleEl = document.getElementById('employerFormCardTitle');
+            if (titleEl) {
+                titleEl.textContent = '添加任职受雇';
+            }
+            var submitBtn = document.getElementById('employerFormSubmitBtn');
+            if (submitBtn) {
+                submitBtn.textContent = '添加任职受雇';
+            }
+            var cancelBtn = document.getElementById('employerFormCancelEditBtn');
+            if (cancelBtn) {
+                cancelBtn.style.display = 'none';
+            }
+            applyConsultTestRestrictions(window.consultUserFlags || {});
+        }
+
+        function scrollToEmployerForm() {
+            var el = document.getElementById('employerFormCard');
+            if (!el) {
+                return;
+            }
+            try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (e0) {
+                el.scrollIntoView(true);
+            }
+        }
+
+        function fillEmployerForm(item) {
+            if (!item) {
+                return;
+            }
+            document.getElementById('ef_company_name').value = item.company_name || '';
+            document.getElementById('ef_credit_code').value = item.credit_code || '';
+            document.getElementById('ef_position').value = item.position || '';
+            document.getElementById('ef_hire_date').value = item.hire_date || '';
+            document.getElementById('ef_leave_date').value = item.leave_date || '';
+            var st = item.status;
+            document.getElementById('ef_status').value =
+                st === '0' || st === 0 || st === '离职' ? '0' : '1';
+            applyConsultTestRestrictions(window.consultUserFlags || {});
+        }
+
         function onSubmitEmployer(e) {
             e.preventDefault();
             var data = {
-                action: 'add_employer',
+                action: employerEditId ? 'update_employer' : 'add_employer',
                 user_id: currentUserId(),
                 company_name: document.getElementById('ef_company_name').value,
                 credit_code: document.getElementById('ef_credit_code').value,
@@ -3284,6 +3335,9 @@
                 leave_date: document.getElementById('ef_leave_date').value,
                 status: document.getElementById('ef_status').value
             };
+            if (employerEditId) {
+                data.employer_id = employerEditId;
+            }
             authFetch('api/user.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -3292,19 +3346,20 @@
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
                     if (res.code === 200) {
+                        var wasEdit = !!employerEditId;
                         rememberBatchCompanyProfile({
                             name: String(data.company_name || '').trim(),
                             company_tax_id: String(data.credit_code || '').trim(),
                             tax_authority: ''
                         });
-                        document.getElementById('employerForm').reset();
-                        showMsg('添加成功', true);
+                        resetEmployerFormMode();
+                        showMsg(wasEdit ? '已保存修改' : '添加成功', true);
                         return refreshEmployerList();
                     }
-                    throw new Error(res.msg || '添加失败');
+                    throw new Error(res.msg || (employerEditId ? '保存失败' : '添加失败'));
                 })
                 .catch(function (err) {
-                    showMsg('添加失败：' + (err.message || ''), false);
+                    showMsg((employerEditId ? '保存失败：' : '添加失败：') + (err.message || ''), false);
                 });
         }
 
@@ -3353,7 +3408,33 @@
             mount.innerHTML = html;
         }
 
-        function editEmployer(id) {}
+        function editEmployer(id) {
+            apiFetchEmployers().then(function (list) {
+                var item = list.find(function (x) {
+                    return String(x.id) === String(id);
+                });
+                if (!item) {
+                    showMsg('未找到该任职受雇记录', false);
+                    return;
+                }
+                employerEditId = String(item.id);
+                fillEmployerForm(item);
+                var titleEl = document.getElementById('employerFormCardTitle');
+                if (titleEl) {
+                    titleEl.textContent = '编辑任职受雇';
+                }
+                var submitBtn = document.getElementById('employerFormSubmitBtn');
+                if (submitBtn) {
+                    submitBtn.textContent = '保存修改';
+                }
+                var cancelBtn = document.getElementById('employerFormCancelEditBtn');
+                if (cancelBtn) {
+                    cancelBtn.style.display = 'block';
+                }
+                switchTab('employers', true);
+                setTimeout(scrollToEmployerForm, 0);
+            });
+        }
 
         function deleteEmployer(id) {
             if (!confirm('确定要删除这条任职受雇记录吗？')) return;
@@ -3379,9 +3460,49 @@
                 });
         }
 
-        function viewEmployerDetail(id) {}
+        function viewEmployerDetail(id) {
+            window.location.href = 'renzhi_detail.html?id=' + encodeURIComponent(String(id));
+        }
 
-        function copyEmployer(id) {}
+        function copyEmployer(id) {
+            apiFetchEmployers().then(function (list) {
+                var item = list.find(function (x) {
+                    return String(x.id) === String(id);
+                });
+                if (!item) {
+                    showMsg('未找到该任职受雇记录', false);
+                    return;
+                }
+                var data = {
+                    action: 'add_employer',
+                    user_id: currentUserId(),
+                    company_name: item.company_name || '',
+                    credit_code: item.credit_code || '',
+                    position: item.position || '',
+                    hire_date: item.hire_date || '',
+                    leave_date: item.leave_date || '',
+                    status: item.status === '0' || item.status === 0 || item.status === '离职' ? '0' : '1'
+                };
+                authFetch('api/user.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(data)
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (res) {
+                        if (res.code === 200) {
+                            showMsg('已复制为新记录', true);
+                            return refreshEmployerList();
+                        }
+                        throw new Error(res.msg || '复制失败');
+                    })
+                    .catch(function (err) {
+                        showMsg('复制失败：' + (err.message || ''), false);
+                    });
+            });
+        }
 
         function escapeHtml(s) {
             return String(s == null ? '' : s)
@@ -3613,6 +3734,10 @@
         function boot() {
             if (window.__refreshNavFromMineUi) {
                 window.__refreshNavFromMineUi();
+            }
+            var employerCancel = document.getElementById('employerFormCancelEditBtn');
+            if (employerCancel) {
+                employerCancel.addEventListener('click', resetEmployerFormMode);
             }
             initHeader();
             initBatchEmploymentRows();
