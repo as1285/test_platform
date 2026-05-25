@@ -466,6 +466,7 @@
         </div>
     </div>
 
+    <script src="/js/xianyu-copy.js?v=20260525"></script>
     <script>
         function isNeedActivateMode() {
             try {
@@ -585,21 +586,35 @@
         prefetchXianyuPurchaseUrl();
 
         document.getElementById('btnXianyuPurchase').addEventListener('click', function () {
+            function doCopy(txt) {
+                if (!txt) {
+                    setActivateMsg('暂未配置购买文案，请在管理后台「引导安装」中填写', true);
+                    return;
+                }
+                if (typeof copyXianyuPurchaseText !== 'function') {
+                    setActivateMsg('复制功能不可用', true);
+                    return;
+                }
+                copyXianyuPurchaseText(txt).catch(function () {
+                    setActivateMsg('复制失败，请长按手动复制', true);
+                });
+            }
+            var cached = String(window.__xianyuPurchaseUrl || '').trim();
+            if (cached) {
+                doCopy(cached);
+                return;
+            }
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })
                 .then(function (body) {
-                    var u =
+                    var t =
                         body && body.code === 200 && body.data && body.data.xianyu_purchase_url
                             ? String(body.data.xianyu_purchase_url).trim()
                             : '';
-                    window.__xianyuPurchaseUrl = u;
-                    if (!u) {
-                        setActivateMsg('暂未配置购买链接，请在管理后台「引导安装」中填写', true);
-                        return;
-                    }
-                    window.open(u, '_blank', 'noopener,noreferrer');
+                    window.__xianyuPurchaseUrl = t;
+                    doCopy(t);
                 })
                 .catch(function () {
                     setActivateMsg('网络错误', true);

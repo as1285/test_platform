@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('./register-guard');
 const serverMonitor = require('./serverMonitor');
+const { inferBankNameFromCardNo } = require('./bank_card_bins');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -269,7 +270,7 @@ function cloneMineUiDefaults() {
     shouye_lb: 'lb.jpg',
     daiban_header: 'daiban.jpg',
     bancha_header: 'db.jpg',
-    message_header: 'message_header.jpg',
+    message_header: '',
     piaojia_goumai: 'piaojia-goumai.png',
     piaojia_xiaoshou: 'piaojia-xiaoshou.png',
     install_ios_video: '',
@@ -317,6 +318,21 @@ function sanitizeInstallDownloadUrl(raw) {
   return '';
 }
 
+/** 闲鱼购买文案：任意文本（复制到剪贴板），仅做长度与空白修剪 */
+function sanitizeXianyuPurchaseText(raw) {
+  if (raw == null) {
+    return '';
+  }
+  var s = String(raw).trim();
+  if (s === '') {
+    return '';
+  }
+  if (s.length > 2048) {
+    s = s.slice(0, 2048);
+  }
+  return s;
+}
+
 async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
@@ -342,6 +358,11 @@ async function getInstallPackageSettingsFromDb() {
   } finally {
     conn.release();
   }
+}
+
+function isDeprecatedMessageHeaderRef(raw) {
+  var s = raw != null ? String(raw).trim() : '';
+  return !s || s === 'message_header.jpg' || /(^|\/)message_header\.jpg$/i.test(s);
 }
 
 function sanitizeMineUiImageRef(raw) {
@@ -418,11 +439,14 @@ async function getMineUiForApi() {
     MINE_UI_IMAGE_KEYS.forEach(function (k) {
       if (parsed[k] != null) {
         var ok = sanitizeMineUiImageRef(parsed[k]);
-        if (ok) {
+        if (ok && !(k === 'message_header' && isDeprecatedMessageHeaderRef(ok))) {
           out[k] = ok;
         }
       }
     });
+  }
+  if (isDeprecatedMessageHeaderRef(out.message_header)) {
+    out.message_header = '';
   }
   MINE_UI_VIDEO_KEYS.forEach(function (k) {
     if (parsed[k] != null) {
@@ -450,7 +474,7 @@ async function getMineUiForAdminForm() {
   MINE_UI_IMAGE_KEYS.forEach(function (k) {
     if (parsed[k] != null) {
       var ok = sanitizeMineUiImageRef(parsed[k]);
-      if (ok) {
+      if (ok && !(k === 'message_header' && isDeprecatedMessageHeaderRef(ok))) {
         form[k] = ok;
       }
     }
@@ -463,6 +487,9 @@ async function getMineUiForAdminForm() {
       }
     }
   });
+  if (isDeprecatedMessageHeaderRef(form.message_header)) {
+    form.message_header = '';
+  }
   return form;
 }
 
@@ -2565,47 +2592,13 @@ async function syncUserFamilyCount(conn, userId) {
 
 function maskBankCardNo(cardNo) {
   var d = String(cardNo || '').replace(/\D/g, '');
-  if (d.length < 8) {
-    return '****';
-  }
-  return d.slice(0, 4) + '****' + d.slice(-4);
+  if (!d) return '—';
+  if (d.length <= 5) return d;
+  return d.slice(-5);
 }
 
 function maskBankCardNoShort(cardNo) {
-  var d = String(cardNo || '').replace(/\D/g, '');
-  if (d.length < 4) {
-    return '****';
-  }
-  return '**** ' + d.slice(-4);
-}
-
-function inferBankNameFromCardNo(cardNo) {
-  var s = String(cardNo || '').replace(/\D/g, '');
-  if (!s) {
-    return '银行卡';
-  }
-  if (/^622260|^622261|^622262|^622258|^521899|^434910|^458123/.test(s)) {
-    return '交通银行';
-  }
-  if (/^622202|^622203|^955880|^621226|^621225/.test(s)) {
-    return '中国工商银行';
-  }
-  if (/^622700|^621700|^436742|^552245/.test(s)) {
-    return '中国建设银行';
-  }
-  if (/^622848|^622845|^95599|^103/.test(s)) {
-    return '中国农业银行';
-  }
-  if (/^621660|^621661|^621662|^456351/.test(s)) {
-    return '中国银行';
-  }
-  if (/^622588|^622575|^622576/.test(s)) {
-    return '招商银行';
-  }
-  if (/^622155|^622156|^622157/.test(s)) {
-    return '平安银行';
-  }
-  return '银行卡';
+  return maskBankCardNo(cardNo);
 }
 
 async function listBankCardsForUser(userId) {
@@ -5572,13 +5565,6 @@ function summarizeTextList(items, maxItems, maxChars) {
   return text;
 }
 
-function maskBankCardNo(cardNo) {
-  var s = String(cardNo || '').replace(/\s+/g, '');
-  if (!s) return '—';
-  if (s.length <= 8) return s;
-  return s.slice(0, 4) + '****' + s.slice(-4);
-}
-
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   if (!admin || admin.is_super) return;
   whereClauses.push(
@@ -6477,12 +6463,22 @@ async function handleAdminSettingsPost(req, res) {
       }
       MINE_UI_IMAGE_KEYS.forEach(function (k) {
         if (incoming[k] != null && String(incoming[k]).trim() !== '') {
+          if (k === 'message_header' && isDeprecatedMessageHeaderRef(incoming[k])) {
+            merged.message_header = '';
+            return;
+          }
           var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
           if (ok) {
             merged[k] = ok;
           }
         }
       });
+      if (
+        Object.prototype.hasOwnProperty.call(incoming, 'message_header') &&
+        String(incoming.message_header || '').trim() === ''
+      ) {
+        merged.message_header = '';
+      }
       MINE_UI_VIDEO_KEYS.forEach(function (k) {
         if (incoming[k] != null && String(incoming[k]).trim() !== '') {
           var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
@@ -6528,14 +6524,7 @@ async function handleAdminSettingsPost(req, res) {
     }
 
     if (hasXianyu) {
-      var rawX = body.xianyu_purchase_url;
-      var okX = sanitizeInstallDownloadUrl(rawX);
-      if (rawX != null && String(rawX).trim() !== '' && !okX) {
-        return res.status(400).json({
-          code: 400,
-          msg: '闲鱼购买链接无效（请使用 http 或 https 完整链接）'
-        });
-      }
+      var okX = sanitizeXianyuPurchaseText(body.xianyu_purchase_url);
       await conn.execute(
         `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
@@ -6613,7 +6602,7 @@ async function handlePublicInstallPackages(req, res) {
     var raw = await getInstallPackageSettingsFromDb();
     var android = sanitizeInstallDownloadUrl(raw.android);
     var ios = sanitizeInstallDownloadUrl(raw.ios);
-    var xianyu = sanitizeInstallDownloadUrl(raw.xianyu);
+    var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = sanitizeInstallDownloadUrl(raw.qq);
     return res.json({
       code: 200,

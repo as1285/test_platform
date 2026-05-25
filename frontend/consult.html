@@ -1115,6 +1115,7 @@
     </div>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/xianyu-copy.js?v=20260525"></script>
     <script>
         function pad2(n) {
             n = parseInt(n, 10);
@@ -3679,21 +3680,35 @@
                             source: 'activate_modal'
                         });
                     }
+                    function doCopy(txt) {
+                        if (!txt) {
+                            alert('暂未配置闲鱼购买文案，请在管理后台「引导安装」中填写');
+                            return;
+                        }
+                        if (typeof copyXianyuPurchaseText !== 'function') {
+                            alert('复制功能不可用');
+                            return;
+                        }
+                        copyXianyuPurchaseText(txt).catch(function () {
+                            alert('复制失败，请长按手动复制');
+                        });
+                    }
+                    var cached = String(consultXianyuPurchaseUrl || '').trim();
+                    if (cached) {
+                        doCopy(cached);
+                        return;
+                    }
                     fetch('/api/public/install-packages', { credentials: 'same-origin' })
                         .then(function (r) {
                             return r.json();
                         })
                         .then(function (body) {
-                            var u = '';
+                            var t = '';
                             if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                                u = String(body.data.xianyu_purchase_url).trim();
+                                t = String(body.data.xianyu_purchase_url).trim();
                             }
-                            consultXianyuPurchaseUrl = u;
-                            if (!u) {
-                                alert('暂未配置购买链接，请在管理后台「引导安装」中填写闲鱼购买链接');
-                                return;
-                            }
-                            window.open(u, '_blank', 'noopener,noreferrer');
+                            consultXianyuPurchaseUrl = t;
+                            doCopy(t);
                         })
                         .catch(function () {
                             alert('网络错误');

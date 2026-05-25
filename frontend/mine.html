@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-mine-ios"></script>
+    <script src="/js/auth.js?v=20260525-m2102-mine"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css">
@@ -117,6 +117,65 @@
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn {
             top: 16px;
+        }
+
+        /* Cordova 小米 10S（M2102J2SC）：个人信息卡字号略小，税号单行完整展示 */
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
+            padding: 12px 0 12px 12px;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-info {
+            gap: 6px;
+            min-height: 40px;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-info-text {
+            padding-right: 0;
+            min-width: 0;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-name {
+            font-size: 13px;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-id {
+            font-size: 10px;
+            line-height: 1.25;
+            word-break: normal;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            gap: 4px;
+            max-width: 100%;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText {
+            white-space: nowrap;
+            flex: 1 1 auto;
+            min-width: 0;
+            letter-spacing: -0.02em;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .tax-eye-btn svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn {
+            font-size: 10.5px;
+            padding: 4px 8px 4px 10px;
+            border-radius: 16px 0 0 16px;
+        }
+
+        html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn::after {
+            font-size: 10.5px;
         }
 
         /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
@@ -766,6 +825,7 @@
     </nav>
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/xianyu-copy.js?v=20260525"></script>
     <script>
         (function () {
             function applyMineHeaderImage(gender) {
@@ -997,27 +1057,36 @@
                 window.location.href = 'consult.html';
             }
 
-            function openMineXianyuPurchase() {
-                var u = String(mineXianyuPurchaseUrl || '').trim();
-                if (u) {
-                    window.open(u, '_blank', 'noopener,noreferrer');
+            function copyMineXianyuPurchase() {
+                var t = String(mineXianyuPurchaseUrl || '').trim();
+                function doCopy(txt) {
+                    if (!txt) {
+                        alert('暂未配置闲鱼购买文案');
+                        return;
+                    }
+                    if (typeof copyXianyuPurchaseText !== 'function') {
+                        alert('复制功能不可用');
+                        return;
+                    }
+                    copyXianyuPurchaseText(txt).catch(function () {
+                        alert('复制失败，请长按手动复制');
+                    });
+                }
+                if (t) {
+                    doCopy(t);
                     return;
                 }
                 fetch('/api/public/install-packages', { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (body) {
                         if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                            u = String(body.data.xianyu_purchase_url).trim();
-                            mineXianyuPurchaseUrl = u;
+                            t = String(body.data.xianyu_purchase_url).trim();
+                            mineXianyuPurchaseUrl = t;
                         }
-                        if (u) {
-                            window.open(u, '_blank', 'noopener,noreferrer');
-                        } else {
-                            alert('暂未配置闲鱼购买链接');
-                        }
+                        doCopy(t);
                     })
                     .catch(function () {
-                        alert('获取购买链接失败，请稍后重试');
+                        alert('获取购买文案失败，请稍后重试');
                     });
             }
 
@@ -1380,7 +1449,7 @@
                             source: 'activate_modal'
                         });
                     }
-                    openMineXianyuPurchase();
+                    copyMineXianyuPurchase();
                 });
             }
 
