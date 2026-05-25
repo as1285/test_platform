@@ -1,6 +1,6 @@
 /**
  * 浏览器打开登录页 / 我的页时，引导用户安装 APP。
- * Cordova 壳内、iOS 设备上不展示。
+ * Cordova 壳内、iOS 设备、已激活且已登录账号上不展示。
  */
 (function () {
   var INSTALL_PAGE = 'install_guide.html';
@@ -54,6 +54,23 @@
     } catch (e) {}
   }
 
+  function isActivatedLoggedInAccount() {
+    try {
+      var token = '';
+      if (typeof window.authGetToken === 'function') {
+        token = window.authGetToken();
+      } else {
+        token = localStorage.getItem('token') || '';
+      }
+      if (!token) {
+        return false;
+      }
+      return localStorage.getItem('account_active') === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function shouldShowPrompt() {
     if (!TARGET_PAGES[currentPageName()]) {
       return false;
@@ -62,6 +79,9 @@
       return false;
     }
     if (isLikelyIOSClient()) {
+      return false;
+    }
+    if (isActivatedLoggedInAccount()) {
       return false;
     }
     if (wasDismissedThisSession()) {
