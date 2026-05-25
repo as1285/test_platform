@@ -235,7 +235,7 @@ html.ufs-fab-hidden body.page-xiangqing .header-right {
 }
 
 /* 汇总区自定义字号：问号圆随 label 字号，「?」约为圆的 0.7 */
-html.user-font-custom [data-ufs-target] body.page-shuiming-result .top-fixed .summary .summary-label .icon {
+html.user-font-custom [data-ufs-target] .top-fixed .summary .summary-label .icon {
     width: 1em !important;
     height: 1em !important;
     min-width: 1em !important;
@@ -243,7 +243,7 @@ html.user-font-custom [data-ufs-target] body.page-shuiming-result .top-fixed .su
     font-size: 0.6875em !important;
 }
 
-html.user-font-custom.platform-ios [data-ufs-target] body.page-shuiming-result .top-fixed .summary .summary-label .icon {
+html.user-font-custom.platform-ios [data-ufs-target] .top-fixed .summary .summary-label .icon {
     font-size: inherit !important;
     width: 1em !important;
     height: 1em !important;
@@ -251,7 +251,7 @@ html.user-font-custom.platform-ios [data-ufs-target] body.page-shuiming-result .
     min-height: 1em !important;
 }
 
-html.user-font-custom.app-android-huawei-cls-al00 [data-ufs-target] body.page-shuiming-result .top-fixed .summary .summary-label .icon {
+html.user-font-custom.app-android-huawei-cls-al00 [data-ufs-target] .top-fixed .summary .summary-label .icon {
     font-size: 8px !important;
     width: 12px !important;
     height: 12px !important;

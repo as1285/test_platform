@@ -1,11 +1,12 @@
 /**
- * 收入纳税明细 / 详情：用户自定义字体（全局或按区域分项）
+ * 收入纳税明细 / 详情：用户自定义字体（按区域分项，全局为各区域默认值）
  */
 (function (global) {
     var STORAGE_KEY = 'h5_user_font_tax_pages';
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
+    var CONFIG_VERSION = 2;
 
     var PRESETS = {
         size: [
@@ -38,12 +39,9 @@
         {
             id: 'summary',
             label: '汇总区',
-            /* 仅顶栏下 .summary 白底汇总两行；不含问号圆圈（.icon） */
             selectors:
-                'body.page-shuiming-result .top-fixed .summary .summary-label, ' +
-                'body.page-shuiming-result .top-fixed .summary .summary-value, ' +
-                'body.page-shuiming-result .top-fixed .summary .summary-label-text, ' +
-                'body.page-shuiming-result .top-fixed .summary .summary-colon'
+                '.top-fixed .summary .summary-label, .top-fixed .summary .summary-value, ' +
+                '.top-fixed .summary .summary-label-text, .top-fixed .summary .summary-colon'
         },
         {
             id: 'listTitle',
@@ -62,21 +60,19 @@
         {
             id: 'header',
             label: '顶栏',
-            selectors:
-                'body.page-xiangqing .header-title, body.page-xiangqing .back-btn, body.page-xiangqing .back-btn span, body.page-xiangqing .header-right'
+            selectors: '.header-title, .back-btn, .back-btn span, .header-right'
         },
-        { id: 'section', label: '区块标题', selectors: 'body.page-xiangqing .section-title' },
+        { id: 'section', label: '区块标题', selectors: '.section-title' },
         {
             id: 'info',
             label: '纳税信息',
-            selectors: 'body.page-xiangqing .info-label, body.page-xiangqing .info-value, body.page-xiangqing .info-link'
+            selectors: '.info-label, .info-value, .info-link'
         },
-        { id: 'tips', label: '温馨提示', selectors: 'body.page-xiangqing .tips, body.page-xiangqing .tips-link' },
+        { id: 'tips', label: '温馨提示', selectors: '.tips, .tips-link' },
         {
             id: 'detail',
             label: '收入扣除',
-            selectors:
-                'body.page-xiangqing .detail-label, body.page-xiangqing .detail-value, body.page-xiangqing .detail-summary-row .detail-label'
+            selectors: '.detail-label, .detail-value, .detail-summary-row .detail-label'
         }
     ];
 
@@ -100,16 +96,18 @@
 
     function normalizeConfig(raw) {
         if (!raw || typeof raw !== 'object') {
-            return { activeTarget: 'all', targets: {} };
+            return { v: CONFIG_VERSION, activeTarget: 'all', targets: {} };
         }
         if (raw.targets && typeof raw.targets === 'object') {
             return {
+                v: raw.v || CONFIG_VERSION,
                 activeTarget: raw.activeTarget || 'all',
                 targets: raw.targets
             };
         }
         if (raw.size || raw.weight || raw.color) {
             return {
+                v: CONFIG_VERSION,
                 activeTarget: 'all',
                 targets: {
                     all: {
@@ -120,7 +118,7 @@
                 }
             };
         }
-        return { activeTarget: 'all', targets: {} };
+        return { v: CONFIG_VERSION, activeTarget: 'all', targets: {} };
     }
 
     function targetHasStyle(t) {
@@ -134,48 +132,11 @@
         });
     }
 
-    /** 已有分区设置时，去掉全局上同名字段，避免 [data-ufs-target] * 继续作用于整页 */
-    function sanitizeConfig(cfg) {
-        cfg = normalizeConfig(cfg);
-        if (!cfg.targets.all || !targetHasStyle(cfg.targets.all)) return cfg;
-        var roles = getRoles();
-        var all = Object.assign({}, cfg.targets.all);
-        var changed = false;
-        roles.forEach(function (role) {
-            if (role.id === 'all') return;
-            var t = cfg.targets[role.id];
-            if (!t || !targetHasStyle(t)) return;
-            if (t.size && all.size) {
-                delete all.size;
-                changed = true;
-            }
-            if (t.weight && all.weight) {
-                delete all.weight;
-                changed = true;
-            }
-            if (t.color && all.color) {
-                delete all.color;
-                changed = true;
-            }
-        });
-        if (!changed) return cfg;
-        var next = {
-            activeTarget: cfg.activeTarget || 'all',
-            targets: Object.assign({}, cfg.targets)
-        };
-        if (!targetHasStyle(all)) {
-            delete next.targets.all;
-        } else {
-            next.targets.all = all;
-        }
-        return next;
-    }
-
     function loadConfig() {
         try {
             var raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return normalizeConfig(null);
-            return sanitizeConfig(normalizeConfig(JSON.parse(raw)));
+            return normalizeConfig(JSON.parse(raw));
         } catch (e) {
             return normalizeConfig(null);
         }
@@ -183,7 +144,7 @@
 
     function saveConfig(cfg) {
         try {
-            cfg = sanitizeConfig(normalizeConfig(cfg));
+            cfg = normalizeConfig(cfg);
             if (configIsEmpty(cfg)) {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
@@ -196,33 +157,9 @@
         return (cfg.targets && cfg.targets[targetId]) || {};
     }
 
-    /** 分区设置某属性时，去掉「全局」上同名字段，避免 scope * 仍作用于整页 */
-    function stripGlobalTargetOnRegionalSet(next, targetId, patch) {
-        if (targetId === 'all' || !next.targets.all) return;
-        var allCur = Object.assign({}, next.targets.all);
-        var touched = false;
-        if (patch.size) {
-            delete allCur.size;
-            touched = true;
-        }
-        if (patch.weight) {
-            delete allCur.weight;
-            touched = true;
-        }
-        if (patch.color) {
-            delete allCur.color;
-            touched = true;
-        }
-        if (!touched) return;
-        if (!targetHasStyle(allCur)) {
-            delete next.targets.all;
-        } else {
-            next.targets.all = allCur;
-        }
-    }
-
     function setTargetState(cfg, targetId, patch) {
         var next = {
+            v: CONFIG_VERSION,
             activeTarget: cfg.activeTarget || 'all',
             targets: Object.assign({}, cfg.targets || {})
         };
@@ -238,30 +175,18 @@
         } else {
             next.targets[targetId] = cur;
         }
-        stripGlobalTargetOnRegionalSet(next, targetId, patch);
         return next;
     }
 
-    function getApplyOrder(cfg, roles) {
-        var specificIds = [];
-        var i;
-        for (i = 0; i < roles.length; i++) {
-            var r = roles[i];
-            if (r.id !== 'all' && cfg.targets[r.id] && targetHasStyle(cfg.targets[r.id])) {
-                specificIds.push(r.id);
-            }
-        }
-        var hasAll = cfg.targets.all && targetHasStyle(cfg.targets.all);
-        if (specificIds.length && !hasAll) {
-            return specificIds;
-        }
-        if (specificIds.length && hasAll) {
-            return ['all'].concat(specificIds);
-        }
-        if (hasAll) {
-            return ['all'];
-        }
-        return [];
+    /** 全局为默认值；分区设置覆盖对应区域，不再用 * 通配整页 */
+    function getEffectiveStyle(cfg, roleId) {
+        var global = (cfg.targets && cfg.targets.all) || {};
+        var regional = (cfg.targets && cfg.targets[roleId]) || {};
+        var eff = {};
+        if (regional.size || global.size) eff.size = regional.size || global.size;
+        if (regional.weight || global.weight) eff.weight = regional.weight || global.weight;
+        if (regional.color || global.color) eff.color = regional.color || global.color;
+        return eff;
     }
 
     function toggleProp(cfg, targetId, key, value) {
@@ -348,17 +273,32 @@
 
     function buildSelectorList(role) {
         var scope = '[data-ufs-target]';
-        if (role.id === 'all') {
-            return [scope + ' *' + EXCLUDE_SEL, scope];
+        if (role.id === 'all' || !role.selectors) {
+            return [];
         }
-        if (!role.selectors) return [];
         return role.selectors.split(',').map(function (s) {
             return scope + ' ' + s.trim() + EXCLUDE_SEL;
         });
     }
 
+    function buildDeclarations(roleId, t) {
+        var decl = [];
+        if (t.size) {
+            decl.push('font-size:' + t.size + ' !important');
+            if (roleId === 'summary') {
+                var px = parseFloat(String(t.size));
+                if (!isNaN(px) && px > 0) {
+                    decl.push('line-height:' + Math.round(px * 1.43) + 'px !important');
+                }
+            }
+        }
+        if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
+        if (t.color) decl.push('color:' + t.color + ' !important');
+        return decl;
+    }
+
     function applyConfig(cfg) {
-        cfg = sanitizeConfig(normalizeConfig(cfg));
+        cfg = normalizeConfig(cfg);
         var html = document.documentElement;
         var styleEl = document.getElementById(STYLE_ID);
         if (!styleEl) {
@@ -375,32 +315,13 @@
 
         html.classList.add('user-font-custom');
         var roles = getRoles();
-        var roleMap = {};
-        roles.forEach(function (r) {
-            roleMap[r.id] = r;
-        });
-
-        var order = getApplyOrder(cfg, roles);
-
         var css = [];
-        order.forEach(function (rid) {
-            var t = cfg.targets[rid];
-            if (!targetHasStyle(t)) return;
-            var role = roleMap[rid];
-            if (!role) return;
-            var decl = [];
-            if (t.size) {
-                decl.push('font-size:' + t.size + ' !important');
-                /* 汇总区随字号同步行高，避免顶栏下两行文字被裁切或挤在一起 */
-                if (rid === 'summary') {
-                    var px = parseFloat(String(t.size));
-                    if (!isNaN(px) && px > 0) {
-                        decl.push('line-height:' + Math.round(px * 1.43) + 'px !important');
-                    }
-                }
-            }
-            if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
-            if (t.color) decl.push('color:' + t.color + ' !important');
+
+        roles.forEach(function (role) {
+            if (role.id === 'all') return;
+            var eff = getEffectiveStyle(cfg, role.id);
+            if (!targetHasStyle(eff)) return;
+            var decl = buildDeclarations(role.id, eff);
             if (!decl.length) return;
             var sels = buildSelectorList(role);
             if (sels.length) {
@@ -478,7 +399,11 @@
             chip.type = 'button';
             chip.className = 'ufs-target-chip';
             if (role.id === active) chip.classList.add('is-active');
-            if (targetHasStyle(getTargetState(cfg, role.id))) chip.classList.add('has-custom');
+            var hasCustom =
+                role.id === 'all'
+                    ? targetHasStyle(getTargetState(cfg, 'all'))
+                    : targetHasStyle(getEffectiveStyle(cfg, role.id));
+            if (hasCustom) chip.classList.add('has-custom');
             chip.textContent = role.label;
             chip.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -496,7 +421,8 @@
     function refreshPresetButtons(host, cfg) {
         if (!panelUi) return;
         var targetId = cfg.activeTarget || 'all';
-        var state = getTargetState(cfg, targetId);
+        var state =
+            targetId === 'all' ? getTargetState(cfg, 'all') : getEffectiveStyle(cfg, targetId);
         host.querySelectorAll('.ufs-preset-group').forEach(function (group) {
             var key = group.getAttribute('data-key');
             var presets = PRESETS[key];
@@ -617,7 +543,7 @@
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
         hint.textContent =
-            '先点顶栏/汇总区等切换区域，再调字号；面板保持打开，可逐项设置。再次点「字」或「收起面板」关闭。';
+            '先点区域再调字号。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。';
         panel.appendChild(hint);
 
         panelUi = {
