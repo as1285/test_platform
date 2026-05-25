@@ -811,6 +811,8 @@
         })();
         var codePage = 1;
         var codeLimit = 10;
+        var xianyuCodePage = 1;
+        var xianyuCodeLimit = 10;
         var loginLogMode = 'admin-login';
         var loginRecentPage = 1;
         var loginRecentLimit = 20;
@@ -924,6 +926,7 @@
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
                 loadCodes(1);
+                loadXianyuCodes(1);
             }
             if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
                 _adminAccountsLoaded = true;
@@ -2547,11 +2550,13 @@
             var html = '<div class="user-detail-wrap">';
             html += '<div class="user-detail-title">账号「' + esc(username) + '」数据档案</div>';
             var srcLabel =
+                data.channel_analysis_label ||
+                (data.user && data.user.channel_analysis_label) ||
                 (data.user && data.user.register_source_channel_label) ||
                 data.register_source_channel_label ||
                 '—';
             html +=
-                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">来源渠道：<strong>' +
+                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">渠道分析：<strong>' +
                 esc(srcLabel) +
                 '</strong> · 近六个月平均工资：<strong>' +
                 esc(data.avg_salary_6m_label || '未填写') +
@@ -2754,7 +2759,7 @@
                         html += '<td>' + esc(row.real_name || '—') + '</td>';
                         html +=
                             '<td class="cell-break">' +
-                            esc(row.register_source_channel_label || '—') +
+                            esc(row.channel_analysis_label || row.register_source_channel_label || '—') +
                             '</td>';
                         html += '<td class="cell-break">' + esc(row.avg_salary_6m_label || '未填写') + '</td>';
                         html += '<td class="cell-break">' + esc(row.companies_summary || '—') + '</td>';
@@ -2905,7 +2910,7 @@
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
                         html +=
                             '<td class="cell-break">' +
-                            esc(u.register_source_channel_label || '—') +
+                            esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
                         html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
                         html += '<td>' + act + '</td>';
@@ -3010,6 +3015,38 @@
                 : '—';
         }
 
+        function renderCodeTableRows(list, options) {
+            options = options || {};
+            var showChannel = !!options.showChannel;
+            var html = '';
+            list.forEach(function (c) {
+                var usedAt =
+                    c.last_used_at && (Number(c.used_count) > 0)
+                        ? formatDt(c.last_used_at)
+                        : '—';
+                var usedBy =
+                    c.used_by_username && String(c.used_by_username).trim() !== ''
+                        ? esc(String(c.used_by_username).trim())
+                        : '—';
+                html += '<tr>';
+                html += '<td>' + esc(c.id) + '</td>';
+                html += '<td>' + esc(c.code) + '</td>';
+                html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                html += '<td>' + codeOwnerLabel(c) + '</td>';
+                html += '<td>' + usedBy + '</td>';
+                if (showChannel) {
+                    var ch =
+                        c.used_user_channel_label && String(c.used_user_channel_label).trim() !== ''
+                            ? esc(String(c.used_user_channel_label).trim())
+                            : '—';
+                    html += '<td class="cell-break">' + ch + '</td>';
+                }
+                html += '<td>' + usedAt + '</td>';
+                html += '</tr>';
+            });
+            return html;
+        }
+
         function loadCodes(p) {
             if (p != null) codePage = p;
             var ownerAdmin = '';
@@ -3030,7 +3067,7 @@
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
             var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
             var limit = isSuper && !hasFilter ? 20 : codeLimit;
-            var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit;
+            var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit + '&scope=general';
             if (ownerAdmin) {
                 q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
             }
@@ -3071,11 +3108,11 @@
                             filterParts.push('已使用');
                         }
                         if (isSuper && !hasFilter) {
-                            statEl.textContent = '共 ' + total + ' 条（全部管理员，按最新在前）';
+                            statEl.textContent = '共 ' + total + ' 条（非闲鱼，全部管理员）';
                         } else if (filterParts.length) {
-                            statEl.textContent = '共 ' + total + ' 条（筛选：' + filterParts.join('，') + '）';
+                            statEl.textContent = '共 ' + total + ' 条（非闲鱼，筛选：' + filterParts.join('，') + '）';
                         } else {
-                            statEl.textContent = '共 ' + total + ' 条（本账号生成的激活码）';
+                            statEl.textContent = '共 ' + total + ' 条（非闲鱼，本账号生成）';
                         }
                     }
 
@@ -3084,26 +3121,57 @@
                     document.getElementById('codePrev').disabled = codePage <= 1;
                     document.getElementById('codeNext').disabled = codePage >= totalPages;
 
-                    var html = '';
-                    list.forEach(function (c) {
-                        var usedAt =
-                            c.last_used_at && (Number(c.used_count) > 0)
-                                ? formatDt(c.last_used_at)
-                                : '—';
-                        var usedBy =
-                            c.used_by_username && String(c.used_by_username).trim() !== ''
-                                ? esc(String(c.used_by_username).trim())
-                                : '—';
-                        html += '<tr>';
-                        html += '<td>' + esc(c.id) + '</td>';
-                        html += '<td>' + esc(c.code) + '</td>';
-                        html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
-                        html += '<td>' + codeOwnerLabel(c) + '</td>';
-                        html += '<td>' + usedBy + '</td>';
-                        html += '<td>' + usedAt + '</td>';
-                        html += '</tr>';
-                    });
-                    document.getElementById('codeTbody').innerHTML = html || '<tr><td colspan="6">暂无激活码</td></tr>';
+                    var html = renderCodeTableRows(list, { showChannel: false });
+                    document.getElementById('codeTbody').innerHTML =
+                        html || '<tr><td colspan="6">暂无激活码</td></tr>';
+                })
+                .catch(function () {});
+        }
+
+        function loadXianyuCodes(p) {
+            if (p != null) {
+                xianyuCodePage = p;
+            }
+            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
+            var limit = isSuper ? 20 : xianyuCodeLimit;
+            var q = 'api/admin/codes?page=' + xianyuCodePage + '&limit=' + limit + '&scope=xianyu';
+            adminFetch(q)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        return;
+                    }
+                    var list = data.data.codes || [];
+                    var total = data.data.total || 0;
+                    var statEl = document.getElementById('xianyuCodeListStat');
+                    if (statEl) {
+                        statEl.textContent =
+                            '共 ' +
+                            total +
+                            ' 条闲鱼激活码' +
+                            (isSuper ? '（全部管理员）' : '（本账号生成）');
+                    }
+                    var totalPages = Math.ceil(total / limit) || 1;
+                    var pageInfo = document.getElementById('xianyuCodePageInfo');
+                    if (pageInfo) {
+                        pageInfo.textContent = '第 ' + xianyuCodePage + ' 页 / 共 ' + totalPages + ' 页';
+                    }
+                    var prevBtn = document.getElementById('xianyuCodePrev');
+                    var nextBtn = document.getElementById('xianyuCodeNext');
+                    if (prevBtn) {
+                        prevBtn.disabled = xianyuCodePage <= 1;
+                    }
+                    if (nextBtn) {
+                        nextBtn.disabled = xianyuCodePage >= totalPages;
+                    }
+                    var tbody = document.getElementById('xianyuCodeTbody');
+                    if (tbody) {
+                        var html = renderCodeTableRows(list, { showChannel: true });
+                        tbody.innerHTML =
+                            html || '<tr><td colspan="7">暂无闲鱼激活码</td></tr>';
+                    }
                 })
                 .catch(function () {});
         }
@@ -3470,13 +3538,40 @@
 
         document.getElementById('codePrev').onclick = function() { if (codePage > 1) loadCodes(codePage - 1); };
         document.getElementById('codeNext').onclick = function() { loadCodes(codePage + 1); };
+        var xianyuPrev = document.getElementById('xianyuCodePrev');
+        var xianyuNext = document.getElementById('xianyuCodeNext');
+        if (xianyuPrev) {
+            xianyuPrev.onclick = function() {
+                if (xianyuCodePage > 1) {
+                    loadXianyuCodes(xianyuCodePage - 1);
+                }
+            };
+        }
+        if (xianyuNext) {
+            xianyuNext.onclick = function() {
+                loadXianyuCodes(xianyuCodePage + 1);
+            };
+        }
 
-        document.getElementById('codeTbody').addEventListener('click', function (e) {
-            var btn = e.target.closest('.btn-copy-code');
-            if (!btn) return;
-            var code = btn.getAttribute('data-code');
-            if (code) copyCode(code);
-        });
+        function bindCodeCopyDelegation(tbodyId) {
+            var el = document.getElementById(tbodyId);
+            if (!el || el.getAttribute('data-copy-bound') === '1') {
+                return;
+            }
+            el.setAttribute('data-copy-bound', '1');
+            el.addEventListener('click', function (e) {
+                var btn = e.target.closest('.btn-copy-code');
+                if (!btn) {
+                    return;
+                }
+                var code = btn.getAttribute('data-code');
+                if (code) {
+                    copyCode(code);
+                }
+            });
+        }
+        bindCodeCopyDelegation('codeTbody');
+        bindCodeCopyDelegation('xianyuCodeTbody');
 
         document.getElementById('btnIssue').addEventListener('click', function () {
             var btn = document.getElementById('btnIssue');
@@ -3540,6 +3635,7 @@
                                         : '—'
                             });
                             loadCodes(1);
+                            loadXianyuCodes(1);
                             alert('已生成 ' + data.data.count + ' 个激活码，TXT 已下载');
                         } else {
                             alert(data.msg || '批量生成失败');
@@ -3554,7 +3650,10 @@
             });
         }
 
-        document.getElementById('btnRefreshCodes').addEventListener('click', function() { loadCodes(1); });
+        document.getElementById('btnRefreshCodes').addEventListener('click', function() {
+            loadCodes(1);
+            loadXianyuCodes(1);
+        });
         document.getElementById('btnSearchCodes').addEventListener('click', function() { loadCodes(1); });
         document.getElementById('btnResetCodesFilter').addEventListener('click', function () {
             var input = document.getElementById('codeOwnerAdminFilter');

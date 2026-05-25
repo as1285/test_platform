@@ -68,8 +68,45 @@ const REGISTER_SOURCE_CHANNELS = {
   tieba: '百度贴吧',
   zhihu: '知乎',
   friend: '朋友介绍',
-  other: '其他'
+  other: '其他',
+  xianyu: '闲鱼'
 };
+
+/** 激活码 note 含「闲鱼」视为闲鱼渠道批量码 */
+function isXianyuActivationNote(note) {
+  return String(note || '').indexOf('闲鱼') >= 0;
+}
+
+function activationSourceFromCodeNote(note) {
+  if (isXianyuActivationNote(note)) {
+    return 'xianyu';
+  }
+  return '';
+}
+
+function activationSourceChannelLabel(channel) {
+  var c = channel != null ? String(channel).trim() : '';
+  if (!c) {
+    return '';
+  }
+  if (REGISTER_SOURCE_CHANNELS[c]) {
+    return REGISTER_SOURCE_CHANNELS[c];
+  }
+  return c;
+}
+
+/** 注册来源 + 激活来源（闲鱼码等）综合展示 */
+function userChannelAnalysisLabel(registerChannel, activationChannel) {
+  var reg = registerSourceChannelLabel(registerChannel);
+  var act = activationSourceChannelLabel(activationChannel);
+  if (act && reg && reg !== act) {
+    return '注册：' + reg + '；激活：' + act;
+  }
+  if (act) {
+    return act;
+  }
+  return reg || '—';
+}
 
 const REGISTER_SOURCE_OTHER_MAX = 64;
 
@@ -919,6 +956,15 @@ async function createTables() {
     `);
   } catch (e) {
     /* 列不存在或已是目标类型时忽略 */
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_source_channel VARCHAR(32) NULL COMMENT '激活码渠道（如闲鱼）'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
   }
 
   await conn.execute(`
@@ -2049,7 +2095,7 @@ async function applyActivationCode(username, rawCode) {
   try {
     await conn.beginTransaction();
     const [rows] = await conn.execute(
-      'SELECT id, max_uses, used_count FROM activation_codes WHERE code = ? FOR UPDATE',
+      'SELECT id, max_uses, used_count, note FROM activation_codes WHERE code = ? FOR UPDATE',
       [code]
     );
     if (rows.length === 0) {
@@ -2061,11 +2107,19 @@ async function applyActivationCode(username, rawCode) {
       await conn.rollback();
       throw new Error('激活码已用完');
     }
+    var actChannel = activationSourceFromCodeNote(r.note);
     await conn.execute(
       'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
       [username, r.id]
     );
-    await conn.execute('UPDATE users SET account_active = 1 WHERE username = ?', [username]);
+    if (actChannel) {
+      await conn.execute(
+        'UPDATE users SET account_active = 1, activation_source_channel = ? WHERE username = ?',
+        [actChannel, username]
+      );
+    } else {
+      await conn.execute('UPDATE users SET account_active = 1 WHERE username = ?', [username]);
+    }
     await conn.commit();
   } catch (e) {
     try {
@@ -5827,6 +5881,7 @@ async function handleAdminUsers(req, res) {
         const [pageRows] = await conn.query(
           `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
+                  activation_source_channel,
                   (SELECT ac.owner_admin_username
                    FROM activation_codes ac
                    WHERE ac.used_by_username = users.username
@@ -5849,6 +5904,7 @@ async function handleAdminUsers(req, res) {
         `
       SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
+             activation_source_channel,
              (SELECT ac.owner_admin_username
               FROM activation_codes ac
               WHERE ac.used_by_username = users.username
@@ -5915,7 +5971,14 @@ async function handleAdminUsers(req, res) {
         tax_modified_today: !!(taxFlagsToday[uname] && taxFlagsToday[uname].tax_modified_on_date),
         register_source_channel:
           r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
-        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel)
+        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
+        activation_source_channel:
+          r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '',
+        activation_source_channel_label: activationSourceChannelLabel(r.activation_source_channel),
+        channel_analysis_label: userChannelAnalysisLabel(
+          r.register_source_channel,
+          r.activation_source_channel
+        )
       };
     });
     res.json({
@@ -6466,7 +6529,7 @@ async function handleAdminUserDataList(req, res) {
           return '?';
         }).join(',');
         const [pageRows] = await conn.query(
-          'SELECT id, username, real_name, tax_id, register_source_channel FROM users WHERE username IN (' +
+          'SELECT id, username, real_name, tax_id, register_source_channel, activation_source_channel FROM users WHERE username IN (' +
             ph +
             ') ORDER BY id DESC',
           pageNames
@@ -6477,7 +6540,7 @@ async function handleAdminUserDataList(req, res) {
       const [totalRows] = await conn.execute('SELECT COUNT(*) AS count FROM users' + whereSql, params);
       total = totalRows[0].count;
       const [pageRows] = await conn.query(
-        'SELECT id, username, real_name, tax_id, register_source_channel FROM users' +
+        'SELECT id, username, real_name, tax_id, register_source_channel, activation_source_channel FROM users' +
           whereSql +
           ' ORDER BY id DESC LIMIT ? OFFSET ?',
         params.concat([limit, offset])
@@ -6521,7 +6584,14 @@ async function handleAdminUserDataList(req, res) {
         tax_record_count: dm.tax_record_count || 0,
         register_source_channel:
           r.register_source_channel != null ? String(r.register_source_channel).trim() : '',
-        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel)
+        register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
+        activation_source_channel:
+          r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '',
+        activation_source_channel_label: activationSourceChannelLabel(r.activation_source_channel),
+        channel_analysis_label: userChannelAnalysisLabel(
+          r.register_source_channel,
+          r.activation_source_channel
+        )
       };
     });
 
@@ -6548,7 +6618,7 @@ async function handleAdminUserDataDetail(req, res) {
         return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
       }
       const [userRows] = await conn.execute(
-        'SELECT username, real_name, tax_id, created_at, register_source_channel FROM users WHERE username = ? LIMIT 1',
+        'SELECT username, real_name, tax_id, created_at, register_source_channel, activation_source_channel FROM users WHERE username = ? LIMIT 1',
         [username]
       );
       if (!userRows.length) {
@@ -6600,8 +6670,19 @@ async function handleAdminUserDataDetail(req, res) {
             created_at: u.created_at ? u.created_at.toISOString() : '',
             register_source_channel:
               u.register_source_channel != null ? String(u.register_source_channel).trim() : '',
-            register_source_channel_label: registerSourceChannelLabel(u.register_source_channel)
+            register_source_channel_label: registerSourceChannelLabel(u.register_source_channel),
+            activation_source_channel:
+              u.activation_source_channel != null ? String(u.activation_source_channel).trim() : '',
+            activation_source_channel_label: activationSourceChannelLabel(u.activation_source_channel),
+            channel_analysis_label: userChannelAnalysisLabel(
+              u.register_source_channel,
+              u.activation_source_channel
+            )
           },
+          channel_analysis_label: userChannelAnalysisLabel(
+            u.register_source_channel,
+            u.activation_source_channel
+          ),
           avg_salary_6m: sal.avg_salary_6m,
           avg_salary_6m_label: sal.avg_salary_6m_label,
           salary_month_count: sal.salary_month_count,
@@ -6749,38 +6830,44 @@ async function handleAdminCodes(req, res) {
     var conditions = [];
     var params = [];
     if (!req.admin || !req.admin.is_super) {
-      conditions.push('owner_admin_username = ?');
+      conditions.push('ac.owner_admin_username = ?');
       params.push(req.admin.username);
     } else if (qOwnerAdmin) {
-      conditions.push('owner_admin_username LIKE ?');
+      conditions.push('ac.owner_admin_username LIKE ?');
       params.push('%' + qOwnerAdmin + '%');
     }
     if (qUsedBy) {
       if (usedByExact) {
-        conditions.push('used_by_username = ?');
+        conditions.push('ac.used_by_username = ?');
         params.push(qUsedBy);
       } else {
-        conditions.push('used_by_username LIKE ?');
+        conditions.push('ac.used_by_username LIKE ?');
         params.push('%' + qUsedBy + '%');
       }
     }
     if (qUsageStatus === 'unused') {
-      conditions.push('used_count = 0');
+      conditions.push('ac.used_count = 0');
     } else if (qUsageStatus === 'used') {
-      conditions.push('used_count > 0');
+      conditions.push('ac.used_count > 0');
     }
     if (qCode) {
       if (codeExact) {
-        conditions.push('code = ?');
+        conditions.push('ac.code = ?');
         params.push(qCode);
       } else {
-        conditions.push('code LIKE ?');
+        conditions.push('ac.code LIKE ?');
         params.push('%' + qCode + '%');
       }
     }
+    var scope = req.query.scope != null ? String(req.query.scope).trim() : '';
+    if (scope === 'xianyu') {
+      conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%闲鱼%')");
+    } else if (scope === 'general') {
+      conditions.push("(ac.note IS NULL OR ac.note NOT LIKE '%闲鱼%')");
+    }
     var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
-      'SELECT COUNT(*) as count FROM activation_codes' + whereSql,
+      'SELECT COUNT(*) as count FROM activation_codes ac' + whereSql,
       params
     );
     const total = totalRows[0].count;
@@ -6788,24 +6875,34 @@ async function handleAdminCodes(req, res) {
     var hasListFilter = !!(qOwnerAdmin || qUsedBy || qUsageStatus || qCode);
     var orderSql =
       req.admin && req.admin.is_super && !hasListFilter
-        ? ' ORDER BY id DESC'
+        ? ' ORDER BY ac.id DESC'
         : qOwnerAdmin && !qUsedBy
-          ? ' ORDER BY COALESCE(NULLIF(TRIM(owner_admin_username), \'\'), \'—\') ASC, id DESC'
-          : ' ORDER BY id DESC';
+          ? ' ORDER BY COALESCE(NULLIF(TRIM(ac.owner_admin_username), \'\'), \'—\') ASC, ac.id DESC'
+          : ' ORDER BY ac.id DESC';
     const [rows] = await conn.query(
-      `SELECT id, code, max_uses, used_count, note, created_at, last_used_at, used_by_username, owner_admin_username
-       FROM activation_codes ${whereSql}${orderSql}
+      `SELECT ac.id, ac.code, ac.max_uses, ac.used_count, ac.note, ac.created_at, ac.last_used_at,
+              ac.used_by_username, ac.owner_admin_username,
+              u.register_source_channel AS used_user_register_source,
+              u.activation_source_channel AS used_user_activation_source
+       FROM activation_codes ac
+       LEFT JOIN users u ON u.username = ac.used_by_username
+       ${whereSql}${orderSql}
        LIMIT ${limit} OFFSET ${offset}`,
       params
     );
     conn.release();
     var out = rows.map(function (r) {
+      var regCh =
+        r.used_user_register_source != null ? String(r.used_user_register_source).trim() : '';
+      var actCh =
+        r.used_user_activation_source != null ? String(r.used_user_activation_source).trim() : '';
       return {
         id: r.id,
         code: r.code,
         max_uses: r.max_uses,
         used_count: r.used_count,
         note: r.note,
+        is_xianyu: isXianyuActivationNote(r.note),
         created_at: r.created_at ? r.created_at.toISOString() : '',
         last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null,
         used_by_username:
@@ -6815,6 +6912,10 @@ async function handleAdminCodes(req, res) {
         owner_admin_username:
           r.owner_admin_username != null && String(r.owner_admin_username).trim() !== ''
             ? String(r.owner_admin_username).trim()
+            : null,
+        used_user_channel_label:
+          r.used_by_username && String(r.used_by_username).trim() !== ''
+            ? userChannelAnalysisLabel(regCh, actCh)
             : null
       };
     });

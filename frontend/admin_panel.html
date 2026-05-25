@@ -371,12 +371,12 @@
                 <button type="button" class="btn-primary" id="btnIssueBatch100">批量生成 100 个（闲鱼）</button>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成会一次性写入 100 条并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。子账号仅能查看自己生成的激活码，admin 超级账号默认展示<strong>全部管理员</strong>的激活码（按 ID 倒序，最新在前）。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成会一次性写入 100 条并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。</p>
             <p class="stat" id="codeListStat" style="margin:0 0 10px;"></p>
         </section>
 
         <section>
-            <h2>激活码列表</h2>
+            <h2>激活码列表（非闲鱼）</h2>
             <div class="form-row" style="margin-bottom:12px;flex-wrap:wrap;">
                 <div>
                     <label for="codeCodeFilter">激活码</label>
@@ -431,6 +431,33 @@
                 <button type="button" class="btn-page" id="codePrev">上一页</button>
                 <span id="codePageInfo">第 1 页</span>
                 <button type="button" class="btn-page" id="codeNext">下一页</button>
+            </div>
+        </section>
+
+        <section style="margin-top:28px;">
+            <h2>闲鱼激活码列表</h2>
+            <p class="hint">仅展示备注含「闲鱼」的批量码。已使用的行会显示该用户的<strong>渠道分析</strong>（含闲鱼激活来源）。</p>
+            <p class="stat" id="xianyuCodeListStat" style="margin:0 0 10px;"></p>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>激活码</th>
+                            <th>复制</th>
+                            <th>归属管理员</th>
+                            <th>使用账号</th>
+                            <th>用户渠道分析</th>
+                            <th>使用时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="xianyuCodeTbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="xianyuCodePagination">
+                <button type="button" class="btn-page" id="xianyuCodePrev">上一页</button>
+                <span id="xianyuCodePageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="xianyuCodeNext">下一页</button>
             </div>
         </section>
                 </div>
@@ -557,7 +584,7 @@
                             <th style="width:120px;">账号</th>
                             <th class="col-tax-mod">当日修改</th>
                             <th style="width:88px;">姓名</th>
-                            <th style="width:100px;">来源渠道</th>
+                            <th style="width:120px;">渠道分析</th>
                             <th style="width:120px;">密码</th>
                             <th style="width:72px;">激活</th>
                             <th style="width:72px;">封禁</th>
@@ -696,7 +723,7 @@
                         <tr>
                             <th style="width:110px;">账号</th>
                             <th style="width:72px;">姓名</th>
-                            <th style="width:100px;">来源渠道</th>
+                            <th style="width:120px;">渠道分析</th>
                             <th style="width:120px;">近6月平均工资</th>
                             <th style="width:160px;">公司（扣缴义务人）</th>
                             <th style="width:130px;">纳税人识别号</th>
@@ -1114,7 +1141,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260523-register-source"></script>
+    <script src="/js/admin_panel.js?v=20260525-xianyu-codes"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>

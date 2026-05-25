@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     register_salary_months_json TEXT NULL COMMENT '注册时填写的近6个月工资 JSON 数组',
     register_avg_salary_6m DECIMAL(12,2) NULL COMMENT '注册时近6个月平均工资（按已填月份计算）',
     register_source_channel VARCHAR(128) NULL COMMENT '注册来源渠道（other:自定义名）',
+    activation_source_channel VARCHAR(32) NULL COMMENT '激活码渠道（如 xianyu=闲鱼）',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username)
