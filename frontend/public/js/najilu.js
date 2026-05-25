@@ -827,6 +827,26 @@
     ctx.restore();
   }
 
+  /** 左上角「(日期) 记录 编号)」：编号为红色 */
+  function drawRecordIdLine(ctx, compactDate, recordNo, x, y) {
+    var prefix = '(' + String(compactDate || '') + ' 记录 ';
+    var no = String(recordNo || '');
+    var suffix = ')';
+    drawText(ctx, prefix, x, y, { size: 20, color: '#555' });
+    ctx.save();
+    ctx.font = '20px serif';
+    ctx.textAlign = 'left';
+    var pw = ctx.measureText(prefix).width;
+    ctx.restore();
+    drawText(ctx, no, x + pw, y, { size: 20, color: '#c62828' });
+    ctx.save();
+    ctx.font = '20px serif';
+    ctx.textAlign = 'left';
+    var nw = ctx.measureText(no).width;
+    ctx.restore();
+    drawText(ctx, suffix, x + pw + nw, y, { size: 20, color: '#555' });
+  }
+
   function wrapText(ctx, text, x, y, maxWidth, lineHeight, opt) {
     text = String(text || '');
     var line = '';
@@ -917,7 +937,7 @@
       ctx.strokeStyle = '#d6d6d6';
       ctx.lineWidth = 1;
 
-      drawText(ctx, '(' + app.apply_date_compact + ' 记录 ' + app.record_no + ')', 88, 92, { size: 20, color: '#555' });
+      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92);
       drawText(ctx, '◉', width / 2, 92, { size: 48, color: '#b92828', align: 'center' });
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
@@ -949,29 +969,16 @@
       var tableW = width - 180;
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
-      ctx.strokeRect(x0, y0, tableW, 48);
+      var dataRowCount = Math.max(rows.length, 1);
+      var tableTotalH = 48 + dataRowCount * rowH + 44;
       var xx = x0;
       heads.forEach(function (h, i) {
-        if (i > 0) {
-          ctx.beginPath();
-          ctx.moveTo(xx, y0);
-          ctx.lineTo(xx, y0 + 48 + Math.max(rows.length, 1) * rowH);
-          ctx.stroke();
-        }
         drawText(ctx, h, xx + cols[i] / 2, y0 + 31, { size: 16, align: 'center', color: '#333' });
         xx += cols[i];
       });
-      ctx.beginPath();
-      ctx.moveTo(x0, y0 + 48);
-      ctx.lineTo(x0 + tableW, y0 + 48);
-      ctx.stroke();
 
       rows.forEach(function (r, idx) {
         var y = y0 + 48 + idx * rowH;
-        ctx.beginPath();
-        ctx.moveTo(x0, y + rowH);
-        ctx.lineTo(x0 + tableW, y + rowH);
-        ctx.stroke();
         var vals = [
           displayDateFromRecord(r),
           money(r.tax_reported),
@@ -1006,12 +1013,8 @@
         });
       });
 
-      var footY = y0 + 48 + Math.max(rows.length, 1) * rowH;
-      ctx.strokeRect(x0, footY, tableW, 44);
-      ctx.beginPath();
-      ctx.moveTo(x0 + cols[0], footY);
-      ctx.lineTo(x0 + cols[0], footY + 44);
-      ctx.stroke();
+      var footY = y0 + 48 + dataRowCount * rowH;
+      ctx.strokeRect(x0, y0, tableW, tableTotalH);
       drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 29, { size: 16, align: 'center' });
       var total = rows.reduce(function (sum, r) {
         return sum + Number(r.tax_reported || 0);
