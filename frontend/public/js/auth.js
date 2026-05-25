@@ -86,6 +86,17 @@
   }
 
   /**
+   * Cordova 壳 + 小米 10S（M2102J2SC）：我的页个人信息卡税号需单行完整展示。
+   */
+  function isCordovaXiaomiM2102Client() {
+    var ua = navigator.userAgent || '';
+    if (!CORDOVA_SHELL_UA_RE.test(ua)) {
+      return false;
+    }
+    return /M2102J2SC/i.test(ua);
+  }
+
+  /**
    * Cordova 壳 + 2410DPN6CC（Android 16）：WebView 内 env(safe-area-inset-bottom) 常为 0，
    * 底部胶囊导航与系统手势条重叠。仅匹配该机型 UA，不影响其它设备。
    */
@@ -353,6 +364,7 @@
       var honorMagicAndroidClient = androidClient && isHonorMagicAndroidClient();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
+      var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
@@ -431,6 +443,9 @@
       }
       if (cordovaXiaomi23127) {
         document.documentElement.classList.add('app-cordova-xiaomi-23127');
+      }
+      if (cordovaXiaomiM2102) {
+        document.documentElement.classList.add('app-cordova-xiaomi-m2102');
       }
       if (cordovaXiaomi2410) {
         document.documentElement.classList.add('app-cordova-xiaomi-2410');
@@ -562,6 +577,12 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card{margin:-38px 16px 0 !important;border-radius:12px 12px 0 0 !important;padding:16px 14px 14px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name{margin-bottom:10px !important;line-height:1.35 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn{top:16px !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine .user-card{padding:12px 0 12px 12px !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine .user-name{font-size:13px !important;margin-bottom:5px !important;line-height:1.3 !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine .user-id{font-size:10px !important;line-height:1.25 !important;word-break:normal !important;white-space:nowrap !important;flex-wrap:nowrap !important;gap:4px !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText{white-space:nowrap !important;letter-spacing:-0.02em !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn{font-size:10.5px !important;padding:4px 8px 4px 10px !important;}' +
+          'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(10px + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
@@ -1133,4 +1154,19 @@
       }
     }
   }
+
+  (function loadBackArrowAssets() {
+    var v = '20260525-jt';
+    try {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/css/back-arrow.css?v=' + v;
+      document.head.appendChild(link);
+    } catch (e) {}
+    try {
+      var s = document.createElement('script');
+      s.src = '/js/back-arrow.js?v=' + v;
+      document.head.appendChild(s);
+    } catch (e) {}
+  })();
 })();

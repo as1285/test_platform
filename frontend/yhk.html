@@ -145,7 +145,7 @@
 <body>
     <div class="header">
         <a href="mine.html" class="back-btn">
-            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
             <span>返回</span>
         </a>
         <span class="header-title">银行卡</span>
@@ -156,7 +156,7 @@
     <div class="footer">
         <a href="yhk_add.html" class="btn-add">添加</a>
     </div>
-    <script src="/js/bank_icons.js?v=20260524-boc-fix"></script>
+    <script src="/js/bank_icons.js?v=20260524-icongo"></script>
     <script>
         (function () {
             var mount = document.getElementById('bankListMount');
@@ -202,7 +202,7 @@
                         esc(c.bank_name || '银行卡') +
                         '</div>' +
                         '<div class="bank-mask">' +
-                        esc(c.card_no_masked || '****') +
+                        esc(c.card_no_masked_short || c.card_no_masked || '—') +
                         '</div>' +
                         '</div>' +
                         '</a>';

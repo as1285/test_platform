@@ -1,0 +1,22 @@
+/* 统一返回箭头图标（/jt.png） */
+a.back-btn,
+a.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.back-icon {
+    width: 9px;
+    height: auto;
+    display: block;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* 蓝底/渐变顶栏上的白色返回文字 */
+a.back-link .back-icon,
+body.page-register .back-btn .back-icon,
+body.page-install-guide .back-btn .back-icon {
+    filter: brightness(0) invert(1);
+}

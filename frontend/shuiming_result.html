@@ -100,9 +100,9 @@
             outline: none;
         }
 
-        .back-btn svg {
+        .back-btn .back-icon {
             width: 9px;
-            height: 14px;
+            height: auto;
             flex-shrink: 0;
         }
 
@@ -608,7 +608,7 @@
             font-size: 18px;
         }
 
-        html.app-ios-iphone17pro body.page-shuiming-result .top-fixed .header .back-btn svg {
+        html.app-ios-iphone17pro body.page-shuiming-result .top-fixed .header .back-btn .back-icon {
             width: 10px;
             height: 16px;
         }
@@ -628,7 +628,7 @@
             font-size: 18px;
         }
 
-        html.app-ios-iphone-promax-font body.page-shuiming-result .back-btn svg {
+        html.app-ios-iphone-promax-font body.page-shuiming-result .back-btn .back-icon {
             width: 10px;
             height: 16px;
         }
@@ -792,9 +792,7 @@
     <div class="top-fixed">
         <div class="header">
             <a href="shuiming.html" class="back-btn" aria-label="返回">
-                <svg viewBox="0 0 8 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M7 1L1 7l6 6" stroke="#1e6fff" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <img src="/jt.png" class="back-icon" alt="" width="9" decoding="async">
                 <span>返回</span>
             </a>
             <span class="header-title">收入纳税明细</span>

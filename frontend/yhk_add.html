@@ -166,7 +166,7 @@
 <body>
     <div class="header">
         <a href="yhk.html" class="back-btn">
-            <img src="jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
             <span>返回</span>
         </a>
         <span class="header-title">添加银行卡</span>
@@ -210,6 +210,7 @@
         <button type="button" class="btn-next is-disabled" id="yhkNextBtn">下一步</button>
         <button type="button" class="btn-fill-sample" id="yhkFillSampleBtn">生成示例数据</button>
     </div>
+    <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
     <script>
         (function () {
             var card = document.getElementById('yhkCardNo');
@@ -231,23 +232,24 @@
             }
 
             function inferBankName(cardNo) {
+                if (window.BankCardBins && typeof BankCardBins.inferBankNameFromCardNo === 'function') {
+                    var name = BankCardBins.inferBankNameFromCardNo(cardNo);
+                    return name === '银行卡' ? '银行卡' : name;
+                }
                 var s = digitsOnly(cardNo);
                 if (!s) return '—';
-                if (/^622260|^622261|^622262|^622258|^521899|^434910|^458123/.test(s)) return '交通银行';
-                if (/^622202|^622203|^955880|^621226|^621225/.test(s)) return '中国工商银行';
-                if (/^622700|^621700|^436742|^552245/.test(s)) return '中国建设银行';
-                if (/^622848|^622845|^95599|^103/.test(s)) return '中国农业银行';
-                if (/^621660|^621661|^621662|^456351/.test(s)) return '中国银行';
-                if (/^622588|^622575|^622576/.test(s)) return '招商银行';
-                if (/^622155|^622156|^622157/.test(s)) return '平安银行';
+                if (/^621785|^621786|^621787|^621788|^621789|^621790|^621660|^621661|^621662|^621663|^621666|^621667|^621668|^621669|^621756|^621757|^621758|^621759|^456351/.test(s)) {
+                    return '中国银行';
+                }
                 return '银行卡';
             }
 
             function syncBankName() {
                 if (!bankNameEl) return;
                 var name = inferBankName(card && card.value);
+                if (!digitsOnly(card && card.value)) name = '—';
                 bankNameEl.textContent = name;
-                bankNameEl.classList.toggle('dark', name !== '—');
+                bankNameEl.classList.toggle('dark', name !== '—' && name !== '银行卡');
             }
 
             function formReady() {
