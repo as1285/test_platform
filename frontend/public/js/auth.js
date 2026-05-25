@@ -1085,6 +1085,7 @@
     );
   }
 
+  window.isCordovaTaxAppShell = isCordovaTaxAppShell;
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
