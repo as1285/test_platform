@@ -1,5 +1,6 @@
 /**
- * 浏览器打开登录页 / 我的页时，引导用户安装 APP（Cordova 壳内不展示）。
+ * 浏览器打开登录页 / 我的页时，引导用户安装 APP。
+ * Cordova 壳内、iOS 设备上不展示。
  */
 (function () {
   var INSTALL_PAGE = 'install_guide.html';
@@ -25,6 +26,20 @@
     return false;
   }
 
+  /** iPhone / iPad / iPod 及 iPadOS 桌面模式 */
+  function isLikelyIOSClient() {
+    var ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+      return true;
+    }
+    try {
+      if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function wasDismissedThisSession() {
     try {
       return sessionStorage.getItem(SESSION_DISMISS_KEY) === '1';
@@ -44,6 +59,9 @@
       return false;
     }
     if (isInAppShell()) {
+      return false;
+    }
+    if (isLikelyIOSClient()) {
       return false;
     }
     if (wasDismissedThisSession()) {
