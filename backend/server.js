@@ -71,10 +71,43 @@ const REGISTER_SOURCE_CHANNELS = {
   other: '其他'
 };
 
+const REGISTER_SOURCE_OTHER_MAX = 64;
+
+function normalizeRegisterSourceChannelInput(channel, otherText) {
+  var c = channel != null ? String(channel).trim() : '';
+  if (!c) {
+    return { err: '请选择来源渠道' };
+  }
+  if (c === 'other') {
+    var custom = otherText != null ? String(otherText).trim() : '';
+    if (!custom) {
+      return { err: '请填写其他来源渠道' };
+    }
+    if (custom.length > REGISTER_SOURCE_OTHER_MAX) {
+      return { err: '其他渠道名称不能超过' + REGISTER_SOURCE_OTHER_MAX + '字' };
+    }
+    return { value: 'other:' + custom };
+  }
+  if (!REGISTER_SOURCE_CHANNELS[c]) {
+    return { err: '来源渠道无效' };
+  }
+  return { value: c };
+}
+
 function validateRegisterSourceChannel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
     return '请选择来源渠道';
+  }
+  if (c.indexOf('other:') === 0) {
+    var custom = c.slice(6).trim();
+    if (!custom) {
+      return '请填写其他来源渠道';
+    }
+    if (custom.length > REGISTER_SOURCE_OTHER_MAX) {
+      return '其他渠道名称不能超过' + REGISTER_SOURCE_OTHER_MAX + '字';
+    }
+    return null;
   }
   if (!REGISTER_SOURCE_CHANNELS[c]) {
     return '来源渠道无效';
@@ -86,6 +119,10 @@ function registerSourceChannelLabel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
     return '—';
+  }
+  if (c.indexOf('other:') === 0) {
+    var custom = c.slice(6).trim();
+    return custom ? '其他：' + custom : REGISTER_SOURCE_CHANNELS.other;
   }
   return REGISTER_SOURCE_CHANNELS[c] || c;
 }
@@ -875,6 +912,13 @@ async function createTables() {
     if (e.errno !== 1060) {
       throw e;
     }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users MODIFY COLUMN register_source_channel VARCHAR(128) NULL COMMENT '注册来源渠道'
+    `);
+  } catch (e) {
+    /* 列不存在或已是目标类型时忽略 */
   }
 
   await conn.execute(`
@@ -5059,11 +5103,22 @@ async function handleAuthPost(req, res) {
       }
       incrementApiDailyCounter('EVENT register_submit', '认证注册');
       try {
-        var regSource =
+        var regSourceNorm = normalizeRegisterSourceChannelInput(
           body.register_source_channel != null
             ? body.register_source_channel
-            : body.source_channel;
-        var out = await registerUser(body.username, body.password, regSource);
+            : body.source_channel,
+          body.register_source_channel_other != null
+            ? body.register_source_channel_other
+            : body.source_channel_other
+        );
+        if (regSourceNorm.err) {
+          if (regGuardKeys) {
+            await registerGuard.markRegisterAttemptFail(regGuardKeys);
+          }
+          await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
+          return res.status(400).json({ code: 400, msg: regSourceNorm.err });
+        }
+        var out = await registerUser(body.username, body.password, regSourceNorm.value);
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }

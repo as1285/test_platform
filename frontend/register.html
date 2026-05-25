@@ -146,6 +146,11 @@
                     <option value="other">6. 其他</option>
                 </select>
             </div>
+            <div class="field" id="registerSourceOtherWrap" style="display:none;">
+                <label>请填写渠道 <span class="req">*</span></label>
+                <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="请输入您的来源渠道" maxlength="64" autocomplete="off">
+                <div class="hint">选择「其他」时需手动填写，例如：小红书、微信群等</div>
+            </div>
             <div class="field">
                 <label>验证码 <span class="req">*</span></label>
                 <div style="display:flex;gap:8px;align-items:center;">
@@ -209,6 +214,22 @@
             });
         });
 
+        function syncRegisterSourceOtherField() {
+            var sel = document.getElementById('registerSourceChannel');
+            var wrap = document.getElementById('registerSourceOtherWrap');
+            var otherInput = document.getElementById('registerSourceChannelOther');
+            if (!sel || !wrap || !otherInput) return;
+            var isOther = sel.value === 'other';
+            wrap.style.display = isOther ? 'block' : 'none';
+            otherInput.required = isOther;
+            if (!isOther) {
+                otherInput.value = '';
+            }
+        }
+
+        document.getElementById('registerSourceChannel').addEventListener('change', syncRegisterSourceOtherField);
+        syncRegisterSourceOtherField();
+
         document.getElementById('btnSubmit').addEventListener('click', function () {
             var username = document.getElementById('username').value.trim();
             var password = document.getElementById('password').value;
@@ -233,6 +254,14 @@
                 showErr('请选择来源渠道');
                 return;
             }
+            var sourceChannelOther = '';
+            if (sourceChannel === 'other') {
+                sourceChannelOther = document.getElementById('registerSourceChannelOther').value.trim();
+                if (!sourceChannelOther) {
+                    showErr('请填写其他来源渠道');
+                    return;
+                }
+            }
 
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', { page: 'register' });
@@ -249,6 +278,7 @@
                     username: username,
                     password: password,
                     register_source_channel: sourceChannel,
+                    register_source_channel_other: sourceChannelOther,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns
                 })
