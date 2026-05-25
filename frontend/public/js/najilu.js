@@ -580,6 +580,17 @@
       '</div>';
   }
 
+  function renderPreviewDetailHeader(closeHref) {
+    closeHref = closeHref || 'najilu.html?view=records';
+    return (
+      '<div class="header header--detail">' +
+      '<a href="' + esc(closeHref) + '" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
+      '<span class="header-title">纳税记录详情</span>' +
+      '<a href="' + esc(closeHref) + '" class="header-close-btn">关闭</a>' +
+      '</div>'
+    );
+  }
+
   function renderApplicationsPage() {
     document.title = '纳税记录申请记录';
     var apps = loadApplications();
@@ -1151,20 +1162,16 @@
 
   function renderPreviewPage(id) {
     var app = findApplication(id);
-    document.title = '纳税记录预览';
+    var closeHref = 'najilu.html?view=records';
+    document.title = '纳税记录详情';
     if (!app) {
-      document.body.innerHTML = renderHeader('纳税记录预览', 'najilu.html?view=records') + '<div class="empty-records">申请记录不存在</div>';
+      document.body.innerHTML =
+        renderPreviewDetailHeader(closeHref) + '<div class="empty-records">申请记录不存在</div>';
       return;
     }
-    document.body.innerHTML = '<div class="preview-page">' +
-      renderHeader(
-        '纳税记录预览',
-        'najilu.html?view=records',
-        renderApplicationActionBtn('save', id, '保存', SVG_ICON_SAVE).replace(
-          'class="application-action"',
-          'class="application-action" id="savePreviewBtn"'
-        )
-      ) +
+    document.body.innerHTML =
+      '<div class="preview-page">' +
+      renderPreviewDetailHeader(closeHref) +
       '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div><img id="certificatePreview" class="preview-img" alt="纳税记录" style="display:none;"></div>' +
       '</div>';
     applicationWithCurrentData(app)
@@ -1178,9 +1185,6 @@
         document.getElementById('previewLoading').style.display = 'none';
         img.src = ret.url;
         img.style.display = 'block';
-        document.getElementById('savePreviewBtn').onclick = function () {
-          downloadUrl(ret.url, ret.app);
-        };
       })
       .catch(function (err) {
         var loading = document.getElementById('previewLoading');
