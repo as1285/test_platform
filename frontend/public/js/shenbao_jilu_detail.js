@@ -243,6 +243,9 @@
     var activeDetailPanel = 'declare';
     var refundLongPressTimer = null;
     var refundLongPressTriggered = false;
+    var refundPressPoint = null;
+    var REFUND_LONG_PRESS_MS = 550;
+    var REFUND_LONG_PRESS_MOVE_PX = 12;
 
     function escHtml(s) {
         return String(s == null ? '' : s)
@@ -278,8 +281,9 @@
         if (!state.record || state.isNew) {
             return Promise.resolve();
         }
+        var list = Array.isArray(state.record.refundRecords) ? state.record.refundRecords : [];
         var payload = Object.assign({}, state.record, {
-            refundRecords: ensureRefundRecords(),
+            refundRecords: list.length ? Store.normalizeRefundRecords(list) : [],
             detailCustomized: true
         });
         return Store.saveRecord(state.tab, payload).then(function (saved) {
@@ -404,22 +408,52 @@
             clearTimeout(refundLongPressTimer);
             refundLongPressTimer = null;
         }
+        refundPressPoint = null;
         document.querySelectorAll('.refund-card.is-longpress').forEach(function (el) {
             el.classList.remove('is-longpress');
         });
     }
 
-    function startRefundLongPress(cardEl, refundId) {
+    function refundPressCoords(ev) {
+        if (ev.touches && ev.touches[0]) {
+            return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+        }
+        if (typeof ev.clientX === 'number') {
+            return { x: ev.clientX, y: ev.clientY };
+        }
+        return null;
+    }
+
+    function refundPressMovedTooFar(ev) {
+        if (!refundPressPoint) {
+            return false;
+        }
+        var p = refundPressCoords(ev);
+        if (!p) {
+            return false;
+        }
+        var dx = p.x - refundPressPoint.x;
+        var dy = p.y - refundPressPoint.y;
+        return Math.sqrt(dx * dx + dy * dy) > REFUND_LONG_PRESS_MOVE_PX;
+    }
+
+    function startRefundLongPress(cardEl, refundId, ev) {
         clearRefundLongPress();
         refundLongPressTriggered = false;
+        refundPressPoint = refundPressCoords(ev);
         if (cardEl) {
             cardEl.classList.add('is-longpress');
         }
         refundLongPressTimer = setTimeout(function () {
             refundLongPressTriggered = true;
             clearRefundLongPress();
+            if (navigator.vibrate) {
+                try {
+                    navigator.vibrate(30);
+                } catch (e) {}
+            }
             deleteRefundRecord(refundId);
-        }, 550);
+        }, REFUND_LONG_PRESS_MS);
     }
 
     function updateHeaderTitleForTab(panelName) {
@@ -697,16 +731,32 @@
             if (!rid) {
                 return;
             }
-            startRefundLongPress(card, rid);
+            startRefundLongPress(card, rid, ev);
+        }
+
+        function onRefundPressMove(ev) {
+            if (refundPressMovedTooFar(ev)) {
+                clearRefundLongPress();
+            }
         }
 
         root.addEventListener('touchstart', onRefundPressStart, { passive: true });
         root.addEventListener('mousedown', onRefundPressStart);
+        root.addEventListener('touchmove', onRefundPressMove, { passive: true });
+        root.addEventListener('mousemove', onRefundPressMove);
         root.addEventListener('touchend', clearRefundLongPress);
         root.addEventListener('touchcancel', clearRefundLongPress);
-        root.addEventListener('touchmove', clearRefundLongPress);
         root.addEventListener('mouseup', clearRefundLongPress);
         root.addEventListener('mouseleave', clearRefundLongPress);
+        root.addEventListener(
+            'contextmenu',
+            function (ev) {
+                if (ev.target.closest('.refund-card')) {
+                    ev.preventDefault();
+                }
+            },
+            true
+        );
     }
 
     function bindRefundEditSheet() {

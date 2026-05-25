@@ -144,8 +144,11 @@
     }
 
     function normalizeRefundRecords(raw) {
-        if (!Array.isArray(raw) || !raw.length) {
+        if (!Array.isArray(raw)) {
             return defaultRefundRecords();
+        }
+        if (!raw.length) {
+            return [];
         }
         return raw.map(normalizeRefundRecord);
     }
