@@ -6254,10 +6254,14 @@ async function handleAdminUserDataDetail(req, res) {
   }
 }
 
+function randomActivationCodePlain() {
+  return crypto.randomBytes(16).toString('hex').toUpperCase();
+}
+
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
-    var plainCode = crypto.randomBytes(16).toString('hex').toUpperCase();
+    var plainCode = randomActivationCodePlain();
     const conn = await pool.getConnection();
     await conn.execute(
       'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
@@ -6271,6 +6275,65 @@ async function handleAdminIssueCode(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 批量生成激活码（闲鱼等），默认 100 条，写入库并返回列表供前端导出 TXT */
+async function handleAdminIssueCodeBatch(req, res) {
+  var body = req.body || {};
+  var count = parseInt(body.count, 10);
+  if (!count || count < 1) {
+    count = 100;
+  }
+  if (count > 100) {
+    count = 100;
+  }
+  var noteRaw = body.note != null ? String(body.note).trim() : '闲鱼批量';
+  var note = noteRaw || '闲鱼批量';
+  if (note.length > 255) {
+    note = note.slice(0, 255);
+  }
+  var maxUses = 1;
+  var owner = req.admin && req.admin.username ? req.admin.username : null;
+  var codes = [];
+  var seen = Object.create(null);
+  while (codes.length < count) {
+    var c = randomActivationCodePlain();
+    if (seen[c]) {
+      continue;
+    }
+    seen[c] = true;
+    codes.push(c);
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (var i = 0; i < codes.length; i++) {
+      await conn.execute(
+        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
+        [codes[i], maxUses, null, note, owner]
+      );
+    }
+    await conn.commit();
+    return res.json({
+      code: 200,
+      data: {
+        codes: codes,
+        count: codes.length,
+        max_uses: maxUses,
+        note: note,
+        generated_at: new Date().toISOString()
+      }
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (eRb) {}
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  } finally {
+    conn.release();
   }
 }
 
@@ -8320,6 +8383,12 @@ app.get(
 app.get('/api/admin/analytics/daily-conversion', requireAdminAuth, requireAdminMenu('analytics'), handleAdminUsersDailyConversion);
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
+app.post(
+  '/api/admin/issue-code-batch',
+  requireAdminAuth,
+  requireAdminMenu('codes'),
+  handleAdminIssueCodeBatch
+);
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);

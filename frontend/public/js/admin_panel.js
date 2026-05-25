@@ -393,6 +393,52 @@
                 copyFallback(t);
             }
         }
+
+        function formatLocalDateTimeForExport(d) {
+            d = d || new Date();
+            var Y = d.getFullYear();
+            var M = String(d.getMonth() + 1).padStart(2, '0');
+            var D = String(d.getDate()).padStart(2, '0');
+            var h = String(d.getHours()).padStart(2, '0');
+            var m = String(d.getMinutes()).padStart(2, '0');
+            var s = String(d.getSeconds()).padStart(2, '0');
+            return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + s;
+        }
+
+        function downloadActivationCodesTxt(codes, meta) {
+            meta = meta || {};
+            var list = Array.isArray(codes) ? codes : [];
+            if (!list.length) {
+                alert('没有可导出的激活码');
+                return;
+            }
+            var lines = [
+                '# 闲鱼激活码批量导出',
+                '# 生成时间：' + (meta.generated_at || formatLocalDateTimeForExport(new Date())),
+                '# 数量：' + list.length,
+                '# 归属管理员：' + (meta.owner_admin || '—'),
+                '# 说明：每码单次有效、永不过期，仅可激活一个账号',
+                ''
+            ];
+            list.forEach(function (c) {
+                lines.push(String(c).trim());
+            });
+            var blob = new Blob(['\ufeff' + lines.join('\r\n')], {
+                type: 'text/plain;charset=utf-8'
+            });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download =
+                meta.filename ||
+                'xianyu-activation-codes-' +
+                    formatLocalDateTimeForExport(new Date()).replace(/[:\s]/g, '-') +
+                    '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
         function copyFallback(t) {
             var ta = document.createElement('textarea');
             ta.value = t;
@@ -3453,6 +3499,60 @@
                 .catch(function () { alert('网络错误'); })
                 .finally(function () { btn.disabled = false; });
         });
+
+        var btnIssueBatch100 = document.getElementById('btnIssueBatch100');
+        if (btnIssueBatch100) {
+            btnIssueBatch100.addEventListener('click', function () {
+                if (
+                    !confirm(
+                        '将一次性生成 100 个激活码（备注：闲鱼批量），写入数据库并下载 TXT 文件。是否继续？'
+                    )
+                ) {
+                    return;
+                }
+                btnIssueBatch100.disabled = true;
+                adminFetch('api/admin/issue-code-batch', {
+                    method: 'POST',
+                    body: JSON.stringify({ count: 100, note: '闲鱼批量' })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.codes && data.data.codes.length) {
+                            var el = document.getElementById('issueOut');
+                            if (el) {
+                                el.textContent =
+                                    '已批量生成 ' +
+                                    data.data.count +
+                                    ' 个激活码（闲鱼批量），正在下载 TXT…';
+                                el.classList.add('show');
+                            }
+                            downloadActivationCodesTxt(data.data.codes, {
+                                generated_at: formatLocalDateTimeForExport(
+                                    data.data.generated_at
+                                        ? new Date(data.data.generated_at)
+                                        : new Date()
+                                ),
+                                owner_admin:
+                                    currentAdminProfile && currentAdminProfile.username
+                                        ? String(currentAdminProfile.username)
+                                        : '—'
+                            });
+                            loadCodes(1);
+                            alert('已生成 ' + data.data.count + ' 个激活码，TXT 已下载');
+                        } else {
+                            alert(data.msg || '批量生成失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnIssueBatch100.disabled = false;
+                    });
+            });
+        }
 
         document.getElementById('btnRefreshCodes').addEventListener('click', function() { loadCodes(1); });
         document.getElementById('btnSearchCodes').addEventListener('click', function() { loadCodes(1); });

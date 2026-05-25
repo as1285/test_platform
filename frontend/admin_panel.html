@@ -366,11 +366,12 @@
                 <div id="page-codes" class="page-panel" role="tabpanel">
         <section>
             <h2>生成激活码</h2>
-            <div class="form-row">
-                <button type="button" class="btn-primary" id="btnIssue">生成</button>
+            <div class="form-row" style="flex-wrap:wrap;gap:10px;align-items:center;">
+                <button type="button" class="btn-primary" id="btnIssue">生成 1 个</button>
+                <button type="button" class="btn-primary" id="btnIssueBatch100">批量生成 100 个（闲鱼）</button>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>；子账号仅能查看自己生成的激活码，admin 超级账号默认展示<strong>全部管理员</strong>的激活码（按 ID 倒序，最新在前）。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成会一次性写入 100 条并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。子账号仅能查看自己生成的激活码，admin 超级账号默认展示<strong>全部管理员</strong>的激活码（按 ID 倒序，最新在前）。</p>
             <p class="stat" id="codeListStat" style="margin:0 0 10px;"></p>
         </section>
 
