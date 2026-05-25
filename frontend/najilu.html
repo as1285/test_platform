@@ -448,18 +448,56 @@
         .application-actions {
             display: flex;
             justify-content: flex-end;
-            gap: 24px;
-            padding-top: 12px;
+            align-items: center;
+            gap: 28px;
+            padding-top: 10px;
             font-size: 15px;
         }
 
         .application-action {
             border: none;
             background: transparent;
-            color: #6b98cf;
+            color: #428bf7;
             font-size: 15px;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0;
+            font-family: inherit;
+            line-height: 1;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        .application-action:active {
+            opacity: 0.75;
+        }
+
+        .application-action-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .application-action-icon svg {
+            display: block;
+            width: 18px;
+            height: 18px;
+        }
+
+        .application-action-text {
+            font-size: 15px;
+            color: inherit;
+        }
+
+        .header .application-action {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         .empty-records {
@@ -636,7 +674,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260523-month-picker-android"></script>
+    <script src="/js/najilu.js?v=20260525-app-action-icons"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

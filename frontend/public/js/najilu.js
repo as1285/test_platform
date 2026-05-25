@@ -15,6 +15,32 @@
       .replace(/'/g, '&#39;');
   }
 
+  var SVG_ICON_PREVIEW =
+    '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M10 3.8C5.9 3.8 2.2 6.7 1 10c1.2 3.3 4.9 6.2 9 6.2s7.8-2.9 9-6.2c-1.2-3.3-4.9-6.2-9-6.2z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>' +
+    '<circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.35"/></svg>';
+
+  var SVG_ICON_SAVE =
+    '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M15.2 2.5H6.2a2 2 0 00-2 2v13a2 2 0 002 2h9.8a2 2 0 002-2V7.1l-4.8-4.6z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>' +
+    '<path d="M13.2 2.5v5.2H6.8V2.5" stroke="currentColor" stroke-width="1.35"/>' +
+    '<rect x="7" y="11.2" width="6" height="5.3" rx="0.4" stroke="currentColor" stroke-width="1.35"/></svg>';
+
+  function renderApplicationActionBtn(action, id, label, iconSvg) {
+    return (
+      '<button type="button" class="application-action" data-action="' +
+      esc(action) +
+      '" data-id="' +
+      esc(id) +
+      '">' +
+      '<span class="application-action-icon">' +
+      iconSvg +
+      '</span><span class="application-action-text">' +
+      esc(label) +
+      '</span></button>'
+    );
+  }
+
   function getParam(name) {
     try {
       return new URLSearchParams(window.location.search).get(name) || '';
@@ -574,8 +600,8 @@
           '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' + esc(periodText(app.period_start, app.period_end)) + '</span><span class="application-status">' + esc(app.status || '制作成功') + '</span></div>' +
           '<div class="application-line"><span class="application-label">开具范围：</span><span class="application-value">' + esc(app.scope || '全国') + '</span></div>' +
           '<div class="application-actions">' +
-          '<button type="button" class="application-action" data-action="preview" data-id="' + esc(app.id) + '">◎预览</button>' +
-          '<button type="button" class="application-action" data-action="save" data-id="' + esc(app.id) + '">▣保存</button>' +
+          renderApplicationActionBtn('preview', app.id, '预览', SVG_ICON_PREVIEW) +
+          renderApplicationActionBtn('save', app.id, '保存', SVG_ICON_SAVE) +
           '</div></div>';
       });
     }
@@ -1131,7 +1157,14 @@
       return;
     }
     document.body.innerHTML = '<div class="preview-page">' +
-      renderHeader('纳税记录预览', 'najilu.html?view=records', '<button type="button" id="savePreviewBtn" class="application-action" style="position:absolute;right:14px;">保存</button>') +
+      renderHeader(
+        '纳税记录预览',
+        'najilu.html?view=records',
+        renderApplicationActionBtn('save', id, '保存', SVG_ICON_SAVE).replace(
+          'class="application-action"',
+          'class="application-action" id="savePreviewBtn"'
+        )
+      ) +
       '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div><img id="certificatePreview" class="preview-img" alt="纳税记录" style="display:none;"></div>' +
       '</div>';
     applicationWithCurrentData(app)
