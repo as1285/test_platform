@@ -5,13 +5,10 @@
         tab: 'done',
         id: '',
         record: null,
-        category: 'salary',
-        editItemId: null,
-        isNewItem: false
+        taxYear: '',
+        incomeBreakdown: null,
+        category: 'salary'
     };
-
-    var longPressTimer = null;
-    var longPressTriggered = false;
 
     function escHtml(s) {
         return String(s == null ? '' : s)
@@ -21,6 +18,145 @@
             .replace(/"/g, '&quot;');
     }
 
+    function pad2(n) {
+        var x = parseInt(n, 10);
+        if (!x || x < 1 || x > 12) {
+            return '01';
+        }
+        return x < 10 ? '0' + x : String(x);
+    }
+
+    function formatTaxAmount(v) {
+        var n = parseFloat(String(v == null ? '' : v).replace(/,/g, ''));
+        if (isNaN(n)) {
+            return '0.00';
+        }
+        return n.toFixed(2);
+    }
+
+    function taxYearFromRecord(rec) {
+        if (!rec) {
+            return '';
+        }
+        if (rec.taxYear) {
+            return String(rec.taxYear);
+        }
+        if (rec.periodEnd && /^\d{4}/.test(rec.periodEnd)) {
+            return rec.periodEnd.slice(0, 4);
+        }
+        if (rec.groupMonth && /^\d{4}/.test(rec.groupMonth)) {
+            return rec.groupMonth.slice(0, 4);
+        }
+        return '';
+    }
+
+    /** 个税记录 income_type → 申报收入 Tab */
+    function taxTypeToCategory(incomeType) {
+        var t = String(incomeType || '').replace(/\s/g, '');
+        if (!t) {
+            return 'salary';
+        }
+        if (t.indexOf('劳务') >= 0) {
+            return 'labor';
+        }
+        if (t.indexOf('稿酬') >= 0) {
+            return 'author';
+        }
+        if (t.indexOf('特许') >= 0) {
+            return 'royalty';
+        }
+        if (t.indexOf('工资') >= 0) {
+            return 'salary';
+        }
+        return 'salary';
+    }
+
+    function defaultSubtypeForCategory(catKey) {
+        for (var i = 0; i < Store.INCOME_CATEGORIES.length; i++) {
+            if (Store.INCOME_CATEGORIES[i].key === catKey) {
+                return Store.INCOME_CATEGORIES[i].defaultSubtype;
+            }
+        }
+        return '正常工资薪金';
+    }
+
+    function taxRecordToIncomeItem(r, catKey) {
+        var y = parseInt(r.year, 10);
+        var m = parseInt(r.month, 10);
+        var subtype = String(r.income_subtype || '').trim();
+        if (!subtype) {
+            subtype = defaultSubtypeForCategory(catKey);
+        }
+        return {
+            id: String(r.id != null ? r.id : ''),
+            period: y && m ? y + '-' + pad2(m) : '',
+            subtype: subtype,
+            employer: String(r.company_name || '').trim(),
+            amount: formatTaxAmount(r.income)
+        };
+    }
+
+    function buildIncomeBreakdownFromTaxRecords(records, taxYear) {
+        var out = {
+            salary: [],
+            labor: [],
+            author: [],
+            royalty: []
+        };
+        if (!taxYear || !Array.isArray(records)) {
+            return out;
+        }
+        var yearStr = String(taxYear);
+        records.forEach(function (r) {
+            if (String(r.year) !== yearStr) {
+                return;
+            }
+            var cat = taxTypeToCategory(r.income_type);
+            var item = taxRecordToIncomeItem(r, cat);
+            if (!item.period) {
+                return;
+            }
+            out[cat].push(item);
+        });
+        Store.INCOME_CATEGORIES.forEach(function (cat) {
+            out[cat.key].sort(function (a, b) {
+                if (a.period !== b.period) {
+                    return a.period < b.period ? 1 : -1;
+                }
+                return String(a.id).localeCompare(String(b.id));
+            });
+        });
+        return out;
+    }
+
+    function fetchTaxRecords() {
+        if (typeof authFetch !== 'function') {
+            return Promise.reject(new Error('请先登录'));
+        }
+        return authFetch('api/tax.php?action=records')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (j) {
+                if (j.code === 200 && j.data && Array.isArray(j.data.records)) {
+                    return j.data.records;
+                }
+                throw new Error(j.msg || '个税记录加载失败');
+            });
+    }
+
+    function ensureBreakdown() {
+        if (!state.incomeBreakdown) {
+            state.incomeBreakdown = {
+                salary: [],
+                labor: [],
+                author: [],
+                royalty: []
+            };
+        }
+        return state.incomeBreakdown;
+    }
+
     function currentCat() {
         for (var i = 0; i < Store.INCOME_CATEGORIES.length; i++) {
             if (Store.INCOME_CATEGORIES[i].key === state.category) {
@@ -28,14 +164,6 @@
             }
         }
         return Store.INCOME_CATEGORIES[0];
-    }
-
-    function ensureBreakdown() {
-        if (!state.record) {
-            return { salary: [], labor: [], author: [], royalty: [] };
-        }
-        state.record.incomeBreakdown = Store.normalizeIncomeBreakdown(state.record.incomeBreakdown);
-        return state.record.incomeBreakdown;
     }
 
     function currentList() {
@@ -61,18 +189,6 @@
             '&id=' +
             encodeURIComponent(state.id)
         );
-    }
-
-    function persistRecord() {
-        if (!state.record) {
-            return Promise.resolve();
-        }
-        state.record.totalIncome = Store.sumIncomeBreakdown(state.record.incomeBreakdown);
-        state.record.detailCustomized = true;
-        return Store.saveRecord(state.tab, state.record).then(function (saved) {
-            state.record = saved || state.record;
-            ensureBreakdown();
-        });
     }
 
     function renderTabs() {
@@ -108,12 +224,12 @@
 
     function renderList() {
         var listEl = document.getElementById('incomeList');
-        var emptyEl = document.getElementById('emptyState');
         var listWrap = document.getElementById('listWrap');
         var titleBtn = document.getElementById('headerTitleBtn');
         var cat = currentCat();
         if (titleBtn) {
             titleBtn.textContent = cat.label;
+            titleBtn.classList.remove('header-title--add');
             document.title = cat.label;
         }
         if (!listEl) {
@@ -125,14 +241,8 @@
         }
         if (!list.length) {
             listEl.innerHTML = '';
-            if (titleBtn) {
-                titleBtn.classList.add('header-title--add');
-            }
             renderSummary();
             return;
-        }
-        if (titleBtn) {
-            titleBtn.classList.add('header-title--add');
         }
         var html = '';
         list.forEach(function (item) {
@@ -168,169 +278,32 @@
         return null;
     }
 
-    function openEditSheet(item, isNew) {
-        state.editItemId = item ? item.id : null;
-        state.isNewItem = !!isNew;
-        var mask = document.getElementById('editMask');
-        var titleEl = document.getElementById('editTitle');
-        if (titleEl) {
-            titleEl.textContent = isNew ? '新增收入' : '编辑收入';
-        }
-        document.getElementById('editPeriod').value = (item && item.period) || '';
-        document.getElementById('editSubtype').value =
-            (item && item.subtype) || currentCat().defaultSubtype;
-        document.getElementById('editEmployer').value = (item && item.employer) || '';
-        document.getElementById('editAmount').value = (item && item.amount) || '0.00';
-        if (mask) {
-            mask.classList.add('show');
-            mask.setAttribute('aria-hidden', 'false');
-        }
-        document.getElementById('editPeriod').focus();
-    }
-
-    function closeEditSheet() {
-        var mask = document.getElementById('editMask');
-        if (mask) {
-            mask.classList.remove('show');
-            mask.setAttribute('aria-hidden', 'true');
-        }
-        state.editItemId = null;
-        state.isNewItem = false;
-    }
-
-    function saveEditSheet() {
-        var period = String(document.getElementById('editPeriod').value || '').trim();
-        var subtype = String(document.getElementById('editSubtype').value || '').trim();
-        var employer = String(document.getElementById('editEmployer').value || '').trim();
-        var amount = String(document.getElementById('editAmount').value || '')
-            .replace(/元/g, '')
-            .trim();
-        if (!period) {
-            alert('请填写所属期');
-            return;
-        }
-        if (!subtype) {
-            alert('请填写所得项目小类');
-            return;
-        }
-        var bd = ensureBreakdown();
-        var list = bd[state.category];
-        if (state.isNewItem) {
-            list.unshift(
-                Store.createIncomeItem({
-                    period: period,
-                    subtype: subtype,
-                    employer: employer,
-                    amount: amount
-                })
-            );
-        } else {
-            var item = findItem(state.editItemId);
-            if (!item) {
-                return;
-            }
-            item.period = period;
-            item.subtype = subtype;
-            item.employer = employer;
-            item.amount = amount;
-        }
-        bd[state.category] = list.map(function (x) {
-            return Store.normalizeIncomeItem(x, currentCat().defaultSubtype);
-        });
-        closeEditSheet();
-        renderList();
-        persistRecord().catch(function (e) {
-            alert((e && e.message) || '保存失败');
-        });
-    }
-
-    function addIncomeItem() {
-        openEditSheet(
-            Store.createIncomeItem({ subtype: currentCat().defaultSubtype }),
-            true
-        );
-    }
-
-    function deleteIncomeItem(itemId) {
-        if (!confirm('确定删除这条收入记录？')) {
-            return;
-        }
-        var bd = ensureBreakdown();
-        bd[state.category] = bd[state.category].filter(function (x) {
-            return String(x.id) !== String(itemId);
-        });
-        renderList();
-        persistRecord().catch(function (e) {
-            alert((e && e.message) || '保存失败');
-        });
-    }
-
-    function clearLongPress() {
-        if (longPressTimer) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-        }
-        document.querySelectorAll('.income-item.is-longpress').forEach(function (el) {
-            el.classList.remove('is-longpress');
-        });
-    }
-
-    function startLongPress(row, itemId) {
-        clearLongPress();
-        longPressTriggered = false;
-        if (row) {
-            row.classList.add('is-longpress');
-        }
-        longPressTimer = setTimeout(function () {
-            longPressTriggered = true;
-            clearLongPress();
-            deleteIncomeItem(itemId);
-        }, 550);
-    }
-
     function bindListEvents() {
         var listEl = document.getElementById('incomeList');
         if (!listEl || listEl.getAttribute('data-bound') === '1') {
             return;
         }
         listEl.setAttribute('data-bound', '1');
-
         listEl.addEventListener('click', function (ev) {
-            if (longPressTriggered) {
-                longPressTriggered = false;
-                ev.preventDefault();
-                return;
-            }
             var row = ev.target.closest('.income-item');
             if (!row) {
                 return;
             }
             var itemId = row.getAttribute('data-item-id');
+            if (!itemId) {
+                return;
+            }
             var item = findItem(itemId);
-            if (item) {
-                openEditSheet(item, false);
-            }
-            ev.preventDefault();
-        });
-
-        function onPressStart(ev) {
-            var row = ev.target.closest('.income-item');
-            if (!row) {
+            if (!item) {
                 return;
             }
-            var itemId = row.getAttribute('data-item-id');
-            if (itemId) {
-                startLongPress(row, itemId);
-            }
-        }
-
-        listEl.addEventListener('touchstart', onPressStart, { passive: true });
-        listEl.addEventListener('mousedown', onPressStart);
-        listEl.addEventListener('touchend', clearLongPress);
-        listEl.addEventListener('touchcancel', clearLongPress);
-        listEl.addEventListener('touchmove', clearLongPress);
-        listEl.addEventListener('mouseup', clearLongPress);
-        listEl.addEventListener('mouseleave', clearLongPress);
+            var year = state.taxYear || (item.period ? item.period.slice(0, 4) : '');
+            window.location.href =
+                'xiangqing.html?id=' +
+                encodeURIComponent(itemId) +
+                '&year=' +
+                encodeURIComponent(year);
+        });
     }
 
     function bindTabs() {
@@ -355,29 +328,24 @@
         if (back) {
             back.href = detailBackUrl();
         }
-        var titleBtn = document.getElementById('headerTitleBtn');
-        if (titleBtn) {
-            titleBtn.addEventListener('click', function () {
-                if (titleBtn.classList.contains('header-title--add')) {
-                    addIncomeItem();
-                }
-            });
-        }
     }
 
-    function bindEditSheet() {
-        var mask = document.getElementById('editMask');
-        var cancel = document.getElementById('editCancel');
-        var save = document.getElementById('editSave');
-        if (mask) {
-            mask.addEventListener('click', closeEditSheet);
-        }
-        if (cancel) {
-            cancel.addEventListener('click', closeEditSheet);
-        }
-        if (save) {
-            save.addEventListener('click', saveEditSheet);
-        }
+    function loadIncomeFromTaxRecords() {
+        return fetchTaxRecords()
+            .then(function (records) {
+                state.incomeBreakdown = buildIncomeBreakdownFromTaxRecords(
+                    records,
+                    state.taxYear
+                );
+            })
+            .catch(function () {
+                state.incomeBreakdown = {
+                    salary: [],
+                    labor: [],
+                    author: [],
+                    royalty: []
+                };
+            });
     }
 
     function init() {
@@ -408,14 +376,19 @@
             .then(function (rec) {
                 if (!rec) {
                     window.location.replace('shenbao_jilu.html');
-                    return;
+                    return null;
                 }
                 state.record = rec;
-                ensureBreakdown();
+                state.taxYear = taxYearFromRecord(rec);
+                return loadIncomeFromTaxRecords();
+            })
+            .then(function (done) {
+                if (done === null) {
+                    return;
+                }
                 bindHeader();
                 bindTabs();
                 bindListEvents();
-                bindEditSheet();
                 renderTabs();
                 renderList();
             })
