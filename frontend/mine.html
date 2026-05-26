@@ -410,23 +410,75 @@
             gap: 6px;
         }
 
-        /* iOS：纳税人识别号行略放大，避免系统字体偏小发虚 */
+        /* iOS Safari / iPhone：税号+18 位识别号单行展示，避免末位 X 折行 */
+        html.app-ios-client body.page-mine .user-info,
+        html[class*='app-ios'] body.page-mine .user-info {
+            gap: 6px;
+        }
+
+        html.app-ios-client body.page-mine .user-info-text,
+        html[class*='app-ios'] body.page-mine .user-info-text {
+            padding-right: 0;
+            min-width: 0;
+        }
+
+        html.app-ios-client body.page-mine .user-name,
+        html[class*='app-ios'] body.page-mine .user-name {
+            margin-bottom: 6px;
+        }
+
         html.app-ios-client body.page-mine .user-id,
         html[class*='app-ios'] body.page-mine .user-id {
-            font-size: 13.5px;
-            line-height: 1.5;
+            font-size: 11px;
+            line-height: 1.3;
+            word-break: normal;
+            overflow-wrap: normal;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            gap: 4px;
+            max-width: 100%;
+        }
+
+        html.app-ios-client body.page-mine #userTaxIdText,
+        html[class*='app-ios'] body.page-mine #userTaxIdText {
+            white-space: nowrap;
+            letter-spacing: -0.04em;
+            font-variant-numeric: tabular-nums;
         }
 
         html.app-ios-client body.page-mine .tax-eye-btn,
         html[class*='app-ios'] body.page-mine .tax-eye-btn {
-            width: 19px;
-            height: 19px;
+            width: 16px;
+            height: 16px;
         }
 
         html.app-ios-client body.page-mine .tax-eye-btn svg,
         html[class*='app-ios'] body.page-mine .tax-eye-btn svg {
-            width: 17px;
-            height: 17px;
+            width: 14px;
+            height: 14px;
+        }
+
+        html.app-ios-client body.page-mine .personal-info-btn,
+        html[class*='app-ios'] body.page-mine .personal-info-btn {
+            font-size: 11px;
+            padding: 4px 9px 4px 11px;
+        }
+
+        /* 纯 Safari（未命中 app-ios-client 时）窄屏兜底 */
+        @supports (-webkit-touch-callout: none) {
+            @media (max-width: 428px) {
+                body.page-mine .user-id {
+                    font-size: 11px;
+                    word-break: normal;
+                    white-space: nowrap;
+                    flex-wrap: nowrap;
+                }
+
+                body.page-mine #userTaxIdText {
+                    white-space: nowrap;
+                    letter-spacing: -0.04em;
+                }
+            }
         }
 
         .tax-eye-btn {
