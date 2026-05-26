@@ -1,5 +1,7 @@
 (function (global) {
+    /** 图标来源：https://github.com/icongo/bank-logos (MIT) */
     var ICON_BASE = 'bank_icons/';
+    var ICON_VERSION = '20260524-icongo';
     var ICON_MAP = {
         '交通银行': 'bankcomm-rect.svg',
         '中国工商银行': 'icbc-rect.svg',
@@ -34,7 +36,7 @@
     function getBankIconSrc(name) {
         var key = normalizeBankName(name);
         if (ICON_MAP[key]) {
-            return ICON_BASE + ICON_MAP[key] + '?v=2';
+            return ICON_BASE + ICON_MAP[key] + '?v=' + ICON_VERSION;
         }
         return '';
     }

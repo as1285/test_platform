@@ -98,21 +98,23 @@
     }
     var mh = document.getElementById('assetMessageHeader');
     var msgBuiltin = document.getElementById('messageHeaderBuiltin');
-    if (mh && msgBuiltin && cfg.message_header) {
-      var mp = String(cfg.message_header).trim();
-      var defaultSlice =
-        mp === 'message_header.jpg' || /(^|\/)message_header\.jpg$/i.test(mp);
-      if (!defaultSlice) {
+    if (msgBuiltin) {
+      msgBuiltin.style.display = '';
+    }
+    if (mh) {
+      var mp = cfg.message_header ? String(cfg.message_header).trim() : '';
+      var useCustom =
+        mp && mp !== 'message_header.jpg' && !/(^|\/)message_header\.jpg$/i.test(mp);
+      if (useCustom) {
         setSrcIfChanged(mh, mp);
         mh.style.display = 'block';
-        msgBuiltin.style.display = 'none';
+        if (msgBuiltin) {
+          msgBuiltin.style.display = 'none';
+        }
       } else {
         mh.removeAttribute('src');
         mh.style.display = 'none';
-        msgBuiltin.style.display = '';
       }
-    } else if (mh && cfg.message_header) {
-      setSrcIfChanged(mh, cfg.message_header);
     }
     var pg = document.getElementById('assetPiaojiaGoumai');
     if (pg && cfg.piaojia_goumai) {
@@ -167,7 +169,7 @@
       shouye_lb: d.shouye_lb || 'lb.jpg',
       daiban_header: d.daiban_header || 'daiban.jpg',
       bancha_header: d.bancha_header || 'db.jpg',
-      message_header: d.message_header || 'message_header.jpg',
+      message_header: d.message_header || '',
       piaojia_goumai: d.piaojia_goumai || 'piaojia-goumai.png',
       piaojia_xiaoshou: d.piaojia_xiaoshou || 'piaojia-xiaoshou.png'
     };
