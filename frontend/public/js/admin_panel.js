@@ -596,6 +596,83 @@
             return esc(String(v));
         }
 
+        var ADMIN_TAX_RECORD_COLUMNS = [
+            { key: 'tax_period', label: '税款所属期' },
+            { key: 'year', label: '年' },
+            { key: 'month', label: '月' },
+            { key: 'income_type', label: '所得项目' },
+            { key: 'income_subtype', label: '所得小类' },
+            { key: 'company_name', label: '扣缴义务人', cellClass: 'cell-break' },
+            { key: 'company_tax_id', label: '纳税人识别号', cellClass: 'cell-break' },
+            { key: 'tax_authority', label: '主管税务机关', cellClass: 'cell-break' },
+            { key: 'report_channel', label: '申报渠道' },
+            { key: 'report_date', label: '申报日期' },
+            { key: 'income', label: '收入', money: true },
+            { key: 'tax_reported', label: '已申报税额', money: true },
+            { key: 'income_this_period', label: '本期收入', money: true },
+            { key: 'tax_free_income', label: '本期免税收入', money: true },
+            { key: 'deduction_fee', label: '本期减除费用', money: true },
+            { key: 'special_deduction', label: '本期专项扣除', money: true },
+            { key: 'pension_insurance', label: '基本养老保险', money: true },
+            { key: 'medical_insurance', label: '基本医疗保险', money: true },
+            { key: 'unemployment_insurance', label: '失业保险', money: true },
+            { key: 'housing_fund', label: '住房公积金', money: true },
+            { key: 'other_deduction', label: '本期其他扣除', money: true },
+            { key: 'donation_deduction', label: '捐赠扣除', money: true },
+            { key: 'updated_at', label: '最后更新', dt: true }
+        ];
+
+        function normalizeAdminTaxRecordRow(r) {
+            var row = r || {};
+            if (!row.tax_period && row.year != null && row.month != null) {
+                row = Object.assign({}, row, {
+                    tax_period: row.year + '-' + String(row.month).padStart(2, '0')
+                });
+            }
+            return row;
+        }
+
+        function renderAdminTaxRecordCell(r, col) {
+            var v = r[col.key];
+            if (col.dt && v) {
+                return esc(formatDt(v));
+            }
+            if (col.money) {
+                return formatMoneyLike(v);
+            }
+            if (col.key === 'month' && v != null && v !== '') {
+                return esc(String(v).padStart(2, '0'));
+            }
+            if (v == null || v === '') {
+                return '—';
+            }
+            return esc(String(v));
+        }
+
+        function renderAdminTaxRecordsTable(records) {
+            if (!records || !records.length) {
+                return '<div style="color:#999;">暂无个税记录</div>';
+            }
+            var html =
+                '<p style="font-size:12px;color:#999;margin:0 0 8px 0;">与咨询端表单字段一致，可左右滑动查看全部列。</p>';
+            html += '<div class="scroll-x"><table class="user-detail-table admin-tax-records-table"><thead><tr>';
+            ADMIN_TAX_RECORD_COLUMNS.forEach(function (col) {
+                html += '<th>' + esc(col.label) + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            records.forEach(function (raw) {
+                var r = normalizeAdminTaxRecordRow(raw);
+                html += '<tr>';
+                ADMIN_TAX_RECORD_COLUMNS.forEach(function (col) {
+                    var cls = col.cellClass ? ' class="' + col.cellClass + '"' : '';
+                    html += '<td' + cls + '>' + renderAdminTaxRecordCell(r, col) + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            return html;
+        }
+
         function buildTodayTaxChangesHtml(payload) {
             var changes = payload && Array.isArray(payload.today_tax_changes) ? payload.today_tax_changes : [];
             var changeDate = payload && payload.change_date ? String(payload.change_date) : '';
@@ -775,23 +852,7 @@
             html += buildTodayTaxChangesHtml(payload);
 
             html += '<div style="margin:10px 0 8px 0;color:#666;">个税记录（' + records.length + ' 条）</div>';
-            if (!records.length) {
-                html += '<div style="color:#999;">暂无个税记录</div>';
-            } else {
-                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>税款所属期</th><th>所得项目</th><th>所得小类</th><th>扣缴义务人</th><th>收入</th><th>已申报税额</th></tr></thead><tbody>';
-                records.forEach(function (r) {
-                    var period = r.tax_period || ((r.year || '') + '-' + String(r.month || '').padStart(2, '0'));
-                    html += '<tr>';
-                    html += '<td>' + esc(period || '—') + '</td>';
-                    html += '<td>' + esc(r.income_type || '—') + '</td>';
-                    html += '<td>' + esc(r.income_subtype || '—') + '</td>';
-                    html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
-                    html += '<td>' + formatMoneyLike(r.income) + '</td>';
-                    html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
-                    html += '</tr>';
-                });
-                html += '</tbody></table></div>';
-            }
+            html += renderAdminTaxRecordsTable(records);
             html += '</div>';
             return html;
         }
@@ -2651,24 +2712,7 @@
                 '">正在生成凭证预览…</div>';
 
             html += '<div style="margin:10px 0 6px;color:#666;">个税记录（' + (data.tax_records || []).length + ' 条）</div>';
-            if (!(data.tax_records || []).length) {
-                html += '<div style="color:#999;">暂无</div>';
-            } else {
-                html +=
-                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>所属期</th><th>公司</th><th>识别号</th><th>税务机关</th><th>收入</th><th>税额</th></tr></thead><tbody>';
-                (data.tax_records || []).forEach(function (r) {
-                    var period = r.tax_period || (r.year ? r.year + '-' + String(r.month || '').padStart(2, '0') : '—');
-                    html += '<tr>';
-                    html += '<td>' + esc(period) + '</td>';
-                    html += '<td class="cell-break">' + esc(r.company_name || '—') + '</td>';
-                    html += '<td class="cell-break"><code>' + esc(r.company_tax_id || '—') + '</code></td>';
-                    html += '<td class="cell-break">' + esc(r.tax_authority || '—') + '</td>';
-                    html += '<td>' + formatMoneyLike(r.income) + '</td>';
-                    html += '<td>' + formatMoneyLike(r.tax_reported) + '</td>';
-                    html += '</tr>';
-                });
-                html += '</tbody></table></div>';
-            }
+            html += renderAdminTaxRecordsTable(data.tax_records || []);
             html += '</div>';
             return html;
         }

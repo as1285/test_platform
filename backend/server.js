@@ -1362,11 +1362,73 @@ var TAX_CHANGE_LOG_FIELDS = [
   { key: 'income_type', label: '所得项目' },
   { key: 'income_subtype', label: '所得小类' },
   { key: 'company_name', label: '扣缴义务人' },
+  { key: 'company_tax_id', label: '扣缴义务人纳税人识别号' },
+  { key: 'tax_authority', label: '主管税务机关' },
+  { key: 'report_channel', label: '申报渠道' },
+  { key: 'report_date', label: '申报日期' },
   { key: 'income', label: '收入' },
   { key: 'tax_reported', label: '已申报税额' },
-  { key: 'report_date', label: '申报日期' },
-  { key: 'company_tax_id', label: '统一社会信用代码' }
+  { key: 'income_this_period', label: '本期收入' },
+  { key: 'tax_free_income', label: '本期免税收入' },
+  { key: 'deduction_fee', label: '本期减除费用' },
+  { key: 'special_deduction', label: '本期专项扣除' },
+  { key: 'pension_insurance', label: '基本养老保险' },
+  { key: 'medical_insurance', label: '基本医疗保险' },
+  { key: 'unemployment_insurance', label: '失业保险' },
+  { key: 'housing_fund', label: '住房公积金' },
+  { key: 'other_deduction', label: '本期其他扣除' },
+  { key: 'donation_deduction', label: '捐赠扣除' }
 ];
+
+var ADMIN_TAX_RECORD_SELECT_SQL =
+  'SELECT id, year, month, income_type, income_subtype, company_name, company_tax_id, tax_authority, ' +
+  'report_channel, report_date, tax_period, income, tax_reported, income_this_period, tax_free_income, ' +
+  'deduction_fee, special_deduction, other_deduction, donation_deduction, ' +
+  'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, created_at, updated_at ' +
+  'FROM tax_records';
+
+function mapTaxRecordRowForAdmin(r) {
+  if (!r) {
+    return null;
+  }
+  function dec(v) {
+    if (v == null || v === '') {
+      return '0.00';
+    }
+    var n = parseFloat(v);
+    return isNaN(n) ? String(v) : n.toFixed(2);
+  }
+  function str(v) {
+    return v != null ? String(v) : '';
+  }
+  return {
+    id: str(r.id),
+    year: r.year != null ? Number(r.year) : null,
+    month: r.month != null ? Number(r.month) : null,
+    tax_period: str(r.tax_period),
+    income_type: str(r.income_type),
+    income_subtype: str(r.income_subtype),
+    company_name: str(r.company_name),
+    company_tax_id: str(r.company_tax_id),
+    tax_authority: str(r.tax_authority),
+    report_channel: str(r.report_channel) || '其他',
+    report_date: str(r.report_date),
+    income: dec(r.income),
+    tax_reported: dec(r.tax_reported),
+    income_this_period: dec(r.income_this_period),
+    tax_free_income: dec(r.tax_free_income),
+    deduction_fee: dec(r.deduction_fee),
+    special_deduction: dec(r.special_deduction),
+    other_deduction: dec(r.other_deduction),
+    donation_deduction: dec(r.donation_deduction),
+    pension_insurance: dec(r.pension_insurance),
+    medical_insurance: dec(r.medical_insurance),
+    unemployment_insurance: dec(r.unemployment_insurance),
+    housing_fund: dec(r.housing_fund),
+    created_at: r.created_at ? r.created_at.toISOString() : '',
+    updated_at: r.updated_at ? r.updated_at.toISOString() : ''
+  };
+}
 
 function taxRecordPayloadToSnapshot(record, recordId) {
   var r = record || {};
@@ -1386,10 +1448,22 @@ function taxRecordPayloadToSnapshot(record, recordId) {
     income_type: r.income_type != null ? String(r.income_type) : '',
     income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
     company_name: r.company_name != null ? String(r.company_name) : '',
+    company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : '',
+    tax_authority: r.tax_authority != null ? String(r.tax_authority) : '',
+    report_channel: r.report_channel != null ? String(r.report_channel) : '',
+    report_date: r.report_date != null ? String(r.report_date) : '',
     income: r.income != null ? String(r.income) : '0',
     tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
-    report_date: r.report_date != null ? String(r.report_date) : '',
-    company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : ''
+    income_this_period: r.income_this_period != null ? String(r.income_this_period) : '0',
+    tax_free_income: r.tax_free_income != null ? String(r.tax_free_income) : '0',
+    deduction_fee: r.deduction_fee != null ? String(r.deduction_fee) : '0',
+    special_deduction: r.special_deduction != null ? String(r.special_deduction) : '0',
+    other_deduction: r.other_deduction != null ? String(r.other_deduction) : '0',
+    donation_deduction: r.donation_deduction != null ? String(r.donation_deduction) : '0',
+    pension_insurance: r.pension_insurance != null ? String(r.pension_insurance) : '0',
+    medical_insurance: r.medical_insurance != null ? String(r.medical_insurance) : '0',
+    unemployment_insurance: r.unemployment_insurance != null ? String(r.unemployment_insurance) : '0',
+    housing_fund: r.housing_fund != null ? String(r.housing_fund) : '0'
   };
 }
 
@@ -6809,8 +6883,7 @@ async function handleAdminUserDataDetail(req, res) {
       var sal = avgMap[username] || { avg_salary_6m: null, avg_salary_6m_label: '未填写' };
 
       const [taxRows] = await conn.execute(
-        `SELECT year, month, company_name, company_tax_id, tax_authority, income, tax_reported, tax_period
-         FROM tax_records WHERE user_id = ? ORDER BY year DESC, month DESC LIMIT 120`,
+        ADMIN_TAX_RECORD_SELECT_SQL + ' WHERE user_id = ? ORDER BY year DESC, month DESC, id DESC LIMIT 120',
         [username]
       );
 
@@ -6877,18 +6950,7 @@ async function handleAdminUserDataDetail(req, res) {
               phone: b.phone
             };
           }),
-          tax_records: taxRows.map(function (r) {
-            return {
-              year: r.year,
-              month: r.month,
-              company_name: r.company_name != null ? String(r.company_name) : '',
-              company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : '',
-              tax_authority: r.tax_authority != null ? String(r.tax_authority) : '',
-              income: r.income != null ? String(r.income) : '0',
-              tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
-              tax_period: r.tax_period != null ? String(r.tax_period) : ''
-            };
-          }),
+          tax_records: taxRows.map(mapTaxRecordRowForAdmin),
           latest_issue_application: latestIssue
         }
       });
@@ -7387,11 +7449,8 @@ async function handleAdminUserTaxRecords(req, res) {
         return res.status(403).json({ code: 403, msg: '无权限查看该用户详情' });
       }
       const [rows] = await conn.execute(
-        `SELECT id, year, month, income_type, income_subtype, company_name, income, tax_reported, tax_period, report_date, created_at, updated_at
-         FROM tax_records
-         WHERE user_id = ?
-         ORDER BY year DESC, month DESC, id DESC
-         LIMIT 200`,
+        ADMIN_TAX_RECORD_SELECT_SQL +
+          ' WHERE user_id = ? ORDER BY year DESC, month DESC, id DESC LIMIT 200',
         [username]
       );
       const [devices] = await conn.execute(
@@ -7419,22 +7478,7 @@ async function handleAdminUserTaxRecords(req, res) {
          LIMIT 80`,
         [username]
       );
-      var out = rows.map(function (r) {
-        return {
-          id: r.id,
-          year: r.year != null ? Number(r.year) : null,
-          month: r.month != null ? Number(r.month) : null,
-          income_type: r.income_type != null ? String(r.income_type) : '',
-          income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
-          company_name: r.company_name != null ? String(r.company_name) : '',
-          income: r.income != null ? String(r.income) : '0.00',
-          tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0.00',
-          tax_period: r.tax_period != null ? String(r.tax_period) : '',
-          report_date: r.report_date != null ? String(r.report_date) : '',
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          updated_at: r.updated_at ? r.updated_at.toISOString() : ''
-        };
-      });
+      var out = rows.map(mapTaxRecordRowForAdmin);
       var devOut = devices.map(function (r) {
         var model = '';
         var platform = '';
