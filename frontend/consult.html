@@ -1362,12 +1362,20 @@
             } catch (e0) {}
         }
 
-        function updateConsultActivateButton() {
+        function updateConsultActivateButton(user) {
             var btn = document.getElementById('btnHeaderActivate');
             if (!btn) {
                 return;
             }
-            btn.style.display = '';
+            var active = false;
+            if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
+                active = true;
+            } else {
+                try {
+                    active = localStorage.getItem('account_active') === '1';
+                } catch (e0) {}
+            }
+            btn.style.display = active ? 'none' : '';
         }
 
         function loadUserInfoFromApi() {
@@ -1553,6 +1561,7 @@
                 var fYear = document.getElementById('f_year');
                 if (bonusYearEl && fYear && fYear.value) bonusYearEl.value = fYear.value;
 
+                updateConsultActivateButton(null);
                 loadUserInfoFromApi();
             } catch (err) {
                 console.error('initHeader', err);
