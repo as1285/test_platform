@@ -437,6 +437,41 @@
         <section style="margin-top:28px;">
             <h2>闲鱼激活码列表</h2>
             <p class="hint">仅展示备注含「闲鱼」的批量码。已使用的行会显示该用户的<strong>渠道分析</strong>（含闲鱼激活来源）。</p>
+            <div class="form-row" style="margin-bottom:12px;flex-wrap:wrap;">
+                <div>
+                    <label for="xianyuCodeCodeFilter">激活码</label>
+                    <input type="text" id="xianyuCodeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
+                </div>
+                <div>
+                    <label for="xianyuCodeOwnerAdminFilter">管理员账号</label>
+                    <input type="text" id="xianyuCodeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                </div>
+                <div>
+                    <label for="xianyuCodeUsedByFilter">使用账号</label>
+                    <input type="text" id="xianyuCodeUsedByFilter" placeholder="按使用账号查询">
+                </div>
+                <div>
+                    <label for="xianyuCodeUsageFilter">使用状态</label>
+                    <select id="xianyuCodeUsageFilter" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="unused">未使用</option>
+                        <option value="used">已使用</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:flex-end;padding-bottom:2px;gap:12px;flex-wrap:wrap;">
+                    <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" id="xianyuCodeCodeExact"> 激活码精准查询
+                    </label>
+                    <label style="margin:0;font-weight:normal;cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" id="xianyuCodeUsedByExact"> 使用账号精准查询
+                    </label>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:8px;">
+                    <button type="button" class="btn-primary" id="btnSearchXianyuCodes">查询</button>
+                    <button type="button" class="btn-page" id="btnResetXianyuCodesFilter">重置</button>
+                    <button type="button" class="btn-primary" id="btnRefreshXianyuCodes">刷新列表</button>
+                </div>
+            </div>
             <p class="stat" id="xianyuCodeListStat" style="margin:0 0 10px;"></p>
             <div class="scroll-x">
                 <table>
@@ -1141,7 +1176,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260525-xianyu-codes"></script>
+    <script src="/js/admin_panel.js?v=20260526-xianyu-search"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>

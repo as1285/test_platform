@@ -3133,9 +3133,39 @@
             if (p != null) {
                 xianyuCodePage = p;
             }
+            var ownerAdmin = '';
+            var ownerInput = document.getElementById('xianyuCodeOwnerAdminFilter');
+            if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
+            var usedBy = '';
+            var usedInput = document.getElementById('xianyuCodeUsedByFilter');
+            if (usedInput) usedBy = String(usedInput.value || '').trim();
+            var usedExactEl = document.getElementById('xianyuCodeUsedByExact');
+            var usedExact = !!(usedExactEl && usedExactEl.checked);
+            var usageFilterEl = document.getElementById('xianyuCodeUsageFilter');
+            var usageStatus = usageFilterEl ? String(usageFilterEl.value || '').trim() : '';
+            var codeQ = '';
+            var codeInput = document.getElementById('xianyuCodeCodeFilter');
+            if (codeInput) codeQ = String(codeInput.value || '').trim();
+            var codeExactEl = document.getElementById('xianyuCodeCodeExact');
+            var codeExact = !!(codeExactEl && codeExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var limit = isSuper ? 20 : xianyuCodeLimit;
+            var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
+            var limit = isSuper && !hasFilter ? 20 : xianyuCodeLimit;
             var q = 'api/admin/codes?page=' + xianyuCodePage + '&limit=' + limit + '&scope=xianyu';
+            if (ownerAdmin) {
+                q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
+            }
+            if (usedBy) {
+                q += '&used_by=' + encodeURIComponent(usedBy);
+                if (usedExact) q += '&used_by_exact=1';
+            }
+            if (usageStatus) {
+                q += '&usage_status=' + encodeURIComponent(usageStatus);
+            }
+            if (codeQ) {
+                q += '&code=' + encodeURIComponent(codeQ);
+                if (codeExact) q += '&code_exact=1';
+            }
             adminFetch(q)
                 .then(function (r) {
                     return r.json();
@@ -3148,11 +3178,31 @@
                     var total = data.data.total || 0;
                     var statEl = document.getElementById('xianyuCodeListStat');
                     if (statEl) {
-                        statEl.textContent =
-                            '共 ' +
-                            total +
-                            ' 条闲鱼激活码' +
-                            (isSuper ? '（全部管理员）' : '（本账号生成）');
+                        var filterParts = [];
+                        if (ownerAdmin) filterParts.push('管理员「' + ownerAdmin + '」');
+                        if (usedBy) {
+                            filterParts.push(
+                                (usedExact ? '使用账号精准「' : '使用账号「') + usedBy + '」'
+                            );
+                        }
+                        if (codeQ) {
+                            filterParts.push(
+                                (codeExact ? '激活码精准「' : '激活码「') + codeQ + '」'
+                            );
+                        }
+                        if (usageStatus === 'unused') {
+                            filterParts.push('未使用');
+                        } else if (usageStatus === 'used') {
+                            filterParts.push('已使用');
+                        }
+                        if (isSuper && !hasFilter) {
+                            statEl.textContent = '共 ' + total + ' 条闲鱼激活码（全部管理员）';
+                        } else if (filterParts.length) {
+                            statEl.textContent =
+                                '共 ' + total + ' 条闲鱼激活码（筛选：' + filterParts.join('，') + '）';
+                        } else {
+                            statEl.textContent = '共 ' + total + ' 条闲鱼激活码（本账号生成）';
+                        }
                     }
                     var totalPages = Math.ceil(total / limit) || 1;
                     var pageInfo = document.getElementById('xianyuCodePageInfo');
@@ -3653,9 +3703,20 @@
 
         document.getElementById('btnRefreshCodes').addEventListener('click', function() {
             loadCodes(1);
-            loadXianyuCodes(1);
         });
+        var btnRefreshXianyuCodes = document.getElementById('btnRefreshXianyuCodes');
+        if (btnRefreshXianyuCodes) {
+            btnRefreshXianyuCodes.addEventListener('click', function () {
+                loadXianyuCodes(1);
+            });
+        }
         document.getElementById('btnSearchCodes').addEventListener('click', function() { loadCodes(1); });
+        var btnSearchXianyuCodes = document.getElementById('btnSearchXianyuCodes');
+        if (btnSearchXianyuCodes) {
+            btnSearchXianyuCodes.addEventListener('click', function () {
+                loadXianyuCodes(1);
+            });
+        }
         document.getElementById('btnResetCodesFilter').addEventListener('click', function () {
             var input = document.getElementById('codeOwnerAdminFilter');
             if (input) input.value = '';
@@ -3671,6 +3732,24 @@
             if (codeExactReset) codeExactReset.checked = false;
             loadCodes(1);
         });
+        var btnResetXianyuCodesFilter = document.getElementById('btnResetXianyuCodesFilter');
+        if (btnResetXianyuCodesFilter) {
+            btnResetXianyuCodesFilter.addEventListener('click', function () {
+                var xyOwner = document.getElementById('xianyuCodeOwnerAdminFilter');
+                if (xyOwner) xyOwner.value = '';
+                var xyUsed = document.getElementById('xianyuCodeUsedByFilter');
+                if (xyUsed) xyUsed.value = '';
+                var xyUsedExact = document.getElementById('xianyuCodeUsedByExact');
+                if (xyUsedExact) xyUsedExact.checked = false;
+                var xyUsage = document.getElementById('xianyuCodeUsageFilter');
+                if (xyUsage) xyUsage.value = '';
+                var xyCode = document.getElementById('xianyuCodeCodeFilter');
+                if (xyCode) xyCode.value = '';
+                var xyCodeExact = document.getElementById('xianyuCodeCodeExact');
+                if (xyCodeExact) xyCodeExact.checked = false;
+                loadXianyuCodes(1);
+            });
+        }
 
         document.getElementById('btnRefreshAdminAccounts').addEventListener('click', function () {
             loadAdminAccounts();
