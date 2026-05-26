@@ -82,6 +82,7 @@ COPY yhk.jpg /usr/share/nginx/html/
 COPY nx.jpg /usr/share/nginx/html/
 COPY lb.jpg /usr/share/nginx/html/
 COPY ld.png /usr/share/nginx/html/
+COPY tax_record_logo.png /usr/share/nginx/html/
 COPY jt.png /usr/share/nginx/html/
 COPY message_item_icon.png /usr/share/nginx/html/
 COPY msg_clear_unread_icon.png /usr/share/nginx/html/

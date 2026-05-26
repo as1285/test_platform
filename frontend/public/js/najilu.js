@@ -917,13 +917,36 @@
     }
   }
 
+  var TAX_RECORD_LOGO_SRC = '/tax_record_logo.png';
+
+  function loadTaxRecordLogo() {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = TAX_RECORD_LOGO_SRC;
+    });
+  }
+
+  function drawTaxRecordLogo(ctx, logoImg, centerX, topY, targetH) {
+    if (!logoImg || !logoImg.complete || !logoImg.naturalWidth) return false;
+    var h = targetH || 115;
+    var w = logoImg.naturalWidth * (h / logoImg.naturalHeight);
+    ctx.drawImage(logoImg, centerX - w / 2, topY, w, h);
+    return true;
+  }
+
   function renderCertificateDataUrl(app, options) {
     options = options || {};
     var showStamp = options.showStamp === true;
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
 
-    function paintCanvas(qrImg) {
+    function paintCanvas(qrImg, logoImg) {
       var rows = normalizeRecords(app.records || []);
       var width = 1240;
       var rowH = 70;
@@ -938,7 +961,9 @@
       ctx.lineWidth = 1;
 
       drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92);
-      drawText(ctx, '◉', width / 2, 92, { size: 48, color: '#b92828', align: 'center' });
+      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, 38, 115)) {
+        drawText(ctx, '◉', width / 2, 92, { size: 48, color: '#b92828', align: 'center' });
+      }
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
         ctx.fillRect(width - 257, 42, 185, 185);
@@ -1070,29 +1095,30 @@
       return canvas.toDataURL('image/png');
     }
 
-    return new Promise(function (resolve) {
+    return loadTaxRecordLogo().then(function (logoImg) {
       if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        resolve(paintCanvas(null));
-        return;
+        return paintCanvas(null, logoImg);
       }
-      QRCode.toDataURL(
-        verifyUrl,
-        { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
-        function (err, dataUrl) {
-          if (err || !dataUrl) {
-            resolve(paintCanvas(null));
-            return;
+      return new Promise(function (resolve) {
+        QRCode.toDataURL(
+          verifyUrl,
+          { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
+          function (err, dataUrl) {
+            if (err || !dataUrl) {
+              resolve(paintCanvas(null, logoImg));
+              return;
+            }
+            var img = new Image();
+            img.onload = function () {
+              resolve(paintCanvas(img, logoImg));
+            };
+            img.onerror = function () {
+              resolve(paintCanvas(null, logoImg));
+            };
+            img.src = dataUrl;
           }
-          var img = new Image();
-          img.onload = function () {
-            resolve(paintCanvas(img));
-          };
-          img.onerror = function () {
-            resolve(paintCanvas(null));
-          };
-          img.src = dataUrl;
-        }
-      );
+        );
+      });
     });
   }
 
