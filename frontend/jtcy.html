@@ -55,13 +55,18 @@
             padding: 12px 16px 100px;
         }
         .member-card {
+            display: block;
             background: #fff;
             border-radius: 8px;
             padding: 16px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
             margin-bottom: 12px;
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
         }
         .member-card:last-child { margin-bottom: 0; }
+        .member-card:active { opacity: 0.96; }
         .member-name {
             font-size: 17px;
             font-weight: 600;
@@ -149,8 +154,14 @@
                 }
                 var html = '';
                 members.forEach(function (m) {
+                    var mid = m.id != null ? String(m.id) : '';
+                    var href = mid
+                        ? 'jtcy_detail.html?id=' + encodeURIComponent(mid)
+                        : 'jtcy.html';
                     html +=
-                        '<div class="member-card">' +
+                        '<a class="member-card" href="' +
+                        esc(href) +
+                        '">' +
                         '<div class="member-name">' +
                         esc(m.real_name || '') +
                         '</div>' +
@@ -160,7 +171,7 @@
                         '<div class="member-line">证件号：' +
                         esc(m.id_no_masked || '—') +
                         '</div>' +
-                        '</div>';
+                        '</a>';
                 });
                 mount.innerHTML = html;
                 try {

@@ -12,6 +12,7 @@ COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY mine.html /usr/share/nginx/html/
 COPY jtcy.html /usr/share/nginx/html/
 COPY jtcy_add.html /usr/share/nginx/html/
+COPY jtcy_detail.html /usr/share/nginx/html/
 COPY yhk.html /usr/share/nginx/html/
 COPY yhk_add.html /usr/share/nginx/html/
 COPY yhk_manage.html /usr/share/nginx/html/
@@ -95,7 +96,6 @@ COPY bs.jpg /usr/share/nginx/html/
 COPY cx.jpg /usr/share/nginx/html/
 COPY db.jpg /usr/share/nginx/html/
 COPY fp.jpg /usr/share/nginx/html/
-COPY message_header.jpg /usr/share/nginx/html/
 COPY bank_icons /usr/share/nginx/html/bank_icons/
 COPY css /usr/share/nginx/html/css/
 COPY public/js /usr/share/nginx/html/js/

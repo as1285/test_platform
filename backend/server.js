@@ -2706,6 +2706,73 @@ async function syncUserFamilyCount(conn, userId) {
   return n;
 }
 
+async function getFamilyMemberForUser(userId, memberId) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT id, real_name, relation, id_type, id_type_label, id_no, birth_date
+       FROM family_members WHERE id = ? AND user_id = ? LIMIT 1`,
+      [memberId, userId]
+    );
+    if (!rows.length) {
+      return null;
+    }
+    var r = rows[0];
+    return {
+      id: r.id,
+      real_name: r.real_name || '',
+      relation: r.relation || '',
+      id_type: r.id_type || 'resident',
+      id_type_label: r.id_type_label || '',
+      id_no: r.id_no || '',
+      id_no_masked: maskFamilyMemberIdNo(r.id_no),
+      birth_date: r.birth_date || ''
+    };
+  } finally {
+    conn.release();
+  }
+}
+
+function parseFamilyMemberBody(body) {
+  var fmName = String(body.real_name || '').trim();
+  var fmRelation = String(body.relation || '').trim();
+  var fmIdNo = String(body.id_no || '')
+    .replace(/\s/g, '')
+    .toUpperCase();
+  var fmIdType = String(body.id_type || 'resident').trim() || 'resident';
+  var fmIdTypeLabel = String(body.id_type_label || '').trim();
+  var fmBirth = String(body.birth_date || '').trim();
+  if (!fmName) {
+    return { err: '请填写姓名' };
+  }
+  if (!fmRelation) {
+    return { err: '请选择与我的关系' };
+  }
+  if (!fmIdNo) {
+    return { err: '请填写证件号' };
+  }
+  if (fmIdType === 'resident') {
+    if (
+      !(
+        (fmIdNo.length === 18 && /^\d{17}[\dX]$/.test(fmIdNo)) ||
+        (fmIdNo.length === 15 && /^\d{15}$/.test(fmIdNo))
+      )
+    ) {
+      return { err: '居民身份证号码格式不正确' };
+    }
+  }
+  return {
+    data: {
+      real_name: fmName,
+      relation: fmRelation,
+      id_no: fmIdNo,
+      id_type: fmIdType,
+      id_type_label: fmIdTypeLabel,
+      birth_date: fmBirth
+    }
+  };
+}
+
 function maskBankCardNo(cardNo) {
   var d = String(cardNo || '').replace(/\D/g, '');
   if (!d) return '—';
@@ -2879,6 +2946,7 @@ async function handleUserGet(req, res) {
     action !== 'info' &&
     action !== 'employers' &&
     action !== 'family_members' &&
+    action !== 'family_member' &&
     action !== 'bank_cards' &&
     action !== 'special_deduction_records'
   ) {
@@ -2892,6 +2960,17 @@ async function handleUserGet(req, res) {
     if (action === 'family_members') {
       var members = await listFamilyMembersForUser(userId);
       return res.json({ code: 200, data: { members: members } });
+    }
+    if (action === 'family_member') {
+      var fmId = req.query.id != null ? String(req.query.id).trim() : '';
+      if (!fmId) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      var fmOne = await getFamilyMemberForUser(userId, fmId);
+      if (!fmOne) {
+        return res.status(404).json({ code: 404, msg: '家庭成员不存在' });
+      }
+      return res.json({ code: 200, data: { member: fmOne } });
     }
     if (action === 'bank_cards') {
       var cards = await listBankCardsForUser(userId);
@@ -3150,33 +3229,11 @@ async function handleUserPost(req, res) {
         if (!userId) {
           return res.status(400).json({ code: 400, msg: 'user_id required' });
         }
-        var fmName = String(body.real_name || '').trim();
-        var fmRelation = String(body.relation || '').trim();
-        var fmIdNo = String(body.id_no || '')
-          .replace(/\s/g, '')
-          .toUpperCase();
-        var fmIdType = String(body.id_type || 'resident').trim() || 'resident';
-        var fmIdTypeLabel = String(body.id_type_label || '').trim();
-        var fmBirth = String(body.birth_date || '').trim();
-        if (!fmName) {
-          return res.status(400).json({ code: 400, msg: '请填写姓名' });
+        var fmParsed = parseFamilyMemberBody(body);
+        if (fmParsed.err) {
+          return res.status(400).json({ code: 400, msg: fmParsed.err });
         }
-        if (!fmRelation) {
-          return res.status(400).json({ code: 400, msg: '请选择与我的关系' });
-        }
-        if (!fmIdNo) {
-          return res.status(400).json({ code: 400, msg: '请填写证件号' });
-        }
-        if (fmIdType === 'resident') {
-          if (
-            !(
-              (fmIdNo.length === 18 && /^\d{17}[\dX]$/.test(fmIdNo)) ||
-              (fmIdNo.length === 15 && /^\d{15}$/.test(fmIdNo))
-            )
-          ) {
-            return res.status(400).json({ code: 400, msg: '居民身份证号码格式不正确' });
-          }
-        }
+        var fmData = fmParsed.data;
         const connFm = await pool.getConnection();
         try {
           const [userRowsFm] = await connFm.execute('SELECT username FROM users WHERE username = ?', [userId]);
@@ -3191,7 +3248,16 @@ async function handleUserPost(req, res) {
           await connFm.execute(
             `INSERT INTO family_members (id, user_id, real_name, relation, id_type, id_type_label, id_no, birth_date)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [fmId, userId, fmName, fmRelation, fmIdType, fmIdTypeLabel || null, fmIdNo, fmBirth || null]
+            [
+              fmId,
+              userId,
+              fmData.real_name,
+              fmData.relation,
+              fmData.id_type,
+              fmData.id_type_label || null,
+              fmData.id_no,
+              fmData.birth_date || null
+            ]
           );
           var familyCount = await syncUserFamilyCount(connFm, userId);
           return res.json({
@@ -3200,18 +3266,102 @@ async function handleUserPost(req, res) {
               success: true,
               member: {
                 id: fmId,
-                real_name: fmName,
-                relation: fmRelation,
-                id_type: fmIdType,
-                id_type_label: fmIdTypeLabel,
-                id_no_masked: maskFamilyMemberIdNo(fmIdNo),
-                birth_date: fmBirth
+                real_name: fmData.real_name,
+                relation: fmData.relation,
+                id_type: fmData.id_type,
+                id_type_label: fmData.id_type_label,
+                id_no_masked: maskFamilyMemberIdNo(fmData.id_no),
+                birth_date: fmData.birth_date
               },
               family_count: familyCount
             }
           });
         } finally {
           connFm.release();
+        }
+      }
+
+      if (action === 'update_family_member') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var fmUpId = String(body.member_id || body.id || '').trim();
+        if (!fmUpId) {
+          return res.status(400).json({ code: 400, msg: 'member_id required' });
+        }
+        var fmUpParsed = parseFamilyMemberBody(body);
+        if (fmUpParsed.err) {
+          return res.status(400).json({ code: 400, msg: fmUpParsed.err });
+        }
+        var fmUpData = fmUpParsed.data;
+        const connFmUp = await pool.getConnection();
+        try {
+          const [existFm] = await connFmUp.execute(
+            'SELECT id FROM family_members WHERE id = ? AND user_id = ? LIMIT 1',
+            [fmUpId, userId]
+          );
+          if (!existFm.length) {
+            return res.status(404).json({ code: 404, msg: '家庭成员不存在' });
+          }
+          await connFmUp.execute(
+            `UPDATE family_members SET real_name = ?, relation = ?, id_type = ?, id_type_label = ?, id_no = ?, birth_date = ?
+             WHERE id = ? AND user_id = ?`,
+            [
+              fmUpData.real_name,
+              fmUpData.relation,
+              fmUpData.id_type,
+              fmUpData.id_type_label || null,
+              fmUpData.id_no,
+              fmUpData.birth_date || null,
+              fmUpId,
+              userId
+            ]
+          );
+          return res.json({
+            code: 200,
+            data: {
+              success: true,
+              member: {
+                id: fmUpId,
+                real_name: fmUpData.real_name,
+                relation: fmUpData.relation,
+                id_type: fmUpData.id_type,
+                id_type_label: fmUpData.id_type_label,
+                id_no_masked: maskFamilyMemberIdNo(fmUpData.id_no),
+                birth_date: fmUpData.birth_date
+              }
+            }
+          });
+        } finally {
+          connFmUp.release();
+        }
+      }
+
+      if (action === 'delete_family_member') {
+        if (!userId) {
+          return res.status(400).json({ code: 400, msg: 'user_id required' });
+        }
+        var fmDelId = String(body.member_id || body.id || '').trim();
+        if (!fmDelId) {
+          return res.status(400).json({ code: 400, msg: 'member_id required' });
+        }
+        const connFmDel = await pool.getConnection();
+        try {
+          const [delFmRows] = await connFmDel.execute(
+            'SELECT id FROM family_members WHERE id = ? AND user_id = ? LIMIT 1',
+            [fmDelId, userId]
+          );
+          if (!delFmRows.length) {
+            return res.status(404).json({ code: 404, msg: '家庭成员不存在' });
+          }
+          await connFmDel.execute('DELETE FROM family_members WHERE id = ? AND user_id = ?', [fmDelId, userId]);
+          var delFamilyCount = await syncUserFamilyCount(connFmDel, userId);
+          return res.json({
+            code: 200,
+            data: { success: true, family_count: delFamilyCount }
+          });
+        } finally {
+          connFmDel.release();
         }
       }
 

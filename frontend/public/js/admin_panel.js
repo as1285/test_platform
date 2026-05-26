@@ -478,6 +478,7 @@
                 renzhi: '任职（renzhi.html）',
                 jtcy: '家庭成员（jtcy.html）',
                 jtcy_add: '添加家庭成员（jtcy_add.html）',
+                jtcy_detail: '家庭成员详情（jtcy_detail.html）',
                 yhk: '银行卡（yhk.html）',
                 yhk_add: '添加银行卡（yhk_add.html）',
                 aqzx: '安全中心（aqzx.html）',
