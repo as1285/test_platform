@@ -218,9 +218,8 @@
             display: flex;
         }
         .empty-illustration {
-            width: auto;
-            max-width: min(240px, 56vw);
-            margin: 0 auto 20px;
+            width: min(168px, 40vw);
+            margin: 0 auto;
             display: flex;
             justify-content: center;
             background: transparent;
@@ -233,13 +232,6 @@
             -webkit-user-select: none;
             user-select: none;
             background: transparent;
-        }
-        .empty-state p {
-            font-size: 14px;
-            color: #aaa;
-            text-align: center;
-            line-height: 1.5;
-            margin: 0;
         }
         .edit-mask {
             display: none;
@@ -323,11 +315,10 @@
         </section>
         <section class="list-wrap" id="listWrap">
             <ul class="income-list" id="incomeList" aria-live="polite"></ul>
-            <div class="empty-state" id="emptyState" role="status">
+            <div class="empty-state" id="emptyState" role="status" aria-label="暂无收入信息">
                 <div class="empty-illustration" aria-hidden="true">
-                    <img src="income_empty.png" alt="" loading="lazy" decoding="async">
+                    <img src="income_empty.png?v=2" alt="暂无收入信息" loading="lazy" decoding="async">
                 </div>
-                <p>暂无收入信息</p>
             </div>
         </section>
     </div>
@@ -362,6 +353,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260524-income-color"></script>
-    <script src="/js/shenbao_income_detail.js?v=20260526-income-empty2"></script>
+    <script src="/js/shenbao_income_detail.js?v=20260526-income-empty3"></script>
 </body>
 </html>
