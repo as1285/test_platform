@@ -104,46 +104,53 @@
             left: 50%;
             bottom: 0;
             transform: translateX(-50%);
-            width: 28px;
+            width: 32px;
             height: 3px;
             background: #1e6fff;
-            border-radius: 2px;
+            border-radius: 1.5px;
+        }
+        .header::after {
+            content: '';
+            display: block;
+            height: 1px;
+            background: #eee;
         }
         .summary {
-            background: linear-gradient(135deg, #3a8cff 0%, #1e6fff 48%, #1a5fe6 100%);
-            padding: 16px 16px 22px;
+            background: linear-gradient(180deg, #4b9cff 0%, #2b84ff 42%, #1e6fff 100%);
+            padding: 18px 16px 24px;
             color: #fff;
             flex-shrink: 0;
             position: relative;
             z-index: 0;
         }
         .summary-label {
-            font-size: 13px;
-            margin-bottom: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
             font-weight: 400;
+            opacity: 0.98;
         }
         .summary-value {
-            font-size: 34px;
+            font-size: 36px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
-            letter-spacing: -0.03em;
-            line-height: 1.15;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
         }
         .summary-value .unit {
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 500;
-            margin-left: 4px;
+            margin-left: 6px;
         }
         .list-wrap {
             flex: 1;
             background: #fff;
         }
         .list-wrap.is-empty {
-            background: #fff;
+            background: #f5f6fa;
             display: flex;
             flex-direction: column;
             flex: 1;
-            min-height: 280px;
+            min-height: 0;
         }
         .income-list {
             list-style: none;
@@ -201,20 +208,22 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            padding: 52px 24px 80px;
+            justify-content: center;
+            padding: 0 24px;
             flex: 1;
             width: 100%;
+            min-height: 360px;
         }
         .list-wrap.is-empty .empty-state {
             display: flex;
         }
         .empty-illustration {
-            width: 100%;
-            max-width: min(300px, 68vw);
-            margin: 0 auto 18px;
+            width: auto;
+            max-width: min(240px, 56vw);
+            margin: 0 auto 20px;
             display: flex;
             justify-content: center;
+            background: transparent;
         }
         .empty-illustration img {
             width: 100%;
@@ -223,12 +232,14 @@
             object-fit: contain;
             -webkit-user-select: none;
             user-select: none;
+            background: transparent;
         }
         .empty-state p {
-            font-size: 15px;
-            color: #999;
+            font-size: 14px;
+            color: #aaa;
             text-align: center;
-            line-height: 1.4;
+            line-height: 1.5;
+            margin: 0;
         }
         .edit-mask {
             display: none;
@@ -351,6 +362,6 @@
 
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
     <script src="/js/shenbao_jilu_store.js?v=20260524-income-color"></script>
-    <script src="/js/shenbao_income_detail.js?v=20260526-income-empty"></script>
+    <script src="/js/shenbao_income_detail.js?v=20260526-income-empty2"></script>
 </body>
 </html>
