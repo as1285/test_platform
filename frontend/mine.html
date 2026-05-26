@@ -305,8 +305,21 @@
             margin-bottom: 6px;
         }
 
-        .activate-modal-label + .activate-modal-input {
+        .activate-modal-label + .activate-modal-input,
+        .activate-modal-label + .activate-modal-select {
             margin-bottom: 12px;
+        }
+
+        .activate-modal-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #1e6fff;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 14px;
+            box-sizing: border-box;
+            background: #fff;
+            color: #333;
         }
 
         .mine-profile-edit-hint {
@@ -756,7 +769,7 @@
                 id="mineProfileEditHit"
                 role="button"
                 tabindex="0"
-                aria-label="修改姓名与纳税人识别号"
+                aria-label="修改姓名、纳税人识别号与性别"
             >
                 <div class="user-name" id="mineDisplayName">--</div>
                 <div class="user-id" id="userTaxId">
@@ -838,6 +851,11 @@
             <input type="text" id="mineEditRealName" class="activate-modal-input" placeholder="请输入姓名" autocomplete="name">
             <label class="activate-modal-label" for="mineEditTaxId">纳税人识别号</label>
             <input type="text" id="mineEditTaxId" class="activate-modal-input" placeholder="请输入纳税人识别号" autocomplete="off">
+            <label class="activate-modal-label" for="mineEditGender">性别</label>
+            <select id="mineEditGender" class="activate-modal-select">
+                <option value="1">男</option>
+                <option value="2">女</option>
+            </select>
             <p class="mine-profile-edit-hint">修改后将同步保存到您的账号。</p>
             <div class="activate-modal-actions">
                 <button type="button" class="activate-modal-btn" id="btnMineProfileEditCancel">取消</button>
@@ -966,6 +984,7 @@
                 var root = document.getElementById('mineProfileEditModal');
                 var nameInp = document.getElementById('mineEditRealName');
                 var taxInp = document.getElementById('mineEditTaxId');
+                var genderSel = document.getElementById('mineEditGender');
                 var nameEl = document.getElementById('mineDisplayName');
                 if (!root || !nameInp || !taxInp) return;
                 var displayName = nameEl ? String(nameEl.textContent || '').trim() : '';
@@ -973,6 +992,10 @@
                 var tid = mineCurrentTaxIdRaw || localStorage.getItem('tax_id') || '';
                 if (isPlaceholderTaxIdMine(tid)) tid = '';
                 taxInp.value = tid;
+                if (genderSel) {
+                    var g = localStorage.getItem('gender');
+                    genderSel.value = g === '2' ? '2' : '1';
+                }
                 root.classList.add('is-open');
                 setTimeout(function () {
                     nameInp.focus();
@@ -987,10 +1010,12 @@
             function saveMineProfileEdit() {
                 var nameInp = document.getElementById('mineEditRealName');
                 var taxInp = document.getElementById('mineEditTaxId');
+                var genderSel = document.getElementById('mineEditGender');
                 var nameEl = document.getElementById('mineDisplayName');
                 if (!nameInp || !taxInp) return;
                 var realName = nameInp.value.trim();
                 var taxId = taxInp.value.trim();
+                var gender = genderSel ? genderSel.value : '1';
                 if (!realName) {
                     alert('请输入姓名');
                     return;
@@ -1004,6 +1029,8 @@
                 mineCurrentTaxIdRaw = taxId;
                 mineTaxRevealState = false;
                 localStorage.setItem('tax_id', taxId);
+                localStorage.setItem('gender', gender);
+                applyAvatarGender(gender);
                 if (mineRenderTaxIdFn) mineRenderTaxIdFn();
                 closeMineProfileEditModal();
 
@@ -1023,7 +1050,8 @@
                         action: 'save_profile',
                         user_id: userId,
                         real_name: realName,
-                        tax_id: taxId
+                        tax_id: taxId,
+                        gender: gender
                     })
                 })
                     .then(function (r) {
