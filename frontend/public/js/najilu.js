@@ -961,8 +961,8 @@
       ctx.lineWidth = 1;
 
       drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92);
-      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, 38, 115)) {
-        drawText(ctx, '◉', width / 2, 92, { size: 48, color: '#b92828', align: 'center' });
+      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, 16, 108)) {
+        drawText(ctx, '◉', width / 2, 78, { size: 48, color: '#b92828', align: 'center' });
       }
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
