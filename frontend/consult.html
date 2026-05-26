@@ -686,18 +686,6 @@
                         <option value="2">女</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>任职受雇数量</label>
-                    <input type="number" id="pf_employer_count" min="0">
-                </div>
-                <div class="form-group">
-                    <label>家庭成员数量</label>
-                    <input type="number" id="pf_family_count" min="0">
-                </div>
-                <div class="form-group">
-                    <label>银行卡数量</label>
-                    <input type="number" id="pf_bank_card_count" min="0">
-                </div>
                 <button type="button" class="btn btn-primary btn-block" onclick="saveProfile()">保存修改</button>
             </div>
         </div>
@@ -1537,13 +1525,6 @@
             applyTaxIdField(user.tax_id || '');
             var pfGender = document.getElementById('pf_gender');
             if (pfGender) pfGender.value = user.gender != null ? user.gender : '1';
-            
-            var pfEmployerCount = document.getElementById('pf_employer_count');
-            if (pfEmployerCount) pfEmployerCount.value = user.employer_count != null ? user.employer_count : '';
-            var pfFamilyCount = document.getElementById('pf_family_count');
-            if (pfFamilyCount) pfFamilyCount.value = user.family_count != null ? user.family_count : '';
-            var pfBankCardCount = document.getElementById('pf_bank_card_count');
-            if (pfBankCardCount) pfBankCardCount.value = user.bank_card_count != null ? user.bank_card_count : '';
             applyConsultTestRestrictions(user);
         }
         
@@ -1560,13 +1541,6 @@
                 var pfGender = document.getElementById('pf_gender');
                 var g = localStorage.getItem('gender');
                 if (pfGender && g) pfGender.value = g;
-                
-                var pfEmployerCount = document.getElementById('pf_employer_count');
-                if (pfEmployerCount) pfEmployerCount.value = localStorage.getItem('employer_count') || '';
-                var pfFamilyCount = document.getElementById('pf_family_count');
-                if (pfFamilyCount) pfFamilyCount.value = localStorage.getItem('family_count') || '';
-                var pfBankCardCount = document.getElementById('pf_bank_card_count');
-                if (pfBankCardCount) pfBankCardCount.value = localStorage.getItem('bank_card_count') || '';
 
                 initBelongingPeriodSync();
                 var bonusYearEl = document.getElementById('batch_bonus_year');
@@ -1583,10 +1557,7 @@
             var realName = document.getElementById('pf_real_name').value.trim();
             var taxId = document.getElementById('pf_tax_id').value.trim();
             var gender = document.getElementById('pf_gender').value;
-            var employerCount = document.getElementById('pf_employer_count').value;
-            var familyCount = document.getElementById('pf_family_count').value;
-            var bankCardCount = document.getElementById('pf_bank_card_count').value;
-            
+
             if (realName) localStorage.setItem('real_name', realName);
             if (!isPlaceholderTaxIdForm(taxId)) {
                 localStorage.setItem('tax_id', taxId);
@@ -1594,19 +1565,13 @@
                 localStorage.setItem('tax_id', DEFAULT_TAX_ID_HINT);
             }
             localStorage.setItem('gender', gender);
-            if (employerCount !== '') localStorage.setItem('employer_count', employerCount);
-            if (familyCount !== '') localStorage.setItem('family_count', familyCount);
-            if (bankCardCount !== '') localStorage.setItem('bank_card_count', bankCardCount);
-            
+
             var userId = currentUserId();
             if (userId) {
                 var payload = {
                     action: 'save_profile',
                     user_id: userId,
-                    gender: gender,
-                    employer_count: employerCount,
-                    family_count: familyCount,
-                    bank_card_count: bankCardCount
+                    gender: gender
                 };
                 if (!isPlaceholderTaxIdForm(taxId)) {
                     payload.tax_id = taxId;
