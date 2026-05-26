@@ -1724,6 +1724,23 @@ async function deleteRecordsByYear(userId, year) {
   }
 }
 
+async function deleteRecordsByCompany(userId, companyName) {
+  const name = companyName != null ? String(companyName).trim() : '';
+  if (!name) {
+    return { deleted: 0 };
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.execute(
+      'DELETE FROM tax_records WHERE user_id = ? AND TRIM(company_name) = ?',
+      [userId, name]
+    );
+    return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
+  } finally {
+    conn.release();
+  }
+}
+
 async function getTaxRecordById(userId, id) {
   const conn = await pool.getConnection();
   const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
@@ -5080,6 +5097,17 @@ async function handleTaxPost(req, res) {
       }
       var delOut = await deleteRecordsByYear(userId, delYear);
       return res.json({ code: 200, data: delOut });
+    }
+    if (action === 'delete_records_by_company') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var delCompany = body.company_name != null ? String(body.company_name).trim() : '';
+      if (!delCompany) {
+        return res.status(400).json({ code: 400, msg: '请填写扣缴单位名称' });
+      }
+      var delCompanyOut = await deleteRecordsByCompany(userId, delCompany);
+      return res.json({ code: 200, data: delCompanyOut });
     }
     if (action === 'log_issue_application') {
       if (!userId) {
