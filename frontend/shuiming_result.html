@@ -51,10 +51,16 @@
         .summary-value,
         .list-date,
         .list-label,
-        .list-value {
+        .list-value,
+        .list-amount {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-variant-numeric: tabular-nums;
             font-feature-settings: 'tnum' 1, 'zero' 0;
+        }
+
+        /* 列表中的金额数字：略收紧字距，避免 tabular-nums 显得过疏 */
+        .list-amount {
+            letter-spacing: -0.04em;
         }
 
         /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
@@ -427,7 +433,7 @@
         /* 「7」后紧跟数字时略收紧字距（须由 JS 在已转义文本上包 span） */
         .digit-kern-seven {
             display: inline;
-            margin-right: -0.05em;
+            margin-right: -0.08em;
         }
 
         .list-row-with-arrow {
@@ -957,11 +963,17 @@
                 listHtml += '<div class="list-row-with-arrow">';
                 listHtml += '<div class="list-row-left">';
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
-                listHtml += '<div class="list-row"><span class="list-label">收入：' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.income))) + '元</span></div>';
+                listHtml +=
+                    '<div class="list-row"><span class="list-label">收入：<span class="list-amount">' +
+                    kernSevenAfterDigitInEscaped(escapeHtml(String(record.income))) +
+                    '</span>元</span></div>';
                 listHtml += '</div>';
                 listHtml += '<img class="list-arrow" src="http://www.geshui665.com/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
-                listHtml += '<div class="list-row"><span class="list-label">已申报税额：' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.tax_reported))) + '元</span></div>';
+                listHtml +=
+                    '<div class="list-row"><span class="list-label">已申报税额：<span class="list-amount">' +
+                    kernSevenAfterDigitInEscaped(escapeHtml(String(record.tax_reported))) +
+                    '</span>元</span></div>';
                 listHtml += '</a>';
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();

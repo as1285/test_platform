@@ -130,6 +130,19 @@
             flex: 1;
         }
 
+        .info-value.amount-value,
+        .detail-card .detail-value,
+        .detail-summary-row .detail-value {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum' 1, 'zero' 0;
+            letter-spacing: -0.04em;
+        }
+
+        .detail-card .detail-value#bonusTaxRate {
+            font-variant-numeric: normal;
+            letter-spacing: normal;
+        }
+
         .info-link {
             font-size: 14px;
             color: #1e6fff;
@@ -253,11 +266,11 @@
     <div class="info-card">
         <div class="info-row">
             <span class="info-label">收入:</span>
-            <span class="info-value" id="income">0.00元</span>
+            <span class="info-value amount-value" id="income">0.00元</span>
         </div>
         <div class="info-row">
             <span class="info-label">已申报税额:</span>
-            <span class="info-value" id="taxReported">0.00元</span>
+            <span class="info-value amount-value" id="taxReported">0.00元</span>
         </div>
         <div class="info-row">
             <span class="info-label"></span>
