@@ -432,8 +432,11 @@
             gap: 3px;
         }
 
+        html.app-ios-client body.page-mine .user-tax-label,
+        html[class*='app-ios'] body.page-mine .user-tax-label,
         html.app-ios-client body.page-mine .user-tax-value,
         html[class*='app-ios'] body.page-mine .user-tax-value {
+            font-size: 11px;
             letter-spacing: -0.05em;
         }
 
@@ -455,12 +458,19 @@
             padding: 5px 10px 5px 12px;
         }
 
+        /* iPhone Safari 模拟/真机：未命中 app-ios-client 时仍用 11px 税号 */
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
                 body.page-mine .user-id,
                 body.page-mine .user-tax-label,
                 body.page-mine .user-tax-value {
+                    font-size: 11px;
+                    line-height: 1.35;
                     white-space: nowrap;
+                }
+
+                body.page-mine .user-tax-value {
+                    letter-spacing: -0.05em;
                 }
             }
         }
