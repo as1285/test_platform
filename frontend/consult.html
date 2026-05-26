@@ -1069,7 +1069,6 @@
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
                         <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
-                        <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByCompany()">按公司删除</button>
                     </div>
                 </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
@@ -1947,76 +1946,6 @@
                     if (data.code === 200) {
                         var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
                         showMsg(n > 0 ? '已删除 ' + year + ' 年共 ' + n + ' 条记录' : year + ' 年暂无记录', true);
-                        return refreshRecordList();
-                    }
-                    throw new Error(data.msg || '删除失败');
-                })
-                .catch(function (err) {
-                    showMsg('删除失败：' + (err.message || ''), false);
-                });
-        }
-
-        function deleteTaxRecordsByCompany() {
-            apiFetchRecords()
-                .then(function (list) {
-                    var names = [];
-                    var seen = {};
-                    list.forEach(function (r) {
-                        var n = r.company_name != null ? String(r.company_name).trim() : '';
-                        if (n && !seen[n]) {
-                            seen[n] = true;
-                            names.push(n);
-                        }
-                    });
-                    if (!names.length) {
-                        showConsultStrongAlert('当前暂无税务记录，或记录未填写扣缴单位');
-                        return null;
-                    }
-                    var hint =
-                        '请输入要删除的扣缴单位名称（须与记录中「扣缴单位」完全一致）\n\n' +
-                        '当前记录中的单位（共 ' +
-                        names.length +
-                        ' 个）：\n' +
-                        names.slice(0, 12).join('\n');
-                    var raw = prompt(hint, names[0]);
-                    if (raw == null) return null;
-                    var company = String(raw).trim();
-                    if (!company) {
-                        showConsultStrongAlert('请输入扣缴单位名称');
-                        return null;
-                    }
-                    var matchCount = list.filter(function (r) {
-                        return String(r.company_name || '').trim() === company;
-                    }).length;
-                    if (!matchCount) {
-                        if (!confirm('未找到名称完全匹配「' + company + '」的记录。仍尝试删除？')) {
-                            return null;
-                        }
-                    } else if (
-                        !confirm(
-                            '确定删除扣缴单位为「' + company + '」的全部 ' + matchCount + ' 条税务记录？此操作不可恢复。'
-                        )
-                    ) {
-                        return null;
-                    }
-                    return authFetch('api/tax.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'delete_records_by_company',
-                            company_name: company
-                        })
-                    });
-                })
-                .then(function (r) {
-                    if (!r) return null;
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (!data) return;
-                    if (data.code === 200) {
-                        var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
-                        showMsg(n > 0 ? '已删除 ' + n + ' 条记录' : '未找到匹配记录', true);
                         return refreshRecordList();
                     }
                     throw new Error(data.msg || '删除失败');
