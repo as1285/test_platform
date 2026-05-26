@@ -130,8 +130,8 @@
             padding: 12px;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine .user-info-top {
-            margin-bottom: 5px;
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
+            padding-right: 78px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-info-text {
@@ -155,10 +155,8 @@
             max-width: 100%;
         }
 
-        html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText {
+        html.app-cordova-xiaomi-m2102 body.page-mine .user-tax-value {
             white-space: nowrap;
-            flex: 1 1 auto;
-            min-width: 0;
             letter-spacing: -0.02em;
         }
 
@@ -175,8 +173,8 @@
 
         html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn {
             font-size: 10.5px;
-            padding: 4px 8px 4px 10px;
-            border-radius: 14px;
+            padding: 5px 8px 5px 10px;
+            border-radius: 18px 0 0 18px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn::after {
@@ -362,7 +360,7 @@
             background: linear-gradient(105deg, #f3d9b4 0%, #eed3aa 42%, #e6c89a 100%);
             margin: -70px 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 14px 16px 14px;
+            padding: 14px 86px 14px 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
@@ -371,14 +369,7 @@
 
         .user-info {
             display: block;
-        }
-
-        .user-info-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 8px;
+            min-width: 0;
         }
 
         .user-info-text {
@@ -396,55 +387,54 @@
         }
 
         .user-name {
-            flex: 1;
-            min-width: 0;
             font-size: 16px;
             color: #333;
             font-weight: 600;
-            margin-bottom: 0;
+            margin-bottom: 8px;
             line-height: 1.35;
         }
 
         .user-id {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 4px;
+            width: 100%;
+            min-width: 0;
             font-size: 12px;
             color: #b46d03;
-            line-height: 1.4;
-            word-break: normal;
-            overflow-wrap: normal;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            max-width: 100%;
+            line-height: 1.35;
         }
 
-        #userTaxIdText {
+        .user-tax-label {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        .user-tax-value {
+            flex: 0 0 auto;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
         }
 
-        /* iOS Safari / iPhone：对齐官方——税号独占一行且不换行 */
-        html.app-ios-client body.page-mine .user-info-top,
-        html[class*='app-ios'] body.page-mine .user-info-top {
-            margin-bottom: 6px;
-        }
-
+        /* iOS Safari / iPhone：对齐官方——标签与税号同一行 */
         html.app-ios-client body.page-mine .user-name,
         html[class*='app-ios'] body.page-mine .user-name {
             font-size: 15px;
+            margin-bottom: 6px;
         }
 
         html.app-ios-client body.page-mine .user-id,
         html[class*='app-ios'] body.page-mine .user-id {
-            font-size: 11.5px;
-            line-height: 1.35;
-            letter-spacing: -0.02em;
+            font-size: 11px;
             gap: 3px;
         }
 
-        html.app-ios-client body.page-mine #userTaxIdText,
-        html[class*='app-ios'] body.page-mine #userTaxIdText {
-            letter-spacing: -0.035em;
+        html.app-ios-client body.page-mine .user-tax-value,
+        html[class*='app-ios'] body.page-mine .user-tax-value {
+            letter-spacing: -0.05em;
         }
 
         html.app-ios-client body.page-mine .tax-eye-btn,
@@ -462,13 +452,14 @@
         html.app-ios-client body.page-mine .personal-info-btn,
         html[class*='app-ios'] body.page-mine .personal-info-btn {
             font-size: 11px;
-            padding: 3px 8px 3px 10px;
+            padding: 5px 10px 5px 12px;
         }
 
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
                 body.page-mine .user-id,
-                body.page-mine #userTaxIdText {
+                body.page-mine .user-tax-label,
+                body.page-mine .user-tax-value {
                     white-space: nowrap;
                 }
             }
@@ -513,10 +504,14 @@
         }
 
         .personal-info-btn {
-            background: rgba(255, 255, 255, 0.38);
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #edaa66;
             border: none;
-            border-radius: 14px;
-            padding: 4px 10px 4px 12px;
+            border-radius: 20px 0 0 20px;
+            padding: 6px 10px 6px 14px;
             font-size: 12px;
             color: #fff;
             display: inline-flex;
@@ -524,10 +519,10 @@
             gap: 2px;
             cursor: pointer;
             flex-shrink: 0;
-            align-self: flex-start;
             text-decoration: none;
             white-space: nowrap;
-            box-shadow: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            z-index: 2;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -743,21 +738,19 @@
 
     <div class="content-wrapper">
         <div class="user-card">
-            <div class="user-info">
-                <div class="user-info-top">
-                    <div class="user-name" id="mineDisplayName">--</div>
-                    <a href="personal_info.html" class="personal-info-btn">个人信息</a>
-                </div>
-                <div
-                    class="user-info-text user-info-text--editable"
-                    id="mineProfileEditHit"
-                    role="button"
-                    tabindex="0"
-                    aria-label="修改姓名与纳税人识别号"
-                >
-                    <div class="user-id" id="userTaxId">
-                        <span id="userTaxIdText">纳税人识别号 --</span>
-                        <button type="button" class="tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
+            <a href="personal_info.html" class="personal-info-btn">个人信息</a>
+            <div
+                class="user-info user-info-text user-info-text--editable"
+                id="mineProfileEditHit"
+                role="button"
+                tabindex="0"
+                aria-label="修改姓名与纳税人识别号"
+            >
+                <div class="user-name" id="mineDisplayName">--</div>
+                <div class="user-id" id="userTaxId">
+                    <span class="user-tax-label">纳税人识别号</span>
+                    <span class="user-tax-value" id="userTaxIdText">--</span>
+                    <button type="button" class="tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
                             <svg class="tax-eye-closed" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="currentColor"></path>
                                 <path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="currentColor"></path>
@@ -767,7 +760,6 @@
                                 <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#b46d03"></path>
                             </svg>
                         </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1300,13 +1292,11 @@
                 var taxToggleBtn = document.getElementById('toggleTaxIdBtn');
                 mineTaxRevealState = false;
                 function renderTaxId() {
-                    taxEl.textContent =
-                        '纳税人识别号 ' +
-                        (mineCurrentTaxIdRaw
-                            ? mineTaxRevealState
-                                ? mineCurrentTaxIdRaw
-                                : maskTaxId(mineCurrentTaxIdRaw)
-                            : '--');
+                    taxEl.textContent = mineCurrentTaxIdRaw
+                        ? mineTaxRevealState
+                            ? mineCurrentTaxIdRaw
+                            : maskTaxId(mineCurrentTaxIdRaw)
+                        : '--';
                     if (taxToggleBtn) {
                         taxToggleBtn.classList.toggle('reveal', mineTaxRevealState);
                     }
