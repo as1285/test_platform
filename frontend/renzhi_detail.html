@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>任职受雇详情</title>
+    <title>详情</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
         }
@@ -21,7 +23,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #eee;
         }
         .back-btn {
             position: absolute;
@@ -31,29 +33,60 @@
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
         }
         .header-title { font-size: 17px; font-weight: 500; color: #333; }
-        .detail-card {
-            background: #fff;
-            border-radius: 8px;
-            margin: 12px;
-            padding: 16px;
+        .header-right {
+            position: absolute;
+            right: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .company-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 14px; }
-        .info-item { display: flex; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
-        .info-label { color: #999; flex-shrink: 0; width: 130px; }
-        .info-value { color: #333; word-break: break-all; flex: 1; }
-        .empty-state { text-align: center; padding: 48px 20px; color: #999; }
+        .detail-wrap {
+            margin-top: 12px;
+            background: #fff;
+        }
+        .detail-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            min-height: 48px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label {
+            font-size: 15px;
+            color: #333;
+            flex-shrink: 0;
+            max-width: 42%;
+            line-height: 1.45;
+            padding-right: 12px;
+        }
+        .detail-value {
+            flex: 1;
+            text-align: right;
+            font-size: 15px;
+            color: #999;
+            line-height: 1.45;
+            word-break: break-all;
+        }
+        .detail-value.filled { color: #333; }
+        .empty-state { text-align: center; padding: 48px 20px; color: #999; font-size: 15px; }
     </style>
 </head>
 <body>
     <div class="header">
         <a href="renzhi.html" class="back-btn">
-            <img src="/jt.png" alt="" style="width: 9px;">
+            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
             <span>返回</span>
         </a>
-        <span class="header-title">任职受雇详情</span>
+        <span class="header-title">详情</span>
+        <a href="#" class="header-right" onclick="return false;">申诉</a>
     </div>
     <div id="detailMount"></div>
     <script>
@@ -65,8 +98,17 @@
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+        function displayVal(val) {
+            if (val == null || val === '' || val === '-') return '';
+            return String(val);
+        }
         function row(label, val) {
-            return '<div class="info-item"><span class="info-label">' + escapeHtml(label) + '</span><span class="info-value">' + escapeHtml(val) + '</span></div>';
+            var text = displayVal(val);
+            var cls = text ? 'detail-value filled' : 'detail-value';
+            return '<div class="detail-row">' +
+                '<span class="detail-label">' + escapeHtml(label) + '</span>' +
+                '<span class="' + cls + '">' + escapeHtml(text) + '</span>' +
+                '</div>';
         }
         (function () {
             var id = getParam('id');
@@ -94,17 +136,15 @@
                     }
                     var leaveVal = item.leave_date;
                     if (!leaveVal && (item.status === '1' || item.status === 1)) {
-                        leaveVal = '-';
+                        leaveVal = '';
                     }
-                    var statusText = (item.status === '1' || item.status === 1 || item.status === '在职') ? '在职' : '离职';
                     mount.innerHTML =
-                        '<div class="detail-card">' +
-                        '<div class="company-name">' + escapeHtml(item.company_name || '-') + '</div>' +
-                        row('统一社会信用代码', item.credit_code || '-') +
-                        row('职务', item.position || '-') +
-                        row('任职受雇日期', item.hire_date || '-') +
-                        row('离职日期', leaveVal || '-') +
-                        row('状态', statusText) +
+                        '<div class="detail-wrap">' +
+                        row('统一社会信用代码', item.credit_code) +
+                        row('单位名称', item.company_name) +
+                        row('职务', item.position) +
+                        row('任职受雇日期', item.hire_date) +
+                        row('离职日期', leaveVal) +
                         '</div>';
                 })
                 .catch(function () {
