@@ -789,7 +789,7 @@
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
                 <div class="card-title">批量添加（累计预扣计税）</div>
-                <p class="batch-hint">按「工资薪金」累计预扣：下列每一段工作经历填写扣缴义务人、在职起止年月（可跨自然年）与该段月薪；同一自然年内换单位则累计从该单位首月起重新计算。月薪可先填下限，再在「月薪上限」填更大数值（如 15000～16000），则每月在区间内随机取值并参与当月累计预扣。可点「按月自定义工资」在浮窗里逐月填写具体金额（优先于随机/固定月薪）。每段可填<strong>社保/公积金基数与比例</strong>，系统自动算出下方三险一金月扣款（也可直接改金额）；每月应纳税所得额 = 月薪 −（5000 + 该段专项附加扣除）− 该段三险一金。可添加多段，填好后点「一键生成」。扣缴义务人名称会记在本地，点击输入框可点选曾填过的名称。年终奖默认使用最后一段工作经历的公司，见下方。</p>
+                <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="fillBatchTaxExample()">示例填写</button>
                 <div id="batch_employment_list"></div>
                 <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
@@ -2422,6 +2422,79 @@
             var list = document.getElementById('batch_employment_list');
             if (!list || list.querySelector('.batch-emp-row')) return;
             addBatchEmpRow();
+        }
+
+        /** 将示例或预设数据写入单段工作经历行 */
+        function setBatchEmpRowValues(row, data) {
+            if (!row || !data) return;
+            function setVal(sel, val) {
+                var el = row.querySelector(sel);
+                if (!el) return;
+                el.value = val == null || val === '' ? '' : String(val);
+            }
+            setVal('.batch-emp-company', data.company);
+            setVal('.batch-emp-company-tax-id', data.company_tax_id);
+            setVal('.batch-emp-tax-authority', data.tax_authority);
+            setVal('.batch-emp-sy', data.sy);
+            setVal('.batch-emp-sm', data.sm);
+            setVal('.batch-emp-ey', data.ey);
+            setVal('.batch-emp-em', data.em);
+            setVal('.batch-emp-salary', data.salary);
+            setVal('.batch-emp-salary-max', data.salary_max);
+            setVal('.batch-emp-ss-base', data.ss_base);
+            setVal('.batch-emp-fund-base', data.fund_base);
+            setVal('.batch-emp-pension-ratio', data.pension_ratio);
+            setVal('.batch-emp-medical-ratio', data.medical_ratio);
+            setVal('.batch-emp-unemployment-ratio', data.unemployment_ratio);
+            setVal('.batch-emp-fund-ratio', data.fund_ratio);
+            setVal('.batch-emp-special', data.special);
+            syncBatchEmpDeductionsFromBase(row);
+            updateBatchEmpMonthSalaryBadge(row);
+        }
+
+        /** 示例填写：一段完整公司工作经历（不自动提交） */
+        function fillBatchTaxExample() {
+            var list = document.getElementById('batch_employment_list');
+            if (!list) return;
+            var d = new Date();
+            var cy = d.getFullYear();
+            var cm = d.getMonth() + 1;
+            list.innerHTML = '';
+            addBatchEmpRow();
+            var row = list.querySelector('.batch-emp-row');
+            setBatchEmpRowValues(row, {
+                company: '北京华示例软件有限公司',
+                company_tax_id: '91110108MA01ABCD2X',
+                tax_authority: '国家税务总局北京市海淀区税务局',
+                sy: cy,
+                sm: 1,
+                ey: cy,
+                em: cm,
+                salary: 15000,
+                salary_max: '',
+                ss_base: 15000,
+                fund_base: '',
+                pension_ratio: 8,
+                medical_ratio: 2,
+                unemployment_ratio: 0.5,
+                fund_ratio: 12,
+                special: 2000
+            });
+            var bonusYearEl = document.getElementById('batch_bonus_year');
+            if (bonusYearEl) bonusYearEl.value = String(cy);
+            var bonusEl = document.getElementById('batch_year_end_bonus');
+            if (bonusEl && (!bonusEl.value || parseFloat(bonusEl.value) === 0)) {
+                bonusEl.value = '0';
+            }
+            var card = document.getElementById('batchTaxCard');
+            if (card) {
+                try {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (eScroll) {
+                    card.scrollIntoView(true);
+                }
+            }
+            showMsg('已填入示例工作经历，请核对后点击「一键生成税务记录」', true);
         }
 
         function ymToKey(y, m) {
