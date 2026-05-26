@@ -977,6 +977,38 @@
         xx += cols[i];
       });
 
+      var remarkColW = cols[6];
+      var remarkColX = x0;
+      for (var ci = 0; ci < 6; ci++) remarkColX += cols[ci];
+      var remarks = rows.map(rowRemark);
+      var mergedRemark = null;
+      if (remarks.length > 0) {
+        var remarkFirst = remarks[0];
+        var remarksAllSame = true;
+        for (var ri = 1; ri < remarks.length; ri++) {
+          if (remarks[ri] !== remarkFirst) {
+            remarksAllSame = false;
+            break;
+          }
+        }
+        if (remarksAllSame) mergedRemark = remarkFirst;
+      }
+
+      function drawRemarkCell(remark, cellX, cellY) {
+        var cellPad = 8;
+        var maxW = Math.max(24, remarkColW - cellPad);
+        var sz = 16;
+        remark = String(remark == null ? '' : remark);
+        ctx.save();
+        ctx.font = sz + 'px serif';
+        while (sz > 10 && ctx.measureText(remark).width > maxW) {
+          sz -= 1;
+          ctx.font = sz + 'px serif';
+        }
+        ctx.restore();
+        drawText(ctx, remark, cellX + remarkColW / 2, cellY, { size: sz, align: 'center', color: '#333' });
+      }
+
       rows.forEach(function (r, idx) {
         var y = y0 + 48 + idx * rowH;
         var vals = [
@@ -994,24 +1026,20 @@
             ctx.font = '16px serif';
             wrapText(ctx, v, cx + 10, y + 25, cols[i] - 18, 22, { size: 16, color: '#333', maxLines: 2 });
           } else if (i === 6) {
-            var remark = String(v == null ? '' : v);
-            var cellPad = 8;
-            var maxW = Math.max(24, cols[i] - cellPad);
-            var sz = 16;
-            ctx.save();
-            ctx.font = sz + 'px serif';
-            while (sz > 10 && ctx.measureText(remark).width > maxW) {
-              sz -= 1;
-              ctx.font = sz + 'px serif';
+            if (mergedRemark == null) {
+              drawRemarkCell(v, cx, y + 42);
             }
-            ctx.restore();
-            drawText(ctx, remark, cx + cols[i] / 2, y + 42, { size: sz, align: 'center', color: '#333' });
           } else {
             drawText(ctx, v, cx + cols[i] / 2, y + 42, { size: 16, align: 'center', color: '#333' });
           }
           cx += cols[i];
         });
       });
+
+      if (mergedRemark != null && rows.length > 0) {
+        var dataBodyMidY = y0 + 48 + (dataRowCount * rowH) / 2 + 12;
+        drawRemarkCell(mergedRemark, remarkColX, dataBodyMidY);
+      }
 
       var footY = y0 + 48 + dataRowCount * rowH;
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
