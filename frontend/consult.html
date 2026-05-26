@@ -424,6 +424,41 @@
             font-weight: 600;
             color: #555;
         }
+        #panel-records .batch-emp-optional-meta {
+            margin-bottom: 4px;
+        }
+        #panel-records .batch-emp-optional-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin: 0 0 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #1e6fff;
+            background: #f5f8ff;
+            border: 1px solid #d6e4ff;
+            border-radius: 8px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #panel-records .batch-emp-optional-toggle:active {
+            opacity: 0.92;
+        }
+        #panel-records .batch-emp-optional-toggle-icon {
+            font-size: 10px;
+            color: #888;
+            transition: transform 0.2s ease;
+        }
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon {
+            transform: rotate(180deg);
+        }
+        #panel-records .batch-emp-optional-body {
+            display: none;
+        }
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body {
+            display: block;
+        }
         #panel-records .batch-ym-inline {
             display: flex;
             gap: 8px;
@@ -799,13 +834,21 @@
                             <label>扣缴义务人（公司全称）</label>
                             <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="请填写该公司全称（可点选历史）">
                         </div>
-                        <div class="form-group">
-                            <label>扣缴义务人纳税人识别号（选填）</label>
-                            <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
-                        </div>
-                        <div class="form-group">
-                            <label>主管税务机关（选填）</label>
-                            <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
+                        <div class="batch-emp-optional-meta">
+                            <button type="button" class="batch-emp-optional-toggle" aria-expanded="false">
+                                <span>选填：纳税人识别号、主管税务机关</span>
+                                <span class="batch-emp-optional-toggle-icon" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="batch-emp-optional-body">
+                                <div class="form-group">
+                                    <label>扣缴义务人纳税人识别号（选填）</label>
+                                    <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
+                                </div>
+                                <div class="form-group">
+                                    <label>主管税务机关（选填）</label>
+                                    <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
+                                </div>
+                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -2214,6 +2257,38 @@
             var authEl = row.querySelector('.batch-emp-tax-authority');
             if (taxIdEl && prof.company_tax_id) setFormFieldValue(taxIdEl, prof.company_tax_id);
             if (authEl && prof.tax_authority) setFormFieldValue(authEl, prof.tax_authority);
+            syncBatchEmpOptionalMetaExpanded(row);
+        }
+
+        function setBatchEmpOptionalMetaExpanded(row, expanded) {
+            if (!row) return;
+            var wrap = row.querySelector('.batch-emp-optional-meta');
+            var btn = row.querySelector('.batch-emp-optional-toggle');
+            if (!wrap) return;
+            wrap.classList.toggle('is-open', !!expanded);
+            if (btn) btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        function syncBatchEmpOptionalMetaExpanded(row) {
+            if (!row) return;
+            var taxIdEl = row.querySelector('.batch-emp-company-tax-id');
+            var authEl = row.querySelector('.batch-emp-tax-authority');
+            var hasVal =
+                (taxIdEl && String(taxIdEl.value || '').trim()) ||
+                (authEl && String(authEl.value || '').trim());
+            if (hasVal) setBatchEmpOptionalMetaExpanded(row, true);
+        }
+
+        function bindBatchEmpOptionalMetaToggle(row) {
+            if (!row) return;
+            var btn = row.querySelector('.batch-emp-optional-toggle');
+            var wrap = row.querySelector('.batch-emp-optional-meta');
+            if (!btn || !wrap || btn.getAttribute('data-batch-optional-bound') === '1') return;
+            btn.setAttribute('data-batch-optional-bound', '1');
+            btn.addEventListener('click', function () {
+                var open = !wrap.classList.contains('is-open');
+                setBatchEmpOptionalMetaExpanded(row, open);
+            });
         }
 
         function tryApplyBatchCompanyProfileFromInput(inputEl) {
@@ -2390,6 +2465,8 @@
             var cin = node.querySelector('.batch-emp-company');
             bindBatchEmpCompanyHistoryInput(cin);
             bindBatchEmpCompanyMetaInputs(node);
+            bindBatchEmpOptionalMetaToggle(node);
+            syncBatchEmpOptionalMetaExpanded(node);
             bindBatchEmpDeductionCalc(node);
             var msBtn = node.querySelector('.batch-emp-month-salary-btn');
             if (msBtn) {
@@ -2467,6 +2544,7 @@
             setVal('.batch-emp-special', data.special);
             syncBatchEmpDeductionsFromBase(row);
             updateBatchEmpMonthSalaryBadge(row);
+            syncBatchEmpOptionalMetaExpanded(row);
         }
 
         /** 示例填写：一段完整公司工作经历（不自动提交） */
