@@ -623,6 +623,19 @@
         </div>
     </div>
 
+    <div id="deleteCompanyModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="deleteCompanyModalTitle">
+        <div class="activate-modal-mask" id="deleteCompanyModalMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="deleteCompanyModalTitle">一键删除公司数据</p>
+            <p class="hint" style="margin:0 0 10px;font-size:13px;color:#666;line-height:1.5;">选择扣缴单位，将删除该单位下的全部税务记录。</p>
+            <select id="deleteCompanySelect" class="activate-modal-input" style="width:100%;margin-bottom:12px;height:40px;"></select>
+            <div class="activate-modal-actions">
+                <button type="button" class="btn btn-default btn-sm" id="btnDeleteCompanyCancel">取消</button>
+                <button type="button" class="btn btn-danger btn-sm" id="btnDeleteCompanyConfirm">删除</button>
+            </div>
+        </div>
+    </div>
+
     <div id="batchMonthSalaryModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="batchMsModalTitleEl">
         <div class="batch-ms-modal-mask" id="batchMsModalMask"></div>
         <div class="batch-ms-modal-panel">
@@ -1069,6 +1082,7 @@
                     <div class="card-title-actions">
                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
                         <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
+                        <button type="button" class="btn btn-default btn-sm" onclick="openDeleteTaxRecordsByCompanyModal()">一键删除公司数据</button>
                     </div>
                 </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
@@ -1946,6 +1960,95 @@
                     if (data.code === 200) {
                         var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
                         showMsg(n > 0 ? '已删除 ' + year + ' 年共 ' + n + ' 条记录' : year + ' 年暂无记录', true);
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '删除失败');
+                })
+                .catch(function (err) {
+                    showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function closeDeleteTaxRecordsByCompanyModal() {
+            var root = document.getElementById('deleteCompanyModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+        }
+
+        function collectDistinctRecordCompanies(records) {
+            var names = [];
+            var seen = {};
+            (records || []).forEach(function (r) {
+                var n = String(r.company_name || '').trim();
+                if (!n || seen[n]) {
+                    return;
+                }
+                seen[n] = true;
+                names.push(n);
+            });
+            names.sort(function (a, b) {
+                return a.localeCompare(b, 'zh-CN');
+            });
+            return names;
+        }
+
+        function openDeleteTaxRecordsByCompanyModal() {
+            apiFetchRecords().then(function (list) {
+                var names = collectDistinctRecordCompanies(list);
+                if (!names.length) {
+                    showConsultStrongAlert('当前没有可删除的扣缴单位');
+                    return;
+                }
+                var sel = document.getElementById('deleteCompanySelect');
+                if (!sel) {
+                    return;
+                }
+                sel.innerHTML = '';
+                names.forEach(function (name) {
+                    var opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    sel.appendChild(opt);
+                });
+                var root = document.getElementById('deleteCompanyModal');
+                if (root) {
+                    root.classList.add('is-open');
+                }
+            });
+        }
+
+        function confirmDeleteTaxRecordsByCompany() {
+            var sel = document.getElementById('deleteCompanySelect');
+            var company = sel ? String(sel.value || '').trim() : '';
+            if (!company) {
+                showConsultStrongAlert('请选择扣缴单位');
+                return;
+            }
+            closeDeleteTaxRecordsByCompanyModal();
+            if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？此操作不可恢复。')) {
+                return;
+            }
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_records_by_company',
+                    company_name: company
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                        showMsg(
+                            n > 0
+                                ? '已删除「' + company + '」共 ' + n + ' 条记录'
+                                : '「' + company + '」下暂无记录',
+                            true
+                        );
                         return refreshRecordList();
                     }
                     throw new Error(data.msg || '删除失败');
@@ -2837,6 +2940,21 @@
             }
             if (ok) {
                 ok.addEventListener('click', closeConsultStrongAlertModal);
+            }
+        })();
+
+        (function bindDeleteCompanyModal() {
+            var mask = document.getElementById('deleteCompanyModalMask');
+            var cancel = document.getElementById('btnDeleteCompanyCancel');
+            var confirmBtn = document.getElementById('btnDeleteCompanyConfirm');
+            if (mask) {
+                mask.addEventListener('click', closeDeleteTaxRecordsByCompanyModal);
+            }
+            if (cancel) {
+                cancel.addEventListener('click', closeDeleteTaxRecordsByCompanyModal);
+            }
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', confirmDeleteTaxRecordsByCompany);
             }
         })();
 
