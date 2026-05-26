@@ -63,15 +63,6 @@
             letter-spacing: -0.04em;
         }
 
-        /* 收入行金额再收紧一档（与官方列表观感对齐） */
-        .list-row-income .list-amount {
-            letter-spacing: -0.08em;
-        }
-
-        .list-row-income .digit-kern-seven {
-            margin-right: -0.11em;
-        }
-
         /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
         .page-root {
             --safe-top: env(safe-area-inset-top, 0px);
@@ -973,7 +964,7 @@
                 listHtml += '<div class="list-row-left">';
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
                 listHtml +=
-                    '<div class="list-row list-row-income"><span class="list-label">收入：<span class="list-amount">' +
+                    '<div class="list-row"><span class="list-label">收入：<span class="list-amount">' +
                     kernSevenAfterDigitInEscaped(escapeHtml(String(record.income))) +
                     '</span>元</span></div>';
                 listHtml += '</div>';
