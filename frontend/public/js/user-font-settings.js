@@ -11,8 +11,11 @@
     var PRESETS = {
         size: [
             { id: '14', label: '14', value: '14px' },
+            { id: '15', label: '15', value: '15px' },
             { id: '16', label: '16', value: '16px' },
+            { id: '17', label: '17', value: '17px' },
             { id: '18', label: '18', value: '18px' },
+            { id: '19', label: '19', value: '19px' },
             { id: '20', label: '20', value: '20px' }
         ],
         weight: [
