@@ -28,7 +28,7 @@
 
 ![税务记录](docs/images/shot-tax.png)
 
-> 若图片暂未显示，请将截图放入本仓库 `docs/images/` 目录并命名为上列文件名。
+更新截图：在本地启动服务后执行 `SCREENSHOT_USERNAME=… SCREENSHOT_PASSWORD=… node scripts/capture-readme-screenshots.mjs`（需已安装 Playwright 浏览器）。
 
 ---
 
