@@ -223,6 +223,47 @@
     return isIPhone12ProMaxClient() || isIPhone17ProMaxClient();
   }
 
+  /**
+   * iPhone 14（6.1 寸，390×844）：收入纳税明细顶栏需铺满状态栏白底，避免列表文字透出；
+   * 与 16 Pro 分档，避免误匹配 402×874。
+   */
+  function isIPhone14LikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    if (isIPhone16ProLikeClient() || isIPhone17ProLikeClient() || isIPhone11ProLikeClient()) {
+      return false;
+    }
+    if (isIPhone12ProMaxClient() || isIPhone17ProMaxClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*14\s*Pro|iPhone\s*14\s*Plus|iPhone15,2|iPhone15,3|iPhone14,8/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*15\b|iPhone15,4|iPhone15,5/i.test(ua)) {
+      return false;
+    }
+    if (/iPhone\s*14\b|iPhone14,7\b/i.test(ua)) {
+      return true;
+    }
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      if (shortSide >= 391 && shortSide <= 405) {
+        return false;
+      }
+      return shortSide >= 388 && shortSide <= 392 && longSide >= 840 && longSide <= 848;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isIPhone16ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
       return false;
@@ -329,10 +370,11 @@
     } catch (e) {}
   }
 
-  /** iPhone 16/17 Pro：白顶栏页状态栏与导航栏同色（覆盖全局蓝 theme-color） */
+  /** iPhone 14 / 16·17 Pro / Pro Max：白顶栏页状态栏与导航栏同色（覆盖全局蓝 theme-color） */
   function applyIPhone16ProPageChrome() {
     try {
       if (
+        !document.documentElement.classList.contains('app-ios-iphone14') &&
         !document.documentElement.classList.contains('app-ios-iphone16pro') &&
         !document.documentElement.classList.contains('app-ios-iphone17pro') &&
         !document.documentElement.classList.contains('app-ios-iphone-promax-font')
@@ -370,6 +412,7 @@
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
+      var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhoneProMaxFont = iosClient && isIPhoneProMaxLargeFontClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var cordovaHuaweiPura70 = cordovaShell && huaweiPura70Client;
@@ -469,6 +512,9 @@
         /* 16 Pro 状态栏区易露出 html 白底；首页顶栏为蓝，与 theme-color 对齐 */
         upsertMeta('theme-color', '#2c80f4');
         upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      }
+      if (iosIPhone14) {
+        document.documentElement.classList.add('app-ios-iphone14');
       }
       if (iosIPhoneProMaxFont) {
         document.documentElement.classList.add('app-ios-iphone-promax-font');
@@ -621,6 +667,14 @@
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          /* iPhone 14：收入纳税明细结果页顶栏铺满安全区，避免状态栏区列表文字透出 */
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
+          'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
