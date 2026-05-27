@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260527-xiangqing-ui"></script>
+    <script src="/js/auth.js?v=20260527-xiangqing-tax3"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260527-ufs-regional">
     <script src="/js/user-font-settings.js?v=20260527-ufs-regional" data-scope="body.page-xiangqing"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -145,6 +145,23 @@
             min-width: 0;
             line-height: 1.45;
             word-break: break-all;
+        }
+
+        /* 主管税务机关：右对齐三行（与官方 App 一致） */
+        .info-row--tax-authority {
+            align-items: flex-start;
+        }
+
+        .info-row--tax-authority .info-label {
+            padding-top: 2px;
+        }
+
+        .info-value--tax-authority {
+            flex: 1 1 58%;
+            max-width: 58%;
+            line-height: 1.5;
+            word-break: normal;
+            white-space: normal;
         }
 
         .info-value.amount-value,
@@ -358,9 +375,9 @@
                 <span class="info-label">扣缴义务人纳税人识别号：</span>
                 <span class="info-value" id="companyTaxId">--</span>
             </div>
-            <div class="info-row">
+            <div class="info-row info-row--tax-authority">
                 <span class="info-label">主管税务机关：</span>
-                <span class="info-value" id="taxAuthority">--</span>
+                <span class="info-value info-value--tax-authority" id="taxAuthority">--</span>
             </div>
             <div class="info-row">
                 <span class="info-label">申报渠道：</span>
@@ -544,6 +561,55 @@
             return String(v);
         }
 
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /** 主管税务机关固定为三行：…税务局 / 中间园区名 / 税务分局 */
+        function formatTaxAuthorityLines(raw) {
+            var s = String(raw == null ? '' : raw).trim();
+            if (!s) {
+                return '--';
+            }
+            var m = s.match(/^(国家税务总局.+?税务局)(.+?)(税务分局)$/);
+            if (m && m[2]) {
+                return (
+                    escapeHtml(m[1]) +
+                    '<br>' +
+                    escapeHtml(m[2].trim()) +
+                    '<br>' +
+                    escapeHtml(m[3])
+                );
+            }
+            var i = s.indexOf('税务局');
+            if (i > 0 && i + 3 < s.length) {
+                var head = s.slice(0, i + 3);
+                var tail = s.slice(i + 3);
+                var j = tail.indexOf('税务分局');
+                if (j > 0) {
+                    return (
+                        escapeHtml(head) +
+                        '<br>' +
+                        escapeHtml(tail.slice(0, j).trim()) +
+                        '<br>' +
+                        escapeHtml(tail.slice(j))
+                    );
+                }
+            }
+            return escapeHtml(s);
+        }
+
+        function setTaxAuthorityHtml(raw) {
+            var el = document.getElementById('taxAuthority');
+            if (el) {
+                el.innerHTML = formatTaxAuthorityLines(raw);
+            }
+        }
+
         function setYuan(id, v) {
             var el = document.getElementById(id);
             if (el) {
@@ -584,7 +650,7 @@
                         document.getElementById('incomeSubtype').textContent = formatText(record.income_subtype, '正常工资薪金');
                         document.getElementById('companyName').textContent = formatText(record.company_name);
                         document.getElementById('companyTaxId').textContent = formatText(record.company_tax_id);
-                        document.getElementById('taxAuthority').textContent = formatText(record.tax_authority);
+                        setTaxAuthorityHtml(record.tax_authority);
                         document.getElementById('reportChannel').textContent = formatText(record.report_channel, '其他');
                         document.getElementById('reportDate').textContent = formatText(record.report_date);
                         document.getElementById('taxPeriod').textContent = formatText(record.tax_period);
