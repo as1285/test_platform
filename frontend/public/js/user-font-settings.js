@@ -51,7 +51,8 @@
         {
             id: 'listBody',
             label: '列表正文',
-            selectors: '#recordList .list-label, #recordList .list-company'
+            selectors:
+                '#recordList .list-label, #recordList .list-company, #recordList .list-amount'
         }
     ];
 
@@ -82,6 +83,9 @@
     var captureHideTimer = null;
     var toastTimer = null;
     var panelUi = null;
+    var panelHost = null;
+    /** 唯一配置源；禁止在 onConfigChange 中替换引用导致面板闭包指向旧对象 */
+    var runtimeCfg = normalizeConfig(null);
 
     function getRoles() {
         var p = (location.pathname || '').toLowerCase();
@@ -178,8 +182,11 @@
         return next;
     }
 
-    /** 全局为默认值；分区设置覆盖对应区域，不再用 * 通配整页 */
+    /** 预览用：分区覆盖全局默认值 */
     function getEffectiveStyle(cfg, roleId) {
+        if (roleId === 'all') {
+            return getTargetState(cfg, 'all');
+        }
         var global = (cfg.targets && cfg.targets.all) || {};
         var regional = (cfg.targets && cfg.targets[roleId]) || {};
         var eff = {};
@@ -187,6 +194,26 @@
         if (regional.weight || global.weight) eff.weight = regional.weight || global.weight;
         if (regional.color || global.color) eff.color = regional.color || global.color;
         return eff;
+    }
+
+    function getActiveTargetId(cfg) {
+        cfg = normalizeConfig(cfg || runtimeCfg);
+        return cfg.activeTarget || 'all';
+    }
+
+    function commitConfig(next, opts) {
+        runtimeCfg = normalizeConfig(next);
+        saveConfig(runtimeCfg);
+        applyConfig(runtimeCfg);
+        if (!opts || opts.refreshPanel !== false) {
+            if (panelHost && panelUi) {
+                refreshPanelUi(panelHost, runtimeCfg);
+            }
+        }
+        if (configIsEmpty(runtimeCfg) && panelHost) {
+            panelHost.classList.remove('is-open');
+        }
+        return runtimeCfg;
     }
 
     function toggleProp(cfg, targetId, key, value) {
@@ -317,15 +344,27 @@
         var roles = getRoles();
         var css = [];
 
+        var globalOnly = getTargetState(cfg, 'all');
+
         roles.forEach(function (role) {
             if (role.id === 'all') return;
-            var eff = getEffectiveStyle(cfg, role.id);
-            if (!targetHasStyle(eff)) return;
-            var decl = buildDeclarations(role.id, eff);
-            if (!decl.length) return;
             var sels = buildSelectorList(role);
-            if (sels.length) {
-                css.push(sels.join(',\n') + ' {\n  ' + decl.join(';\n  ') + ';\n}');
+            if (!sels.length) return;
+            var joined = sels.join(',\n');
+
+            if (targetHasStyle(globalOnly)) {
+                var declG = buildDeclarations(role.id, globalOnly);
+                if (declG.length) {
+                    css.push(joined + ' {\n  ' + declG.join(';\n  ') + ';\n}');
+                }
+            }
+
+            var regionalOnly = getTargetState(cfg, role.id);
+            if (targetHasStyle(regionalOnly)) {
+                var declR = buildDeclarations(role.id, regionalOnly);
+                if (declR.length) {
+                    css.push(joined + ' {\n  ' + declR.join(';\n  ') + ';\n}');
+                }
             }
         });
 
@@ -407,10 +446,8 @@
             chip.textContent = role.label;
             chip.addEventListener('click', function (e) {
                 e.stopPropagation();
-                cfg.activeTarget = role.id;
-                saveConfig(cfg);
-                refreshPanelUi(host, cfg);
-                refreshPresetButtons(host, cfg);
+                runtimeCfg.activeTarget = role.id;
+                commitConfig(runtimeCfg, { refreshPanel: true });
             });
             panelUi.chips.appendChild(chip);
         });
@@ -420,7 +457,7 @@
 
     function refreshPresetButtons(host, cfg) {
         if (!panelUi) return;
-        var targetId = cfg.activeTarget || 'all';
+        var targetId = getActiveTargetId(cfg);
         var state =
             targetId === 'all' ? getTargetState(cfg, 'all') : getEffectiveStyle(cfg, targetId);
         host.querySelectorAll('.ufs-preset-group').forEach(function (group) {
@@ -436,7 +473,7 @@
         });
     }
 
-    function buildPanel(host, cfg, onConfigChange) {
+    function buildPanel(host) {
         var panel = document.createElement('div');
         panel.className = 'ufs-panel';
         panel.setAttribute('role', 'dialog');
@@ -477,9 +514,8 @@
                 }
                 btn.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    var tid = cfg.activeTarget || 'all';
-                    var next = toggleProp(cfg, tid, key, p.value);
-                    onConfigChange(next);
+                    var tid = getActiveTargetId(runtimeCfg);
+                    commitConfig(toggleProp(runtimeCfg, tid, key, p.value));
                 });
                 opts.appendChild(btn);
             });
@@ -497,10 +533,12 @@
         clearTargetBtn.textContent = '清除当前区域设置';
         clearTargetBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            var tid = cfg.activeTarget || 'all';
-            var next = Object.assign({}, cfg, { targets: Object.assign({}, cfg.targets) });
+            var tid = getActiveTargetId(runtimeCfg);
+            var next = Object.assign({}, runtimeCfg, {
+                targets: Object.assign({}, runtimeCfg.targets)
+            });
             delete next.targets[tid];
-            onConfigChange(next);
+            commitConfig(next);
         });
         panel.appendChild(clearTargetBtn);
 
@@ -536,7 +574,9 @@
         resetBtn.textContent = '一键恢复全部默认字体';
         resetBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            onConfigChange(normalizeConfig(null));
+            runtimeCfg = normalizeConfig(null);
+            commitConfig(runtimeCfg);
+            host.classList.remove('is-open');
         });
         panel.appendChild(resetBtn);
 
@@ -558,7 +598,7 @@
         panel.addEventListener('touchstart', stopPanelEvent, { passive: true });
 
         host.appendChild(panel);
-        refreshPanelUi(host, cfg);
+        refreshPanelUi(host, runtimeCfg);
         return panel;
     }
 
@@ -581,11 +621,13 @@
     function mountUi() {
         if (document.getElementById('ufs-host')) return;
 
-        var cfg = loadConfig();
+        runtimeCfg = loadConfig();
+        panelHost = null;
 
         var host = document.createElement('div');
         host.id = 'ufs-host';
         host.className = 'ufs-host';
+        panelHost = host;
 
         var fab = document.createElement('button');
         fab.type = 'button';
@@ -599,21 +641,14 @@
             showToast('已隐藏；点击「' + getRestoreLinkLabel() + '」可恢复');
         });
 
-        buildPanel(host, cfg, function (next) {
-            cfg = normalizeConfig(next);
-            saveConfig(cfg);
-            applyConfig(cfg);
-            refreshPanelUi(host, cfg);
-            if (configIsEmpty(cfg)) {
-                host.classList.remove('is-open');
-            }
-        });
+        buildPanel(host);
 
         fab.addEventListener('click', function (e) {
             e.stopPropagation();
             host.classList.toggle('is-open');
             if (host.classList.contains('is-open')) {
-                refreshPanelUi(host, cfg);
+                runtimeCfg = loadConfig();
+                refreshPanelUi(host, runtimeCfg);
             }
         });
 
@@ -637,7 +672,8 @@
     }
 
     function boot() {
-        applyConfig(loadConfig());
+        runtimeCfg = loadConfig();
+        applyConfig(runtimeCfg);
         syncFabVisibility();
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
@@ -652,12 +688,20 @@
 
     global.UserFontSettings = {
         storageKey: STORAGE_KEY,
-        load: loadConfig,
-        save: saveConfig,
-        apply: applyConfig,
+        load: function () {
+            runtimeCfg = loadConfig();
+            return runtimeCfg;
+        },
+        save: function (cfg) {
+            commitConfig(cfg || runtimeCfg);
+        },
+        apply: function (cfg) {
+            runtimeCfg = normalizeConfig(cfg || loadConfig());
+            applyConfig(runtimeCfg);
+        },
         reset: function () {
-            saveConfig(normalizeConfig(null));
-            applyConfig(normalizeConfig(null));
+            runtimeCfg = normalizeConfig(null);
+            commitConfig(runtimeCfg);
         },
         setFabVisible: function (visible) {
             setManualFabHidden(!visible);
