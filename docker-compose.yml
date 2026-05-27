@@ -66,10 +66,12 @@ services:
     ports:
       # 显式绑定到所有网卡；若写成 127.0.0.1:80:80 则外网访问会 connection refused
       - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     depends_on:
       - backend
     volumes:
       - uploads_static:/usr/share/nginx/html/uploads
+      - ./certs:/etc/nginx/certs:ro
     networks:
       - test_platform_default
     restart: unless-stopped

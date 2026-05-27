@@ -103,5 +103,5 @@ COPY bank_icons /usr/share/nginx/html/bank_icons/
 COPY css /usr/share/nginx/html/css/
 COPY public/js /usr/share/nginx/html/js/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]

@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+bash "$ROOT/scripts/generate-selfsigned-https-cert.sh"
+
 # 仅部署部分服务时：DEPLOY_SERVICES="frontend api" ./scripts/deploy.sh
 if [[ -n "${DEPLOY_SERVICES:-}" ]]; then
   # shellcheck disable=SC2086
@@ -22,6 +24,11 @@ if command -v curl >/dev/null 2>&1; then
     echo "[deploy] probe OK: http://127.0.0.1/ responded"
   else
     echo "[deploy] WARN: http://127.0.0.1/ did not return HTTP 2xx — check: docker compose logs frontend"
+  fi
+  if curl -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
+    echo "[deploy] probe OK: https://127.0.0.1/ responded (self-signed)"
+  else
+    echo "[deploy] WARN: https://127.0.0.1/ failed — check certs mount and docker compose logs frontend"
   fi
 else
   echo "[deploy] (skip curl probe: curl not installed)"
