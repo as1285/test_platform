@@ -1631,11 +1631,22 @@
             return last;
         }
 
+        /** 年终奖扣缴义务人信息：最后一段工作经历 → 单条表单 */
+        function resolveBonusCompanyProfile() {
+            var lastRowProf = getBatchEmpProfileFromRow(getLastBatchEmpRowFromDom());
+            if (lastRowProf.name) {
+                return lastRowProf;
+            }
+            return {
+                name: resolveLegacyCompanyFromForm(),
+                company_tax_id: String(document.getElementById('f_company_tax_id').value || '').trim(),
+                tax_authority: String(document.getElementById('f_tax_authority').value || '').trim()
+            };
+        }
+
         /** 年终奖扣缴义务人：最后一段工作经历 → 单条表单 */
         function resolveBonusCompanyName() {
-            var last = getLastBatchEmpCompanyFromDom();
-            if (last) return last;
-            return resolveLegacyCompanyFromForm();
+            return resolveBonusCompanyProfile().name;
         }
 
         function getLastBatchEmpRowFromDom() {
@@ -3065,12 +3076,12 @@
                 records.push(buildBatchSalaryRecord(writes[wi], base, uidKey));
             }
             if (bonus.yearEndBonus > 0) {
-                var bonusCompany = resolveBonusCompanyName();
+                var bonusProfile = resolveBonusCompanyProfile();
                 records.push(
                     buildBatchYearEndBonusRecord(
                         uidKey,
                         base,
-                        bonusCompany,
+                        bonusProfile,
                         bonus.bonusYear,
                         bonus.bonusMonth,
                         bonus.yearEndBonus
@@ -3556,10 +3567,12 @@
             return o;
         }
 
-        function buildBatchYearEndBonusRecord(uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus) {
+        function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus) {
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             var b = JSON.parse(JSON.stringify(base));
-            b.company_name = companyForBatch;
+            b.company_name = bonusProfile.name;
+            b.company_tax_id = bonusProfile.company_tax_id != null ? String(bonusProfile.company_tax_id) : '';
+            b.tax_authority = bonusProfile.tax_authority != null ? String(bonusProfile.tax_authority) : '';
             b.year = year;
             b.month = bonusMonth;
             b.tax_period = taxPeriodFromYearMonth(year, bonusMonth);
@@ -3626,14 +3639,14 @@
             if (!requireBonusCompanyOrAlert()) {
                 return;
             }
-            var companyForBatch = resolveBonusCompanyName();
+            var bonusProfile = resolveBonusCompanyProfile();
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             if (
                 !confirm(
                     '将写入全年一次性奖金收入 ' +
                         yearEndBonus +
                         ' 元（扣缴义务人「' +
-                        companyForBatch +
+                        bonusProfile.name +
                         '」，归属 ' +
                         year +
                         ' 年 ' +
@@ -3645,16 +3658,11 @@
             ) {
                 return;
             }
-            var bonusRec = buildBatchYearEndBonusRecord(uidKey, base, companyForBatch, year, bonusMonth, yearEndBonus);
+            var bonusRec = buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus);
             setBatchSubmitBtnLoading(true);
             postBatchTaxRecordsPromise([bonusRec])
                 .then(function () {
-                    var lastRowProf = getBatchEmpProfileFromRow(getLastBatchEmpRowFromDom());
-                    rememberBatchCompanyProfile({
-                        name: companyForBatch,
-                        company_tax_id: lastRowProf.company_tax_id || '',
-                        tax_authority: lastRowProf.tax_authority || ''
-                    });
+                    rememberBatchCompanyProfile(bonusProfile);
                     showMsg('年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）', true);
                     return refreshRecordList();
                 })
@@ -3738,14 +3746,9 @@
                 });
             });
             if (bonus.yearEndBonus > 0) {
-                var bonusCompany = resolveBonusCompanyName();
-                if (bonusCompany) {
-                    var lastE = employments[employments.length - 1];
-                    rememberBatchCompanyProfile({
-                        name: bonusCompany,
-                        company_tax_id: lastE ? lastE.company_tax_id : '',
-                        tax_authority: lastE ? lastE.tax_authority : ''
-                    });
+                var bonusProfile = resolveBonusCompanyProfile();
+                if (bonusProfile.name) {
+                    rememberBatchCompanyProfile(bonusProfile);
                 }
             }
         }
