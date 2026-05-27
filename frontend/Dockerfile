@@ -20,6 +20,7 @@ COPY aqzx.html /usr/share/nginx/html/
 COPY xiugaimima.html /usr/share/nginx/html/
 COPY install_guide.html /usr/share/nginx/html/
 COPY about_app_icon.png /usr/share/nginx/html/
+COPY login_avatar.png /usr/share/nginx/html/
 COPY about_update.html /usr/share/nginx/html/
 COPY about_update_notes.html /usr/share/nginx/html/
 COPY about_agreement.html /usr/share/nginx/html/
