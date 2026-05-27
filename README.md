@@ -28,7 +28,8 @@
 
 ![税务记录](docs/images/shot-tax.png)
 
-更新截图：在本地启动服务后执行 `SCREENSHOT_USERNAME=… SCREENSHOT_PASSWORD=… node scripts/capture-readme-screenshots.mjs`（需已安装 Playwright 浏览器）。
+更新截图：先安装中文字体（Linux：`sudo apt-get install -y fonts-noto-cjk`），再执行  
+`SCREENSHOT_USERNAME=… SCREENSHOT_PASSWORD=… node scripts/capture-readme-screenshots.mjs`（需已安装 Playwright 浏览器）。未装字体时截图中文会显示为方框。
 
 ---
 
