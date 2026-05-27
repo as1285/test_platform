@@ -147,7 +147,7 @@
             word-break: break-all;
         }
 
-        /* 主管税务机关：右对齐三行（与官方 App 一致） */
+        /* 主管税务机关：右对齐，每行 12 字 */
         .info-row--tax-authority {
             align-items: flex-start;
         }
@@ -569,62 +569,20 @@
                 .replace(/"/g, '&quot;');
         }
 
-        /** 将两行文本调整为相同字数（从较长行末尾逐字挪到较短行开头） */
-        function balanceTaxAuthorityTwoLines(line1, line2) {
-            var a = String(line1 || '');
-            var b = String(line2 || '');
-            while (a.length > b.length && a.length > 0) {
-                b = a.slice(-1) + b;
-                a = a.slice(0, -1);
-            }
-            while (b.length > a.length && b.length > 0) {
-                a = a + b.slice(0, 1);
-                b = b.slice(1);
-            }
-            return [a, b];
-        }
+        /** 主管税务机关：每行固定 12 个汉字后换行 */
+        var TAX_AUTHORITY_CHARS_PER_LINE = 12;
 
-        /** 主管税务机关：前两行等字数，第三行固定为「税务分局」（与官方 App 一致） */
         function formatTaxAuthorityLines(raw) {
             var s = String(raw == null ? '' : raw).trim();
             if (!s) {
                 return '--';
             }
-            var suffix = '';
-            if (s.slice(-4) === '税务分局') {
-                suffix = '税务分局';
-                s = s.slice(0, -4);
+            var n = TAX_AUTHORITY_CHARS_PER_LINE;
+            var lines = [];
+            for (var i = 0; i < s.length; i += n) {
+                lines.push(s.slice(i, i + n));
             }
-            var line1 = s;
-            var line2 = '';
-            var m = s.match(/^(国家税务总局.+?税务局)(.+)$/);
-            if (m && m[2]) {
-                line1 = m[1];
-                line2 = m[2].trim();
-            } else {
-                var i = s.indexOf('税务局');
-                if (i > 0 && i + 3 < s.length) {
-                    line1 = s.slice(0, i + 3);
-                    line2 = s.slice(i + 3).trim();
-                } else if (s.length > 1) {
-                    var half = Math.floor(s.length / 2);
-                    line1 = s.slice(0, half);
-                    line2 = s.slice(half);
-                }
-            }
-            if (line2) {
-                var balanced = balanceTaxAuthorityTwoLines(line1, line2);
-                line1 = balanced[0];
-                line2 = balanced[1];
-            }
-            var html = escapeHtml(line1);
-            if (line2) {
-                html += '<br>' + escapeHtml(line2);
-            }
-            if (suffix) {
-                html += '<br>' + escapeHtml(suffix);
-            }
-            return html;
+            return lines.map(escapeHtml).join('<br>');
         }
 
         function setTaxAuthorityHtml(raw) {
