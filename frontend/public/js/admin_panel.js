@@ -85,7 +85,7 @@
         var _deviceStatsChartInstances = [];
         var _registerTimeChartInstances = [];
         var _registerGenderChartInstances = [];
-        var _udHighSalaryChartInstances = [];
+        var _udGenderChartInstances = [];
         var DEVICE_CHART_COLORS = {
             iphone: '#1c1c1e',
             ipad: '#5c5c5e',
@@ -2674,43 +2674,48 @@
             return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
         }
 
-        function destroyUdHighSalaryCharts() {
-            _udHighSalaryChartInstances.forEach(function (c) {
+        function destroyUdGenderCharts() {
+            _udGenderChartInstances.forEach(function (c) {
                 try {
                     c.destroy();
                 } catch (e0) {}
             });
-            _udHighSalaryChartInstances = [];
+            _udGenderChartInstances = [];
         }
 
         function chartColorAtIndex(index) {
             return DEVICE_CHART_FALLBACK[index % DEVICE_CHART_FALLBACK.length];
         }
 
-        function formatSalaryYuan(n) {
-            if (n == null || isNaN(Number(n))) return '—';
-            return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' 元';
-        }
-
-        function renderUdHighSalaryCharts(data) {
-            destroyUdHighSalaryCharts();
-            var wrap = document.getElementById('userDataHighSalaryChartsWrap');
-            var grid = document.getElementById('userDataHighSalaryChartsGrid');
-            var emptyEl = document.getElementById('userDataHighSalaryChartsEmpty');
-            var summaryEl = document.getElementById('udHighSalarySummary');
+        function renderUdGenderCharts(data) {
+            destroyUdGenderCharts();
+            var wrap = document.getElementById('userDataGenderChartsWrap');
+            var grid = document.getElementById('userDataGenderChartsGrid');
+            var emptyEl = document.getElementById('userDataGenderChartsEmpty');
+            var summaryEl = document.getElementById('udGenderSummary');
             if (!wrap) return;
 
             wrap.style.display = 'block';
-            var total = Number(data && data.total_count) || 0;
-            var threshold = Number(data && data.min_salary) || 20000;
+            var total = Number(data && data.total) || 0;
+            var items = (data && data.items) || [];
+            var male = items.find(function (it) {
+                return it.key === 'male';
+            });
+            var female = items.find(function (it) {
+                return it.key === 'female';
+            });
+            var maleCount = male ? Number(male.count) || 0 : 0;
+            var femaleCount = female ? Number(female.count) || 0 : 0;
+            var malePct = male && male.pct_text ? male.pct_text : '—';
+            var femalePct = female && female.pct_text ? female.pct_text : '—';
 
             if (summaryEl) {
                 var cards = [
-                    { label: '人数', val: total },
-                    { label: '平均', val: formatSalaryYuan(data.avg_salary) },
-                    { label: '中位数', val: formatSalaryYuan(data.median_salary) },
-                    { label: '最高', val: formatSalaryYuan(data.max_salary) },
-                    { label: '最低', val: formatSalaryYuan(data.min_salary_in_cohort) }
+                    { label: '总人数', val: total + ' 人' },
+                    { label: '男', val: maleCount + ' 人' },
+                    { label: '女', val: femaleCount + ' 人' },
+                    { label: '男占比', val: malePct },
+                    { label: '女占比', val: femalePct }
                 ];
                 var sh = '';
                 cards.forEach(function (c) {
@@ -2731,27 +2736,27 @@
                     emptyEl.textContent =
                         typeof Chart === 'undefined'
                             ? '图表库未加载，请刷新页面'
-                            : '暂无月薪 ' + (threshold / 10000) + ' 万以上的用户（近6月平均）';
+                            : '暂无用户性别数据';
                 }
                 return;
             }
             if (emptyEl) emptyEl.style.display = 'none';
             if (grid) grid.style.display = 'grid';
 
-            var dist = (data.salary_distribution || []).filter(function (b) {
-                return Number(b.count) > 0;
+            var chartItems = items.filter(function (it) {
+                return it.key === 'male' || it.key === 'female';
             });
-            if (!dist.length) {
-                dist = data.salary_distribution || [];
+            if (!chartItems.length) {
+                chartItems = items;
             }
-            var distLabels = dist.map(function (b) {
-                return b.label;
+            var distLabels = chartItems.map(function (it) {
+                return it.label;
             });
-            var distCounts = dist.map(function (b) {
-                return Number(b.count) || 0;
+            var distCounts = chartItems.map(function (it) {
+                return Number(it.count) || 0;
             });
-            var distColors = distLabels.map(function (_l, i) {
-                return chartColorAtIndex(i);
+            var distColors = chartItems.map(function (it) {
+                return REGISTER_GENDER_CHART_COLORS[it.key] || chartColorAtIndex(0);
             });
 
             var barOpts = {
@@ -2759,12 +2764,12 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
                 }
             };
 
-            _udHighSalaryChartInstances.push(
-                new Chart(document.getElementById('udChartHighSalaryDist'), {
+            _udGenderChartInstances.push(
+                new Chart(document.getElementById('udChartGenderBar'), {
                     type: 'bar',
                     data: {
                         labels: distLabels,
@@ -2788,8 +2793,8 @@
                 position: 'bottom',
                 labels: { boxWidth: 12, padding: 8, font: { size: 11 } }
             };
-            _udHighSalaryChartInstances.push(
-                new Chart(document.getElementById('udChartHighSalaryShare'), {
+            _udGenderChartInstances.push(
+                new Chart(document.getElementById('udChartGenderPie'), {
                     type: 'doughnut',
                     data: {
                         labels: distLabels,
@@ -2820,113 +2825,37 @@
                     }
                 })
             );
-
-            var companies = (data.top_companies || []).slice(0, 10);
-            var compLabels = companies.map(function (c) {
-                var n = String(c.name || '');
-                return n.length > 18 ? n.slice(0, 18) + '…' : n;
-            });
-            var compCounts = companies.map(function (c) {
-                return Number(c.user_count) || 0;
-            });
-            _udHighSalaryChartInstances.push(
-                new Chart(document.getElementById('udChartHighSalaryCompanies'), {
-                    type: 'bar',
-                    data: {
-                        labels: compLabels,
-                        datasets: [
-                            {
-                                label: '用户数',
-                                data: compCounts,
-                                backgroundColor: chartColorAtIndex(0) + '99',
-                                borderColor: chartColorAtIndex(0),
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                    }
-                })
-            );
-
-            var topUsers = (data.top_users || []).slice(0, 12);
-            var userLabels = topUsers.map(function (u) {
-                return String(u.username || '');
-            });
-            var userSalaries = topUsers.map(function (u) {
-                return Number(u.avg_salary_6m) || 0;
-            });
-            _udHighSalaryChartInstances.push(
-                new Chart(document.getElementById('udChartHighSalaryTopUsers'), {
-                    type: 'bar',
-                    data: {
-                        labels: userLabels,
-                        datasets: [
-                            {
-                                label: '近6月平均工资（元）',
-                                data: userSalaries,
-                                backgroundColor: chartColorAtIndex(2) + '99',
-                                borderColor: chartColorAtIndex(2),
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
-                    }
-                })
-            );
         }
 
-        function loadUdHighSalaryCharts() {
-            var wrap = document.getElementById('userDataHighSalaryChartsWrap');
+        function loadUdGenderCharts() {
+            var wrap = document.getElementById('userDataGenderChartsWrap');
+            var daysEl = document.getElementById('udGenderDays');
+            var days = daysEl ? String(daysEl.value) : '0';
             if (wrap) wrap.style.display = 'block';
-            adminFetch('api/admin/user-data/salary-high/charts?min_salary=20000')
+            adminFetch('api/admin/analytics/register-gender?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
-                        destroyUdHighSalaryCharts();
-                        var emptyEl = document.getElementById('userDataHighSalaryChartsEmpty');
+                        destroyUdGenderCharts();
+                        var emptyEl = document.getElementById('userDataGenderChartsEmpty');
                         if (emptyEl) {
                             emptyEl.style.display = 'block';
-                            emptyEl.textContent = j.msg || '高收入图表加载失败';
+                            emptyEl.textContent = j.msg || '性别分析加载失败';
                         }
                         return;
                     }
-                    renderUdHighSalaryCharts(j.data);
+                    renderUdGenderCharts(j.data);
                 })
                 .catch(function () {
-                    destroyUdHighSalaryCharts();
-                    var emptyEl = document.getElementById('userDataHighSalaryChartsEmpty');
+                    destroyUdGenderCharts();
+                    var emptyEl = document.getElementById('userDataGenderChartsEmpty');
                     if (emptyEl) {
                         emptyEl.style.display = 'block';
-                        emptyEl.textContent = '高收入图表加载失败';
+                        emptyEl.textContent = '性别分析加载失败';
                     }
                 });
-        }
-
-        function applyHighSalaryListFilter() {
-            var minEl = document.getElementById('udFilterSalaryMin');
-            var maxEl = document.getElementById('udFilterSalaryMax');
-            if (minEl) minEl.value = '20000';
-            if (maxEl) maxEl.value = '';
-            loadUserDataList(1);
-            var tbl = document.querySelector('#page-user-data .users-data-table');
-            if (tbl && tbl.scrollIntoView) {
-                tbl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
         }
 
         function renderUserDataAnalytics(data) {
@@ -2973,7 +2902,7 @@
                 });
                 buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
             }
-            loadUdHighSalaryCharts();
+            loadUdGenderCharts();
             var compTb = document.getElementById('userDataTopCompaniesTbody');
             if (compTb) {
                 var chtml = '';
@@ -2995,7 +2924,7 @@
         function loadUserDataAnalytics() {
             var wrap = document.getElementById('userDataAnalytics');
             if (wrap) wrap.textContent = '分析数据加载中…';
-            destroyUdHighSalaryCharts();
+            destroyUdGenderCharts();
             adminFetch('api/admin/user-data/analytics')
                 .then(function (r) {
                     return r.json();
@@ -3912,11 +3841,17 @@
                 loadUserDataAnalytics();
             };
         }
-        var btnViewHighSalaryUserList = document.getElementById('btnViewHighSalaryUserList');
-        if (btnViewHighSalaryUserList) {
-            btnViewHighSalaryUserList.onclick = function () {
-                applyHighSalaryListFilter();
+        var btnRefreshUdGender = document.getElementById('btnRefreshUdGender');
+        if (btnRefreshUdGender) {
+            btnRefreshUdGender.onclick = function () {
+                loadUdGenderCharts();
             };
+        }
+        var udGenderDays = document.getElementById('udGenderDays');
+        if (udGenderDays) {
+            udGenderDays.addEventListener('change', function () {
+                loadUdGenderCharts();
+            });
         }
         var userDataPrev = document.getElementById('userDataPrev');
         if (userDataPrev) {

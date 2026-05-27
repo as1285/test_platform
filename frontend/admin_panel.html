@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260527-register-gender">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260527-ud-gender">
 </head>
 <body>
     <div class="layout">
@@ -679,32 +679,34 @@
                     </table>
                 </div>
             </div>
-            <div id="userDataHighSalaryChartsWrap" class="device-stats-charts-wrap ud-high-salary-charts" style="display:none;margin-top:20px;">
-                <h3>月薪 2 万以上用户 · 图表分析</h3>
-                <p class="hint" id="udHighSalaryChartsHint">近六个月平均工资 ≥ 2 万元（与上方「2万以上」区间一致）</p>
-                <div id="udHighSalarySummary" class="user-data-stats ud-high-salary-summary" aria-live="polite"></div>
-                <p id="userDataHighSalaryChartsEmpty" class="hint" style="display:none;">暂无月薪 2 万以上的用户数据</p>
-                <div class="device-stats-charts" id="userDataHighSalaryChartsGrid" style="display:none;">
+            <div id="userDataGenderChartsWrap" class="device-stats-charts-wrap ud-gender-charts" style="display:none;margin-top:20px;">
+                <h3>注册用户 · 性别分析</h3>
+                <p class="hint" id="udGenderChartsHint">按用户资料中的性别字段统计（1=男，2=女；用户在「我的」或个人信息中保存后写入）</p>
+                <div class="form-row" style="align-items:center;margin:8px 0 4px;">
+                    <div>
+                        <label for="udGenderDays">统计范围</label>
+                        <select id="udGenderDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                            <option value="0" selected>全部注册用户</option>
+                            <option value="7">最近 7 天注册</option>
+                            <option value="30">最近 30 天注册</option>
+                            <option value="90">最近 90 天注册</option>
+                            <option value="365">最近 365 天注册</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-page" id="btnRefreshUdGender">刷新</button>
+                </div>
+                <div id="udGenderSummary" class="user-data-stats ud-gender-summary" aria-live="polite"></div>
+                <p id="userDataGenderChartsEmpty" class="hint" style="display:none;">暂无用户性别数据</p>
+                <div class="device-stats-charts ud-gender-charts-grid" id="userDataGenderChartsGrid" style="display:none;">
                     <div class="device-stats-chart-card chart-card-wide">
-                        <h4>收入区间分布（人数）</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartHighSalaryDist" aria-label="高收入用户工资区间柱状图"></canvas></div>
+                        <h4>性别分布（人数）</h4>
+                        <div class="chart-canvas-wrap"><canvas id="udChartGenderBar" aria-label="注册用户性别人数柱状图"></canvas></div>
                     </div>
                     <div class="device-stats-chart-card">
-                        <h4>区间占比</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartHighSalaryShare" aria-label="高收入用户区间占比"></canvas></div>
-                    </div>
-                    <div class="device-stats-chart-card chart-card-wide">
-                        <h4>扣缴义务人 TOP（关联用户数）</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartHighSalaryCompanies" aria-label="高收入用户公司排行"></canvas></div>
-                    </div>
-                    <div class="device-stats-chart-card chart-card-wide">
-                        <h4>平均工资 TOP（用户）</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartHighSalaryTopUsers" aria-label="高收入用户工资排行"></canvas></div>
+                        <h4>性别占比</h4>
+                        <div class="chart-canvas-wrap"><canvas id="udChartGenderPie" aria-label="注册用户性别占比"></canvas></div>
                     </div>
                 </div>
-                <p style="margin-top:10px;">
-                    <button type="button" class="btn-page" id="btnViewHighSalaryUserList">在下方列表中查看全部</button>
-                </p>
             </div>
             <div class="user-filter-bar" style="margin-top:16px;">
                 <div class="user-filter-fields">
@@ -1265,7 +1267,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260527-register-gender"></script>
+    <script src="/js/admin_panel.js?v=20260527-ud-gender"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>

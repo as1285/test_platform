@@ -324,11 +324,16 @@
         .device-stats-chart-card.chart-card-wide .chart-canvas-wrap {
             height: 300px;
         }
+        .ud-gender-charts .ud-gender-summary,
         .ud-high-salary-charts .ud-high-salary-summary {
             margin-bottom: 14px;
         }
+        .ud-gender-charts .user-data-stat-card .ud-val,
         .ud-high-salary-charts .user-data-stat-card .ud-val {
             font-size: 1.15rem;
+        }
+        .ud-gender-charts-grid {
+            grid-template-columns: minmax(260px, 1fr) minmax(220px, 320px);
         }
         tr.ud-salary-bucket-high td {
             background: #f0f7ff;
