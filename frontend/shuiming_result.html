@@ -239,12 +239,12 @@
         }
 
         /*
-         * Android：Roboto + tabular-nums 在负字距下数字易挤在一起；
-         * 列表日期/收入/税额取消收紧，并关闭「7」后负 margin 修正。
+         * Android：介于默认 -0.04em（过紧）与 0.02em（过疏）之间；
+         * 关闭「7」后负 margin，避免如 2179.75 再被挤在一起。
          */
         html.platform-android body.page-shuiming-result .list-date,
         html.platform-android body.page-shuiming-result .list-amount {
-            letter-spacing: 0.02em;
+            letter-spacing: -0.01em;
             font-synthesis: none;
         }
 
@@ -534,7 +534,7 @@
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .list-date,
         html.app-android-huawei-cls-al00 body.page-shuiming-result .list-amount {
-            letter-spacing: 0.02em;
+            letter-spacing: -0.01em;
         }
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-help-with-colon,
