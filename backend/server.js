@@ -1766,14 +1766,63 @@ async function batchSaveRecords(userId, records) {
   }
 }
 
+async function deleteRecordInConn(conn, userId, id) {
+  const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+  if (rows.length) {
+    await insertTaxChangeLog(conn, userId, id, 'delete', taxRecordRowToSnapshot(rows[0]), null);
+  }
+  await conn.execute('DELETE FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+}
+
 async function deleteRecord(userId, id) {
   const conn = await pool.getConnection();
   try {
-    const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
-    if (rows.length) {
-      await insertTaxChangeLog(conn, userId, id, 'delete', taxRecordRowToSnapshot(rows[0]), null);
+    await deleteRecordInConn(conn, userId, id);
+  } finally {
+    conn.release();
+  }
+}
+
+/** 批量替换：事务内先删指定 id，再写入新记录（用于批量修改税务数据） */
+async function batchReplaceTaxRecords(userId, idsToDelete, records) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const ids = Array.isArray(idsToDelete) ? idsToDelete : [];
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i] != null ? String(ids[i]).trim() : '';
+      if (!id) continue;
+      await deleteRecordInConn(conn, userId, id);
     }
-    await conn.execute('DELETE FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+    const saved = [];
+    var reassigned = 0;
+    for (let j = 0; j < records.length; j++) {
+      const rec = records[j];
+      if (!rec || typeof rec !== 'object') {
+        throw new Error('第 ' + (j + 1) + ' 条记录无效');
+      }
+      const out = await insertRecordInConn(conn, userId, rec);
+      if (out.id_reassigned) {
+        reassigned += 1;
+      }
+      saved.push(out);
+    }
+    await conn.commit();
+    return {
+      deleted: ids.filter(function (x) {
+        return x != null && String(x).trim() !== '';
+      }).length,
+      saved: saved.length,
+      ids: saved.map(function (x) {
+        return x.id;
+      }),
+      reassigned_ids: reassigned
+    };
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    throw e;
   } finally {
     conn.release();
   }
@@ -5142,6 +5191,24 @@ async function handleTaxPost(req, res) {
       }
       var batchOut = await batchSaveRecords(userId, records);
       return res.json({ code: 200, data: batchOut });
+    }
+    if (action === 'batch_replace_records') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var idsToDelete = body.ids_to_delete;
+      var replaceRecords = body.records;
+      if (!Array.isArray(idsToDelete)) {
+        return res.status(400).json({ code: 400, msg: 'ids_to_delete 须为数组' });
+      }
+      if (!Array.isArray(replaceRecords) || replaceRecords.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (idsToDelete.length > 600 || replaceRecords.length > 600) {
+        return res.status(400).json({ code: 400, msg: '单次最多处理 600 条删除或写入' });
+      }
+      var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords);
+      return res.json({ code: 200, data: replaceOut });
     }
     if (action === 'delete_record') {
       if (!userId) {
