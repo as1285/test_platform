@@ -72,6 +72,7 @@ services:
     volumes:
       - uploads_static:/usr/share/nginx/html/uploads
       - ./certs:/etc/nginx/certs:ro
+      - ./certbot-webroot:/var/www/certbot:ro
     networks:
       - test_platform_default
     restart: unless-stopped
