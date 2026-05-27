@@ -569,38 +569,62 @@
                 .replace(/"/g, '&quot;');
         }
 
-        /** 主管税务机关固定为三行：…税务局 / 中间园区名 / 税务分局 */
+        /** 将两行文本调整为相同字数（从较长行末尾逐字挪到较短行开头） */
+        function balanceTaxAuthorityTwoLines(line1, line2) {
+            var a = String(line1 || '');
+            var b = String(line2 || '');
+            while (a.length > b.length && a.length > 0) {
+                b = a.slice(-1) + b;
+                a = a.slice(0, -1);
+            }
+            while (b.length > a.length && b.length > 0) {
+                a = a + b.slice(0, 1);
+                b = b.slice(1);
+            }
+            return [a, b];
+        }
+
+        /** 主管税务机关：前两行等字数，第三行固定为「税务分局」（与官方 App 一致） */
         function formatTaxAuthorityLines(raw) {
             var s = String(raw == null ? '' : raw).trim();
             if (!s) {
                 return '--';
             }
-            var m = s.match(/^(国家税务总局.+?税务局)(.+?)(税务分局)$/);
-            if (m && m[2]) {
-                return (
-                    escapeHtml(m[1]) +
-                    '<br>' +
-                    escapeHtml(m[2].trim()) +
-                    '<br>' +
-                    escapeHtml(m[3])
-                );
+            var suffix = '';
+            if (s.slice(-4) === '税务分局') {
+                suffix = '税务分局';
+                s = s.slice(0, -4);
             }
-            var i = s.indexOf('税务局');
-            if (i > 0 && i + 3 < s.length) {
-                var head = s.slice(0, i + 3);
-                var tail = s.slice(i + 3);
-                var j = tail.indexOf('税务分局');
-                if (j > 0) {
-                    return (
-                        escapeHtml(head) +
-                        '<br>' +
-                        escapeHtml(tail.slice(0, j).trim()) +
-                        '<br>' +
-                        escapeHtml(tail.slice(j))
-                    );
+            var line1 = s;
+            var line2 = '';
+            var m = s.match(/^(国家税务总局.+?税务局)(.+)$/);
+            if (m && m[2]) {
+                line1 = m[1];
+                line2 = m[2].trim();
+            } else {
+                var i = s.indexOf('税务局');
+                if (i > 0 && i + 3 < s.length) {
+                    line1 = s.slice(0, i + 3);
+                    line2 = s.slice(i + 3).trim();
+                } else if (s.length > 1) {
+                    var half = Math.floor(s.length / 2);
+                    line1 = s.slice(0, half);
+                    line2 = s.slice(half);
                 }
             }
-            return escapeHtml(s);
+            if (line2) {
+                var balanced = balanceTaxAuthorityTwoLines(line1, line2);
+                line1 = balanced[0];
+                line2 = balanced[1];
+            }
+            var html = escapeHtml(line1);
+            if (line2) {
+                html += '<br>' + escapeHtml(line2);
+            }
+            if (suffix) {
+                html += '<br>' + escapeHtml(suffix);
+            }
+            return html;
         }
 
         function setTaxAuthorityHtml(raw) {
