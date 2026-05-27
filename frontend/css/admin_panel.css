@@ -335,6 +335,19 @@
         .ud-gender-charts-grid {
             grid-template-columns: minmax(260px, 1fr) minmax(220px, 320px);
         }
+        .ud-female-age-section h4 {
+            color: #333;
+        }
+        .ud-female-age-charts-grid {
+            grid-template-columns: 1fr;
+        }
+        .ud-female-age-summary .user-data-stat-card.gender-female-highlight {
+            border-color: #f5c2d9;
+            background: #fff5f9;
+        }
+        .ud-female-age-summary .user-data-stat-card.gender-female-highlight .ud-val {
+            color: #e91e8c;
+        }
         tr.ud-salary-bucket-high td {
             background: #f0f7ff;
             font-weight: 600;

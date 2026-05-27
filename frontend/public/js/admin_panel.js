@@ -86,6 +86,15 @@
         var _registerTimeChartInstances = [];
         var _registerGenderChartInstances = [];
         var _udGenderChartInstances = [];
+        var _udFemaleAgeChartInstances = [];
+        var FEMALE_AGE_CHART_COLORS = {
+            u18: '#c4b5fd',
+            '18_22': '#f9a8d4',
+            '23_26': '#e91e8c',
+            '27_29': '#db2777',
+            '30p': '#9aa5b1',
+            unknown: '#d1d5db'
+        };
         var DEVICE_CHART_COLORS = {
             iphone: '#1c1c1e',
             ipad: '#5c5c5e',
@@ -2827,11 +2836,201 @@
             );
         }
 
+        function destroyUdFemaleAgeCharts() {
+            _udFemaleAgeChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _udFemaleAgeChartInstances = [];
+        }
+
+        function renderUdFemaleAge(data) {
+            destroyUdFemaleAgeCharts();
+            var summaryEl = document.getElementById('udFemaleAgeSummary');
+            var cardsEl = document.getElementById('udFemaleAgeSummaryCards');
+            var tbody = document.getElementById('udFemaleUnder30Tbody');
+            var grid = document.getElementById('udFemaleAgeChartsGrid');
+            var emptyEl = document.getElementById('udFemaleAgeChartsEmpty');
+            if (!summaryEl) return;
+
+            var femaleTotal = Number(data && data.female_total) || 0;
+            var underCount = Number(data && data.under_max_age_count) || 0;
+            var withAge = Number(data && data.with_age_count) || 0;
+            var noAge = Number(data && data.no_age_count) || 0;
+            var filterLabel = (data && data.filter_label) || '未满30岁';
+
+            if (!femaleTotal) {
+                summaryEl.textContent = (data && data.scope_label) || '女性用户' + '：暂无数据。';
+                if (cardsEl) cardsEl.innerHTML = '';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5">暂无女性用户</td></tr>';
+                if (grid) grid.style.display = 'none';
+                if (emptyEl) {
+                    emptyEl.style.display = 'block';
+                    emptyEl.textContent = '暂无女性用户';
+                }
+                return;
+            }
+
+            summaryEl.textContent =
+                (data.scope_label || '') +
+                '，共 ' +
+                femaleTotal +
+                ' 人；已解析年龄 ' +
+                withAge +
+                ' 人，未知 ' +
+                noAge +
+                ' 人；' +
+                filterLabel +
+                ' ' +
+                underCount +
+                ' 人（占女性 ' +
+                (data.under_max_age_pct_text || '—') +
+                '）。';
+
+            if (cardsEl) {
+                var cards = [
+                    { label: '女性总数', val: femaleTotal + ' 人', hi: false },
+                    { label: filterLabel, val: underCount + ' 人', hi: true },
+                    { label: '占女性比例', val: data.under_max_age_pct_text || '—', hi: true },
+                    { label: '有年龄资料', val: withAge + ' 人', hi: false },
+                    { label: '年龄未知', val: noAge + ' 人', hi: false }
+                ];
+                cardsEl.innerHTML = cards
+                    .map(function (c) {
+                        return (
+                            '<div class="user-data-stat-card' +
+                            (c.hi ? ' gender-female-highlight' : '') +
+                            '"><div class="ud-label">' +
+                            esc(c.label) +
+                            '</div><div class="ud-val">' +
+                            esc(String(c.val)) +
+                            '</div></div>'
+                        );
+                    })
+                    .join('');
+            }
+
+            var list = (data && data.under_max_age_users) || [];
+            if (tbody) {
+                if (!list.length) {
+                    tbody.innerHTML = '<tr><td colspan="5">暂无' + esc(filterLabel) + '的女性用户</td></tr>';
+                } else {
+                    tbody.innerHTML = list
+                        .map(function (u) {
+                            var src =
+                                u.birth_source === 'tax_id'
+                                    ? '税号'
+                                    : u.birth_source === 'profile'
+                                      ? '资料'
+                                      : '—';
+                            return (
+                                '<tr><td>' +
+                                esc(u.username) +
+                                '</td><td>' +
+                                esc(u.real_name || '—') +
+                                '</td><td>' +
+                                esc(String(u.age)) +
+                                '</td><td>' +
+                                esc(u.birth_date || '—') +
+                                '</td><td>' +
+                                esc(src) +
+                                '</td></tr>'
+                            );
+                        })
+                        .join('');
+                }
+            }
+
+            var buckets = (data && data.age_buckets) || [];
+            var chartBuckets = buckets.filter(function (b) {
+                return Number(b.count) > 0;
+            });
+            if (!chartBuckets.length || typeof Chart === 'undefined') {
+                if (grid) grid.style.display = 'none';
+                if (emptyEl) {
+                    emptyEl.style.display = 'block';
+                    emptyEl.textContent =
+                        typeof Chart === 'undefined'
+                            ? '图表库未加载'
+                            : '暂无足够年龄数据生成图表';
+                }
+                return;
+            }
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (grid) grid.style.display = 'grid';
+
+            var labels = chartBuckets.map(function (b) {
+                return b.label;
+            });
+            var counts = chartBuckets.map(function (b) {
+                return Number(b.count) || 0;
+            });
+            var colors = chartBuckets.map(function (b) {
+                return FEMALE_AGE_CHART_COLORS[b.key] || chartColorAtIndex(0);
+            });
+
+            _udFemaleAgeChartInstances.push(
+                new Chart(document.getElementById('udChartFemaleAgeBar'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '人数',
+                                data: counts,
+                                backgroundColor: colors.map(function (c) {
+                                    return c + 'cc';
+                                }),
+                                borderColor: colors,
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                        }
+                    }
+                })
+            );
+        }
+
+        function loadUdFemaleAge() {
+            var daysEl = document.getElementById('udGenderDays');
+            var days = daysEl ? String(daysEl.value) : '0';
+            var summaryEl = document.getElementById('udFemaleAgeSummary');
+            var tbody = document.getElementById('udFemaleUnder30Tbody');
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
+            destroyUdFemaleAgeCharts();
+            adminFetch('api/admin/user-data/female-age?days=' + encodeURIComponent(days) + '&max_age=30')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (summaryEl) summaryEl.textContent = j.msg || '女性年龄分析加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
+                        return;
+                    }
+                    renderUdFemaleAge(j.data);
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '女性年龄分析加载失败';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
+                });
+        }
+
         function loadUdGenderCharts() {
             var wrap = document.getElementById('userDataGenderChartsWrap');
             var daysEl = document.getElementById('udGenderDays');
             var days = daysEl ? String(daysEl.value) : '0';
             if (wrap) wrap.style.display = 'block';
+            loadUdFemaleAge();
             adminFetch('api/admin/analytics/register-gender?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
@@ -2925,6 +3124,7 @@
             var wrap = document.getElementById('userDataAnalytics');
             if (wrap) wrap.textContent = '分析数据加载中…';
             destroyUdGenderCharts();
+            destroyUdFemaleAgeCharts();
             adminFetch('api/admin/user-data/analytics')
                 .then(function (r) {
                     return r.json();

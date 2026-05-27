@@ -6167,38 +6167,249 @@ async function handleAdminRegisterTimeDistribution(req, res) {
   }
 }
 
+function pad2(n) {
+  return n < 10 ? '0' + n : String(n);
+}
+
+/** 从 birth_date 或 18 位税号解析出生日期 YYYY-MM-DD */
+function parseUserBirthIso(birthDateRaw, taxIdRaw) {
+  var s = String(birthDateRaw || '').trim();
+  if (s) {
+    var cn = s.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+    if (cn) {
+      return cn[1] + '-' + pad2(parseInt(cn[2], 10)) + '-' + pad2(parseInt(cn[3], 10));
+    }
+    var norm = s.replace(/[./]/g, '-');
+    var m = norm.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return m[1] + '-' + pad2(parseInt(m[2], 10)) + '-' + pad2(parseInt(m[3], 10));
+    }
+    if (/^\d{8}$/.test(s)) {
+      return s.substring(0, 4) + '-' + s.substring(4, 6) + '-' + s.substring(6, 8);
+    }
+  }
+  var id = String(taxIdRaw || '')
+    .replace(/\s/g, '')
+    .toUpperCase();
+  if (id.length === 18 && /^\d{17}[\dX]$/.test(id)) {
+    var d = id.substring(6, 14);
+    if (/^\d{8}$/.test(d)) {
+      return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
+    }
+  }
+  return null;
+}
+
+function chinaTodayParts() {
+  var key = chinaDateKeyNow();
+  var p = key.split('-').map(Number);
+  return { y: p[0], m: p[1], d: p[2], key: key };
+}
+
+/** 按北京时间计算周岁 */
+function computeAgeFullYears(birthIso, refParts) {
+  if (!birthIso || !refParts) {
+    return null;
+  }
+  var bp = birthIso.split('-').map(Number);
+  if (bp.length < 3 || !bp[0]) {
+    return null;
+  }
+  var age = refParts.y - bp[0];
+  if (refParts.m < bp[1] || (refParts.m === bp[1] && refParts.d < bp[2])) {
+    age -= 1;
+  }
+  if (age < 0 || age > 130) {
+    return null;
+  }
+  return age;
+}
+
+function buildRegisterUserScopeWhere(daysRaw, admin) {
+  var allTime =
+    daysRaw === '0' ||
+    daysRaw === 'all' ||
+    daysRaw === '' ||
+    daysRaw == null ||
+    daysRaw === undefined;
+  var days = allTime ? 0 : clampAnalyticsDays(daysRaw, 30, 365);
+  var where = '1=1';
+  var params = [];
+  if (!allTime) {
+    var span = Math.max(0, days - 1);
+    var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    where +=
+      ' AND DATE(' +
+      cnCreated +
+      ') >= DATE_SUB(' +
+      cnToday +
+      ', INTERVAL ? DAY)';
+    params.push(span);
+  }
+  if (!admin || !admin.is_super) {
+    where +=
+      ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
+    params.push(admin.username);
+  }
+  return { where: where, params: params, days: days, all_time: allTime };
+}
+
+/** 女性用户年龄分析（未满 max_age 周岁筛选） */
+async function handleAdminFemaleAgeStats(req, res) {
+  try {
+    var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
+    var maxAge = parseInt(req.query.max_age, 10);
+    if (isNaN(maxAge) || maxAge < 1) {
+      maxAge = 30;
+    }
+    if (maxAge > 80) {
+      maxAge = 80;
+    }
+    var underAgeExclusive = maxAge;
+
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        'SELECT username, real_name, birth_date, tax_id, created_at FROM users WHERE gender = 2 AND ' +
+          scope.where +
+          ' ORDER BY created_at DESC',
+        scope.params
+      );
+
+      var ref = chinaTodayParts();
+      var femaleTotal = rows.length;
+      var withAge = 0;
+      var underCount = 0;
+      var bucketDefs = [
+        { key: 'u18', label: '18岁以下', min: 0, max: 17 },
+        { key: '18_22', label: '18-22岁', min: 18, max: 22 },
+        { key: '23_26', label: '23-26岁', min: 23, max: 26 },
+        { key: '27_29', label: '27-29岁', min: 27, max: 29 },
+        { key: '30p', label: maxAge + '岁及以上', min: maxAge, max: 999 },
+        { key: 'unknown', label: '年龄未知', min: null, max: null }
+      ];
+      var bucketCounts = {};
+      bucketDefs.forEach(function (b) {
+        bucketCounts[b.key] = 0;
+      });
+
+      var underUsers = [];
+      rows.forEach(function (r) {
+        var birthIso = null;
+        var birthSource = '';
+        var bd = String(r.birth_date || '').trim();
+        if (bd) {
+          birthIso = parseUserBirthIso(bd, '');
+          if (birthIso) {
+            birthSource = 'profile';
+          }
+        }
+        if (!birthIso) {
+          birthIso = parseUserBirthIso('', r.tax_id);
+          if (birthIso) {
+            birthSource = 'tax_id';
+          }
+        }
+        var age = birthIso ? computeAgeFullYears(birthIso, ref) : null;
+        if (age == null) {
+          bucketCounts.unknown += 1;
+          return;
+        }
+        withAge += 1;
+        var placed = false;
+        bucketDefs.forEach(function (b) {
+          if (b.key === 'unknown' || placed) {
+            return;
+          }
+          if (age >= b.min && age <= b.max) {
+            bucketCounts[b.key] += 1;
+            placed = true;
+          }
+        });
+        if (!placed && age >= maxAge) {
+          bucketCounts['30p'] += 1;
+        }
+        if (age < underAgeExclusive) {
+          underCount += 1;
+          underUsers.push({
+            username: r.username,
+            real_name: r.real_name || '',
+            age: age,
+            birth_date: birthIso,
+            birth_source: birthSource,
+            created_at: r.created_at
+          });
+        }
+      });
+
+      underUsers.sort(function (a, b) {
+        if (a.age !== b.age) {
+          return a.age - b.age;
+        }
+        return String(a.username).localeCompare(String(b.username));
+      });
+
+      function pctText(cnt, base) {
+        if (!base) {
+          return '—';
+        }
+        return (Math.round((cnt / base) * 1000) / 10).toFixed(1) + '%';
+      }
+
+      var ageBuckets = bucketDefs
+        .filter(function (b) {
+          return b.key !== '30p' || bucketCounts['30p'] > 0;
+        })
+        .map(function (b) {
+          var cnt = bucketCounts[b.key] || 0;
+          return {
+            key: b.key,
+            label: b.label,
+            count: cnt,
+            pct: femaleTotal > 0 ? Math.round((cnt / femaleTotal) * 1000) / 10 : 0,
+            pct_text: pctText(cnt, femaleTotal)
+          };
+        });
+
+      var scopeLabel = scope.all_time
+        ? '全部注册女性用户'
+        : '最近 ' + scope.days + ' 天注册的女性用户';
+
+      res.json({
+        code: 200,
+        data: {
+          days: scope.days,
+          all_time: scope.all_time,
+          scope_label: scopeLabel,
+          reference_date: ref.key,
+          max_age_exclusive: underAgeExclusive,
+          filter_label: '未满' + underAgeExclusive + '岁',
+          female_total: femaleTotal,
+          with_age_count: withAge,
+          no_age_count: femaleTotal - withAge,
+          under_max_age_count: underCount,
+          under_max_age_pct_text: pctText(underCount, femaleTotal),
+          under_max_age_pct_of_known: pctText(underCount, withAge),
+          age_buckets: ageBuckets,
+          under_max_age_users: underUsers.slice(0, 500)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 注册用户性别分布（users.gender：1=男 2=女） */
 async function handleAdminRegisterGenderStats(req, res) {
   try {
-    var daysRaw = req.query.days;
-    var allTime =
-      daysRaw === '0' ||
-      daysRaw === 'all' ||
-      daysRaw === '' ||
-      daysRaw == null ||
-      daysRaw === undefined;
-    var days = allTime ? 0 : clampAnalyticsDays(daysRaw, 30, 365);
-    var where = '1=1';
-    var params = [];
-
-    if (!allTime) {
-      var span = Math.max(0, days - 1);
-      var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
-      var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-      where +=
-        ' AND DATE(' +
-        cnCreated +
-        ') >= DATE_SUB(' +
-        cnToday +
-        ', INTERVAL ? DAY)';
-      params.push(span);
-    }
-
-    if (!req.admin || !req.admin.is_super) {
-      where +=
-        ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-      params.push(req.admin.username);
-    }
+    var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
+    var days = scope.days;
+    var allTime = scope.all_time;
 
     const conn = await pool.getConnection();
     try {
@@ -6208,8 +6419,8 @@ async function handleAdminRegisterGenderStats(req, res) {
           'SUM(CASE WHEN gender = 2 THEN 1 ELSE 0 END) AS female_cnt, ' +
           'SUM(CASE WHEN gender IS NULL OR gender NOT IN (1, 2) THEN 1 ELSE 0 END) AS unknown_cnt ' +
           'FROM users WHERE ' +
-          where,
-        params
+          scope.where,
+        scope.params
       );
       var row = rows && rows[0] ? rows[0] : {};
       var male = Number(row.male_cnt) || 0;
@@ -9377,6 +9588,18 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('analytics'),
   handleAdminRegisterGenderStats
+);
+app.get(
+  '/api/admin/analytics/female-age',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminFemaleAgeStats
+);
+app.get(
+  '/api/admin/user-data/female-age',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminFemaleAgeStats
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
