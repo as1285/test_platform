@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260527-iphone14-statusbar"></script>
+    <script src="/js/auth.js?v=20260527-iphone15promax-statusbar"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260527-ufs-size-15-19">
     <script src="/js/user-font-settings.js?v=20260527-ufs-size-15-19" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -577,10 +577,11 @@
 
 
         /*
-         * iPhone 14：顶栏从安全区下缘开始，勿用 top:0 白底盖住系统状态栏（时间/电量）。
-         * 底层白条仅防列表上滑透出，z-index 低于导航栏。
+         * iPhone 14 / 15 Plus·Pro Max：顶栏从安全区下缘开始，勿用 top:0 白底盖住系统状态栏。
+         * 底层白条防列表上滑透出状态栏（z-index 高于列表、低于/齐平顶栏）。
          */
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result::before {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result::before,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before {
             content: "";
             position: fixed;
             top: 0;
@@ -588,47 +589,54 @@
             right: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
             background: #fff;
-            z-index: 1;
+            z-index: 122;
             pointer-events: none;
         }
 
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .page-root {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .page-root,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .page-root {
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             z-index: auto;
         }
 
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed {
             position: relative;
             z-index: auto;
         }
 
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
             top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
             height: var(--header-height, 52px);
             padding: 15px 16px;
             background: #fff;
             box-sizing: border-box;
-            z-index: 100;
+            z-index: 120;
             align-items: center;
         }
 
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-title {
             position: relative;
             top: 0;
         }
 
         html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
             top: auto;
             height: auto;
             display: flex;
             align-items: center;
         }
 
-        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+        html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,
+        html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             background: #fff;
-            z-index: 101;
+            z-index: 121;
         }
 
         /* iPhone 16 Pro：状态栏与顶栏/汇总区同为白底（auth.js 亦注入） */
@@ -798,6 +806,25 @@
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
             top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             background: #fff;
+        }
+
+        /* 15 Plus / 15 Pro Max：覆盖 promax-font 的 top:0 顶栏，避免滑动透出状态栏 */
+        html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header {
+            top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            height: var(--header-height, 52px);
+            padding: 15px 16px;
+            box-sizing: border-box;
+        }
+
+        html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,
+        html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right {
+            top: auto;
+            height: auto;
+        }
+
+        html.app-ios-iphone15promax.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary {
+            top: calc(var(--header-height, 52px) + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            z-index: 121;
         }
 
         .list-arrow {
