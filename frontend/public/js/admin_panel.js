@@ -83,6 +83,7 @@
         }
 
         var _deviceStatsChartInstances = [];
+        var _registerTimeChartInstances = [];
         var _udHighSalaryChartInstances = [];
         var DEVICE_CHART_COLORS = {
             iphone: '#1c1c1e',
@@ -118,6 +119,241 @@
                 } catch (e0) {}
             });
             _deviceStatsChartInstances = [];
+        }
+
+        function destroyRegisterTimeCharts() {
+            _registerTimeChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _registerTimeChartInstances = [];
+        }
+
+        var REGISTER_TIME_PERIOD_COLORS = {
+            morning: '#f5a623',
+            afternoon: '#1e6fff',
+            evening: '#6b4ce6'
+        };
+
+        function renderRegisterTimeAnalysis(data) {
+            var summaryEl = document.getElementById('registerTimeSummary');
+            var cardsEl = document.getElementById('registerTimePeriodCards');
+            var tbody = document.getElementById('registerTimeDetailTbody');
+            var chartsWrap = document.getElementById('registerTimeChartsWrap');
+            var chartsEmpty = document.getElementById('registerTimeChartsEmpty');
+            if (!summaryEl || !cardsEl || !tbody) return;
+
+            destroyRegisterTimeCharts();
+            if (chartsWrap) chartsWrap.style.display = 'none';
+            if (chartsEmpty) chartsEmpty.style.display = 'none';
+
+            var total = Number(data && data.total) || 0;
+            var days = Number(data && data.days) || 30;
+            var periods = (data && data.periods) || [];
+            var detail = (data && data.detail_buckets) || [];
+            var peak = data && data.peak_period;
+
+            if (!total) {
+                summaryEl.textContent = '最近 ' + days + ' 天内暂无注册用户。';
+                cardsEl.innerHTML = '';
+                tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
+                if (chartsWrap) {
+                    chartsWrap.style.display = 'block';
+                    if (chartsEmpty) {
+                        chartsEmpty.style.display = 'block';
+                        chartsEmpty.textContent = '暂无足够数据生成图表';
+                    }
+                }
+                return;
+            }
+
+            if (peak && peak.label) {
+                summaryEl.textContent =
+                    '最近 ' +
+                    days +
+                    ' 天共注册 ' +
+                    total +
+                    ' 人；注册最集中时段为「' +
+                    peak.label +
+                    '」（' +
+                    (peak.pct_text || '—') +
+                    '，' +
+                    peak.count +
+                    ' 人）。';
+            } else {
+                summaryEl.textContent = '最近 ' + days + ' 天共注册 ' + total + ' 人。';
+            }
+
+            var cardsHtml = '';
+            periods.forEach(function (p) {
+                var isPeak = peak && peak.key === p.key;
+                cardsHtml +=
+                    '<div class="register-time-period-card' +
+                    (isPeak ? ' is-peak' : '') +
+                    '">' +
+                    '<div class="rtp-label">' +
+                    esc(p.label) +
+                    '</div>' +
+                    '<div class="rtp-range">' +
+                    esc(p.range || '') +
+                    '</div>' +
+                    '<div class="rtp-count">' +
+                    esc(String(p.count)) +
+                    '</div>' +
+                    '<div class="rtp-pct">' +
+                    esc(p.pct_text || '—') +
+                    '</div>' +
+                    (isPeak ? '<span class="rtp-badge">人数最多</span>' : '') +
+                    '</div>';
+            });
+            cardsEl.innerHTML = cardsHtml;
+
+            tbody.innerHTML = detail
+                .map(function (b) {
+                    return (
+                        '<tr><td>' +
+                        esc(b.label) +
+                        '</td><td>' +
+                        esc(b.range || '') +
+                        '</td><td>' +
+                        esc(String(b.count)) +
+                        '</td><td>' +
+                        esc(b.pct_text || '—') +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+
+            if (typeof Chart === 'undefined') {
+                if (chartsWrap) {
+                    chartsWrap.style.display = 'block';
+                    if (chartsEmpty) {
+                        chartsEmpty.style.display = 'block';
+                        chartsEmpty.textContent = '图表库未加载，请刷新页面后重试';
+                    }
+                }
+                return;
+            }
+
+            chartsWrap.style.display = 'block';
+            var periodCanvas = document.getElementById('registerTimeChartPeriods');
+            var hourCanvas = document.getElementById('registerTimeChartHourly');
+            if (!periodCanvas || !hourCanvas) return;
+
+            _registerTimeChartInstances.push(
+                new Chart(periodCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: periods.map(function (p) {
+                            return p.label;
+                        }),
+                        datasets: [
+                            {
+                                label: '注册人数',
+                                data: periods.map(function (p) {
+                                    return p.count;
+                                }),
+                                backgroundColor: periods.map(function (p) {
+                                    return REGISTER_TIME_PERIOD_COLORS[p.key] || chartColorAtIndex(0);
+                                }),
+                                borderWidth: 0,
+                                borderRadius: 6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        var v = ctx.parsed.y || 0;
+                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                        return ' ' + v + ' 人 (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                })
+            );
+
+            var byHour = (data && data.by_hour) || [];
+            _registerTimeChartInstances.push(
+                new Chart(hourCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: byHour.map(function (h) {
+                            return h.label;
+                        }),
+                        datasets: [
+                            {
+                                label: '注册人数',
+                                data: byHour.map(function (h) {
+                                    return h.count;
+                                }),
+                                backgroundColor: 'rgba(30, 111, 255, 0.65)',
+                                borderWidth: 0,
+                                borderRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        var v = ctx.parsed.y || 0;
+                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                        return ' ' + v + ' 人 (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                })
+            );
+        }
+
+        function loadAnalyticsRegisterTime() {
+            var summaryEl = document.getElementById('registerTimeSummary');
+            var tbody = document.getElementById('registerTimeDetailTbody');
+            var cardsEl = document.getElementById('registerTimePeriodCards');
+            var daysEl = document.getElementById('analyticsRegisterTimeDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
+            if (cardsEl) cardsEl.innerHTML = '';
+            destroyRegisterTimeCharts();
+            adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载失败</td></tr>';
+                        return;
+                    }
+                    renderRegisterTimeAnalysis(j.data);
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                });
         }
 
         function chartColorForIconKey(iconKey, index) {
@@ -1487,6 +1723,7 @@
 
         function loadAnalyticsDashboard() {
             loadAnalyticsDailyConversion();
+            loadAnalyticsRegisterTime();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -4290,6 +4527,18 @@
         document.getElementById('analyticsConversionDays').addEventListener('change', function () {
             loadAnalyticsDailyConversion(true);
         });
+        var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');
+        if (btnRefreshRegisterTime) {
+            btnRefreshRegisterTime.addEventListener('click', function () {
+                loadAnalyticsRegisterTime();
+            });
+        }
+        var analyticsRegisterTimeDays = document.getElementById('analyticsRegisterTimeDays');
+        if (analyticsRegisterTimeDays) {
+            analyticsRegisterTimeDays.addEventListener('change', function () {
+                loadAnalyticsRegisterTime();
+            });
+        }
         document.getElementById('analyticsDailyConversion').addEventListener('click', function (ev) {
             if (!analyticsConvCache) return;
             var t = ev.target;

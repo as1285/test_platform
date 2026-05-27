@@ -6020,6 +6020,153 @@ async function handleAdminUsersDailyConversion(req, res) {
   }
 }
 
+/** 注册时段分布（按北京时间 created_at） */
+async function handleAdminRegisterTimeDistribution(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 30, 365);
+    var span = Math.max(0, days - 1);
+    var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var where =
+      'DATE(' +
+      cnCreated +
+      ') >= DATE_SUB(' +
+      cnToday +
+      ', INTERVAL ? DAY)';
+    var params = [span];
+
+    if (!req.admin || !req.admin.is_super) {
+      where +=
+        ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
+      params.push(req.admin.username);
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      const [hourRows] = await conn.query(
+        'SELECT HOUR(' +
+          cnCreated +
+          ') AS h, COUNT(*) AS cnt FROM users WHERE ' +
+          where +
+          ' GROUP BY h ORDER BY h',
+        params
+      );
+
+      var hourCounts = [];
+      var i;
+      for (i = 0; i < 24; i++) {
+        hourCounts.push(0);
+      }
+      var total = 0;
+      hourRows.forEach(function (r) {
+        var h = Number(r.h);
+        var c = Number(r.cnt) || 0;
+        if (h >= 0 && h < 24) {
+          hourCounts[h] = c;
+        }
+        total += c;
+      });
+
+      function sumHours(from, to) {
+        var s = 0;
+        for (var hi = from; hi <= to; hi++) {
+          s += hourCounts[hi] || 0;
+        }
+        return s;
+      }
+
+      var detailBuckets = [
+        { key: 'late_night', label: '凌晨', range: '00:00-05:59', count: sumHours(0, 5) },
+        { key: 'morning', label: '上午', range: '06:00-11:59', count: sumHours(6, 11) },
+        { key: 'afternoon', label: '下午', range: '12:00-17:59', count: sumHours(12, 17) },
+        { key: 'evening', label: '晚上', range: '18:00-23:59', count: sumHours(18, 23) }
+      ];
+
+      var periods = [
+        {
+          key: 'morning',
+          label: '上午',
+          range: '06:00-11:59',
+          count: detailBuckets[1].count
+        },
+        {
+          key: 'afternoon',
+          label: '下午',
+          range: '12:00-17:59',
+          count: detailBuckets[2].count
+        },
+        {
+          key: 'evening',
+          label: '晚上',
+          range: '18:00-次日05:59',
+          count: detailBuckets[3].count + detailBuckets[0].count
+        }
+      ];
+
+      function withPct(rows) {
+        return rows.map(function (row) {
+          var cnt = Number(row.count) || 0;
+          var pct = total > 0 ? Math.round((cnt / total) * 1000) / 10 : 0;
+          return {
+            key: row.key,
+            label: row.label,
+            range: row.range,
+            count: cnt,
+            pct: pct,
+            pct_text: total > 0 ? pct.toFixed(1) + '%' : '—'
+          };
+        });
+      }
+
+      detailBuckets = withPct(detailBuckets);
+      periods = withPct(periods);
+
+      var peakPeriod = null;
+      periods.forEach(function (p) {
+        if (!peakPeriod || p.count > peakPeriod.count) {
+          peakPeriod = p;
+        }
+      });
+
+      var byHour = [];
+      for (i = 0; i < 24; i++) {
+        var hc = hourCounts[i] || 0;
+        byHour.push({
+          hour: i,
+          label: (i < 10 ? '0' : '') + i + ':00',
+          count: hc,
+          pct: total > 0 ? Math.round((hc / total) * 1000) / 10 : 0
+        });
+      }
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          timezone: 'Asia/Shanghai (UTC+8)',
+          total: total,
+          periods: periods,
+          detail_buckets: detailBuckets,
+          peak_period: peakPeriod
+            ? {
+                key: peakPeriod.key,
+                label: peakPeriod.label,
+                count: peakPeriod.count,
+                pct_text: peakPeriod.pct_text
+              }
+            : null,
+          by_hour: byHour
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -9092,6 +9239,12 @@ app.get(
   handleAdminUserDataDetail
 );
 app.get('/api/admin/analytics/daily-conversion', requireAdminAuth, requireAdminMenu('analytics'), handleAdminUsersDailyConversion);
+app.get(
+  '/api/admin/analytics/register-time',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminRegisterTimeDistribution
+);
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
 app.post(

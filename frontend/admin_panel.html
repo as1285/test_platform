@@ -844,6 +844,53 @@
             <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
         </section>
         <section>
+            <h2>注册时段分析</h2>
+            <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="analyticsRegisterTimeDays">统计天数</label>
+                    <select id="analyticsRegisterTimeDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                        <option value="180">最近 180 天</option>
+                        <option value="365">最近 365 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshRegisterTime">刷新时段分析</button>
+            </div>
+            <div id="registerTimeAnalysisWrap" class="register-time-analysis-wrap" aria-live="polite">
+                <p id="registerTimeSummary" class="stat">加载中…</p>
+                <div id="registerTimePeriodCards" class="register-time-period-cards"></div>
+                <div class="scroll-x" style="margin-top:12px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>时段</th>
+                                <th>时间范围</th>
+                                <th>注册人数</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registerTimeDetailTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div id="registerTimeChartsWrap" class="device-stats-charts-wrap register-time-charts-wrap" style="display:none; margin-top:14px;">
+                    <p id="registerTimeChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
+                    <div class="device-stats-charts register-time-charts-grid">
+                        <div class="device-stats-chart-card">
+                            <h4>上午 / 下午 / 晚上</h4>
+                            <div class="chart-canvas-wrap"><canvas id="registerTimeChartPeriods"></canvas></div>
+                        </div>
+                        <div class="device-stats-chart-card chart-card-wide">
+                            <h4>按小时（北京时间）</h4>
+                            <div class="chart-canvas-wrap"><canvas id="registerTimeChartHourly"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section>
             <h2>用户日活与登录趋势</h2>
             <div class="form-row" style="align-items: center;">
                 <div>

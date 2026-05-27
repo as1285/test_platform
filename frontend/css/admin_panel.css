@@ -339,6 +339,60 @@
             color: #888;
             padding: 12px 0;
         }
+        .register-time-period-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 12px 0 4px;
+        }
+        .register-time-period-card {
+            background: #fff;
+            border: 1px solid #e8eef5;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .register-time-period-card.is-peak {
+            border-color: #1e6fff;
+            box-shadow: 0 0 0 1px rgba(30, 111, 255, 0.15);
+            background: #f5f9ff;
+        }
+        .register-time-period-card .rtp-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+        .register-time-period-card .rtp-range {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .register-time-period-card .rtp-count {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e6fff;
+            margin-top: 8px;
+        }
+        .register-time-period-card .rtp-pct {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .register-time-period-card .rtp-badge {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #1e6fff;
+            background: #e8f1ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .register-time-charts-grid {
+            grid-template-columns: minmax(260px, 1fr) 2fr;
+        }
+        @media (max-width: 900px) {
+            .register-time-charts-grid { grid-template-columns: 1fr; }
+        }
         .stat { font-size: 14px; color: #666; margin-bottom: 10px; }
         .user-filter-bar {
             display: flex;
