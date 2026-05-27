@@ -238,6 +238,20 @@
             letter-spacing: -0.015em;
         }
 
+        /*
+         * Android：Roboto + tabular-nums 在负字距下数字易挤在一起；
+         * 列表日期/收入/税额取消收紧，并关闭「7」后负 margin 修正。
+         */
+        html.platform-android body.page-shuiming-result .list-date,
+        html.platform-android body.page-shuiming-result .list-amount {
+            letter-spacing: 0.02em;
+            font-synthesis: none;
+        }
+
+        html.platform-android body.page-shuiming-result .digit-kern-seven {
+            margin-right: 0;
+        }
+
         /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
         .list {
             margin-top: calc(var(--safe-top) + var(--header-height));
@@ -516,6 +530,11 @@
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: 0;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-date,
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-amount {
+            letter-spacing: 0.02em;
         }
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-help-with-colon,
