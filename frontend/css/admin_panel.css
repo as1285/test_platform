@@ -390,6 +390,54 @@
         .register-time-charts-grid {
             grid-template-columns: minmax(260px, 1fr) 2fr;
         }
+        .register-gender-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 12px 0 4px;
+        }
+        .register-gender-card {
+            background: #fff;
+            border: 1px solid #e8eef5;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .register-gender-card.gender-male {
+            border-color: #b8d4ff;
+            background: #f5f9ff;
+        }
+        .register-gender-card.gender-male .rg-count {
+            color: #1e6fff;
+        }
+        .register-gender-card.gender-female {
+            border-color: #f5c2d9;
+            background: #fff5f9;
+        }
+        .register-gender-card.gender-female .rg-count {
+            color: #e91e8c;
+        }
+        .register-gender-card.gender-unknown .rg-count {
+            color: #888;
+        }
+        .register-gender-card .rg-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+        .register-gender-card .rg-count {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+        .register-gender-card .rg-pct {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .register-gender-charts-grid {
+            grid-template-columns: minmax(260px, 320px);
+        }
         @media (max-width: 900px) {
             .register-time-charts-grid { grid-template-columns: 1fr; }
         }

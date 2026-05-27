@@ -6167,6 +6167,133 @@ async function handleAdminRegisterTimeDistribution(req, res) {
   }
 }
 
+/** 注册用户性别分布（users.gender：1=男 2=女） */
+async function handleAdminRegisterGenderStats(req, res) {
+  try {
+    var daysRaw = req.query.days;
+    var allTime =
+      daysRaw === '0' ||
+      daysRaw === 'all' ||
+      daysRaw === '' ||
+      daysRaw == null ||
+      daysRaw === undefined;
+    var days = allTime ? 0 : clampAnalyticsDays(daysRaw, 30, 365);
+    var where = '1=1';
+    var params = [];
+
+    if (!allTime) {
+      var span = Math.max(0, days - 1);
+      var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
+      var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+      where +=
+        ' AND DATE(' +
+        cnCreated +
+        ') >= DATE_SUB(' +
+        cnToday +
+        ', INTERVAL ? DAY)';
+      params.push(span);
+    }
+
+    if (!req.admin || !req.admin.is_super) {
+      where +=
+        ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
+      params.push(req.admin.username);
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        'SELECT ' +
+          'SUM(CASE WHEN gender = 1 THEN 1 ELSE 0 END) AS male_cnt, ' +
+          'SUM(CASE WHEN gender = 2 THEN 1 ELSE 0 END) AS female_cnt, ' +
+          'SUM(CASE WHEN gender IS NULL OR gender NOT IN (1, 2) THEN 1 ELSE 0 END) AS unknown_cnt ' +
+          'FROM users WHERE ' +
+          where,
+        params
+      );
+      var row = rows && rows[0] ? rows[0] : {};
+      var male = Number(row.male_cnt) || 0;
+      var female = Number(row.female_cnt) || 0;
+      var unknown = Number(row.unknown_cnt) || 0;
+      var total = male + female + unknown;
+
+      function pctText(cnt) {
+        if (total <= 0) {
+          return '—';
+        }
+        return ((Math.round((cnt / total) * 1000) / 10).toFixed(1) + '%');
+      }
+
+      function pctNum(cnt) {
+        return total > 0 ? Math.round((cnt / total) * 1000) / 10 : 0;
+      }
+
+      var items = [
+        {
+          key: 'male',
+          label: '男',
+          gender: 1,
+          count: male,
+          pct: pctNum(male),
+          pct_text: pctText(male)
+        },
+        {
+          key: 'female',
+          label: '女',
+          gender: 2,
+          count: female,
+          pct: pctNum(female),
+          pct_text: pctText(female)
+        }
+      ];
+      if (unknown > 0) {
+        items.push({
+          key: 'unknown',
+          label: '未设置',
+          gender: 0,
+          count: unknown,
+          pct: pctNum(unknown),
+          pct_text: pctText(unknown)
+        });
+      }
+
+      var ratioText = null;
+      if (male > 0 && female > 0) {
+        if (male >= female) {
+          ratioText = '男:女 ≈ ' + (Math.round((male / female) * 100) / 100) + ':1';
+        } else {
+          ratioText = '男:女 ≈ 1:' + (Math.round((female / male) * 100) / 100);
+        }
+      } else if (male > 0 && female === 0) {
+        ratioText = '当前统计期内均为男性';
+      } else if (female > 0 && male === 0) {
+        ratioText = '当前统计期内均为女性';
+      }
+
+      var scopeLabel = allTime
+        ? '全部注册用户（按资料中的性别字段）'
+        : '最近 ' + days + ' 天注册用户（按资料中的性别字段）';
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          all_time: allTime,
+          scope_label: scopeLabel,
+          total: total,
+          items: items,
+          ratio_text: ratioText
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -9244,6 +9371,12 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('analytics'),
   handleAdminRegisterTimeDistribution
+);
+app.get(
+  '/api/admin/analytics/register-gender',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminRegisterGenderStats
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);

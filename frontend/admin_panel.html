@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260523-admin-refactor">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260527-register-gender">
 </head>
 <body>
     <div class="layout">
@@ -891,6 +891,48 @@
             </div>
         </section>
         <section>
+            <h2>注册用户性别统计</h2>
+            <p class="hint" style="margin-top:0;">统计注册用户资料中的<strong>性别</strong>（<code>users.gender</code>：1=男，2=女；用户在「我的」或个人信息中保存后写入）。</p>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="analyticsRegisterGenderDays">统计范围</label>
+                    <select id="analyticsRegisterGenderDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="0" selected>全部注册用户</option>
+                        <option value="7">最近 7 天注册</option>
+                        <option value="30">最近 30 天注册</option>
+                        <option value="90">最近 90 天注册</option>
+                        <option value="365">最近 365 天注册</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshRegisterGender">刷新性别统计</button>
+            </div>
+            <div id="registerGenderAnalysisWrap" class="register-gender-analysis-wrap" aria-live="polite">
+                <p id="registerGenderSummary" class="stat">加载中…</p>
+                <div id="registerGenderCards" class="register-gender-cards"></div>
+                <div class="scroll-x" style="margin-top:12px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>性别</th>
+                                <th>人数</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registerGenderTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div id="registerGenderChartsWrap" class="device-stats-charts-wrap register-gender-charts-wrap" style="display:none; margin-top:14px;">
+                    <p id="registerGenderChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
+                    <div class="device-stats-charts register-gender-charts-grid">
+                        <div class="device-stats-chart-card">
+                            <h4>性别占比</h4>
+                            <div class="chart-canvas-wrap"><canvas id="registerGenderChartPie"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section>
             <h2>用户日活与登录趋势</h2>
             <div class="form-row" style="align-items: center;">
                 <div>
@@ -1223,7 +1265,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260526-tax-records-full"></script>
+    <script src="/js/admin_panel.js?v=20260527-register-gender"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>

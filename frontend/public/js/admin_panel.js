@@ -84,6 +84,7 @@
 
         var _deviceStatsChartInstances = [];
         var _registerTimeChartInstances = [];
+        var _registerGenderChartInstances = [];
         var _udHighSalaryChartInstances = [];
         var DEVICE_CHART_COLORS = {
             iphone: '#1c1c1e',
@@ -135,6 +136,171 @@
             afternoon: '#1e6fff',
             evening: '#6b4ce6'
         };
+
+        var REGISTER_GENDER_CHART_COLORS = {
+            male: '#1e6fff',
+            female: '#e91e8c',
+            unknown: '#9aa5b1'
+        };
+
+        function destroyRegisterGenderCharts() {
+            _registerGenderChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _registerGenderChartInstances = [];
+        }
+
+        function renderRegisterGenderAnalysis(data) {
+            var summaryEl = document.getElementById('registerGenderSummary');
+            var cardsEl = document.getElementById('registerGenderCards');
+            var tbody = document.getElementById('registerGenderTbody');
+            var chartsWrap = document.getElementById('registerGenderChartsWrap');
+            var chartsEmpty = document.getElementById('registerGenderChartsEmpty');
+            if (!summaryEl || !cardsEl || !tbody) return;
+
+            destroyRegisterGenderCharts();
+            if (chartsWrap) chartsWrap.style.display = 'none';
+            if (chartsEmpty) chartsEmpty.style.display = 'none';
+
+            var total = Number(data && data.total) || 0;
+            var items = (data && data.items) || [];
+            var scopeLabel = (data && data.scope_label) || '注册用户';
+
+            if (!total) {
+                summaryEl.textContent = scopeLabel + '：暂无用户数据。';
+                cardsEl.innerHTML = '';
+                tbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
+                return;
+            }
+
+            var ratioText = data && data.ratio_text;
+            summaryEl.textContent =
+                scopeLabel +
+                '，共 ' +
+                total +
+                ' 人' +
+                (ratioText ? '；' + ratioText + '。' : '。');
+
+            cardsEl.innerHTML = items
+                .map(function (it) {
+                    var cls =
+                        'register-gender-card gender-' +
+                        (it.key === 'female' ? 'female' : it.key === 'male' ? 'male' : 'unknown');
+                    return (
+                        '<div class="' +
+                        cls +
+                        '">' +
+                        '<div class="rg-label">' +
+                        esc(it.label) +
+                        '</div>' +
+                        '<div class="rg-count">' +
+                        esc(String(it.count)) +
+                        ' 人</div>' +
+                        '<div class="rg-pct">' +
+                        esc(it.pct_text || '—') +
+                        '</div>' +
+                        '</div>'
+                    );
+                })
+                .join('');
+
+            tbody.innerHTML = items
+                .map(function (it) {
+                    return (
+                        '<tr><td>' +
+                        esc(it.label) +
+                        '</td><td>' +
+                        esc(String(it.count)) +
+                        '</td><td>' +
+                        esc(it.pct_text || '—') +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+
+            if (typeof Chart === 'undefined') {
+                if (chartsWrap) {
+                    chartsWrap.style.display = 'block';
+                    if (chartsEmpty) {
+                        chartsEmpty.style.display = 'block';
+                        chartsEmpty.textContent = '图表库未加载，请刷新页面后重试';
+                    }
+                }
+                return;
+            }
+
+            var pieCanvas = document.getElementById('registerGenderChartPie');
+            if (!pieCanvas) return;
+
+            chartsWrap.style.display = 'block';
+            _registerGenderChartInstances.push(
+                new Chart(pieCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: items.map(function (it) {
+                            return it.label;
+                        }),
+                        datasets: [
+                            {
+                                data: items.map(function (it) {
+                                    return it.count;
+                                }),
+                                backgroundColor: items.map(function (it) {
+                                    return REGISTER_GENDER_CHART_COLORS[it.key] || chartColorAtIndex(0);
+                                }),
+                                borderWidth: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        var v = ctx.parsed || 0;
+                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                        return ' ' + v + ' 人 (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            );
+        }
+
+        function loadAnalyticsRegisterGender() {
+            var summaryEl = document.getElementById('registerGenderSummary');
+            var tbody = document.getElementById('registerGenderTbody');
+            var cardsEl = document.getElementById('registerGenderCards');
+            var daysEl = document.getElementById('analyticsRegisterGenderDays');
+            var days = daysEl ? String(daysEl.value) : '0';
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            if (cardsEl) cardsEl.innerHTML = '';
+            destroyRegisterGenderCharts();
+            adminFetch('api/admin/analytics/register-gender?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="3">加载失败</td></tr>';
+                        return;
+                    }
+                    renderRegisterGenderAnalysis(j.data);
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                });
+        }
 
         function renderRegisterTimeAnalysis(data) {
             var summaryEl = document.getElementById('registerTimeSummary');
@@ -1724,6 +1890,7 @@
         function loadAnalyticsDashboard() {
             loadAnalyticsDailyConversion();
             loadAnalyticsRegisterTime();
+            loadAnalyticsRegisterGender();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -4537,6 +4704,18 @@
         if (analyticsRegisterTimeDays) {
             analyticsRegisterTimeDays.addEventListener('change', function () {
                 loadAnalyticsRegisterTime();
+            });
+        }
+        var btnRefreshRegisterGender = document.getElementById('btnRefreshRegisterGender');
+        if (btnRefreshRegisterGender) {
+            btnRefreshRegisterGender.addEventListener('click', function () {
+                loadAnalyticsRegisterGender();
+            });
+        }
+        var analyticsRegisterGenderDays = document.getElementById('analyticsRegisterGenderDays');
+        if (analyticsRegisterGenderDays) {
+            analyticsRegisterGenderDays.addEventListener('change', function () {
+                loadAnalyticsRegisterGender();
             });
         }
         document.getElementById('analyticsDailyConversion').addEventListener('click', function (ev) {
