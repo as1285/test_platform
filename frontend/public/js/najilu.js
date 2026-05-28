@@ -920,11 +920,13 @@
     }
   }
 
-  var TAX_RECORD_LOGO_SRC = '/tax_record_logo.png';
-  /** 纳税记录页眉楷体（与官方版式一致） */
+  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png';
+  /** 纳税记录页眉楷体（纳税人信息等正文） */
   var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
+  /** 页眉整图在画布上的显示宽度（原图 297×190） */
+  var CERT_HEADER_DISPLAY_W = 580;
 
-  function loadTaxRecordLogo() {
+  function loadTaxRecordHeader() {
     return new Promise(function (resolve) {
       var img = new Image();
       img.onload = function () {
@@ -933,16 +935,31 @@
       img.onerror = function () {
         resolve(null);
       };
-      img.src = TAX_RECORD_LOGO_SRC;
+      img.src = TAX_RECORD_HEADER_SRC;
     });
   }
 
-  function drawTaxRecordLogo(ctx, logoImg, centerX, topY, targetH) {
-    if (!logoImg || !logoImg.complete || !logoImg.naturalWidth) return false;
-    var h = targetH || 115;
-    var w = logoImg.naturalWidth * (h / logoImg.naturalHeight);
-    ctx.drawImage(logoImg, centerX - w / 2, topY, w, h);
-    return true;
+  function taxRecordHeaderDisplayHeight(headerImg, targetW) {
+    if (!headerImg || !headerImg.naturalWidth) return 0;
+    var w = targetW || headerImg.naturalWidth;
+    return headerImg.naturalHeight * (w / headerImg.naturalWidth);
+  }
+
+  /** 绘制页眉整图（国徽+标题），返回实际占用高度；失败返回 0 */
+  function drawTaxRecordHeader(ctx, headerImg, centerX, topY, targetW) {
+    var h = taxRecordHeaderDisplayHeight(headerImg, targetW);
+    if (!h || !headerImg || !headerImg.complete) return 0;
+    var w = targetW || headerImg.naturalWidth;
+    ctx.drawImage(headerImg, centerX - w / 2, topY, w, h);
+    return h;
+  }
+
+  function drawCertificateTitleFallback(ctx, centerX, certTitleFont) {
+    drawText(ctx, '◉', centerX, 72, { size: 40, color: '#b92828', align: 'center' });
+    drawText(ctx, '中华人民共和国', centerX, 138, { size: 26, align: 'center', font: certTitleFont });
+    drawText(ctx, '个人所得税纳税记录', centerX, 166, { size: 30, align: 'center', font: certTitleFont });
+    drawText(ctx, '（原《税收完税证明》）', centerX, 188, { size: 16, align: 'center', font: certTitleFont });
+    return 188;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
@@ -964,19 +981,17 @@
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
 
-    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, logoImg) {
+    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg) {
       var isLastPage = pageNum === pageCount;
       var rows = pageRows;
       var width = 1240;
       var rowH = 56;
       var certTitleFont = CERT_TITLE_FONT;
-      /** 国徽与页眉标题 */
-      var certLogoTop = 6;
-      var certLogoH = 82;
-      var certTitleY1 = 138;
-      var certTitleY2 = 166;
-      var certTitleY3 = 188;
-      var certInfoY0 = 218;
+      var certHeaderTop = 8;
+      var headerBlockH = taxRecordHeaderDisplayHeight(headerImg, CERT_HEADER_DISPLAY_W);
+      var certInfoY0 = headerBlockH
+        ? certHeaderTop + headerBlockH + 12
+        : 218;
       var certInfoLine = 40;
       var x0 = 72;
       var y0 = certInfoY0 + certInfoLine * 2 + 28;
@@ -1000,8 +1015,8 @@
         size: 16,
         font: certTitleFont
       });
-      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, certLogoTop, certLogoH)) {
-        drawText(ctx, '◉', width / 2, 72, { size: 40, color: '#b92828', align: 'center' });
+      if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
+        drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
       }
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
@@ -1022,22 +1037,6 @@
         align: 'center',
         color: '#222',
         font: 'sans-serif'
-      });
-
-      drawText(ctx, '中华人民共和国', width / 2, certTitleY1, {
-        size: 26,
-        align: 'center',
-        font: certTitleFont
-      });
-      drawText(ctx, '个人所得税纳税记录', width / 2, certTitleY2, {
-        size: 30,
-        align: 'center',
-        font: certTitleFont
-      });
-      drawText(ctx, '（原《税收完税证明》）', width / 2, certTitleY3, {
-        size: 16,
-        align: 'center',
-        font: certTitleFont
       });
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
@@ -1168,17 +1167,17 @@
       return canvas.toDataURL('image/png');
     }
 
-    function paintAllPages(qrImg, logoImg) {
+    function paintAllPages(qrImg, headerImg) {
       var allRows = normalizeRecords(app.records || []);
       var pageChunks = chunkRecords(allRows, CERT_MAX_ROWS_PER_PAGE);
       return pageChunks.map(function (pageRows, idx) {
-        return paintCertificatePage(pageRows, idx + 1, pageChunks.length, allRows, qrImg, logoImg);
+        return paintCertificatePage(pageRows, idx + 1, pageChunks.length, allRows, qrImg, headerImg);
       });
     }
 
-    return loadTaxRecordLogo().then(function (logoImg) {
+    return loadTaxRecordHeader().then(function (headerImg) {
       if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        return paintAllPages(null, logoImg);
+        return paintAllPages(null, headerImg);
       }
       return new Promise(function (resolve) {
         QRCode.toDataURL(
@@ -1186,15 +1185,15 @@
           { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
           function (err, dataUrl) {
             if (err || !dataUrl) {
-              resolve(paintAllPages(null, logoImg));
+              resolve(paintAllPages(null, headerImg));
               return;
             }
             var img = new Image();
             img.onload = function () {
-              resolve(paintAllPages(img, logoImg));
+              resolve(paintAllPages(img, headerImg));
             };
             img.onerror = function () {
-              resolve(paintAllPages(null, logoImg));
+              resolve(paintAllPages(null, headerImg));
             };
             img.src = dataUrl;
           }
