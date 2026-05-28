@@ -6540,7 +6540,23 @@ async function handleAdminRegisterChannelStats(req, res) {
         }
       });
 
-      var registerItems = buildChannelStatsItems(regRows, regTotal, registerSourceChannelLabel);
+      var registerItemsAll = buildChannelStatsItems(regRows, regTotal, registerSourceChannelLabel);
+      var registerItems = registerItemsAll.filter(function (it) {
+        return it.key !== '__empty__';
+      });
+      registerItems = registerItems.map(function (it) {
+        var pct = withChannel > 0 ? Math.round((it.count / withChannel) * 1000) / 10 : 0;
+        return {
+          key: it.key,
+          label: it.label,
+          count: it.count,
+          pct: pct,
+          pct_text: withChannel > 0 ? pct.toFixed(1) + '%' : '—',
+          activated_count: it.activated_count,
+          activation_pct: it.activation_pct,
+          activation_pct_text: it.activation_pct_text
+        };
+      });
 
       var actTotal = 0;
       actRows.forEach(function (r) {
@@ -6553,7 +6569,7 @@ async function handleAdminRegisterChannelStats(req, res) {
         activatedUsers += it.activated_count || 0;
       });
       var overallActivationPct =
-        regTotal > 0 ? Math.round((activatedUsers / regTotal) * 1000) / 10 : 0;
+        withChannel > 0 ? Math.round((activatedUsers / withChannel) * 1000) / 10 : 0;
 
       var byDay = [];
       var trendDays = 0;
@@ -6588,6 +6604,9 @@ async function handleAdminRegisterChannelStats(req, res) {
             dayMap[dk] = { date: dk, total: 0, channels: {} };
           }
           var ck = registerChannelStatsKey(r.ch);
+          if (ck === '__empty__') {
+            return;
+          }
           var c = Number(r.cnt) || 0;
           dayMap[dk].total += c;
           dayMap[dk].channels[ck] = (dayMap[dk].channels[ck] || 0) + c;
@@ -6599,7 +6618,7 @@ async function handleAdminRegisterChannelStats(req, res) {
             var chList = Object.keys(row.channels).map(function (ck) {
               return {
                 key: ck,
-                label: registerSourceChannelLabel(ck === '__empty__' ? '' : ck),
+                label: registerSourceChannelLabel(ck),
                 count: row.channels[ck]
               };
             });
@@ -6626,13 +6645,15 @@ async function handleAdminRegisterChannelStats(req, res) {
           all_time: allTime,
           scope_label: scopeLabel,
           timezone: 'Asia/Shanghai (UTC+8)',
-          total: regTotal,
+          total: withChannel,
+          all_users_total: regTotal,
           with_register_channel: withChannel,
           without_register_channel: withoutChannel,
+          excludes_empty_channel: true,
           activated_users: activatedUsers,
           overall_activation_pct: overallActivationPct,
           overall_activation_pct_text:
-            regTotal > 0 ? overallActivationPct.toFixed(1) + '%' : '—',
+            withChannel > 0 ? overallActivationPct.toFixed(1) + '%' : '—',
           register_channels: registerItems,
           activation_channels: activationItems,
           activation_total: actTotal,

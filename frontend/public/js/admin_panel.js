@@ -339,31 +339,35 @@
 
             var total = Number(data && data.total) || 0;
             var scopeLabel = (data && data.scope_label) || '注册用户';
-            var regItems = (data && data.register_channels) || [];
+            var regItems = ((data && data.register_channels) || []).filter(function (it) {
+                return it.key !== '__empty__' && String(it.label || '').trim() !== '—';
+            });
             var actItems = (data && data.activation_channels) || [];
             var actTotal = Number(data && data.activation_total) || 0;
+            var withoutChannel = Number(data && data.without_register_channel) || 0;
 
             if (!total) {
-                summaryEl.textContent = scopeLabel + '：暂无用户数据。';
+                var emptyTip = withoutChannel > 0 ? '（' + withoutChannel + ' 人未填写注册渠道，已排除）' : '';
+                summaryEl.textContent = scopeLabel + '：暂无已填写注册渠道的用户。' + emptyTip;
                 if (cardsEl) cardsEl.innerHTML = '';
                 regTbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
                 if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
                 return;
             }
 
-            summaryEl.textContent =
+            var summary =
                 scopeLabel +
-                '，共 ' +
+                '，已填写注册渠道共 ' +
                 total +
-                ' 人；已填注册渠道 ' +
-                (data.with_register_channel || 0) +
-                ' 人，未填 ' +
-                (data.without_register_channel || 0) +
-                ' 人；已激活 ' +
+                ' 人；其中已激活 ' +
                 (data.activated_users || 0) +
-                ' 人（整体激活率 ' +
+                ' 人（激活率 ' +
                 (data.overall_activation_pct_text || '—') +
                 '）。';
+            if (withoutChannel > 0) {
+                summary += ' 另有 ' + withoutChannel + ' 人未选择渠道，未计入下表与图表。';
+            }
+            summaryEl.textContent = summary;
 
             if (cardsEl) {
                 var topCards = regItems.slice(0, 6);
