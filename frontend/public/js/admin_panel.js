@@ -3612,11 +3612,22 @@
             try {
                 var app = window.TaxIssueCertificate.buildAppFromAdminDetail(data);
                 window.TaxIssueCertificate.renderDataUrl(app, { showStamp: true })
-                    .then(function (url) {
-                        el.innerHTML =
-                            '<img src="' +
-                            url +
-                            '" alt="纳税记录凭证（管理端）" title="管理端预览含公章">';
+                    .then(function (urlOrUrls) {
+                        var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+                        el.innerHTML = urls
+                            .map(function (u, i) {
+                                var gap = i < urls.length - 1 ? ' style="margin-bottom:12px"' : '';
+                                return (
+                                    '<img src="' +
+                                    u +
+                                    '" alt="纳税记录凭证第' +
+                                    (i + 1) +
+                                    '页（管理端）" title="管理端预览含公章"' +
+                                    gap +
+                                    '>'
+                                );
+                            })
+                            .join('');
                     })
                     .catch(function (err) {
                         el.textContent = (err && err.message) || '凭证生成失败';

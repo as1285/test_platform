@@ -945,14 +945,28 @@
     return true;
   }
 
+  /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
+  var CERT_MAX_ROWS_PER_PAGE = 16;
+
+  function chunkRecords(records, pageSize) {
+    pageSize = pageSize || CERT_MAX_ROWS_PER_PAGE;
+    if (!records.length) return [[]];
+    var pages = [];
+    for (var i = 0; i < records.length; i += pageSize) {
+      pages.push(records.slice(i, i + pageSize));
+    }
+    return pages;
+  }
+
   function renderCertificateDataUrl(app, options) {
     options = options || {};
     var showStamp = options.showStamp === true;
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
 
-    function paintCanvas(qrImg, logoImg) {
-      var rows = normalizeRecords(app.records || []);
+    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, logoImg) {
+      var isLastPage = pageNum === pageCount;
+      var rows = pageRows;
       var width = 1240;
       var rowH = 56;
       var certTitleFont = CERT_TITLE_FONT;
@@ -968,7 +982,8 @@
       var y0 = certInfoY0 + certInfoLine * 2 + 28;
       var tableW = width - x0 * 2;
       var dataRowCount = Math.max(rows.length, 1);
-      var tableTotalH = 44 + dataRowCount * rowH + 40;
+      var tableFootH = isLastPage ? 40 : 0;
+      var tableTotalH = 44 + dataRowCount * rowH + tableFootH;
       var footY = y0 + 44 + dataRowCount * rowH;
       var explainY = footY + 48;
       var height = explainY + 292;
@@ -1122,11 +1137,13 @@
       }
 
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
-      drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 26, { size: 16, align: 'center' });
-      var total = rows.reduce(function (sum, r) {
-        return sum + Number(r.tax_reported || 0);
-      }, 0);
-      drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 26, { size: 16 });
+      if (isLastPage) {
+        var total = allRows.reduce(function (sum, r) {
+          return sum + Number(r.tax_reported || 0);
+        }, 0);
+        drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 26, { size: 16, align: 'center' });
+        drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 26, { size: 16 });
+      }
 
       ctx.beginPath();
       ctx.moveTo(x0, explainY - 28);
@@ -1141,16 +1158,27 @@
       drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证', 90, explainY + 232, { size: 20, color: '#555' });
       drawText(ctx, '开具机关（盖章）', width - 430, explainY + 138, { size: 20, color: '#555' });
       drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 205, { size: 20, color: '#555' });
-      drawText(ctx, '当前第1页，共1页', width - 230, explainY + 265, { size: 18, color: '#555' });
+      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 265, {
+        size: 18,
+        color: '#555'
+      });
       if (showStamp) {
-        drawStamp(ctx, width - 275, explainY + 126, stampAuthority(rows));
+        drawStamp(ctx, width - 275, explainY + 126, stampAuthority(allRows));
       }
       return canvas.toDataURL('image/png');
     }
 
+    function paintAllPages(qrImg, logoImg) {
+      var allRows = normalizeRecords(app.records || []);
+      var pageChunks = chunkRecords(allRows, CERT_MAX_ROWS_PER_PAGE);
+      return pageChunks.map(function (pageRows, idx) {
+        return paintCertificatePage(pageRows, idx + 1, pageChunks.length, allRows, qrImg, logoImg);
+      });
+    }
+
     return loadTaxRecordLogo().then(function (logoImg) {
       if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        return paintCanvas(null, logoImg);
+        return paintAllPages(null, logoImg);
       }
       return new Promise(function (resolve) {
         QRCode.toDataURL(
@@ -1158,21 +1186,36 @@
           { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
           function (err, dataUrl) {
             if (err || !dataUrl) {
-              resolve(paintCanvas(null, logoImg));
+              resolve(paintAllPages(null, logoImg));
               return;
             }
             var img = new Image();
             img.onload = function () {
-              resolve(paintCanvas(img, logoImg));
+              resolve(paintAllPages(img, logoImg));
             };
             img.onerror = function () {
-              resolve(paintCanvas(null, logoImg));
+              resolve(paintAllPages(null, logoImg));
             };
             img.src = dataUrl;
           }
         );
+      }).then(function (urls) {
+        return urls.length === 1 ? urls[0] : urls;
       });
     });
+  }
+
+  function certificateImageHtml(urlOrUrls, imgClass, altBase) {
+    var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+    imgClass = imgClass || 'preview-img';
+    altBase = altBase || '纳税记录';
+    return urls
+      .map(function (u, i) {
+        var alt = urls.length > 1 ? altBase + '第' + (i + 1) + '页' : altBase;
+        var gap = i < urls.length - 1 ? ' style="margin-bottom:12px"' : '';
+        return '<img src="' + u + '" class="' + imgClass + '" alt="' + esc(alt) + '"' + gap + '>';
+      })
+      .join('');
   }
 
   function drawStar(ctx, cx, cy, outer, inner) {
@@ -1322,7 +1365,11 @@
       arcLetterGap: arcGap,
       maxSpanRad: Math.PI * 1.04
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 27, {
+    ctx.save();
+    ctx.fillStyle = stampRed;
+    drawStar(ctx, cx, cy - 2, 10, 4.2);
+    ctx.restore();
+    drawSpacedText(ctx, '业务专用章', cx, cy + 24, {
       size: 13,
       weight: 'normal',
       color: stampRed,
@@ -1384,10 +1431,12 @@
         });
       })
       .then(function (ret) {
-        var img = document.getElementById('certificatePreview');
-        document.getElementById('previewLoading').style.display = 'none';
-        img.src = ret.url;
-        img.style.display = 'block';
+        var wrap = document.querySelector('.preview-wrap');
+        var loading = document.getElementById('previewLoading');
+        if (loading) loading.style.display = 'none';
+        if (wrap) {
+          wrap.innerHTML = certificateImageHtml(ret.url, 'preview-img', '纳税记录');
+        }
       })
       .catch(function (err) {
         var loading = document.getElementById('previewLoading');
@@ -1478,10 +1527,14 @@
       });
   }
 
-  function downloadUrl(url, app) {
+  function downloadUrl(url, app, pageInfo) {
     var a = document.createElement('a');
     a.href = url;
-    a.download = '纳税记录_' + app.period_start + '_' + app.period_end + '.png';
+    var suffix = '';
+    if (pageInfo && pageInfo.total > 1) {
+      suffix = '_第' + pageInfo.index + '页共' + pageInfo.total + '页';
+    }
+    a.download = '纳税记录_' + app.period_start + '_' + app.period_end + suffix + '.png';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1490,8 +1543,11 @@
   function saveCertificate(app) {
     applicationWithCurrentData(app)
       .then(function (freshApp) {
-        return renderCertificateDataUrl(freshApp).then(function (url) {
-          downloadUrl(url, freshApp);
+        return renderCertificateDataUrl(freshApp).then(function (urlOrUrls) {
+          var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+          urls.forEach(function (u, i) {
+            downloadUrl(u, freshApp, { index: i + 1, total: urls.length });
+          });
         });
       })
       .catch(function (err) {
