@@ -200,6 +200,7 @@ const ADMIN_MENU_KEYS = [
   'feedback',
   'login-log',
   'analytics',
+  'channel-analysis',
   'api-analytics',
   'admin-accounts',
   'server-monitor'
@@ -6472,6 +6473,183 @@ async function handleAdminFemaleAgeStats(req, res) {
 }
 
 /** 注册用户性别分布（users.gender：1=男 2=女） */
+function registerChannelStatsKey(raw) {
+  var c = raw != null ? String(raw).trim() : '';
+  return c || '__empty__';
+}
+
+function buildChannelStatsItems(rows, total, labelFn) {
+  return (rows || []).map(function (r) {
+    var raw = r.ch;
+    var cnt = Number(r.cnt) || 0;
+    var activated = r.activated_cnt != null ? Number(r.activated_cnt) || 0 : null;
+    var pct = total > 0 ? Math.round((cnt / total) * 1000) / 10 : 0;
+    var item = {
+      key: registerChannelStatsKey(raw),
+      label: labelFn(raw),
+      count: cnt,
+      pct: pct,
+      pct_text: total > 0 ? pct.toFixed(1) + '%' : '—'
+    };
+    if (activated != null) {
+      item.activated_count = activated;
+      var actPct = cnt > 0 ? Math.round((activated / cnt) * 1000) / 10 : 0;
+      item.activation_pct = actPct;
+      item.activation_pct_text = cnt > 0 ? actPct.toFixed(1) + '%' : '—';
+    }
+    return item;
+  });
+}
+
+/** 注册用户来源渠道分析（register_source_channel / activation_source_channel） */
+async function handleAdminRegisterChannelStats(req, res) {
+  try {
+    var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
+    var days = scope.days;
+    var allTime = scope.all_time;
+
+    const conn = await pool.getConnection();
+    try {
+      const [regRows] = await conn.query(
+        'SELECT register_source_channel AS ch, COUNT(*) AS cnt, ' +
+          'SUM(CASE WHEN account_active = 1 THEN 1 ELSE 0 END) AS activated_cnt ' +
+          'FROM users WHERE ' +
+          scope.where +
+          ' GROUP BY register_source_channel ORDER BY cnt DESC',
+        scope.params
+      );
+
+      const [actRows] = await conn.query(
+        'SELECT activation_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
+          scope.where +
+          " AND account_active = 1 AND activation_source_channel IS NOT NULL AND TRIM(activation_source_channel) <> '' " +
+          'GROUP BY activation_source_channel ORDER BY cnt DESC',
+        scope.params
+      );
+
+      var regTotal = 0;
+      var withChannel = 0;
+      var withoutChannel = 0;
+      regRows.forEach(function (r) {
+        var c = Number(r.cnt) || 0;
+        regTotal += c;
+        if (registerChannelStatsKey(r.ch) === '__empty__') {
+          withoutChannel += c;
+        } else {
+          withChannel += c;
+        }
+      });
+
+      var registerItems = buildChannelStatsItems(regRows, regTotal, registerSourceChannelLabel);
+
+      var actTotal = 0;
+      actRows.forEach(function (r) {
+        actTotal += Number(r.cnt) || 0;
+      });
+      var activationItems = buildChannelStatsItems(actRows, actTotal, activationSourceChannelLabel);
+
+      var activatedUsers = 0;
+      registerItems.forEach(function (it) {
+        activatedUsers += it.activated_count || 0;
+      });
+      var overallActivationPct =
+        regTotal > 0 ? Math.round((activatedUsers / regTotal) * 1000) / 10 : 0;
+
+      var byDay = [];
+      var trendDays = 0;
+      if (!allTime && days > 0 && days <= 90) {
+        trendDays = days;
+        var span = Math.max(0, days - 1);
+        var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
+        var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+        var dayWhere =
+          scope.where +
+          ' AND DATE(' +
+          cnCreated +
+          ') >= DATE_SUB(' +
+          cnToday +
+          ', INTERVAL ? DAY)';
+        var dayParams = scope.params.concat([span]);
+        const [dayRows] = await conn.query(
+          'SELECT DATE(' +
+            cnCreated +
+            ') AS d, register_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
+            dayWhere +
+            ' GROUP BY d, ch ORDER BY d ASC',
+          dayParams
+        );
+        var dayMap = {};
+        dayRows.forEach(function (r) {
+          var dk = r.d ? String(r.d).slice(0, 10) : '';
+          if (!dk) {
+            return;
+          }
+          if (!dayMap[dk]) {
+            dayMap[dk] = { date: dk, total: 0, channels: {} };
+          }
+          var ck = registerChannelStatsKey(r.ch);
+          var c = Number(r.cnt) || 0;
+          dayMap[dk].total += c;
+          dayMap[dk].channels[ck] = (dayMap[dk].channels[ck] || 0) + c;
+        });
+        byDay = Object.keys(dayMap)
+          .sort()
+          .map(function (dk) {
+            var row = dayMap[dk];
+            var chList = Object.keys(row.channels).map(function (ck) {
+              return {
+                key: ck,
+                label: registerSourceChannelLabel(ck === '__empty__' ? '' : ck),
+                count: row.channels[ck]
+              };
+            });
+            chList.sort(function (a, b) {
+              return b.count - a.count;
+            });
+            return { date: row.date, total: row.total, channels: chList };
+          });
+      }
+
+      var channelDefs = [];
+      Object.keys(REGISTER_SOURCE_CHANNELS).forEach(function (k) {
+        channelDefs.push({ key: k, label: REGISTER_SOURCE_CHANNELS[k] });
+      });
+
+      var scopeLabel = allTime
+        ? '全部注册用户'
+        : '最近 ' + days + ' 天注册用户';
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          all_time: allTime,
+          scope_label: scopeLabel,
+          timezone: 'Asia/Shanghai (UTC+8)',
+          total: regTotal,
+          with_register_channel: withChannel,
+          without_register_channel: withoutChannel,
+          activated_users: activatedUsers,
+          overall_activation_pct: overallActivationPct,
+          overall_activation_pct_text:
+            regTotal > 0 ? overallActivationPct.toFixed(1) + '%' : '—',
+          register_channels: registerItems,
+          activation_channels: activationItems,
+          activation_total: actTotal,
+          trend_days: trendDays,
+          by_day: byDay,
+          channel_definitions: channelDefs
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminRegisterGenderStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
@@ -9655,6 +9833,12 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('analytics'),
   handleAdminRegisterGenderStats
+);
+app.get(
+  '/api/admin/analytics/register-channels',
+  requireAdminAuth,
+  requireAdminMenu('channel-analysis'),
+  handleAdminRegisterChannelStats
 );
 app.get(
   '/api/admin/analytics/female-age',

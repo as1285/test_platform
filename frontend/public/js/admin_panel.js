@@ -311,6 +311,323 @@
                 });
         }
 
+        function destroyChannelAnalysisCharts() {
+            _channelAnalysisChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _channelAnalysisChartInstances = [];
+        }
+
+        function renderChannelAnalysis(data) {
+            var summaryEl = document.getElementById('channelAnalysisSummary');
+            var cardsEl = document.getElementById('channelAnalysisCards');
+            var regTbody = document.getElementById('channelRegisterTbody');
+            var actTbody = document.getElementById('channelActivationTbody');
+            var chartsWrap = document.getElementById('channelAnalysisChartsWrap');
+            var chartsEmpty = document.getElementById('channelAnalysisChartsEmpty');
+            var trendCard = document.getElementById('channelTrendCard');
+            var actPieCard = document.getElementById('channelActivationPieCard');
+            if (!summaryEl || !regTbody) return;
+
+            destroyChannelAnalysisCharts();
+            if (chartsWrap) chartsWrap.style.display = 'none';
+            if (chartsEmpty) chartsEmpty.style.display = 'none';
+            if (trendCard) trendCard.style.display = 'none';
+            if (actPieCard) actPieCard.style.display = 'none';
+
+            var total = Number(data && data.total) || 0;
+            var scopeLabel = (data && data.scope_label) || '注册用户';
+            var regItems = (data && data.register_channels) || [];
+            var actItems = (data && data.activation_channels) || [];
+            var actTotal = Number(data && data.activation_total) || 0;
+
+            if (!total) {
+                summaryEl.textContent = scopeLabel + '：暂无用户数据。';
+                if (cardsEl) cardsEl.innerHTML = '';
+                regTbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
+                if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
+                return;
+            }
+
+            summaryEl.textContent =
+                scopeLabel +
+                '，共 ' +
+                total +
+                ' 人；已填注册渠道 ' +
+                (data.with_register_channel || 0) +
+                ' 人，未填 ' +
+                (data.without_register_channel || 0) +
+                ' 人；已激活 ' +
+                (data.activated_users || 0) +
+                ' 人（整体激活率 ' +
+                (data.overall_activation_pct_text || '—') +
+                '）。';
+
+            if (cardsEl) {
+                var topCards = regItems.slice(0, 6);
+                cardsEl.innerHTML = topCards
+                    .map(function (it, idx) {
+                        return (
+                            '<div class="register-gender-card channel-card" style="border-top:3px solid ' +
+                            chartColorAtIndex(idx) +
+                            '">' +
+                            '<div class="rg-label">' +
+                            esc(it.label) +
+                            '</div>' +
+                            '<div class="rg-count">' +
+                            esc(String(it.count)) +
+                            ' 人</div>' +
+                            '<div class="rg-pct">' +
+                            esc(it.pct_text || '—') +
+                            '</div></div>'
+                        );
+                    })
+                    .join('');
+            }
+
+            regTbody.innerHTML = regItems
+                .map(function (it) {
+                    return (
+                        '<tr><td>' +
+                        esc(it.label) +
+                        '</td><td>' +
+                        esc(String(it.count)) +
+                        '</td><td>' +
+                        esc(it.pct_text || '—') +
+                        '</td><td>' +
+                        esc(String(it.activated_count != null ? it.activated_count : 0)) +
+                        '</td><td>' +
+                        esc(it.activation_pct_text || '—') +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+
+            if (actTbody) {
+                if (!actTotal) {
+                    actTbody.innerHTML = '<tr><td colspan="3">暂无已激活用户或未记录激活来源</td></tr>';
+                } else {
+                    actTbody.innerHTML = actItems
+                        .map(function (it) {
+                            var pctAct =
+                                actTotal > 0
+                                    ? ((it.count / actTotal) * 100).toFixed(1) + '%'
+                                    : '—';
+                            return (
+                                '<tr><td>' +
+                                esc(it.label) +
+                                '</td><td>' +
+                                esc(String(it.count)) +
+                                '</td><td>' +
+                                esc(pctAct) +
+                                '</td></tr>'
+                            );
+                        })
+                        .join('');
+                }
+            }
+
+            if (typeof Chart === 'undefined') {
+                if (chartsWrap) {
+                    chartsWrap.style.display = 'block';
+                    if (chartsEmpty) {
+                        chartsEmpty.style.display = 'block';
+                        chartsEmpty.textContent = '图表库未加载，请刷新页面后重试';
+                    }
+                }
+                return;
+            }
+
+            chartsWrap.style.display = 'block';
+            var pieReg = document.getElementById('channelChartRegisterPie');
+            var barReg = document.getElementById('channelChartRegisterBar');
+            if (pieReg && regItems.length) {
+                _channelAnalysisChartInstances.push(
+                    new Chart(pieReg, {
+                        type: 'doughnut',
+                        data: {
+                            labels: regItems.map(function (it) {
+                                return it.label;
+                            }),
+                            datasets: [
+                                {
+                                    data: regItems.map(function (it) {
+                                        return it.count;
+                                    }),
+                                    backgroundColor: regItems.map(function (it, idx) {
+                                        return chartColorAtIndex(idx);
+                                    }),
+                                    borderWidth: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom' },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            var v = ctx.parsed || 0;
+                                            var pct = total ? ((v / total) * 100).toFixed(1) : '0';
+                                            return ' ' + v + ' 人 (' + pct + '%)';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })
+                );
+            }
+            if (barReg && regItems.length) {
+                _channelAnalysisChartInstances.push(
+                    new Chart(barReg, {
+                        type: 'bar',
+                        data: {
+                            labels: regItems.map(function (it) {
+                                return it.label.length > 8 ? it.label.slice(0, 8) + '…' : it.label;
+                            }),
+                            datasets: [
+                                {
+                                    label: '注册人数',
+                                    data: regItems.map(function (it) {
+                                        return it.count;
+                                    }),
+                                    backgroundColor: regItems.map(function (it, idx) {
+                                        return chartColorAtIndex(idx);
+                                    }),
+                                    borderRadius: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, ticks: { precision: 0 } }
+                            }
+                        }
+                    })
+                );
+            }
+
+            var byDay = (data && data.by_day) || [];
+            if (byDay.length && trendCard) {
+                trendCard.style.display = '';
+                var topKeys = regItems.slice(0, 5).map(function (it) {
+                    return it.key;
+                });
+                var trendCanvas = document.getElementById('channelChartDailyTrend');
+                if (trendCanvas) {
+                    var labels = byDay.map(function (d) {
+                        return d.date ? String(d.date).slice(5) : '';
+                    });
+                    var datasets = topKeys.map(function (ck, idx) {
+                        var meta = regItems.find(function (it) {
+                            return it.key === ck;
+                        });
+                        return {
+                            label: meta ? meta.label : ck,
+                            data: byDay.map(function (d) {
+                                var found = (d.channels || []).find(function (c) {
+                                    return c.key === ck;
+                                });
+                                return found ? found.count : 0;
+                            }),
+                            borderColor: chartColorAtIndex(idx),
+                            backgroundColor: chartColorAtIndex(idx),
+                            tension: 0.25,
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 2
+                        };
+                    });
+                    _channelAnalysisChartInstances.push(
+                        new Chart(trendCanvas, {
+                            type: 'line',
+                            data: { labels: labels, datasets: datasets },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: { legend: { position: 'bottom' } },
+                                scales: {
+                                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
+
+            if (actTotal && actPieCard) {
+                actPieCard.style.display = '';
+                var pieAct = document.getElementById('channelChartActivationPie');
+                if (pieAct) {
+                    _channelAnalysisChartInstances.push(
+                        new Chart(pieAct, {
+                            type: 'doughnut',
+                            data: {
+                                labels: actItems.map(function (it) {
+                                    return it.label;
+                                }),
+                                datasets: [
+                                    {
+                                        data: actItems.map(function (it) {
+                                            return it.count;
+                                        }),
+                                        backgroundColor: actItems.map(function (it, idx) {
+                                            return chartColorAtIndex(idx + 2);
+                                        }),
+                                        borderWidth: 0
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'bottom' } }
+                            }
+                        })
+                    );
+                }
+            }
+        }
+
+        function loadChannelAnalysis() {
+            var summaryEl = document.getElementById('channelAnalysisSummary');
+            var regTbody = document.getElementById('channelRegisterTbody');
+            var actTbody = document.getElementById('channelActivationTbody');
+            var cardsEl = document.getElementById('channelAnalysisCards');
+            var daysEl = document.getElementById('channelAnalysisDays');
+            var days = daysEl ? String(daysEl.value) : '0';
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
+            if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            if (cardsEl) cardsEl.innerHTML = '';
+            destroyChannelAnalysisCharts();
+            adminFetch('api/admin/analytics/register-channels?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
+                        if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
+                        return;
+                    }
+                    renderChannelAnalysis(j.data);
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
+                });
+        }
+
         function renderRegisterTimeAnalysis(data) {
             var summaryEl = document.getElementById('registerTimeSummary');
             var cardsEl = document.getElementById('registerTimePeriodCards');
@@ -1301,8 +1618,10 @@
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
         var _adminAnalyticsSeen = false;
+        var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
+        var _channelAnalysisChartInstances = [];
 
         function adminHasMenu(menuKey) {
             if (!menuKey) return false;
@@ -1312,7 +1631,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1363,6 +1682,7 @@
                 'user-data': 1,
                 feedback: 1,
                 analytics: 1,
+                'channel-analysis': 1,
                 'api-analytics': 1,
                 'login-log': 1,
                 'user-login-log': 1,
@@ -1408,6 +1728,10 @@
             if (pageKey === 'analytics' && !_adminAnalyticsSeen) {
                 _adminAnalyticsSeen = true;
                 loadAnalyticsDashboard();
+            }
+            if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
+                _adminChannelAnalysisSeen = true;
+                loadChannelAnalysis();
             }
             if (pageKey === 'api-analytics' && !_adminApiAnalyticsSeen) {
                 _adminApiAnalyticsSeen = true;
@@ -3815,6 +4139,7 @@
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计',
+            'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
             'server-monitor': '服务器监控'
@@ -4851,6 +5176,18 @@
         if (analyticsRegisterGenderDays) {
             analyticsRegisterGenderDays.addEventListener('change', function () {
                 loadAnalyticsRegisterGender();
+            });
+        }
+        var btnRefreshChannelAnalysis = document.getElementById('btnRefreshChannelAnalysis');
+        if (btnRefreshChannelAnalysis) {
+            btnRefreshChannelAnalysis.addEventListener('click', function () {
+                loadChannelAnalysis();
+            });
+        }
+        var channelAnalysisDays = document.getElementById('channelAnalysisDays');
+        if (channelAnalysisDays) {
+            channelAnalysisDays.addEventListener('change', function () {
+                loadChannelAnalysis();
             });
         }
         document.getElementById('analyticsDailyConversion').addEventListener('click', function (ev) {

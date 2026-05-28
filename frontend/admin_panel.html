@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260527-female-age">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260528-channel-analysis">
 </head>
 <body>
     <div class="layout">
@@ -41,6 +41,7 @@
                 <div class="nav-group" data-nav-group="stats">
                     <div class="nav-group-label">数据统计</div>
                     <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
+                    <button type="button" class="nav-item" data-page="channel-analysis" data-title="渠道分析">渠道分析</button>
                     <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
                 </div>
             </nav>
@@ -1120,6 +1121,79 @@
         </section>
                 </div>
 
+                <div id="page-channel-analysis" class="page-panel" role="tabpanel">
+        <section>
+            <h2>注册渠道分析</h2>
+            <p class="hint" style="margin-top:0;">按用户注册时选择的<strong>来源渠道</strong>（<code>users.register_source_channel</code>）统计人数与占比；「其他」为自定义填写内容。另统计<strong>激活来源</strong>（如闲鱼激活码，<code>activation_source_channel</code>）。非超级管理员仅统计自己激活码关联的用户。</p>
+            <div class="form-row" style="align-items:center;margin-top:8px;">
+                <div>
+                    <label for="channelAnalysisDays">统计范围</label>
+                    <select id="channelAnalysisDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        <option value="0" selected>全部注册用户</option>
+                        <option value="7">最近 7 天注册</option>
+                        <option value="30">最近 30 天注册</option>
+                        <option value="90">最近 90 天注册</option>
+                        <option value="365">最近 365 天注册</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary" id="btnRefreshChannelAnalysis">刷新分析</button>
+            </div>
+            <div id="channelAnalysisWrap" class="channel-analysis-wrap" aria-live="polite">
+                <p id="channelAnalysisSummary" class="stat">加载中…</p>
+                <div id="channelAnalysisCards" class="register-gender-cards channel-analysis-cards"></div>
+                <div class="scroll-x" style="margin-top:12px;">
+                    <p class="stat" style="margin-bottom:8px;">注册来源渠道明细</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>渠道</th>
+                                <th>注册人数</th>
+                                <th>占比</th>
+                                <th>已激活</th>
+                                <th>激活率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="channelRegisterTbody"><tr><td colspan="5">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x" style="margin-top:16px;">
+                    <p class="stat" style="margin-bottom:8px;">激活来源（已激活用户）</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>激活渠道</th>
+                                <th>人数</th>
+                                <th>占已激活用户比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="channelActivationTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div id="channelAnalysisChartsWrap" class="device-stats-charts-wrap channel-analysis-charts-wrap" style="display:none;margin-top:14px;">
+                    <p id="channelAnalysisChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
+                    <div class="device-stats-charts channel-analysis-charts-grid">
+                        <div class="device-stats-chart-card">
+                            <h4>注册来源占比</h4>
+                            <div class="chart-canvas-wrap"><canvas id="channelChartRegisterPie" aria-label="注册来源渠道占比"></canvas></div>
+                        </div>
+                        <div class="device-stats-chart-card chart-card-wide">
+                            <h4>注册来源人数</h4>
+                            <div class="chart-canvas-wrap"><canvas id="channelChartRegisterBar" aria-label="注册来源渠道人数"></canvas></div>
+                        </div>
+                        <div class="device-stats-chart-card chart-card-wide" id="channelTrendCard" style="display:none;">
+                            <h4>注册趋势（按日 · Top 渠道）</h4>
+                            <div class="chart-canvas-wrap chart-canvas-wrap-tall"><canvas id="channelChartDailyTrend" aria-label="注册渠道按日趋势"></canvas></div>
+                        </div>
+                        <div class="device-stats-chart-card" id="channelActivationPieCard" style="display:none;">
+                            <h4>激活来源占比</h4>
+                            <div class="chart-canvas-wrap"><canvas id="channelChartActivationPie" aria-label="激活来源占比"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+                </div>
+
                 <div id="page-api-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>接口调用（按业务分类）</h2>
@@ -1295,7 +1369,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260527-female-age"></script>
+    <script src="/js/admin_panel.js?v=20260528-channel-analysis"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260523-cert-stamp-split"></script>
 </body>

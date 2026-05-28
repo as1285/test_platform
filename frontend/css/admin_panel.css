@@ -448,6 +448,12 @@
             font-weight: 700;
             margin-top: 8px;
         }
+        .channel-analysis-charts-grid {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .chart-canvas-wrap-tall {
+            height: 260px;
+        }
         .register-gender-card .rg-pct {
             font-size: 13px;
             color: #666;
