@@ -432,7 +432,18 @@
   }
 
   function periodCn(start, end) {
-    return ymCn(start) + '-' + ymCn(end);
+    return ymCn(start) + '至' + ymCn(end);
+  }
+
+  function displayTaxPeriodFromRecord(r) {
+    var tp = cleanText(r && r.tax_period);
+    if (tp) {
+      var m = tp.match(/^(\d{4})[-/.](\d{1,2})/);
+      if (m) return m[1] + '.' + pad2(m[2]);
+      return tp.replace(/-/g, '.');
+    }
+    var ym = recordYm(r);
+    return ym ? ym.replace('-', '.') : '';
   }
 
   function money(v) {
@@ -847,12 +858,20 @@
     ctx.restore();
   }
 
-  /** 左上角「(日期) 记录 编号)」：编号为红色 */
+  /** 左上角「(YYYY)MMDD 记录 编号」：编号为红色 */
+  function formatCertRecordIdDate(compactDate) {
+    var s = String(compactDate || '').replace(/\D/g, '');
+    if (s.length >= 8) {
+      return '(' + s.slice(0, 4) + ')' + s.slice(4, 8);
+    }
+    return String(compactDate || '');
+  }
+
   function drawRecordIdLine(ctx, compactDate, recordNo, x, y, opt) {
     opt = opt || {};
     var sz = opt.size || 16;
     var font = opt.font || CERT_TITLE_FONT;
-    var prefix = '(' + String(compactDate || '') + ' 记录 ';
+    var prefix = formatCertRecordIdDate(compactDate) + ' 记录 ';
     var no = String(recordNo || '');
     var suffix = ')';
     drawText(ctx, prefix, x, y, { size: sz, color: '#555', font: font });
@@ -984,6 +1003,13 @@
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
   var CERT_MAX_ROWS_PER_PAGE = 16;
+  /** 每页表格固定行位（数据不足也占满，版式与满页一致） */
+  var CERT_TABLE_BODY_SLOTS = 16;
+  var CERT_TABLE_HEADER_H = 44;
+  var CERT_TABLE_TOTAL_ROW_H = 40;
+  var CERT_TABLE_ROW_H = 56;
+  var CERT_FOOTER_BLOCK_H = 292;
+  var CERT_BODY_FONT = 'SimSun, STSong, serif';
 
   function chunkRecords(records, pageSize) {
     pageSize = pageSize || CERT_MAX_ROWS_PER_PAGE;
@@ -1005,8 +1031,8 @@
       var isLastPage = pageNum === pageCount;
       var rows = pageRows;
       var width = 1240;
-      var rowH = 56;
-      var certTitleFont = CERT_TITLE_FONT;
+      var rowH = CERT_TABLE_ROW_H;
+      var certTitleFont = CERT_BODY_FONT;
       var certHeaderTop = 8;
       var headerBlockH = taxRecordHeaderDisplayHeight(headerImg, CERT_HEADER_DISPLAY_W);
       var certInfoY0 = headerBlockH
@@ -1016,12 +1042,14 @@
       var x0 = 72;
       var y0 = certInfoY0 + certInfoLine * 2 + 28;
       var tableW = width - x0 * 2;
-      var dataRowCount = Math.max(rows.length, 1);
-      var tableFootH = isLastPage ? 40 : 0;
-      var tableTotalH = 44 + dataRowCount * rowH + tableFootH;
-      var footY = y0 + 44 + dataRowCount * rowH;
-      var explainY = footY + 48;
-      var height = explainY + 292;
+      var tableBodySlots = CERT_TABLE_BODY_SLOTS;
+      var tableBodyH = tableBodySlots * rowH;
+      var tableFootH = isLastPage ? CERT_TABLE_TOTAL_ROW_H : 0;
+      var tableTotalH = CERT_TABLE_HEADER_H + tableBodyH + tableFootH;
+      var footY = y0 + CERT_TABLE_HEADER_H + tableBodyH;
+      var explainY = y0 + tableTotalH + 48;
+      var height = explainY + CERT_FOOTER_BLOCK_H;
+      var dataRowsOnPage = rows.length;
       var canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -1076,7 +1104,7 @@
         size: 20,
         font: certTitleFont
       });
-      drawText(ctx, '金额单位:元', width - x0 - 8, certInfoY0 + certInfoLine * 2 + 2, {
+      drawText(ctx, '金额单位：元', width - x0 - 8, certInfoY0 + certInfoLine * 2 + 2, {
         size: 16,
         color: '#555',
         font: certTitleFont,
@@ -1130,7 +1158,7 @@
           money(r.tax_reported),
           displayInboundDateFromRecord(r),
           r.income_type || '工资薪金所得',
-          recordYm(r).replace('-', '.'),
+          displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
           rowRemark(r)
         ];
@@ -1150,12 +1178,28 @@
         });
       });
 
-      if (mergedRemark != null && rows.length > 0) {
-        var dataBodyMidY = y0 + 44 + (dataRowCount * rowH) / 2 + 10;
+      if (mergedRemark != null && dataRowsOnPage > 0) {
+        var dataBodyMidY = y0 + CERT_TABLE_HEADER_H + (dataRowsOnPage * rowH) / 2 + 10;
         drawRemarkCell(mergedRemark, remarkColX, dataBodyMidY);
       }
 
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
+      var gridY;
+      for (gridY = 0; gridY <= tableBodySlots; gridY++) {
+        ctx.beginPath();
+        ctx.moveTo(x0, y0 + CERT_TABLE_HEADER_H + gridY * rowH);
+        ctx.lineTo(x0 + tableW, y0 + CERT_TABLE_HEADER_H + gridY * rowH);
+        ctx.stroke();
+      }
+      var colX = x0;
+      var colIdx;
+      for (colIdx = 1; colIdx < cols.length; colIdx++) {
+        colX += cols[colIdx - 1];
+        ctx.beginPath();
+        ctx.moveTo(colX, y0);
+        ctx.lineTo(colX, y0 + tableTotalH);
+        ctx.stroke();
+      }
       if (isLastPage) {
         var total = allRows.reduce(function (sum, r) {
           return sum + Number(r.tax_reported || 0);
