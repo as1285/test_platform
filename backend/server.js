@@ -8319,6 +8319,393 @@ async function handleAdminUserTaxRecords(req, res) {
   }
 }
 
+/** 页面路径 → 中文 title（与 C 端 HTML title 一致，供行为分析展示） */
+var CERT_PAGE_TITLE_ZH = {
+  'index.html': '个人所得税',
+  'login.html': '个人所得税',
+  'shouye.html': '首页',
+  'mine.html': '我的',
+  'consult.html': '个人中心',
+  'profile.html': '个人中心',
+  'shuiming.html': '收入纳税明细',
+  'shuiming_result.html': '收入纳税明细',
+  'xiangqing.html': '收入纳税明细详情',
+  'daiban.html': '待办',
+  'bancha.html': '办查',
+  'message.html': '消息',
+  'zonghe.html': '综合所得年度汇算',
+  'renzhi.html': '任职受雇',
+  'renzhi_detail.html': '详情',
+  'jtcy.html': '家庭成员',
+  'jtcy_add.html': '添加家庭成员',
+  'jtcy_detail.html': '详情',
+  'yhk.html': '银行卡',
+  'yhk_add.html': '添加银行卡',
+  'yhk_manage.html': '管理',
+  'aqzx.html': '安全中心',
+  'xiugaimima.html': '修改密码',
+  'gerenxinxi.html': '个人信息',
+  'personal_info.html': '个人信息',
+  'register.html': '注册账号',
+  'najilu.html': '纳税记录开具',
+  'shenbao_jilu.html': '申报记录',
+  'shenbao_jilu_detail.html': '申报记录详情',
+  'shenbao_income_detail.html': '工资薪金',
+  'shuikuanjisuan.html': '税款计算',
+  'zxkouchu.html': '专项附加扣除',
+  'help_center.html': '帮助中心',
+  'install_guide.html': '引导安装'
+};
+
+function htmlFileFromPagePath(pagePath) {
+  var p = String(pagePath || '').trim().toLowerCase();
+  if (!p) return '';
+  var eventM = p.match(/\/event\/jump\/([a-z0-9_-]+)_html/);
+  if (eventM) return eventM[1].replace(/-/g, '_') + '.html';
+  var fileM = p.match(/\/([^/?#]+\.html)$/);
+  return fileM ? fileM[1] : '';
+}
+
+function chineseTitleFromPagePath(pagePath) {
+  var p = String(pagePath || '').trim().toLowerCase();
+  if (!p) return '—';
+  if (p.indexOf('__history_back__') >= 0 || p.indexOf('_history_back__') >= 0) {
+    return '返回上一页';
+  }
+  var file = htmlFileFromPagePath(p);
+  var title = file && CERT_PAGE_TITLE_ZH[file] ? CERT_PAGE_TITLE_ZH[file] : '';
+  if (!title && file) {
+    title = file.replace(/\.html$/, '');
+  }
+  var tabM = p.match(/tab_([a-z0-9_]+)/);
+  if (tabM) {
+    var tabMap = {
+      employers: '任职信息',
+      messages: '消息通知',
+      records: '税务记录',
+      profile: '个人资料'
+    };
+    var tabLabel = tabMap[tabM[1]] || tabM[1];
+    return (title || '个人中心') + ' - ' + tabLabel;
+  }
+  if (title) return title;
+  if (p.indexOf('/event/') === 0) return '页面内操作';
+  return p;
+}
+
+function beijingDateKeyFromCreatedAt(createdAt) {
+  if (!createdAt) return '';
+  var d = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (isNaN(d.getTime())) return '';
+  var utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
+  return formatDateKey(new Date(utcMs + 8 * 3600000));
+}
+
+function formatStaySecondsLabel(sec) {
+  var s = Math.max(0, Math.round(Number(sec) || 0));
+  if (s < 60) return s + ' 秒';
+  if (s < 3600) return Math.round(s / 60) + ' 分钟';
+  var h = Math.floor(s / 3600);
+  var m = Math.round((s % 3600) / 60);
+  return h + ' 小时' + (m > 0 ? ' 分' : '');
+}
+
+var NO_TAX_BEHAVIOR_MAX_DAILY_SPAN_SEC = 4 * 3600;
+var NO_TAX_BEHAVIOR_SINGLE_DAY_SEC = 120;
+
+function computeBehaviorMetricsFromEvents(events) {
+  events = Array.isArray(events) ? events : [];
+  if (!events.length) {
+    return {
+      event_count: 0,
+      active_days: 0,
+      stay_seconds: 0,
+      stay_label: '无记录',
+      distinct_page_count: 0,
+      first_at: null,
+      last_at: null,
+      pages: [],
+      path_summary: '—'
+    };
+  }
+  var byDay = {};
+  var pageMap = {};
+  var pathSteps = [];
+  events.forEach(function (e) {
+    var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
+    if (isNaN(ts.getTime())) return;
+    var day = beijingDateKeyFromCreatedAt(ts);
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(ts.getTime());
+    var pp = String(e.page_path || '');
+    var title = chineseTitleFromPagePath(pp);
+    if (!pageMap[title]) {
+      pageMap[title] = { title: title, page_path: pp, hit_count: 0, last_at: ts.toISOString() };
+    }
+    pageMap[title].hit_count++;
+    if (new Date(pageMap[title].last_at).getTime() < ts.getTime()) {
+      pageMap[title].last_at = ts.toISOString();
+    }
+    pathSteps.push({
+      at: ts.toISOString(),
+      page_path: pp,
+      route_key: e.route_key != null ? String(e.route_key) : '',
+      title: title
+    });
+  });
+  var staySeconds = 0;
+  Object.keys(byDay).forEach(function (day) {
+    var tsList = byDay[day].sort(function (a, b) {
+      return a - b;
+    });
+    if (tsList.length === 1) {
+      staySeconds += NO_TAX_BEHAVIOR_SINGLE_DAY_SEC;
+    } else {
+      var span = (tsList[tsList.length - 1] - tsList[0]) / 1000;
+      staySeconds += Math.min(span, NO_TAX_BEHAVIOR_MAX_DAILY_SPAN_SEC);
+    }
+  });
+  var pages = Object.keys(pageMap)
+    .map(function (k) {
+      return pageMap[k];
+    })
+    .sort(function (a, b) {
+      return b.hit_count - a.hit_count;
+    });
+  var summaryTitles = [];
+  var seen = {};
+  pathSteps.forEach(function (step) {
+    if (seen[step.title]) return;
+    seen[step.title] = true;
+    summaryTitles.push(step.title);
+  });
+  var pathSummary = summaryTitles.length ? summaryTitles.slice(0, 12).join(' → ') : '—';
+  if (summaryTitles.length > 12) pathSummary += ' …';
+  return {
+    event_count: events.length,
+    active_days: Object.keys(byDay).length,
+    stay_seconds: staySeconds,
+    stay_label: formatStaySecondsLabel(staySeconds),
+    distinct_page_count: pages.length,
+    first_at: pathSteps[0].at,
+    last_at: pathSteps[pathSteps.length - 1].at,
+    pages: pages,
+    path_summary: pathSummary
+  };
+}
+
+async function loadPageEventsForUsers(conn, usernames, maxPerUser) {
+  var out = {};
+  if (!usernames.length) return out;
+  usernames.forEach(function (u) {
+    out[u] = [];
+  });
+  var limitPer = maxPerUser != null ? Math.max(50, Math.min(800, Number(maxPerUser) || 400)) : 400;
+  var ph = usernames.map(function () {
+    return '?';
+  }).join(',');
+  const [rows] = await conn.query(
+    `SELECT username, page_path, route_key, created_at
+     FROM user_page_events
+     WHERE username IN (` +
+      ph +
+      `)
+     ORDER BY username ASC, created_at ASC`,
+    usernames
+  );
+  var counts = {};
+  rows.forEach(function (r) {
+    var u = String(r.username);
+    counts[u] = (counts[u] || 0) + 1;
+    if (counts[u] > limitPer) return;
+    if (!out[u]) out[u] = [];
+    out[u].push({
+      page_path: r.page_path != null ? String(r.page_path) : '',
+      route_key: r.route_key != null ? String(r.route_key) : '',
+      created_at: r.created_at
+    });
+  });
+  return out;
+}
+
+function noTaxUserWhereSql(req) {
+  var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username)"];
+  var params = [];
+  appendAdminUserScope(where, params, req.admin, 'users.username');
+  return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params };
+}
+
+async function handleAdminUserDataNoTaxBehavior(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 50) limit = 50;
+    var offset = (page - 1) * limit;
+    var scope = noTaxUserWhereSql(req);
+
+    const conn = await pool.getConnection();
+    try {
+      const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM users' + scope.sql, scope.params);
+      var total = Number(countRow.c) || 0;
+
+      const [userRows] = await conn.query(
+        'SELECT username, real_name, created_at, register_source_channel, activation_source_channel FROM users' +
+          scope.sql +
+          ' ORDER BY id DESC LIMIT ? OFFSET ?',
+        scope.params.concat([limit, offset])
+      );
+      var names = userRows.map(function (r) {
+        return String(r.username);
+      });
+      var eventMap = await loadPageEventsForUsers(conn, names, 400);
+
+      var cohortPageHits = {};
+      var activeCount = 0;
+      var totalStay = 0;
+      var items = userRows.map(function (r) {
+        var uname = String(r.username);
+        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
+        if (metrics.event_count > 0) {
+          activeCount++;
+          totalStay += metrics.stay_seconds;
+        }
+        (metrics.pages || []).forEach(function (p) {
+          var t = p.title || '—';
+          if (!cohortPageHits[t]) cohortPageHits[t] = 0;
+          cohortPageHits[t] += p.hit_count;
+        });
+        return {
+          username: uname,
+          real_name: r.real_name != null ? String(r.real_name) : '',
+          register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
+          channel_analysis_label: userChannelAnalysisLabel(
+            r.register_source_channel,
+            r.activation_source_channel
+          ),
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          event_count: metrics.event_count,
+          active_days: metrics.active_days,
+          stay_seconds: metrics.stay_seconds,
+          stay_label: metrics.stay_label,
+          distinct_page_count: metrics.distinct_page_count,
+          first_at: metrics.first_at,
+          last_at: metrics.last_at,
+          pages: metrics.pages,
+          path_summary: metrics.path_summary
+        };
+      });
+
+      var topPages = Object.keys(cohortPageHits)
+        .map(function (title) {
+          return { title: title, hit_count: cohortPageHits[title] };
+        })
+        .sort(function (a, b) {
+          return b.hit_count - a.hit_count;
+        })
+        .slice(0, 15);
+
+      const [allNoTaxCount] = await conn.execute(
+        `SELECT COUNT(*) AS total_users,
+                SUM(CASE WHEN EXISTS (SELECT 1 FROM user_page_events upe WHERE upe.username = users.username) THEN 1 ELSE 0 END) AS with_activity
+         FROM users` + scope.sql,
+        scope.params
+      );
+      var summaryRow = allNoTaxCount[0] || {};
+      var totalNoTax = Number(summaryRow.total_users) || 0;
+      var withActivityAll = Number(summaryRow.with_activity) || 0;
+
+      return res.json({
+        code: 200,
+        data: {
+          summary: {
+            total_no_tax_users: totalNoTax,
+            with_page_activity: withActivityAll,
+            without_page_activity: Math.max(0, totalNoTax - withActivityAll),
+            avg_stay_seconds:
+              activeCount > 0 ? Math.round(totalStay / activeCount) : 0,
+            avg_stay_label:
+              activeCount > 0 ? formatStaySecondsLabel(Math.round(totalStay / activeCount)) : '—'
+          },
+          top_pages: topPages,
+          items: items,
+          total: total,
+          page: page,
+          limit: limit
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
+  var username = req.query.username != null ? String(req.query.username).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
+      }
+      const [taxCnt] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ?',
+        [username]
+      );
+      if (Number(taxCnt[0].c) > 0) {
+        return res.status(400).json({ code: 400, msg: '该用户已有个税记录，请使用档案详情' });
+      }
+      const [rows] = await conn.execute(
+        `SELECT page_path, route_key, created_at
+         FROM user_page_events
+         WHERE username = ?
+         ORDER BY created_at ASC
+         LIMIT 800`,
+        [username]
+      );
+      var events = rows.map(function (r) {
+        return {
+          page_path: r.page_path != null ? String(r.page_path) : '',
+          route_key: r.route_key != null ? String(r.route_key) : '',
+          created_at: r.created_at
+        };
+      });
+      var metrics = computeBehaviorMetricsFromEvents(events);
+      var timeline = events.map(function (e, idx) {
+        var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
+        return {
+          step: idx + 1,
+          at: isNaN(ts.getTime()) ? '' : ts.toISOString(),
+          page_path: e.page_path,
+          route_key: e.route_key,
+          title: chineseTitleFromPagePath(e.page_path)
+        };
+      });
+      return res.json({
+        code: 200,
+        data: {
+          username: username,
+          metrics: metrics,
+          timeline: timeline
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 批量清理刷号机器人账号（默认：2026-05-22 00:00–01:00 北京、8位随机名、未激活） */
 async function handleAdminPurgeBotUsers(req, res) {
   var body = req.body || {};
@@ -9879,6 +10266,18 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('user-data'),
   handleAdminFemaleAgeStats
+);
+app.get(
+  '/api/admin/user-data/no-tax-behavior',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminUserDataNoTaxBehavior
+);
+app.get(
+  '/api/admin/user-data/no-tax-behavior/path',
+  requireAdminAuth,
+  requireAdminMenu('user-data'),
+  handleAdminUserDataNoTaxBehaviorPath
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);

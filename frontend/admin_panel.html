@@ -655,7 +655,7 @@
                 <div id="page-user-data" class="page-panel" role="tabpanel">
         <section>
             <h2>用户数据</h2>
-            <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>近六个月平均工资</strong>（来自个税记录收入）、<strong>纳税人识别号</strong>、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与数据分析。非超级管理员仅能看到自己激活码关联的账号。</p>
+            <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>近六个月平均工资</strong>（来自个税记录收入）、<strong>纳税人识别号</strong>、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与数据分析。下方<strong>注册未填个税 · 行为分析</strong>基于 <code>user_page_events</code> 统计 APP 停留、访问页面与行为路径。非超级管理员仅能看到自己激活码关联的账号。</p>
             <div id="userDataAnalytics" class="user-data-stats" aria-live="polite">分析数据加载中…</div>
             <div class="user-data-analytics-grid" id="userDataAnalyticsTables" style="display:none;">
                 <div class="scroll-x">
@@ -678,6 +678,45 @@
                         <thead><tr><th>税务机关</th><th>出现次数</th></tr></thead>
                         <tbody id="userDataTopAuthTbody"></tbody>
                     </table>
+                </div>
+            </div>
+            <div id="udNoTaxBehaviorSection" class="ud-no-tax-behavior-section" style="margin-top:24px;padding-top:20px;border-top:1px solid #e8eef5;">
+                <h3 style="margin:0 0 8px;font-size:16px;">注册未填个税 · 行为分析</h3>
+                <p class="hint" style="margin:0 0 12px;">筛选条件：<strong>无个税明细记录</strong>的注册账号。停留时间为按自然日估算（当日首次与末次行为间隔，单日上限 4 小时；仅 1 次行为按 2 分钟计）。</p>
+                <div id="udNoTaxSummary" class="user-data-stats" aria-live="polite">行为分析加载中…</div>
+                <div class="scroll-x" style="margin-top:12px;">
+                    <p class="stat" style="margin-bottom:8px;">该群体热门页面 TOP（按访问次数）</p>
+                    <table class="user-detail-table">
+                        <thead><tr><th>中文标题</th><th>访问次数</th></tr></thead>
+                        <tbody id="udNoTaxTopPagesTbody"><tr><td colspan="2">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <p class="stat" id="udNoTaxListStat" style="margin:0;">用户列表加载中…</p>
+                    <button type="button" class="btn-page" id="btnRefreshNoTaxBehavior">刷新行为分析</button>
+                </div>
+                <div class="scroll-x" style="margin-top:8px;">
+                    <table class="users-data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:110px;">账号</th>
+                                <th style="width:72px;">姓名</th>
+                                <th style="width:100px;">注册时间</th>
+                                <th style="width:88px;">APP停留</th>
+                                <th style="width:56px;">活跃天</th>
+                                <th style="width:56px;">页面数</th>
+                                <th style="width:200px;">行为路径摘要</th>
+                                <th style="width:130px;">最近活跃</th>
+                                <th class="col-ops">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="udNoTaxBehaviorTbody"><tr><td colspan="9">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="udNoTaxBehaviorPagination">
+                    <button type="button" class="btn-page" id="udNoTaxPrev">上一页</button>
+                    <span id="udNoTaxPageInfo">第 1 页</span>
+                    <button type="button" class="btn-page" id="udNoTaxNext">下一页</button>
                 </div>
             </div>
             <div id="userDataGenderChartsWrap" class="device-stats-charts-wrap ud-gender-charts" style="display:none;margin-top:20px;">
@@ -1369,7 +1408,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260528-channel-no-empty"></script>
+    <script src="/js/admin_panel.js?v=20260528-no-tax-behavior"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>

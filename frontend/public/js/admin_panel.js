@@ -1196,7 +1196,7 @@
             return esc(String(v));
         }
 
-        /** HTML 页面对应中文 title（与页面 &lt;title&gt; 一致） */
+        /** HTML 页面对应中文 title（与页面 title 标签一致） */
         var PAGE_TITLE_ZH = {
             'index.html': '个人所得税',
             'login.html': '个人所得税',
@@ -1820,6 +1820,7 @@
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
                 loadUserDataAnalytics();
+                loadNoTaxBehaviorList(1);
                 loadUserDataList(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
@@ -3550,6 +3551,186 @@
             }
         }
 
+        var noTaxBehaviorPage = 1;
+        var noTaxBehaviorLimit = 20;
+
+        function renderNoTaxBehaviorSummary(summary) {
+            var wrap = document.getElementById('udNoTaxSummary');
+            if (!wrap || !summary) return;
+            var cards = [
+                { label: '未填个税用户', val: summary.total_no_tax_users },
+                { label: '有页面行为', val: summary.with_page_activity },
+                { label: '无页面行为', val: summary.without_page_activity },
+                { label: '活跃户均停留', val: summary.avg_stay_label || '—' }
+            ];
+            var html = '';
+            cards.forEach(function (c) {
+                html +=
+                    '<div class="user-data-stat-card"><div class="ud-label">' +
+                    esc(c.label) +
+                    '</div><div class="ud-val">' +
+                    esc(String(c.val != null ? c.val : '—')) +
+                    '</div></div>';
+            });
+            wrap.innerHTML = html;
+        }
+
+        function renderNoTaxBehaviorTopPages(topPages) {
+            var tb = document.getElementById('udNoTaxTopPagesTbody');
+            if (!tb) return;
+            if (!topPages || !topPages.length) {
+                tb.innerHTML = '<tr><td colspan="2">暂无</td></tr>';
+                return;
+            }
+            var html = '';
+            topPages.forEach(function (p) {
+                html += '<tr><td>' + esc(p.title || '—') + '</td><td>' + esc(p.hit_count) + '</td></tr>';
+            });
+            tb.innerHTML = html;
+        }
+
+        function buildNoTaxPathDetailHtml(username, data) {
+            var metrics = data.metrics || {};
+            var timeline = data.timeline || [];
+            var html = '<div class="user-detail-wrap" style="margin:0;">';
+            html +=
+                '<div class="user-detail-title">行为路径 · ' +
+                esc(username) +
+                '</div>';
+            html +=
+                '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;font-size:13px;">停留：<strong>' +
+                esc(metrics.stay_label || '—') +
+                '</strong> · 活跃 ' +
+                esc(metrics.active_days) +
+                ' 天 · 行为 ' +
+                esc(metrics.event_count) +
+                ' 次 · 访问 ' +
+                esc(metrics.distinct_page_count) +
+                ' 个页面</div>';
+            if (!timeline.length) {
+                html += '<div style="color:#999;">暂无页面行为流水</div>';
+            } else {
+                html +=
+                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>#</th><th>时间</th><th>中文标题</th><th>接口名</th></tr></thead><tbody>';
+                timeline.forEach(function (step) {
+                    html += '<tr>';
+                    html += '<td>' + esc(step.step) + '</td>';
+                    html += '<td>' + esc(step.at ? formatDt(step.at) : '—') + '</td>';
+                    html += '<td>' + esc(step.title || '—') + '</td>';
+                    html += '<td class="cell-break"><code>' + esc(formatPageRouteKey(step.route_key)) + '</code></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function loadNoTaxBehaviorList(p) {
+            if (p != null) noTaxBehaviorPage = p;
+            var stat = document.getElementById('udNoTaxListStat');
+            var tbody = document.getElementById('udNoTaxBehaviorTbody');
+            if (stat) stat.textContent = '加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
+            adminFetch(
+                'api/admin/user-data/no-tax-behavior?page=' +
+                    noTaxBehaviorPage +
+                    '&limit=' +
+                    noTaxBehaviorLimit
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (stat) stat.textContent = j.msg || '加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="9">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        return;
+                    }
+                    var d = j.data;
+                    renderNoTaxBehaviorSummary(d.summary || {});
+                    renderNoTaxBehaviorTopPages(d.top_pages || []);
+                    var total = d.total || 0;
+                    if (stat) stat.textContent = '未填个税用户 ' + total + ' 人（本页 ' + (d.items || []).length + ' 人）';
+                    var totalPages = Math.ceil(total / noTaxBehaviorLimit) || 1;
+                    var pageInfo = document.getElementById('udNoTaxPageInfo');
+                    if (pageInfo) {
+                        pageInfo.textContent = '第 ' + noTaxBehaviorPage + ' 页 / 共 ' + totalPages + ' 页';
+                    }
+                    var prevBtn = document.getElementById('udNoTaxPrev');
+                    var nextBtn = document.getElementById('udNoTaxNext');
+                    if (prevBtn) prevBtn.disabled = noTaxBehaviorPage <= 1;
+                    if (nextBtn) nextBtn.disabled = noTaxBehaviorPage >= totalPages;
+                    var html = '';
+                    (d.items || []).forEach(function (row) {
+                        var key = keyForUser(row.username);
+                        html += '<tr>';
+                        html += '<td class="cell-break"><code>' + esc(row.username) + '</code></td>';
+                        html += '<td>' + esc(row.real_name || '—') + '</td>';
+                        html += '<td>' + esc(row.created_at ? formatDt(row.created_at) : '—') + '</td>';
+                        html += '<td>' + esc(row.stay_label || '无记录') + '</td>';
+                        html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
+                        html += '<td>' + esc(row.distinct_page_count != null ? row.distinct_page_count : 0) + '</td>';
+                        html += '<td class="cell-break" style="font-size:12px;color:#555;">' + esc(row.path_summary || '—') + '</td>';
+                        html += '<td>' + esc(row.last_at ? formatDt(row.last_at) : '—') + '</td>';
+                        html +=
+                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-no-tax-path" data-u="' +
+                            esc(row.username) +
+                            '" data-k="' +
+                            key +
+                            '">路径</button></td>';
+                        html += '</tr>';
+                        html += '<tr id="ud_notax_path_row_' + key + '" class="users-detail-row" style="display:none;">';
+                        html +=
+                            '<td colspan="9"><div id="ud_notax_path_box_' +
+                            key +
+                            '">加载中…</div></td></tr>';
+                    });
+                    if (tbody) {
+                        tbody.innerHTML = html || '<tr><td colspan="9">暂无未填个税用户</td></tr>';
+                        tbody.querySelectorAll('.btn-no-tax-path').forEach(function (btn) {
+                            btn.onclick = function () {
+                                var name = btn.getAttribute('data-u');
+                                var key = btn.getAttribute('data-k');
+                                var row = document.getElementById('ud_notax_path_row_' + key);
+                                var box = document.getElementById('ud_notax_path_box_' + key);
+                                if (!row || !box) return;
+                                var opening = row.style.display === 'none';
+                                if (!opening) {
+                                    row.style.display = 'none';
+                                    btn.textContent = '路径';
+                                    return;
+                                }
+                                row.style.display = '';
+                                btn.textContent = '收起';
+                                box.textContent = '加载中…';
+                                adminFetch(
+                                    'api/admin/user-data/no-tax-behavior/path?username=' +
+                                        encodeURIComponent(name)
+                                )
+                                    .then(function (r) {
+                                        return r.json();
+                                    })
+                                    .then(function (d) {
+                                        if (d.code !== 200 || !d.data) {
+                                            box.textContent = d.msg || '加载失败';
+                                            return;
+                                        }
+                                        box.innerHTML = buildNoTaxPathDetailHtml(name, d.data);
+                                    })
+                                    .catch(function () {
+                                        box.textContent = '网络错误';
+                                    });
+                            };
+                        });
+                    }
+                })
+                .catch(function () {
+                    if (stat) stat.textContent = '加载失败';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="9">加载失败</td></tr>';
+                });
+        }
+
         function loadUserDataAnalytics() {
             var wrap = document.getElementById('userDataAnalytics');
             if (wrap) wrap.textContent = '分析数据加载中…';
@@ -4524,6 +4705,24 @@
         if (userDataNext) {
             userDataNext.onclick = function () {
                 loadUserDataList(userDataPage + 1);
+            };
+        }
+        var btnRefreshNoTaxBehavior = document.getElementById('btnRefreshNoTaxBehavior');
+        if (btnRefreshNoTaxBehavior) {
+            btnRefreshNoTaxBehavior.onclick = function () {
+                loadNoTaxBehaviorList(noTaxBehaviorPage);
+            };
+        }
+        var udNoTaxPrev = document.getElementById('udNoTaxPrev');
+        if (udNoTaxPrev) {
+            udNoTaxPrev.onclick = function () {
+                if (noTaxBehaviorPage > 1) loadNoTaxBehaviorList(noTaxBehaviorPage - 1);
+            };
+        }
+        var udNoTaxNext = document.getElementById('udNoTaxNext');
+        if (udNoTaxNext) {
+            udNoTaxNext.onclick = function () {
+                loadNoTaxBehaviorList(noTaxBehaviorPage + 1);
             };
         }
         document.getElementById('btnResetUsers').onclick = function() {
