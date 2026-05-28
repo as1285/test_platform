@@ -1406,11 +1406,17 @@
       });
   }
 
-  /** 管理后台用户数据：由档案数据组装凭证 app 对象 */
+  /** 管理后台用户数据：按 C 端最近一次开具申请（期间 + 记录号 + 查询码）组装凭证 */
   function buildAppFromAdminDetail(data) {
     data = data || {};
     var user = data.user || {};
-    var records = normalizeRecords(
+    var issue = data.latest_issue_application || null;
+    if (!issue || !issue.period_start || !issue.period_end) {
+      throw new Error('暂无 C 端纳税记录开具记录，无法按用户端版本预览凭证');
+    }
+    var periodStart = String(issue.period_start);
+    var periodEnd = String(issue.period_end);
+    var allRecords = normalizeRecords(
       (data.tax_records || []).map(function (r) {
         return {
           year: r.year,
@@ -1426,28 +1432,23 @@
         };
       })
     );
-    var issue = data.latest_issue_application || null;
-    var yms = records.map(recordYm).filter(Boolean).sort();
-    var periodStart = issue && issue.period_start ? String(issue.period_start) : yms[0] || yearFirstYm();
-    var periodEnd = issue && issue.period_end ? String(issue.period_end) : yms[yms.length - 1] || todayYm();
-    var now = new Date();
-    var applyTime =
-      issue && issue.apply_time
-        ? String(issue.apply_time)
-        : fmtDateTime(now);
+    var records = recordsInPeriod(allRecords, periodStart, periodEnd);
+    if (!records.length) {
+      throw new Error(
+        'C 端最近开具期间（' + periodStart + ' 至 ' + periodEnd + '）内暂无个税明细'
+      );
+    }
+    var applyTime = issue.apply_time ? String(issue.apply_time) : fmtDateTime(new Date());
     return {
-      id: issue && issue.id ? String(issue.id) : 'admin_' + String(user.username || 'user'),
-      record_no:
-        issue && issue.record_no
-          ? String(issue.record_no)
-          : 'ADM' + compactDate(now) + String(user.username || '').substring(0, 8),
-      query_code: issue && issue.query_code ? String(issue.query_code) : '',
+      id: issue.id ? String(issue.id) : 'admin_' + String(user.username || 'user'),
+      record_no: issue.record_no ? String(issue.record_no) : '',
+      query_code: issue.query_code ? String(issue.query_code) : '',
       apply_time: applyTime,
       apply_date_compact: compactDate(new Date(applyTime.replace(/-/g, '/') || Date.now())),
       period_start: periodStart,
       period_end: periodEnd,
-      scope: issue && issue.scope ? String(issue.scope) : '全国',
-      status: issue && issue.status ? String(issue.status) : '制作成功',
+      scope: issue.scope ? String(issue.scope) : '全国',
+      status: issue.status ? String(issue.status) : '制作成功',
       user: {
         real_name: user.real_name || user.username || '',
         tax_id: user.user_tax_id || user.tax_id || ''

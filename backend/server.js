@@ -7641,8 +7641,8 @@ async function handleAdminUserDataDetail(req, res) {
       var latestIssue = null;
       try {
         const [issueRows] = await conn.execute(
-          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code
-           FROM tax_issue_applications WHERE user_id = ? ORDER BY apply_time DESC LIMIT 1`,
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at
+           FROM tax_issue_applications WHERE user_id = ? ORDER BY created_at DESC, apply_time DESC LIMIT 1`,
           [username]
         );
         if (issueRows.length) {
@@ -7655,7 +7655,8 @@ async function handleAdminUserDataDetail(req, res) {
             record_no: ir.record_no != null ? String(ir.record_no) : '',
             scope: ir.scope != null ? String(ir.scope) : '',
             status: ir.status != null ? String(ir.status) : '',
-            query_code: ir.query_code != null ? String(ir.query_code) : ''
+            query_code: ir.query_code != null ? String(ir.query_code) : '',
+            created_at: ir.created_at ? ir.created_at.toISOString() : ''
           };
         }
       } catch (issueErr) {

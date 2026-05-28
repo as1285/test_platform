@@ -3565,8 +3565,22 @@
                 html += '</tbody></table></div>';
             }
 
+            var latestIssue = data.latest_issue_application || null;
             html +=
-                '<div style="margin:14px 0 6px;color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（管理端预览，含右下角公章；C 端用户下载版不含章）</span></div>';
+                '<div style="margin:14px 0 6px;color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（按 C 端最近一次开具生成；管理端预览含公章）</span></div>';
+            if (latestIssue && latestIssue.period_start && latestIssue.period_end) {
+                html +=
+                    '<div style="margin:0 0 8px;padding:8px 10px;background:#fff7e6;border-radius:6px;font-size:13px;color:#614700;">C 端最近开具：' +
+                    esc(latestIssue.period_start) +
+                    ' 至 ' +
+                    esc(latestIssue.period_end) +
+                    (latestIssue.apply_time ? ' · 申请时间 ' + esc(latestIssue.apply_time) : '') +
+                    (latestIssue.record_no ? ' · 记录号 ' + esc(latestIssue.record_no) : '') +
+                    '</div>';
+            } else {
+                html +=
+                    '<div style="margin:0 0 8px;color:#999;font-size:13px;">该用户暂无 C 端开具上报记录，无法按用户端版本预览凭证。</div>';
+            }
             html +=
                 '<div class="ud-certificate-wrap" id="ud_certificate_' +
                 esc(username).replace(/[^a-zA-Z0-9_-]/g, '_') +
@@ -3582,6 +3596,11 @@
             var safeKey = String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
             var el = document.getElementById('ud_certificate_' + safeKey);
             if (!el) return;
+            var issue = data && data.latest_issue_application;
+            if (!issue || !issue.period_start || !issue.period_end) {
+                el.textContent = '暂无 C 端纳税记录开具记录（用户端生成成功后会自动上报）';
+                return;
+            }
             if (!data || !(data.tax_records || []).length) {
                 el.textContent = '暂无个税记录，无法生成凭证预览';
                 return;
