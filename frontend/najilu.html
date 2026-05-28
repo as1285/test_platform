@@ -535,10 +535,11 @@
         .preview-page {
             min-height: 100vh;
             background: #f5f6fa;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         .preview-wrap {
-            padding: 12px;
+            padding: 4px 10px calc(28px + env(safe-area-inset-bottom, 0px));
         }
 
         .preview-img {
@@ -546,6 +547,7 @@
             width: 100%;
             background: #fff;
             box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            vertical-align: top;
         }
 
         .verify-page {
@@ -699,7 +701,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260526-tax-logo-up"></script>
+    <script src="/js/najilu.js?v=20260528-cert-header-up"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

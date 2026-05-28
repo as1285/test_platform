@@ -950,7 +950,9 @@
       var rows = normalizeRecords(app.records || []);
       var width = 1240;
       var rowH = 70;
-      var height = Math.max(1754, 820 + rows.length * rowH + 420);
+      /** 整体上移页眉区，减少顶部留白，为底部说明/印章留出可视空间 */
+      var certTopShift = 56;
+      var height = Math.max(1754, 760 + rows.length * rowH + 360);
       var canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -960,37 +962,39 @@
       ctx.strokeStyle = '#d6d6d6';
       ctx.lineWidth = 1;
 
-      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92);
-      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, 16, 108)) {
-        drawText(ctx, '◉', width / 2, 78, { size: 48, color: '#b92828', align: 'center' });
+      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92 - certTopShift);
+      var logoTop = Math.max(4, 16 - certTopShift);
+      if (!drawTaxRecordLogo(ctx, logoImg, width / 2, logoTop, 108)) {
+        drawText(ctx, '◉', width / 2, 78 - certTopShift, { size: 48, color: '#b92828', align: 'center' });
       }
+      var qrTop = Math.max(8, 42 - certTopShift);
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
-        ctx.fillRect(width - 257, 42, 185, 185);
-        ctx.drawImage(qrImg, width - 257, 42, 185, 185);
+        ctx.fillRect(width - 257, qrTop, 185, 185);
+        ctx.drawImage(qrImg, width - 257, qrTop, 185, 185);
       } else {
-        drawQr(ctx, width - 257, 42, 185, app.id + verifyCode);
+        drawQr(ctx, width - 257, qrTop, 185, app.id + verifyCode);
       }
-      drawText(ctx, '查询验证码', width - 164, 255, { size: 28, align: 'center', color: '#555' });
-      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 312, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
-      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 364, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
+      drawText(ctx, '查询验证码', width - 164, 255 - certTopShift, { size: 28, align: 'center', color: '#555' });
+      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 312 - certTopShift, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
+      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 364 - certTopShift, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
 
-      drawText(ctx, '中华人民共和国', width / 2, 180, { size: 38, align: 'center', font: 'serif' });
-      drawText(ctx, '个人所得税纳税记录', width / 2, 230, { size: 38, align: 'center', font: 'serif' });
-      drawText(ctx, '（原《税收完税证明》）', width / 2, 286, { size: 22, align: 'center', font: 'serif' });
+      drawText(ctx, '中华人民共和国', width / 2, 180 - certTopShift, { size: 38, align: 'center', font: 'serif' });
+      drawText(ctx, '个人所得税纳税记录', width / 2, 230 - certTopShift, { size: 38, align: 'center', font: 'serif' });
+      drawText(ctx, '（原《税收完税证明》）', width / 2, 286 - certTopShift, { size: 22, align: 'center', font: 'serif' });
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
       var taxId = isDefaultTaxId(rawTaxId) ? '' : rawTaxId;
-      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), 90, 386, { size: 22 });
-      drawText(ctx, '纳税人名称： ' + name, 90, 444, { size: 22 });
-      drawText(ctx, '身份证件类型： 居民身份证', 90, 502, { size: 22 });
-      drawText(ctx, '纳税人识别号： ' + taxId, 650, 444, { size: 22 });
-      drawText(ctx, '身份证件号码： ' + taxId, 650, 502, { size: 22 });
-      drawText(ctx, '金额单位:元', width - 132, 578, { size: 16, color: '#555' });
+      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), 90, 386 - certTopShift, { size: 22 });
+      drawText(ctx, '纳税人名称： ' + name, 90, 444 - certTopShift, { size: 22 });
+      drawText(ctx, '身份证件类型： 居民身份证', 90, 502 - certTopShift, { size: 22 });
+      drawText(ctx, '纳税人识别号： ' + taxId, 650, 444 - certTopShift, { size: 22 });
+      drawText(ctx, '身份证件号码： ' + taxId, 650, 502 - certTopShift, { size: 22 });
+      drawText(ctx, '金额单位:元', width - 132, 578 - certTopShift, { size: 16, color: '#555' });
 
       var x0 = 90;
-      var y0 = 610;
+      var y0 = 610 - certTopShift;
       var tableW = width - 180;
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
