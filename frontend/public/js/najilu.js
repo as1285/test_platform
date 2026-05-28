@@ -1189,6 +1189,44 @@
     ctx.fill();
   }
 
+  /** 横排文字，可加大字间距（章内「业务专用章」） */
+  function drawSpacedText(ctx, text, cx, y, opt) {
+    opt = opt || {};
+    text = String(text == null ? '' : text);
+    if (!text) return;
+    var gap = opt.letterGap != null ? opt.letterGap : 5;
+    var chars = text.split('');
+    ctx.save();
+    ctx.fillStyle = opt.color || '#222';
+    ctx.strokeStyle = opt.color || '#222';
+    ctx.lineWidth = opt.strokeWidth != null ? opt.strokeWidth : 0;
+    ctx.font =
+      (opt.weight ? opt.weight + ' ' : '') +
+      (opt.size || 16) +
+      'px ' +
+      (opt.font || 'serif');
+    ctx.textBaseline = opt.baseline || 'alphabetic';
+    var widths = chars.map(function (ch) {
+      return ctx.measureText(ch).width;
+    });
+    var totalW = widths.reduce(function (s, w) {
+      return s + w;
+    }, 0);
+    if (chars.length > 1) {
+      totalW += gap * (chars.length - 1);
+    }
+    var x = cx - totalW / 2;
+    chars.forEach(function (ch, idx) {
+      ctx.textAlign = 'left';
+      ctx.fillText(ch, x, y);
+      if (ctx.lineWidth > 0) {
+        ctx.strokeText(ch, x, y);
+      }
+      x += widths[idx] + (idx < chars.length - 1 ? gap : 0);
+    });
+    ctx.restore();
+  }
+
   function drawArcText(ctx, text, cx, cy, radius, startAngle, endAngle, opt) {
     text = String(text || '');
     if (!text) return;
@@ -1196,7 +1234,17 @@
     var color = opt.color || '#c01820';
     var strokeW = opt.strokeWidth != null ? opt.strokeWidth : 0.55;
     var chars = text.split('');
+    var mid = (startAngle + endAngle) / 2;
     var span = endAngle - startAngle;
+    if (opt.charAngleRad > 0 && chars.length > 1) {
+      span = opt.charAngleRad * (chars.length - 1);
+      var maxSpan = opt.maxSpanRad != null ? opt.maxSpanRad : Math.PI * 0.95;
+      if (span > maxSpan) {
+        span = maxSpan;
+      }
+      startAngle = mid - span / 2;
+      endAngle = mid + span / 2;
+    }
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.fillStyle = color;
@@ -1205,7 +1253,7 @@
     ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'SimSun, STSong, serif');
     chars.forEach(function (ch, idx) {
       var t = chars.length === 1 ? 0.5 : idx / (chars.length - 1);
-      var angle = startAngle + span * t;
+      var angle = startAngle + (endAngle - startAngle) * t;
       ctx.save();
       ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
       ctx.rotate(angle + Math.PI / 2);
@@ -1234,19 +1282,23 @@
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    var arcSize = name.length > 14 ? 14 : name.length > 11 ? 15 : 16;
-    drawArcText(ctx, name, cx, cy, radius - 12, Math.PI * 1.14, Math.PI * 1.86, {
+    var arcSize = name.length > 14 ? 13 : name.length > 11 ? 14 : 15;
+    var charAngleRad = name.length > 14 ? 0.168 : name.length > 11 ? 0.155 : 0.142;
+    drawArcText(ctx, name, cx, cy, radius - 11, Math.PI * 1.12, Math.PI * 1.88, {
       size: arcSize,
       color: stampRed,
-      strokeWidth: 0.5,
-      font: font
+      strokeWidth: 0.45,
+      font: font,
+      charAngleRad: charAngleRad,
+      maxSpanRad: Math.PI * 0.96
     });
-    drawText(ctx, '业务专用章', cx, cy + 24, {
-      size: 21,
+    drawSpacedText(ctx, '业务专用章', cx, cy + 24, {
+      size: 20,
       weight: 'bold',
       color: stampRed,
-      align: 'center',
-      font: font
+      letterGap: 7,
+      font: font,
+      baseline: 'middle'
     });
   }
 
