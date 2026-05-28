@@ -828,23 +828,26 @@
   }
 
   /** 左上角「(日期) 记录 编号)」：编号为红色 */
-  function drawRecordIdLine(ctx, compactDate, recordNo, x, y) {
+  function drawRecordIdLine(ctx, compactDate, recordNo, x, y, opt) {
+    opt = opt || {};
+    var sz = opt.size || 16;
+    var font = opt.font || CERT_TITLE_FONT;
     var prefix = '(' + String(compactDate || '') + ' 记录 ';
     var no = String(recordNo || '');
     var suffix = ')';
-    drawText(ctx, prefix, x, y, { size: 20, color: '#555' });
+    drawText(ctx, prefix, x, y, { size: sz, color: '#555', font: font });
     ctx.save();
-    ctx.font = '20px serif';
+    ctx.font = sz + 'px ' + font;
     ctx.textAlign = 'left';
     var pw = ctx.measureText(prefix).width;
     ctx.restore();
-    drawText(ctx, no, x + pw, y, { size: 20, color: '#c62828' });
+    drawText(ctx, no, x + pw, y, { size: sz, color: '#c62828', font: font });
     ctx.save();
-    ctx.font = '20px serif';
+    ctx.font = sz + 'px ' + font;
     ctx.textAlign = 'left';
     var nw = ctx.measureText(no).width;
     ctx.restore();
-    drawText(ctx, suffix, x + pw + nw, y, { size: 20, color: '#555' });
+    drawText(ctx, suffix, x + pw + nw, y, { size: sz, color: '#555', font: font });
   }
 
   function wrapText(ctx, text, x, y, maxWidth, lineHeight, opt) {
@@ -918,6 +921,8 @@
   }
 
   var TAX_RECORD_LOGO_SRC = '/tax_record_logo.png';
+  /** 纳税记录页眉楷体（与官方版式一致） */
+  var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
 
   function loadTaxRecordLogo() {
     return new Promise(function (resolve) {
@@ -950,9 +955,13 @@
       var rows = normalizeRecords(app.records || []);
       var width = 1240;
       var rowH = 70;
-      /** 仅上移顶部国徽，标题等文字保持原坐标，避免徽标与标题叠字 */
-      var certLogoTop = 6;
-      var certLogoH = 96;
+      /** 国徽与页眉标题：国徽单独靠上，标题楷体且字号分级（主标题 > 国名 > 副标题） */
+      var certLogoTop = 8;
+      var certLogoH = 88;
+      var certTitleFont = CERT_TITLE_FONT;
+      var certTitleY1 = 156;
+      var certTitleY2 = 188;
+      var certTitleY3 = 214;
       var height = Math.max(1754, 760 + rows.length * rowH + 360);
       var canvas = document.createElement('canvas');
       canvas.width = width;
@@ -963,9 +972,12 @@
       ctx.strokeStyle = '#d6d6d6';
       ctx.lineWidth = 1;
 
-      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 92);
+      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 88, {
+        size: 16,
+        font: certTitleFont
+      });
       if (!drawTaxRecordLogo(ctx, logoImg, width / 2, certLogoTop, certLogoH)) {
-        drawText(ctx, '◉', width / 2, 78, { size: 48, color: '#b92828', align: 'center' });
+        drawText(ctx, '◉', width / 2, 72, { size: 40, color: '#b92828', align: 'center' });
       }
       if (qrImg && qrImg.complete && qrImg.naturalWidth) {
         ctx.fillStyle = '#fff';
@@ -978,22 +990,49 @@
       drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 312, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
       drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 364, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
 
-      drawText(ctx, '中华人民共和国', width / 2, 180, { size: 38, align: 'center', font: 'serif' });
-      drawText(ctx, '个人所得税纳税记录', width / 2, 230, { size: 38, align: 'center', font: 'serif' });
-      drawText(ctx, '（原《税收完税证明》）', width / 2, 286, { size: 22, align: 'center', font: 'serif' });
+      drawText(ctx, '中华人民共和国', width / 2, certTitleY1, {
+        size: 26,
+        align: 'center',
+        font: certTitleFont
+      });
+      drawText(ctx, '个人所得税纳税记录', width / 2, certTitleY2, {
+        size: 30,
+        align: 'center',
+        font: certTitleFont
+      });
+      drawText(ctx, '（原《税收完税证明》）', width / 2, certTitleY3, {
+        size: 16,
+        align: 'center',
+        font: certTitleFont
+      });
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
       var taxId = isDefaultTaxId(rawTaxId) ? '' : rawTaxId;
-      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), 90, 386, { size: 22 });
-      drawText(ctx, '纳税人名称： ' + name, 90, 444, { size: 22 });
-      drawText(ctx, '身份证件类型： 居民身份证', 90, 502, { size: 22 });
-      drawText(ctx, '纳税人识别号： ' + taxId, 650, 444, { size: 22 });
-      drawText(ctx, '身份证件号码： ' + taxId, 650, 502, { size: 22 });
-      drawText(ctx, '金额单位:元', width - 132, 578, { size: 16, color: '#555' });
+      var certInfoY0 = 268;
+      var certInfoLine = 52;
+      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), 90, certInfoY0, {
+        size: 20,
+        font: certTitleFont
+      });
+      drawText(ctx, '纳税人名称： ' + name, 90, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
+      drawText(ctx, '身份证件类型： 居民身份证', 90, certInfoY0 + certInfoLine * 2, {
+        size: 20,
+        font: certTitleFont
+      });
+      drawText(ctx, '纳税人识别号： ' + taxId, 650, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
+      drawText(ctx, '身份证件号码： ' + taxId, 650, certInfoY0 + certInfoLine * 2, {
+        size: 20,
+        font: certTitleFont
+      });
+      drawText(ctx, '金额单位:元', width - 132, certInfoY0 + certInfoLine * 2 + 44, {
+        size: 16,
+        color: '#555',
+        font: certTitleFont
+      });
 
       var x0 = 90;
-      var y0 = 610;
+      var y0 = 492;
       var tableW = width - 180;
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
