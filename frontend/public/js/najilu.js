@@ -1184,22 +1184,6 @@
       }
 
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
-      var gridY;
-      for (gridY = 0; gridY <= tableBodySlots; gridY++) {
-        ctx.beginPath();
-        ctx.moveTo(x0, y0 + CERT_TABLE_HEADER_H + gridY * rowH);
-        ctx.lineTo(x0 + tableW, y0 + CERT_TABLE_HEADER_H + gridY * rowH);
-        ctx.stroke();
-      }
-      var colX = x0;
-      var colIdx;
-      for (colIdx = 1; colIdx < cols.length; colIdx++) {
-        colX += cols[colIdx - 1];
-        ctx.beginPath();
-        ctx.moveTo(colX, y0);
-        ctx.lineTo(colX, y0 + tableTotalH);
-        ctx.stroke();
-      }
       if (isLastPage) {
         var total = allRows.reduce(function (sum, r) {
           return sum + Number(r.tax_reported || 0);
