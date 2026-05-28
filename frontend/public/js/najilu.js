@@ -1227,6 +1227,7 @@
     ctx.restore();
   }
 
+  /** 沿圆弧按字宽 + 额外间距排字（公章上弧机关名） */
   function drawArcText(ctx, text, cx, cy, radius, startAngle, endAngle, opt) {
     text = String(text || '');
     if (!text) return;
@@ -1235,25 +1236,17 @@
     var strokeW = opt.strokeWidth != null ? opt.strokeWidth : 0.55;
     var chars = text.split('');
     var mid = (startAngle + endAngle) / 2;
-    var span = endAngle - startAngle;
-    if (opt.charAngleRad > 0 && chars.length > 1) {
-      span = opt.charAngleRad * (chars.length - 1);
-      var maxSpan = opt.maxSpanRad != null ? opt.maxSpanRad : Math.PI * 0.95;
-      if (span > maxSpan) {
-        span = maxSpan;
-      }
-      startAngle = mid - span / 2;
-      endAngle = mid + span / 2;
-    }
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
     ctx.lineWidth = strokeW;
     ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'SimSun, STSong, serif');
-    chars.forEach(function (ch, idx) {
-      var t = chars.length === 1 ? 0.5 : idx / (chars.length - 1);
-      var angle = startAngle + (endAngle - startAngle) * t;
+    var widths = chars.map(function (ch) {
+      return ctx.measureText(ch).width;
+    });
+
+    function paintAtAngle(angle, ch) {
       ctx.save();
       ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
       ctx.rotate(angle + Math.PI / 2);
@@ -1264,6 +1257,43 @@
         ctx.strokeText(ch, 0, 0);
       }
       ctx.restore();
+    }
+
+    if (opt.arcLetterGap != null && chars.length > 1) {
+      var gapPx = Number(opt.arcLetterGap) || 0;
+      var maxSpan = opt.maxSpanRad != null ? opt.maxSpanRad : Math.PI * 1.05;
+      var totalW = widths.reduce(function (s, w) {
+        return s + w;
+      }, 0);
+      totalW += gapPx * (chars.length - 1);
+      var totalAngle = totalW / radius;
+      if (totalAngle > maxSpan && gapPx > 1) {
+        gapPx = Math.max(1, ((maxSpan * radius - widths.reduce(function (s, w) {
+          return s + w;
+        }, 0)) / (chars.length - 1)));
+        totalW = widths.reduce(function (s2, w2) {
+          return s2 + w2;
+        }, 0) + gapPx * (chars.length - 1);
+        totalAngle = totalW / radius;
+      }
+      var angle = mid - totalAngle / 2;
+      chars.forEach(function (ch, idx) {
+        var half = widths[idx] / 2 / radius;
+        angle += half;
+        paintAtAngle(angle, ch);
+        angle += half;
+        if (idx < chars.length - 1) {
+          angle += gapPx / radius;
+        }
+      });
+      ctx.restore();
+      return;
+    }
+
+    var span = endAngle - startAngle;
+    chars.forEach(function (ch, idx) {
+      var t = chars.length === 1 ? 0.5 : idx / (chars.length - 1);
+      paintAtAngle(startAngle + span * t, ch);
     });
     ctx.restore();
   }
@@ -1272,7 +1302,7 @@
   function drawStamp(ctx, cx, cy, authority) {
     var name = cleanText(authority) || '国家税务总局深圳市税务局';
     var stampRed = '#c01820';
-    var radius = 68;
+    var radius = 72;
     var font = 'SimSun, STSong, serif';
     ctx.save();
     ctx.globalAlpha = 0.9;
@@ -1282,21 +1312,21 @@
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    var arcSize = name.length > 14 ? 13 : name.length > 11 ? 14 : 15;
-    var charAngleRad = name.length > 14 ? 0.168 : name.length > 11 ? 0.155 : 0.142;
-    drawArcText(ctx, name, cx, cy, radius - 11, Math.PI * 1.12, Math.PI * 1.88, {
+    var arcSize = name.length > 14 ? 12 : name.length > 11 ? 13 : 14;
+    var arcGap = name.length > 14 ? 6 : name.length > 11 ? 5 : 4;
+    drawArcText(ctx, name, cx, cy, radius - 9, Math.PI * 1.06, Math.PI * 1.94, {
       size: arcSize,
       color: stampRed,
-      strokeWidth: 0.45,
+      strokeWidth: 0.4,
       font: font,
-      charAngleRad: charAngleRad,
-      maxSpanRad: Math.PI * 0.96
+      arcLetterGap: arcGap,
+      maxSpanRad: Math.PI * 1.04
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 24, {
-      size: 20,
+    drawSpacedText(ctx, '业务专用章', cx, cy + 25, {
+      size: 19,
       weight: 'bold',
       color: stampRed,
-      letterGap: 7,
+      letterGap: 9,
       font: font,
       baseline: 'middle'
     });
