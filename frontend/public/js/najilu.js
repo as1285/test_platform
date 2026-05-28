@@ -1322,11 +1322,12 @@
       arcLetterGap: arcGap,
       maxSpanRad: Math.PI * 1.04
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 26, {
-      size: 15,
+    drawSpacedText(ctx, '业务专用章', cx, cy + 27, {
+      size: 13,
+      weight: 'normal',
       color: stampRed,
-      letterGap: 6,
-      font: font,
+      letterGap: 5,
+      font: 'STSong, SimSun, serif',
       baseline: 'middle'
     });
   }
