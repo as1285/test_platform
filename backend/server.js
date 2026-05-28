@@ -8214,13 +8214,18 @@ async function handleAdminUserTaxRecords(req, res) {
         [username]
       );
       const [pages] = await conn.execute(
-        `SELECT page_path, MAX(created_at) AS last_entered_at
-         FROM user_page_events
-         WHERE username = ?
-         GROUP BY page_path
-         ORDER BY last_entered_at DESC
+        `SELECT e.page_path, e.route_key, e.created_at AS last_entered_at
+         FROM user_page_events e
+         INNER JOIN (
+           SELECT page_path, MAX(id) AS max_id
+           FROM user_page_events
+           WHERE username = ?
+           GROUP BY page_path
+         ) t ON e.id = t.max_id
+         WHERE e.username = ?
+         ORDER BY e.created_at DESC
          LIMIT 120`,
-        [username]
+        [username, username]
       );
       const [issueRows] = await conn.execute(
         `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at, updated_at
@@ -8264,6 +8269,7 @@ async function handleAdminUserTaxRecords(req, res) {
       var pageOut = pages.map(function (r) {
         return {
           page_path: r.page_path != null ? String(r.page_path) : '',
+          route_key: r.route_key != null ? String(r.route_key) : '',
           last_entered_at: r.last_entered_at ? r.last_entered_at.toISOString() : ''
         };
       });

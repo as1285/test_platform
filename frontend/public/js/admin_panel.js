@@ -1196,6 +1196,104 @@
             return esc(String(v));
         }
 
+        /** HTML 页面对应中文 title（与页面 &lt;title&gt; 一致） */
+        var PAGE_TITLE_ZH = {
+            'index.html': '个人所得税',
+            'login.html': '个人所得税',
+            'shouye.html': '首页',
+            'mine.html': '我的',
+            'consult.html': '个人中心',
+            'profile.html': '个人中心',
+            'shuiming.html': '收入纳税明细',
+            'shuiming_result.html': '收入纳税明细',
+            'xiangqing.html': '收入纳税明细详情',
+            'daiban.html': '待办',
+            'bancha.html': '办查',
+            'message.html': '消息',
+            'zonghe.html': '综合所得年度汇算',
+            'renzhi.html': '任职受雇',
+            'renzhi_detail.html': '详情',
+            'jtcy.html': '家庭成员',
+            'jtcy_add.html': '添加家庭成员',
+            'jtcy_detail.html': '详情',
+            'yhk.html': '银行卡',
+            'yhk_add.html': '添加银行卡',
+            'yhk_manage.html': '管理',
+            'aqzx.html': '安全中心',
+            'xiugaimima.html': '修改密码',
+            'gerenxinxi.html': '个人信息',
+            'personal_info.html': '个人信息',
+            'register.html': '注册账号',
+            'najilu.html': '纳税记录开具',
+            'shenbao_jilu.html': '申报记录',
+            'shenbao_jilu_detail.html': '申报记录详情',
+            'shenbao_income_detail.html': '工资薪金',
+            'shuikuanjisuan.html': '税款计算',
+            'zxkouchu.html': '专项附加扣除',
+            'zxk_zhengce.html': '专项附加扣除政策介绍',
+            'tax_benefit.html': '可享税收优惠信息',
+            'wodepiaojia.html': '我的票夹',
+            'wodepiaojia-xiaoshou.html': '我的票夹',
+            'weituodaili.html': '委托代理关系管理',
+            'sheshuifuwu.html': '涉税服务人员信息管理',
+            'sheshuizhuanye.html': '涉税专业服务机构',
+            'shuiwuwenshu.html': '税务文书',
+            'yiyishensu.html': '申诉记录',
+            'gerenyanglao.html': '个人养老金',
+            'jingyingsuode.html': '经营所得',
+            'gongyicishan.html': '公益慈善',
+            'other_id.html': '其他身份证件',
+            'help_center.html': '帮助中心',
+            'install_guide.html': '引导安装',
+            'care_version.html': '关怀版',
+            'about_update.html': '关于',
+            'about_agreement.html': '协议'
+        };
+
+        function htmlFileFromPagePath(pagePath) {
+            var p = String(pagePath || '').trim().toLowerCase();
+            if (!p) return '';
+            var eventM = p.match(/\/event\/jump\/([a-z0-9_-]+)_html/);
+            if (eventM) return eventM[1].replace(/-/g, '_') + '.html';
+            var fileM = p.match(/\/([^/?#]+\.html)$/);
+            return fileM ? fileM[1] : '';
+        }
+
+        function chineseTitleFromPagePath(pagePath) {
+            var p = String(pagePath || '').trim().toLowerCase();
+            if (!p) return '—';
+            if (p.indexOf('__history_back__') >= 0 || p.indexOf('_history_back__') >= 0) {
+                return '返回上一页';
+            }
+            var file = htmlFileFromPagePath(p);
+            var title = file && PAGE_TITLE_ZH[file] ? PAGE_TITLE_ZH[file] : '';
+            if (!title && file) {
+                var stem = file.replace(/\.html$/, '');
+                var trackName = pageNameFromTrackKey(stem);
+                var m = trackName.match(/^(.+?)（/);
+                title = m ? m[1] : trackName;
+            }
+            var tabM = p.match(/tab_([a-z0-9_]+)/);
+            if (tabM) {
+                var tabMap = {
+                    employers: '任职信息',
+                    messages: '消息通知',
+                    records: '税务记录',
+                    profile: '个人资料'
+                };
+                var tabLabel = tabMap[tabM[1]] || tabM[1];
+                return (title || '个人中心') + ' - ' + tabLabel;
+            }
+            if (title) return title;
+            if (p.indexOf('/event/') === 0) return '页面内操作';
+            return p;
+        }
+
+        function formatPageRouteKey(routeKey) {
+            var rk = String(routeKey || '').trim();
+            return rk || '—';
+        }
+
         function pageNameFromTrackKey(pageKey) {
             var k = String(pageKey || '').toLowerCase();
             var map = {
@@ -1205,6 +1303,7 @@
                 shuiming: '税务记录（shuiming.html）',
                 xiangqing: '纳税明细详情（xiangqing.html）',
                 daiban: '待办（daiban.html）',
+                bancha: '办查（bancha.html）',
                 message: '消息（message.html）',
                 zonghe: '综合（zonghe.html）',
                 renzhi: '任职（renzhi.html）',
@@ -1217,7 +1316,8 @@
                 gerenxinxi: '个人信息（gerenxinxi.html）',
                 profile: '个人中心（profile.html）',
                 register: '注册（register.html）',
-                index: '登录（index.html）'
+                index: '登录（index.html）',
+                najilu: '纳税记录开具（najilu.html）'
             };
             return map[k] || (k ? (k + '.html') : '—');
         }
@@ -1540,10 +1640,12 @@
                 html += '<span class="user-detail-pages-chevron" aria-hidden="true">▼</span>';
                 html += '</button>';
                 html += '<div class="user-detail-pages-panel" hidden>';
-                html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>页面</th><th>最近进入时间</th></tr></thead><tbody>';
+                html +=
+                    '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>接口名</th><th>中文标题</th><th>最近进入时间</th></tr></thead><tbody>';
                 pages.forEach(function (p) {
                     html += '<tr>';
-                    html += '<td class="cell-break">' + esc(p.page_path || '—') + '</td>';
+                    html += '<td class="cell-break"><code>' + esc(formatPageRouteKey(p.route_key)) + '</code></td>';
+                    html += '<td>' + esc(chineseTitleFromPagePath(p.page_path)) + '</td>';
                     html += '<td>' + esc(p.last_entered_at ? formatDt(p.last_entered_at) : '—') + '</td>';
                     html += '</tr>';
                 });
