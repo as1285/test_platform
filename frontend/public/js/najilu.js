@@ -954,15 +954,24 @@
     function paintCanvas(qrImg, logoImg) {
       var rows = normalizeRecords(app.records || []);
       var width = 1240;
-      var rowH = 70;
-      /** 国徽与页眉标题：国徽单独靠上，标题楷体且字号分级（主标题 > 国名 > 副标题） */
-      var certLogoTop = 8;
-      var certLogoH = 88;
+      var rowH = 56;
       var certTitleFont = CERT_TITLE_FONT;
-      var certTitleY1 = 156;
-      var certTitleY2 = 188;
-      var certTitleY3 = 214;
-      var height = Math.max(1754, 760 + rows.length * rowH + 360);
+      /** 国徽与页眉标题 */
+      var certLogoTop = 6;
+      var certLogoH = 82;
+      var certTitleY1 = 138;
+      var certTitleY2 = 166;
+      var certTitleY3 = 188;
+      var certInfoY0 = 218;
+      var certInfoLine = 40;
+      var x0 = 72;
+      var y0 = certInfoY0 + certInfoLine * 2 + 28;
+      var tableW = width - x0 * 2;
+      var dataRowCount = Math.max(rows.length, 1);
+      var tableTotalH = 44 + dataRowCount * rowH + 40;
+      var footY = y0 + 44 + dataRowCount * rowH;
+      var explainY = footY + 48;
+      var height = explainY + 292;
       var canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -972,7 +981,7 @@
       ctx.strokeStyle = '#d6d6d6';
       ctx.lineWidth = 1;
 
-      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, 88, 88, {
+      drawRecordIdLine(ctx, app.apply_date_compact, app.record_no, x0, 82, {
         size: 16,
         font: certTitleFont
       });
@@ -986,9 +995,19 @@
       } else {
         drawQr(ctx, width - 257, 42, 185, app.id + verifyCode);
       }
-      drawText(ctx, '查询验证码', width - 164, 255, { size: 28, align: 'center', color: '#555' });
-      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 312, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
-      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 364, { size: 34, align: 'center', color: '#222', font: 'sans-serif' });
+      drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
+      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
+        size: 26,
+        align: 'center',
+        color: '#222',
+        font: 'sans-serif'
+      });
+      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
+        size: 26,
+        align: 'center',
+        color: '#222',
+        font: 'sans-serif'
+      });
 
       drawText(ctx, '中华人民共和国', width / 2, certTitleY1, {
         size: 26,
@@ -1009,38 +1028,32 @@
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
       var taxId = isDefaultTaxId(rawTaxId) ? '' : rawTaxId;
-      var certInfoY0 = 268;
-      var certInfoLine = 52;
-      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), 90, certInfoY0, {
+      drawText(ctx, '记录期间： ' + periodCn(app.period_start, app.period_end), x0, certInfoY0, {
         size: 20,
         font: certTitleFont
       });
-      drawText(ctx, '纳税人名称： ' + name, 90, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
-      drawText(ctx, '身份证件类型： 居民身份证', 90, certInfoY0 + certInfoLine * 2, {
+      drawText(ctx, '纳税人名称： ' + name, x0, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
+      drawText(ctx, '身份证件类型： 居民身份证', x0, certInfoY0 + certInfoLine * 2, {
         size: 20,
         font: certTitleFont
       });
-      drawText(ctx, '纳税人识别号： ' + taxId, 650, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
-      drawText(ctx, '身份证件号码： ' + taxId, 650, certInfoY0 + certInfoLine * 2, {
+      drawText(ctx, '纳税人识别号： ' + taxId, 632, certInfoY0 + certInfoLine, { size: 20, font: certTitleFont });
+      drawText(ctx, '身份证件号码： ' + taxId, 632, certInfoY0 + certInfoLine * 2, {
         size: 20,
         font: certTitleFont
       });
-      drawText(ctx, '金额单位:元', width - 132, certInfoY0 + certInfoLine * 2 + 44, {
+      drawText(ctx, '金额单位:元', width - x0 - 8, certInfoY0 + certInfoLine * 2 + 2, {
         size: 16,
         color: '#555',
-        font: certTitleFont
+        font: certTitleFont,
+        align: 'right'
       });
 
-      var x0 = 90;
-      var y0 = 492;
-      var tableW = width - 180;
       var cols = [145, 145, 145, 170, 150, 220, 85];
       var heads = ['申报日期', '实缴(退)金额', '入(退)库日期', '所得项目', '税款所属期', '入库税务机关', '备注'];
-      var dataRowCount = Math.max(rows.length, 1);
-      var tableTotalH = 48 + dataRowCount * rowH + 44;
       var xx = x0;
       heads.forEach(function (h, i) {
-        drawText(ctx, h, xx + cols[i] / 2, y0 + 31, { size: 16, align: 'center', color: '#333' });
+        drawText(ctx, h, xx + cols[i] / 2, y0 + 28, { size: 16, align: 'center', color: '#333' });
         xx += cols[i];
       });
 
@@ -1077,7 +1090,7 @@
       }
 
       rows.forEach(function (r, idx) {
-        var y = y0 + 48 + idx * rowH;
+        var y = y0 + 44 + idx * rowH;
         var vals = [
           displayDateFromRecord(r),
           money(r.tax_reported),
@@ -1104,22 +1117,20 @@
       });
 
       if (mergedRemark != null && rows.length > 0) {
-        var dataBodyMidY = y0 + 48 + (dataRowCount * rowH) / 2 + 12;
+        var dataBodyMidY = y0 + 44 + (dataRowCount * rowH) / 2 + 10;
         drawRemarkCell(mergedRemark, remarkColX, dataBodyMidY);
       }
 
-      var footY = y0 + 48 + dataRowCount * rowH;
       ctx.strokeRect(x0, y0, tableW, tableTotalH);
-      drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 29, { size: 16, align: 'center' });
+      drawText(ctx, '金额合计', x0 + cols[0] / 2, footY + 26, { size: 16, align: 'center' });
       var total = rows.reduce(function (sum, r) {
         return sum + Number(r.tax_reported || 0);
       }, 0);
-      drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 29, { size: 16 });
+      drawText(ctx, rmbUpper(total), x0 + cols[0] + 28, footY + 26, { size: 16 });
 
-      var explainY = Math.max(height - 310, footY + 250);
       ctx.beginPath();
-      ctx.moveTo(90, explainY - 40);
-      ctx.lineTo(width - 90, explainY - 40);
+      ctx.moveTo(x0, explainY - 28);
+      ctx.lineTo(width - x0, explainY - 28);
       ctx.stroke();
       drawText(ctx, '说明：', 90, explainY, { size: 18, color: '#555' });
       drawText(ctx, '1.本记录涉及纳税人敏感信息，请妥善保存。', 90, explainY + 42, { size: 16, color: '#999' });
