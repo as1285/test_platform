@@ -197,6 +197,7 @@ const ADMIN_MENU_KEYS = [
   'codes',
   'users',
   'user-data',
+  'user-behavior',
   'feedback',
   'login-log',
   'analytics',
@@ -1323,6 +1324,11 @@ async function createTables() {
       );
     }
   }
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'user-behavior' FROM admin_account_menus WHERE menu_key = 'user-data'`
+  );
 
   conn.release();
 }
@@ -10270,13 +10276,13 @@ app.get(
 app.get(
   '/api/admin/user-data/no-tax-behavior',
   requireAdminAuth,
-  requireAdminMenu('user-data'),
+  requireAdminMenu('user-behavior'),
   handleAdminUserDataNoTaxBehavior
 );
 app.get(
   '/api/admin/user-data/no-tax-behavior/path',
   requireAdminAuth,
-  requireAdminMenu('user-data'),
+  requireAdminMenu('user-behavior'),
   handleAdminUserDataNoTaxBehaviorPath
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);

@@ -1720,6 +1720,7 @@
 
         var _adminUsersLoaded = false;
         var _adminUserDataLoaded = false;
+        var _adminUserBehaviorLoaded = false;
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
@@ -1737,7 +1738,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'user-behavior', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1786,6 +1787,7 @@
                 'admin-accounts': 1,
                 users: 1,
                 'user-data': 1,
+                'user-behavior': 1,
                 feedback: 1,
                 analytics: 1,
                 'channel-analysis': 1,
@@ -1820,8 +1822,11 @@
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
                 loadUserDataAnalytics();
-                loadNoTaxBehaviorList(1);
                 loadUserDataList(1);
+            }
+            if (pageKey === 'user-behavior' && !_adminUserBehaviorLoaded) {
+                _adminUserBehaviorLoaded = true;
+                loadNoTaxBehaviorList(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
@@ -4452,6 +4457,7 @@
             codes: '激活码',
             users: '注册用户',
             'user-data': '用户数据',
+            'user-behavior': '用户行为',
             feedback: '用户反馈',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
