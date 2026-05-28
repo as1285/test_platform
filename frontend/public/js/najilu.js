@@ -1193,11 +1193,16 @@
     text = String(text || '');
     if (!text) return;
     opt = opt || {};
+    var color = opt.color || '#c01820';
+    var strokeW = opt.strokeWidth != null ? opt.strokeWidth : 0.55;
     var chars = text.split('');
     var span = endAngle - startAngle;
     ctx.save();
-    ctx.fillStyle = opt.color || '#7a0a10';
-    ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'serif');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = strokeW;
+    ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'SimSun, STSong, serif');
     chars.forEach(function (ch, idx) {
       var t = chars.length === 1 ? 0.5 : idx / (chars.length - 1);
       var angle = startAngle + span * t;
@@ -1207,35 +1212,41 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(ch, 0, 0);
+      if (strokeW > 0) {
+        ctx.strokeText(ch, 0, 0);
+      }
       ctx.restore();
     });
     ctx.restore();
   }
 
-  /** 纳税记录右下角章：外圈半透明叠印，圈内文字不透明深红 */
+  /** 纳税记录右下角章（参考官方：整章同色深红，弧文与「业务专用章」一致） */
   function drawStamp(ctx, cx, cy, authority) {
     var name = cleanText(authority) || '国家税务总局深圳市税务局';
-    var stampRingRed = '#b01018';
-    var stampTextRed = '#7a0a10';
-    var radius = 80;
+    var stampRed = '#c01820';
+    var radius = 68;
+    var font = 'SimSun, STSong, serif';
     ctx.save();
-    ctx.strokeStyle = stampRingRed;
-    ctx.globalAlpha = 0.82;
-    ctx.lineWidth = 3.2;
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = stampRed;
+    ctx.lineWidth = 2.8;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    drawArcText(ctx, name, cx, cy, radius - 16, Math.PI * 1.1, Math.PI * 1.9, {
-      size: name.length > 12 ? 15 : 17,
-      color: stampTextRed,
-      font: 'SimSun, STSong, serif'
+    var arcSize = name.length > 14 ? 14 : name.length > 11 ? 15 : 16;
+    drawArcText(ctx, name, cx, cy, radius - 12, Math.PI * 1.14, Math.PI * 1.86, {
+      size: arcSize,
+      color: stampRed,
+      strokeWidth: 0.5,
+      font: font
     });
-    drawText(ctx, '业务专用章', cx, cy + 30, {
-      size: 24,
-      color: stampTextRed,
+    drawText(ctx, '业务专用章', cx, cy + 24, {
+      size: 21,
+      weight: 'bold',
+      color: stampRed,
       align: 'center',
-      font: 'SimSun, STSong, serif'
+      font: font
     });
   }
 
