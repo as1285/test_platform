@@ -1322,11 +1322,10 @@
       arcLetterGap: arcGap,
       maxSpanRad: Math.PI * 1.04
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 25, {
-      size: 19,
-      weight: 'bold',
+    drawSpacedText(ctx, '业务专用章', cx, cy + 26, {
+      size: 15,
       color: stampRed,
-      letterGap: 9,
+      letterGap: 6,
       font: font,
       baseline: 'middle'
     });
