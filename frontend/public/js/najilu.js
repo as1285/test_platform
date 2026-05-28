@@ -1196,7 +1196,7 @@
     var chars = text.split('');
     var span = endAngle - startAngle;
     ctx.save();
-    ctx.fillStyle = opt.color || '#d13a3a';
+    ctx.fillStyle = opt.color || '#7a0a10';
     ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'serif');
     chars.forEach(function (ch, idx) {
       var t = chars.length === 1 ? 0.5 : idx / (chars.length - 1);
@@ -1212,31 +1212,31 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章：单圈 + 上弧机关名 + 横排「业务专用章」（参考官方样式，叠印） */
+  /** 纳税记录右下角章：外圈半透明叠印，圈内文字不透明深红 */
   function drawStamp(ctx, cx, cy, authority) {
     var name = cleanText(authority) || '国家税务总局深圳市税务局';
-    var stampRed = '#a30f14';
+    var stampRingRed = '#b01018';
+    var stampTextRed = '#7a0a10';
     var radius = 80;
     ctx.save();
-    ctx.strokeStyle = stampRed;
-    ctx.fillStyle = stampRed;
-    ctx.globalAlpha = 0.92;
+    ctx.strokeStyle = stampRingRed;
+    ctx.globalAlpha = 0.82;
     ctx.lineWidth = 3.2;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
     drawArcText(ctx, name, cx, cy, radius - 16, Math.PI * 1.1, Math.PI * 1.9, {
       size: name.length > 12 ? 15 : 17,
-      color: stampRed,
+      color: stampTextRed,
       font: 'SimSun, STSong, serif'
     });
     drawText(ctx, '业务专用章', cx, cy + 30, {
       size: 24,
-      color: stampRed,
+      color: stampTextRed,
       align: 'center',
       font: 'SimSun, STSong, serif'
     });
-    ctx.restore();
   }
 
   function replaceApplicationSnapshot(app) {
