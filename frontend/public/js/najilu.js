@@ -441,12 +441,32 @@
     return n.toFixed(2);
   }
 
-  function displayDateFromRecord(r) {
-    var raw = String(r.report_date || '').trim();
-    if (raw) return raw.replace(/-/g, '.');
+  /** 个税记录「申报日期」录入值 → 凭证表 YYYY.MM.DD */
+  function formatReportDateForCert(raw) {
+    if (raw == null || raw === '') return '';
+    if (raw instanceof Date && !isNaN(raw.getTime())) {
+      return raw.getFullYear() + '.' + pad2(raw.getMonth() + 1) + '.' + pad2(raw.getDate());
+    }
+    var s = String(raw).trim();
+    if (!s) return '';
+    var iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) return iso[1] + '.' + pad2(iso[2]) + '.' + pad2(iso[3]);
+    var slash = s.match(/^(\d{4})[/.](\d{1,2})[/.](\d{1,2})/);
+    if (slash) return slash[1] + '.' + pad2(slash[2]) + '.' + pad2(slash[3]);
+    return s.replace(/-/g, '.').replace(/\//g, '.');
+  }
+
+  function displayReportDateFromRecord(r) {
+    var d = formatReportDateForCert(r && r.report_date);
+    if (d) return d;
     var ym = recordYm(r);
     if (!ym) return '';
     return ym.replace('-', '.') + '.03';
+  }
+
+  /** 入(退)库日期：有录入则同申报日期，否则回退 */
+  function displayInboundDateFromRecord(r) {
+    return displayReportDateFromRecord(r);
   }
 
   function formatDateCn(raw, fallbackYm) {
@@ -1106,9 +1126,9 @@
       rows.forEach(function (r, idx) {
         var y = y0 + 44 + idx * rowH;
         var vals = [
-          displayDateFromRecord(r),
+          displayReportDateFromRecord(r),
           money(r.tax_reported),
-          displayDateFromRecord(r),
+          displayInboundDateFromRecord(r),
           r.income_type || '工资薪金所得',
           recordYm(r).replace('-', '.'),
           r.tax_authority || '',
@@ -1572,6 +1592,7 @@
           company_name: r.company_name,
           company_tax_id: r.company_tax_id,
           tax_authority: r.tax_authority,
+          report_date: r.report_date,
           income: r.income,
           tax_reported: r.tax_reported,
           tax_period: r.tax_period,
