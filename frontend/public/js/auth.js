@@ -12,7 +12,8 @@
     'index.html': true,
     'register.html': true,
     'login.html': true,
-    'install_guide.html': true
+    'install_guide.html': true,
+    'zhzh_jhm.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** Cordova 壳通过 config AppendUserAgent 追加；若 UA 未透传到 iframe，则用被嵌入状态兜底识别 */
