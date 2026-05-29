@@ -852,6 +852,7 @@
                     <button type="button" class="btn btn-default btn-sm" onclick="loadBatchEmploymentsFromExistingRecords()">从已有记录回填</button>
                     <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="fillBatchTaxExample()">示例填写</button>
                     <button type="button" class="btn btn-default btn-sm" onclick="fillBatchTaxOfficeWorkerTemplate()">上班族模板（1年）</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="fillBatchTaxQuickMinimal()">极简填写（1个月）</button>
                     <button type="button" class="btn-page btn-sm" id="btnBatchTaxQuickStart" style="display:none;" onclick="fillBatchTaxExample()">30秒体验完整明细</button>
                     <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;" onclick="exitBatchTaxEditMode()">退出修改模式</button>
                 </div>
@@ -2642,6 +2643,45 @@
             exitBatchTaxEditMode();
         }
 
+        /** 分步降负：仅公司 + 当月一条工资（单月） */
+        function fillBatchTaxQuickMinimal() {
+            var list = document.getElementById('batch_employment_list');
+            if (!list) return;
+            var d = new Date();
+            var cy = d.getFullYear();
+            var cm = d.getMonth() + 1;
+            list.innerHTML = '';
+            addBatchEmpRow();
+            var row = list.querySelector('.batch-emp-row');
+            setBatchEmpRowValues(row, {
+                company: '示例科技有限公司',
+                company_tax_id: '91110108MA01ABCD2X',
+                tax_authority: '国家税务总局北京市海淀区税务局',
+                sy: cy,
+                sm: cm,
+                ey: cy,
+                em: cm,
+                salary: 10000,
+                salary_max: '',
+                ss_base: 0,
+                fund_base: '',
+                pension_ratio: 8,
+                medical_ratio: 2,
+                unemployment_ratio: 0.5,
+                fund_ratio: 12,
+                special: 0
+            });
+            var bonusYearEl = document.getElementById('batch_bonus_year');
+            if (bonusYearEl) bonusYearEl.value = String(cy);
+            var bonusEl = document.getElementById('batch_year_end_bonus');
+            if (bonusEl) bonusEl.value = '0';
+            showMsg('已填入单月极简模板（仅 1 个月），核对后点击「一键生成税务记录」', true);
+            exitBatchTaxEditMode();
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_conversion_quick_minimal_template', { page: 'consult' });
+            }
+        }
+
         /** 场景模板：上班族 1 家公司、当年 1 月至当前月 */
         function fillBatchTaxOfficeWorkerTemplate() {
             var list = document.getElementById('batch_employment_list');
@@ -4086,6 +4126,15 @@
                         });
                         resetEmployerFormMode();
                         showMsg(wasEdit ? '已保存修改' : '添加成功', true);
+                        if (
+                            !wasEdit &&
+                            window.ConversionGuide &&
+                            typeof window.ConversionGuide.afterEmployerSaved === 'function'
+                        ) {
+                            window.ConversionGuide.afterEmployerSaved({
+                                company: String(data.company_name || '').trim()
+                            });
+                        }
                         return refreshEmployerList();
                     }
                     throw new Error(res.msg || (employerEditId ? '保存失败' : '添加失败'));

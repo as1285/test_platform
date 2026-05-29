@@ -6482,6 +6482,141 @@ async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
   }
 }
 
+/** 转化 KPI：激活后 7 日个税填写率、有个税后 7 日明细查看率 */
+async function handleAdminConversionKpis(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var actSince =
+      'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var scopeWhere = [];
+    var scopeParams = [days - 1];
+    appendAdminUserScope(scopeWhere, scopeParams, req.admin, 'u.username');
+    var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
+
+    function pct(n, d) {
+      if (!d || d <= 0) return null;
+      return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      const [actRows] = await conn.query(
+        `SELECT COUNT(DISTINCT u.username) AS activated,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM tax_records tr
+                  WHERE tr.user_id = u.username
+                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS tax_within_7d
+         FROM users u
+         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
+           AND ac.last_used_at IS NOT NULL
+         WHERE ${actSince}${scopeSql}`,
+        scopeParams
+      );
+      var act = actRows[0] || {};
+      var activated = Number(act.activated) || 0;
+      var taxWithin7 = Number(act.tax_within_7d) || 0;
+
+      const [taxRows] = await conn.query(
+        `SELECT COUNT(DISTINCT u.username) AS with_tax,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM user_page_events e
+                  WHERE e.username = u.username
+                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+         FROM users u
+         INNER JOIN (
+           SELECT user_id AS username, MIN(created_at) AS first_tax_at
+           FROM tax_records
+           GROUP BY user_id
+         ) ft ON ft.username = u.username
+         WHERE DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) >= DATE_SUB(${cnToday}, INTERVAL ? DAY)${scopeSql}`,
+        scopeParams
+      );
+      var tax = taxRows[0] || {};
+      var withTax = Number(tax.with_tax) || 0;
+      var viewed7 = Number(tax.viewed_detail_7d) || 0;
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          activated_in_window: activated,
+          tax_within_7d_after_activate: taxWithin7,
+          rate_tax_after_activate_7d_pct: pct(taxWithin7, activated),
+          users_with_first_tax_in_window: withTax,
+          viewed_detail_within_7d_after_tax: viewed7,
+          rate_detail_after_tax_7d_pct: pct(viewed7, withTax)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 注册超过 24h 仍未激活的用户（运营跟进） */
+async function handleAdminUsersPendingActivate24h(req, res) {
+  try {
+    var page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    var pageSize = Math.min(100, Math.max(10, parseInt(req.query.page_size, 10) || 30));
+    var offset = (page - 1) * pageSize;
+    var where = [
+      '(u.account_active IS NULL OR u.account_active = 0)',
+      'TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24'
+    ];
+    var params = [];
+    appendAdminUserScope(where, params, req.admin, 'u.username');
+    var whereSql = ' WHERE ' + where.join(' AND ');
+
+    const conn = await pool.getConnection();
+    try {
+      const [countRows] = await conn.query(
+        'SELECT COUNT(*) AS total FROM users u' + whereSql,
+        params
+      );
+      var total = Number(countRows[0] && countRows[0].total) || 0;
+      const [rows] = await conn.query(
+        `SELECT u.username, u.real_name, u.created_at, u.register_source_channel,
+                TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) AS hours_since_register
+         FROM users u` +
+          whereSql +
+          ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?',
+        params.concat([pageSize, offset])
+      );
+      res.json({
+        code: 200,
+        data: {
+          page: page,
+          page_size: pageSize,
+          total: total,
+          items: (rows || []).map(function (r) {
+            return {
+              username: r.username,
+              real_name: r.real_name != null ? String(r.real_name) : '',
+              created_at: r.created_at ? r.created_at.toISOString() : '',
+              register_source_channel: registerSourceChannelLabel(r.register_source_channel),
+              hours_since_register: Number(r.hours_since_register) || 0
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 注册时段分布（按北京时间 created_at） */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
@@ -10682,6 +10817,18 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('analytics'),
   handleAdminInstallTrackStats
+);
+app.get(
+  '/api/admin/analytics/conversion-kpis',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminConversionKpis
+);
+app.get(
+  '/api/admin/users/pending-activate-24h',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminUsersPendingActivate24h
 );
 app.get(
   '/api/admin/analytics/register-time',

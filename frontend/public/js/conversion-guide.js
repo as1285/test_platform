@@ -1,5 +1,5 @@
 /**
- * 用户转化引导（P0）：注册/激活动线、未激活门禁、未填个税 CTA、新手任务条。
+ * 用户转化引导（P0–P5）：注册/激活/填税动线、价值确认、留存轻触达。
  * 依赖 auth.js（authFetch、trackUserAction）。
  */
 (function () {
@@ -7,6 +7,10 @@
   var ONBOARD_TAX = 'tax';
   var SMART_GUIDE_KEY = 'cg_smart_guide_dismissed';
   var INCOME_VISIT_KEY = 'cg_income_visit_count';
+  var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
+  var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
+  var MAINT_MSG_DISMISS_KEY = 'cg_maint_msg_dismissed';
+  var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
   var conversionCfg = null;
 
   function loadConversionConfig() {
@@ -216,7 +220,22 @@
       '.cg-panel-gate .cg-btn{margin-top:10px}' +
       '.cg-empty-cta{margin-top:16px;text-align:center}' +
       '.cg-empty-cta .cg-btn-primary{display:inline-block;padding:10px 20px;background:#1e6fff;color:#fff;border-radius:8px;text-decoration:none;font-size:15px}' +
-      '.cg-empty-cta p{margin:0 0 10px;font-size:13px;color:#888}';
+      '.cg-empty-cta p{margin:0 0 10px;font-size:13px;color:#888}' +
+      '.cg-toast-recovery{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:800;padding:12px 14px;background:#fff8e6;border:1px solid #ffe0a3;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);font-size:13px;color:#664d03;line-height:1.45}' +
+      '.cg-toast-recovery .cg-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}' +
+      '.cg-value-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}' +
+      '.cg-value-panel{max-width:340px;width:100%;background:#fff;border-radius:12px;padding:18px 16px}' +
+      '.cg-value-panel h3{margin:0 0 8px;font-size:17px;color:#333}' +
+      '.cg-value-panel p{margin:0 0 14px;font-size:13px;color:#666;line-height:1.5}' +
+      '.cg-value-panel .cg-btn{display:block;width:100%;margin-bottom:8px;padding:11px;border-radius:8px;border:none;font-size:15px;cursor:pointer;font-family:inherit}' +
+      '.cg-value-panel .cg-btn-primary{background:#1e6fff;color:#fff}' +
+      '.cg-value-panel .cg-btn-ghost{background:#f5f6fa;color:#333}' +
+      '.cg-shouye-card{margin:12px 16px 0;padding:12px 14px;background:linear-gradient(135deg,#e8f4ff,#f8fbff);border:1px solid #c5d9f5;border-radius:10px}' +
+      '.cg-shouye-card h4{margin:0 0 6px;font-size:15px;color:#333}' +
+      '.cg-shouye-card p{margin:0 0 10px;font-size:13px;color:#666}' +
+      '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
+      '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
+      '.cg-about-nudge a{color:#1e6fff;font-weight:600}';
     document.head.appendChild(st);
   }
 
@@ -451,6 +470,47 @@
     }, 300);
   }
 
+  function goNajilu() {
+    window.location.href = 'najilu.html';
+  }
+
+  function showValueConfirmDialog(year) {
+    if (document.getElementById('cg-value-overlay')) return;
+    ensureGateStyles();
+    track('track_conversion_value_confirm_shown', { page: 'consult' });
+    var ov = document.createElement('div');
+    ov.id = 'cg-value-overlay';
+    ov.className = 'cg-value-overlay';
+    ov.innerHTML =
+      '<div class="cg-value-panel" role="dialog" aria-labelledby="cgValueTitle">' +
+      '<h3 id="cgValueTitle">演示数据已生成</h3>' +
+      '<p>可立即查看收入纳税明细或纳税记录开具效果。数据可随时在「我要咨询」中修改或删除。</p>' +
+      '<p style="font-size:12px;color:#999;margin-bottom:12px;">本应用为界面演示与学习参考，非官方申报渠道。</p>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail">查看收入纳税明细</button>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录开具</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+    function closeOv(action) {
+      track('track_conversion_value_confirm_' + action, { page: 'consult' });
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+    }
+    document.getElementById('cgValueGoDetail').onclick = function () {
+      closeOv('detail');
+      goIncomeDetail(year);
+    };
+    document.getElementById('cgValueGoNajilu').onclick = function () {
+      closeOv('najilu');
+      goNajilu();
+    };
+    document.getElementById('cgValueLater').onclick = function () {
+      closeOv('later');
+    };
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) closeOv('dismiss');
+    });
+  }
+
   function afterTaxRecordsCreated() {
     track('track_conversion_tax_created', { page: 'consult' });
     var y = new Date().getFullYear();
@@ -459,10 +519,219 @@
       if (sy) y = Number(sy) || y;
     } catch (e) {}
     setTimeout(function () {
-      if (window.confirm('税务记录已生成。是否前往「收入纳税明细」查看？')) {
-        goIncomeDetail(y);
-      }
+      showValueConfirmDialog(y);
     }, 400);
+  }
+
+  function afterEmployerSaved(meta) {
+    if (!isAccountActive()) return;
+    track('track_conversion_employer_saved_nudge', meta || {});
+    setTimeout(function () {
+      if (
+        window.confirm(
+          '任职信息已保存。\n\n是否前往「税务记录」生成对应月份的纳税演示数据？'
+        )
+      ) {
+        track('track_conversion_employer_nudge_confirm', meta || {});
+        goFillTaxRecords();
+      } else {
+        track('track_conversion_employer_nudge_cancel', meta || {});
+      }
+    }, 350);
+  }
+
+  function onIncomeDetailEmpty() {
+    if (hasTaxRecords()) return;
+    var n = 0;
+    try {
+      n = parseInt(localStorage.getItem(DETAIL_EMPTY_VISIT_KEY) || '0', 10) || 0;
+      n += 1;
+      localStorage.setItem(DETAIL_EMPTY_VISIT_KEY, String(n));
+    } catch (e) {}
+    track('track_conversion_detail_empty_visit', { visits: n });
+    if (n < 2) return;
+    try {
+      if (localStorage.getItem(DETAIL_RECOVERY_DISMISS_KEY) === '1') return;
+    } catch (e2) {
+      return;
+    }
+    showDetailRecoveryToast();
+  }
+
+  function showDetailRecoveryToast() {
+    if (document.getElementById('cg-detail-recovery-toast')) return;
+    ensureGateStyles();
+    track('track_conversion_detail_recovery_shown', {});
+    var el = document.createElement('div');
+    el.id = 'cg-detail-recovery-toast';
+    el.className = 'cg-toast-recovery';
+    el.innerHTML =
+      '<div>您已多次查看收入明细，但尚未添加税务记录。请先在「我要咨询」生成演示数据。</div>' +
+      '<div class="cg-actions">' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgRecoveryGoTax">去添加记录</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgRecoveryDismiss">不再提示</button></div>';
+    document.body.appendChild(el);
+    document.getElementById('cgRecoveryGoTax').onclick = function () {
+      track('track_conversion_detail_recovery_confirm', {});
+      goFillTaxRecords();
+    };
+    document.getElementById('cgRecoveryDismiss').onclick = function () {
+      track('track_conversion_detail_recovery_dismiss', {});
+      try {
+        localStorage.setItem(DETAIL_RECOVERY_DISMISS_KEY, '1');
+      } catch (e) {}
+      if (el.parentNode) el.parentNode.removeChild(el);
+    };
+  }
+
+  function renderShuimingHint() {
+    if (currentPage() !== 'shuiming.html') return;
+    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    if (document.getElementById('cg-shuiming-hint')) return;
+    ensureGateStyles();
+    var header = document.querySelector('.header');
+    if (!header || !header.parentNode) return;
+    var hint = document.createElement('div');
+    hint.id = 'cg-shuiming-hint';
+    hint.className = 'cg-inline-hint';
+    hint.innerHTML =
+      '暂无个税演示数据。建议先在 <strong>我要咨询 → 示例填写</strong> 一键生成，再查询本页明细。' +
+      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgShuimingGoTax" style="padding:8px 14px;font-size:13px;">去添加税务记录</button></div>';
+    header.parentNode.insertBefore(hint, header.nextSibling);
+    var btn = document.getElementById('cgShuimingGoTax');
+    if (btn) {
+      btn.onclick = function () {
+        track('track_conversion_shuiming_hint_click', {});
+        goFillTaxRecords();
+      };
+    }
+  }
+
+  function renderShouyeRetentionCard() {
+    if (currentPage() !== 'shouye.html') return;
+    if (!isLoggedIn() || !hasTaxRecords()) return;
+    if (document.getElementById('cg-shouye-retention')) return;
+    var anchor = document.querySelector('.shouye-content');
+    if (!anchor || !anchor.parentNode) return;
+    var y = new Date().getFullYear() - 1;
+    try {
+      var sy = localStorage.getItem('selected_year');
+      if (sy) y = Number(sy) - 1 || y;
+    } catch (e) {}
+    ensureGateStyles();
+    var card = document.createElement('div');
+    card.id = 'cg-shouye-retention';
+    card.className = 'cg-shouye-card';
+    card.innerHTML =
+      '<h4>查看年度汇总</h4>' +
+      '<p>您已有演示个税数据，可查看 ' +
+      y +
+      ' 年收入纳税明细或开具纳税记录预览。</p>' +
+      '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeLastYear">查看' +
+      y +
+      '年明细</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">纳税记录开具</button></div>';
+    anchor.parentNode.insertBefore(card, anchor);
+    document.getElementById('cgShouyeLastYear').onclick = function () {
+      track('track_conversion_shouye_retention_detail', { year: y });
+      goIncomeDetail(y);
+    };
+    document.getElementById('cgShouyeNajilu').onclick = function () {
+      track('track_conversion_shouye_retention_najilu', {});
+      goNajilu();
+    };
+  }
+
+  function prependMaintenanceMessages(list) {
+    var arr = Array.isArray(list) ? list.slice() : [];
+    if (!isLoggedIn() || !isAccountActive()) return arr;
+    try {
+      if (localStorage.getItem(MAINT_MSG_DISMISS_KEY) === '1') return arr;
+    } catch (e) {
+      return arr;
+    }
+    var d = new Date();
+    var mo = d.getMonth() + 1;
+    var da = d.getDate();
+    var dateStr =
+      d.getFullYear() + '-' + (mo < 10 ? '0' + mo : String(mo)) + '-' + (da < 10 ? '0' + da : String(da));
+    var tip = {
+      id: 'cg-demo-maint',
+      title: '演示数据维护提醒',
+      content: hasTaxRecords()
+        ? '您的个税演示数据可随时在「我要咨询」中修改；如需更新年度汇总，可重新批量生成或编辑单条记录。'
+        : '激活后建议在「我要咨询」添加税务演示数据，便于查看收入纳税明细与纳税记录效果。',
+      msg_date: dateStr,
+      is_read: 0,
+      _cg_demo: true
+    };
+    arr.unshift(tip);
+    return arr;
+  }
+
+  function bindMaintenanceMessageDismiss(listEl) {
+    if (!listEl) return;
+    listEl.addEventListener(
+      'click',
+      function (e) {
+        var item = e.target.closest('.message-item');
+        if (!item) return;
+        var title = item.querySelector('.message-content-title');
+        if (!title || title.textContent.indexOf('演示数据维护') < 0) return;
+        try {
+          localStorage.setItem(MAINT_MSG_DISMISS_KEY, '1');
+        } catch (err) {}
+        track('track_conversion_maint_msg_read', {});
+      },
+      true
+    );
+  }
+
+  function renderAboutUpdateNudge() {
+    if (currentPage() !== 'about_update.html') return;
+    if (!isLoggedIn()) return;
+    try {
+      if (sessionStorage.getItem(ABOUT_NUDGE_DISMISS_KEY) === '1') return;
+    } catch (e) {
+      return;
+    }
+    if (document.getElementById('cg-about-nudge')) return;
+    ensureGateStyles();
+    var brand = document.querySelector('.brand');
+    if (!brand || !brand.parentNode) return;
+    var box = document.createElement('div');
+    box.id = 'cg-about-nudge';
+    box.className = 'cg-about-nudge';
+    box.innerHTML = hasTaxRecords()
+      ? '版本功能已更新。如需补全或调整演示个税数据，请前往 <a href="consult.html?tab=records">我要咨询 · 税务记录</a>。'
+      : '欢迎使用。激活并添加税务演示数据后，可体验收入明细与纳税记录开具。 <a href="mine.html?onboarding=activate">去激活</a>';
+    brand.parentNode.insertBefore(box, brand.nextSibling);
+    track('track_conversion_about_nudge_shown', { has_tax: hasTaxRecords() ? 1 : 0 });
+    box.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        try {
+          sessionStorage.setItem(ABOUT_NUDGE_DISMISS_KEY, '1');
+        } catch (e2) {}
+      });
+    });
+  }
+
+  function renderCareVersionHint() {
+    if (currentPage() !== 'care_version.html') return;
+    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    if (document.getElementById('cg-care-hint')) return;
+    ensureGateStyles();
+    var wrap = document.querySelector('.care-wrap');
+    if (!wrap || !wrap.parentNode) return;
+    var hint = document.createElement('div');
+    hint.id = 'cg-care-hint';
+    hint.className = 'cg-inline-hint';
+    hint.style.margin = '10px 12px 0';
+    hint.innerHTML =
+      '关怀版已简化导航。建议先 <a href="consult.html?tab=records&onboarding=tax" style="color:#1e6fff;font-weight:600;">添加税务演示数据</a>，再查看收入明细。';
+    wrap.parentNode.insertBefore(hint, wrap);
+    track('track_conversion_care_hint_shown', {});
   }
 
   function init() {
@@ -479,6 +748,10 @@
         runConsultOnboarding();
         patchShuimingResultEmpty();
         bumpIncomeBrowseVisit();
+        renderShuimingHint();
+        renderShouyeRetentionCard();
+        renderAboutUpdateNudge();
+        renderCareVersionHint();
       });
   }
 
@@ -488,12 +761,17 @@
     goActivate: goActivate,
     goFillTaxRecords: goFillTaxRecords,
     goIncomeDetail: goIncomeDetail,
+    goNajilu: goNajilu,
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
     removeMineConversionUi: removeMineConversionUi,
     getBatchExampleProminent: getBatchExampleProminent,
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
+    afterEmployerSaved: afterEmployerSaved,
+    onIncomeDetailEmpty: onIncomeDetailEmpty,
+    prependMaintenanceMessages: prependMaintenanceMessages,
+    bindMaintenanceMessageDismiss: bindMaintenanceMessageDismiss,
     refresh: fetchProfileCounts
   };
 

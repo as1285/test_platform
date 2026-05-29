@@ -1079,6 +1079,13 @@
             });
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncRecordEmptyUi(records.length > 0);
+            if (
+                records.length === 0 &&
+                window.ConversionGuide &&
+                typeof window.ConversionGuide.onIncomeDetailEmpty === 'function'
+            ) {
+                window.ConversionGuide.onIncomeDetailEmpty();
+            }
             if (window.UserFontSettings && window.UserFontSettings.apply) {
                 window.UserFontSettings.apply(window.UserFontSettings.load());
             }

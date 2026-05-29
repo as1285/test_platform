@@ -2338,6 +2338,8 @@
             loadRegistrationFunnel();
             loadChannelRegistrationFunnel();
             loadInstallTrackStats();
+            loadConversionKpis();
+            loadPendingActivate24h(1);
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
@@ -3252,6 +3254,123 @@
                 })
                 .catch(function () {
                     el.textContent = '安装埋点加载失败';
+                });
+        }
+
+        function renderConversionKpis(data) {
+            var el = document.getElementById('analyticsConversionKpis');
+            if (!el) return;
+            if (!data) {
+                el.textContent = '暂无 KPI 数据';
+                return;
+            }
+            var html = '<div class="scroll-x"><table><tbody>';
+            html +=
+                '<tr><th style="text-align:left;padding:8px;">统计天数</th><td>' +
+                esc(data.days) +
+                '</td></tr>';
+            html +=
+                '<tr><th style="text-align:left;padding:8px;">窗口内激活用户数</th><td>' +
+                esc(data.activated_in_window) +
+                '</td></tr>';
+            html +=
+                '<tr><th style="text-align:left;padding:8px;">激活后 7 日内有个税</th><td>' +
+                esc(data.tax_within_7d_after_activate) +
+                '（' +
+                esc(data.rate_tax_after_activate_7d_pct || '—') +
+                '）</td></tr>';
+            html +=
+                '<tr><th style="text-align:left;padding:8px;">窗口内首次有个税用户</th><td>' +
+                esc(data.users_with_first_tax_in_window) +
+                '</td></tr>';
+            html +=
+                '<tr><th style="text-align:left;padding:8px;">有个税后 7 日内看明细</th><td>' +
+                esc(data.viewed_detail_within_7d_after_tax) +
+                '（' +
+                esc(data.rate_detail_after_tax_7d_pct || '—') +
+                '）</td></tr>';
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadConversionKpis() {
+            var el = document.getElementById('analyticsConversionKpis');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsConversionKpiDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            el.textContent = 'KPI 加载中…';
+            adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || 'KPI 加载失败';
+                        return;
+                    }
+                    renderConversionKpis(j.data);
+                })
+                .catch(function () {
+                    el.textContent = 'KPI 加载失败';
+                });
+        }
+
+        var pendingActivate24hPage = 1;
+
+        function renderPendingActivate24h(data) {
+            var el = document.getElementById('analyticsPendingActivate24h');
+            if (!el) return;
+            var items = Array.isArray(data && data.items) ? data.items : [];
+            var total = data && data.total != null ? Number(data.total) : 0;
+            if (!items.length) {
+                el.textContent = '暂无注册超 24h 未激活用户';
+                return;
+            }
+            var html = '<p class="hint" style="margin:0 0 8px;">共 ' + esc(total) + ' 人（本页 ' + items.length + '）</p>';
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html +=
+                '<th>账号</th><th>姓名</th><th>注册时间</th><th>渠道</th><th>注册后小时</th></tr></thead><tbody>';
+            items.forEach(function (row) {
+                html += '<tr>';
+                html += '<td>' + esc(row.username) + '</td>';
+                html += '<td>' + esc(row.real_name || '—') + '</td>';
+                html += '<td>' + esc(row.created_at || '—') + '</td>';
+                html += '<td>' + esc(row.register_source_channel || '—') + '</td>';
+                html += '<td>' + esc(row.hours_since_register) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            if (total > items.length) {
+                html +=
+                    '<p class="hint" style="margin-top:8px;">仅展示第 1 页；共 ' +
+                    Math.ceil(total / (data.page_size || 30)) +
+                    ' 页可翻页扩展。</p>';
+            }
+            el.innerHTML = html;
+        }
+
+        function loadPendingActivate24h(page) {
+            var el = document.getElementById('analyticsPendingActivate24h');
+            if (!el) return;
+            pendingActivate24hPage = page || 1;
+            el.textContent = '列表加载中…';
+            adminFetch(
+                'api/admin/users/pending-activate-24h?page=' +
+                    encodeURIComponent(pendingActivate24hPage) +
+                    '&page_size=30'
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '列表加载失败';
+                        return;
+                    }
+                    renderPendingActivate24h(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '列表加载失败';
                 });
         }
 
@@ -5828,6 +5947,24 @@
             analyticsInstallTrackDays.addEventListener('change', function () {
                 loadInstallTrackStats();
             });
+        }
+        var btnRefreshConversionKpis = document.getElementById('btnRefreshConversionKpis');
+        if (btnRefreshConversionKpis) {
+            btnRefreshConversionKpis.onclick = function () {
+                loadConversionKpis();
+            };
+        }
+        var analyticsConversionKpiDays = document.getElementById('analyticsConversionKpiDays');
+        if (analyticsConversionKpiDays) {
+            analyticsConversionKpiDays.addEventListener('change', function () {
+                loadConversionKpis();
+            });
+        }
+        var btnRefreshPendingActivate24h = document.getElementById('btnRefreshPendingActivate24h');
+        if (btnRefreshPendingActivate24h) {
+            btnRefreshPendingActivate24h.onclick = function () {
+                loadPendingActivate24h(1);
+            };
         }
         var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');
         if (btnRefreshRegisterTime) {

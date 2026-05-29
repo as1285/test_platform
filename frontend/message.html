@@ -356,7 +356,21 @@
                 .then(function (data) {
                     if (data.code === 200) {
                         allMessages = data.data || [];
+                        if (
+                            window.ConversionGuide &&
+                            typeof window.ConversionGuide.prependMaintenanceMessages === 'function'
+                        ) {
+                            allMessages = window.ConversionGuide.prependMaintenanceMessages(allMessages);
+                        }
                         renderMessageList();
+                        if (
+                            window.ConversionGuide &&
+                            typeof window.ConversionGuide.bindMaintenanceMessageDismiss === 'function'
+                        ) {
+                            window.ConversionGuide.bindMaintenanceMessageDismiss(
+                                document.getElementById('messageList')
+                            );
+                        }
                     } else {
                         allMessages = [];
                         document.getElementById('messageList').innerHTML =

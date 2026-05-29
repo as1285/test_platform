@@ -5,7 +5,10 @@
 > 文档版本：2026-05-29  
 > **实现进度（P0）**：已落地 `conversion-guide.js` 动线/门禁/新手任务、注册后激活引导、激活后填税引导、安装页下载埋点、后台「注册后 7 日转化漏斗」。详见提交 `feat: 用户转化 P0 引导与漏斗看板`。  
 > **实现进度（P1）**：新手任务 3 步、安装页下载/视频/注册点击埋点、分渠道 7 日漏斗看板、未填个税 CSV 导出与话术模板。  
-> **实现进度（P2）**：智能引导（逛收入页 ≥2 次）、上班族 1 年模板、激活弹窗与批量填税 A/B（`GET /api/public/conversion-config` + 后台「转化 A/B 配置」）。
+> **实现进度（P2）**：智能引导（逛收入页 ≥2 次）、上班族 1 年模板、激活弹窗与批量填税 A/B（`GET /api/public/conversion-config` + 后台「转化 A/B 配置」）。  
+> **实现进度（P3）**：极简填写（1 个月）、任职保存后跳转税务记录、收入明细空页挽回、转化 KPI 与「注册超 24h 未激活」列表。  
+> **实现进度（P4）**：批量生成后价值确认弹窗（明细 / 纳税记录开具）、首页年度汇总卡片、注册/安装页演示声明强化。  
+> **实现进度（P5）**：消息中心演示数据维护提醒、关于页更新引导、关怀版简化导航提示。
 
 ---
 
@@ -174,6 +177,25 @@ flowchart LR
 10. **场景模板**：「上班族 1 年公司 12 个月」一键生成  
 11. **A/B 测试**：激活弹窗文案、示例填写位置等  
 
+### P3（阶段 3：激活 → 填写个税）
+
+12. **分步降负**：「极简填写（1 个月）」单月模板  
+13. **任职与个税联动**：任职保存后引导生成税务记录  
+14. **放弃挽回**：多次进入收入明细仍无记录 → 底部轻提示  
+15. **运营 KPI**：激活后 7 日个税填写率、有个税后 7 日明细查看率；24h 未激活用户列表  
+
+### P4（阶段 4：填完 → 价值确认）
+
+16. **保存成功动线**：价值确认弹窗 → 收入明细 / 纳税记录开具  
+17. **可编辑暗示**：弹窗文案说明可在「我要咨询」修改  
+18. **二次使用**：首页「查看去年汇总」卡片（已有个税用户）  
+
+### P5（阶段 5：持续使用）
+
+19. **轻触达**：消息中心「演示数据维护提醒」（可点击后不再显示）  
+20. **版本更新引导**：`about_update.html` 引导补数据/激活  
+21. **关怀版提示**：未填个税用户顶部简化说明  
+
 ---
 
 ## 五、运营复盘节奏（建议每周）
@@ -221,6 +243,10 @@ flowchart LR
 | 未填个税运营 | `user-behavior` 导出 CSV、话术模板 |
 | 转化 A/B | `conversion-config` 公开接口、系统设置 `conversion_ab` |
 | 智能引导 / 场景模板 | `conversion-guide.js`、`consult.html` 上班族模板 |
+| P3 填税降负 / 挽回 | `consult.html` 极简模板、`conversion-guide.js` |
+| P4 价值确认 / 留存卡片 | `conversion-guide.js`、`shouye.html` |
+| P5 轻触达 / 关怀 | `message.html`、`about_update.html`、`care_version.html` |
+| 转化 KPI / 未激活列表 | `conversion-kpis`、`pending-activate-24h` API |
 | 安装埋点 | `install_guide.html` |
 | 分群运营 | `user-behavior` 模块，可加导出/标签 |
 
@@ -238,6 +264,10 @@ flowchart LR
 | `track_conversion_ab_variant` | 用户端 A/B 变体曝光 |
 | `track_conversion_smart_guide_*` | 智能引导展示/确认/取消 |
 | `track_conversion_office_worker_template` | 上班族模板一键填写 |
+| `track_conversion_quick_minimal_template` | 极简单月模板 |
+| `track_conversion_value_confirm_*` | 生成记录后价值确认弹窗 |
+| `track_conversion_detail_recovery_*` | 多次看空明细挽回 |
+| `track_conversion_employer_*` | 任职保存后引导填税 |
 | `track_xianyu_purchase_click` / `track_qq_add_click` | 购买/客服路径 |
 
 ---
