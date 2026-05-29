@@ -519,17 +519,17 @@
   }
 
   function gateTaxRecords(featureName) {
-    if (!isAccountActive()) {
-      return gateActivation(featureName);
+    if (!hasTaxRecords()) {
+      track('track_conversion_gate_tax', { page: currentPage(), feature: featureName || '' });
+      showGateAlert(
+        '尚未添加个税记录',
+        '请先在「我要咨询」或首页「管理税务数据」中添加记录，也可在税务记录中「示例填写」或「一键生成」。',
+        '去添加',
+        goFillTaxRecords
+      );
+      return false;
     }
-    track('track_conversion_gate_tax', { page: currentPage(), feature: featureName || '' });
-    showGateAlert(
-      '尚未添加个税记录',
-      '请先在「我的 → 税务演示数据」或首页「管理税务数据」中添加记录，也可在「税务数据管理」→ 税务记录中「示例填写」或「一键生成」。',
-      '去添加',
-      goFillTaxRecords
-    );
-    return false;
+    return true;
   }
 
   function removeMineConversionUi() {
