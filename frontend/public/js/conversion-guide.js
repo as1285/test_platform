@@ -283,9 +283,20 @@
       CAPTURE_HIDE_CLASS +
       ' .message-item[data-cg-demo-maint="1"],html.' +
       SCREENSHOT_MODE_CLASS +
-      ' .message-item[data-cg-demo-maint="1"]{display:none!important}' +
-      '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:8px 14px;background:rgba(0,0,0,.78);color:#fff;font-size:13px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}' +
-      '.cg-capture-toast.is-show{opacity:1}';
+      ' .message-item[data-cg-demo-maint="1"],html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cgMineScreenshotBar,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #mineActivateBtn,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cg-mine-onboard-bar,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cg-mine-task-card,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cg-shouye-retention{display:none!important}' +
+      '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:10px 16px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.45;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.2)}' +
+      '.cg-capture-toast.is-show{opacity:1}' +
+      '.cg-capture-toast.is-tap-dismiss{pointer-events:auto;cursor:pointer}';
     document.head.appendChild(st);
   }
 
@@ -317,7 +328,10 @@
     syncScreenshotModeClass();
     syncMineScreenshotModeButton();
     track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
-    showCaptureToast(on ? '截图模式：已隐藏演示入口' : '截图模式已关闭');
+    showCaptureToast(
+      on ? '演示入口已全部隐藏，可截屏录屏\n长按姓名可恢复' : '截图模式已关闭，演示入口已恢复',
+      { duration: on ? 3200 : 2200, tapDismiss: on }
+    );
   }
 
   function syncMineScreenshotModeButton() {
@@ -337,7 +351,8 @@
     setScreenshotMode(!isScreenshotModeOn());
   }
 
-  function showCaptureToast(msg) {
+  function showCaptureToast(msg, opts) {
+    opts = opts || {};
     var el = document.getElementById('cg-capture-toast');
     if (!el) {
       el = document.createElement('div');
@@ -346,12 +361,21 @@
       el.setAttribute('role', 'status');
       document.body.appendChild(el);
     }
-    el.textContent = msg;
+    el.textContent = msg || '';
+    el.classList.toggle('is-tap-dismiss', !!(opts.tapDismiss && isScreenshotModeOn()));
+    el.onclick = null;
+    if (opts.tapDismiss && isScreenshotModeOn()) {
+      el.onclick = function () {
+        setScreenshotMode(false);
+      };
+    }
     el.classList.add('is-show');
     if (showCaptureToast._t) clearTimeout(showCaptureToast._t);
     showCaptureToast._t = setTimeout(function () {
       el.classList.remove('is-show');
-    }, 2200);
+      el.classList.remove('is-tap-dismiss');
+      el.onclick = null;
+    }, opts.duration || 2200);
   }
 
   function hideDemoUiForCapture(ms) {
