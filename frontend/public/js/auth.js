@@ -365,6 +365,11 @@
     return /CLS-AL00|HUAWEICLS-AL00/i.test(navigator.userAgent || '');
   }
 
+  /** 华为 TAS-AN00（Mate 40 等，Android 12 Cordova）：消息页字号整体小两号 */
+  function isHuaweiTasAn00Client() {
+    return /TAS-AN00|HUAWEITAS-AN00/i.test(navigator.userAgent || '');
+  }
+
   function upsertMeta(name, content) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
@@ -463,6 +468,7 @@
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var cordovaHuaweiPura70 = cordovaShell && huaweiPura70Client;
       var huaweiClsAl00Client = androidClient && isHuaweiClsAl00Client();
+      var huaweiTasAn00Client = androidClient && isHuaweiTasAn00Client();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
@@ -576,6 +582,9 @@
       }
       if (huaweiClsAl00Client) {
         document.documentElement.classList.add('app-android-huawei-cls-al00');
+      }
+      if (huaweiTasAn00Client) {
+        document.documentElement.classList.add('app-android-huawei-tas-an00');
       }
       var style = document.createElement('style');
       var barFill =

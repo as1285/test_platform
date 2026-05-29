@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260516-cordova-2410-bottom"></script>
+    <script src="/js/auth.js?v=20260529-huawei-tas-an00"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>消息</title>
     <style>
@@ -225,6 +225,31 @@
             height: 8px;
             background: #ff4444;
             border-radius: 50%;
+        }
+
+        /* 华为 TAS-AN00（Mate 40 等）：消息页字号整体小两号 */
+        html.app-android-huawei-tas-an00 body.page-message .message-header-title {
+            font-size: 24px;
+        }
+
+        html.app-android-huawei-tas-an00 body.page-message .msg-filter-chip {
+            font-size: 11px;
+        }
+
+        html.app-android-huawei-tas-an00 body.page-message .msg-clear-unread {
+            font-size: 12px;
+        }
+
+        html.app-android-huawei-tas-an00 body.page-message .message-content-title {
+            font-size: 12px;
+        }
+
+        html.app-android-huawei-tas-an00 body.page-message .message-content-desc {
+            font-size: 10px;
+        }
+
+        html.app-android-huawei-tas-an00 body.page-message .message-date {
+            font-size: 9px;
         }
         
         </style>
