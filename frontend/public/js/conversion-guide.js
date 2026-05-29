@@ -330,7 +330,7 @@
     track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
     showCaptureToast(
       on ? '演示入口已全部隐藏，可截屏录屏\n长按姓名可恢复' : '截图模式已关闭，演示入口已恢复',
-      { duration: on ? 3200 : 2200, tapDismiss: on }
+      { duration: on ? 5500 : 4500, tapDismiss: on }
     );
   }
 
