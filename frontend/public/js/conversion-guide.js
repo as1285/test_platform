@@ -56,7 +56,7 @@
   }
 
   function bumpIncomeBrowseVisit() {
-    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
     var page = currentPage();
     if (page !== 'shuiming.html' && page !== 'shouye.html') return;
     var n = 0;
@@ -142,6 +142,24 @@
 
   function hasTaxRecords() {
     return taxRecordCount() > 0;
+  }
+
+  /** 已激活账号不再展示转化引导条/卡片/弹窗（仅保留未激活时的激活引导与点击门禁） */
+  function skipConversionPromo() {
+    return isAccountActive();
+  }
+
+  function removeActivationPromoUi() {
+    [
+      'cg-shouye-retention',
+      'cg-shuiming-hint',
+      'cg-care-hint',
+      'cg-about-nudge',
+      'cg-detail-recovery-toast'
+    ].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    });
   }
 
   function goActivate() {
@@ -448,7 +466,7 @@
         cta =
           '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>激活后可添加个税演示数据</p>' +
           '<a href="mine.html?onboarding=activate" class="cg-btn-primary">去激活</a></div>';
-      } else if (!hasTaxRecords()) {
+      } else if (!skipConversionPromo() && !hasTaxRecords()) {
         cta =
           '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>添加税务记录后即可查看本页明细</p>' +
           '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">去添加税务记录</a></div>';
@@ -524,7 +542,7 @@
   }
 
   function afterEmployerSaved(meta) {
-    if (!isAccountActive()) return;
+    if (!isAccountActive() || skipConversionPromo()) return;
     track('track_conversion_employer_saved_nudge', meta || {});
     setTimeout(function () {
       if (
@@ -541,7 +559,7 @@
   }
 
   function onIncomeDetailEmpty() {
-    if (hasTaxRecords()) return;
+    if (skipConversionPromo() || hasTaxRecords()) return;
     var n = 0;
     try {
       n = parseInt(localStorage.getItem(DETAIL_EMPTY_VISIT_KEY) || '0', 10) || 0;
@@ -586,7 +604,7 @@
 
   function renderShuimingHint() {
     if (currentPage() !== 'shuiming.html') return;
-    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
     if (document.getElementById('cg-shuiming-hint')) return;
     ensureGateStyles();
     var header = document.querySelector('.header');
@@ -609,7 +627,7 @@
 
   function renderShouyeRetentionCard() {
     if (currentPage() !== 'shouye.html') return;
-    if (!isLoggedIn() || !hasTaxRecords()) return;
+    if (!isLoggedIn() || skipConversionPromo() || !hasTaxRecords()) return;
     if (document.getElementById('cg-shouye-retention')) return;
     var anchor = document.querySelector('.shouye-content');
     if (!anchor || !anchor.parentNode) return;
@@ -645,7 +663,7 @@
 
   function prependMaintenanceMessages(list) {
     var arr = Array.isArray(list) ? list.slice() : [];
-    if (!isLoggedIn() || !isAccountActive()) return arr;
+    if (!isLoggedIn() || skipConversionPromo()) return arr;
     try {
       if (localStorage.getItem(MAINT_MSG_DISMISS_KEY) === '1') return arr;
     } catch (e) {
@@ -690,7 +708,7 @@
 
   function renderAboutUpdateNudge() {
     if (currentPage() !== 'about_update.html') return;
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn() || skipConversionPromo()) return;
     try {
       if (sessionStorage.getItem(ABOUT_NUDGE_DISMISS_KEY) === '1') return;
     } catch (e) {
@@ -719,7 +737,7 @@
 
   function renderCareVersionHint() {
     if (currentPage() !== 'care_version.html') return;
-    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
     if (document.getElementById('cg-care-hint')) return;
     ensureGateStyles();
     var wrap = document.querySelector('.care-wrap');
@@ -744,14 +762,19 @@
         return fetchProfileCounts();
       })
       .then(function () {
+        if (skipConversionPromo()) {
+          removeActivationPromoUi();
+        }
         runMineOnboarding();
         runConsultOnboarding();
         patchShuimingResultEmpty();
-        bumpIncomeBrowseVisit();
-        renderShuimingHint();
-        renderShouyeRetentionCard();
-        renderAboutUpdateNudge();
-        renderCareVersionHint();
+        if (!skipConversionPromo()) {
+          bumpIncomeBrowseVisit();
+          renderShuimingHint();
+          renderShouyeRetentionCard();
+          renderAboutUpdateNudge();
+          renderCareVersionHint();
+        }
       });
   }
 
