@@ -270,8 +270,6 @@
       ' #mineTaxEntryLink,html.' +
       CAPTURE_HIDE_CLASS +
       ' #consultModifyLink,html.' +
-      SCREENSHOT_MODE_CLASS +
-      ' #consultModifyLink,html.' +
       CAPTURE_HIDE_CLASS +
       ' #cg-shouye-tax-entry,html.' +
       SCREENSHOT_MODE_CLASS +
@@ -375,7 +373,7 @@
       el.classList.remove('is-show');
       el.classList.remove('is-tap-dismiss');
       el.onclick = null;
-    }, opts.duration || 2200);
+    }, opts.duration || 4000);
   }
 
   function hideDemoUiForCapture(ms) {
