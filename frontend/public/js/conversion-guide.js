@@ -310,7 +310,7 @@
     }
   }
 
-  var CONSULT_MENU_LABEL_NORMAL = '税务数据管理';
+  var CONSULT_MENU_LABEL_NORMAL = '我要咨询';
   var CONSULT_MENU_LABEL_SCREENSHOT = '我要咨询';
 
   function syncScreenshotModeClass() {
