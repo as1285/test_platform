@@ -857,10 +857,7 @@
     var ghostBtnStyle =
       'border:1px solid #1e6fff;color:#1e6fff;background:#fff;';
     if (count > 0) {
-      var desc = '已有 ' + count + ' 条演示记录，可继续批量生成或修改。';
-      if (showRetention) {
-        desc += '也可预览收入纳税明细与纳税记录开具。';
-      }
+      var desc = '激活后 自动隐藏';
       var actions =
         '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>';
