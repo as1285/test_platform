@@ -225,12 +225,8 @@
     var st = document.createElement('style');
     st.id = 'conversion-guide-styles';
     st.textContent =
-      '.cg-onboard-bar{margin:0 16px 12px;padding:12px 14px;background:linear-gradient(135deg,#e8f1ff,#f5f9ff);border:1px solid #c5d9f5;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
-      '.cg-onboard-bar strong{color:#1e6fff}' +
-      '.cg-onboard-bar .cg-actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}' +
-      '.cg-onboard-bar .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
-      '.cg-onboard-bar .cg-btn-primary{background:#1e6fff;color:#fff}' +
-      '.cg-onboard-bar .cg-btn-ghost{background:#fff;color:#1e6fff;border:1px solid #1e6fff}' +
+      '.cg-task-card .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
+      '.cg-task-card .cg-btn-primary{background:#1e6fff;color:#fff}' +
       '.cg-task-card{margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
       '.page-mine .content-wrapper > .user-card{position:relative;z-index:1}' +
       '.cg-task-card h4{margin:0 0 8px;font-size:14px;color:#333}' +
@@ -286,8 +282,6 @@
       ' #cgMineScreenshotBar,html.' +
       SCREENSHOT_MODE_CLASS +
       ' #mineActivateBtn,html.' +
-      SCREENSHOT_MODE_CLASS +
-      ' #cg-mine-onboard-bar,html.' +
       SCREENSHOT_MODE_CLASS +
       ' #cg-mine-task-card,html.' +
       SCREENSHOT_MODE_CLASS +
@@ -524,52 +518,14 @@
   }
 
   function removeMineConversionUi() {
-    ['cg-mine-task-card', 'cg-mine-onboard-bar'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el && el.parentNode) {
-        el.parentNode.removeChild(el);
-      }
-    });
+    var el = document.getElementById('cg-mine-task-card');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    var legacyBar = document.getElementById('cg-mine-onboard-bar');
+    if (legacyBar && legacyBar.parentNode) legacyBar.parentNode.removeChild(legacyBar);
   }
 
   function getMineBottomExtrasEl() {
     return document.getElementById('mineBottomExtras');
-  }
-
-  function renderMineOnboardBar() {
-    if (currentPage() !== 'mine.html') return;
-    if (isAccountActive()) {
-      removeMineConversionUi();
-      return;
-    }
-    var anchor = getMineBottomExtrasEl();
-    if (!anchor || document.getElementById('cg-mine-onboard-bar')) return;
-    ensureGateStyles();
-    var bar = document.createElement('div');
-    bar.id = 'cg-mine-onboard-bar';
-    bar.className = 'cg-onboard-bar';
-    bar.innerHTML =
-      '<div><strong>欢迎注册</strong>：输入激活码后可填写个税演示数据，并在「收入纳税明细」中查看。</div>' +
-      '<div class="cg-actions">' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgMineGoActivate">立即激活</button>' +
-      '<button type="button" class="cg-btn cg-btn-ghost" id="cgMineGoInstall">安装说明</button>' +
-      '</div>';
-    anchor.insertBefore(bar, anchor.firstChild);
-    var goAct = document.getElementById('cgMineGoActivate');
-    if (goAct) {
-      goAct.addEventListener('click', function () {
-        track('track_conversion_onboard_activate_click', { page: 'mine' });
-        var btn = document.getElementById('mineActivateBtn');
-        if (btn) btn.click();
-        else goActivate();
-      });
-    }
-    var goInst = document.getElementById('cgMineGoInstall');
-    if (goInst) {
-      goInst.addEventListener('click', function () {
-        window.location.href = 'install_guide.html';
-      });
-    }
   }
 
   function renderMineTaskCard() {
@@ -586,12 +542,7 @@
       existing = document.createElement('div');
       existing.id = 'cg-mine-task-card';
       existing.className = 'cg-task-card';
-      var bar = document.getElementById('cg-mine-onboard-bar');
-      if (bar) {
-        anchor.insertBefore(existing, bar.nextSibling);
-      } else {
-        anchor.insertBefore(existing, anchor.firstChild);
-      }
+      anchor.insertBefore(existing, anchor.firstChild);
     }
     existing.innerHTML =
       '<h4>新手任务</h4>' +
@@ -614,7 +565,6 @@
 
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
-    renderMineOnboardBar();
     renderMineTaskCard();
     if (urlParam('onboarding') !== ONBOARD_ACTIVATE || isAccountActive()) return;
     track('track_conversion_onboard_activate', { page: 'mine' });
