@@ -255,7 +255,9 @@
       '.cg-value-panel .cg-btn-ghost{background:#f5f6fa;color:#333}' +
       '.cg-shouye-card{margin:12px 16px 0;padding:12px 14px;background:linear-gradient(135deg,#e8f4ff,#f8fbff);border:1px solid #c5d9f5;border-radius:10px}' +
       '.cg-shouye-card h4{margin:0 0 6px;font-size:15px;color:#333}' +
-      '.cg-shouye-card p{margin:0 0 10px;font-size:13px;color:#666}' +
+      '.cg-shouye-card p{margin:0 0 10px;font-size:13px;color:#666;line-height:1.45}' +
+      '.cg-shouye-card .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
+      '.cg-shouye-card .cg-btn-primary{background:#1e6fff;color:#fff}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
       '.cg-about-nudge a{color:#1e6fff;font-weight:600}' +
@@ -795,26 +797,63 @@
     }
   }
 
+  function getShouyeDetailYear() {
+    var y = new Date().getFullYear() - 1;
+    try {
+      var sy = localStorage.getItem('selected_year');
+      if (sy) y = Number(sy) - 1 || y;
+    } catch (e) {}
+    return y;
+  }
+
+  function removeLegacyShouyeRetentionCard() {
+    var legacy = document.getElementById('cg-shouye-retention');
+    if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
+  }
+
   function renderShouyeTaxManageEntry() {
     if (currentPage() !== 'shouye.html') return;
     if (!isLoggedIn()) return;
+    removeLegacyShouyeRetentionCard();
     if (document.getElementById('cg-shouye-tax-entry')) return;
     var anchor = document.querySelector('.shouye-content');
     if (!anchor || !anchor.parentNode) return;
     ensureGateStyles();
     var count = taxRecordCount();
+    var y = getShouyeDetailYear();
+    var showRetention = count > 0 && !skipConversionPromo() && hasTaxRecords();
     var card = document.createElement('div');
     card.id = 'cg-shouye-tax-entry';
     card.className = 'cg-shouye-card';
+    var ghostBtnStyle =
+      'border:1px solid #1e6fff;color:#1e6fff;background:#fff;';
     if (count > 0) {
-      card.innerHTML =
-        '<h4>税务演示数据</h4>' +
-        '<p>已添加 ' +
+      var desc =
+        '已添加 ' +
         count +
-        ' 条记录。可继续批量生成、单条添加或修改已有数据。</p>' +
+        ' 条记录。可继续批量生成、单条添加或修改已有数据。';
+      if (showRetention) {
+        desc += '也可查看 ' + y + ' 年收入纳税明细或开具纳税记录预览。';
+      }
+      var actions =
         '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>' +
-        '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">查看收入明细</button></div>';
+        '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="' +
+        ghostBtnStyle +
+        '">查看收入明细</button>';
+      if (showRetention) {
+        actions +=
+          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeLastYear" style="' +
+          ghostBtnStyle +
+          '">查看' +
+          y +
+          '年明细</button>' +
+          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="' +
+          ghostBtnStyle +
+          '">纳税记录开具</button>';
+      }
+      actions += '</div>';
+      card.innerHTML = '<h4>税务演示数据</h4><p>' + desc + '</p>' + actions;
     } else {
       card.innerHTML =
         '<h4>添加税务演示数据</h4>' +
@@ -836,51 +875,31 @@
     if (detailBtn) {
       detailBtn.onclick = function () {
         track('track_conversion_shouye_tax_entry_detail', { count: count });
-        var y = new Date().getFullYear() - 1;
-        try {
-          var sy = localStorage.getItem('selected_year');
-          if (sy) y = Number(sy) - 1 || y;
-        } catch (e) {}
         goIncomeDetail(y);
       };
     }
-    track('track_conversion_shouye_tax_entry_shown', { count: count });
+    var lastYearBtn = document.getElementById('cgShouyeLastYear');
+    if (lastYearBtn) {
+      lastYearBtn.onclick = function () {
+        track('track_conversion_shouye_retention_detail', { year: y });
+        goIncomeDetail(y);
+      };
+    }
+    var najiluBtn = document.getElementById('cgShouyeNajilu');
+    if (najiluBtn) {
+      najiluBtn.onclick = function () {
+        track('track_conversion_shouye_retention_najilu', {});
+        goNajilu();
+      };
+    }
+    track('track_conversion_shouye_tax_entry_shown', {
+      count: count,
+      merged_retention: showRetention ? 1 : 0
+    });
   }
 
   function renderShouyeRetentionCard() {
-    if (currentPage() !== 'shouye.html') return;
-    if (!isLoggedIn() || skipConversionPromo() || !hasTaxRecords()) return;
-    if (document.getElementById('cg-shouye-retention')) return;
-    var anchor = document.querySelector('.shouye-content');
-    if (!anchor || !anchor.parentNode) return;
-    var y = new Date().getFullYear() - 1;
-    try {
-      var sy = localStorage.getItem('selected_year');
-      if (sy) y = Number(sy) - 1 || y;
-    } catch (e) {}
-    ensureGateStyles();
-    var card = document.createElement('div');
-    card.id = 'cg-shouye-retention';
-    card.className = 'cg-shouye-card';
-    card.innerHTML =
-      '<h4>查看年度汇总</h4>' +
-      '<p>您已有演示个税数据，可查看 ' +
-      y +
-      ' 年收入纳税明细或开具纳税记录预览。</p>' +
-      '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeLastYear">查看' +
-      y +
-      '年明细</button>' +
-      '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">纳税记录开具</button></div>';
-    anchor.parentNode.insertBefore(card, anchor);
-    document.getElementById('cgShouyeLastYear').onclick = function () {
-      track('track_conversion_shouye_retention_detail', { year: y });
-      goIncomeDetail(y);
-    };
-    document.getElementById('cgShouyeNajilu').onclick = function () {
-      track('track_conversion_shouye_retention_najilu', {});
-      goNajilu();
-    };
+    removeLegacyShouyeRetentionCard();
   }
 
   function prependMaintenanceMessages(list) {
@@ -996,7 +1015,6 @@
         if (!skipConversionPromo()) {
           bumpIncomeBrowseVisit();
           renderShuimingHint();
-          renderShouyeRetentionCard();
           renderAboutUpdateNudge();
           renderCareVersionHint();
         }
