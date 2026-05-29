@@ -99,16 +99,6 @@
     return Math.round((done / 3) * 100);
   }
 
-  /** 未激活时新手任务：顺序 1 个税 → 2 激活 → 3 任职（可选） */
-  function getInactiveNoviceTaskState() {
-    var hasTax = hasTaxRecords();
-    var done = hasTax ? 1 : 0;
-    if (!hasTax) {
-      return { done: done, btnLabel: '添加个税记录', btnAction: 'tax', currentStep: 1 };
-    }
-    return { done: done, btnLabel: '去激活', btnAction: 'activate', currentStep: 2 };
-  }
-
   function currentPage() {
     var p = window.location.pathname || '';
     var i = p.lastIndexOf('/');
@@ -538,10 +528,6 @@
     if (document.body) {
       document.body.classList.add('mine-account-active');
     }
-    var shotBar = document.getElementById('cgMineScreenshotBar');
-    var taxEntry = document.getElementById('mineTaxEntryLink');
-    if (shotBar) shotBar.style.display = 'none';
-    if (taxEntry) taxEntry.style.display = 'none';
   }
 
   function getMineBottomExtrasEl() {
@@ -564,35 +550,27 @@
       existing.className = 'cg-task-card';
       anchor.insertBefore(existing, anchor.firstChild);
     }
-    var state = getInactiveNoviceTaskState();
-    var pct = Math.round((state.done / 3) * 100);
+    var done = hasTaxRecords() ? 1 : 0;
+    var pct = Math.round((done / 3) * 100);
     existing.innerHTML =
       '<h4>新手任务</h4>' +
       '<div class="cg-task-progress-label">完成进度 ' +
-      state.done +
+      done +
       '/3（激活后自动隐藏本卡片）</div>' +
       '<div class="cg-task-progress"><span style="width:' +
       pct +
       '%"></span></div>' +
       '<ul class="cg-task-steps">' +
       '<li class="' +
-      (state.done >= 1 ? 'done' : '') +
+      (done >= 1 ? 'done' : '') +
       '"><span class="cg-task-dot">1</span><span>添加个税记录</span></li>' +
-      '<li class="' +
-      (state.currentStep > 2 ? 'done' : '') +
-      '"><span class="cg-task-dot">2</span><span>激活账号</span></li>' +
+      '<li><span class="cg-task-dot">2</span><span>激活账号</span></li>' +
       '<li><span class="cg-task-dot">3</span><span>添加任职受雇（可选）</span></li>' +
       '</ul>' +
-      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskPrimary">' +
-      state.btnLabel +
-      '</button></div>';
-    var b = document.getElementById('cgTaskPrimary');
+      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskActivate">去激活</button></div>';
+    var b = document.getElementById('cgTaskActivate');
     if (b) {
       b.addEventListener('click', function () {
-        if (state.btnAction === 'tax') {
-          goFillTaxRecords();
-          return;
-        }
         var ab = document.getElementById('mineActivateBtn');
         if (ab) ab.click();
       });
