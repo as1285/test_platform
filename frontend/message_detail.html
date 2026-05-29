@@ -206,9 +206,9 @@
             var title = (msg.title || '扣缴申报温馨提示').trim();
             var company = parseCompanyName(msg);
             return (
-                '【<span class="detail-title-label">' +
+                '<span class="detail-title-label">【' +
                 escapeHtml(title) +
-                '</span>】来自' +
+                '】</span>来自' +
                 escapeHtml(company) +
                 '扣缴申报的温馨提示'
             );
