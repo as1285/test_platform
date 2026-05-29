@@ -1210,6 +1210,7 @@
             'daiban.html': '待办',
             'bancha.html': '办查',
             'message.html': '消息',
+            'message_detail.html': '消息详情',
             'zonghe.html': '综合所得年度汇算',
             'renzhi.html': '任职受雇',
             'renzhi_detail.html': '详情',

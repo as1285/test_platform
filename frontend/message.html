@@ -161,6 +161,12 @@
             padding: 16px;
             border-bottom: 1px solid #f0f0f0;
             gap: 12px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .message-item:active {
+            background: #f8f9fb;
         }
         
         .msg-item-icon {
@@ -321,19 +327,44 @@
                 .replace(/"/g, '&quot;');
         }
 
+        function messageListDesc(msg) {
+            var c = (msg.content || '').trim();
+            if (c) return c;
+            var co = (msg.company_name || '').trim();
+            if (co) return '来自' + co + '的扣缴信息';
+            return '—';
+        }
+
+        function openMessageDetail(msg) {
+            if (!msg || !msg.id) return;
+            if (msg._cg_demo) {
+                window.location.href = 'message_detail.html?demo=maint';
+                return;
+            }
+            window.location.href = 'message_detail.html?id=' + encodeURIComponent(String(msg.id));
+        }
+
         function renderMessageList() {
             var list = allMessages.filter(function (msg) {
                 return !filterUnreadOnly || Number(msg.is_read) === 0;
             });
             var html = '';
-            list.forEach(function (msg) {
-                html += '<div class="message-item">';
+            list.forEach(function (msg, idx) {
+                var demoAttr = msg._cg_demo ? ' data-demo="1"' : '';
+                html +=
+                    '<div class="message-item" role="button" tabindex="0" data-msg-idx="' +
+                    idx +
+                    '"' +
+                    demoAttr +
+                    ' data-id="' +
+                    escapeHtml(String(msg.id || '')) +
+                    '">';
                 html += '<div class="msg-item-icon">';
                 html += '<img src="message_item_icon.png" width="44" height="44" alt="">';
                 html += '</div>';
                 html += '<div class="message-content">';
                 html += '<div class="message-content-title">' + escapeHtml(msg.title) + '</div>';
-                html += '<div class="message-content-desc">' + escapeHtml(msg.content) + '</div>';
+                html += '<div class="message-content-desc">' + escapeHtml(messageListDesc(msg)) + '</div>';
                 html += '</div>';
                 html += '<div class="message-meta">';
                 html += '<span class="message-date">' + escapeHtml(msg.msg_date) + '</span>';
@@ -346,6 +377,34 @@
             var emptyHint = filterUnreadOnly ? '暂无未读消息' : '暂无消息';
             document.getElementById('messageList').innerHTML =
                 html || '<div style="text-align:center;padding:50px;color:#999;">' + emptyHint + '</div>';
+        }
+
+        function bindMessageListClicks() {
+            var listEl = document.getElementById('messageList');
+            if (!listEl || listEl.__msgClickBound) return;
+            listEl.__msgClickBound = true;
+            listEl.addEventListener('click', function (e) {
+                var item = e.target.closest('.message-item');
+                if (!item) return;
+                var idx = parseInt(item.getAttribute('data-msg-idx'), 10);
+                var filtered = allMessages.filter(function (msg) {
+                    return !filterUnreadOnly || Number(msg.is_read) === 0;
+                });
+                var msg = filtered[idx];
+                if (msg) openMessageDetail(msg);
+            });
+            listEl.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                var item = e.target.closest('.message-item');
+                if (!item) return;
+                e.preventDefault();
+                var idx = parseInt(item.getAttribute('data-msg-idx'), 10);
+                var filtered = allMessages.filter(function (msg) {
+                    return !filterUnreadOnly || Number(msg.is_read) === 0;
+                });
+                var msg = filtered[idx];
+                if (msg) openMessageDetail(msg);
+            });
         }
 
         function loadMessages() {
@@ -363,14 +422,7 @@
                             allMessages = window.ConversionGuide.prependMaintenanceMessages(allMessages);
                         }
                         renderMessageList();
-                        if (
-                            window.ConversionGuide &&
-                            typeof window.ConversionGuide.bindMaintenanceMessageDismiss === 'function'
-                        ) {
-                            window.ConversionGuide.bindMaintenanceMessageDismiss(
-                                document.getElementById('messageList')
-                            );
-                        }
+                        bindMessageListClicks();
                     } else {
                         allMessages = [];
                         document.getElementById('messageList').innerHTML =
@@ -412,6 +464,7 @@
                 });
         });
 
+        bindMessageListClicks();
         loadMessages();
         
         // iOS设备检测，底部导航上移

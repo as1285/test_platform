@@ -4606,8 +4606,51 @@ async function handleTaxGet(req, res) {
 async function handleMessageGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
-  if (action !== 'list' || userId == null || userId === '') {
-    return res.status(400).json({ code: 400, msg: 'action=list and user_id required' });
+  if (userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: 'user_id required' });
+  }
+  if (action === 'detail') {
+    var detailId = req.query.id;
+    if (detailId == null || detailId === '') {
+      return res.status(400).json({ code: 400, msg: 'id required' });
+    }
+    try {
+      const conn = await pool.getConnection();
+      try {
+        const [rows] = await conn.execute(
+          'SELECT id, user_id, title, content, company_name, msg_date, is_read, created_at FROM messages WHERE id = ? AND user_id = ? LIMIT 1',
+          [String(detailId), String(userId)]
+        );
+        if (!rows.length) {
+          return res.status(404).json({ code: 404, msg: '消息不存在' });
+        }
+        await conn.execute('UPDATE messages SET is_read = 1 WHERE id = ? AND user_id = ?', [
+          String(detailId),
+          String(userId)
+        ]);
+        var r = rows[0];
+        return res.json({
+          code: 200,
+          data: {
+            id: r.id,
+            title: r.title,
+            content: r.content,
+            company_name: r.company_name,
+            msg_date: r.msg_date,
+            is_read: 1,
+            created_at: r.created_at ? r.created_at.toISOString() : null
+          }
+        });
+      } finally {
+        conn.release();
+      }
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
+  if (action !== 'list') {
+    return res.status(400).json({ code: 400, msg: 'action=list or detail required' });
   }
   try {
     const conn = await pool.getConnection();
@@ -8895,6 +8938,7 @@ var CERT_PAGE_TITLE_ZH = {
   'daiban.html': '待办',
   'bancha.html': '办查',
   'message.html': '消息',
+  'message_detail.html': '消息详情',
   'zonghe.html': '综合所得年度汇算',
   'renzhi.html': '任职受雇',
   'renzhi_detail.html': '详情',

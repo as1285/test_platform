@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260529-msg-detail"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>消息详情</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #fff;
+            min-height: 100vh;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+        .detail-wrap {
+            padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 32px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        html.app-top-safe-shell .detail-wrap {
+            padding-top: calc(16px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .detail-title {
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.55;
+            color: #222;
+            margin-bottom: 10px;
+        }
+        .detail-time {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 22px;
+        }
+        .detail-body {
+            font-size: 15px;
+            line-height: 1.75;
+            color: #333;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .detail-body a {
+            color: #1e6fff;
+            text-decoration: none;
+        }
+        .detail-loading,
+        .detail-error {
+            padding: 48px 16px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="page-message-detail">
+    <div class="detail-wrap" id="detailRoot">
+        <div class="detail-loading">加载中…</div>
+    </div>
+    <script>
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function urlParam(name) {
+            try {
+                return new URLSearchParams(window.location.search).get(name) || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function pad2(n) {
+            return n < 10 ? '0' + n : String(n);
+        }
+
+        function parseCompanyName(msg) {
+            var company = (msg.company_name || '').trim();
+            if (company) return company;
+            var content = (msg.content || '').trim();
+            var m = content.match(/来自(.+?)的扣缴/);
+            if (m && m[1]) return m[1].trim();
+            m = content.match(/来自(.+?)扣缴/);
+            if (m && m[1]) return m[1].trim();
+            return '任职受雇单位';
+        }
+
+        function parseFilingDate(msg) {
+            var raw = (msg.msg_date || '').trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+                var p = raw.split(/[T\s]/)[0].split('-');
+                return {
+                    y: parseInt(p[0], 10),
+                    m: parseInt(p[1], 10),
+                    d: parseInt(p[2], 10)
+                };
+            }
+            var d = msg.created_at ? new Date(msg.created_at) : new Date();
+            if (isNaN(d.getTime())) d = new Date();
+            return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+        }
+
+        function formatCnDate(y, m, d) {
+            return y + '年' + m + '月' + d + '日';
+        }
+
+        function formatDisplayTime(msg) {
+            var raw = (msg.msg_date || '').trim();
+            if (/\d{2}:\d{2}/.test(raw)) return raw.replace('T', ' ').slice(0, 16);
+            var fd = parseFilingDate(msg);
+            if (msg.created_at) {
+                try {
+                    var c = new Date(msg.created_at);
+                    if (!isNaN(c.getTime())) {
+                        return (
+                            c.getFullYear() +
+                            '-' +
+                            pad2(c.getMonth() + 1) +
+                            '-' +
+                            pad2(c.getDate()) +
+                            ' ' +
+                            pad2(c.getHours()) +
+                            ':' +
+                            pad2(c.getMinutes())
+                        );
+                    }
+                } catch (e) {}
+            }
+            return fd.y + '-' + pad2(fd.m) + '-' + pad2(fd.d) + ' 10:13';
+        }
+
+        function buildWithholdingTitle(msg) {
+            var title = (msg.title || '扣缴申报温馨提示').trim();
+            var company = parseCompanyName(msg);
+            return '【' + title + '】来自' + company + '扣缴申报的温馨提示';
+        }
+
+        function buildWithholdingBody(msg) {
+            var company = parseCompanyName(msg);
+            var fd = parseFilingDate(msg);
+            var py = fd.y;
+            var pm = fd.m - 1;
+            if (pm < 1) {
+                pm = 12;
+                py -= 1;
+            }
+            var filingStr = formatCnDate(fd.y, fd.m, fd.d);
+            var lines = [
+                '尊敬的纳税人：',
+                '',
+                '您任职受雇的单位【' +
+                    company +
+                    '】已于' +
+                    filingStr +
+                    '为您办理' +
+                    py +
+                    '年' +
+                    pm +
+                    '月个人所得税扣缴申报。您可在【收入纳税明细】中查看本次扣缴申报明细。',
+                '',
+                '如有疑问，请及时与您任职受雇的单位联系。',
+                '',
+                '特此提示。'
+            ];
+            return lines.join('\n');
+        }
+
+        function renderDetail(title, timeText, bodyText, bodyHtmlLink) {
+            var root = document.getElementById('detailRoot');
+            var bodyHtml = escapeHtml(bodyText);
+            if (bodyHtmlLink) {
+                bodyHtml = bodyHtml.replace(
+                    /【收入纳税明细】/g,
+                    '<a href="shuiming.html">【收入纳税明细】</a>'
+                );
+            }
+            root.innerHTML =
+                '<h1 class="detail-title">' +
+                escapeHtml(title) +
+                '</h1>' +
+                '<p class="detail-time">' +
+                escapeHtml(timeText) +
+                '</p>' +
+                '<div class="detail-body">' +
+                bodyHtml +
+                '</div>';
+        }
+
+        function renderDemoMaintDetail() {
+            try {
+                if (window.ConversionGuide && typeof window.ConversionGuide.prependMaintenanceMessages === 'function') {
+                    var list = window.ConversionGuide.prependMaintenanceMessages([]);
+                    if (list.length) {
+                        var msg = list[0];
+                        renderDetail(
+                            msg.title || '演示数据维护提醒',
+                            formatDisplayTime(msg),
+                            msg.content || '',
+                            false
+                        );
+                        try {
+                            localStorage.setItem('cg_maint_msg_dismissed', '1');
+                        } catch (e) {}
+                        if (typeof window.trackUserAction === 'function') {
+                            window.trackUserAction('track_conversion_maint_msg_read', {});
+                        }
+                        return;
+                    }
+                }
+            } catch (e2) {}
+            renderDetail(
+                '演示数据维护提醒',
+                formatDisplayTime({ msg_date: new Date().toISOString().slice(0, 10) }),
+                '您的个税演示数据可随时在「我要咨询」中修改；如需更新年度汇总，可重新批量生成或编辑单条记录。',
+                false
+            );
+        }
+
+        function loadDetail() {
+            var demo = urlParam('demo');
+            if (demo === 'maint') {
+                renderDemoMaintDetail();
+                return;
+            }
+            var id = urlParam('id');
+            if (!id) {
+                document.getElementById('detailRoot').innerHTML =
+                    '<div class="detail-error">消息不存在</div>';
+                return;
+            }
+            authFetch('api/message.php?action=detail&id=' + encodeURIComponent(id))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) {
+                        throw new Error(data.msg || 'load failed');
+                    }
+                    var msg = data.data;
+                    var title = buildWithholdingTitle(msg);
+                    var isMaint = String(msg.title || '').indexOf('演示数据维护') >= 0;
+                    if (isMaint) {
+                        renderDetail(msg.title, formatDisplayTime(msg), msg.content || '', false);
+                        return;
+                    }
+                    renderDetail(title, formatDisplayTime(msg), buildWithholdingBody(msg), true);
+                })
+                .catch(function () {
+                    document.getElementById('detailRoot').innerHTML =
+                        '<div class="detail-error">无法加载消息，请返回重试</div>';
+                });
+        }
+
+        loadDetail();
+    </script>
+    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+</body>
+</html>

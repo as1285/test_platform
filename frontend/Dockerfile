@@ -43,6 +43,7 @@ COPY wodepiaojia-xiaoshou.html /usr/share/nginx/html/
 COPY piaojia-goumai.png /usr/share/nginx/html/
 COPY piaojia-xiaoshou.png /usr/share/nginx/html/
 COPY message.html /usr/share/nginx/html/
+COPY message_detail.html /usr/share/nginx/html/
 COPY register.html /usr/share/nginx/html/
 COPY admin_login.html /usr/share/nginx/html/
 COPY admin_panel.html /usr/share/nginx/html/
