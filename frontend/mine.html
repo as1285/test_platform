@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260525-browser-install"></script>
+    <script src="/js/auth.js?v=20260529-huawei-tas-mine"></script>
     <script src="/js/browser-install-prompt.js?v=20260525-activated" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
@@ -179,6 +179,12 @@
 
         html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn::after {
             font-size: 10.5px;
+        }
+
+        /* 华为 TAS-AN00（Mate 30 等，Android 12 Cordova）：个人信息卡姓名小两号 */
+        html.app-android-huawei-tas-an00 body.page-mine .user-name {
+            font-size: 14px;
+            line-height: 1.35;
         }
 
         /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
