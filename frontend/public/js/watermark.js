@@ -11,9 +11,7 @@
                 p.endsWith('/shuiming.html') ||
                 p.endsWith('shuiming.html') ||
                 p.endsWith('/shuiming_result.html') ||
-                p.endsWith('shuiming_result.html') ||
-                p.endsWith('/consult.html') ||
-                p.endsWith('consult.html')
+                p.endsWith('shuiming_result.html')
             );
         } catch (e) {
             return false;
