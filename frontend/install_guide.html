@@ -243,6 +243,11 @@
                             a.rel = 'noopener noreferrer';
                         }
                         a.textContent = '下载 Android 安装包';
+                        a.addEventListener('click', function () {
+                            if (typeof window.trackPublicAction === 'function') {
+                                window.trackPublicAction('track_install_apk_click', { page: 'install_guide' });
+                            }
+                        });
                         row.appendChild(a);
                     }
                     if (ios) {
@@ -251,6 +256,11 @@
                         ia.className = 'btn btn-primary';
                         ia.href = href || ios;
                         ia.textContent = '下载 iOS 描述文件';
+                        ia.addEventListener('click', function () {
+                            if (typeof window.trackPublicAction === 'function') {
+                                window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
+                            }
+                        });
                         row.appendChild(ia);
                     }
                 })
@@ -284,6 +294,15 @@
                 s.src = src;
                 s.type = 'video/mp4';
                 v.appendChild(s);
+                v.addEventListener('play', function () {
+                    var trackKey =
+                        containerId === 'iosInstallVideoContainer'
+                            ? 'track_install_ios_video_play'
+                            : 'track_install_usage_video_play';
+                    if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction(trackKey, { page: 'install_guide' });
+                    }
+                }, { once: true });
                 var wrap = document.createElement('div');
                 wrap.className = 'video-wrap';
                 wrap.appendChild(v);

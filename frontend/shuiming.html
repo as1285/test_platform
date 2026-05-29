@@ -746,7 +746,16 @@
         
         // 查询
         function doQuery() {
-            // 保存选择的年份到localStorage
+            if (window.ConversionGuide) {
+                if (!window.ConversionGuide.isAccountActive()) {
+                    window.ConversionGuide.gateActivation('收入纳税明细');
+                    return;
+                }
+                if (!window.ConversionGuide.hasTaxRecords()) {
+                    window.ConversionGuide.gateTaxRecords('收入纳税明细');
+                    return;
+                }
+            }
             localStorage.setItem('selected_year', selectedYear);
             window.location.href = 'shuiming_result.html?year=' + selectedYear;
         }

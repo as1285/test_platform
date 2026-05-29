@@ -922,6 +922,23 @@
             <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
         </section>
         <section>
+            <h2>注册后 7 日转化漏斗</h2>
+            <p class="hint" style="margin-top:0;">按用户<strong>注册日</strong> cohort 统计：注册后 168 小时内是否完成激活、是否写入个税记录、是否访问过收入纳税明细相关页面（<code>shuiming</code> / <code>xiangqing</code>）。</p>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="analyticsFunnelDays">统计天数</label>
+                    <select id="analyticsFunnelDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
+            </div>
+            <div id="analyticsRegistrationFunnel" class="analytics-conv-wrap" aria-live="polite">漏斗加载中…</div>
+        </section>
+        <section>
             <h2>注册时段分析</h2>
             <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
@@ -1416,7 +1433,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260528-user-behavior-module"></script>
+    <script src="/js/admin_panel.js?v=20260528-conversion-p0"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>

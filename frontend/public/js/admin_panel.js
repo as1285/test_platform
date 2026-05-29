@@ -2334,6 +2334,7 @@
 
         function loadAnalyticsDashboard() {
             loadAnalyticsDailyConversion();
+            loadRegistrationFunnel();
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
@@ -3088,6 +3089,81 @@
             }
             html += '</div>';
             el.innerHTML = html;
+        }
+
+        function renderRegistrationFunnel(data) {
+            var el = document.getElementById('analyticsRegistrationFunnel');
+            if (!el) return;
+            if (!data || !data.summary) {
+                el.textContent = '漏斗暂无数据';
+                return;
+            }
+            var s = data.summary;
+            var cards = [
+                { label: '注册用户', val: s.registered },
+                { label: '7日内激活', val: (s.activated_7d || 0) + ' (' + (s.rate_activate_7d_pct || '—') + ')' },
+                { label: '7日内有个税', val: (s.tax_7d || 0) + ' (' + (s.rate_tax_7d_pct || '—') + ')' },
+                { label: '7日内看明细', val: (s.viewed_detail_7d || 0) + ' (' + (s.rate_detail_7d_pct || '—') + ')' }
+            ];
+            var html = '<div class="user-data-stats" style="margin-bottom:12px;">';
+            cards.forEach(function (c) {
+                html +=
+                    '<div class="user-data-stat-card"><div class="ud-label">' +
+                    esc(c.label) +
+                    '</div><div class="ud-val">' +
+                    esc(String(c.val != null ? c.val : '—')) +
+                    '</div></div>';
+            });
+            html += '</div>';
+            html +=
+                '<p class="hint" style="margin:0 0 10px;">激活→有个税 ' +
+                esc(s.rate_tax_of_activated_pct || '—') +
+                ' · 有个税→看明细 ' +
+                esc(s.rate_detail_of_tax_pct || '—') +
+                '</p>';
+            var series = Array.isArray(data.series) ? data.series.slice().reverse() : [];
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html +=
+                '<th>注册日</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th></tr></thead><tbody>';
+            if (!series.length) {
+                html += '<tr><td colspan="7">暂无</td></tr>';
+            } else {
+                series.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(row.registered) + '</td>';
+                    html += '<td>' + esc(row.activated_7d) + '</td>';
+                    html += '<td>' + esc(row.tax_7d) + '</td>';
+                    html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
+                    html += '<td>' + esc(row.rate_activate_7d_pct || '—') + '</td>';
+                    html += '<td>' + esc(row.rate_tax_7d_pct || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadRegistrationFunnel() {
+            var el = document.getElementById('analyticsRegistrationFunnel');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsFunnelDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            el.textContent = '漏斗加载中…';
+            adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '漏斗加载失败';
+                        return;
+                    }
+                    renderRegistrationFunnel(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '漏斗加载失败';
+                });
         }
 
         function loadAnalyticsDailyConversion(resetPage) {
@@ -5495,6 +5571,18 @@
         document.getElementById('analyticsConversionDays').addEventListener('change', function () {
             loadAnalyticsDailyConversion(true);
         });
+        var btnRefreshRegistrationFunnel = document.getElementById('btnRefreshRegistrationFunnel');
+        if (btnRefreshRegistrationFunnel) {
+            btnRefreshRegistrationFunnel.addEventListener('click', function () {
+                loadRegistrationFunnel();
+            });
+        }
+        var analyticsFunnelDays = document.getElementById('analyticsFunnelDays');
+        if (analyticsFunnelDays) {
+            analyticsFunnelDays.addEventListener('change', function () {
+                loadRegistrationFunnel();
+            });
+        }
         var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');
         if (btnRefreshRegisterTime) {
             btnRefreshRegisterTime.addEventListener('click', function () {

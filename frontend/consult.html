@@ -3818,6 +3818,15 @@
                         tip += '（' + reassigned + ' 条因编号已存在已另存为新记录，未覆盖原记录）';
                     }
                     showMsg(tip, true);
+                    try {
+                        localStorage.setItem('tax_record_count', String(Math.max(1, writes.length)));
+                    } catch (eTaxCnt) {}
+                    if (window.ConversionGuide && typeof window.ConversionGuide.refresh === 'function') {
+                        window.ConversionGuide.refresh();
+                    }
+                    if (window.ConversionGuide && typeof window.ConversionGuide.afterTaxRecordsCreated === 'function') {
+                        window.ConversionGuide.afterTaxRecordsCreated();
+                    }
                     return refreshRecordList();
                 })
                 .catch(function (err) {

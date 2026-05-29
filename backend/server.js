@@ -6094,6 +6094,126 @@ async function handleAdminUsersDailyConversion(req, res) {
   }
 }
 
+/** 注册后 7 日内漏斗：激活 / 有个税 / 查看收入明细（按用户注册日 cohort） */
+async function handleAdminRegistrationFunnel(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+
+    const conn = await pool.getConnection();
+    try {
+      var where = [regSince];
+      var params = [days - 1];
+      appendAdminUserScope(where, params, req.admin, 'u.username');
+      var whereSql = ' WHERE ' + where.join(' AND ');
+
+      const [sumRows] = await conn.query(
+        `SELECT COUNT(*) AS registered,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM activation_codes ac
+                  WHERE ac.used_by_username = u.username
+                    AND ac.last_used_at IS NOT NULL
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS activated_7d,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM tax_records tr
+                  WHERE tr.user_id = u.username
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS tax_7d,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM user_page_events e
+                  WHERE e.username = u.username
+                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+         FROM users u` + whereSql,
+        params
+      );
+      var sum = sumRows[0] || {};
+      var registered = Number(sum.registered) || 0;
+      var activated7 = Number(sum.activated_7d) || 0;
+      var tax7 = Number(sum.tax_7d) || 0;
+      var detail7 = Number(sum.viewed_detail_7d) || 0;
+
+      function pct(n, d) {
+        if (!d || d <= 0) return null;
+        return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+      }
+
+      const [dayRows] = await conn.query(
+        `SELECT ${cnUserDay} AS d,
+                COUNT(*) AS registered,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM activation_codes ac
+                  WHERE ac.used_by_username = u.username
+                    AND ac.last_used_at IS NOT NULL
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS activated_7d,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM tax_records tr
+                  WHERE tr.user_id = u.username
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS tax_7d,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM user_page_events e
+                  WHERE e.username = u.username
+                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                    AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+         FROM users u` +
+          whereSql +
+          ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
+        params
+      );
+
+      var series = (dayRows || []).map(function (r) {
+        var reg = Number(r.registered) || 0;
+        var a7 = Number(r.activated_7d) || 0;
+        var t7 = Number(r.tax_7d) || 0;
+        var v7 = Number(r.viewed_detail_7d) || 0;
+        return {
+          date: formatDateKey(r.d),
+          registered: reg,
+          activated_7d: a7,
+          tax_7d: t7,
+          viewed_detail_7d: v7,
+          rate_activate_7d_pct: pct(a7, reg),
+          rate_tax_7d_pct: pct(t7, reg),
+          rate_detail_7d_pct: pct(v7, reg)
+        };
+      });
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          summary: {
+            registered: registered,
+            activated_7d: activated7,
+            tax_7d: tax7,
+            viewed_detail_7d: detail7,
+            rate_activate_7d_pct: pct(activated7, registered),
+            rate_tax_7d_pct: pct(tax7, registered),
+            rate_detail_7d_pct: pct(detail7, registered),
+            rate_tax_of_activated_pct: pct(tax7, activated7),
+            rate_detail_of_tax_pct: pct(detail7, tax7)
+          },
+          series: series
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 注册时段分布（按北京时间 created_at） */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
@@ -10243,6 +10363,12 @@ app.get(
   handleAdminUserDataDetail
 );
 app.get('/api/admin/analytics/daily-conversion', requireAdminAuth, requireAdminMenu('analytics'), handleAdminUsersDailyConversion);
+app.get(
+  '/api/admin/analytics/registration-funnel',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminRegistrationFunnel
+);
 app.get(
   '/api/admin/analytics/register-time',
   requireAdminAuth,

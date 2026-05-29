@@ -1214,6 +1214,18 @@
   };
   autoTrackJumpButtons();
 
+  (function injectConversionGuide() {
+    if (isPublicPage()) return;
+    if (currentPageName() === 'admin_panel.html') return;
+    if (!getToken()) return;
+    if (document.querySelector('script[data-conversion-guide]')) return;
+    var s = document.createElement('script');
+    s.src = '/js/conversion-guide.js?v=20260528-conversion-p0';
+    s.setAttribute('data-conversion-guide', '1');
+    s.async = true;
+    document.head.appendChild(s);
+  })();
+
   (function injectPageLoadingAssets() {
     if (isPublicPage()) {
       return;

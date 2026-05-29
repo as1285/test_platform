@@ -1267,8 +1267,13 @@
                                 window.refreshWatermarkFromApi();
                             }
                             updateMineActivateButton({ account_active: true });
-                            alert('激活成功');
                             loadUserInfo();
+                            if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
+                                window.ConversionGuide.afterActivateSuccess();
+                            } else {
+                                alert('激活成功');
+                                window.location.href = 'consult.html?tab=records&onboarding=tax';
+                            }
                             return;
                         }
                         alert((x.body && x.body.msg) || '激活失败');

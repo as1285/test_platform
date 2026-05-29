@@ -1034,14 +1034,14 @@
         }
 
         /** 无记录时的空状态：shuiming_empty.png 为高清截切（仅插画+「页面空空如也」） */
-        function getNoRecordsHtml() {
+        window.getNoRecordsHtml = function getNoRecordsHtml() {
             return (
                 '<div class="list-empty-state" role="status">' +
                 '<div class="list-empty-illustration">' +
                 '<img src="shuiming_empty.png" alt="页面空空如也" loading="lazy" decoding="async">' +
                 '</div></div>'
             );
-        }
+        };
 
         function renderList(records, listYear) {
             var listHtml = '';
