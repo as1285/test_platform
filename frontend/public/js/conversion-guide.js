@@ -164,6 +164,7 @@
 
   function removeActivationPromoUi() {
     [
+      'cg-shouye-tax-entry',
       'cg-shouye-retention',
       'cg-shuiming-hint',
       'cg-care-hint',
@@ -216,6 +217,9 @@
         if (u.account_active !== undefined && u.account_active !== null) {
           var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
           localStorage.setItem('account_active', active ? '1' : '0');
+          if (active) {
+            removeActivationPromoUi();
+          }
         }
         if (u.tax_record_count != null) {
           localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
@@ -666,6 +670,7 @@
   function afterActivateSuccess() {
     track('track_conversion_activate_success', { page: currentPage() });
     removeMineConversionUi();
+    removeActivationPromoUi();
     try {
       sessionStorage.setItem('cg_post_activate', '1');
     } catch (e) {}
@@ -834,6 +839,10 @@
   function renderShouyeTaxManageEntry() {
     if (currentPage() !== 'shouye.html') return;
     if (!isLoggedIn()) return;
+    if (isAccountActive()) {
+      removeActivationPromoUi();
+      return;
+    }
     removeLegacyShouyeRetentionCard();
     if (document.getElementById('cg-shouye-tax-entry')) return;
     var anchor = document.querySelector('.shouye-content');
@@ -848,21 +857,18 @@
     var ghostBtnStyle =
       'border:1px solid #1e6fff;color:#1e6fff;background:#fff;';
     if (count > 0) {
-      var desc =
-        '已添加 ' +
-        count +
-        ' 条记录。可继续批量生成、单条添加或修改已有数据。';
+      var desc = '已有 ' + count + ' 条演示记录，可继续批量生成或修改。';
       if (showRetention) {
-        desc += '也可查看收入纳税明细或开具纳税记录预览。';
+        desc += '也可预览收入纳税明细与纳税记录开具。';
       }
       var actions =
         '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>' +
-        '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="' +
-        ghostBtnStyle +
-        '">查看收入明细</button>';
+        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>';
       if (showRetention) {
         actions +=
+          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="' +
+          ghostBtnStyle +
+          '">查看收入明细</button>' +
           '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="' +
           ghostBtnStyle +
           '">纳税记录开具</button>';
@@ -872,7 +878,7 @@
     } else {
       card.innerHTML =
         '<h4>添加税务演示数据</h4>' +
-        '<p>填写工资与申报记录后，可在「收入纳税明细」「纳税记录开具」查看效果。</p>' +
+        '<p>一键生成工资与申报记录，即可预览收入纳税明细与纳税记录开具效果。</p>' +
         '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">去添加</button>' +
         '<a href="mine.html" class="cg-btn cg-btn-ghost" style="display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:1px solid #1e6fff;color:#1e6fff;background:#fff;">我的页入口</a></div>';
