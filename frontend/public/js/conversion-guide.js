@@ -116,7 +116,8 @@
       '.cg-onboard-bar .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
       '.cg-onboard-bar .cg-btn-primary{background:#1e6fff;color:#fff}' +
       '.cg-onboard-bar .cg-btn-ghost{background:#fff;color:#1e6fff;border:1px solid #1e6fff}' +
-      '.cg-task-card{margin:0 16px 14px;padding:12px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
+      '.cg-task-card{margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
+      '.page-mine .content-wrapper > .user-card{position:relative;z-index:1}' +
       '.cg-task-card h4{margin:0 0 8px;font-size:14px;color:#333}' +
       '.cg-task-steps{margin:0;padding:0;list-style:none}' +
       '.cg-task-steps li{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#555;border-bottom:1px solid #f0f0f0}' +
@@ -167,8 +168,21 @@
     return false;
   }
 
+  function removeMineConversionUi() {
+    ['cg-mine-task-card', 'cg-mine-onboard-bar'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    });
+  }
+
   function renderMineOnboardBar() {
-    if (currentPage() !== 'mine.html' || isAccountActive()) return;
+    if (currentPage() !== 'mine.html') return;
+    if (isAccountActive()) {
+      removeMineConversionUi();
+      return;
+    }
     var wrap = document.querySelector('.content-wrapper');
     if (!wrap || document.getElementById('cg-mine-onboard-bar')) return;
     ensureGateStyles();
@@ -201,8 +215,13 @@
 
   function renderMineTaskCard() {
     if (currentPage() !== 'mine.html') return;
+    if (isAccountActive()) {
+      removeMineConversionUi();
+      return;
+    }
     var wrap = document.querySelector('.content-wrapper');
     if (!wrap) return;
+    var userCard = wrap.querySelector('.user-card');
     var existing = document.getElementById('cg-mine-task-card');
     if (!existing) {
       ensureGateStyles();
@@ -212,58 +231,26 @@
       var bar = document.getElementById('cg-mine-onboard-bar');
       if (bar && bar.nextSibling) {
         wrap.insertBefore(existing, bar.nextSibling);
+      } else if (userCard) {
+        wrap.insertBefore(existing, userCard);
       } else {
         wrap.insertBefore(existing, wrap.firstChild);
       }
     }
-    var step1 = isAccountActive();
-    var step2 = employerCount() > 0;
-    var step3 = hasTaxRecords();
-    var done = step1 && step2 && step3;
     existing.innerHTML =
-      '<h4>新手任务' +
-      (done ? ' <span style="color:#1e6fff;font-weight:normal;">已完成</span>' : '') +
-      '</h4>' +
+      '<h4>新手任务</h4>' +
       '<ul class="cg-task-steps">' +
-      '<li class="' +
-      (step1 ? 'done' : '') +
-      '"><span class="cg-task-dot">' +
-      (step1 ? '✓' : '1') +
-      '</span><span>激活账号</span></li>' +
-      '<li class="' +
-      (step2 ? 'done' : '') +
-      '"><span class="cg-task-dot">' +
-      (step2 ? '✓' : '2') +
-      '</span><span>添加任职受雇（可选）</span></li>' +
-      '<li class="' +
-      (step3 ? 'done' : '') +
-      '"><span class="cg-task-dot">' +
-      (step3 ? '✓' : '3') +
-      '</span><span>添加个税记录</span></li>' +
-      '</ul>';
-    if (!step1) {
-      existing.querySelector('ul').insertAdjacentHTML(
-        'afterend',
-        '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskActivate">去激活</button></div>'
-      );
-      var b = document.getElementById('cgTaskActivate');
-      if (b) {
-        b.addEventListener('click', function () {
-          var ab = document.getElementById('mineActivateBtn');
-          if (ab) ab.click();
-        });
-      }
-    } else if (!step3) {
-      existing.querySelector('ul').insertAdjacentHTML(
-        'afterend',
-        '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskTax">去添加税务记录</button></div>'
-      );
-      var tb = document.getElementById('cgTaskTax');
-      if (tb) {
-        tb.addEventListener('click', function () {
-          goFillTaxRecords();
-        });
-      }
+      '<li><span class="cg-task-dot">1</span><span>激活账号</span></li>' +
+      '<li><span class="cg-task-dot">2</span><span>添加任职受雇（可选）</span></li>' +
+      '<li><span class="cg-task-dot">3</span><span>添加个税记录</span></li>' +
+      '</ul>' +
+      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskActivate">去激活</button></div>';
+    var b = document.getElementById('cgTaskActivate');
+    if (b) {
+      b.addEventListener('click', function () {
+        var ab = document.getElementById('mineActivateBtn');
+        if (ab) ab.click();
+      });
     }
   }
 
@@ -366,6 +353,7 @@
 
   function afterActivateSuccess() {
     track('track_conversion_activate_success', { page: currentPage() });
+    removeMineConversionUi();
     try {
       sessionStorage.setItem('cg_post_activate', '1');
     } catch (e) {}
@@ -406,6 +394,7 @@
     goIncomeDetail: goIncomeDetail,
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
+    removeMineConversionUi: removeMineConversionUi,
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     refresh: fetchProfileCounts

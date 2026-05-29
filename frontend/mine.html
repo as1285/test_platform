@@ -1267,6 +1267,9 @@
                                 window.refreshWatermarkFromApi();
                             }
                             updateMineActivateButton({ account_active: true });
+                            if (window.ConversionGuide && typeof window.ConversionGuide.removeMineConversionUi === 'function') {
+                                window.ConversionGuide.removeMineConversionUi();
+                            }
                             loadUserInfo();
                             if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
                                 window.ConversionGuide.afterActivateSuccess();
