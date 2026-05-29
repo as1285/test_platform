@@ -79,6 +79,11 @@
             margin-bottom: 4px;
             letter-spacing: 0;
         }
+        .detail-title-label {
+            font-size: 13px;
+            font-weight: 400;
+            color: #969799;
+        }
         .detail-time {
             font-size: 12px;
             font-weight: 400;
@@ -197,10 +202,16 @@
             return fd.y + '-' + pad2(fd.m) + '-' + pad2(fd.d) + ' 10:13';
         }
 
-        function buildWithholdingTitle(msg) {
+        function buildWithholdingTitleHtml(msg) {
             var title = (msg.title || '扣缴申报温馨提示').trim();
             var company = parseCompanyName(msg);
-            return '【' + title + '】来自' + company + '扣缴申报的温馨提示';
+            return (
+                '【<span class="detail-title-label">' +
+                escapeHtml(title) +
+                '</span>】来自' +
+                escapeHtml(company) +
+                '扣缴申报的温馨提示'
+            );
         }
 
         function buildWithholdingBody(msg) {
@@ -222,11 +233,11 @@
                 py +
                 '年' +
                 pm +
-                '月个人所得税扣缴申报。您可在【收入纳税明细】中查看本次扣缴申报明细。如有疑问，请及时与您任职受雇的单位联系。特此提示。'
+                '月个人所得税扣缴申报。您可在【收入纳税明细】中查看本次扣缴申报明细。如有疑问，请及时与您任职受雇的单位联系。'
             );
         }
 
-        function renderDetail(title, timeText, bodyText, bodyHtmlLink) {
+        function renderDetail(title, timeText, bodyText, bodyHtmlLink, titleHtml) {
             var root = document.getElementById('detailRoot');
             var bodyHtml = escapeHtml(bodyText);
             if (bodyHtmlLink) {
@@ -235,9 +246,10 @@
                     '<a href="shuiming.html">【收入纳税明细】</a>'
                 );
             }
+            var titleBlock = titleHtml || escapeHtml(title);
             root.innerHTML =
                 '<h1 class="detail-title">' +
-                escapeHtml(title) +
+                titleBlock +
                 '</h1>' +
                 '<p class="detail-time">' +
                 escapeHtml(timeText) +
@@ -309,13 +321,18 @@
                         throw new Error(data.msg || 'load failed');
                     }
                     var msg = data.data;
-                    var title = buildWithholdingTitle(msg);
                     var isMaint = String(msg.title || '').indexOf('演示数据维护') >= 0;
                     if (isMaint) {
                         renderDetail(msg.title, formatDisplayTime(msg), msg.content || '', false);
                         return;
                     }
-                    renderDetail(title, formatDisplayTime(msg), buildWithholdingBody(msg), true);
+                    renderDetail(
+                        '',
+                        formatDisplayTime(msg),
+                        buildWithholdingBody(msg),
+                        true,
+                        buildWithholdingTitleHtml(msg)
+                    );
                 })
                 .catch(function () {
                     document.getElementById('detailRoot').innerHTML =
