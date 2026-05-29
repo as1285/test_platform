@@ -1826,6 +1826,7 @@
             }
             if (pageKey === 'user-behavior' && !_adminUserBehaviorLoaded) {
                 _adminUserBehaviorLoaded = true;
+                renderNoTaxScriptTemplates();
                 loadNoTaxBehaviorList(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
@@ -2335,6 +2336,8 @@
         function loadAnalyticsDashboard() {
             loadAnalyticsDailyConversion();
             loadRegistrationFunnel();
+            loadChannelRegistrationFunnel();
+            loadInstallTrackStats();
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
@@ -3163,6 +3166,165 @@
                 })
                 .catch(function () {
                     el.textContent = '漏斗加载失败';
+                });
+        }
+
+        function renderChannelRegistrationFunnel(data) {
+            var el = document.getElementById('analyticsChannelFunnel');
+            if (!el) return;
+            var items = Array.isArray(data && data.items) ? data.items : [];
+            if (!items.length) {
+                el.textContent = '暂无渠道漏斗数据';
+                return;
+            }
+            var html = '<div class="scroll-x"><table><thead><tr>';
+            html +=
+                '<th>注册渠道</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th></tr></thead><tbody>';
+            items.forEach(function (row) {
+                html += '<tr>';
+                html += '<td>' + esc(row.channel_label || row.channel || '—') + '</td>';
+                html += '<td>' + esc(row.registered) + '</td>';
+                html += '<td>' + esc(row.activated_7d) + '</td>';
+                html += '<td>' + esc(row.tax_7d) + '</td>';
+                html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
+                html += '<td>' + esc(row.rate_activate_7d_pct || '—') + '</td>';
+                html += '<td>' + esc(row.rate_tax_7d_pct || '—') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadChannelRegistrationFunnel() {
+            var el = document.getElementById('analyticsChannelFunnel');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsChannelFunnelDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            el.textContent = '渠道漏斗加载中…';
+            adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '渠道漏斗加载失败';
+                        return;
+                    }
+                    renderChannelRegistrationFunnel(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '渠道漏斗加载失败';
+                });
+        }
+
+        function renderInstallTrackStats(data) {
+            var el = document.getElementById('analyticsInstallTrack');
+            if (!el) return;
+            var items = Array.isArray(data && data.items) ? data.items : [];
+            if (!items.length) {
+                el.textContent = '暂无安装埋点数据';
+                return;
+            }
+            var html = '<div class="scroll-x"><table><thead><tr><th>事件</th><th>次数</th></tr></thead><tbody>';
+            items.forEach(function (row) {
+                html += '<tr><td>' + esc(row.label || row.route_key) + '</td><td>' + esc(row.total) + '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadInstallTrackStats() {
+            var el = document.getElementById('analyticsInstallTrack');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsInstallTrackDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            el.textContent = '安装埋点加载中…';
+            adminFetch('api/admin/analytics/install-track-stats?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '安装埋点加载失败';
+                        return;
+                    }
+                    renderInstallTrackStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '安装埋点加载失败';
+                });
+        }
+
+        var NO_TAX_OUTREACH_SCRIPTS = [
+            {
+                title: '温和提醒（已激活未填税）',
+                text: '您好，看到您已激活账号但还没添加个税演示数据。在 APP「我要咨询」→ 税务记录里点「示例填写」，约 30 秒即可生成，然后在「收入纳税明细」查看效果。如需激活码或操作帮助请回复我。'
+            },
+            {
+                title: '针对逛过明细页',
+                text: '您好，您已打开过收入纳税明细，当前还没有演示数据。请进入「我要咨询」→「示例填写」→「一键生成税务记录」，生成后刷新明细即可看到完整效果。'
+            },
+            {
+                title: '未激活用户',
+                text: '您好，您的账号尚未激活。请在「我的」页点击「激活」输入激活码；若无激活码可通过闲鱼购买或添加客服 QQ 获取。激活后即可填写个税演示数据。'
+            }
+        ];
+
+        function renderNoTaxScriptTemplates() {
+            var wrap = document.getElementById('udNoTaxScriptTemplates');
+            if (!wrap) return;
+            var html = '';
+            NO_TAX_OUTREACH_SCRIPTS.forEach(function (item, idx) {
+                html +=
+                    '<div style="margin-bottom:12px;padding:10px 12px;background:#fff;border-radius:8px;border:1px solid #e8eef5;">';
+                html += '<div style="font-weight:600;margin-bottom:6px;">' + esc(item.title) + '</div>';
+                html +=
+                    '<p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#444;white-space:pre-wrap;">' +
+                    esc(item.text) +
+                    '</p>';
+                html +=
+                    '<button type="button" class="btn-page btn-copy-no-tax-script" data-idx="' +
+                    idx +
+                    '">复制话术</button></div>';
+            });
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('.btn-copy-no-tax-script').forEach(function (btn) {
+                btn.onclick = function () {
+                    var i = parseInt(btn.getAttribute('data-idx'), 10);
+                    var t = NO_TAX_OUTREACH_SCRIPTS[i] ? NO_TAX_OUTREACH_SCRIPTS[i].text : '';
+                    if (!t) return;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(t).then(
+                            function () {
+                                alert('已复制到剪贴板');
+                            },
+                            function () {
+                                alert(t);
+                            }
+                        );
+                    } else {
+                        alert(t);
+                    }
+                };
+            });
+        }
+
+        function exportNoTaxBehaviorCsv() {
+            adminFetch('api/admin/user-data/no-tax-behavior/export')
+                .then(function (r) {
+                    if (!r.ok) throw new Error('export failed');
+                    return r.blob();
+                })
+                .then(function (blob) {
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'no_tax_users_' + new Date().toISOString().slice(0, 10) + '.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                })
+                .catch(function () {
+                    alert('导出失败，请稍后重试');
                 });
         }
 
@@ -4795,6 +4957,12 @@
                 loadNoTaxBehaviorList(noTaxBehaviorPage);
             };
         }
+        var btnExportNoTaxBehavior = document.getElementById('btnExportNoTaxBehavior');
+        if (btnExportNoTaxBehavior) {
+            btnExportNoTaxBehavior.onclick = function () {
+                exportNoTaxBehaviorCsv();
+            };
+        }
         var udNoTaxPrev = document.getElementById('udNoTaxPrev');
         if (udNoTaxPrev) {
             udNoTaxPrev.onclick = function () {
@@ -5237,6 +5405,23 @@
                         if (qqEl && data.data.qq_add_url != null) {
                             qqEl.value = String(data.data.qq_add_url);
                         }
+                        var ab = data.data.conversion_ab;
+                        if (ab) {
+                            var enEl = document.getElementById('convAbEnabled');
+                            if (enEl) enEl.checked = ab.enabled !== false;
+                            var map = [
+                                ['convAbTitleA', 'activate_title_a'],
+                                ['convAbSubtitleA', 'activate_subtitle_a'],
+                                ['convAbTitleB', 'activate_title_b'],
+                                ['convAbSubtitleB', 'activate_subtitle_b']
+                            ];
+                            map.forEach(function (pair) {
+                                var el = document.getElementById(pair[0]);
+                                if (el && ab[pair[1]] != null) el.value = String(ab[pair[1]]);
+                            });
+                            var bp = document.getElementById('convAbBatchProminent');
+                            if (bp) bp.checked = ab.batch_example_prominent === true;
+                        }
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
@@ -5300,6 +5485,43 @@
                     btn.disabled = false;
                 });
         });
+        var btnSaveConversionAb = document.getElementById('btnSaveConversionAb');
+        if (btnSaveConversionAb) {
+            btnSaveConversionAb.addEventListener('click', function () {
+                var btn = btnSaveConversionAb;
+                btn.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        conversion_ab: {
+                            enabled: !!document.getElementById('convAbEnabled').checked,
+                            activate_title_a: document.getElementById('convAbTitleA').value,
+                            activate_subtitle_a: document.getElementById('convAbSubtitleA').value,
+                            activate_title_b: document.getElementById('convAbTitleB').value,
+                            activate_subtitle_b: document.getElementById('convAbSubtitleB').value,
+                            batch_example_prominent: !!document.getElementById('convAbBatchProminent').checked
+                        }
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('转化配置已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
 
         document.getElementById('btnSaveWechatPayQr').addEventListener('click', function () {
             var btn = document.getElementById('btnSaveWechatPayQr');
@@ -5581,6 +5803,30 @@
         if (analyticsFunnelDays) {
             analyticsFunnelDays.addEventListener('change', function () {
                 loadRegistrationFunnel();
+            });
+        }
+        var btnRefreshChannelFunnel = document.getElementById('btnRefreshChannelFunnel');
+        if (btnRefreshChannelFunnel) {
+            btnRefreshChannelFunnel.onclick = function () {
+                loadChannelRegistrationFunnel();
+            };
+        }
+        var analyticsChannelFunnelDays = document.getElementById('analyticsChannelFunnelDays');
+        if (analyticsChannelFunnelDays) {
+            analyticsChannelFunnelDays.addEventListener('change', function () {
+                loadChannelRegistrationFunnel();
+            });
+        }
+        var btnRefreshInstallTrack = document.getElementById('btnRefreshInstallTrack');
+        if (btnRefreshInstallTrack) {
+            btnRefreshInstallTrack.onclick = function () {
+                loadInstallTrackStats();
+            };
+        }
+        var analyticsInstallTrackDays = document.getElementById('analyticsInstallTrackDays');
+        if (analyticsInstallTrackDays) {
+            analyticsInstallTrackDays.addEventListener('change', function () {
+                loadInstallTrackStats();
             });
         }
         var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');

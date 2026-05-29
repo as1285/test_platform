@@ -2,8 +2,10 @@
 
 > 从下载页 → 安装 → 注册 → 激活 → 填写个税 → 持续使用  
 > 基于 `test_platform` 现有能力与埋点整理，供产品与研发排期参考。  
-> 文档版本：2026-05-28  
-> **实现进度（P0）**：已落地 `conversion-guide.js` 动线/门禁/新手任务、注册后激活引导、激活后填税引导、安装页下载埋点、后台「注册后 7 日转化漏斗」。详见提交 `feat: 用户转化 P0 引导与漏斗看板`。
+> 文档版本：2026-05-29  
+> **实现进度（P0）**：已落地 `conversion-guide.js` 动线/门禁/新手任务、注册后激活引导、激活后填税引导、安装页下载埋点、后台「注册后 7 日转化漏斗」。详见提交 `feat: 用户转化 P0 引导与漏斗看板`。  
+> **实现进度（P1）**：新手任务 3 步、安装页下载/视频/注册点击埋点、分渠道 7 日漏斗看板、未填个税 CSV 导出与话术模板。  
+> **实现进度（P2）**：智能引导（逛收入页 ≥2 次）、上班族 1 年模板、激活弹窗与批量填税 A/B（`GET /api/public/conversion-config` + 后台「转化 A/B 配置」）。
 
 ---
 
@@ -215,6 +217,10 @@ flowchart LR
 | 功能锁 | `auth.js`、各页激活态门禁 |
 | 空状态 CTA | `shuiming*.html`、`shouye.html` |
 | 漏斗统计 | `backend/server.js` 新 analytics API、`admin_panel` 数据统计 |
+| 分渠道漏斗 / 安装埋点 | `channel-registration-funnel`、`install-track-stats` API |
+| 未填个税运营 | `user-behavior` 导出 CSV、话术模板 |
+| 转化 A/B | `conversion-config` 公开接口、系统设置 `conversion_ab` |
+| 智能引导 / 场景模板 | `conversion-guide.js`、`consult.html` 上班族模板 |
 | 安装埋点 | `install_guide.html` |
 | 分群运营 | `user-behavior` 模块，可加导出/标签 |
 
@@ -227,6 +233,11 @@ flowchart LR
 | `GET user.php#employers` | 接口统计用 `route_key`，实际为 `GET /api/user.php?action=employers`（任职列表）；页面多为 `renzhi.html` 或 `consult.html` 任职 Tab |
 | `EVENT register_success` | 注册成功 |
 | `track_activate_prompt_open/confirm/cancel` | 激活弹窗漏斗 |
+| `track_install_apk_click` / `track_install_ios_click` / `track_install_video_play` | 安装页下载与视频 |
+| `track_install_register_click` | 安装页「装好后点这里注册」 |
+| `track_conversion_ab_variant` | 用户端 A/B 变体曝光 |
+| `track_conversion_smart_guide_*` | 智能引导展示/确认/取消 |
+| `track_conversion_office_worker_template` | 上班族模板一键填写 |
 | `track_xianyu_purchase_click` / `track_qq_add_click` | 购买/客服路径 |
 
 ---

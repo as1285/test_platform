@@ -850,7 +850,9 @@
                 <p class="batch-hint" id="batchTaxCardHint">按工作经历生成多月工资薪金；添加后可用「从已有记录回填」载入并批量修改。</p>
                 <div class="batch-tax-toolbar">
                     <button type="button" class="btn btn-default btn-sm" onclick="loadBatchEmploymentsFromExistingRecords()">从已有记录回填</button>
-                    <button type="button" class="btn btn-default btn-sm" onclick="fillBatchTaxExample()">示例填写</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="fillBatchTaxExample()">示例填写</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="fillBatchTaxOfficeWorkerTemplate()">上班族模板（1年）</button>
+                    <button type="button" class="btn-page btn-sm" id="btnBatchTaxQuickStart" style="display:none;" onclick="fillBatchTaxExample()">30秒体验完整明细</button>
                     <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;" onclick="exitBatchTaxEditMode()">退出修改模式</button>
                 </div>
                 <div id="batchEditModeBanner" class="batch-edit-banner" hidden></div>
@@ -1544,6 +1546,20 @@
                             window.refreshWatermarkFromApi();
                         }
                         closeConsultActivateModal();
+                        var gate = document.getElementById('cg-consult-records-gate');
+                        if (gate) gate.remove();
+                        var submitBtn = document.getElementById('batch_submit_employments_btn');
+                        if (submitBtn) submitBtn.disabled = false;
+                        var toolbar = document.querySelector('#panel-records .batch-tax-toolbar');
+                        if (toolbar) {
+                            toolbar.querySelectorAll('button, input, select, textarea').forEach(function (el) {
+                                el.disabled = false;
+                            });
+                        }
+                        if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
+                            window.ConversionGuide.afterActivateSuccess();
+                            return;
+                        }
                         showMsg('激活成功', true);
                         loadUserInfoFromApi();
                         refreshRecordList();
@@ -2624,6 +2640,65 @@
             }
             showMsg('已填入示例工作经历，请核对后点击「一键生成税务记录」', true);
             exitBatchTaxEditMode();
+        }
+
+        /** 场景模板：上班族 1 家公司、当年 1 月至当前月 */
+        function fillBatchTaxOfficeWorkerTemplate() {
+            var list = document.getElementById('batch_employment_list');
+            if (!list) return;
+            var d = new Date();
+            var cy = d.getFullYear();
+            var cm = d.getMonth() + 1;
+            list.innerHTML = '';
+            addBatchEmpRow();
+            var row = list.querySelector('.batch-emp-row');
+            setBatchEmpRowValues(row, {
+                company: '北京华示例软件有限公司',
+                company_tax_id: '91110108MA01ABCD2X',
+                tax_authority: '国家税务总局北京市海淀区税务局',
+                sy: cy,
+                sm: 1,
+                ey: cy,
+                em: cm,
+                salary: 12000,
+                salary_max: '',
+                ss_base: 0,
+                fund_base: '',
+                pension_ratio: 8,
+                medical_ratio: 2,
+                unemployment_ratio: 0.5,
+                fund_ratio: 12,
+                special: 1500
+            });
+            var bonusYearEl = document.getElementById('batch_bonus_year');
+            if (bonusYearEl) bonusYearEl.value = String(cy);
+            var bonusEl = document.getElementById('batch_year_end_bonus');
+            if (bonusEl) bonusEl.value = '0';
+            var card = document.getElementById('batchTaxCard');
+            if (card) {
+                try {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (eScroll) {
+                    card.scrollIntoView(true);
+                }
+            }
+            showMsg('已填入上班族一年模板（' + cy + '年1–' + cm + '月），核对后点击「一键生成税务记录」', true);
+            exitBatchTaxEditMode();
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_conversion_office_worker_template', { page: 'consult' });
+            }
+        }
+
+        function applyConsultBatchAbUi() {
+            if (!window.ConversionGuide || typeof window.ConversionGuide.getBatchExampleProminent !== 'function') return;
+            if (!window.ConversionGuide.getBatchExampleProminent()) return;
+            var quick = document.getElementById('btnBatchTaxQuickStart');
+            var hint = document.getElementById('batchTaxCardHint');
+            if (quick) quick.style.display = '';
+            if (hint) {
+                hint.innerHTML =
+                    '按工作经历生成多月工资薪金。<strong>首次使用可点「30秒体验完整明细」</strong>快速填入示例，生成后即可在收入纳税明细查看。';
+            }
         }
 
         /** 批量修改模式：回填时记录将被覆盖的已有记录 id */
@@ -4409,6 +4484,7 @@
             ])
                 .catch(function () {})
                 .finally(function () {
+                    applyConsultBatchAbUi();
                     if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                         window.appPageLoadingDispatchConsultDone();
                     }

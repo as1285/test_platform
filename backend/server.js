@@ -189,6 +189,16 @@ const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
 /** 个人中心顶栏「添加QQ号」外链 */
 const SETTING_KEY_QQ_ADD_URL = 'qq_add_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
+const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
+
+const DEFAULT_CONVERSION_AB = {
+  enabled: true,
+  activate_title_a: '请输入激活码',
+  activate_subtitle_a: '激活后可填写个税演示数据',
+  activate_title_b: '输入激活码，解锁完整功能',
+  activate_subtitle_b: '30秒体验收入纳税明细',
+  batch_example_prominent: false
+};
 
 const ADMIN_MENU_KEYS = [
   'settings',
@@ -1126,6 +1136,10 @@ async function createTables() {
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_QQ_ADD_URL,
     ''
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_CONVERSION_AB,
+    JSON.stringify(DEFAULT_CONVERSION_AB)
   ]);
 
   await conn.execute(`
@@ -6214,6 +6228,260 @@ async function handleAdminRegistrationFunnel(req, res) {
   }
 }
 
+function resolveConversionAbVariant(seed) {
+  var s = String(seed || 'guest');
+  var h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) % 2 === 0 ? 'a' : 'b';
+}
+
+async function loadConversionAbParsed() {
+  if (!pool) {
+    return Object.assign({}, DEFAULT_CONVERSION_AB);
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1', [
+      SETTING_KEY_CONVERSION_AB
+    ]);
+    if (!rows.length || rows[0].setting_value == null || String(rows[0].setting_value).trim() === '') {
+      return Object.assign({}, DEFAULT_CONVERSION_AB);
+    }
+    var parsed = JSON.parse(String(rows[0].setting_value));
+    return Object.assign({}, DEFAULT_CONVERSION_AB, parsed && typeof parsed === 'object' ? parsed : {});
+  } catch (e) {
+    return Object.assign({}, DEFAULT_CONVERSION_AB);
+  } finally {
+    conn.release();
+  }
+}
+
+async function handlePublicConversionConfig(req, res) {
+  try {
+    var cfg = await loadConversionAbParsed();
+    var seed = '';
+    if (req.authUserId) {
+      seed = String(req.authUserId);
+    } else {
+      try {
+        if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+          seed = String(req.clientDevicePayload.client_id);
+        }
+      } catch (e0) {}
+    }
+    var variant = resolveConversionAbVariant(seed);
+    return res.json({
+      code: 200,
+      data: {
+        enabled: cfg.enabled !== false,
+        variant: variant,
+        activate_title:
+          variant === 'b' ? String(cfg.activate_title_b || '') : String(cfg.activate_title_a || ''),
+        activate_subtitle:
+          variant === 'b' ? String(cfg.activate_subtitle_b || '') : String(cfg.activate_subtitle_a || ''),
+        batch_example_prominent: cfg.batch_example_prominent === true
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+function funnelMetricsSqlAliases(userAlias) {
+  var u = userAlias || 'u';
+  return {
+    activated7:
+      'SUM(CASE WHEN EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      u +
+      '.username AND ac.last_used_at IS NOT NULL AND TIMESTAMPDIFF(HOUR, ' +
+      u +
+      '.created_at, ac.last_used_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
+    tax7:
+      'SUM(CASE WHEN EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+      u +
+      '.username AND TIMESTAMPDIFF(HOUR, ' +
+      u +
+      '.created_at, tr.created_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
+    detail7:
+      'SUM(CASE WHEN EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = ' +
+      u +
+      '.username AND (e.page_path LIKE \'%shuiming%\' OR e.page_path LIKE \'%xiangqing%\') AND TIMESTAMPDIFF(HOUR, ' +
+      u +
+      '.created_at, e.created_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)'
+  };
+}
+
+/** 按注册来源渠道的 7 日转化漏斗 */
+async function handleAdminChannelRegistrationFunnel(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var fm = funnelMetricsSqlAliases('u');
+
+    const conn = await pool.getConnection();
+    try {
+      var where = [regSince];
+      var params = [days - 1];
+      appendAdminUserScope(where, params, req.admin, 'u.username');
+      var whereSql = ' WHERE ' + where.join(' AND ');
+
+      const [rows] = await conn.query(
+        `SELECT COALESCE(NULLIF(TRIM(u.register_source_channel), ''), '__empty__') AS ch,
+                COUNT(*) AS registered,
+                ${fm.activated7} AS activated_7d,
+                ${fm.tax7} AS tax_7d,
+                ${fm.detail7} AS viewed_detail_7d
+         FROM users u` +
+          whereSql +
+          ' GROUP BY ch ORDER BY registered DESC',
+        params
+      );
+
+      function pct(n, d) {
+        if (!d || d <= 0) return null;
+        return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+      }
+
+      var items = (rows || []).map(function (r) {
+        var reg = Number(r.registered) || 0;
+        var a7 = Number(r.activated_7d) || 0;
+        var t7 = Number(r.tax_7d) || 0;
+        var v7 = Number(r.viewed_detail_7d) || 0;
+        var ch = String(r.ch || '');
+        return {
+          channel: ch,
+          channel_label: ch === '__empty__' ? '未填写渠道' : registerSourceChannelLabel(ch),
+          registered: reg,
+          activated_7d: a7,
+          tax_7d: t7,
+          viewed_detail_7d: v7,
+          rate_activate_7d_pct: pct(a7, reg),
+          rate_tax_7d_pct: pct(t7, reg),
+          rate_detail_7d_pct: pct(v7, reg)
+        };
+      });
+
+      res.json({ code: 200, data: { days: days, items: items } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 安装页与注册相关埋点汇总（analytics_api_daily） */
+async function handleAdminInstallTrackStats(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.query(
+        `SELECT route_key, SUM(cnt) AS total
+         FROM analytics_api_daily
+         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND (
+             route_key LIKE '%track_install_%'
+             OR route_key = 'EVENT register_success'
+           )
+         GROUP BY route_key
+         ORDER BY total DESC`,
+        [days - 1]
+      );
+      var labelMap = {
+        'POST auth.php#track_install_apk_click': 'Android 安装包点击',
+        'POST auth.php#track_install_ios_click': 'iOS 描述文件点击',
+        'POST auth.php#track_install_ios_video_play': '苹果安装视频播放',
+        'POST auth.php#track_install_usage_video_play': '操作视频播放',
+        'EVENT register_success': '注册成功'
+      };
+      var items = (rows || []).map(function (r) {
+        var rk = String(r.route_key || '');
+        return {
+          route_key: rk,
+          label: labelMap[rk] || rk,
+          total: Number(r.total) || 0
+        };
+      });
+      res.json({ code: 200, data: { days: days, items: items } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 未填个税用户 CSV 导出（运营分群） */
+async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
+  try {
+    var scope = noTaxUserWhereSql(req);
+    const conn = await pool.getConnection();
+    try {
+      const [userRows] = await conn.query(
+        'SELECT username, real_name, created_at, register_source_channel FROM users' +
+          scope.sql +
+          ' ORDER BY id DESC LIMIT 2000',
+        scope.params
+      );
+      var names = userRows.map(function (r) {
+        return String(r.username);
+      });
+      var eventMap = await loadPageEventsForUsers(conn, names, 400);
+      var lines = [
+        '账号,姓名,注册时间,注册渠道,APP停留,活跃天,页面数,行为路径摘要,最近活跃'
+      ];
+      userRows.forEach(function (r) {
+        var uname = String(r.username);
+        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
+        var row = [
+          uname,
+          r.real_name != null ? String(r.real_name) : '',
+          r.created_at ? r.created_at.toISOString() : '',
+          registerSourceChannelLabel(r.register_source_channel),
+          metrics.stay_label || '',
+          String(metrics.active_days || 0),
+          String(metrics.distinct_page_count || 0),
+          metrics.path_summary || '',
+          metrics.last_at || ''
+        ];
+        lines.push(
+          row
+            .map(function (cell) {
+              var s = String(cell == null ? '' : cell);
+              if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+              return s;
+            })
+            .join(',')
+        );
+      });
+      var bom = '\uFEFF';
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="no_tax_users_' + chinaDateKeyNow() + '.csv"'
+      );
+      res.send(bom + lines.join('\n'));
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 注册时段分布（按北京时间 created_at） */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
@@ -8087,6 +8355,7 @@ async function handleAdminSettingsGet(req, res) {
     var mineUi = await getMineUiForAdminForm();
     var installRaw = await getInstallPackageSettingsFromDb();
     var qrRef = await getWechatPayQrcodeUrl();
+    var conversionAb = await loadConversionAbParsed();
     return res.json({
       code: 200,
       data: {
@@ -8096,7 +8365,8 @@ async function handleAdminSettingsGet(req, res) {
         xianyu_purchase_url: installRaw.xianyu,
         qq_add_url: sanitizeInstallDownloadUrl(installRaw.qq),
         wechat_pay_qrcode_url: qrRef,
-        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
+        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
+        conversion_ab: conversionAb
       }
     });
   } catch (e) {
@@ -8113,10 +8383,11 @@ async function handleAdminSettingsPost(req, res) {
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
   var hasQqAdd = Object.prototype.hasOwnProperty.call(body, 'qq_add_url');
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
-  if (!hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasQqAdd && !hasWechatPayQr) {
+  var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
+  if (!hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasQqAdd && !hasWechatPayQr && !hasConversionAb) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加链接或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -8263,6 +8534,35 @@ async function handleAdminSettingsPost(req, res) {
       invalidateWechatPayQrcodeCache();
     }
 
+    if (hasConversionAb) {
+      var prevAb = await loadConversionAbParsed();
+      var incAb = body.conversion_ab;
+      var mergedAb = Object.assign({}, prevAb);
+      if (incAb.enabled === true || incAb.enabled === false) {
+        mergedAb.enabled = incAb.enabled === true;
+      }
+      if (incAb.activate_title_a != null) {
+        mergedAb.activate_title_a = String(incAb.activate_title_a).substring(0, 120);
+      }
+      if (incAb.activate_subtitle_a != null) {
+        mergedAb.activate_subtitle_a = String(incAb.activate_subtitle_a).substring(0, 200);
+      }
+      if (incAb.activate_title_b != null) {
+        mergedAb.activate_title_b = String(incAb.activate_title_b).substring(0, 120);
+      }
+      if (incAb.activate_subtitle_b != null) {
+        mergedAb.activate_subtitle_b = String(incAb.activate_subtitle_b).substring(0, 200);
+      }
+      if (incAb.batch_example_prominent === true || incAb.batch_example_prominent === false) {
+        mergedAb.batch_example_prominent = incAb.batch_example_prominent === true;
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_CONVERSION_AB, JSON.stringify(mergedAb)]
+      );
+    }
+
     var outData = { success: true };
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
@@ -8273,6 +8573,7 @@ async function handleAdminSettingsPost(req, res) {
     var qrAfter = await getWechatPayQrcodeUrl();
     outData.wechat_pay_qrcode_url = qrAfter;
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
+    outData.conversion_ab = await loadConversionAbParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -10342,6 +10643,7 @@ app.post(
 app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), handleAdminSettingsPost);
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
+app.get('/api/public/conversion-config', handlePublicConversionConfig);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
 app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);
 app.get(
@@ -10368,6 +10670,18 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('analytics'),
   handleAdminRegistrationFunnel
+);
+app.get(
+  '/api/admin/analytics/channel-registration-funnel',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminChannelRegistrationFunnel
+);
+app.get(
+  '/api/admin/analytics/install-track-stats',
+  requireAdminAuth,
+  requireAdminMenu('analytics'),
+  handleAdminInstallTrackStats
 );
 app.get(
   '/api/admin/analytics/register-time',
@@ -10410,6 +10724,12 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('user-behavior'),
   handleAdminUserDataNoTaxBehaviorPath
+);
+app.get(
+  '/api/admin/user-data/no-tax-behavior/export',
+  requireAdminAuth,
+  requireAdminMenu('user-behavior'),
+  handleAdminUserDataNoTaxBehaviorExport
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);

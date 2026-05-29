@@ -5,6 +5,90 @@
 (function () {
   var ONBOARD_ACTIVATE = 'activate';
   var ONBOARD_TAX = 'tax';
+  var SMART_GUIDE_KEY = 'cg_smart_guide_dismissed';
+  var INCOME_VISIT_KEY = 'cg_income_visit_count';
+  var conversionCfg = null;
+
+  function loadConversionConfig() {
+    var headers = {};
+    if (typeof getClientDeviceHeaders === 'function') {
+      headers = getClientDeviceHeaders();
+    }
+    return fetch('/api/public/conversion-config', { credentials: 'same-origin', headers: headers })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j.code === 200 && j.data) {
+          conversionCfg = j.data;
+        }
+      })
+      .catch(function () {});
+  }
+
+  function applyActivateModalCopy() {
+    if (!conversionCfg || conversionCfg.enabled === false) return;
+    var titleEl = document.getElementById('mineActivateModalTitle');
+    var subEl = document.getElementById('mineActivateModalSubtitle');
+    if (titleEl && conversionCfg.activate_title) {
+      titleEl.textContent = conversionCfg.activate_title;
+    }
+    if (subEl && conversionCfg.activate_subtitle) {
+      subEl.textContent = conversionCfg.activate_subtitle;
+      subEl.style.display = 'block';
+    }
+    track('track_conversion_ab_variant', { variant: conversionCfg.variant || 'a', page: currentPage() });
+  }
+
+  function getBatchExampleProminent() {
+    return !!(conversionCfg && conversionCfg.batch_example_prominent);
+  }
+
+  function applyConsultBatchUi() {
+    if (currentPage() !== 'consult.html' || !getBatchExampleProminent()) return;
+    if (typeof applyConsultBatchAbUi === 'function') {
+      applyConsultBatchAbUi();
+    }
+  }
+
+  function bumpIncomeBrowseVisit() {
+    if (!isLoggedIn() || !isAccountActive() || hasTaxRecords()) return;
+    var page = currentPage();
+    if (page !== 'shuiming.html' && page !== 'shouye.html') return;
+    var n = 0;
+    try {
+      n = parseInt(localStorage.getItem(INCOME_VISIT_KEY) || '0', 10) || 0;
+      n += 1;
+      localStorage.setItem(INCOME_VISIT_KEY, String(n));
+    } catch (e) {}
+    if (n >= 2) {
+      try {
+        if (localStorage.getItem(SMART_GUIDE_KEY) === '1') return;
+        localStorage.setItem(SMART_GUIDE_KEY, '1');
+      } catch (e2) {
+        return;
+      }
+      track('track_conversion_smart_guide_shown', { page: page, visits: n });
+      setTimeout(function () {
+        if (
+          window.confirm(
+            '您已多次查看收入相关页面，但尚未添加税务记录。\n\n点「确定」前往示例填写（约 30 秒），生成后即可在收入纳税明细查看。'
+          )
+        ) {
+          track('track_conversion_smart_guide_confirm', { page: page });
+          goFillTaxRecords();
+        } else {
+          track('track_conversion_smart_guide_cancel', { page: page });
+        }
+      }, 600);
+    }
+  }
+
+  function noviceTaskProgressPct() {
+    if (!isAccountActive()) return 0;
+    var done = 1 + (employerCount() > 0 ? 1 : 0) + (hasTaxRecords() ? 1 : 0);
+    return Math.round((done / 3) * 100);
+  }
 
   function currentPage() {
     var p = window.location.pathname || '';
@@ -119,6 +203,9 @@
       '.cg-task-card{margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
       '.page-mine .content-wrapper > .user-card{position:relative;z-index:1}' +
       '.cg-task-card h4{margin:0 0 8px;font-size:14px;color:#333}' +
+      '.cg-task-progress{margin:8px 0 10px;height:6px;background:#eef2f8;border-radius:3px;overflow:hidden}' +
+      '.cg-task-progress>span{display:block;height:100%;background:#1e6fff;border-radius:3px;transition:width .25s}' +
+      '.cg-task-progress-label{font-size:12px;color:#888;margin-bottom:8px}' +
       '.cg-task-steps{margin:0;padding:0;list-style:none}' +
       '.cg-task-steps li{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#555;border-bottom:1px solid #f0f0f0}' +
       '.cg-task-steps li:last-child{border-bottom:none}' +
@@ -239,6 +326,8 @@
     }
     existing.innerHTML =
       '<h4>新手任务</h4>' +
+      '<div class="cg-task-progress-label">完成进度 0/3（激活后自动隐藏本卡片）</div>' +
+      '<div class="cg-task-progress"><span style="width:0%"></span></div>' +
       '<ul class="cg-task-steps">' +
       '<li><span class="cg-task-dot">1</span><span>激活账号</span></li>' +
       '<li><span class="cg-task-dot">2</span><span>添加任职受雇（可选）</span></li>' +
@@ -379,11 +468,18 @@
   function init() {
     if (!isLoggedIn()) return;
     ensureGateStyles();
-    fetchProfileCounts().then(function () {
-      runMineOnboarding();
-      runConsultOnboarding();
-      patchShuimingResultEmpty();
-    });
+    loadConversionConfig()
+      .then(function () {
+        applyActivateModalCopy();
+        applyConsultBatchUi();
+        return fetchProfileCounts();
+      })
+      .then(function () {
+        runMineOnboarding();
+        runConsultOnboarding();
+        patchShuimingResultEmpty();
+        bumpIncomeBrowseVisit();
+      });
   }
 
   window.ConversionGuide = {
@@ -395,6 +491,7 @@
     gateActivation: gateActivation,
     gateTaxRecords: gateTaxRecords,
     removeMineConversionUi: removeMineConversionUi,
+    getBatchExampleProminent: getBatchExampleProminent,
     afterActivateSuccess: afterActivateSuccess,
     afterTaxRecordsCreated: afterTaxRecordsCreated,
     refresh: fetchProfileCounts

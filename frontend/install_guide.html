@@ -155,6 +155,26 @@
             margin-top: 10px;
             line-height: 1.5;
         }
+        .register-cta {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+        }
+        .register-cta a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: #fff7ed;
+            color: #c2410c;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid #fed7aa;
+        }
     </style>
 </head>
 <body class="page-install-guide">
@@ -169,6 +189,9 @@
         <section class="card">
             <h2>应用下载</h2>
             <div class="install-actions" id="installButtonsRow"></div>
+            <div class="register-cta">
+                <a href="register.html" id="installRegisterLink">装好后点这里注册</a>
+            </div>
             <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
         </section>
 
@@ -270,6 +293,16 @@
                         empty.textContent = '无法加载下载配置，请稍后再试。';
                     }
                 });
+        })();
+
+        (function bindInstallRegisterLink() {
+            var link = document.getElementById('installRegisterLink');
+            if (!link) return;
+            link.addEventListener('click', function () {
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction('track_install_register_click', { page: 'install_guide' });
+                }
+            });
         })();
 
         function toAssetUrl(path) {
