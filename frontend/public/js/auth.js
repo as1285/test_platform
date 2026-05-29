@@ -648,7 +648,6 @@
           'html.app-top-safe-shell .bancha-page .bancha-content{margin-top:calc(80px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .bancha-page .bancha-content{margin-top:calc(96px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:20px !important;padding-left:16px !important;padding-right:16px !important;}' +
-          'html.app-top-safe-shell .message-page .message-list{margin-top:0 !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar{padding-bottom:20px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-title{margin-bottom:18px !important;}' +
           'html.app-top-safe-shell body > .header{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +

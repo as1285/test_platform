@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260529-msg-header-layout"></script>
+    <script src="/js/auth.js?v=20260529-msg-list-bottom"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>消息</title>
     <style>
@@ -58,8 +58,15 @@
             padding-bottom: 20px;
         }
 
-        html.app-top-safe-shell .message-list {
-            margin-top: 0;
+        .message-list {
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            margin-top: -10px;
+            position: relative;
+            z-index: 5;
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+            min-height: calc(100vh - 150px);
+            overflow: hidden;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar {
@@ -141,17 +148,6 @@
             width: 100%;
             display: none;
             vertical-align: top;
-        }
-
-        .message-list {
-            background: #fff;
-            border-radius: var(--message-sheet-radius) var(--message-sheet-radius) 0 0;
-            margin-top: calc(-1 * var(--message-sheet-radius) / 2);
-            position: relative;
-            z-index: 5;
-            padding-bottom: var(--bottom-nav-clearance);
-            min-height: calc(100vh - 150px);
-            overflow: hidden;
         }
         
         .message-item {
