@@ -532,14 +532,18 @@
     });
   }
 
+  function getMineBottomExtrasEl() {
+    return document.getElementById('mineBottomExtras');
+  }
+
   function renderMineOnboardBar() {
     if (currentPage() !== 'mine.html') return;
     if (isAccountActive()) {
       removeMineConversionUi();
       return;
     }
-    var wrap = document.querySelector('.content-wrapper');
-    if (!wrap || document.getElementById('cg-mine-onboard-bar')) return;
+    var anchor = getMineBottomExtrasEl();
+    if (!anchor || document.getElementById('cg-mine-onboard-bar')) return;
     ensureGateStyles();
     var bar = document.createElement('div');
     bar.id = 'cg-mine-onboard-bar';
@@ -550,7 +554,7 @@
       '<button type="button" class="cg-btn cg-btn-primary" id="cgMineGoActivate">立即激活</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgMineGoInstall">安装说明</button>' +
       '</div>';
-    wrap.insertBefore(bar, wrap.firstChild);
+    anchor.insertBefore(bar, anchor.firstChild);
     var goAct = document.getElementById('cgMineGoActivate');
     if (goAct) {
       goAct.addEventListener('click', function () {
@@ -574,9 +578,8 @@
       removeMineConversionUi();
       return;
     }
-    var wrap = document.querySelector('.content-wrapper');
-    if (!wrap) return;
-    var userCard = wrap.querySelector('.user-card');
+    var anchor = getMineBottomExtrasEl();
+    if (!anchor) return;
     var existing = document.getElementById('cg-mine-task-card');
     if (!existing) {
       ensureGateStyles();
@@ -584,12 +587,10 @@
       existing.id = 'cg-mine-task-card';
       existing.className = 'cg-task-card';
       var bar = document.getElementById('cg-mine-onboard-bar');
-      if (bar && bar.nextSibling) {
-        wrap.insertBefore(existing, bar.nextSibling);
-      } else if (userCard) {
-        wrap.insertBefore(existing, userCard);
+      if (bar) {
+        anchor.insertBefore(existing, bar.nextSibling);
       } else {
-        wrap.insertBefore(existing, wrap.firstChild);
+        anchor.insertBefore(existing, anchor.firstChild);
       }
     }
     existing.innerHTML =

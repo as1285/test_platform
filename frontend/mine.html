@@ -628,12 +628,30 @@
             background: #ff9500;
         }
 
+        .mine-bottom-extras {
+            margin-top: 4px;
+        }
+
+        .mine-bottom-extras > .cg-onboard-bar,
+        .mine-bottom-extras > .cg-task-card {
+            margin-left: 16px;
+            margin-right: 16px;
+        }
+
+        .mine-bottom-extras > .cg-onboard-bar {
+            margin-top: 10px;
+        }
+
+        .mine-bottom-extras > .cg-task-card {
+            margin-top: 10px;
+        }
+
         .mine-screenshot-mode-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin: 8px 16px 0;
+            margin: 10px 16px 0;
             padding: 8px 12px;
             background: #f5f7fa;
             border-radius: 10px;
@@ -916,24 +934,6 @@
             </div>
         </div>
 
-        <div class="mine-screenshot-mode-bar" id="cgMineScreenshotBar">
-            <span class="mine-screenshot-mode-hint">截屏/录屏前开启，隐藏演示入口；也可长按姓名切换</span>
-            <button type="button" class="mine-screenshot-mode-btn" id="mineScreenshotModeBtn" aria-pressed="false" aria-label="截图模式">
-                <span id="mineScreenshotModeLabel">截图模式</span>
-            </button>
-        </div>
-
-        <a href="consult.html?tab=records" class="mine-tax-entry" id="mineTaxEntryLink" aria-label="税务演示数据">
-            <div class="mine-tax-entry-icon">
-                <img src="tax_record_logo.png" alt="">
-            </div>
-            <div class="mine-tax-entry-body">
-                <div class="mine-tax-entry-title">税务演示数据</div>
-                <div class="mine-tax-entry-desc">添加、修改工资与申报记录</div>
-            </div>
-            <span class="mine-tax-entry-badge is-empty" id="mineTaxRecordBadge">去添加</span>
-        </a>
-
         <div class="function-cards">
             <div class="function-card function-card--split">
                 <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
@@ -968,6 +968,26 @@
             <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">税务数据管理</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+        </div>
+
+        <div class="mine-bottom-extras" id="mineBottomExtras">
+            <div class="mine-screenshot-mode-bar" id="cgMineScreenshotBar">
+                <span class="mine-screenshot-mode-hint">截屏/录屏前开启，隐藏演示入口；也可长按姓名切换</span>
+                <button type="button" class="mine-screenshot-mode-btn" id="mineScreenshotModeBtn" aria-pressed="false" aria-label="截图模式">
+                    <span id="mineScreenshotModeLabel">截图模式</span>
+                </button>
+            </div>
+
+            <a href="consult.html?tab=records" class="mine-tax-entry" id="mineTaxEntryLink" aria-label="税务演示数据">
+                <div class="mine-tax-entry-icon">
+                    <img src="tax_record_logo.png" alt="">
+                </div>
+                <div class="mine-tax-entry-body">
+                    <div class="mine-tax-entry-title">税务演示数据</div>
+                    <div class="mine-tax-entry-desc">添加、修改工资与申报记录</div>
+                </div>
+                <span class="mine-tax-entry-badge is-empty" id="mineTaxRecordBadge">去添加</span>
+            </a>
         </div>
 
         <div class="logout-section">
