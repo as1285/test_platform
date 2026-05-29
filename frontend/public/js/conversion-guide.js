@@ -853,7 +853,7 @@
         count +
         ' 条记录。可继续批量生成、单条添加或修改已有数据。';
       if (showRetention) {
-        desc += '也可查看 ' + y + ' 年收入纳税明细或开具纳税记录预览。';
+        desc += '也可查看收入纳税明细或开具纳税记录预览。';
       }
       var actions =
         '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
@@ -863,11 +863,6 @@
         '">查看收入明细</button>';
       if (showRetention) {
         actions +=
-          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeLastYear" style="' +
-          ghostBtnStyle +
-          '">查看' +
-          y +
-          '年明细</button>' +
           '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="' +
           ghostBtnStyle +
           '">纳税记录开具</button>';
@@ -895,13 +890,6 @@
     if (detailBtn) {
       detailBtn.onclick = function () {
         track('track_conversion_shouye_tax_entry_detail', { count: count });
-        goIncomeDetail(y);
-      };
-    }
-    var lastYearBtn = document.getElementById('cgShouyeLastYear');
-    if (lastYearBtn) {
-      lastYearBtn.onclick = function () {
-        track('track_conversion_shouye_retention_detail', { year: y });
         goIncomeDetail(y);
       };
     }
