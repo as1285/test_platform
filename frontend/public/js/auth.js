@@ -516,6 +516,9 @@
           : iosClient
             ? 'env(safe-area-inset-top, 0px)'
             : '';
+      if (cordovaShell) {
+        document.documentElement.classList.add('app-cordova-shell');
+      }
       if (useTopSafeInset) {
         document.documentElement.classList.add('app-top-safe-shell');
       }
@@ -765,6 +768,13 @@
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{font-size:17px !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;}' +
           'html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          /* 浏览器/非 Cordova：收入纳税明细顶栏仅用真实 safe-area，去掉固定 24/48px 占位 */
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .page-root{--safe-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result::before{content:none !important;display:none !important;height:0 !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header{top:0 !important;height:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px !important;box-sizing:border-box !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .back-btn,html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;position:absolute !important;display:flex !important;align-items:center !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-top-safe-shell:not(.app-cordova-shell) body.page-shuiming-result .list{margin-top:calc(var(--header-height,48px) + env(safe-area-inset-top,0px)) !important;}' +
           topFixedHeaderRule;
         document.head.appendChild(shellExtra);
       }

@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260527-iphone15promax-statusbar"></script>
+    <script src="/js/auth.js?v=20260529-shuiming-result-top"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260527-ufs-size-15-19">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260529-toast-3s" data-scope=".page-root"></script>
@@ -67,7 +67,7 @@
         /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
         .page-root {
             --safe-top: env(safe-area-inset-top, 0px);
-            --header-height: 52px;
+            --header-height: 48px;
             --list-summary-pad: 102px;
             position: relative;
             z-index: 100000;
@@ -82,16 +82,18 @@
 
         .header {
             background: #fff;
-            padding: 15px 16px;
+            padding: 8px 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: fixed;
-            top: var(--safe-top);
+            top: 0;
             left: 0;
             right: 0;
             z-index: 100;
-            height: var(--header-height);
+            height: calc(var(--header-height) + var(--safe-top));
+            padding-top: calc(8px + var(--safe-top));
+            box-sizing: border-box;
         }
 
         .back-btn {
