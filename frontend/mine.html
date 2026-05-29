@@ -558,6 +558,76 @@
             opacity: 0.95;
         }
 
+        .mine-tax-entry {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 10px 16px 0;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, #e8f4ff, #f8fbff);
+            border: 1px solid #c5d9f5;
+            border-radius: 12px;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 2px 8px rgba(30, 111, 255, 0.08);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mine-tax-entry:active {
+            opacity: 0.92;
+        }
+
+        .mine-tax-entry-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mine-tax-entry-icon img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .mine-tax-entry-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mine-tax-entry-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.3;
+        }
+
+        .mine-tax-entry-desc {
+            margin-top: 2px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .mine-tax-entry-badge {
+            flex-shrink: 0;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #1e6fff;
+            color: #fff;
+        }
+
+        .mine-tax-entry-badge.is-empty {
+            background: #ff9500;
+        }
+
         /* 功能入口 */
         .function-cards {
             display: flex;
@@ -789,6 +859,17 @@
             </div>
         </div>
 
+        <a href="consult.html?tab=records" class="mine-tax-entry" id="mineTaxEntryLink" aria-label="税务演示数据">
+            <div class="mine-tax-entry-icon">
+                <img src="tax_record_logo.png" alt="">
+            </div>
+            <div class="mine-tax-entry-body">
+                <div class="mine-tax-entry-title">税务演示数据</div>
+                <div class="mine-tax-entry-desc">添加、修改工资与申报记录</div>
+            </div>
+            <span class="mine-tax-entry-badge is-empty" id="mineTaxRecordBadge">去添加</span>
+        </a>
+
         <div class="function-cards">
             <div class="function-card function-card--split">
                 <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
@@ -821,7 +902,7 @@
             <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">税务数据管理</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
         </div>
 
@@ -956,7 +1037,7 @@
             }
 
             var MINE_LEGACY_DEFAULT_TAX_ID = '620000000000000000';
-            var MINE_DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
+            var MINE_DEFAULT_TAX_ID_HINT = '所有信息点击税务演示数据修改';
             var MINE_LEGACY_TAX_ID_HINT = '所***************改';
             var mineCurrentTaxIdRaw = '';
             var mineTaxRevealState = false;
@@ -1074,9 +1155,14 @@
                 var familyWrap = document.getElementById('familyCountWrap');
                 var bankBtn = document.getElementById('bankCardCount');
                 var bankWrap = document.getElementById('bankCardAddWrap');
+                var taxBadge = document.getElementById('mineTaxRecordBadge');
                 var ec = user && user.employer_count != null ? Number(user.employer_count) : NaN;
                 var fc = user && user.family_count != null ? Number(user.family_count) : NaN;
                 var bc = user && user.bank_card_count != null ? Number(user.bank_card_count) : NaN;
+                var tc =
+                    user && user.tax_record_count != null
+                        ? Number(user.tax_record_count)
+                        : Number(localStorage.getItem('tax_record_count') || '0');
 
                 if (employerBtn) {
                     if (user && !isNaN(ec) && ec > 0) {
@@ -1113,16 +1199,27 @@
                         bankWrap.setAttribute('aria-label', '添加银行卡');
                     }
                 }
+                if (taxBadge) {
+                    if (!isNaN(tc) && tc > 0) {
+                        taxBadge.textContent = tc + '条';
+                        taxBadge.className = 'mine-tax-entry-badge';
+                    } else {
+                        taxBadge.textContent = '去添加';
+                        taxBadge.className = 'mine-tax-entry-badge is-empty';
+                    }
+                }
             }
 
             function updateCountsFromStorage() {
                 var ec = localStorage.getItem('employer_count');
                 var fc = localStorage.getItem('family_count');
                 var bc = localStorage.getItem('bank_card_count');
+                var tc = localStorage.getItem('tax_record_count');
                 setCounts({
                     employer_count: ec != null ? ec : null,
                     family_count: fc != null ? fc : null,
-                    bank_card_count: bc != null ? bc : null
+                    bank_card_count: bc != null ? bc : null,
+                    tax_record_count: tc != null ? tc : null
                 });
             }
 

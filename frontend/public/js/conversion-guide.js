@@ -170,6 +170,10 @@
     window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
   }
 
+  function goManageTaxRecords() {
+    window.location.href = 'consult.html?tab=records';
+  }
+
   function goIncomeDetail(year) {
     var y = year || new Date().getFullYear();
     try {
@@ -285,7 +289,7 @@
     track('track_conversion_gate_tax', { page: currentPage(), feature: featureName || '' });
     showGateAlert(
       '尚未添加个税记录',
-      '请先在「我要咨询」→ 税务记录中「示例填写」或「一键生成税务记录」，即可在收入纳税明细中查看。',
+      '请先在「我的 → 税务演示数据」或首页「管理税务数据」中添加记录，也可在「税务数据管理」→ 税务记录中「示例填写」或「一键生成」。',
       '去添加',
       goFillTaxRecords
     );
@@ -502,10 +506,12 @@
     ov.innerHTML =
       '<div class="cg-value-panel" role="dialog" aria-labelledby="cgValueTitle">' +
       '<h3 id="cgValueTitle">演示数据已生成</h3>' +
-      '<p>可立即查看收入纳税明细或纳税记录开具效果。数据可随时在「我要咨询」中修改或删除。</p>' +
+      '<p>可立即查看收入纳税明细或纳税记录开具效果。如需继续添加或修改，请点下方「管理税务数据」。</p>' +
+      '<p style="font-size:12px;color:#999;margin-bottom:12px;">返回首页后，可在首页提示条或「我的 → 税务演示数据」再次进入。</p>' +
       '<p style="font-size:12px;color:#999;margin-bottom:12px;">本应用为界面演示与学习参考，非官方申报渠道。</p>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail">查看收入纳税明细</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录开具</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoManage" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">管理税务数据</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
     document.body.appendChild(ov);
@@ -520,6 +526,10 @@
     document.getElementById('cgValueGoNajilu').onclick = function () {
       closeOv('najilu');
       goNajilu();
+    };
+    document.getElementById('cgValueGoManage').onclick = function () {
+      closeOv('manage');
+      goManageTaxRecords();
     };
     document.getElementById('cgValueLater').onclick = function () {
       closeOv('later');
@@ -625,6 +635,58 @@
     }
   }
 
+  function renderShouyeTaxManageEntry() {
+    if (currentPage() !== 'shouye.html') return;
+    if (!isLoggedIn()) return;
+    if (document.getElementById('cg-shouye-tax-entry')) return;
+    var anchor = document.querySelector('.shouye-content');
+    if (!anchor || !anchor.parentNode) return;
+    ensureGateStyles();
+    var count = taxRecordCount();
+    var card = document.createElement('div');
+    card.id = 'cg-shouye-tax-entry';
+    card.className = 'cg-shouye-card';
+    if (count > 0) {
+      card.innerHTML =
+        '<h4>税务演示数据</h4>' +
+        '<p>已添加 ' +
+        count +
+        ' 条记录。可继续批量生成、单条添加或修改已有数据。</p>' +
+        '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>' +
+        '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">查看收入明细</button></div>';
+    } else {
+      card.innerHTML =
+        '<h4>添加税务演示数据</h4>' +
+        '<p>填写工资与申报记录后，可在「收入纳税明细」「纳税记录开具」查看效果。</p>' +
+        '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">去添加</button>' +
+        '<a href="mine.html" class="cg-btn cg-btn-ghost" style="display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:1px solid #1e6fff;color:#1e6fff;background:#fff;">我的页入口</a></div>';
+    }
+    anchor.parentNode.insertBefore(card, anchor);
+    var manageBtn = document.getElementById('cgShouyeManageTax');
+    if (manageBtn) {
+      manageBtn.onclick = function () {
+        track('track_conversion_shouye_tax_entry_manage', { count: count });
+        if (count > 0) goManageTaxRecords();
+        else goFillTaxRecords();
+      };
+    }
+    var detailBtn = document.getElementById('cgShouyeViewDetail');
+    if (detailBtn) {
+      detailBtn.onclick = function () {
+        track('track_conversion_shouye_tax_entry_detail', { count: count });
+        var y = new Date().getFullYear() - 1;
+        try {
+          var sy = localStorage.getItem('selected_year');
+          if (sy) y = Number(sy) - 1 || y;
+        } catch (e) {}
+        goIncomeDetail(y);
+      };
+    }
+    track('track_conversion_shouye_tax_entry_shown', { count: count });
+  }
+
   function renderShouyeRetentionCard() {
     if (currentPage() !== 'shouye.html') return;
     if (!isLoggedIn() || skipConversionPromo() || !hasTaxRecords()) return;
@@ -678,8 +740,8 @@
       id: 'cg-demo-maint',
       title: '演示数据维护提醒',
       content: hasTaxRecords()
-        ? '您的个税演示数据可随时在「我要咨询」中修改；如需更新年度汇总，可重新批量生成或编辑单条记录。'
-        : '激活后建议在「我要咨询」添加税务演示数据，便于查看收入纳税明细与纳税记录效果。',
+        ? '您的个税演示数据可随时在首页「管理税务数据」或「我的 → 税务演示数据」中修改。'
+        : '建议在首页或「我的 → 税务演示数据」添加个税演示数据，便于查看收入纳税明细与纳税记录效果。',
       msg_date: dateStr,
       is_read: 0,
       _cg_demo: true
@@ -768,6 +830,7 @@
         runMineOnboarding();
         runConsultOnboarding();
         patchShuimingResultEmpty();
+        renderShouyeTaxManageEntry();
         if (!skipConversionPromo()) {
           bumpIncomeBrowseVisit();
           renderShuimingHint();
@@ -783,6 +846,7 @@
     hasTaxRecords: hasTaxRecords,
     goActivate: goActivate,
     goFillTaxRecords: goFillTaxRecords,
+    goManageTaxRecords: goManageTaxRecords,
     goIncomeDetail: goIncomeDetail,
     goNajilu: goNajilu,
     gateActivation: gateActivation,
