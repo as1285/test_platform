@@ -196,8 +196,8 @@
 
         function parseFilingDate(msg) {
             var raw = (msg.msg_date || '').trim();
-            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
-                var p = raw.split(/[T\s]/)[0].split('-');
+            if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(raw)) {
+                var p = raw.split(/[T\s]/)[0].replace(/\//g, '-').split('-');
                 return {
                     y: parseInt(p[0], 10),
                     m: parseInt(p[1], 10),
@@ -219,8 +219,22 @@
 
         function formatDisplayTime(msg) {
             var raw = (msg.msg_date || '').trim();
-            if (/\d{2}:\d{2}/.test(raw)) return raw.replace('T', ' ').slice(0, 16);
-            var fd = parseFilingDate(msg);
+            if (raw) {
+                if (/\d{2}:\d{2}/.test(raw)) {
+                    return raw.replace('T', ' ').slice(0, 16);
+                }
+                var dateMatch = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+                if (dateMatch) {
+                    return (
+                        dateMatch[1] +
+                        '-' +
+                        pad2(parseInt(dateMatch[2], 10)) +
+                        '-' +
+                        pad2(parseInt(dateMatch[3], 10)) +
+                        ' 10:13'
+                    );
+                }
+            }
             if (msg.created_at) {
                 try {
                     var c = new Date(msg.created_at);
@@ -239,6 +253,7 @@
                     }
                 } catch (e) {}
             }
+            var fd = parseFilingDate(msg);
             return fd.y + '-' + pad2(fd.m) + '-' + pad2(fd.d) + ' 10:13';
         }
 
