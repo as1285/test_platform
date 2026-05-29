@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260529-huawei-tas-an00"></script>
+    <script src="/js/auth.js?v=20260529-msg-header-layout"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>消息</title>
     <style>
@@ -34,16 +34,10 @@
             z-index: 10;
         }
 
-        .message-header-builtin {
-            padding: 18px 16px 26px;
-            padding-top: calc(14px + env(safe-area-inset-top, 0px));
-            background: linear-gradient(
-                125deg,
-                var(--app-accent-mid, #008afd) 0%,
-                var(--app-accent, #1e6fff) 38%,
-                var(--app-accent-soft, #5aa3ff) 72%,
-                #9dc8ff 100%
-            );
+        .message-header-toolbar {
+            background: linear-gradient(135deg, #1e8fff 0%, #4d9aff 50%, #1e8fff 100%);
+            padding: 50px 16px 20px;
+            position: relative;
             border-radius: 0 0 var(--message-sheet-radius) var(--message-sheet-radius);
             box-shadow: 0 8px 24px rgba(30, 111, 255, 0.22);
         }
@@ -57,25 +51,26 @@
             line-height: 1.2;
         }
 
-        /* 与参考稿一致：顶栏工具行完整落在蓝底内，白列表不上叠裁切 */
-        html.app-top-safe-shell .message-header-builtin {
+        html.app-top-safe-shell .message-header-toolbar {
             padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            padding-bottom: 26px;
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-bottom: 20px;
         }
 
         html.app-top-safe-shell .message-list {
             margin-top: 0;
         }
 
-        html.app-android-xiaomi-14.app-top-safe-shell .message-header-builtin {
-            padding-bottom: 30px;
+        html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar {
+            padding-bottom: 20px;
         }
 
         html.app-android-xiaomi-14.app-top-safe-shell .message-header-title {
             margin-bottom: 18px;
         }
 
-        .message-header-toolbar {
+        .message-header-actions {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -263,9 +258,9 @@
 <body class="page-message">
     <div class="message-page">
         <div class="message-header-wrap">
-            <div id="messageHeaderBuiltin" class="message-header-builtin">
+            <div id="messageHeaderBuiltin" class="message-header-toolbar">
                 <h1 class="message-header-title">消息</h1>
-                <div class="message-header-toolbar">
+                <div class="message-header-actions">
                     <button type="button" id="btnMsgFilter" class="msg-filter-chip" aria-label="筛选">
                         <span>筛选</span>
                         <svg class="msg-filter-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
