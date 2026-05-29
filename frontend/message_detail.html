@@ -177,6 +177,10 @@
             return y + '年' + m + '月' + d + '日';
         }
 
+        function formatCnDatePadded(y, m, d) {
+            return y + '年' + pad2(m) + '月' + pad2(d) + '日';
+        }
+
         function formatDisplayTime(msg) {
             var raw = (msg.msg_date || '').trim();
             if (/\d{2}:\d{2}/.test(raw)) return raw.replace('T', ' ').slice(0, 16);
@@ -223,17 +227,17 @@
                 pm = 12;
                 py -= 1;
             }
-            var filingStr = formatCnDate(fd.y, fd.m, fd.d);
+            var filingStr = formatCnDatePadded(fd.y, fd.m, fd.d);
             return (
-                '尊敬的纳税人，您任职受雇的单位【' +
+                '尊敬的纳税人，【' +
                 company +
-                '】已于' +
+                '】于' +
                 filingStr +
-                '为您办理' +
+                '已为您办理税款所属期为' +
                 py +
                 '年' +
                 pm +
-                '月个人所得税扣缴申报。您可在【收入纳税明细】中查看本次扣缴申报明细。如有疑问，请及时与您任职受雇的单位联系。'
+                '月的个人所得税扣缴申报。如需了解详情，您可通过【收入纳税明细】查看相关信息。如您有疑问，请及时联系该单位进行核实。'
             );
         }
 
