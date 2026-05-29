@@ -87,9 +87,9 @@ flowchart LR
 
 **产品形态：「新手任务」3 项**
 
-1. 激活账号  
-2. 添加 1 条任职（`renzhi.html` / `GET user.php#employers`）  
-3. 添加 1 条税务记录（`consult.html` 税务记录 Tab）  
+1. 添加 1 条税务记录（`consult.html` 税务记录 Tab）  
+2. 激活账号  
+3. 添加 1 条任职（`renzhi.html` / `GET user.php#employers`，可选）  
 
 完成一项给进度反馈（进度条即可，不必复杂积分）。
 

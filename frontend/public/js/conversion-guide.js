@@ -549,9 +549,9 @@
       '<div class="cg-task-progress-label">完成进度 0/3（激活后自动隐藏本卡片）</div>' +
       '<div class="cg-task-progress"><span style="width:0%"></span></div>' +
       '<ul class="cg-task-steps">' +
-      '<li><span class="cg-task-dot">1</span><span>激活账号</span></li>' +
-      '<li><span class="cg-task-dot">2</span><span>添加任职受雇（可选）</span></li>' +
-      '<li><span class="cg-task-dot">3</span><span>添加个税记录</span></li>' +
+      '<li><span class="cg-task-dot">1</span><span>添加个税记录</span></li>' +
+      '<li><span class="cg-task-dot">2</span><span>激活账号</span></li>' +
+      '<li><span class="cg-task-dot">3</span><span>添加任职受雇（可选）</span></li>' +
       '</ul>' +
       '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskActivate">去激活</button></div>';
     var b = document.getElementById('cgTaskActivate');
