@@ -11,6 +11,11 @@
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
   var MAINT_MSG_DISMISS_KEY = 'cg_maint_msg_dismissed';
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
+  var CAPTURE_AUTO_HIDE_KEY = 'cg_capture_auto_hide';
+  var SCREENSHOT_MODE_KEY = 'cg_screenshot_mode';
+  var CAPTURE_HIDE_CLASS = 'cg-capture-hide';
+  var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
+  var captureHideTimer = null;
   var conversionCfg = null;
 
   function loadConversionConfig() {
@@ -257,8 +262,159 @@
       '.cg-shouye-card p{margin:0 0 10px;font-size:13px;color:#666}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
-      '.cg-about-nudge a{color:#1e6fff;font-weight:600}';
+      '.cg-about-nudge a{color:#1e6fff;font-weight:600}' +
+      'html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #mineTaxEntryLink,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #mineTaxEntryLink,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #consultModifyLink,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #consultModifyLink,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #cg-shouye-tax-entry,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cg-shouye-tax-entry,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' #cg-about-nudge,html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' #cg-about-nudge,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' .message-item[data-cg-demo-maint="1"],html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' .message-item[data-cg-demo-maint="1"]{display:none!important}' +
+      '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:8px 14px;background:rgba(0,0,0,.78);color:#fff;font-size:13px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}' +
+      '.cg-capture-toast.is-show{opacity:1}';
     document.head.appendChild(st);
+  }
+
+  function isCaptureAutoHideEnabled() {
+    try {
+      return localStorage.getItem(CAPTURE_AUTO_HIDE_KEY) !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function isScreenshotModeOn() {
+    try {
+      return sessionStorage.getItem(SCREENSHOT_MODE_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function syncScreenshotModeClass() {
+    document.documentElement.classList.toggle(SCREENSHOT_MODE_CLASS, isScreenshotModeOn());
+  }
+
+  function setScreenshotMode(on) {
+    try {
+      if (on) sessionStorage.setItem(SCREENSHOT_MODE_KEY, '1');
+      else sessionStorage.removeItem(SCREENSHOT_MODE_KEY);
+    } catch (e) {}
+    syncScreenshotModeClass();
+    track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
+    showCaptureToast(on ? '截图模式：已隐藏演示入口' : '截图模式已关闭');
+  }
+
+  function toggleScreenshotMode() {
+    setScreenshotMode(!isScreenshotModeOn());
+  }
+
+  function showCaptureToast(msg) {
+    var el = document.getElementById('cg-capture-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'cg-capture-toast';
+      el.className = 'cg-capture-toast';
+      el.setAttribute('role', 'status');
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('is-show');
+    if (showCaptureToast._t) clearTimeout(showCaptureToast._t);
+    showCaptureToast._t = setTimeout(function () {
+      el.classList.remove('is-show');
+    }, 2200);
+  }
+
+  function hideDemoUiForCapture(ms) {
+    if (!isCaptureAutoHideEnabled() && !isScreenshotModeOn()) return;
+    if (isScreenshotModeOn()) return;
+    var html = document.documentElement;
+    html.classList.add(CAPTURE_HIDE_CLASS);
+    if (captureHideTimer) clearTimeout(captureHideTimer);
+    captureHideTimer = setTimeout(function () {
+      html.classList.remove(CAPTURE_HIDE_CLASS);
+      captureHideTimer = null;
+    }, ms || 6000);
+  }
+
+  function bindMineScreenshotModeToggle() {
+    if (currentPage() !== 'mine.html') return;
+    var nameEl = document.getElementById('mineDisplayName');
+    if (!nameEl || nameEl.getAttribute('data-cg-screenshot-toggle') === '1') return;
+    nameEl.setAttribute('data-cg-screenshot-toggle', '1');
+    var timer = null;
+    function clearTimer() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
+    function startPress() {
+      clearTimer();
+      timer = setTimeout(function () {
+        timer = null;
+        toggleScreenshotMode();
+      }, 1200);
+    }
+    nameEl.addEventListener('touchstart', startPress, { passive: true });
+    nameEl.addEventListener('touchend', clearTimer);
+    nameEl.addEventListener('touchcancel', clearTimer);
+    nameEl.addEventListener('touchmove', clearTimer);
+    nameEl.addEventListener('mousedown', startPress);
+    nameEl.addEventListener('mouseup', clearTimer);
+    nameEl.addEventListener('mouseleave', clearTimer);
+  }
+
+  function initCapturePrivacy() {
+    if (window.__cgCapturePrivacyBound) return;
+    window.__cgCapturePrivacyBound = true;
+    ensureGateStyles();
+    syncScreenshotModeClass();
+
+    function onCaptureSignal() {
+      hideDemoUiForCapture(6000);
+    }
+
+    window.addEventListener('blur', onCaptureSignal);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) onCaptureSignal();
+    });
+    window.addEventListener('pagehide', onCaptureSignal);
+    ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
+      document.addEventListener(name, onCaptureSignal);
+      window.addEventListener(name, onCaptureSignal);
+    });
+    window.onUserCaptureScreen = onCaptureSignal;
+    window.onScreenRecordStart = onCaptureSignal;
+
+    var lastH = window.innerHeight;
+    window.addEventListener('resize', function () {
+      if (!isCaptureAutoHideEnabled()) return;
+      var dh = Math.abs(window.innerHeight - lastH);
+      lastH = window.innerHeight;
+      if (dh > 0 && dh < 80) onCaptureSignal();
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindMineScreenshotModeToggle);
+    } else {
+      bindMineScreenshotModeToggle();
+    }
   }
 
   function showGateAlert(title, message, primaryLabel, primaryFn) {
@@ -815,6 +971,7 @@
   }
 
   function init() {
+    initCapturePrivacy();
     if (!isLoggedIn()) return;
     ensureGateStyles();
     loadConversionConfig()
@@ -859,8 +1016,14 @@
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     prependMaintenanceMessages: prependMaintenanceMessages,
     bindMaintenanceMessageDismiss: bindMaintenanceMessageDismiss,
-    refresh: fetchProfileCounts
+    refresh: fetchProfileCounts,
+    hideDemoUiForCapture: hideDemoUiForCapture,
+    setScreenshotMode: setScreenshotMode,
+    toggleScreenshotMode: toggleScreenshotMode,
+    isScreenshotModeOn: isScreenshotModeOn
   };
+
+  initCapturePrivacy();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

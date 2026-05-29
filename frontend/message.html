@@ -364,7 +364,7 @@
             });
             var html = '';
             list.forEach(function (msg, idx) {
-                var demoAttr = msg._cg_demo ? ' data-demo="1"' : '';
+                var demoAttr = msg._cg_demo ? ' data-demo="1" data-cg-demo-maint="1"' : '';
                 html +=
                     '<div class="message-item" role="button" tabindex="0" data-msg-idx="' +
                     idx +

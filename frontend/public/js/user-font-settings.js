@@ -267,6 +267,9 @@
             html.classList.remove('ufs-capture-hide');
             captureHideTimer = null;
         }, ms || 3500);
+        if (window.ConversionGuide && typeof window.ConversionGuide.hideDemoUiForCapture === 'function') {
+            window.ConversionGuide.hideDemoUiForCapture(ms || 6000);
+        }
     }
 
     function showToast(msg) {
