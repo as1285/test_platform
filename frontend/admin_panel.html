@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260528-channel-analysis">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260529-female-age-collapse">
 </head>
 <body>
     <div class="layout">
@@ -740,10 +740,11 @@
                         <div class="chart-canvas-wrap"><canvas id="udChartGenderPie" aria-label="注册用户性别占比"></canvas></div>
                     </div>
                 </div>
-                <div id="udFemaleAgeSection" class="ud-female-age-section" style="margin-top:24px;padding-top:20px;border-top:1px solid #e8eef5;">
-                    <h4 style="margin:0 0 6px;font-size:15px;">女性用户 · 年龄分析</h4>
+                <details id="udFemaleAgeSection" class="ud-female-age-section ud-female-age-collapsible">
+                    <summary class="ud-female-age-summary">女性用户 · 年龄分析</summary>
+                    <div class="ud-female-age-body">
                     <p class="hint" style="margin:0 0 10px;">年龄按出生日期或 18 位纳税人识别号解析（北京时间周岁）；<strong>未满 30 岁</strong>为筛选结果。</p>
-                    <p id="udFemaleAgeSummary" class="stat">加载中…</p>
+                    <p id="udFemaleAgeSummary" class="stat">点击上方标题展开后加载</p>
                     <div id="udFemaleAgeSummaryCards" class="user-data-stats ud-female-age-summary" style="margin-top:8px;"></div>
                     <p id="udFemaleAgeChartsEmpty" class="hint" style="display:none;">暂无女性年龄数据</p>
                     <div class="device-stats-charts ud-female-age-charts-grid" id="udFemaleAgeChartsGrid" style="display:none;margin-top:12px;">
@@ -764,10 +765,11 @@
                                     <th>来源</th>
                                 </tr>
                             </thead>
-                            <tbody id="udFemaleUnder30Tbody"><tr><td colspan="5">加载中…</td></tr></tbody>
+                            <tbody id="udFemaleUnder30Tbody"><tr><td colspan="5">展开后加载</td></tr></tbody>
                         </table>
                     </div>
-                </div>
+                    </div>
+                </details>
             </div>
             <div class="user-filter-bar" style="margin-top:16px;">
                 <div class="user-filter-fields">
@@ -1525,7 +1527,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260529-p3-p5"></script>
+    <script src="/js/admin_panel.js?v=20260529-female-age-collapse"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>

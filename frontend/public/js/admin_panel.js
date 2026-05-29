@@ -3794,6 +3794,11 @@
             );
         }
 
+        function isUdFemaleAgeSectionOpen() {
+            var el = document.getElementById('udFemaleAgeSection');
+            return !!(el && el.open);
+        }
+
         function loadUdFemaleAge() {
             var daysEl = document.getElementById('udGenderDays');
             var days = daysEl ? String(daysEl.value) : '0';
@@ -3825,7 +3830,9 @@
             var daysEl = document.getElementById('udGenderDays');
             var days = daysEl ? String(daysEl.value) : '0';
             if (wrap) wrap.style.display = 'block';
-            loadUdFemaleAge();
+            if (isUdFemaleAgeSectionOpen()) {
+                loadUdFemaleAge();
+            }
             adminFetch('api/admin/analytics/register-gender?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
@@ -5058,6 +5065,14 @@
         if (udGenderDays) {
             udGenderDays.addEventListener('change', function () {
                 loadUdGenderCharts();
+            });
+        }
+        var udFemaleAgeSection = document.getElementById('udFemaleAgeSection');
+        if (udFemaleAgeSection) {
+            udFemaleAgeSection.addEventListener('toggle', function () {
+                if (udFemaleAgeSection.open) {
+                    loadUdFemaleAge();
+                }
             });
         }
         var userDataPrev = document.getElementById('userDataPrev');
