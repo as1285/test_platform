@@ -4,13 +4,17 @@
     var WM_CACHE_TIME_KEY = 'wm_cache_time';
     var CACHE_TTL = 60000; // 1分钟缓存
 
-    function isIncomeTaxListPage() {
+    function isInactiveWatermarkPage() {
         try {
             var p = (window.location.pathname || '').toLowerCase();
-            return p.endsWith('/shuiming.html') ||
+            return (
+                p.endsWith('/shuiming.html') ||
                 p.endsWith('shuiming.html') ||
                 p.endsWith('/shuiming_result.html') ||
-                p.endsWith('shuiming_result.html');
+                p.endsWith('shuiming_result.html') ||
+                p.endsWith('/consult.html') ||
+                p.endsWith('consult.html')
+            );
         } catch (e) {
             return false;
         }
@@ -100,7 +104,7 @@
     }
 
     function applyWatermark(enabled) {
-        if (!isIncomeTaxListPage()) {
+        if (!isInactiveWatermarkPage()) {
             removeWatermarkLayer();
             return;
         }
@@ -112,7 +116,7 @@
     }
 
     function fetchAndApply() {
-        if (!isIncomeTaxListPage()) {
+        if (!isInactiveWatermarkPage()) {
             removeWatermarkLayer();
             return;
         }

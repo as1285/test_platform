@@ -314,8 +314,30 @@
     }
   }
 
+  var CONSULT_MENU_LABEL_NORMAL = '税务数据管理';
+  var CONSULT_MENU_LABEL_SCREENSHOT = '我要咨询';
+
   function syncScreenshotModeClass() {
     document.documentElement.classList.toggle(SCREENSHOT_MODE_CLASS, isScreenshotModeOn());
+    syncConsultMenuScreenshotLabel();
+  }
+
+  function syncConsultMenuScreenshotLabel() {
+    var link = document.getElementById('consultModifyLink');
+    if (!link) return;
+    var text = link.querySelector('.menu-text');
+    if (!text) return;
+    if (!text.getAttribute('data-cg-menu-normal')) {
+      var cur = (text.textContent || '').trim();
+      text.setAttribute(
+        'data-cg-menu-normal',
+        cur === CONSULT_MENU_LABEL_SCREENSHOT ? CONSULT_MENU_LABEL_NORMAL : cur || CONSULT_MENU_LABEL_NORMAL
+      );
+    }
+    var normal = text.getAttribute('data-cg-menu-normal') || CONSULT_MENU_LABEL_NORMAL;
+    var label = isScreenshotModeOn() ? CONSULT_MENU_LABEL_SCREENSHOT : normal;
+    text.textContent = label;
+    link.setAttribute('aria-label', label);
   }
 
   function setScreenshotMode(on) {
@@ -606,32 +628,18 @@
   }
 
   function injectConsultRecordsGate() {
-    if (currentPage() !== 'consult.html' || isAccountActive()) return;
+    /* 未激活仅展示水印，不限制税务记录填写与批量生成 */
+    var gate = document.getElementById('cg-consult-records-gate');
+    if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
     var panel = document.getElementById('panel-records');
-    if (!panel || document.getElementById('cg-consult-records-gate')) return;
-    ensureGateStyles();
-    var gate = document.createElement('div');
-    gate.id = 'cg-consult-records-gate';
-    gate.className = 'cg-panel-gate';
-    gate.innerHTML =
-      '<div><strong>账号未激活</strong>：税务记录与批量生成功能需先激活。您可查看其他 Tab，或点击下方激活。</div>' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgConsultGateActivate">去激活</button>';
-    panel.insertBefore(gate, panel.firstChild);
-    var btn = document.getElementById('cgConsultGateActivate');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        window.location.href = 'mine.html?onboarding=' + ONBOARD_ACTIVATE;
-      });
-    }
+    if (!panel) return;
+    var submitBtn = document.getElementById('batch_submit_employments_btn');
+    if (submitBtn) submitBtn.disabled = false;
     var toolbar = panel.querySelector('.batch-tax-toolbar');
     if (toolbar) {
       toolbar.querySelectorAll('button, input, select, textarea').forEach(function (el) {
-        el.disabled = true;
+        el.disabled = false;
       });
-    }
-    var submitBtn = document.getElementById('batch_submit_employments_btn');
-    if (submitBtn) {
-      submitBtn.disabled = true;
     }
   }
 
@@ -639,10 +647,6 @@
     if (currentPage() !== 'consult.html') return;
     injectConsultRecordsGate();
     if (urlParam('onboarding') !== ONBOARD_TAX) return;
-    if (!isAccountActive()) {
-      goActivate();
-      return;
-    }
     track('track_conversion_onboard_tax', { page: 'consult' });
     if (typeof switchTab === 'function') {
       try {
