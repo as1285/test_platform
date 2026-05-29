@@ -26,6 +26,7 @@
         .message-page {
             min-height: 100vh;
             background: #f5f6fa;
+            --message-sheet-radius: 22px;
         }
         
         .message-header-wrap {
@@ -43,7 +44,7 @@
                 var(--app-accent-soft, #5aa3ff) 72%,
                 #9dc8ff 100%
             );
-            border-radius: 0 0 22px 22px;
+            border-radius: 0 0 var(--message-sheet-radius) var(--message-sheet-radius);
             box-shadow: 0 8px 24px rgba(30, 111, 255, 0.22);
         }
 
@@ -147,12 +148,13 @@
 
         .message-list {
             background: #fff;
-            border-radius: 16px 16px 0 0;
-            margin-top: -10px;
+            border-radius: var(--message-sheet-radius) var(--message-sheet-radius) 0 0;
+            margin-top: calc(-1 * var(--message-sheet-radius) / 2);
             position: relative;
             z-index: 5;
             padding-bottom: var(--bottom-nav-clearance);
             min-height: calc(100vh - 150px);
+            overflow: hidden;
         }
         
         .message-item {
