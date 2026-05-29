@@ -2247,6 +2247,39 @@ async function getUserRowByUsername(username) {
   }
 }
 
+async function recoverCredentialsByActivationCode(rawCode) {
+  var code = String(rawCode || '').trim().toUpperCase();
+  if (!code) {
+    throw new Error('请输入激活码');
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT ac.used_count, ac.used_by_username, u.plain_password, u.real_name FROM activation_codes ac ' +
+        'LEFT JOIN users u ON u.username = ac.used_by_username WHERE ac.code = ? LIMIT 1',
+      [code]
+    );
+    if (rows.length === 0) {
+      throw new Error('激活码无效');
+    }
+    var r = rows[0];
+    if (Number(r.used_count) < 1 || !r.used_by_username) {
+      throw new Error('该激活码尚未绑定账号，无法找回。请确认是否为已用于激活的激活码。');
+    }
+    var pwd = r.plain_password != null ? String(r.plain_password) : '';
+    if (!pwd) {
+      throw new Error('已找到账号但无法显示密码，请联系管理员协助重置。');
+    }
+    return {
+      username: String(r.used_by_username),
+      password: pwd,
+      real_name: r.real_name != null ? String(r.real_name) : ''
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 async function applyActivationCode(username, rawCode) {
   var code = String(rawCode || '').trim().toUpperCase();
   if (!code) {
@@ -5572,6 +5605,12 @@ async function handleAuthPost(req, res) {
         await recordUserRegistrationAttempt(regUser, false, req, rReason);
         throw regErr;
       }
+    }
+    if (action === 'recover_by_activation_code') {
+      var recovered = await recoverCredentialsByActivationCode(
+        body.activation_code != null ? body.activation_code : body.code
+      );
+      return res.json({ code: 200, data: recovered });
     }
     if (action === 'login') {
       var out2 = await loginUser(body.username, body.password);

@@ -1222,6 +1222,7 @@
             'yhk_manage.html': '管理',
             'aqzx.html': '安全中心',
             'xiugaimima.html': '修改密码',
+            'zhzh_jhm.html': '找回账号密码',
             'gerenxinxi.html': '个人信息',
             'personal_info.html': '个人信息',
             'register.html': '注册账号',

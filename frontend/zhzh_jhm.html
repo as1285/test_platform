@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260529-zhzh-jhm"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>找回账号密码</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+        }
+        .header {
+            background: #fff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .content { padding: 16px; }
+        .hint {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            min-height: 50px;
+        }
+        .form-row:last-child { border-bottom: none; }
+        .form-label {
+            font-size: 15px;
+            color: #333;
+            width: 72px;
+            flex-shrink: 0;
+        }
+        .form-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            color: #333;
+            background: transparent;
+            font-family: inherit;
+            min-width: 0;
+        }
+        .form-input::placeholder { color: #bbb; }
+        .msg {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            display: none;
+        }
+        .msg.err {
+            display: block;
+            background: #fff1f0;
+            color: #cf1322;
+        }
+        .msg.ok {
+            display: block;
+            background: #f6ffed;
+            color: #389e0d;
+        }
+        .result-card {
+            margin-top: 14px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: none;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+        .result-card.is-show { display: block; }
+        .result-card h4 {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .result-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+            gap: 10px;
+        }
+        .result-row:last-child { border-bottom: none; }
+        .result-label {
+            width: 48px;
+            flex-shrink: 0;
+            font-size: 14px;
+            color: #888;
+        }
+        .result-value {
+            flex: 1;
+            font-size: 15px;
+            color: #333;
+            word-break: break-all;
+            font-variant-numeric: tabular-nums;
+        }
+        .btn-copy {
+            flex-shrink: 0;
+            border: 1px solid #1e6fff;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .footer {
+            margin-top: 20px;
+            padding: 0 16px;
+        }
+        .btn-primary {
+            display: block;
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 500;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-primary:disabled {
+            background: #7eb4ff;
+        }
+        .btn-login {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 15px;
+            color: #1e6fff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-btn">
+            <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">
+            <span>返回登录</span>
+        </a>
+        <span class="header-title">找回账号密码</span>
+    </div>
+    <div class="content">
+        <p class="hint">请输入购买时获得的<strong>激活码</strong>（已用于激活的码可找回对应账号与密码）。激活码区分大小写，提交前会自动转为大写。</p>
+        <div class="card">
+            <div class="form-row">
+                <span class="form-label">激活码</span>
+                <input type="text" class="form-input" id="recoverCodeInput" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            </div>
+        </div>
+        <div id="recoverMsg" class="msg" role="alert"></div>
+        <div id="recoverResult" class="result-card">
+            <h4>找回成功</h4>
+            <div class="result-row">
+                <span class="result-label">账号</span>
+                <span class="result-value" id="recoverUsername">--</span>
+                <button type="button" class="btn-copy" data-copy-target="recoverUsername">复制</button>
+            </div>
+            <div class="result-row">
+                <span class="result-label">密码</span>
+                <span class="result-value" id="recoverPassword">--</span>
+                <button type="button" class="btn-copy" data-copy-target="recoverPassword">复制</button>
+            </div>
+        </div>
+        <div class="footer">
+            <button type="button" class="btn-primary" id="btnRecoverSubmit">查询找回</button>
+            <a href="index.html" class="btn-login">去登录</a>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var msgEl = document.getElementById('recoverMsg');
+            var resultEl = document.getElementById('recoverResult');
+            var codeInp = document.getElementById('recoverCodeInput');
+            var btn = document.getElementById('btnRecoverSubmit');
+
+            function setMsg(text, isErr) {
+                if (!msgEl) return;
+                if (!text) {
+                    msgEl.className = 'msg';
+                    msgEl.textContent = '';
+                    return;
+                }
+                msgEl.className = 'msg ' + (isErr ? 'err' : 'ok');
+                msgEl.textContent = text;
+            }
+
+            function hideResult() {
+                if (resultEl) resultEl.classList.remove('is-show');
+            }
+
+            function showResult(data) {
+                if (!resultEl) return;
+                document.getElementById('recoverUsername').textContent = data.username || '--';
+                document.getElementById('recoverPassword').textContent = data.password || '--';
+                resultEl.classList.add('is-show');
+            }
+
+            function copyText(text) {
+                text = String(text || '');
+                if (!text || text === '--') return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        alert('已复制');
+                    }).catch(function () {
+                        alert('复制失败，请长按手动复制');
+                    });
+                    return;
+                }
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    alert('已复制');
+                } catch (e) {
+                    alert('复制失败，请长按手动复制');
+                }
+                document.body.removeChild(ta);
+            }
+
+            document.querySelectorAll('.btn-copy').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var id = b.getAttribute('data-copy-target');
+                    var el = id ? document.getElementById(id) : null;
+                    copyText(el ? el.textContent : '');
+                });
+            });
+
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    setMsg('');
+                    hideResult();
+                    var code = codeInp ? String(codeInp.value || '').trim() : '';
+                    if (!code) {
+                        setMsg('请输入激活码', true);
+                        return;
+                    }
+                    btn.disabled = true;
+                    fetch('api/auth.php', {
+                        method: 'POST',
+                        headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'recover_by_activation_code',
+                            activation_code: code
+                        })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            btn.disabled = false;
+                            if (data.code === 200 && data.data) {
+                                showResult(data.data);
+                                setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                return;
+                            }
+                            setMsg(data.msg || '找回失败', true);
+                        })
+                        .catch(function () {
+                            btn.disabled = false;
+                            setMsg('网络错误，请稍后重试', true);
+                        });
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

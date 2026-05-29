@@ -396,6 +396,37 @@
             color: #fff;
             font-size: 16px;
         }
+
+        .login-error-modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .login-error-recover-link {
+            flex: 1;
+            min-width: 0;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #1e6fff;
+            text-decoration: none;
+            text-align: left;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .login-error-recover-link:active {
+            opacity: 0.75;
+        }
+
+        .login-error-modal-actions .login-welcome-modal-btn {
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 88px;
+            margin-top: 0;
+            padding: 0 18px;
+        }
     </style>
 </head>
 <body class="page-login">
@@ -449,7 +480,7 @@
         <div class="login-aux">
             <a href="javascript:void(0)" id="linkFaceLogin">扫脸登录</a>
             <span class="login-aux-sep">|</span>
-            <a href="xiugaimima.html?from=login" id="linkForgotPwd">找回密码</a>
+            <a href="zhzh_jhm.html" id="linkForgotPwd">找回账号密码</a>
         </div>
 
         <!-- 按钮区域 -->
@@ -476,6 +507,17 @@
             <p class="login-welcome-modal-title" id="loginWelcomeModalTitle">温馨提示</p>
             <p class="login-welcome-modal-body" id="loginWelcomeModalBody">自己注册登录，所有数据可以修改</p>
             <button type="button" class="login-welcome-modal-btn" id="loginWelcomeModalOk">我知道了</button>
+        </div>
+    </div>
+
+    <div id="loginErrorModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginErrorModalBody">
+        <div class="login-welcome-modal-mask" id="loginErrorModalMask"></div>
+        <div class="login-welcome-modal-panel">
+            <p class="login-welcome-modal-body" id="loginErrorModalBody" style="margin-bottom:0;">账号或密码错误</p>
+            <div class="login-error-modal-actions">
+                <a href="zhzh_jhm.html" class="login-error-recover-link" id="loginErrorRecoverLink">找回账号密码（激活码）</a>
+                <button type="button" class="login-welcome-modal-btn" id="loginErrorModalOk">确定</button>
+            </div>
         </div>
     </div>
 
@@ -821,6 +863,34 @@
                 alert('扫脸登录功能暂未开放，请使用账号密码登录。');
             });
         }
+        function showLoginErrorModal(msg) {
+            var text = String(msg || '登录失败');
+            if (text.indexOf('账号或密码错误') < 0) {
+                alert(text);
+                return;
+            }
+            var root = document.getElementById('loginErrorModal');
+            var body = document.getElementById('loginErrorModalBody');
+            if (!root || !body) {
+                alert(text);
+                return;
+            }
+            body.textContent = text;
+            root.classList.add('is-open');
+        }
+
+        function closeLoginErrorModal() {
+            var root = document.getElementById('loginErrorModal');
+            if (root) root.classList.remove('is-open');
+        }
+
+        (function bindLoginErrorModal() {
+            var ok = document.getElementById('loginErrorModalOk');
+            var mask = document.getElementById('loginErrorModalMask');
+            if (ok) ok.addEventListener('click', closeLoginErrorModal);
+            if (mask) mask.addEventListener('click', closeLoginErrorModal);
+        })();
+
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;
@@ -865,7 +935,7 @@
                         window.location.href = 'mine.html';
                         return;
                     }
-                    alert(data.msg || '登录失败');
+                    showLoginErrorModal(data.msg || '登录失败');
                 })
                 .catch(function () {
                     alert('网络错误，请检查服务是否可用');
