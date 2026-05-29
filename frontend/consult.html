@@ -1178,7 +1178,8 @@
     </div>
 
     <script src="/js/watermark.js?v=20260529-no-consult-wm"></script>
-    <script src="/js/xianyu-copy.js?v=20260525"></script>
+    <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
         function pad2(n) {
             n = parseInt(n, 10);
@@ -1277,10 +1278,16 @@
             return 'consult.html?user_id=' + encodeURIComponent(currentUserId()) + '&tab=' + encodeURIComponent(tab);
         }
 
+        function getToastDurationMs() {
+            var ms = typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
+                ? Number(window.TOAST_DURATION_MS) : 3000;
+            return isNaN(ms) || ms <= 0 ? 3000 : ms;
+        }
+
         function showMsg(text, ok) {
             var el = document.getElementById('msgBar');
             el.innerHTML = '<div class="msg ' + (ok ? 'msg-success' : 'msg-error') + '">' + text + '</div>';
-            setTimeout(function() { el.innerHTML = ''; }, 3000);
+            setTimeout(function() { el.innerHTML = ''; }, getToastDurationMs());
         }
 
         function closeConsultStrongAlertModal() {

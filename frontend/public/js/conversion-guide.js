@@ -18,6 +18,14 @@
   var captureHideTimer = null;
   var conversionCfg = null;
 
+  function getToastDurationMs() {
+    var ms =
+      typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
+        ? Number(window.TOAST_DURATION_MS)
+        : 3000;
+    return isNaN(ms) || ms <= 0 ? 3000 : ms;
+  }
+
   function loadConversionConfig() {
     var headers = {};
     if (typeof getClientDeviceHeaders === 'function') {
@@ -346,7 +354,7 @@
     track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
     showCaptureToast(
       on ? '演示入口已全部隐藏，可截屏录屏\n长按头像可恢复' : '截图模式已关闭，演示入口已恢复',
-      { duration: on ? 5500 : 4500, tapDismiss: on }
+      { duration: getToastDurationMs(), tapDismiss: on }
     );
   }
 
@@ -391,7 +399,7 @@
       el.classList.remove('is-show');
       el.classList.remove('is-tap-dismiss');
       el.onclick = null;
-    }, opts.duration || 4000);
+    }, opts.duration != null ? opts.duration : getToastDurationMs());
   }
 
   function hideDemoUiForCapture(ms) {

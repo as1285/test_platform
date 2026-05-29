@@ -1223,13 +1223,23 @@
   };
   autoTrackJumpButtons();
 
+  (function injectToastDuration() {
+    if (typeof window.TOAST_DURATION_MS === 'number') return;
+    if (document.querySelector('script[data-toast-duration]')) return;
+    var s = document.createElement('script');
+    s.src = '/js/toast-duration.js?v=20260529-toast-3s';
+    s.setAttribute('data-toast-duration', '1');
+    s.async = false;
+    document.head.appendChild(s);
+  })();
+
   (function injectConversionGuide() {
     if (isPublicPage()) return;
     if (currentPageName() === 'admin_panel.html') return;
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260529-mine-consult-menu';
+    s.src = '/js/conversion-guide.js?v=20260529-toast-3s';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

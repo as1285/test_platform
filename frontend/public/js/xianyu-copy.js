@@ -20,9 +20,14 @@
         if (toastTimer) {
             clearTimeout(toastTimer);
         }
+        var toastMs =
+            typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
+                ? Number(window.TOAST_DURATION_MS)
+                : 3000;
+        if (isNaN(toastMs) || toastMs <= 0) toastMs = 3000;
         toastTimer = setTimeout(function () {
             el.style.opacity = '0';
-        }, 2200);
+        }, toastMs);
     }
 
     function copyText(text) {
