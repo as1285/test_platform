@@ -13,14 +13,54 @@
             min-height: 100vh;
             color: #333;
             -webkit-font-smoothing: antialiased;
+            padding-top: calc(48px + env(safe-area-inset-top, 0px));
+        }
+        html.app-top-safe-shell body.page-message-detail {
+            padding-top: calc(48px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .header {
+            background: #fff;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+            min-height: 48px;
+            box-sizing: border-box;
+        }
+        html.app-top-safe-shell .header {
+            padding-top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+        }
+        .back-btn {
+            position: absolute;
+            left: 16px;
+            color: #1e6fff;
+            font-size: 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            vertical-align: middle;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
         }
         .detail-wrap {
-            padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 32px;
+            padding: 16px 18px 32px;
             max-width: 520px;
             margin: 0 auto;
-        }
-        html.app-top-safe-shell .detail-wrap {
-            padding-top: calc(16px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
         }
         .detail-title {
             font-size: 17px;
@@ -55,6 +95,13 @@
     </style>
 </head>
 <body class="page-message-detail">
+    <header class="header">
+        <a href="message.html" class="back-btn" id="msgDetailBack">
+            <img src="/jt.png" alt="" width="9" decoding="async">
+            <span>返回</span>
+        </a>
+        <span class="header-title">消息详情</span>
+    </header>
     <div class="detail-wrap" id="detailRoot">
         <div class="detail-loading">加载中…</div>
     </div>
@@ -220,6 +267,17 @@
                 false
             );
         }
+
+        (function bindBack() {
+            var back = document.getElementById('msgDetailBack');
+            if (!back) return;
+            back.addEventListener('click', function (e) {
+                if (window.history.length > 1) {
+                    e.preventDefault();
+                    window.history.back();
+                }
+            });
+        })();
 
         function loadDetail() {
             var demo = urlParam('demo');
