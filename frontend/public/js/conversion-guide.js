@@ -444,6 +444,7 @@
 
   function bindMineScreenshotModeUi() {
     if (currentPage() !== 'mine.html') return;
+    if (isAccountActive()) return;
     if (document.body.getAttribute('data-cg-screenshot-ui') === '1') return;
     document.body.setAttribute('data-cg-screenshot-ui', '1');
     syncMineScreenshotModeButton();
@@ -534,6 +535,13 @@
     if (el && el.parentNode) el.parentNode.removeChild(el);
     var legacyBar = document.getElementById('cg-mine-onboard-bar');
     if (legacyBar && legacyBar.parentNode) legacyBar.parentNode.removeChild(legacyBar);
+    if (document.body) {
+      document.body.classList.add('mine-account-active');
+    }
+    var shotBar = document.getElementById('cgMineScreenshotBar');
+    var taxEntry = document.getElementById('mineTaxEntryLink');
+    if (shotBar) shotBar.style.display = 'none';
+    if (taxEntry) taxEntry.style.display = 'none';
   }
 
   function getMineBottomExtrasEl() {

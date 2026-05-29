@@ -701,6 +701,12 @@
             opacity: 0.9;
         }
 
+        /* 已激活：隐藏截图模式条与税务演示数据入口 */
+        body.page-mine.mine-account-active #cgMineScreenshotBar,
+        body.page-mine.mine-account-active #mineTaxEntryLink {
+            display: none !important;
+        }
+
         /* 功能入口 */
         .function-cards {
             display: flex;
@@ -1408,7 +1414,6 @@
 
             function updateMineActivateButton(user) {
                 var btn = document.getElementById('mineActivateBtn');
-                if (!btn) return;
                 var active = false;
                 if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
                     active = true;
@@ -1417,7 +1422,20 @@
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
                 }
-                btn.style.display = active ? 'none' : 'inline-flex';
+                if (btn) {
+                    btn.style.display = active ? 'none' : 'inline-flex';
+                }
+                if (document.body) {
+                    document.body.classList.toggle('mine-account-active', active);
+                }
+                var shotBar = document.getElementById('cgMineScreenshotBar');
+                var taxEntry = document.getElementById('mineTaxEntryLink');
+                if (shotBar) {
+                    shotBar.style.display = active ? 'none' : '';
+                }
+                if (taxEntry) {
+                    taxEntry.style.display = active ? 'none' : '';
+                }
             }
 
             function submitMineActivateWithCode(code) {
