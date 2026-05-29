@@ -1655,13 +1655,6 @@
 
             function handleConsultMenuClick(e) {
                 e.preventDefault();
-                if (isInactiveAccount() && !hasTaxRecords()) {
-                    if (typeof window.forceHidePageLoading === 'function') {
-                        window.forceHidePageLoading();
-                    }
-                    confirmModifyTaxData();
-                    return;
-                }
                 goConsultPage();
             }
             document.getElementById('consultModifyLink').addEventListener('click', handleConsultMenuClick);
