@@ -26,20 +26,19 @@
         .message-page {
             min-height: 100vh;
             background: #f5f6fa;
-            --message-sheet-radius: 22px;
         }
         
         .message-header-wrap {
             position: relative;
-            z-index: 10;
+            z-index: 1;
         }
 
         .message-header-toolbar {
             background: linear-gradient(135deg, #1e8fff 0%, #4d9aff 50%, #1e8fff 100%);
             padding: 50px 16px 20px;
             position: relative;
-            border-radius: 0 0 var(--message-sheet-radius) var(--message-sheet-radius);
-            box-shadow: 0 8px 24px rgba(30, 111, 255, 0.22);
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .message-header-title {
@@ -63,7 +62,7 @@
             border-radius: 16px 16px 0 0;
             margin-top: -10px;
             position: relative;
-            z-index: 5;
+            z-index: 2;
             padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
             min-height: calc(100vh - 150px);
             overflow: hidden;
