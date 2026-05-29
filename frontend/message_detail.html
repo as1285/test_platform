@@ -7,20 +7,28 @@
     <title>消息详情</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: #fff;
             min-height: 100vh;
-            color: #333;
+            color: #323233;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 22px;
             -webkit-font-smoothing: antialiased;
-            padding-top: calc(48px + env(safe-area-inset-top, 0px));
+            -moz-osx-font-smoothing: grayscale;
+            padding-top: calc(44px + env(safe-area-inset-top, 0px));
         }
         html.app-top-safe-shell body.page-message-detail {
-            padding-top: calc(48px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding-top: calc(44px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
         }
         .header {
             background: #fff;
-            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+            padding: calc(11px + env(safe-area-inset-top, 0px)) 12px 11px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -29,18 +37,18 @@
             left: 0;
             right: 0;
             z-index: 100;
-            border-bottom: 1px solid #eee;
-            min-height: 48px;
+            min-height: 44px;
             box-sizing: border-box;
         }
         html.app-top-safe-shell .header {
-            padding-top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            padding-top: calc(11px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
         }
         .back-btn {
             position: absolute;
-            left: 16px;
+            left: 12px;
             color: #1e6fff;
-            font-size: 16px;
+            font-size: 17px;
+            font-weight: 400;
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -55,43 +63,50 @@
         .header-title {
             font-size: 17px;
             font-weight: 500;
-            color: #333;
+            color: #323233;
+            letter-spacing: 0;
         }
         .detail-wrap {
-            padding: 12px 14px 32px;
+            padding: 10px 12px 32px;
             max-width: 520px;
             margin: 0 auto;
         }
         .detail-title {
-            font-size: 15px;
-            font-weight: 600;
-            line-height: 1.45;
-            color: #333;
-            margin-bottom: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 22px;
+            color: #323233;
+            margin-bottom: 4px;
+            letter-spacing: 0;
         }
         .detail-time {
             font-size: 12px;
-            color: #999;
-            margin-bottom: 14px;
-            line-height: 1.3;
+            font-weight: 400;
+            line-height: 17px;
+            color: #969799;
+            margin-bottom: 12px;
         }
         .detail-body {
-            font-size: 14px;
-            line-height: 1.5;
-            color: #333;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 22px;
+            color: #323233;
             word-break: break-word;
-            text-align: justify;
+            text-align: left;
+            letter-spacing: 0;
         }
         .detail-body a {
-            color: #1677ff;
+            color: #1989fa;
             text-decoration: none;
+            font-weight: 400;
         }
         .detail-loading,
         .detail-error {
-            padding: 48px 16px;
+            padding: 48px 12px;
             text-align: center;
-            color: #999;
+            color: #969799;
             font-size: 14px;
+            line-height: 20px;
         }
     </style>
 </head>
