@@ -628,6 +628,59 @@
             background: #ff9500;
         }
 
+        .mine-screenshot-mode-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 8px 16px 0;
+            padding: 8px 12px;
+            background: #f5f7fa;
+            border-radius: 10px;
+            border: 1px solid #e8ecf2;
+        }
+
+        .mine-screenshot-mode-bar.is-active {
+            background: #eef6ff;
+            border-color: #c5d9f5;
+        }
+
+        .mine-screenshot-mode-hint {
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        html.cg-screenshot-mode .mine-screenshot-mode-hint {
+            display: none;
+        }
+
+        .mine-screenshot-mode-btn {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid #c5d9f5;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mine-screenshot-mode-btn.is-on {
+            background: #1e6fff;
+            color: #fff;
+            border-color: #1e6fff;
+        }
+
+        .mine-screenshot-mode-btn:active {
+            opacity: 0.9;
+        }
+
         /* 功能入口 */
         .function-cards {
             display: flex;
@@ -859,6 +912,13 @@
             </div>
         </div>
 
+        <div class="mine-screenshot-mode-bar" id="cgMineScreenshotBar">
+            <span class="mine-screenshot-mode-hint">截屏/录屏前开启，隐藏演示入口；也可长按姓名切换</span>
+            <button type="button" class="mine-screenshot-mode-btn" id="mineScreenshotModeBtn" aria-pressed="false" aria-label="截图模式">
+                <span id="mineScreenshotModeLabel">截图模式</span>
+            </button>
+        </div>
+
         <a href="consult.html?tab=records" class="mine-tax-entry" id="mineTaxEntryLink" aria-label="税务演示数据">
             <div class="mine-tax-entry-icon">
                 <img src="tax_record_logo.png" alt="">
@@ -949,7 +1009,7 @@
     <div id="mineConsultModifyModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineConsultModifyModalTitle">
         <div class="activate-modal-mask" id="mineConsultModifyModalMask"></div>
         <div class="activate-modal-panel">
-            <p class="activate-modal-body" id="mineConsultModifyModalTitle">点击我要咨询修改数据，闲鱼购买，谨防被骗</p>
+            <p class="activate-modal-body" id="mineConsultModifyModalTitle">点击税务演示数据修改，闲鱼购买，谨防被骗</p>
             <div class="activate-modal-actions">
                 <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">联系方式</button>
                 <button type="button" class="activate-modal-btn" id="btnMineConsultModifyCancel">取消</button>

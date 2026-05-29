@@ -315,8 +315,22 @@
       else sessionStorage.removeItem(SCREENSHOT_MODE_KEY);
     } catch (e) {}
     syncScreenshotModeClass();
+    syncMineScreenshotModeButton();
     track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
     showCaptureToast(on ? '截图模式：已隐藏演示入口' : '截图模式已关闭');
+  }
+
+  function syncMineScreenshotModeButton() {
+    var btn = document.getElementById('mineScreenshotModeBtn');
+    var label = document.getElementById('mineScreenshotModeLabel');
+    var bar = document.getElementById('cgMineScreenshotBar');
+    if (!btn || !label) return;
+    var on = isScreenshotModeOn();
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '退出截图模式' : '截图模式');
+    label.textContent = on ? '退出截图模式' : '截图模式';
+    if (bar) bar.classList.toggle('is-active', on);
   }
 
   function toggleScreenshotMode() {
@@ -352,11 +366,9 @@
     }, ms || 6000);
   }
 
-  function bindMineScreenshotModeToggle() {
-    if (currentPage() !== 'mine.html') return;
-    var nameEl = document.getElementById('mineDisplayName');
-    if (!nameEl || nameEl.getAttribute('data-cg-screenshot-toggle') === '1') return;
-    nameEl.setAttribute('data-cg-screenshot-toggle', '1');
+  function bindLongPressScreenshotToggle(el) {
+    if (!el || el.getAttribute('data-cg-screenshot-toggle') === '1') return;
+    el.setAttribute('data-cg-screenshot-toggle', '1');
     var timer = null;
     function clearTimer() {
       if (timer) {
@@ -371,13 +383,28 @@
         toggleScreenshotMode();
       }, 1200);
     }
-    nameEl.addEventListener('touchstart', startPress, { passive: true });
-    nameEl.addEventListener('touchend', clearTimer);
-    nameEl.addEventListener('touchcancel', clearTimer);
-    nameEl.addEventListener('touchmove', clearTimer);
-    nameEl.addEventListener('mousedown', startPress);
-    nameEl.addEventListener('mouseup', clearTimer);
-    nameEl.addEventListener('mouseleave', clearTimer);
+    el.addEventListener('touchstart', startPress, { passive: true });
+    el.addEventListener('touchend', clearTimer);
+    el.addEventListener('touchcancel', clearTimer);
+    el.addEventListener('touchmove', clearTimer);
+    el.addEventListener('mousedown', startPress);
+    el.addEventListener('mouseup', clearTimer);
+    el.addEventListener('mouseleave', clearTimer);
+  }
+
+  function bindMineScreenshotModeUi() {
+    if (currentPage() !== 'mine.html') return;
+    if (document.body.getAttribute('data-cg-screenshot-ui') === '1') return;
+    document.body.setAttribute('data-cg-screenshot-ui', '1');
+    syncMineScreenshotModeButton();
+    var btn = document.getElementById('mineScreenshotModeBtn');
+    if (btn && btn.getAttribute('data-cg-screenshot-btn') !== '1') {
+      btn.setAttribute('data-cg-screenshot-btn', '1');
+      btn.addEventListener('click', function () {
+        toggleScreenshotMode();
+      });
+    }
+    bindLongPressScreenshotToggle(document.getElementById('mineDisplayName'));
   }
 
   function initCapturePrivacy() {
@@ -411,9 +438,9 @@
     });
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindMineScreenshotModeToggle);
+      document.addEventListener('DOMContentLoaded', bindMineScreenshotModeUi);
     } else {
-      bindMineScreenshotModeToggle();
+      bindMineScreenshotModeUi();
     }
   }
 
@@ -972,6 +999,7 @@
 
   function init() {
     initCapturePrivacy();
+    bindMineScreenshotModeUi();
     if (!isLoggedIn()) return;
     ensureGateStyles();
     loadConversionConfig()
