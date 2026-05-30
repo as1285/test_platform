@@ -465,6 +465,7 @@
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
+      var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
       var iosIPhoneProMaxFont = iosClient && isIPhoneProMaxLargeFontClient();
       var huaweiPura70Client = androidClient && isHuaweiPura70LikeClient();
       var cordovaHuaweiPura70 = cordovaShell && huaweiPura70Client;
@@ -575,6 +576,9 @@
       if (iosIPhone15ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
       }
+      if (iosIPhone12ProMax) {
+        document.documentElement.classList.add('app-ios-iphone12promax');
+      }
       if (iosIPhoneProMaxFont) {
         document.documentElement.classList.add('app-ios-iphone-promax-font');
       }
@@ -667,6 +671,18 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-header-lift,12px)) !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;}' +
+          /* iPhone 12 Pro Max：待办/办查/消息/我的 刘海区白边（仅 12PM，其它机型不改） */
+          'html.app-ios-iphone12promax.app-top-safe-shell{--mine-ios-header-lift:0px !important;--app-shell-statusbar-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-daiban::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-bancha::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:env(safe-area-inset-top,0px) !important;background:#2c80f4 !important;z-index:12 !important;pointer-events:none !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header{padding-top:0 !important;background:#2c80f4 !important;overflow:visible !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .bancha-page .bancha-content{margin-top:80px !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-message::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:env(safe-area-inset-top,0px) !important;background:#1e8fff !important;z-index:3 !important;pointer-events:none !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before{height:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg{padding-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + env(safe-area-inset-top,0px)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card{margin:-70px 16px 0 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:40px !important;}' +
