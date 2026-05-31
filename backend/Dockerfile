@@ -3,6 +3,5 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY server.js register-guard.js mail.js serverMonitor.js bank_card_bins.js ./
-COPY admin/ ./admin/
 EXPOSE 3000
 CMD ["node", "server.js"]
