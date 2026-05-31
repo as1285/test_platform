@@ -176,7 +176,25 @@ function normalizeTaxIdForApi(taxId) {
 
 function isPlaceholderTaxId(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
-  return !s || s === LEGACY_DEFAULT_TAX_ID || s === DEFAULT_TAX_ID_HINT || s === LEGACY_TAX_ID_HINT;
+  return (
+    !s ||
+    s === LEGACY_DEFAULT_TAX_ID ||
+    s === DEFAULT_TAX_ID_HINT ||
+    s === LEGACY_TAX_ID_HINT ||
+    s === '所有信息点击税务演示数据修改' ||
+    s === '所***************改'
+  );
+}
+
+/** C 端「纳税人识别号」在管理后台用户数据中展示为身份证号 */
+function formatUserIdCardForAdmin(taxId) {
+  var s = taxId == null ? '' : String(taxId).trim();
+  return isPlaceholderTaxId(s) ? '' : s;
+}
+
+function userIdCardLabelForAdmin(taxId) {
+  var s = formatUserIdCardForAdmin(taxId);
+  return s || '未填写';
 }
 /** 环境变量或内置默认；首次写入 app_settings 及库中无配置时使用 */
 const TEST_ACCOUNT_COMPANY_NAME_DEFAULT = process.env.TEST_ACCOUNT_COMPANY_NAME || '';
@@ -8185,6 +8203,8 @@ async function handleAdminUserDataList(req, res) {
         username: uname,
         real_name: r.real_name != null ? String(r.real_name) : '',
         user_tax_id: r.tax_id != null ? String(r.tax_id) : '',
+        id_card: formatUserIdCardForAdmin(r.tax_id),
+        id_card_label: userIdCardLabelForAdmin(r.tax_id),
         avg_salary_6m: sal.avg_salary_6m,
         avg_salary_6m_label: sal.avg_salary_6m_label,
         salary_month_count: sal.salary_month_count,
@@ -8281,6 +8301,8 @@ async function handleAdminUserDataDetail(req, res) {
             username: String(u.username),
             real_name: u.real_name != null ? String(u.real_name) : '',
             user_tax_id: u.tax_id != null ? String(u.tax_id) : '',
+            id_card: formatUserIdCardForAdmin(u.tax_id),
+            id_card_label: userIdCardLabelForAdmin(u.tax_id),
             created_at: u.created_at ? u.created_at.toISOString() : '',
             register_source_channel:
               u.register_source_channel != null ? String(u.register_source_channel).trim() : '',

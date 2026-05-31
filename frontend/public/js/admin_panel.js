@@ -4164,14 +4164,14 @@
                 html += '</tbody></table></div>';
             }
 
-            html += '<div style="margin:10px 0 6px;color:#666;">纳税人识别号（' + (data.company_tax_ids || []).length + '）</div>';
+            var idCard =
+                (data.user && (data.user.id_card || data.user.id_card_label)) ||
+                data.id_card ||
+                data.id_card_label ||
+                '';
+            html += '<div style="margin:10px 0 6px;color:#666;">身份证号</div>';
             html += '<div class="scroll-x"><table class="user-detail-table"><tbody>';
-            (data.company_tax_ids || []).forEach(function (t) {
-                html += '<tr><td class="cell-break"><code>' + esc(t) + '</code></td></tr>';
-            });
-            if (!(data.company_tax_ids || []).length) {
-                html += '<tr><td>—</td></tr>';
-            }
+            html += '<tr><td class="cell-break"><code>' + esc(idCard || '未填写') + '</code></td></tr>';
             html += '</tbody></table></div>';
 
             html += '<div style="margin:10px 0 6px;color:#666;">税务机关（' + (data.tax_authorities || []).length + '）</div>';
@@ -4353,7 +4353,10 @@
                             '</td>';
                         html += '<td class="cell-break">' + esc(row.avg_salary_6m_label || '未填写') + '</td>';
                         html += '<td class="cell-break">' + esc(row.companies_summary || '—') + '</td>';
-                        html += '<td class="cell-break">' + esc(row.company_tax_ids_summary || '—') + '</td>';
+                        html +=
+                            '<td class="cell-break">' +
+                            esc(row.id_card_label || row.id_card || '未填写') +
+                            '</td>';
                         html += '<td class="cell-break">' + esc(row.tax_authorities_summary || '—') + '</td>';
                         html += '<td class="cell-break">' + fam + '</td>';
                         html += '<td class="cell-break">' + bank + '</td>';
