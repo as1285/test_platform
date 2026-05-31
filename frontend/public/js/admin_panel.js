@@ -3794,6 +3794,11 @@
             );
         }
 
+        function isUdGenderSectionOpen() {
+            var el = document.getElementById('udGenderSection');
+            return !!(el && el.open);
+        }
+
         function isUdFemaleAgeSectionOpen() {
             var el = document.getElementById('udFemaleAgeSection');
             return !!(el && el.open);
@@ -3830,6 +3835,7 @@
             var daysEl = document.getElementById('udGenderDays');
             var days = daysEl ? String(daysEl.value) : '0';
             if (wrap) wrap.style.display = 'block';
+            if (!isUdGenderSectionOpen()) return;
             if (isUdFemaleAgeSectionOpen()) {
                 loadUdFemaleAge();
             }
@@ -3903,7 +3909,11 @@
                 });
                 buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
             }
-            loadUdGenderCharts();
+            var genderWrap = document.getElementById('userDataGenderChartsWrap');
+            if (genderWrap) genderWrap.style.display = 'block';
+            if (isUdGenderSectionOpen()) {
+                loadUdGenderCharts();
+            }
             var compTb = document.getElementById('userDataTopCompaniesTbody');
             if (compTb) {
                 var chtml = '';
@@ -5068,6 +5078,14 @@
         if (udGenderDays) {
             udGenderDays.addEventListener('change', function () {
                 loadUdGenderCharts();
+            });
+        }
+        var udGenderSection = document.getElementById('udGenderSection');
+        if (udGenderSection) {
+            udGenderSection.addEventListener('toggle', function () {
+                if (udGenderSection.open) {
+                    loadUdGenderCharts();
+                }
             });
         }
         var udFemaleAgeSection = document.getElementById('udFemaleAgeSection');

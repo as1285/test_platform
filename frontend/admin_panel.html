@@ -713,7 +713,9 @@
                 </div>
             </div>
             <div id="userDataGenderChartsWrap" class="device-stats-charts-wrap ud-gender-charts" style="display:none;margin-top:20px;">
-                <h3>注册用户 · 性别分析</h3>
+                <details id="udGenderSection" class="ud-female-age-section ud-female-age-collapsible">
+                    <summary class="ud-female-age-summary">注册用户 · 性别分析</summary>
+                    <div class="ud-female-age-body">
                 <p class="hint" id="udGenderChartsHint">按用户资料中的性别字段统计（1=男，2=女；用户在「我的」或个人信息中保存后写入）</p>
                 <div class="form-row" style="align-items:center;margin:8px 0 4px;">
                     <div>
@@ -728,7 +730,7 @@
                     </div>
                     <button type="button" class="btn-page" id="btnRefreshUdGender">刷新</button>
                 </div>
-                <div id="udGenderSummary" class="user-data-stats ud-gender-summary" aria-live="polite"></div>
+                <div id="udGenderSummary" class="user-data-stats ud-gender-summary" aria-live="polite">点击上方标题展开后加载</div>
                 <p id="userDataGenderChartsEmpty" class="hint" style="display:none;">暂无用户性别数据</p>
                 <div class="device-stats-charts ud-gender-charts-grid" id="userDataGenderChartsGrid" style="display:none;">
                     <div class="device-stats-chart-card chart-card-wide">
@@ -768,6 +770,8 @@
                             <tbody id="udFemaleUnder30Tbody"><tr><td colspan="5">展开后加载</td></tr></tbody>
                         </table>
                     </div>
+                    </div>
+                </details>
                     </div>
                 </details>
             </div>
