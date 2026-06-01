@@ -1778,6 +1778,9 @@
         var USER_LIMIT_STORAGE_KEY = 'admin_user_list_limit';
         var USER_LIMIT_OPTIONS = [10, 20, 50, 100];
         var userLimit = 10;
+        var deletedUserPage = 1;
+        var deletedUserLimit = 10;
+        var DELETED_USER_LIMIT_STORAGE_KEY = 'admin_deleted_user_list_limit';
         (function initUserListPageLimit() {
             var saved = parseInt(localStorage.getItem(USER_LIMIT_STORAGE_KEY), 10);
             if (USER_LIMIT_OPTIONS.indexOf(saved) >= 0) {
@@ -1786,6 +1789,14 @@
             var sel = document.getElementById('userPageLimit');
             if (sel) {
                 sel.value = String(userLimit);
+            }
+            var savedDeleted = parseInt(localStorage.getItem(DELETED_USER_LIMIT_STORAGE_KEY), 10);
+            if (USER_LIMIT_OPTIONS.indexOf(savedDeleted) >= 0) {
+                deletedUserLimit = savedDeleted;
+            }
+            var selDeleted = document.getElementById('deletedUserPageLimit');
+            if (selDeleted) {
+                selDeleted.value = String(deletedUserLimit);
             }
         })();
         var codePage = 1;
@@ -1802,6 +1813,7 @@
         var _adminAccountsLoaded = false;
 
         var _adminUsersLoaded = false;
+        var _adminDeletedUsersLoaded = false;
         var _adminUserDataLoaded = false;
         var _adminUserBehaviorLoaded = false;
         var userDataPage = 1;
@@ -1821,7 +1833,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'user-data', 'user-behavior', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1869,6 +1881,7 @@
                 codes: 1,
                 'admin-accounts': 1,
                 users: 1,
+                'users-deleted': 1,
                 'user-data': 1,
                 'user-behavior': 1,
                 feedback: 1,
@@ -1901,6 +1914,10 @@
             if (pageKey === 'users' && !_adminUsersLoaded) {
                 _adminUsersLoaded = true;
                 loadUsers(1);
+            }
+            if (pageKey === 'users-deleted' && !_adminDeletedUsersLoaded) {
+                _adminDeletedUsersLoaded = true;
+                loadDeletedUsers(1);
             }
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
@@ -4590,7 +4607,7 @@
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
-                            + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除账号</button>';
+                            + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         
                         var detailKey = keyForUser(u.username);
                         html += '<tr>';
@@ -4648,7 +4665,7 @@
                     document.getElementById('userTbody').querySelectorAll('.btn-delete-user').forEach(function (btn) {
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
-                            if (!confirm('确定永久删除账号「' + name + '」？\n将同时删除其任职受雇、税务记录、消息等数据，且不可恢复。')) return;
+                            if (!confirm('确定从注册用户列表删除账号「' + name + '」？\n数据仍保留在数据库，可在「已删除账号」中恢复。')) return;
                             adminFetch('api/admin/user-delete', {
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })
@@ -4699,6 +4716,81 @@
                 })
                 .catch(function () {
                     document.getElementById('userStat').textContent = '加载失败';
+                });
+        }
+
+        function loadDeletedUsers(p) {
+            if (p != null) deletedUserPage = p;
+
+            var username = document.getElementById('filterDeletedUsername').value.trim();
+            var realName = document.getElementById('filterDeletedRealName').value.trim();
+            var exactEl = document.getElementById('filterDeletedExact');
+            var exact = exactEl && exactEl.checked;
+
+            var url = 'api/admin/users/deleted?page=' + deletedUserPage + '&limit=' + deletedUserLimit;
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (realName) url += '&real_name=' + encodeURIComponent(realName);
+            if (exact) url += '&exact=1';
+
+            adminFetch(url)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) return;
+                    var list = data.data.users || [];
+                    var total = data.data.total || 0;
+                    document.getElementById('deletedUserStat').textContent = '共 ' + total + ' 个已删除账号';
+
+                    var totalPages = Math.ceil(total / deletedUserLimit) || 1;
+                    document.getElementById('deletedUserPageInfo').textContent =
+                        '第 ' + deletedUserPage + ' 页 / 共 ' + totalPages + ' 页（每页 ' + deletedUserLimit + ' 条）';
+                    document.getElementById('deletedUserPrev').disabled = deletedUserPage <= 1;
+                    document.getElementById('deletedUserNext').disabled = deletedUserPage >= totalPages;
+
+                    var html = '';
+                    list.forEach(function (u) {
+                        var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
+                        var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
+                        html += '<tr>';
+                        html += '<td>' + esc(u.id) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.channel_analysis_label || '—') + '</td>';
+                        html += '<td>' + act + '</td>';
+                        html += '<td>' + ban + '</td>';
+                        html += '<td>' + formatDt(u.created_at) + '</td>';
+                        html += '<td>' + formatDt(u.list_hidden_at) + '</td>';
+                        html += '<td class="cell-break">' + esc(u.list_hidden_by || '—') + '</td>';
+                        html +=
+                            '<td class="col-ops"><button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
+                            esc(u.username) +
+                            '">恢复</button></td>';
+                        html += '</tr>';
+                    });
+                    document.getElementById('deletedUserTbody').innerHTML =
+                        html || '<tr><td colspan="10">暂无已删除账号</td></tr>';
+
+                    document.getElementById('deletedUserTbody').querySelectorAll('.btn-restore-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            if (!confirm('确定恢复账号「' + name + '」至注册用户列表？')) return;
+                            adminFetch('api/admin/user-restore', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadDeletedUsers();
+                                    } else {
+                                        alert(d.msg || '恢复失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                })
+                .catch(function () {
+                    document.getElementById('deletedUserStat').textContent = '加载失败';
                 });
         }
 
@@ -5129,6 +5221,45 @@
                     localStorage.setItem(USER_LIMIT_STORAGE_KEY, String(userLimit));
                 } catch (e) {}
                 loadUsers(1);
+            };
+        }
+
+        var deletedUserPrev = document.getElementById('deletedUserPrev');
+        if (deletedUserPrev) {
+            deletedUserPrev.onclick = function () {
+                if (deletedUserPage > 1) loadDeletedUsers(deletedUserPage - 1);
+            };
+        }
+        var deletedUserNext = document.getElementById('deletedUserNext');
+        if (deletedUserNext) {
+            deletedUserNext.onclick = function () {
+                loadDeletedUsers(deletedUserPage + 1);
+            };
+        }
+        var deletedUserPageLimitSel = document.getElementById('deletedUserPageLimit');
+        if (deletedUserPageLimitSel) {
+            deletedUserPageLimitSel.onchange = function () {
+                var n = parseInt(this.value, 10);
+                deletedUserLimit = USER_LIMIT_OPTIONS.indexOf(n) >= 0 ? n : 10;
+                this.value = String(deletedUserLimit);
+                try {
+                    localStorage.setItem(DELETED_USER_LIMIT_STORAGE_KEY, String(deletedUserLimit));
+                } catch (e) {}
+                loadDeletedUsers(1);
+            };
+        }
+        var btnSearchDeletedUsers = document.getElementById('btnSearchDeletedUsers');
+        if (btnSearchDeletedUsers) {
+            btnSearchDeletedUsers.onclick = function () { loadDeletedUsers(1); };
+        }
+        var btnResetDeletedUsers = document.getElementById('btnResetDeletedUsers');
+        if (btnResetDeletedUsers) {
+            btnResetDeletedUsers.onclick = function () {
+                document.getElementById('filterDeletedUsername').value = '';
+                document.getElementById('filterDeletedRealName').value = '';
+                var exactEl = document.getElementById('filterDeletedExact');
+                if (exactEl) exactEl.checked = false;
+                loadDeletedUsers(1);
             };
         }
 

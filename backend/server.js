@@ -1124,6 +1124,26 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN list_hidden_at DATETIME NULL COMMENT '从注册用户列表隐藏时间（软删除）'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN list_hidden_by VARCHAR(255) NULL COMMENT '执行列表隐藏的管理员'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS app_settings (
       setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -7474,7 +7494,7 @@ async function handleAdminUsers(req, res) {
       return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
     }
 
-    let whereClauses = [];
+    let whereClauses = ['users.list_hidden_at IS NULL'];
     let params = [];
 
     if (qUsername) {
@@ -8152,7 +8172,7 @@ async function handleAdminUserDataList(req, res) {
       return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
     }
 
-    var whereClauses = [];
+    var whereClauses = ['users.list_hidden_at IS NULL'];
     var params = [];
     if (qUsername) {
       whereClauses.push('users.username LIKE ?');
@@ -9468,7 +9488,7 @@ async function handleAdminPurgeBotUsers(req, res) {
   }
 }
 
-/** 永久删除用户及其任职受雇、税务记录、消息（不可恢复） */
+/** 从注册用户列表软删除（保留数据库数据，可在「已删除账号」恢复） */
 async function handleAdminDeleteUser(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -9480,36 +9500,162 @@ async function handleAdminDeleteUser(req, res) {
   }
   const conn = await pool.getConnection();
   try {
-    const [urows] = await conn.execute('SELECT id FROM users WHERE username = ?', [target]);
+    const [urows] = await conn.execute(
+      'SELECT id, list_hidden_at FROM users WHERE username = ?',
+      [target]
+    );
     if (urows.length === 0) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
     }
     var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
     if (!allowed) {
       conn.release();
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
-    await conn.beginTransaction();
-    await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [target]);
-    await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [target]);
-    await conn.execute('DELETE FROM employers WHERE user_id = ?', [target]);
-    await conn.execute('DELETE FROM messages WHERE user_id = ?', [target]);
-    await conn.execute('DELETE FROM user_daily_activity WHERE username = ?', [target]);
-    await conn.execute('DELETE FROM user_login_events WHERE username = ?', [target]);
-    await conn.execute('DELETE FROM user_devices WHERE username = ?', [target]);
-    await conn.execute('DELETE FROM user_page_events WHERE username = ?', [target]);
-    await conn.execute('DELETE FROM users WHERE username = ?', [target]);
-    await conn.commit();
+    var hiddenBy = req.admin && req.admin.username ? String(req.admin.username) : '';
+    await conn.execute(
+      'UPDATE users SET list_hidden_at = NOW(3), list_hidden_by = ? WHERE username = ?',
+      [hiddenBy, target]
+    );
     conn.release();
-    return res.json({ code: 200, data: { username: target, deleted: true } });
+    return res.json({
+      code: 200,
+      data: { username: target, hidden: true, soft_delete: true }
+    });
   } catch (e) {
     try {
-      await conn.rollback();
-    } catch (rbErr) {
-      console.error(rbErr);
+      conn.release();
+    } catch (e2) {}
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminDeletedUsers(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+
+    var qUsername = String(req.query.username || '').trim();
+    var qRealName = String(req.query.real_name || '').trim();
+    var qExact = req.query.exact === '1' || req.query.exact === 'true';
+
+    var whereClauses = ['users.list_hidden_at IS NOT NULL'];
+    var params = [];
+
+    if (qUsername) {
+      if (qExact) {
+        whereClauses.push('users.username = ?');
+        params.push(qUsername);
+      } else {
+        whereClauses.push('users.username LIKE ?');
+        params.push('%' + qUsername + '%');
+      }
     }
+    if (qRealName) {
+      if (qExact) {
+        whereClauses.push('users.real_name = ?');
+        params.push(qRealName);
+      } else {
+        whereClauses.push('users.real_name LIKE ?');
+        params.push('%' + qRealName + '%');
+      }
+    }
+    if (!req.admin || !req.admin.is_super) {
+      whereClauses.push(
+        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
+      );
+      params.push(req.admin.username);
+    }
+
+    var whereSql = ' WHERE ' + whereClauses.join(' AND ');
+    const conn = await pool.getConnection();
+    const [totalRows] = await conn.execute('SELECT COUNT(*) as count FROM users' + whereSql, params);
+    var total = totalRows[0].count;
+    const [rows] = await conn.query(
+      `SELECT id, username, real_name, account_active, banned, created_at, list_hidden_at, list_hidden_by,
+              register_source_channel, activation_source_channel
+       FROM users ${whereSql}
+       ORDER BY list_hidden_at DESC, id DESC
+       LIMIT ${limit} OFFSET ${offset}`,
+      params
+    );
     conn.release();
+
+    var out = (rows || []).map(function (r) {
+      return {
+        id: r.id,
+        username: r.username,
+        real_name: r.real_name,
+        account_active: r.account_active === 1 || r.account_active === true,
+        banned: r.banned === 1 || r.banned === true,
+        created_at: r.created_at ? r.created_at.toISOString() : '',
+        list_hidden_at: r.list_hidden_at ? r.list_hidden_at.toISOString() : '',
+        list_hidden_by:
+          r.list_hidden_by != null && String(r.list_hidden_by).trim() !== ''
+            ? String(r.list_hidden_by).trim()
+            : '',
+        channel_analysis_label: userChannelAnalysisLabel(
+          r.register_source_channel,
+          r.activation_source_channel
+        )
+      };
+    });
+
+    return res.json({
+      code: 200,
+      data: { users: out, total: total, page: page, limit: limit }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminUserRestore(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, list_hidden_at FROM users WHERE username = ?',
+      [target]
+    );
+    if (urows.length === 0) {
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (!urows[0].list_hidden_at) {
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号不在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET list_hidden_at = NULL, list_hidden_by = NULL WHERE username = ?',
+      [target]
+    );
+    conn.release();
+    return res.json({ code: 200, data: { username: target, restored: true } });
+  } catch (e) {
+    try {
+      conn.release();
+    } catch (e2) {}
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
   }
@@ -10944,6 +11090,7 @@ app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
 app.get('/api/public/conversion-config', handlePublicConversionConfig);
+app.get('/api/admin/users/deleted', requireAdminAuth, requireAdminMenu('users'), handleAdminDeletedUsers);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
 app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);
 app.get(
@@ -11054,6 +11201,7 @@ app.post(
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
+app.post('/api/admin/user-restore', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRestore);
 app.post('/api/admin/users/purge-bots', requireAdminAuth, requireAdminMenu('users'), handleAdminPurgeBotUsers);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
 app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);

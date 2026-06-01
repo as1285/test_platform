@@ -26,6 +26,7 @@
                 <div class="nav-group" data-nav-group="users">
                     <div class="nav-group-label">用户管理</div>
                     <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                    <button type="button" class="nav-item" data-page="users-deleted" data-title="已删除账号">已删除账号</button>
                     <button type="button" class="nav-item" data-page="user-data" data-title="用户数据">用户数据</button>
                     <button type="button" class="nav-item" data-page="user-behavior" data-title="用户行为">用户行为</button>
                     <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
@@ -643,7 +644,7 @@
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <p class="stat" id="purgeBotsStat" style="display:none;"></p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。</p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。</p>
             <div class="scroll-x">
                 <table class="users-registry-table">
                     <thead>
@@ -673,6 +674,69 @@
                 <label class="pagination-size-label" for="userPageLimit">
                     每页
                     <select id="userPageLimit" class="pagination-size-select" aria-label="每页条数">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    条
+                </label>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-users-deleted" class="page-panel" role="tabpanel">
+        <section>
+            <h2>已删除账号</h2>
+            <p class="hint">此处展示从「注册用户」列表软删除的账号；<strong>数据库数据仍保留</strong>，用户仍可正常登录。可在此恢复至注册用户列表。</p>
+            <div class="user-filter-bar">
+                <div class="user-filter-fields">
+                <div>
+                    <label>账号</label>
+                    <div class="filter-account-row">
+                        <input type="text" id="filterDeletedUsername" class="filter-text-wide" placeholder="搜索账号">
+                        <label class="filter-inline-check">
+                            <input type="checkbox" id="filterDeletedExact"> 精准查询
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label>姓名</label>
+                    <input type="text" id="filterDeletedRealName" class="filter-text-wide" placeholder="搜索姓名">
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" id="btnSearchDeletedUsers">查询</button>
+                    <button type="button" class="btn-page" id="btnResetDeletedUsers">重置</button>
+                </div>
+                </div>
+            </div>
+            <p class="stat" id="deletedUserStat">加载中…</p>
+            <div class="scroll-x">
+                <table class="users-registry-table">
+                    <thead>
+                        <tr>
+                            <th style="width:52px;">ID</th>
+                            <th style="width:120px;">账号</th>
+                            <th style="width:88px;">姓名</th>
+                            <th style="width:120px;">渠道分析</th>
+                            <th style="width:72px;">激活</th>
+                            <th style="width:72px;">封禁</th>
+                            <th style="width:150px;">注册时间</th>
+                            <th style="width:150px;">删除时间</th>
+                            <th style="width:88px;">操作人</th>
+                            <th class="col-ops">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deletedUserTbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="deletedUserPagination">
+                <button type="button" class="btn-page" id="deletedUserPrev">上一页</button>
+                <span id="deletedUserPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="deletedUserNext">下一页</button>
+                <label class="pagination-size-label" for="deletedUserPageLimit">
+                    每页
+                    <select id="deletedUserPageLimit" class="pagination-size-select" aria-label="每页条数">
                         <option value="10">10</option>
                         <option value="20">20</option>
                         <option value="50">50</option>
@@ -1544,7 +1608,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260601-feedback-active"></script>
+    <script src="/js/admin_panel.js?v=20260601-user-soft-delete"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>
