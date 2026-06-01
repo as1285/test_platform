@@ -822,91 +822,19 @@
     }
   }
 
-  function getShouyeDetailYear() {
-    var y = new Date().getFullYear() - 1;
-    try {
-      var sy = localStorage.getItem('selected_year');
-      if (sy) y = Number(sy) - 1 || y;
-    } catch (e) {}
-    return y;
-  }
-
   function removeLegacyShouyeRetentionCard() {
     var legacy = document.getElementById('cg-shouye-retention');
     if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
   }
 
-  function renderShouyeTaxManageEntry() {
-    if (currentPage() !== 'shouye.html') return;
-    if (!isLoggedIn()) return;
-    if (isAccountActive()) {
-      removeActivationPromoUi();
-      return;
-    }
+  function removeShouyeTaxManageEntry() {
     removeLegacyShouyeRetentionCard();
-    if (document.getElementById('cg-shouye-tax-entry')) return;
-    var anchor = document.querySelector('.shouye-content');
-    if (!anchor || !anchor.parentNode) return;
-    ensureGateStyles();
-    var count = taxRecordCount();
-    var y = getShouyeDetailYear();
-    var showRetention = count > 0 && !skipConversionPromo() && hasTaxRecords();
-    var card = document.createElement('div');
-    card.id = 'cg-shouye-tax-entry';
-    card.className = 'cg-shouye-card';
-    var ghostBtnStyle =
-      'border:1px solid #1e6fff;color:#1e6fff;background:#fff;';
-    if (count > 0) {
-      var desc = '激活后 自动隐藏';
-      var actions =
-        '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">管理税务数据</button>';
-      if (showRetention) {
-        actions +=
-          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeViewDetail" style="' +
-          ghostBtnStyle +
-          '">查看收入明细</button>' +
-          '<button type="button" class="cg-btn cg-btn-ghost" id="cgShouyeNajilu" style="' +
-          ghostBtnStyle +
-          '">纳税记录开具</button>';
-      }
-      actions += '</div>';
-      card.innerHTML = '<h4>税务演示数据</h4><p>' + desc + '</p>' + actions;
-    } else {
-      card.innerHTML =
-        '<h4>添加税务演示数据</h4>' +
-        '<p>一键生成工资与申报记录，即可预览收入纳税明细与纳税记录开具效果。</p>' +
-        '<div class="cg-actions" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeManageTax">去添加</button>' +
-        '<a href="mine.html" class="cg-btn cg-btn-ghost" style="display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:1px solid #1e6fff;color:#1e6fff;background:#fff;">我的页入口</a></div>';
-    }
-    anchor.parentNode.insertBefore(card, anchor);
-    var manageBtn = document.getElementById('cgShouyeManageTax');
-    if (manageBtn) {
-      manageBtn.onclick = function () {
-        track('track_conversion_shouye_tax_entry_manage', { count: count });
-        if (count > 0) goManageTaxRecords();
-        else goFillTaxRecords();
-      };
-    }
-    var detailBtn = document.getElementById('cgShouyeViewDetail');
-    if (detailBtn) {
-      detailBtn.onclick = function () {
-        track('track_conversion_shouye_tax_entry_detail', { count: count });
-        goIncomeDetail(y);
-      };
-    }
-    var najiluBtn = document.getElementById('cgShouyeNajilu');
-    if (najiluBtn) {
-      najiluBtn.onclick = function () {
-        track('track_conversion_shouye_retention_najilu', {});
-        goNajilu();
-      };
-    }
-    track('track_conversion_shouye_tax_entry_shown', {
-      count: count,
-      merged_retention: showRetention ? 1 : 0
-    });
+    var card = document.getElementById('cg-shouye-tax-entry');
+    if (card && card.parentNode) card.parentNode.removeChild(card);
+  }
+
+  function renderShouyeTaxManageEntry() {
+    removeShouyeTaxManageEntry();
   }
 
   function renderShouyeRetentionCard() {
@@ -930,8 +858,8 @@
       id: 'cg-demo-maint',
       title: '演示数据维护提醒',
       content: hasTaxRecords()
-        ? '您的个税演示数据可随时在首页「管理税务数据」或「我的 → 税务演示数据」中修改。'
-        : '建议在首页或「我的 → 税务演示数据」添加个税演示数据，便于查看收入纳税明细与纳税记录效果。',
+        ? '您的个税演示数据可随时在「我的 → 税务演示数据」中修改。'
+        : '建议在「我的 → 税务演示数据」添加个税演示数据，便于查看收入纳税明细与纳税记录效果。',
       msg_date: dateStr,
       is_read: 0,
       _cg_demo: true
