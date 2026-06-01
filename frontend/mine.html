@@ -868,6 +868,18 @@
             min-width: 0;
         }
 
+        .menu-consult-hint {
+            flex-shrink: 0;
+            font-size: 12px;
+            color: #1e6fff;
+            white-space: nowrap;
+            margin-right: 2px;
+        }
+
+        .menu-consult-hint[hidden] {
+            display: none !important;
+        }
+
         /* 与参考图一致：右箭头纯黑 SVG，避免 iOS 上文字 > 发灰偏细 */
         .menu-arrow {
             display: inline-flex;
@@ -986,7 +998,7 @@
             <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text">我要咨询</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <a class="menu-item" href="consult.html" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-consult-hint" id="consultModifyHint" hidden>点击我修改数据</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
         </div>
 
@@ -1284,6 +1296,18 @@
                         bankWrap.setAttribute('aria-label', '添加银行卡');
                     }
                 }
+                syncConsultModifyHint();
+            }
+
+            function syncConsultModifyHint() {
+                var hint = document.getElementById('consultModifyHint');
+                if (!hint) return;
+                var loggedIn = !!localStorage.getItem('user_id');
+                if (loggedIn && !hasTaxRecords()) {
+                    hint.removeAttribute('hidden');
+                } else {
+                    hint.setAttribute('hidden', '');
+                }
             }
 
             function updateCountsFromStorage() {
@@ -1307,6 +1331,12 @@
                 var n = Number(localStorage.getItem('tax_record_count') || '0');
                 return !isNaN(n) && n > 0;
             }
+
+            window.addEventListener('pageshow', function (ev) {
+                if (ev.persisted) {
+                    updateCountsFromStorage();
+                }
+            });
 
             function goConsultPage() {
                 if (!localStorage.getItem('user_id')) {
@@ -1539,6 +1569,7 @@
 
                 var g = localStorage.getItem('gender');
                 applyAvatarGender(g);
+                updateCountsFromStorage();
 
                 var fetchFn =
                     typeof authFetch === 'function'

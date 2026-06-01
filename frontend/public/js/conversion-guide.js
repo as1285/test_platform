@@ -331,7 +331,8 @@
   function syncConsultMenuScreenshotLabel() {
     var link = document.getElementById('consultModifyLink');
     if (!link) return;
-    var text = link.querySelector('.menu-text');
+    var text =
+      document.getElementById('consultModifyMenuText') || link.querySelector('.menu-text');
     if (!text) return;
     if (!text.getAttribute('data-cg-menu-normal')) {
       var cur = (text.textContent || '').trim();
