@@ -7144,7 +7144,7 @@ async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
   var dayMap = {};
   var channelTotals = {};
   (dayRows || []).forEach(function (r) {
-    var dk = r.d ? String(r.d).slice(0, 10) : '';
+    var dk = formatDateKey(r.d);
     if (!dk) {
       return;
     }
