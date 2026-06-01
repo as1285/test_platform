@@ -364,6 +364,17 @@
             margin-right: auto;
         }
 
+        .activate-modal-actions-leading {
+            display: flex;
+            gap: 8px;
+            margin-right: auto;
+            flex-wrap: wrap;
+        }
+
+        .activate-modal-actions-leading .activate-modal-btn.xianyu {
+            margin-right: 0;
+        }
+
         /* 大白圆角面板：个人信息卡底边贴齐面板顶边 */
         .content-wrapper {
             background: #fff;
@@ -1021,7 +1032,10 @@
         <div class="activate-modal-panel">
             <p class="activate-modal-body" id="mineConsultModifyModalTitle">点击税务演示数据修改，闲鱼购买，谨防被骗</p>
             <div class="activate-modal-actions">
-                <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">联系方式</button>
+                <div class="activate-modal-actions-leading">
+                    <button type="button" class="activate-modal-btn" id="btnMineConsultModifyContact">联系方式</button>
+                    <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">闲鱼购买</button>
+                </div>
                 <button type="button" class="activate-modal-btn" id="btnMineConsultModifyCancel">取消</button>
                 <button type="button" class="activate-modal-btn primary" id="btnMineConsultModifyOk">确定</button>
             </div>
@@ -1701,7 +1715,8 @@
 
             var consultModifyOk = document.getElementById('btnMineConsultModifyOk');
             var consultModifyCancel = document.getElementById('btnMineConsultModifyCancel');
-            var consultModifyXy = document.getElementById('btnMineConsultModifyXianyu');
+            var consultModifyContact = document.getElementById('btnMineConsultModifyContact');
+            var consultModifyXianyu = document.getElementById('btnMineConsultModifyXianyu');
             var consultModifyMask = document.getElementById('mineConsultModifyModalMask');
             if (consultModifyOk) {
                 consultModifyOk.addEventListener('click', function () {
@@ -1715,8 +1730,8 @@
             if (consultModifyMask) {
                 consultModifyMask.addEventListener('click', closeMineConsultModifyModal);
             }
-            if (consultModifyXy) {
-                consultModifyXy.addEventListener('click', function () {
+            if (consultModifyContact) {
+                consultModifyContact.addEventListener('click', function () {
                     if (typeof window.trackUserAction === 'function') {
                         window.trackUserAction('track_qq_add_click', {
                             page: 'mine',
@@ -1724,6 +1739,17 @@
                         });
                     }
                     openMineQqAddUrl();
+                });
+            }
+            if (consultModifyXianyu) {
+                consultModifyXianyu.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_xianyu_purchase_click', {
+                            page: 'mine',
+                            source: 'consult_modify_modal'
+                        });
+                    }
+                    copyMineXianyuPurchase();
                 });
             }
 
