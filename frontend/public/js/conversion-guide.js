@@ -601,16 +601,6 @@
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
     renderMineTaskCard();
-    if (urlParam('onboarding') !== ONBOARD_ACTIVATE || isAccountActive()) return;
-    track('track_conversion_onboard_activate', { page: 'mine' });
-    setTimeout(function () {
-      var btn = document.getElementById('mineActivateBtn');
-      if (btn && btn.offsetParent !== null) btn.click();
-      else {
-        var root = document.getElementById('mineActivateModal');
-        if (root) root.classList.add('is-open');
-      }
-    }, 400);
   }
 
   function injectConsultRecordsGate() {

@@ -300,7 +300,7 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
-                        window.location.href = 'mine.html?onboarding=activate';
+                        window.location.href = 'mine.html';
                         return;
                     }
                     showErr(data.msg || '注册失败');
