@@ -300,6 +300,9 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        try {
+                            sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
+                        } catch (ePending) {}
                         window.location.href = 'mine.html';
                         return;
                     }

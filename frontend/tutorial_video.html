@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260601-tutorial-video"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>操作教程</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            color: #fff;
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-inner {
+            position: relative;
+            text-align: center;
+            padding-top: 4px;
+        }
+        .back-btn {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            opacity: 0.95;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .wrap {
+            padding: 16px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+        .card h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .card .hint {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.65;
+            margin-bottom: 12px;
+        }
+        .video-wrap {
+            position: relative;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+        .video-wrap video {
+            display: block;
+            width: 100%;
+            max-height: 56vh;
+            background: #000;
+        }
+        .video-placeholder {
+            padding: 36px 16px;
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            line-height: 1.65;
+            background: #f7f8fa;
+            border-radius: 8px;
+        }
+        .tips-list {
+            margin-top: 4px;
+            padding-left: 1.2em;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.7;
+        }
+        .tips-list li { margin-bottom: 6px; }
+    </style>
+</head>
+<body class="page-tutorial-video">
+    <header class="header">
+        <div class="header-inner">
+            <a href="javascript:history.back()" class="back-btn" aria-label="返回">
+                <img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span>
+            </a>
+            <h1 class="header-title">操作教程</h1>
+        </div>
+    </header>
+
+    <div class="wrap">
+        <section class="card">
+            <h2>操作教程视频</h2>
+            <p class="hint">观看下方视频，了解如何注册登录、激活账号与填写税务演示数据。</p>
+            <div id="tutorialVideoContainer"></div>
+        </section>
+
+        <section class="card">
+            <h2>快速指引</h2>
+            <ol class="tips-list">
+                <li>注册并登录后，可在「我的」页修改个人信息与税务演示数据。</li>
+                <li>未激活账号需使用激活码开通；激活后可完整体验收入明细等功能。</li>
+                <li>如需安装 APP，请前往「关于&amp;更新 → 安装包和使用方法」。</li>
+            </ol>
+        </section>
+    </div>
+
+    <script src="/js/back-arrow.js?v=20260513-jt"></script>
+    <script>
+        function toAssetUrl(path) {
+            if (!path) return '';
+            if (/^https?:\/\//i.test(path) || path.charAt(0) === '/') {
+                return path;
+            }
+            return '/' + path;
+        }
+
+        function renderVideo(url, emptyText) {
+            var box = document.getElementById('tutorialVideoContainer');
+            if (!box) return;
+            box.innerHTML = '';
+            var src = toAssetUrl(url);
+            if (src) {
+                var v = document.createElement('video');
+                v.setAttribute('controls', '');
+                v.setAttribute('playsinline', '');
+                v.setAttribute('preload', 'metadata');
+                v.className = 'tutorial-video';
+                var s = document.createElement('source');
+                s.src = src;
+                s.type = 'video/mp4';
+                v.appendChild(s);
+                v.addEventListener('play', function () {
+                    if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_tutorial_video_play', { page: 'tutorial_video' });
+                    }
+                }, { once: true });
+                var wrap = document.createElement('div');
+                wrap.className = 'video-wrap';
+                wrap.appendChild(v);
+                box.appendChild(wrap);
+            } else {
+                box.innerHTML = '<div class="video-placeholder">' + emptyText + '<br>请在管理后台「引导安装 → 操作视频」上传或填写视频地址</div>';
+            }
+        }
+
+        renderVideo('', '暂未配置操作教程视频');
+        fetch('/api/public/mine-ui', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (body) {
+                if (!body || body.code !== 200 || !body.data) {
+                    return;
+                }
+                renderVideo(body.data.install_usage_video || '', '暂未配置操作教程视频');
+            })
+            .catch(function () {});
+    </script>
+</body>
+</html>

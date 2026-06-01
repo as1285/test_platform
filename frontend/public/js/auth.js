@@ -13,6 +13,7 @@
     'register.html': true,
     'login.html': true,
     'install_guide.html': true,
+    'tutorial_video.html': true,
     'zhzh_jhm.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';

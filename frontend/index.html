@@ -537,15 +537,6 @@
         <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
     </div>
 
-    <div id="loginWelcomeModal" class="login-welcome-modal" role="dialog" aria-modal="true" aria-labelledby="loginWelcomeModalTitle">
-        <div class="login-welcome-modal-mask" id="loginWelcomeModalMask"></div>
-        <div class="login-welcome-modal-panel">
-            <p class="login-welcome-modal-title" id="loginWelcomeModalTitle">温馨提示</p>
-            <p class="login-welcome-modal-body" id="loginWelcomeModalBody">自己注册登录，所有数据可以修改</p>
-            <button type="button" class="login-welcome-modal-btn" id="loginWelcomeModalOk">我知道了</button>
-        </div>
-    </div>
-
     <div id="loginErrorModal" class="login-welcome-modal" role="alertdialog" aria-modal="true" aria-labelledby="loginErrorModalBody">
         <div class="login-welcome-modal-mask" id="loginErrorModalMask"></div>
         <div class="login-welcome-modal-panel">
@@ -557,6 +548,7 @@
         </div>
     </div>
 
+    <script src="/js/tutorial-video-prompt.js?v=20260601-tutorial"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -613,52 +605,6 @@
         }
 
         initActivateFromUrl();
-
-        var LOGIN_WELCOME_STORAGE_KEY = 'tax_login_welcome_v1';
-
-        function closeLoginWelcomeModal(markSeen) {
-            var root = document.getElementById('loginWelcomeModal');
-            if (root) {
-                root.classList.remove('is-open');
-            }
-            if (markSeen) {
-                try {
-                    localStorage.setItem(LOGIN_WELCOME_STORAGE_KEY, '1');
-                } catch (e) {}
-            }
-        }
-
-        function maybeShowLoginWelcomeModal() {
-            if (isNeedActivateMode()) {
-                return;
-            }
-            try {
-                if (localStorage.getItem(LOGIN_WELCOME_STORAGE_KEY) === '1') {
-                    return;
-                }
-            } catch (e) {}
-            var root = document.getElementById('loginWelcomeModal');
-            if (!root) {
-                return;
-            }
-            root.classList.add('is-open');
-            var ok = document.getElementById('loginWelcomeModalOk');
-            var mask = document.getElementById('loginWelcomeModalMask');
-            if (ok && !ok.__welcomeBound) {
-                ok.__welcomeBound = true;
-                ok.addEventListener('click', function () {
-                    closeLoginWelcomeModal(true);
-                });
-            }
-            if (mask && !mask.__welcomeBound) {
-                mask.__welcomeBound = true;
-                mask.addEventListener('click', function () {
-                    closeLoginWelcomeModal(true);
-                });
-            }
-        }
-
-        maybeShowLoginWelcomeModal();
 
         function prefetchXianyuPurchaseUrl() {
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -969,6 +915,9 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        if (window.TutorialVideoPrompt && typeof window.TutorialVideoPrompt.markPostLoginPending === 'function') {
+                            window.TutorialVideoPrompt.markPostLoginPending();
+                        }
                         window.location.href = 'mine.html';
                         return;
                     }

@@ -6503,6 +6503,10 @@ async function handleAdminInstallTrackStats(req, res) {
         'POST auth.php#track_install_ios_click': 'iOS 描述文件点击',
         'POST auth.php#track_install_ios_video_play': '苹果安装视频播放',
         'POST auth.php#track_install_usage_video_play': '操作视频播放',
+        'POST auth.php#track_tutorial_video_play': '操作教程视频播放',
+        'POST auth.php#track_tutorial_prompt_show': '操作教程弹窗展示',
+        'POST auth.php#track_tutorial_prompt_watch_click': '操作教程弹窗-观看',
+        'POST auth.php#track_tutorial_prompt_dismiss': '操作教程弹窗-关闭',
         'EVENT register_success': '注册成功'
       };
       var items = (rows || []).map(function (r) {
