@@ -6,10 +6,13 @@
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
-    var CONFIG_VERSION = 2;
+    var CONFIG_VERSION = 3;
 
     var PRESETS = {
         size: [
+            { id: '11', label: '11', value: '11px' },
+            { id: '12', label: '12', value: '12px' },
+            { id: '13', label: '13', value: '13px' },
             { id: '14', label: '14', value: '14px' },
             { id: '15', label: '15', value: '15px' },
             { id: '16', label: '16', value: '16px' },
@@ -67,16 +70,19 @@
             selectors: '.header-title, .back-btn, .back-btn span, .header-right'
         },
         { id: 'section', label: '区块标题', selectors: '.section-title' },
-        {
-            id: 'info',
-            label: '纳税信息',
-            selectors: '.info-label, .info-value, .info-link'
-        },
+        { id: 'infoLabel', label: '信息标签', selectors: '.info-label' },
+        { id: 'infoValue', label: '信息数值', selectors: '.info-value' },
+        { id: 'infoLink', label: '信息链接', selectors: '.info-link' },
         { id: 'tips', label: '温馨提示', selectors: '.tips, .tips-link' },
         {
-            id: 'detail',
-            label: '收入扣除',
-            selectors: '.detail-label, .detail-value, .detail-summary-row .detail-label'
+            id: 'detailLabel',
+            label: '扣除标签',
+            selectors: '.detail-label, .detail-summary-row .detail-label'
+        },
+        {
+            id: 'detailValue',
+            label: '扣除数值',
+            selectors: '.detail-value, .detail-summary-row .detail-value'
         }
     ];
 
@@ -101,6 +107,42 @@
         return p.indexOf('xiangqing') !== -1 ? '申诉' : '批量申诉';
     }
 
+    function getPanelHint() {
+        var p = (location.pathname || '').toLowerCase();
+        if (p.indexOf('xiangqing') !== -1) {
+            return (
+                '先点区域再调字号/粗细/颜色。「信息标签」为左侧带冒号字段，「信息数值」为右侧金额与文字；' +
+                '「扣除标签」「扣除数值」同理。全局为各区域默认，可被分区覆盖。'
+            );
+        }
+        return (
+            '先点区域再调字号。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
+        );
+    }
+
+    function migrateLegacyTargets(targets) {
+        if (!targets || typeof targets !== 'object') return targets || {};
+        var next = Object.assign({}, targets);
+        if (next.info && !next.infoLabel && !next.infoValue) {
+            next.infoLabel = Object.assign({}, next.info);
+            next.infoValue = Object.assign({}, next.info);
+            if (!next.infoLink) next.infoLink = Object.assign({}, next.info);
+            delete next.info;
+        }
+        if (next.detail && !next.detailLabel && !next.detailValue) {
+            next.detailLabel = Object.assign({}, next.detail);
+            next.detailValue = Object.assign({}, next.detail);
+            delete next.detail;
+        }
+        return next;
+    }
+
+    function migrateLegacyActiveTarget(activeTarget) {
+        if (activeTarget === 'info') return 'infoLabel';
+        if (activeTarget === 'detail') return 'detailLabel';
+        return activeTarget || 'all';
+    }
+
     function normalizeConfig(raw) {
         if (!raw || typeof raw !== 'object') {
             return { v: CONFIG_VERSION, activeTarget: 'all', targets: {} };
@@ -108,8 +150,8 @@
         if (raw.targets && typeof raw.targets === 'object') {
             return {
                 v: raw.v || CONFIG_VERSION,
-                activeTarget: raw.activeTarget || 'all',
-                targets: raw.targets
+                activeTarget: migrateLegacyActiveTarget(raw.activeTarget),
+                targets: migrateLegacyTargets(raw.targets)
             };
         }
         if (raw.size || raw.weight || raw.color) {
@@ -593,8 +635,7 @@
 
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
-        hint.textContent =
-            '先点区域再调字号。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。';
+        hint.textContent = getPanelHint();
         panel.appendChild(hint);
 
         panelUi = {
