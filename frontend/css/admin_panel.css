@@ -487,6 +487,20 @@
         .chart-canvas-wrap-tall {
             height: 260px;
         }
+        .chart-canvas-wrap-trend {
+            height: 320px;
+        }
+        .channel-daily-trend-section {
+            padding: 14px 16px;
+            background: #f8fbff;
+            border: 1px solid #e6eef8;
+            border-radius: 10px;
+        }
+        .channel-daily-trend-card {
+            margin: 0;
+            box-shadow: none;
+            border: 1px solid #e8edf5;
+        }
         .register-gender-card .rg-pct {
             font-size: 13px;
             color: #666;

@@ -7107,6 +7107,84 @@ function registerChannelStatsKey(raw) {
   return c || '__empty__';
 }
 
+/** 北京时间日期序列：含首尾共 spanDays 天（从今天往前） */
+function chinaDateKeysForSpan(spanDays) {
+  var n = Math.max(1, parseInt(spanDays, 10) || 1);
+  var today = chinaTodayParts();
+  var keys = [];
+  var base = new Date(Date.UTC(today.y, today.m - 1, today.d, 12, 0, 0));
+  for (var i = n - 1; i >= 0; i--) {
+    var dt = new Date(base.getTime() - i * 86400000);
+    keys.push(formatDateKey(dt));
+  }
+  return keys;
+}
+
+/** 注册渠道按日趋势（仅统计已填写 register_source_channel 的用户） */
+async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
+  var span = Math.max(0, trendSpanDays - 1);
+  var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  var dayWhere =
+    scope.where +
+    " AND register_source_channel IS NOT NULL AND TRIM(register_source_channel) <> '' AND DATE(" +
+    cnCreated +
+    ') >= DATE_SUB(' +
+    cnToday +
+    ', INTERVAL ? DAY)';
+  var dayParams = scope.params.concat([span]);
+  const [dayRows] = await conn.query(
+    'SELECT DATE(' +
+      cnCreated +
+      ') AS d, register_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
+      dayWhere +
+      ' GROUP BY d, ch ORDER BY d ASC',
+    dayParams
+  );
+  var dayMap = {};
+  var channelTotals = {};
+  (dayRows || []).forEach(function (r) {
+    var dk = r.d ? String(r.d).slice(0, 10) : '';
+    if (!dk) {
+      return;
+    }
+    if (!dayMap[dk]) {
+      dayMap[dk] = { date: dk, total: 0, channels: {} };
+    }
+    var ck = registerChannelStatsKey(r.ch);
+    if (ck === '__empty__') {
+      return;
+    }
+    var c = Number(r.cnt) || 0;
+    dayMap[dk].total += c;
+    dayMap[dk].channels[ck] = (dayMap[dk].channels[ck] || 0) + c;
+    channelTotals[ck] = (channelTotals[ck] || 0) + c;
+  });
+  var dateKeys = chinaDateKeysForSpan(trendSpanDays);
+  var byDay = dateKeys.map(function (dk) {
+    var row = dayMap[dk] || { date: dk, total: 0, channels: {} };
+    var chList = Object.keys(row.channels).map(function (ck) {
+      return {
+        key: ck,
+        label: registerSourceChannelLabel(ck),
+        count: row.channels[ck]
+      };
+    });
+    chList.sort(function (a, b) {
+      return b.count - a.count;
+    });
+    return { date: dk, total: row.total, channels: chList };
+  });
+  var channelRank = Object.keys(channelTotals)
+    .map(function (ck) {
+      return { key: ck, label: registerSourceChannelLabel(ck), total: channelTotals[ck] };
+    })
+    .sort(function (a, b) {
+      return b.total - a.total;
+    });
+  return { byDay: byDay, channelRank: channelRank };
+}
+
 function buildChannelStatsItems(rows, total, labelFn) {
   return (rows || []).map(function (r) {
     var raw = r.ch;
@@ -7202,60 +7280,26 @@ async function handleAdminRegisterChannelStats(req, res) {
 
       var byDay = [];
       var trendDays = 0;
-      if (!allTime && days > 0 && days <= 90) {
-        trendDays = days;
-        var span = Math.max(0, days - 1);
-        var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
-        var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-        var dayWhere =
-          scope.where +
-          ' AND DATE(' +
-          cnCreated +
-          ') >= DATE_SUB(' +
-          cnToday +
-          ', INTERVAL ? DAY)';
-        var dayParams = scope.params.concat([span]);
-        const [dayRows] = await conn.query(
-          'SELECT DATE(' +
-            cnCreated +
-            ') AS d, register_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
-            dayWhere +
-            ' GROUP BY d, ch ORDER BY d ASC',
-          dayParams
-        );
-        var dayMap = {};
-        dayRows.forEach(function (r) {
-          var dk = r.d ? String(r.d).slice(0, 10) : '';
-          if (!dk) {
-            return;
-          }
-          if (!dayMap[dk]) {
-            dayMap[dk] = { date: dk, total: 0, channels: {} };
-          }
-          var ck = registerChannelStatsKey(r.ch);
-          if (ck === '__empty__') {
-            return;
-          }
-          var c = Number(r.cnt) || 0;
-          dayMap[dk].total += c;
-          dayMap[dk].channels[ck] = (dayMap[dk].channels[ck] || 0) + c;
-        });
-        byDay = Object.keys(dayMap)
-          .sort()
-          .map(function (dk) {
-            var row = dayMap[dk];
-            var chList = Object.keys(row.channels).map(function (ck) {
-              return {
-                key: ck,
-                label: registerSourceChannelLabel(ck),
-                count: row.channels[ck]
-              };
-            });
-            chList.sort(function (a, b) {
-              return b.count - a.count;
-            });
-            return { date: row.date, total: row.total, channels: chList };
-          });
+      var trendScopeLabel = '';
+      var channelRankInTrend = [];
+      var trendSpan =
+        allTime ? 90 : days > 0 ? Math.min(days, 365) : 0;
+      if (trendSpan > 0) {
+        trendDays = trendSpan;
+        var trendResult = await queryRegisterChannelByDay(conn, scope, trendSpan);
+        byDay = trendResult.byDay;
+        channelRankInTrend = trendResult.channelRank;
+        if (allTime) {
+          trendScopeLabel =
+            '近 ' +
+            trendSpan +
+            ' 日每日注册（汇总统计仍为全部注册用户；未填渠道不计入趋势）';
+        } else {
+          trendScopeLabel =
+            '近 ' +
+            trendSpan +
+            ' 日每日注册（按来源渠道；未填渠道不计入）';
+        }
       }
 
       var channelDefs = [];
@@ -7287,7 +7331,9 @@ async function handleAdminRegisterChannelStats(req, res) {
           activation_channels: activationItems,
           activation_total: actTotal,
           trend_days: trendDays,
+          trend_scope_label: trendScopeLabel,
           by_day: byDay,
+          trend_channel_rank: channelRankInTrend,
           channel_definitions: channelDefs
         }
       });

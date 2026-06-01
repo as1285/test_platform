@@ -320,6 +320,129 @@
             _channelAnalysisChartInstances = [];
         }
 
+        function renderChannelDailyTrendChart(data, regItems) {
+            var trendSection = document.getElementById('channelDailyTrendSection');
+            var trendHint = document.getElementById('channelDailyTrendHint');
+            var trendEmpty = document.getElementById('channelDailyTrendEmpty');
+            var trendCanvas = document.getElementById('channelChartDailyTrend');
+            var byDay = (data && data.by_day) || [];
+            if (!trendSection) {
+                return;
+            }
+            trendSection.style.display = 'block';
+            if (trendHint) {
+                trendHint.textContent =
+                    (data && data.trend_scope_label) ||
+                    (data && data.trend_days
+                        ? '近 ' + data.trend_days + ' 日每日注册（按来源渠道）'
+                        : '选择统计范围后展示每日注册趋势');
+            }
+            if (!byDay.length || typeof Chart === 'undefined' || !trendCanvas) {
+                if (trendEmpty) {
+                    trendEmpty.style.display = 'block';
+                }
+                return;
+            }
+            if (trendEmpty) {
+                trendEmpty.style.display = 'none';
+            }
+            var channelRank = (data && data.trend_channel_rank) || [];
+            var topKeys = [];
+            if (channelRank.length) {
+                topKeys = channelRank.slice(0, 8).map(function (it) {
+                    return it.key;
+                });
+            } else {
+                topKeys = regItems.slice(0, 8).map(function (it) {
+                    return it.key;
+                });
+            }
+            var labelMap = {};
+            regItems.forEach(function (it) {
+                labelMap[it.key] = it.label;
+            });
+            channelRank.forEach(function (it) {
+                if (!labelMap[it.key]) {
+                    labelMap[it.key] = it.label;
+                }
+            });
+            var labels = byDay.map(function (d) {
+                return d.date ? String(d.date).slice(5) : '';
+            });
+            var datasets = topKeys.map(function (ck, idx) {
+                return {
+                    label: labelMap[ck] || ck,
+                    data: byDay.map(function (d) {
+                        var found = (d.channels || []).find(function (c) {
+                            return c.key === ck;
+                        });
+                        return found ? found.count : 0;
+                    }),
+                    borderColor: chartColorAtIndex(idx),
+                    backgroundColor: chartColorAtIndex(idx),
+                    tension: 0.3,
+                    fill: false,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                };
+            });
+            datasets.push({
+                label: '合计',
+                data: byDay.map(function (d) {
+                    return Number(d.total) || 0;
+                }),
+                borderColor: '#94a3b8',
+                backgroundColor: '#94a3b8',
+                borderDash: [6, 4],
+                tension: 0.3,
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 4
+            });
+            _channelAnalysisChartInstances.push(
+                new Chart(trendCanvas, {
+                    type: 'line',
+                    data: { labels: labels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    title: function (items) {
+                                        if (!items || !items.length) {
+                                            return '';
+                                        }
+                                        var idx = items[0].dataIndex;
+                                        var row = byDay[idx];
+                                        return row && row.date ? row.date : items[0].label;
+                                    },
+                                    label: function (ctx) {
+                                        return ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y || 0) + ' 人';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: byDay.length > 60 ? 20 : 31
+                                }
+                            },
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                })
+            );
+        }
+
         function renderChannelAnalysis(data) {
             var summaryEl = document.getElementById('channelAnalysisSummary');
             var cardsEl = document.getElementById('channelAnalysisCards');
@@ -327,15 +450,17 @@
             var actTbody = document.getElementById('channelActivationTbody');
             var chartsWrap = document.getElementById('channelAnalysisChartsWrap');
             var chartsEmpty = document.getElementById('channelAnalysisChartsEmpty');
-            var trendCard = document.getElementById('channelTrendCard');
             var actPieCard = document.getElementById('channelActivationPieCard');
+            var trendSection = document.getElementById('channelDailyTrendSection');
+            var trendEmpty = document.getElementById('channelDailyTrendEmpty');
             if (!summaryEl || !regTbody) return;
 
             destroyChannelAnalysisCharts();
             if (chartsWrap) chartsWrap.style.display = 'none';
             if (chartsEmpty) chartsEmpty.style.display = 'none';
-            if (trendCard) trendCard.style.display = 'none';
             if (actPieCard) actPieCard.style.display = 'none';
+            if (trendSection) trendSection.style.display = 'none';
+            if (trendEmpty) trendEmpty.style.display = 'none';
 
             var total = Number(data && data.total) || 0;
             var scopeLabel = (data && data.scope_label) || '注册用户';
@@ -352,6 +477,9 @@
                 if (cardsEl) cardsEl.innerHTML = '';
                 regTbody.innerHTML = '<tr><td colspan="5">暂无数据</td></tr>';
                 if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
+                if (data && data.trend_days) {
+                    renderChannelDailyTrendChart(data, []);
+                }
                 return;
             }
 
@@ -441,9 +569,11 @@
                         chartsEmpty.textContent = '图表库未加载，请刷新页面后重试';
                     }
                 }
+                renderChannelDailyTrendChart(data, regItems);
                 return;
             }
 
+            renderChannelDailyTrendChart(data, regItems);
             chartsWrap.style.display = 'block';
             var pieReg = document.getElementById('channelChartRegisterPie');
             var barReg = document.getElementById('channelChartRegisterBar');
@@ -517,55 +647,6 @@
                         }
                     })
                 );
-            }
-
-            var byDay = (data && data.by_day) || [];
-            if (byDay.length && trendCard) {
-                trendCard.style.display = '';
-                var topKeys = regItems.slice(0, 5).map(function (it) {
-                    return it.key;
-                });
-                var trendCanvas = document.getElementById('channelChartDailyTrend');
-                if (trendCanvas) {
-                    var labels = byDay.map(function (d) {
-                        return d.date ? String(d.date).slice(5) : '';
-                    });
-                    var datasets = topKeys.map(function (ck, idx) {
-                        var meta = regItems.find(function (it) {
-                            return it.key === ck;
-                        });
-                        return {
-                            label: meta ? meta.label : ck,
-                            data: byDay.map(function (d) {
-                                var found = (d.channels || []).find(function (c) {
-                                    return c.key === ck;
-                                });
-                                return found ? found.count : 0;
-                            }),
-                            borderColor: chartColorAtIndex(idx),
-                            backgroundColor: chartColorAtIndex(idx),
-                            tension: 0.25,
-                            fill: false,
-                            borderWidth: 2,
-                            pointRadius: 2
-                        };
-                    });
-                    _channelAnalysisChartInstances.push(
-                        new Chart(trendCanvas, {
-                            type: 'line',
-                            data: { labels: labels, datasets: datasets },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                interaction: { mode: 'index', intersect: false },
-                                plugins: { legend: { position: 'bottom' } },
-                                scales: {
-                                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                                }
-                            }
-                        })
-                    );
-                }
             }
 
             if (actTotal && actPieCard) {

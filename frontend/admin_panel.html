@@ -1286,7 +1286,7 @@
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
         <section>
             <h2>注册渠道分析</h2>
-            <p class="hint" style="margin-top:0;">仅统计注册时<strong>已选择来源渠道</strong>的用户（<code>users.register_source_channel</code> 非空）；未选择渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。非超级管理员仅统计自己激活码关联的用户。</p>
+            <p class="hint" style="margin-top:0;">仅统计注册时<strong>已选择来源渠道</strong>的用户（<code>users.register_source_channel</code> 非空）；未选择渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。折线图展示<strong>每日各渠道注册人数</strong>（全部注册用户模式下趋势图为近 90 日）。非超级管理员仅统计自己激活码关联的用户。</p>
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
                     <label for="channelAnalysisDays">统计范围</label>
@@ -1303,6 +1303,14 @@
             <div id="channelAnalysisWrap" class="channel-analysis-wrap" aria-live="polite">
                 <p id="channelAnalysisSummary" class="stat">加载中…</p>
                 <div id="channelAnalysisCards" class="register-gender-cards channel-analysis-cards"></div>
+                <div id="channelDailyTrendSection" class="channel-daily-trend-section" style="display:none;margin-top:16px;">
+                    <p class="stat" style="margin-bottom:4px;">每日注册用户数 · 按来源渠道</p>
+                    <p id="channelDailyTrendHint" class="hint" style="margin-top:0;margin-bottom:10px;"></p>
+                    <div class="device-stats-chart-card chart-card-wide channel-daily-trend-card">
+                        <div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="channelChartDailyTrend" aria-label="每日注册来源渠道折线图"></canvas></div>
+                    </div>
+                    <p id="channelDailyTrendEmpty" class="hint" style="display:none;margin-top:8px;">所选范围内暂无已填写渠道的注册记录</p>
+                </div>
                 <div class="scroll-x" style="margin-top:12px;">
                     <p class="stat" style="margin-bottom:8px;">注册来源渠道明细</p>
                     <table>
@@ -1341,10 +1349,6 @@
                         <div class="device-stats-chart-card chart-card-wide">
                             <h4>注册来源人数</h4>
                             <div class="chart-canvas-wrap"><canvas id="channelChartRegisterBar" aria-label="注册来源渠道人数"></canvas></div>
-                        </div>
-                        <div class="device-stats-chart-card chart-card-wide" id="channelTrendCard" style="display:none;">
-                            <h4>注册趋势（按日 · Top 渠道）</h4>
-                            <div class="chart-canvas-wrap chart-canvas-wrap-tall"><canvas id="channelChartDailyTrend" aria-label="注册渠道按日趋势"></canvas></div>
                         </div>
                         <div class="device-stats-chart-card" id="channelActivationPieCard" style="display:none;">
                             <h4>激活来源占比</h4>
@@ -1531,7 +1535,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260529-female-age-collapse"></script>
+    <script src="/js/admin_panel.js?v=20260530-channel-daily-trend"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>
