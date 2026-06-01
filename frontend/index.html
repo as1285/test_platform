@@ -133,39 +133,69 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 滑块验证 */
+        /* 滑块验证（对齐官方：灰底白块 >>，通过后整条绿底白字） */
         .slider-section {
-            padding: 10px 20px 0;
+            padding: 12px 20px 0;
         }
         .slider-lane {
             position: relative;
-            height: 44px;
-            background: #f2f2f2;
-            border-radius: 6px;
+            height: 40px;
+            background: #f0f0f0;
+            border-radius: 3px;
             overflow: hidden;
+        }
+        .slider-lane.is-verified {
+            background: #94c843;
         }
         .slider-hint {
             position: absolute;
-            left: 0;
-            right: 0;
-            top: 0;
-            padding-left: 52px;
-            line-height: 44px;
-            text-align: left;
-            font-size: 15px;
-            color: #c8c8c8;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 12px;
+            font-size: 14px;
+            color: #bdbdbd;
             pointer-events: none;
             user-select: none;
+            z-index: 1;
+        }
+        .slider-hint-text {
+            line-height: 1.2;
+        }
+        .slider-hint-check {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .slider-hint-check svg {
+            display: block;
+            width: 11px;
+            height: 11px;
+            color: #7eb63a;
+        }
+        .slider-lane.is-verified .slider-hint {
+            color: #fff;
+            font-size: 15px;
+        }
+        .slider-lane.is-verified .slider-hint-check {
+            display: inline-flex;
         }
         .slider-arrows {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 48px;
-            height: 44px;
+            left: 2px;
+            top: 2px;
+            width: 46px;
+            height: calc(100% - 4px);
             background: #fff;
-            border-radius: 4px;
-            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+            border-radius: 2px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -178,18 +208,13 @@
             cursor: grabbing;
         }
         .slider-grip-icon {
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: -3px;
-            color: #999;
-            line-height: 1;
-            user-select: none;
+            display: block;
+            width: 16px;
+            height: 16px;
+            color: #a8a8a8;
         }
-        .slider-arrows.verified {
-            background: #e8f5e9;
-        }
-        .slider-arrows.verified .slider-grip-icon {
-            color: #52c41a;
+        .slider-lane.is-verified .slider-arrows {
+            display: none;
         }
 
         .login-aux {
@@ -471,9 +496,19 @@
 
         <div class="slider-section">
             <div class="slider-lane" id="loginSliderLane">
-                <span class="slider-hint" id="loginSliderHint">请按住滑块，拖动到最右边</span>
+                <span class="slider-hint" id="loginSliderHint">
+                    <span class="slider-hint-check" id="loginSliderCheck" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M2.5 6.2l2.2 2.2 4.8-5.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="slider-hint-text" id="loginSliderHintText">请按住滑块，拖动到最右边</span>
+                </span>
                 <div class="slider-arrows" id="loginSliderHandle" aria-label="拖动滑块完成验证">
-                    <span class="slider-grip-icon" aria-hidden="true">&gt;&gt;</span>
+                    <svg class="slider-grip-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9.5 3.5l3.5 4.5-3.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </div>
             </div>
         </div>
@@ -740,8 +775,8 @@
         });
 
         function isLoginSliderVerified() {
-            var handle = document.getElementById('loginSliderHandle');
-            return !!(handle && handle.classList.contains('verified'));
+            var lane = document.getElementById('loginSliderLane');
+            return !!(lane && lane.classList.contains('is-verified'));
         }
 
         function showLoginFormTip(msg) {
@@ -783,34 +818,34 @@
         function initLoginSlider() {
             var lane = document.getElementById('loginSliderLane');
             var handle = document.getElementById('loginSliderHandle');
-            var hint = document.getElementById('loginSliderHint');
+            var hintText = document.getElementById('loginSliderHintText');
             var loginBtn = document.getElementById('loginSubmitBtn');
-            if (!lane || !handle || !hint || !loginBtn) return;
+            if (!lane || !handle || !hintText || !loginBtn) return;
 
+            var HANDLE_INSET = 2;
             var maxX = 0;
             var startLeft = 0;
             var startClientX = 0;
             var dragging = false;
 
             function layout() {
-                maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth);
+                maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth - HANDLE_INSET * 2);
             }
             function setHandle(x) {
                 x = Math.max(0, Math.min(x, maxX));
-                handle.style.left = x + 'px';
+                handle.style.left = HANDLE_INSET + x + 'px';
             }
             function resetSlider() {
-                handle.style.left = '0px';
-                handle.classList.remove('verified');
-                hint.textContent = '请按住滑块，拖动到最右边';
-                hint.style.color = '#c8c8c8';
+                lane.classList.remove('is-verified');
+                handle.style.left = HANDLE_INSET + 'px';
+                hintText.textContent = '请按住滑块，拖动到最右边';
                 setLoginSubmitReady(false);
             }
             function onPointerDown(e) {
-                if (handle.classList.contains('verified')) return;
+                if (lane.classList.contains('is-verified')) return;
                 dragging = true;
                 layout();
-                startLeft = handle.offsetLeft;
+                startLeft = handle.offsetLeft - HANDLE_INSET;
                 startClientX = e.clientX != null ? e.clientX : e.touches[0].clientX;
                 e.preventDefault();
             }
@@ -824,10 +859,10 @@
                 if (!dragging) return;
                 dragging = false;
                 layout();
-                if (handle.offsetLeft >= maxX - 2) {
-                    handle.classList.add('verified');
-                    hint.textContent = '验证通过';
-                    hint.style.color = '#52c41a';
+                if (handle.offsetLeft - HANDLE_INSET >= maxX - 2) {
+                    lane.classList.add('is-verified');
+                    handle.style.left = HANDLE_INSET + 'px';
+                    hintText.textContent = '验证通过！';
                     setLoginSubmitReady(true);
                     showLoginFormTip('');
                 } else {
@@ -843,9 +878,9 @@
             document.addEventListener('touchend', onPointerUp);
             document.addEventListener('touchcancel', onPointerUp);
             window.addEventListener('resize', function () {
-                if (!handle.classList.contains('verified')) {
+                if (!lane.classList.contains('is-verified')) {
                     layout();
-                    setHandle(handle.offsetLeft);
+                    setHandle(handle.offsetLeft - HANDLE_INSET);
                 }
             });
             layout();
