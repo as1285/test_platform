@@ -1266,7 +1266,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260601-no-shouye-tax-card';
+    s.src = '/js/conversion-guide.js?v=20260601-consult-always-show';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

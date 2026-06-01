@@ -718,6 +718,11 @@
             display: none !important;
         }
 
+        /* 「我要咨询」为固定菜单项，截图/切后台隐私隐藏时不应消失 */
+        html.cg-capture-hide body.page-mine #consultModifyLink {
+            display: flex !important;
+        }
+
         /* 功能入口 */
         .function-cards {
             display: flex;

@@ -279,8 +279,6 @@
       SCREENSHOT_MODE_CLASS +
       ' #mineTaxEntryLink,html.' +
       CAPTURE_HIDE_CLASS +
-      ' #consultModifyLink,html.' +
-      CAPTURE_HIDE_CLASS +
       ' #cg-shouye-tax-entry,html.' +
       SCREENSHOT_MODE_CLASS +
       ' #cg-shouye-tax-entry,html.' +
@@ -418,6 +416,14 @@
     }, ms || 6000);
   }
 
+  function restoreCaptureHiddenUi() {
+    document.documentElement.classList.remove(CAPTURE_HIDE_CLASS);
+    if (captureHideTimer) {
+      clearTimeout(captureHideTimer);
+      captureHideTimer = null;
+    }
+  }
+
   function bindLongPressScreenshotToggle(el) {
     if (!el || el.getAttribute('data-cg-screenshot-toggle') === '1') return;
     el.setAttribute('data-cg-screenshot-toggle', '1');
@@ -473,7 +479,9 @@
     window.addEventListener('blur', onCaptureSignal);
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) onCaptureSignal();
+      else restoreCaptureHiddenUi();
     });
+    window.addEventListener('focus', restoreCaptureHiddenUi);
     window.addEventListener('pagehide', onCaptureSignal);
     ['user-capture-screen', 'screenshot', 'screenrecordstart', 'screen-capture'].forEach(function (name) {
       document.addEventListener(name, onCaptureSignal);
