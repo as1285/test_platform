@@ -1997,7 +1997,9 @@
                 feedbackAdminPage = Math.max(1, parseInt(page, 10) || 1);
             }
             var typeF = document.getElementById('feedbackFilterType');
+            var activeF = document.getElementById('feedbackFilterActive');
             var t = typeF ? typeF.value : '';
+            var active = activeF ? activeF.value : '';
             var q =
                 'api/admin/feedback?page=' +
                 encodeURIComponent(feedbackAdminPage) +
@@ -2006,8 +2008,11 @@
             if (t) {
                 q += '&type=' + encodeURIComponent(t);
             }
+            if (active) {
+                q += '&active=' + encodeURIComponent(active);
+            }
             document.getElementById('feedbackAdminTbody').innerHTML =
-                '<tr><td colspan="9">加载中…</td></tr>';
+                '<tr><td colspan="10">加载中…</td></tr>';
             adminFetch(q)
                 .then(function (r) {
                     return r.json();
@@ -2015,7 +2020,7 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         document.getElementById('feedbackAdminTbody').innerHTML =
-                            '<tr><td colspan="9">' + esc(j.msg || '加载失败') + '</td></tr>';
+                            '<tr><td colspan="10">' + esc(j.msg || '加载失败') + '</td></tr>';
                         return;
                     }
                     var items = j.data.items || [];
@@ -2037,10 +2042,13 @@
                     }
                     var html = '';
                     if (!items.length) {
-                        html = '<tr><td colspan="9">暂无数据</td></tr>';
+                        html = '<tr><td colspan="10">暂无数据</td></tr>';
                     } else {
                         items.forEach(function (r) {
                             var typLabel = r.feedback_type === 'bug' ? 'BUG' : '意见优化';
+                            var actLabel = r.account_active
+                                ? '<span class="badge badge-yes">已激活</span>'
+                                : '<span class="badge badge-no">未激活</span>';
                             var snippet = String(r.content || '');
                             if (snippet.length > 100) {
                                 snippet = snippet.substring(0, 100) + '…';
@@ -2054,6 +2062,7 @@
                             html += '<td>' + esc(String(r.id)) + '</td>';
                             html += '<td class="cell-break">' + esc(r.user_id || '') + '</td>';
                             html += '<td>' + esc(r.real_name_snapshot || '—') + '</td>';
+                            html += '<td>' + actLabel + '</td>';
                             html += '<td>' + esc(typLabel) + '</td>';
                             html += '<td class="cell-break">' + esc(snippet) + '</td>';
                             html += '<td>' + esc(formatDt(r.created_at)) + '</td>';
@@ -2073,7 +2082,7 @@
                 })
                 .catch(function () {
                     document.getElementById('feedbackAdminTbody').innerHTML =
-                        '<tr><td colspan="9">网络错误</td></tr>';
+                        '<tr><td colspan="10">网络错误</td></tr>';
                 });
         }
 
@@ -6342,6 +6351,9 @@
             loadAdminFeedbackPage(feedbackAdminPage);
         });
         document.getElementById('feedbackFilterType').addEventListener('change', function () {
+            loadAdminFeedbackPage(1);
+        });
+        document.getElementById('feedbackFilterActive').addEventListener('change', function () {
             loadAdminFeedbackPage(1);
         });
         document.getElementById('feedbackAdminPrev').addEventListener('click', function () {

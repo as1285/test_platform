@@ -10826,16 +10826,24 @@ async function handleAdminFeedbackList(req, res) {
     if (limit > 100) limit = 100;
     var offset = (page - 1) * limit;
     var typeFilter = req.query.type != null ? String(req.query.type).trim() : '';
-    var where = '';
+    var activeFilter = req.query.active != null ? String(req.query.active).trim() : '';
+    var conditions = [];
     var params = [];
     if (typeFilter === 'bug' || typeFilter === 'suggestion') {
-      where = ' WHERE feedback_type = ? ';
+      conditions.push('f.feedback_type = ?');
       params.push(typeFilter);
     }
+    if (activeFilter === '1') {
+      conditions.push('u.account_active = 1');
+    } else if (activeFilter === '0') {
+      conditions.push('(u.account_active = 0 OR u.account_active IS NULL OR u.id IS NULL)');
+    }
+    var where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    var join = ' FROM user_feedback f LEFT JOIN users u ON u.username = f.user_id ';
     const conn = await pool.getConnection();
     try {
       const [cntRows] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM user_feedback' + where,
+        'SELECT COUNT(*) AS c' + join + where,
         params
       );
       var total = cntRows.length ? Number(cntRows[0].c) : 0;
@@ -10844,8 +10852,9 @@ async function handleAdminFeedbackList(req, res) {
         totalPages = 1;
       }
       const [rows] = await conn.query(
-        `SELECT id, user_id, real_name_snapshot, feedback_type, content, admin_reply, replied_at, replied_by, created_at
-         FROM user_feedback ${where} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}`,
+        `SELECT f.id, f.user_id, f.real_name_snapshot, f.feedback_type, f.content, f.admin_reply,
+                f.replied_at, f.replied_by, f.created_at, u.account_active
+         ${join} ${where} ORDER BY f.id DESC LIMIT ${limit} OFFSET ${offset}`,
         params
       );
       return res.json({
@@ -10861,7 +10870,8 @@ async function handleAdminFeedbackList(req, res) {
               admin_reply: r.admin_reply,
               replied_at: r.replied_at ? r.replied_at.toISOString() : null,
               replied_by: r.replied_by,
-              created_at: r.created_at ? r.created_at.toISOString() : ''
+              created_at: r.created_at ? r.created_at.toISOString() : '',
+              account_active: r.account_active === 1 || r.account_active === true
             };
           }),
           total: total,

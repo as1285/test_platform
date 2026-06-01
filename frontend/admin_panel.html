@@ -914,6 +914,14 @@
                         <option value="suggestion">意见优化</option>
                     </select>
                 </div>
+                <div>
+                    <label for="feedbackFilterActive">账号激活状态</label>
+                    <select id="feedbackFilterActive" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="">全部</option>
+                        <option value="1">已激活</option>
+                        <option value="0">未激活</option>
+                    </select>
+                </div>
                 <button type="button" class="btn-primary" id="btnRefreshFeedback">刷新</button>
             </div>
             <div class="scroll-x" style="margin-top: 12px;">
@@ -923,6 +931,7 @@
                             <th>ID</th>
                             <th>账号</th>
                             <th>姓名</th>
+                            <th>账号激活状态</th>
                             <th>类型</th>
                             <th>内容</th>
                             <th>提交时间</th>
@@ -931,7 +940,7 @@
                             <th>操作</th>
                         </tr>
                     </thead>
-                    <tbody id="feedbackAdminTbody"><tr><td colspan="9">进入本页后加载…</td></tr></tbody>
+                    <tbody id="feedbackAdminTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
                 </table>
             </div>
             <div class="pagination" id="feedbackAdminPagination">
@@ -1535,7 +1544,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260601-channel-trend-datefix"></script>
+    <script src="/js/admin_panel.js?v=20260601-feedback-active"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>
