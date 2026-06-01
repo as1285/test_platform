@@ -603,21 +603,36 @@
     return null;
   }
 
-  function renderHeader(title, backHref, rightHtml) {
-    return '<div class="header">' +
-      '<a href="' + esc(backHref || 'najilu.html') + '" class="back-btn"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
-      '<span class="header-title">' + esc(title) + '</span>' +
-      (rightHtml || '') +
-      '</div>';
+  function renderBackBtn(backHref) {
+    var href =
+      backHref === 'back' || backHref === ':back' || backHref == null || backHref === ''
+        ? 'javascript:history.back()'
+        : esc(backHref);
+    return (
+      '<a href="' +
+      href +
+      '" class="back-btn"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>'
+    );
   }
 
-  function renderPreviewDetailHeader(closeHref) {
-    closeHref = closeHref || 'najilu.html?view=records';
+  function renderHeader(title, backHref, rightHtml) {
+    return (
+      '<div class="header">' +
+      renderBackBtn(backHref === undefined ? 'najilu.html' : backHref) +
+      '<span class="header-title">' +
+      esc(title) +
+      '</span>' +
+      (rightHtml || '') +
+      '</div>'
+    );
+  }
+
+  function renderPreviewDetailHeader() {
     return (
       '<div class="header header--detail">' +
-      '<a href="' + esc(closeHref) + '" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
+      '<a href="javascript:history.back()" class="back-btn" aria-hidden="true" tabindex="-1"><img src="/jt.png" class="back-icon" alt=""><span>返回</span></a>' +
       '<span class="header-title">纳税记录详情</span>' +
-      '<a href="' + esc(closeHref) + '" class="header-close-btn">关闭</a>' +
+      '<a href="javascript:history.back()" class="header-close-btn">关闭</a>' +
       '</div>'
     );
   }
@@ -626,7 +641,7 @@
     document.title = '纳税记录申请记录';
     var apps = loadApplications();
     var html = '<div class="record-page">' +
-      renderHeader('纳税记录申请记录', 'najilu.html') +
+      renderHeader('纳税记录申请记录', 'back') +
       '<div class="record-tips">' +
       '<div>温馨提示：</div>' +
       '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
@@ -764,7 +779,7 @@
           apps.unshift(app);
           saveApplications(apps);
           pushIssueToServer(app);
-          window.location.href = 'najilu.html?view=records';
+          window.location.replace('najilu.html?view=records');
         })
         .catch(function (err) {
           alert(err && err.message ? err.message : '生成失败');
@@ -1459,16 +1474,15 @@
 
   function renderPreviewPage(id) {
     var app = findApplication(id);
-    var closeHref = 'najilu.html?view=records';
     document.title = '纳税记录详情';
     if (!app) {
       document.body.innerHTML =
-        renderPreviewDetailHeader(closeHref) + '<div class="empty-records">申请记录不存在</div>';
+        renderPreviewDetailHeader() + '<div class="empty-records">申请记录不存在</div>';
       return;
     }
     document.body.innerHTML =
       '<div class="preview-page">' +
-      renderPreviewDetailHeader(closeHref) +
+      renderPreviewDetailHeader() +
       '<div class="preview-wrap"><div class="empty-records" id="previewLoading">正在生成预览...</div><img id="certificatePreview" class="preview-img" alt="纳税记录" style="display:none;"></div>' +
       '</div>';
     applicationWithCurrentData(app)
