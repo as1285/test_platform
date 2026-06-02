@@ -49,19 +49,24 @@
          * 金额用正文同源无衬线 + tabular-nums：普通椭圆 0。
          * （JetBrains Mono / Fira Code / Consolas 等编程字体会刻意做成「带点或斜杠的 0」以便和字母 O 区分，不适合账务展示。）
          */
+        /*
+         * 汇总/日期等仍用 tabular-nums 便于对齐；列表行内金额单独用比例数字，
+         * 避免等宽格下窄字「1」连续时（如 11777.77）两字间距过大。
+         */
         .summary-value,
         .list-date,
         .list-label,
-        .list-value,
-        .list-amount {
+        .list-value {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-variant-numeric: tabular-nums;
             font-feature-settings: 'tnum' 1, 'zero' 0;
         }
 
-        /* 列表中的金额数字：tabular-nums 下略收紧；过紧（如 -0.04em）会导致连续「7」几乎贴在一起 */
         .list-amount {
-            letter-spacing: -0.01em;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-variant-numeric: normal;
+            font-feature-settings: 'tnum' 0, 'zero' 0;
+            letter-spacing: normal;
         }
 
         /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
@@ -520,8 +525,7 @@
             letter-spacing: 0;
         }
 
-        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-date,
-        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-amount {
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-date {
             letter-spacing: -0.01em;
         }
 
