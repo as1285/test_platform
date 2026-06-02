@@ -46,22 +46,11 @@
         }
 
         /*
-         * 金额用正文同源无衬线 + tabular-nums：普通椭圆 0。
-         * （JetBrains Mono / Fira Code / Consolas 等编程字体会刻意做成「带点或斜杠的 0」以便和字母 O 区分，不适合账务展示。）
-         */
-        /*
-         * 汇总/日期等仍用 tabular-nums 便于对齐；列表行内金额单独用比例数字，
-         * 避免等宽格下窄字「1」连续时（如 11777.77）两字间距过大。
+         * 页面数字（汇总金额、日期、行内金额）：比例数字 + 系统无衬线数字栈。
+         * tabular-nums 等宽格会使窄字「1」在 1991、2026 等串中两侧留白过大。
          */
         .summary-value,
         .list-date,
-        .list-label,
-        .list-value {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            font-variant-numeric: tabular-nums;
-            font-feature-settings: 'tnum' 1, 'zero' 0;
-        }
-
         .list-amount {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-variant-numeric: normal;
@@ -231,7 +220,6 @@
             font-size: 14px;
             font-weight: 490;
             color: #111;
-            letter-spacing: -0.015em;
             text-align: right;
             line-height: 20px;
             min-width: 5.5em;
@@ -243,7 +231,6 @@
         html.platform-android .summary-value {
             font-weight: 400;
             font-synthesis: none;
-            letter-spacing: -0.015em;
         }
 
         html.platform-android body.page-shuiming-result .list-date,
@@ -392,7 +379,6 @@
         html.platform-ios body.page-shuiming-result .summary-value {
             font-weight: 400;
             font-synthesis: none;
-            letter-spacing: -0.015em;
         }
 
         html.platform-ios body.page-shuiming-result .list-title {
@@ -522,11 +508,6 @@
             line-height: 22px;
             font-weight: 400;
             font-synthesis: none;
-            letter-spacing: 0;
-        }
-
-        html.app-android-huawei-cls-al00 body.page-shuiming-result .list-date {
-            letter-spacing: -0.01em;
         }
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-help-with-colon,
@@ -554,11 +535,15 @@
             letter-spacing: -0.01em;
         }
 
-        html.app-ios-iphone11pro body.page-shuiming-result .summary-label,
-        html.app-ios-iphone11pro body.page-shuiming-result .summary-value {
+        html.app-ios-iphone11pro body.page-shuiming-result .summary-label {
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.015em;
+        }
+
+        html.app-ios-iphone11pro body.page-shuiming-result .summary-value {
+            font-weight: 400;
+            font-synthesis: none;
         }
 
         html.app-ios-iphone11pro body.page-shuiming-result .list-title {
