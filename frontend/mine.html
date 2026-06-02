@@ -1033,21 +1033,6 @@
         </div>
     </div>
 
-    <div id="mineConsultModifyModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineConsultModifyModalTitle">
-        <div class="activate-modal-mask" id="mineConsultModifyModalMask"></div>
-        <div class="activate-modal-panel">
-            <p class="activate-modal-body" id="mineConsultModifyModalTitle">我要咨询修改，闲鱼购买，谨防被骗</p>
-            <div class="activate-modal-actions">
-                <div class="activate-modal-actions-leading">
-                    <button type="button" class="activate-modal-btn" id="btnMineConsultModifyContact">联系方式</button>
-                    <button type="button" class="activate-modal-btn xianyu" id="btnMineConsultModifyXianyu">闲鱼购买</button>
-                </div>
-                <button type="button" class="activate-modal-btn" id="btnMineConsultModifyCancel">取消</button>
-                <button type="button" class="activate-modal-btn primary" id="btnMineConsultModifyOk">确定</button>
-            </div>
-        </div>
-    </div>
-
     <nav class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
             <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
@@ -1368,53 +1353,6 @@
                     });
             }
 
-            function openMineQqAddUrl() {
-                var u = String(mineQqAddUrl || '').trim();
-                if (u) {
-                    window.open(u, '_blank', 'noopener,noreferrer');
-                    return;
-                }
-                fetch('/api/public/install-packages', { credentials: 'same-origin' })
-                    .then(function (r) { return r.json(); })
-                    .then(function (body) {
-                        if (body && body.code === 200 && body.data && body.data.qq_add_url) {
-                            u = String(body.data.qq_add_url).trim();
-                            mineQqAddUrl = u;
-                        }
-                        if (u) {
-                            window.open(u, '_blank', 'noopener,noreferrer');
-                        } else {
-                            alert('暂未配置 QQ 添加链接，请在管理后台「系统设置」中填写');
-                        }
-                    })
-                    .catch(function () {
-                        alert('获取链接失败，请稍后重试');
-                    });
-            }
-
-            function openMineConsultModifyModal() {
-                if (typeof window.forceHidePageLoading === 'function') {
-                    window.forceHidePageLoading();
-                }
-                var root = document.getElementById('mineConsultModifyModal');
-                if (root) root.classList.add('is-open');
-            }
-
-            function closeMineConsultModifyModal() {
-                var root = document.getElementById('mineConsultModifyModal');
-                if (root) root.classList.remove('is-open');
-            }
-
-            function confirmModifyTaxData() {
-                openMineConsultModifyModal();
-            }
-
-            function maybePromptInactiveModify() {
-                if (isInactiveAccount() && !hasTaxRecords()) {
-                    confirmModifyTaxData();
-                }
-            }
-
             function applyAvatarGender(gender) {
                 applyMineHeaderImage(gender);
             }
@@ -1484,7 +1422,6 @@
             }
 
             var mineXianyuPurchaseUrl = '';
-            var mineQqAddUrl = '';
 
             function fetchMineXianyuUrl() {
                 fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -1493,9 +1430,6 @@
                         if (body && body.code === 200 && body.data) {
                             if (body.data.xianyu_purchase_url) {
                                 mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
-                            }
-                            if (body.data.qq_add_url) {
-                                mineQqAddUrl = String(body.data.qq_add_url).trim();
                             }
                         }
                     })
@@ -1608,11 +1542,9 @@
                             localStorage.setItem('bank_card_count', String(u.bank_card_count));
                         }
                         setCounts(u);
-                        maybePromptInactiveModify();
                     })
                     .catch(function () {
                         updateCountsFromStorage();
-                        maybePromptInactiveModify();
                     });
 
                 if (taxToggleBtn) {
@@ -1732,46 +1664,6 @@
                         window.trackUserAction('track_xianyu_purchase_click', {
                             page: 'mine',
                             source: 'activate_modal'
-                        });
-                    }
-                    copyMineXianyuPurchase();
-                });
-            }
-
-            var consultModifyOk = document.getElementById('btnMineConsultModifyOk');
-            var consultModifyCancel = document.getElementById('btnMineConsultModifyCancel');
-            var consultModifyContact = document.getElementById('btnMineConsultModifyContact');
-            var consultModifyXianyu = document.getElementById('btnMineConsultModifyXianyu');
-            var consultModifyMask = document.getElementById('mineConsultModifyModalMask');
-            if (consultModifyOk) {
-                consultModifyOk.addEventListener('click', function () {
-                    closeMineConsultModifyModal();
-                    goConsultPage();
-                });
-            }
-            if (consultModifyCancel) {
-                consultModifyCancel.addEventListener('click', closeMineConsultModifyModal);
-            }
-            if (consultModifyMask) {
-                consultModifyMask.addEventListener('click', closeMineConsultModifyModal);
-            }
-            if (consultModifyContact) {
-                consultModifyContact.addEventListener('click', function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_qq_add_click', {
-                            page: 'mine',
-                            source: 'consult_modify_modal'
-                        });
-                    }
-                    openMineQqAddUrl();
-                });
-            }
-            if (consultModifyXianyu) {
-                consultModifyXianyu.addEventListener('click', function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_xianyu_purchase_click', {
-                            page: 'mine',
-                            source: 'consult_modify_modal'
                         });
                     }
                     copyMineXianyuPurchase();
