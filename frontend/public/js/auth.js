@@ -447,146 +447,6 @@
     } catch (e) {}
   }
 
-  /** 按视口宽高为 Android 设置分级类与布局变量（通用多屏适配，不替代机型专用规则） */
-  function computeAndroidStatusBarFallbackPx() {
-    var av = getAndroidMajorVersion();
-    var sw = window.screen.width || 360;
-    var sh = window.screen.height || 640;
-    var shortSide = Math.min(sw, sh);
-    var longSide = Math.max(sw, sh);
-    var aspect = longSide / Math.max(shortSide, 1);
-    var base = 24;
-    if (av >= 15) {
-      base = 32;
-    } else if (av >= 12) {
-      base = 28;
-    }
-    if (aspect >= 2.05) {
-      base += 6;
-    }
-    if (longSide / (window.devicePixelRatio || 1) >= 880) {
-      base += 4;
-    }
-    return Math.min(60, Math.max(20, base));
-  }
-
-  function computeAndroidBottomInsetPx() {
-    try {
-      var vv = window.visualViewport;
-      if (vv) {
-        var gap = window.innerHeight - (vv.height + vv.offsetTop);
-        if (gap > 10) {
-          return Math.min(48, Math.round(gap));
-        }
-      }
-    } catch (e) {}
-    var av = getAndroidMajorVersion();
-    if (av >= 10) {
-      return 16;
-    }
-    return 0;
-  }
-
-  function applyAndroidScreenTierClasses() {
-    var html = document.documentElement;
-    var w = window.innerWidth || document.documentElement.clientWidth || 360;
-    var h = window.innerHeight || document.documentElement.clientHeight || 640;
-    var tiers = ['app-android-w-xs', 'app-android-w-sm', 'app-android-w-md', 'app-android-w-lg', 'app-android-w-xl'];
-    var htiers = ['app-android-h-short', 'app-android-h-normal', 'app-android-h-tall'];
-    tiers.forEach(function (c) {
-      html.classList.remove(c);
-    });
-    htiers.forEach(function (c) {
-      html.classList.remove(c);
-    });
-    if (w < 360) {
-      html.classList.add('app-android-w-xs');
-    } else if (w < 390) {
-      html.classList.add('app-android-w-sm');
-    } else if (w < 412) {
-      html.classList.add('app-android-w-md');
-    } else if (w < 480) {
-      html.classList.add('app-android-w-lg');
-    } else {
-      html.classList.add('app-android-w-xl');
-    }
-    if (h < 640) {
-      html.classList.add('app-android-h-short');
-    } else if (h < 800) {
-      html.classList.add('app-android-h-normal');
-    } else {
-      html.classList.add('app-android-h-tall');
-    }
-  }
-
-  function applyAndroidLayoutVariables() {
-    var root = document.documentElement;
-    var w = window.innerWidth || 360;
-    var scale = Math.min(1.08, Math.max(0.9, w / 390));
-    var bottomPx = computeAndroidBottomInsetPx();
-    root.style.setProperty('--android-ui-scale', scale.toFixed(3));
-    root.style.setProperty('--android-bottom-inset', bottomPx + 'px');
-    /* 无机型专用顶栏规则时，用视口推算的状态栏高度兜底 */
-    if (
-      !root.classList.contains('app-cordova-xiaomi-23127') &&
-      !root.classList.contains('app-android-xiaomi-14') &&
-      !root.classList.contains('app-android-honor-pgt-an20') &&
-      !root.classList.contains('app-android-honor-ptp-an00') &&
-      !root.classList.contains('app-android-ann-an00') &&
-      !root.classList.contains('app-huawei-pura70')
-    ) {
-      var topPx = computeAndroidStatusBarFallbackPx();
-      var cur = getComputedStyle(root).getPropertyValue('--app-shell-statusbar-top').trim();
-      var curNum = parseFloat(cur);
-      if (!cur || isNaN(curNum) || curNum < topPx - 2) {
-        root.style.setProperty('--app-shell-statusbar-top', topPx + 'px');
-      }
-    }
-  }
-
-  function injectAndroidResponsiveStylesheet() {
-    if (document.getElementById('android-responsive-css')) {
-      return;
-    }
-    var link = document.createElement('link');
-    link.id = 'android-responsive-css';
-    link.rel = 'stylesheet';
-    link.href = '/css/android-responsive.css?v=20260602-android-screens';
-    document.head.appendChild(link);
-  }
-
-  var androidScreenAdaptTimer = null;
-  var androidScreenAdaptBound = false;
-  function setupAndroidScreenAdaptation() {
-    if (!isLikelyAndroidViewportClient()) {
-      return;
-    }
-    injectAndroidResponsiveStylesheet();
-    applyAndroidScreenTierClasses();
-    applyAndroidLayoutVariables();
-    if (androidScreenAdaptBound) {
-      return;
-    }
-    androidScreenAdaptBound = true;
-    var rerun = function () {
-      applyAndroidScreenTierClasses();
-      applyAndroidLayoutVariables();
-    };
-    window.addEventListener('resize', function () {
-      clearTimeout(androidScreenAdaptTimer);
-      androidScreenAdaptTimer = setTimeout(rerun, 120);
-    });
-    window.addEventListener('orientationchange', function () {
-      setTimeout(rerun, 280);
-    });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', function () {
-        clearTimeout(androidScreenAdaptTimer);
-        androidScreenAdaptTimer = setTimeout(rerun, 120);
-      });
-    }
-  }
-
   function setupMobileStatusBar() {
     try {
       var cordovaShell = isCordovaTaxAppShell();
@@ -944,13 +804,11 @@
   }
 
   setupMobileStatusBar();
-  setupAndroidScreenAdaptation();
   applyMinePageChrome();
   applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyMinePageChrome);
     document.addEventListener('DOMContentLoaded', applyIPhone16ProPageChrome);
-    document.addEventListener('DOMContentLoaded', setupAndroidScreenAdaptation);
   }
 
   function currentPageName() {
