@@ -101,3 +101,12 @@ html.app-cordova-xiaomi-2410 .bottom-nav .nav-item {
 html.app-cordova-xiaomi-2410 body.page-mine {
     padding-bottom: calc(58px + var(--app-cordova-bottom-inset)) !important;
 }
+
+/* Android 通用：底部手势区由 auth.js 写入 --android-bottom-inset */
+html.app-android-client:not(.app-cordova-xiaomi-2410) {
+    --bottom-nav-clearance: calc(88px + var(--android-bottom-inset, env(safe-area-inset-bottom, 0px)));
+}
+
+html.app-android-client:not(.app-cordova-xiaomi-2410) .bottom-nav {
+    bottom: calc(10px + var(--android-bottom-inset, env(safe-area-inset-bottom, 0px)));
+}
