@@ -59,9 +59,9 @@
             font-feature-settings: 'tnum' 1, 'zero' 0;
         }
 
-        /* 列表中的金额数字：略收紧字距，避免 tabular-nums 显得过疏 */
+        /* 列表中的金额数字：tabular-nums 下略收紧；过紧（如 -0.04em）会导致连续「7」几乎贴在一起 */
         .list-amount {
-            letter-spacing: -0.04em;
+            letter-spacing: -0.01em;
         }
 
         /* 主内容保持独立层；未激活水印由 watermark.js 使用更高层级覆盖 */
@@ -226,7 +226,7 @@
             font-size: 14px;
             font-weight: 490;
             color: #111;
-            letter-spacing: -0.04em;
+            letter-spacing: -0.015em;
             text-align: right;
             line-height: 20px;
             min-width: 5.5em;
@@ -241,18 +241,9 @@
             letter-spacing: -0.015em;
         }
 
-        /*
-         * Android：介于默认 -0.04em（过紧）与 0.02em（过疏）之间；
-         * 关闭「7」后负 margin，避免如 2179.75 再被挤在一起。
-         */
         html.platform-android body.page-shuiming-result .list-date,
         html.platform-android body.page-shuiming-result .list-amount {
-            letter-spacing: -0.01em;
             font-synthesis: none;
-        }
-
-        html.platform-android body.page-shuiming-result .digit-kern-seven {
-            margin-right: 0;
         }
 
         /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
@@ -445,12 +436,6 @@
         .list-value {
             font-size: 14px;
             color: #333;
-        }
-
-        /* 「7」后紧跟数字时略收紧字距（须由 JS 在已转义文本上包 span） */
-        .digit-kern-seven {
-            display: inline;
-            margin-right: -0.08em;
         }
 
         .list-row-with-arrow {
@@ -980,16 +965,8 @@
                 .replace(/"/g, '&quot;');
         }
 
-        /**
-         * 在已 escapeHtml 的纯文本上，为「7」且紧跟数字的情况包 span，用负 margin 做轻微字距修正（如 71、7.1 不匹配点小数点后的 0）。
-         * 禁止对未转义内容调用，避免破坏标签或 XSS。
-         */
-        function kernSevenAfterDigitInEscaped(escapedText) {
-            return String(escapedText).replace(/7(?=\d)/g, '<span class="digit-kern-seven">7</span>');
-        }
-
         function amountSummaryInnerHtml(yuanText) {
-            return kernSevenAfterDigitInEscaped(escapeHtml(String(yuanText)));
+            return escapeHtml(String(yuanText));
         }
 
         /**
@@ -1061,7 +1038,7 @@
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';
                 listHtml += '<span class="list-title">' + escapeHtml(record.income_type || '') + '</span>';
-                listHtml += '<span class="list-date">' + kernSevenAfterDigitInEscaped(escapeHtml(String(record.year) + '-' + month)) + '</span>';
+                listHtml += '<span class="list-date">' + escapeHtml(String(record.year) + '-' + month) + '</span>';
                 listHtml += '</div>';
                 listHtml += '<div class="list-row"><span class="list-label">所得项目小类：' + escapeHtml(subtypeShow) + '</span></div>';
                 listHtml += '<div class="list-row-with-arrow">';
@@ -1069,14 +1046,14 @@
                 listHtml += '<div class="list-row"><span class="list-company">扣缴义务人：' + escapeHtml(companyShow) + '</span></div>';
                 listHtml +=
                     '<div class="list-row"><span class="list-label">收入：<span class="list-amount">' +
-                    kernSevenAfterDigitInEscaped(escapeHtml(String(record.income))) +
+                    escapeHtml(String(record.income)) +
                     '</span>元</span></div>';
                 listHtml += '</div>';
                 listHtml += '<img class="list-arrow" src="/jt.jpg" alt="" width="10" loading="lazy" decoding="async">';
                 listHtml += '</div>';
                 listHtml +=
                     '<div class="list-row"><span class="list-label">已申报税额：<span class="list-amount">' +
-                    kernSevenAfterDigitInEscaped(escapeHtml(String(record.tax_reported))) +
+                    escapeHtml(String(record.tax_reported)) +
                     '</span>元</span></div>';
                 listHtml += '</a>';
             });
