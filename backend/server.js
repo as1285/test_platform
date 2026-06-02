@@ -6567,18 +6567,23 @@ async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
         return String(r.username);
       });
       var eventMap = await loadPageEventsForUsers(conn, names, 400);
+      var deviceMap = await loadLatestDevicesForUsers(conn, names);
       var lines = [
-        '账号,姓名,注册时间,注册渠道,APP停留,活跃天,页面数,行为路径摘要,最近活跃'
+        '账号,姓名,注册时间,注册渠道,APP停留,机型,系统,活跃天,页面数,行为路径摘要,最近活跃'
       ];
       userRows.forEach(function (r) {
         var uname = String(r.username);
         var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
+        var shortStay = metrics.stay_seconds < NO_TAX_BEHAVIOR_SHORT_STAY_SEC;
+        var dev = deviceMap[uname];
         var row = [
           uname,
           r.real_name != null ? String(r.real_name) : '',
           r.created_at ? r.created_at.toISOString() : '',
           registerSourceChannelLabel(r.register_source_channel),
           metrics.stay_label || '',
+          shortStay && dev ? dev.model_label : '',
+          shortStay && dev ? dev.os_display : '',
           String(metrics.active_days || 0),
           String(metrics.distinct_page_count || 0),
           metrics.path_summary || '',
@@ -9153,6 +9158,8 @@ function formatStaySecondsLabel(sec) {
 
 var NO_TAX_BEHAVIOR_MAX_DAILY_SPAN_SEC = 4 * 3600;
 var NO_TAX_BEHAVIOR_SINGLE_DAY_SEC = 120;
+/** 用户行为页：低于该停留秒数时展示最近上报机型 */
+var NO_TAX_BEHAVIOR_SHORT_STAY_SEC = 10 * 60;
 
 function computeBehaviorMetricsFromEvents(events) {
   events = Array.isArray(events) ? events : [];
@@ -9269,6 +9276,40 @@ async function loadPageEventsForUsers(conn, usernames, maxPerUser) {
   return out;
 }
 
+/** 批量取各用户最近一次上报/同步的设备信息（用于行为分析页短停留机型展示） */
+async function loadLatestDevicesForUsers(conn, usernames) {
+  var out = {};
+  if (!usernames || !usernames.length) return out;
+  var ph = usernames.map(function () {
+    return '?';
+  }).join(',');
+  const [rows] = await conn.query(
+    `SELECT username, user_agent_short, device_detail_json FROM (
+       SELECT username, user_agent_short, device_detail_json,
+              ROW_NUMBER() OVER (PARTITION BY username ORDER BY last_seen DESC) AS rn
+       FROM user_devices
+       WHERE username IN (` +
+      ph +
+      `)
+     ) t WHERE rn = 1`,
+    usernames
+  );
+  rows.forEach(function (r) {
+    var uname = String(r.username);
+    var cls = classifyUserDeviceRow(r.user_agent_short, r.device_detail_json);
+    var osFamily = DEVICE_STATS_OS_FAMILY_LABEL[cls.os_key] || cls.os_key || '';
+    var osDisplay = osFamily;
+    if (cls.os_version) {
+      osDisplay = (osFamily + ' ' + cls.os_version).trim();
+    }
+    out[uname] = {
+      model_label: cls.model_label,
+      os_display: osDisplay
+    };
+  });
+  return out;
+}
+
 function noTaxUserWhereSql(req) {
   var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username)"];
   var params = [];
@@ -9301,6 +9342,7 @@ async function handleAdminUserDataNoTaxBehavior(req, res) {
         return String(r.username);
       });
       var eventMap = await loadPageEventsForUsers(conn, names, 400);
+      var deviceMap = await loadLatestDevicesForUsers(conn, names);
 
       var cohortPageHits = {};
       var activeCount = 0;
@@ -9317,6 +9359,8 @@ async function handleAdminUserDataNoTaxBehavior(req, res) {
           if (!cohortPageHits[t]) cohortPageHits[t] = 0;
           cohortPageHits[t] += p.hit_count;
         });
+        var shortStay = metrics.stay_seconds < NO_TAX_BEHAVIOR_SHORT_STAY_SEC;
+        var dev = deviceMap[uname];
         return {
           username: uname,
           real_name: r.real_name != null ? String(r.real_name) : '',
@@ -9330,6 +9374,8 @@ async function handleAdminUserDataNoTaxBehavior(req, res) {
           active_days: metrics.active_days,
           stay_seconds: metrics.stay_seconds,
           stay_label: metrics.stay_label,
+          device_model_label: shortStay && dev ? dev.model_label : '',
+          device_os_label: shortStay && dev ? dev.os_display : '',
           distinct_page_count: metrics.distinct_page_count,
           first_at: metrics.first_at,
           last_at: metrics.last_at,

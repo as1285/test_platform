@@ -4119,7 +4119,7 @@
             var stat = document.getElementById('udNoTaxListStat');
             var tbody = document.getElementById('udNoTaxBehaviorTbody');
             if (stat) stat.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
             adminFetch(
                 'api/admin/user-data/no-tax-behavior?page=' +
                     noTaxBehaviorPage +
@@ -4132,7 +4132,7 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="9">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="10">' + esc(j.msg || '加载失败') + '</td></tr>';
                         return;
                     }
                     var d = j.data;
@@ -4157,6 +4157,19 @@
                         html += '<td>' + esc(row.real_name || '—') + '</td>';
                         html += '<td>' + esc(row.created_at ? formatDt(row.created_at) : '—') + '</td>';
                         html += '<td>' + esc(row.stay_label || '无记录') + '</td>';
+                        var deviceCell = '—';
+                        if (row.device_model_label) {
+                            deviceCell = row.device_model_label;
+                            if (row.device_os_label) {
+                                deviceCell += ' · ' + row.device_os_label;
+                            }
+                        }
+                        html +=
+                            '<td class="cell-break" style="font-size:12px;color:#555;" title="' +
+                            esc(deviceCell) +
+                            '">' +
+                            esc(deviceCell) +
+                            '</td>';
                         html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
                         html += '<td>' + esc(row.distinct_page_count != null ? row.distinct_page_count : 0) + '</td>';
                         html += '<td class="cell-break" style="font-size:12px;color:#555;">' + esc(row.path_summary || '—') + '</td>';
@@ -4170,12 +4183,12 @@
                         html += '</tr>';
                         html += '<tr id="ud_notax_path_row_' + key + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="9"><div id="ud_notax_path_box_' +
+                            '<td colspan="10"><div id="ud_notax_path_box_' +
                             key +
                             '">加载中…</div></td></tr>';
                     });
                     if (tbody) {
-                        tbody.innerHTML = html || '<tr><td colspan="9">暂无未填个税用户</td></tr>';
+                        tbody.innerHTML = html || '<tr><td colspan="10">暂无未填个税用户</td></tr>';
                         tbody.querySelectorAll('.btn-no-tax-path').forEach(function (btn) {
                             btn.onclick = function () {
                                 var name = btn.getAttribute('data-u');
@@ -4215,7 +4228,7 @@
                 })
                 .catch(function () {
                     if (stat) stat.textContent = '加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="9">加载失败</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载失败</td></tr>';
                 });
         }
 

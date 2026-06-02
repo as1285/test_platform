@@ -919,7 +919,7 @@
             <p class="hint">分析<strong>注册但未填写个税记录</strong>的用户在 APP 内的行为：停留时间、访问页面与行为路径。数据来自 <code>user_page_events</code>。非超级管理员仅能看到自己激活码关联的账号。</p>
             <div id="udNoTaxBehaviorSection" class="ud-no-tax-behavior-section">
                 <h3 style="margin:0 0 8px;font-size:16px;">注册未填个税 · 行为分析</h3>
-                <p class="hint" style="margin:0 0 12px;">筛选条件：<strong>无个税明细记录</strong>的注册账号。停留时间为按自然日估算（当日首次与末次行为间隔，单日上限 4 小时；仅 1 次行为按 2 分钟计）。</p>
+                <p class="hint" style="margin:0 0 12px;">筛选条件：<strong>无个税明细记录</strong>的注册账号。停留时间为按自然日估算（当日首次与末次行为间隔，单日上限 4 小时；仅 1 次行为按 2 分钟计）。<strong>APP 停留低于 10 分钟</strong>的用户会展示最近上报的<strong>机型</strong>（来自 <code>X-Client-Device</code> / UA）。</p>
                 <div id="udNoTaxSummary" class="user-data-stats" aria-live="polite">进入本页后加载…</div>
                 <div class="scroll-x" style="margin-top:12px;">
                     <p class="stat" style="margin-bottom:8px;">该群体热门页面 TOP（按访问次数）</p>
@@ -946,6 +946,7 @@
                                 <th style="width:72px;">姓名</th>
                                 <th style="width:100px;">注册时间</th>
                                 <th style="width:88px;">APP停留</th>
+                                <th style="width:120px;">机型</th>
                                 <th style="width:56px;">活跃天</th>
                                 <th style="width:56px;">页面数</th>
                                 <th style="width:200px;">行为路径摘要</th>
@@ -953,7 +954,7 @@
                                 <th class="col-ops">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="udNoTaxBehaviorTbody"><tr><td colspan="9">进入本页后加载…</td></tr></tbody>
+                        <tbody id="udNoTaxBehaviorTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
                     </table>
                 </div>
                 <div class="pagination" id="udNoTaxBehaviorPagination">
