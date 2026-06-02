@@ -227,7 +227,7 @@
         if (u.employer_count != null) {
           localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
         }
-        renderMineTaskCard();
+        removeMineConversionUi();
       })
       .catch(function () {});
   }
@@ -237,20 +237,6 @@
     var st = document.createElement('style');
     st.id = 'conversion-guide-styles';
     st.textContent =
-      '.cg-task-card .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
-      '.cg-task-card .cg-btn-primary{background:#1e6fff;color:#fff}' +
-      '.cg-task-card{margin:0 16px 12px;padding:12px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
-      '.page-mine .content-wrapper > .user-card{position:relative;z-index:1}' +
-      '.cg-task-card h4{margin:0 0 8px;font-size:14px;color:#333}' +
-      '.cg-task-progress{margin:8px 0 10px;height:6px;background:#eef2f8;border-radius:3px;overflow:hidden}' +
-      '.cg-task-progress>span{display:block;height:100%;background:#1e6fff;border-radius:3px;transition:width .25s}' +
-      '.cg-task-progress-label{font-size:12px;color:#888;margin-bottom:8px}' +
-      '.cg-task-steps{margin:0;padding:0;list-style:none}' +
-      '.cg-task-steps li{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#555;border-bottom:1px solid #f0f0f0}' +
-      '.cg-task-steps li:last-child{border-bottom:none}' +
-      '.cg-task-dot{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px}' +
-      '.cg-task-steps li.done .cg-task-dot{border-color:#1e6fff;background:#1e6fff;color:#fff}' +
-      '.cg-task-steps li.done{color:#333}' +
       '.cg-panel-gate{padding:16px;margin:12px 0;background:#fff8e6;border:1px solid #ffe0a3;border-radius:10px;font-size:14px;color:#664d03;line-height:1.5}' +
       '.cg-panel-gate .cg-btn{margin-top:10px}' +
       '.cg-empty-cta{margin-top:16px;text-align:center}' +
@@ -551,56 +537,9 @@
     }
   }
 
-  function getMineBottomExtrasEl() {
-    return document.getElementById('mineBottomExtras');
-  }
-
-  function renderMineTaskCard() {
-    if (currentPage() !== 'mine.html') return;
-    if (isAccountActive()) {
-      removeMineConversionUi();
-      return;
-    }
-    var anchor = getMineBottomExtrasEl();
-    if (!anchor) return;
-    var existing = document.getElementById('cg-mine-task-card');
-    if (!existing) {
-      ensureGateStyles();
-      existing = document.createElement('div');
-      existing.id = 'cg-mine-task-card';
-      existing.className = 'cg-task-card';
-      anchor.insertBefore(existing, anchor.firstChild);
-    }
-    var done = hasTaxRecords() ? 1 : 0;
-    var pct = Math.round((done / 3) * 100);
-    existing.innerHTML =
-      '<h4>新手任务</h4>' +
-      '<div class="cg-task-progress-label">完成进度 ' +
-      done +
-      '/3（激活后自动隐藏本卡片）</div>' +
-      '<div class="cg-task-progress"><span style="width:' +
-      pct +
-      '%"></span></div>' +
-      '<ul class="cg-task-steps">' +
-      '<li class="' +
-      (done >= 1 ? 'done' : '') +
-      '"><span class="cg-task-dot">1</span><span>添加个税记录</span></li>' +
-      '<li><span class="cg-task-dot">2</span><span>激活账号</span></li>' +
-      '<li><span class="cg-task-dot">3</span><span>添加任职受雇（可选）</span></li>' +
-      '</ul>' +
-      '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgTaskActivate">去激活</button></div>';
-    var b = document.getElementById('cgTaskActivate');
-    if (b) {
-      b.addEventListener('click', function () {
-        var ab = document.getElementById('mineActivateBtn');
-        if (ab) ab.click();
-      });
-    }
-  }
-
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
-    renderMineTaskCard();
+    removeMineConversionUi();
   }
 
   function injectConsultRecordsGate() {
