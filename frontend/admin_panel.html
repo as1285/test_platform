@@ -1039,8 +1039,8 @@
             <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
         </section>
         <section>
-            <h2>注册后 7 日转化漏斗</h2>
-            <p class="hint" style="margin-top:0;">按用户<strong>注册日</strong> cohort 统计：注册后 168 小时内是否完成激活、是否写入个税记录、是否访问过收入纳税明细相关页面（<code>shuiming</code> / <code>xiangqing</code>）。</p>
+            <h2>四段转化漏斗</h2>
+            <p class="hint" style="margin-top:0;">按用户<strong>注册日</strong> cohort：<strong>注册 → 7 日内激活 → 7 日内有个税 → 7 日内看收入明细</strong>（<code>shuiming</code> / <code>xiangqing</code>）。分渠道拆分见侧栏「渠道分析」。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsFunnelDays">统计天数</label>
@@ -1072,8 +1072,8 @@
             <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
         </section>
         <section>
-            <h2>转化 KPI（P3/P4）</h2>
-            <p class="hint" style="margin-top:0;"><strong>激活后 7 日个税填写率</strong>：统计窗口内激活的用户中，激活后 168 小时内有个税记录的比例。<strong>有个税后 7 日明细查看率</strong>：窗口内首次有个税的用户中，168 小时内访问过收入明细相关页的比例。</p>
+            <h2>运营 KPI</h2>
+            <p class="hint" style="margin-top:0;"><strong>激活后 7 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 168 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 7 日明细查看率</strong> = 窗口内首次有个税的用户中，168 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsConversionKpiDays">统计天数</label>
@@ -1416,8 +1416,8 @@
             </div>
         </section>
         <section>
-            <h2>分渠道 7 日转化漏斗</h2>
-            <p class="hint" style="margin-top:0;">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与数据统计页「注册后 7 日转化漏斗」一致）。</p>
+            <h2>分渠道 7 日转化漏斗（注册来源）</h2>
+            <p class="hint" style="margin-top:0;">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与数据统计页「四段转化漏斗」一致）。</p>
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
                     <label for="analyticsChannelFunnelDays">统计天数</label>
@@ -1431,6 +1431,23 @@
                 <button type="button" class="btn-page" id="btnRefreshChannelFunnel">刷新渠道漏斗</button>
             </div>
             <div id="analyticsChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
+        </section>
+        <section>
+            <h2>分渠道 7 日转化漏斗（激活来源）</h2>
+            <p class="hint" style="margin-top:0;">按<strong>激活来源渠道</strong>（<code>activation_source_channel</code>，如闲鱼码）拆分：激活后 168 小时内有个税 / 看明细。</p>
+            <div class="form-row" style="align-items:center;margin-top:8px;">
+                <div>
+                    <label for="analyticsActivationChannelFunnelDays">统计天数</label>
+                    <select id="analyticsActivationChannelFunnelDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        <option value="7" selected>最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshActivationChannelFunnel">刷新激活渠道漏斗</button>
+            </div>
+            <div id="analyticsActivationChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
         </section>
                 </div>
 

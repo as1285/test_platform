@@ -712,6 +712,7 @@
                     if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
                 });
             loadChannelRegistrationFunnel();
+            loadActivationChannelFunnel();
         }
 
         function renderRegisterTimeAnalysis(data) {
@@ -3290,7 +3291,7 @@
             }
             var html = '<div class="scroll-x"><table><thead><tr>';
             html +=
-                '<th>注册渠道</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th></tr></thead><tbody>';
+                '<th>注册渠道</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th><th>明细率</th></tr></thead><tbody>';
             items.forEach(function (row) {
                 html += '<tr>';
                 html += '<td>' + esc(row.channel_label || row.channel || '—') + '</td>';
@@ -3300,6 +3301,7 @@
                 html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
                 html += '<td>' + esc(row.rate_activate_7d_pct || '—') + '</td>';
                 html += '<td>' + esc(row.rate_tax_7d_pct || '—') + '</td>';
+                html += '<td>' + esc(row.rate_detail_7d_pct || '—') + '</td>';
                 html += '</tr>';
             });
             html += '</tbody></table></div>';
@@ -3325,6 +3327,53 @@
                 })
                 .catch(function () {
                     el.textContent = '渠道漏斗加载失败';
+                });
+        }
+
+        function renderActivationChannelFunnel(data) {
+            var el = document.getElementById('analyticsActivationChannelFunnel');
+            if (!el) return;
+            var items = Array.isArray(data && data.items) ? data.items : [];
+            if (!items.length) {
+                el.textContent = '暂无激活渠道漏斗数据';
+                return;
+            }
+            var html = '<div class="scroll-x"><table><thead><tr>';
+            html +=
+                '<th>激活渠道</th><th>激活</th><th>7日个税</th><th>7日看明细</th><th>个税率</th><th>明细率</th></tr></thead><tbody>';
+            items.forEach(function (row) {
+                html += '<tr>';
+                html += '<td>' + esc(row.channel_label || row.channel || '—') + '</td>';
+                html += '<td>' + esc(row.activated) + '</td>';
+                html += '<td>' + esc(row.tax_7d) + '</td>';
+                html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
+                html += '<td>' + esc(row.rate_tax_7d_pct || '—') + '</td>';
+                html += '<td>' + esc(row.rate_detail_7d_pct || '—') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadActivationChannelFunnel() {
+            var el = document.getElementById('analyticsActivationChannelFunnel');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsActivationChannelFunnelDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 7 : 7;
+            el.textContent = '激活渠道漏斗加载中…';
+            adminFetch('api/admin/analytics/activation-channel-funnel?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '激活渠道漏斗加载失败';
+                        return;
+                    }
+                    renderActivationChannelFunnel(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '激活渠道漏斗加载失败';
                 });
         }
 
@@ -3373,31 +3422,59 @@
                 el.textContent = '暂无 KPI 数据';
                 return;
             }
-            var html = '<div class="scroll-x"><table><tbody>';
+            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
             html +=
-                '<tr><th style="text-align:left;padding:8px;">统计天数</th><td>' +
-                esc(data.days) +
-                '</td></tr>';
-            html +=
-                '<tr><th style="text-align:left;padding:8px;">窗口内激活用户数</th><td>' +
-                esc(data.activated_in_window) +
-                '</td></tr>';
-            html +=
-                '<tr><th style="text-align:left;padding:8px;">激活后 7 日内有个税</th><td>' +
-                esc(data.tax_within_7d_after_activate) +
-                '（' +
+                '<div class="user-data-stat-card"><div class="ud-label">激活后 7 日个税填写率</div><div class="ud-val">' +
                 esc(data.rate_tax_after_activate_7d_pct || '—') +
-                '）</td></tr>';
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(data.tax_within_7d_after_activate) +
+                ' / ' +
+                esc(data.activated_in_window) +
+                ' 人</div></div>';
             html +=
-                '<tr><th style="text-align:left;padding:8px;">窗口内首次有个税用户</th><td>' +
-                esc(data.users_with_first_tax_in_window) +
-                '</td></tr>';
-            html +=
-                '<tr><th style="text-align:left;padding:8px;">有个税后 7 日内看明细</th><td>' +
-                esc(data.viewed_detail_within_7d_after_tax) +
-                '（' +
+                '<div class="user-data-stat-card"><div class="ud-label">有个税后 7 日明细查看率</div><div class="ud-val">' +
                 esc(data.rate_detail_after_tax_7d_pct || '—') +
-                '）</td></tr>';
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(data.viewed_detail_within_7d_after_tax) +
+                ' / ' +
+                esc(data.users_with_first_tax_in_window) +
+                ' 人</div></div>';
+            html += '</div>';
+
+            var actSeries = Array.isArray(data.series_by_activate_day) ? data.series_by_activate_day.slice().reverse() : [];
+            html += '<p class="stat" style="margin:0 0 8px;">按激活日：激活后 7 日个税填写率</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html += '<th>激活日</th><th>当日激活</th><th>7日内有个税</th><th>填写率</th></tr></thead><tbody>';
+            if (!actSeries.length) {
+                html += '<tr><td colspan="4">暂无</td></tr>';
+            } else {
+                actSeries.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(row.activated) + '</td>';
+                    html += '<td>' + esc(row.tax_within_7d) + '</td>';
+                    html += '<td>' + esc(row.rate_tax_after_activate_7d_pct || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
+            var taxSeries = Array.isArray(data.series_by_first_tax_day) ? data.series_by_first_tax_day.slice().reverse() : [];
+            html += '<p class="stat" style="margin:0 0 8px;">按首次有个税日：有个税后 7 日明细查看率</p>';
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html += '<th>有个税日</th><th>当日有个税</th><th>7日内看明细</th><th>查看率</th></tr></thead><tbody>';
+            if (!taxSeries.length) {
+                html += '<tr><td colspan="4">暂无</td></tr>';
+            } else {
+                taxSeries.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(row.with_tax) + '</td>';
+                    html += '<td>' + esc(row.viewed_detail_7d) + '</td>';
+                    html += '<td>' + esc(row.rate_detail_after_tax_7d_pct || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
             html += '</tbody></table></div>';
             el.innerHTML = html;
         }
@@ -6206,6 +6283,18 @@
         if (analyticsChannelFunnelDays) {
             analyticsChannelFunnelDays.addEventListener('change', function () {
                 loadChannelRegistrationFunnel();
+            });
+        }
+        var btnRefreshActivationChannelFunnel = document.getElementById('btnRefreshActivationChannelFunnel');
+        if (btnRefreshActivationChannelFunnel) {
+            btnRefreshActivationChannelFunnel.onclick = function () {
+                loadActivationChannelFunnel();
+            };
+        }
+        var analyticsActivationChannelFunnelDays = document.getElementById('analyticsActivationChannelFunnelDays');
+        if (analyticsActivationChannelFunnelDays) {
+            analyticsActivationChannelFunnelDays.addEventListener('change', function () {
+                loadActivationChannelFunnel();
             });
         }
         var btnRefreshInstallTrack = document.getElementById('btnRefreshInstallTrack');

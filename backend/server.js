@@ -6472,6 +6472,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                 SUM(CASE WHEN EXISTS (
                   SELECT 1 FROM tax_records tr
                   WHERE tr.user_id = u.username
+                    AND tr.deleted_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS tax_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6506,6 +6507,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                 SUM(CASE WHEN EXISTS (
                   SELECT 1 FROM tax_records tr
                   WHERE tr.user_id = u.username
+                    AND tr.deleted_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS tax_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6718,6 +6720,88 @@ async function handleAdminChannelRegistrationFunnel(req, res) {
   }
 }
 
+function activationFunnelMetricsSqlAliases(userAlias, actAlias) {
+  var u = userAlias || 'u';
+  var ac = actAlias || 'ac';
+  return {
+    tax7AfterActivate:
+      'SUM(CASE WHEN EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
+      u +
+      '.username AND tr.deleted_at IS NULL AND TIMESTAMPDIFF(HOUR, ' +
+      ac +
+      '.last_used_at, tr.created_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
+    detail7AfterActivate:
+      'SUM(CASE WHEN EXISTS (SELECT 1 FROM user_page_events e WHERE e.username = ' +
+      u +
+      '.username AND (e.page_path LIKE \'%shuiming%\' OR e.page_path LIKE \'%xiangqing%\') AND TIMESTAMPDIFF(HOUR, ' +
+      ac +
+      '.last_used_at, e.created_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)'
+  };
+}
+
+/** 按激活来源渠道的 7 日转化（激活 cohort：激活后有个税 / 看明细） */
+async function handleAdminActivationChannelFunnel(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var actSince = cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var fm = activationFunnelMetricsSqlAliases('u', 'ac');
+
+    const conn = await pool.getConnection();
+    try {
+      var where = [actSince];
+      var params = [days - 1];
+      appendAdminUserScope(where, params, req.admin, 'u.username');
+      var whereSql = ' WHERE ' + where.join(' AND ');
+
+      const [rows] = await conn.query(
+        `SELECT COALESCE(NULLIF(TRIM(u.activation_source_channel), ''), '__empty__') AS ch,
+                COUNT(DISTINCT u.username) AS activated,
+                ${fm.tax7AfterActivate} AS tax_7d,
+                ${fm.detail7AfterActivate} AS viewed_detail_7d
+         FROM users u
+         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
+           AND ac.last_used_at IS NOT NULL
+         ` +
+          whereSql +
+          ' GROUP BY ch ORDER BY activated DESC',
+        params
+      );
+
+      function pct(n, d) {
+        if (!d || d <= 0) return null;
+        return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+      }
+
+      var items = (rows || []).map(function (r) {
+        var act = Number(r.activated) || 0;
+        var t7 = Number(r.tax_7d) || 0;
+        var v7 = Number(r.viewed_detail_7d) || 0;
+        var ch = String(r.ch || '');
+        return {
+          channel: ch,
+          channel_label: ch === '__empty__' ? '未标记激活来源' : activationSourceChannelLabel(ch),
+          activated: act,
+          tax_7d: t7,
+          viewed_detail_7d: v7,
+          rate_tax_7d_pct: pct(t7, act),
+          rate_detail_7d_pct: pct(v7, act)
+        };
+      });
+
+      res.json({ code: 200, data: { days: days, items: items } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 安装页与注册相关埋点汇总（analytics_api_daily） */
 async function handleAdminInstallTrackStats(req, res) {
   try {
@@ -6857,6 +6941,7 @@ async function handleAdminConversionKpis(req, res) {
                 SUM(CASE WHEN EXISTS (
                   SELECT 1 FROM tax_records tr
                   WHERE tr.user_id = u.username
+                    AND tr.deleted_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS tax_within_7d
          FROM users u
@@ -6881,6 +6966,7 @@ async function handleAdminConversionKpis(req, res) {
          INNER JOIN (
            SELECT user_id AS username, MIN(created_at) AS first_tax_at
            FROM tax_records
+           WHERE deleted_at IS NULL
            GROUP BY user_id
          ) ft ON ft.username = u.username
          WHERE DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) >= DATE_SUB(${cnToday}, INTERVAL ? DAY)${scopeSql}`,
@@ -6889,6 +6975,69 @@ async function handleAdminConversionKpis(req, res) {
       var tax = taxRows[0] || {};
       var withTax = Number(tax.with_tax) || 0;
       var viewed7 = Number(tax.viewed_detail_7d) || 0;
+
+      var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+      const [actDayRows] = await conn.query(
+        `SELECT ${cnActDay} AS d,
+                COUNT(DISTINCT u.username) AS activated,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM tax_records tr
+                  WHERE tr.user_id = u.username
+                    AND tr.deleted_at IS NULL
+                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS tax_within_7d
+         FROM users u
+         INNER JOIN activation_codes ac ON ac.used_by_username = u.username
+           AND ac.last_used_at IS NOT NULL
+         WHERE ${actSince}${scopeSql}
+         GROUP BY ${cnActDay}
+         ORDER BY d ASC`,
+        scopeParams
+      );
+
+      const [taxDayRows] = await conn.query(
+        `SELECT DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) AS d,
+                COUNT(DISTINCT u.username) AS with_tax,
+                SUM(CASE WHEN EXISTS (
+                  SELECT 1 FROM user_page_events e
+                  WHERE e.username = u.username
+                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 168
+                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+         FROM users u
+         INNER JOIN (
+           SELECT user_id AS username, MIN(created_at) AS first_tax_at
+           FROM tax_records
+           WHERE deleted_at IS NULL
+           GROUP BY user_id
+         ) ft ON ft.username = u.username
+         WHERE DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) >= DATE_SUB(${cnToday}, INTERVAL ? DAY)${scopeSql}
+         GROUP BY DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR))
+         ORDER BY d ASC`,
+        scopeParams
+      );
+
+      var seriesByActivateDay = (actDayRows || []).map(function (r) {
+        var a = Number(r.activated) || 0;
+        var t = Number(r.tax_within_7d) || 0;
+        return {
+          date: formatDateKey(r.d),
+          activated: a,
+          tax_within_7d: t,
+          rate_tax_after_activate_7d_pct: pct(t, a)
+        };
+      });
+
+      var seriesByFirstTaxDay = (taxDayRows || []).map(function (r) {
+        var w = Number(r.with_tax) || 0;
+        var v = Number(r.viewed_detail_7d) || 0;
+        return {
+          date: formatDateKey(r.d),
+          with_tax: w,
+          viewed_detail_7d: v,
+          rate_detail_after_tax_7d_pct: pct(v, w)
+        };
+      });
 
       res.json({
         code: 200,
@@ -6899,7 +7048,9 @@ async function handleAdminConversionKpis(req, res) {
           rate_tax_after_activate_7d_pct: pct(taxWithin7, activated),
           users_with_first_tax_in_window: withTax,
           viewed_detail_within_7d_after_tax: viewed7,
-          rate_detail_after_tax_7d_pct: pct(viewed7, withTax)
+          rate_detail_after_tax_7d_pct: pct(viewed7, withTax),
+          series_by_activate_day: seriesByActivateDay,
+          series_by_first_tax_day: seriesByFirstTaxDay
         }
       });
     } finally {
@@ -11389,8 +11540,14 @@ app.get(
 app.get(
   '/api/admin/analytics/channel-registration-funnel',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminMenu('channel-analysis'),
   handleAdminChannelRegistrationFunnel
+);
+app.get(
+  '/api/admin/analytics/activation-channel-funnel',
+  requireAdminAuth,
+  requireAdminMenu('channel-analysis'),
+  handleAdminActivationChannelFunnel
 );
 app.get(
   '/api/admin/analytics/install-track-stats',
