@@ -1904,6 +1904,22 @@
                     throw new Error(data.msg || '保存失败');
                 })
                 .then(function () {
+                    if (!editId) {
+                        try {
+                            var prevCnt = Number(localStorage.getItem('tax_record_count') || '0') || 0;
+                            localStorage.setItem('tax_record_count', String(Math.max(1, prevCnt + 1)));
+                        } catch (eTaxCnt) {}
+                        if (window.ConversionGuide && typeof window.ConversionGuide.refresh === 'function') {
+                            window.ConversionGuide.refresh();
+                        }
+                        if (
+                            window.ConversionGuide &&
+                            typeof window.ConversionGuide.afterTaxRecordsCreated === 'function'
+                        ) {
+                            window.ConversionGuide.afterTaxRecordsCreated({ source: 'single_save' });
+                            return;
+                        }
+                    }
                     showMsg(editId ? '记录已更新' : '记录已添加', true);
                 })
                 .catch(function (err) {

@@ -1496,7 +1496,15 @@
         var loading = document.getElementById('previewLoading');
         if (loading) loading.style.display = 'none';
         if (wrap) {
-          wrap.innerHTML = certificateImageHtml(ret.url, 'preview-img', '纳税记录');
+          var urls = Array.isArray(ret.url) ? ret.url : [ret.url];
+          wrap.innerHTML = certificateImageHtml(urls[0], 'preview-img', '纳税记录');
+        }
+        if (
+          window.ConversionGuide &&
+          typeof window.ConversionGuide.mountNajiluPreviewBar === 'function'
+        ) {
+          var previewUrl = Array.isArray(ret.url) ? ret.url[0] : ret.url;
+          window.ConversionGuide.mountNajiluPreviewBar(ret.app, previewUrl);
         }
       })
       .catch(function (err) {

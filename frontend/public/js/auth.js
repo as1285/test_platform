@@ -1271,7 +1271,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260602-no-mine-task-card';
+    s.src = '/js/conversion-guide.js?v=20260603-stage4-value';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);
