@@ -641,6 +641,22 @@
             display: flex;
             gap: 6px;
         }
+        #taxRecycleBinModal .recycle-bin-company-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 0 14px 10px;
+        }
+        #taxRecycleBinModal .recycle-bin-company-row select {
+            flex: 1;
+            min-width: 0;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fff;
+        }
 
         /* 税务批量等：校验失败强提示（居中弹框） */
         .consult-strong-alert-root {
@@ -737,6 +753,12 @@
                 <button type="button" id="taxRecycleBinModalCloseX" aria-label="关闭">&times;</button>
             </div>
             <p class="batch-ms-modal-hint">已删除的税务记录暂存于此，可恢复至列表或导出 JSON 备份。</p>
+            <div class="recycle-bin-company-row">
+                <select id="taxRecycleBinCompanySelect" aria-label="选择扣缴单位">
+                    <option value="">选择扣缴单位…</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-sm" id="taxRecycleBinRestoreCompany">按公司恢复</button>
+            </div>
             <div class="batch-ms-modal-scroll" id="taxRecycleBinBody"><div class="empty" style="padding:16px;">加载中…</div></div>
             <div class="batch-ms-modal-footer">
                 <button type="button" class="btn btn-default btn-sm" id="taxRecycleBinExport">导出 JSON</button>
@@ -2161,7 +2183,37 @@
                 });
         }
 
+        function updateTaxRecycleBinCompanySelect(list) {
+            var sel = document.getElementById('taxRecycleBinCompanySelect');
+            if (!sel) {
+                return;
+            }
+            var names = collectDistinctRecordCompanies(list);
+            sel.innerHTML = '';
+            var placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = names.length ? '选择扣缴单位…' : '暂无扣缴单位';
+            sel.appendChild(placeholder);
+            names.forEach(function (name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                sel.appendChild(opt);
+            });
+        }
+
+        function countDeletedRecordsByCompany(list, company) {
+            var n = 0;
+            (list || []).forEach(function (r) {
+                if (String(r.company_name || '').trim() === company) {
+                    n += 1;
+                }
+            });
+            return n;
+        }
+
         function renderTaxRecycleBinList(list) {
+            updateTaxRecycleBinCompanySelect(list);
             var body = document.getElementById('taxRecycleBinBody');
             if (!body) {
                 return;
@@ -2225,6 +2277,49 @@
                         throw new Error(data.msg || '恢复失败');
                     }
                     showMsg('已恢复', true);
+                    return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
+                })
+                .then(function (res) {
+                    renderTaxRecycleBinList(res[0] || []);
+                })
+                .catch(function (err) {
+                    showMsg('恢复失败：' + (err.message || ''), false);
+                });
+        }
+
+        function restoreDeletedTaxRecordsByCompany() {
+            var sel = document.getElementById('taxRecycleBinCompanySelect');
+            var company = sel ? String(sel.value || '').trim() : '';
+            if (!company) {
+                showConsultStrongAlert('请选择扣缴单位');
+                return;
+            }
+            var n = countDeletedRecordsByCompany(taxRecycleBinCache, company);
+            if (!n) {
+                showConsultStrongAlert('回收站中未找到该单位的记录');
+                return;
+            }
+            if (!confirm('确定恢复扣缴单位「' + company + '」下的 ' + n + ' 条记录？')) {
+                return;
+            }
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'restore_records_by_company',
+                    user_id: currentUserId(),
+                    company_name: company
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '恢复失败');
+                    }
+                    var restored = data.data && data.data.restored != null ? Number(data.data.restored) : 0;
+                    showMsg(restored > 0 ? '已恢复「' + company + '」共 ' + restored + ' 条记录' : '回收站中未找到该单位的记录', true);
                     return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
                 })
                 .then(function (res) {
@@ -3846,6 +3941,7 @@
             var closeX = document.getElementById('taxRecycleBinModalCloseX');
             var closeBtn = document.getElementById('taxRecycleBinClose');
             var restoreAllBtn = document.getElementById('taxRecycleBinRestoreAll');
+            var restoreCompanyBtn = document.getElementById('taxRecycleBinRestoreCompany');
             var exportBtn = document.getElementById('taxRecycleBinExport');
             if (mask) {
                 mask.addEventListener('click', closeTaxRecycleBin);
@@ -3858,6 +3954,9 @@
             }
             if (restoreAllBtn) {
                 restoreAllBtn.addEventListener('click', restoreAllDeletedTaxRecords);
+            }
+            if (restoreCompanyBtn) {
+                restoreCompanyBtn.addEventListener('click', restoreDeletedTaxRecordsByCompany);
             }
             if (exportBtn) {
                 exportBtn.addEventListener('click', exportDeletedTaxRecordsJson);

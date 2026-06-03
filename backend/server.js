@@ -2062,6 +2062,23 @@ async function restoreAllDeletedTaxRecords(userId) {
   }
 }
 
+async function restoreRecordsByCompany(userId, companyName) {
+  const name = companyName != null ? String(companyName).trim() : '';
+  if (!name) {
+    return { restored: 0 };
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.execute(
+      'UPDATE tax_records SET deleted_at = NULL, updated_at = NOW(3) WHERE user_id = ? AND TRIM(company_name) = ? AND deleted_at IS NOT NULL',
+      [userId, name]
+    );
+    return { restored: result.affectedRows != null ? Number(result.affectedRows) : 0 };
+  } finally {
+    conn.release();
+  }
+}
+
 function formatTaxAmt(v, defaultStr) {
   if (v == null || v === '') return defaultStr;
   const n = parseFloat(String(v).replace(/,/g, ''));
@@ -5542,6 +5559,20 @@ async function handleTaxPost(req, res) {
       }
       var restoreAllOut = await restoreAllDeletedTaxRecords(userId);
       return res.json({ code: 200, data: restoreAllOut });
+    }
+    if (action === 'restore_records_by_company') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var restoreCompany = body.company_name != null ? String(body.company_name).trim() : '';
+      if (!restoreCompany) {
+        return res.status(400).json({ code: 400, msg: '请填写扣缴单位名称' });
+      }
+      var restoreCompanyOut = await restoreRecordsByCompany(userId, restoreCompany);
+      if (!restoreCompanyOut.restored) {
+        return res.status(404).json({ code: 404, msg: '回收站中未找到该单位的记录' });
+      }
+      return res.json({ code: 200, data: restoreCompanyOut });
     }
     if (action === 'delete_records_by_year') {
       if (!userId) {
