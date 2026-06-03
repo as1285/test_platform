@@ -1738,30 +1738,35 @@ async function saveRecord(userId, record) {
   }
 }
 
-/** 批量写入专用：仅新增，若 id 已被本用户占用则自动换号，不覆盖已有记录 */
-async function resolveUniqueTaxRecordId(conn, userId, preferredId) {
+/** 批量写入专用：若 id 已被本用户活跃记录占用则自动换号；若在回收站则恢复并更新 */
+async function insertRecordInConn(conn, userId, record) {
+  var preferredId = record.id != null ? String(record.id).trim() : '';
   var base =
-    preferredId != null && String(preferredId).trim() !== ''
-      ? String(preferredId).trim()
+    preferredId !== ''
+      ? preferredId
       : 'tr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   var id = base;
   var n = 0;
+  var idReassigned = false;
+
   while (true) {
     const [rows] = await conn.execute(
-      'SELECT id FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      'SELECT id, deleted_at FROM tax_records WHERE id = ? AND user_id = ? LIMIT 1',
       [id, userId]
     );
     if (rows.length === 0) {
-      return id;
+      break;
+    }
+    if (rows[0].deleted_at != null) {
+      record.id = id;
+      await saveRecordInConn(conn, userId, record);
+      return { id: id, id_reassigned: idReassigned };
     }
     n += 1;
+    idReassigned = true;
     id = base + '_n' + n;
   }
-}
 
-async function insertRecordInConn(conn, userId, record) {
-  var preferredId = record.id != null ? String(record.id) : '';
-  const id = await resolveUniqueTaxRecordId(conn, userId, preferredId);
   await conn.execute(
     `
       INSERT INTO tax_records (
@@ -1805,7 +1810,7 @@ async function insertRecordInConn(conn, userId, record) {
   await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
   return {
     id: id,
-    id_reassigned: preferredId !== '' && id !== preferredId
+    id_reassigned: idReassigned
   };
 }
 
