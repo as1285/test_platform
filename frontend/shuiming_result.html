@@ -1065,13 +1065,6 @@
             document.getElementById('recordList').innerHTML = listHtml || getNoRecordsHtml();
             syncRecordEmptyUi(records.length > 0);
             if (
-                records.length > 0 &&
-                window.ConversionGuide &&
-                typeof window.ConversionGuide.mountShuimingValueBar === 'function'
-            ) {
-                window.ConversionGuide.mountShuimingValueBar({ year: listYear, recordCount: records.length });
-            }
-            if (
                 records.length === 0 &&
                 window.ConversionGuide &&
                 typeof window.ConversionGuide.onIncomeDetailEmpty === 'function'

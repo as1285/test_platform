@@ -841,18 +841,7 @@
   }
 
   function mountShuimingValueBar(meta) {
-    if (currentPage() !== 'shuiming_result.html') return;
-    mountValueActionBar({
-      meta: meta || {},
-      filename: '收入纳税明细_' + (meta && meta.year ? meta.year : 'demo') + '.png',
-      shareTitle: (meta && meta.year ? meta.year + '年' : '') + '收入纳税明细演示'
-    });
-    if (urlParam('from') === 'tax_save') {
-      showCaptureToast('已打开收入纳税明细。' + EDIT_HINT, {
-        duration: 4200,
-        tapDismiss: true
-      });
-    }
+    return;
   }
 
   function mountNajiluPreviewBar(app, dataUrl) {
@@ -880,7 +869,7 @@
     banner.className = 'cg-inline-hint';
     banner.style.margin = '0 16px 12px';
     banner.innerHTML =
-      '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
+      '填写完成！可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
     var list = document.querySelector('.list');
     if (list && list.parentNode) {
       list.parentNode.insertBefore(banner, list);
