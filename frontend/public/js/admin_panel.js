@@ -689,7 +689,7 @@
             var actTbody = document.getElementById('channelActivationTbody');
             var cardsEl = document.getElementById('channelAnalysisCards');
             var daysEl = document.getElementById('channelAnalysisDays');
-            var days = daysEl ? String(daysEl.value) : '0';
+            var days = daysEl ? String(daysEl.value) : '7';
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
