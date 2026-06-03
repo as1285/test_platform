@@ -711,6 +711,7 @@
                     if (summaryEl) summaryEl.textContent = '网络错误';
                     if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
                 });
+            loadChannelRegistrationFunnel();
         }
 
         function renderRegisterTimeAnalysis(data) {
@@ -2445,7 +2446,6 @@
         function loadAnalyticsDashboard() {
             loadAnalyticsDailyConversion();
             loadRegistrationFunnel();
-            loadChannelRegistrationFunnel();
             loadInstallTrackStats();
             loadConversionKpis();
             loadPendingActivate24h(1);
@@ -3310,7 +3310,7 @@
             var el = document.getElementById('analyticsChannelFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsChannelFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 7 : 7;
             el.textContent = '渠道漏斗加载中…';
             adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
