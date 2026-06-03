@@ -618,6 +618,29 @@
         #batchMsModalClear {
             margin-right: auto;
         }
+        #taxRecycleBinModal .recycle-bin-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        #taxRecycleBinModal .recycle-bin-item:last-child {
+            border-bottom: none;
+        }
+        #taxRecycleBinModal .recycle-bin-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        #taxRecycleBinModal .recycle-bin-item-meta {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.45;
+            margin-bottom: 6px;
+        }
+        #taxRecycleBinModal .recycle-bin-item-actions {
+            display: flex;
+            gap: 6px;
+        }
 
         /* 税务批量等：校验失败强提示（居中弹框） */
         .consult-strong-alert-root {
@@ -702,6 +725,23 @@
             <div class="activate-modal-actions">
                 <button type="button" class="btn btn-default btn-sm" id="btnDeleteCompanyCancel">取消</button>
                 <button type="button" class="btn btn-danger btn-sm" id="btnDeleteCompanyConfirm">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="taxRecycleBinModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="taxRecycleBinModalTitle">
+        <div class="batch-ms-modal-mask" id="taxRecycleBinModalMask"></div>
+        <div class="batch-ms-modal-panel">
+            <div class="batch-ms-modal-head">
+                <span id="taxRecycleBinModalTitle">回收站</span>
+                <button type="button" id="taxRecycleBinModalCloseX" aria-label="关闭">&times;</button>
+            </div>
+            <p class="batch-ms-modal-hint">已删除的税务记录暂存于此，可恢复至列表或导出 JSON 备份。</p>
+            <div class="batch-ms-modal-scroll" id="taxRecycleBinBody"><div class="empty" style="padding:16px;">加载中…</div></div>
+            <div class="batch-ms-modal-footer">
+                <button type="button" class="btn btn-default btn-sm" id="taxRecycleBinExport">导出 JSON</button>
+                <button type="button" class="btn btn-primary btn-sm" id="taxRecycleBinRestoreAll">全部恢复</button>
+                <button type="button" class="btn btn-default btn-sm" id="taxRecycleBinClose">关闭</button>
             </div>
         </div>
     </div>
@@ -1143,6 +1183,7 @@
                 <div class="card-title card-title-row">
                     <span>税务记录列表</span>
                     <div class="card-title-actions">
+                        <button type="button" class="btn btn-default btn-sm" onclick="openTaxRecycleBin()">回收站</button>
                         <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
                         <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
@@ -1911,7 +1952,7 @@
         }
 
         function deleteRecord(id) {
-            if (!confirm('确定删除？')) return;
+            if (!confirm('确定删除？删除后可在回收站恢复或导出。')) return;
             authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1937,7 +1978,7 @@
         }
 
         function deleteAllTaxRecords() {
-            if (!confirm('确定删除当前账号下全部税务记录？此操作不可恢复。')) return;
+            if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复或导出。')) return;
             authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1949,7 +1990,8 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
-                        showMsg('已全部删除', true);
+                        var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                        showMsg(n > 0 ? '已删除 ' + n + ' 条记录（可在回收站恢复）' : '暂无记录', true);
                         return refreshRecordList();
                     }
                     throw new Error(data.msg || '删除失败');
@@ -1972,7 +2014,7 @@
                 showConsultStrongAlert('请输入合法年份（1990–2100）');
                 return;
             }
-            if (!confirm('确定删除 ' + year + ' 年的全部税务记录？此操作不可恢复。')) return;
+            if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
             authFetch('api/tax.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2052,7 +2094,7 @@
                 return;
             }
             closeDeleteTaxRecordsByCompanyModal();
-            if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？此操作不可恢复。')) {
+            if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复或导出。')) {
                 return;
             }
             authFetch('api/tax.php', {
@@ -2081,6 +2123,193 @@
                 })
                 .catch(function (err) {
                     showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        var taxRecycleBinCache = [];
+
+        function closeTaxRecycleBin() {
+            var root = document.getElementById('taxRecycleBinModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+        }
+
+        function formatDeletedAtLabel(raw) {
+            if (!raw) {
+                return '';
+            }
+            var s = String(raw);
+            if (s.length >= 10) {
+                return s.slice(0, 10);
+            }
+            return s;
+        }
+
+        function apiFetchDeletedRecords() {
+            return authFetch('api/tax.php?action=deleted_records')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '加载回收站失败');
+                    }
+                    var records = (data.data && data.data.records) || [];
+                    taxRecycleBinCache = records.slice();
+                    return records;
+                });
+        }
+
+        function renderTaxRecycleBinList(list) {
+            var body = document.getElementById('taxRecycleBinBody');
+            if (!body) {
+                return;
+            }
+            if (!list.length) {
+                body.innerHTML = '<div class="empty" style="padding:16px;">回收站为空</div>';
+                return;
+            }
+            var html = '';
+            list.forEach(function (r) {
+                var idEsc = String(r.id).replace(/'/g, "\\'");
+                html += '<div class="recycle-bin-item">';
+                html += '<div class="recycle-bin-item-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
+                html += '<div class="recycle-bin-item-meta">';
+                html += '删除于 ' + formatDeletedAtLabel(r.deleted_at) + '<br>';
+                html += '扣缴单位：' + (r.company_name || '') + '<br>';
+                html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
+                html += '</div>';
+                html += '<div class="recycle-bin-item-actions">';
+                html += '<button type="button" class="btn btn-primary btn-sm" onclick="restoreDeletedTaxRecord(\'' + idEsc + '\')">恢复</button>';
+                html += '</div></div>';
+            });
+            body.innerHTML = html;
+        }
+
+        function openTaxRecycleBin() {
+            var root = document.getElementById('taxRecycleBinModal');
+            var body = document.getElementById('taxRecycleBinBody');
+            if (body) {
+                body.innerHTML = '<div class="empty" style="padding:16px;">加载中…</div>';
+            }
+            if (root) {
+                root.classList.add('is-open');
+            }
+            apiFetchDeletedRecords()
+                .then(function (list) {
+                    renderTaxRecycleBinList(list);
+                })
+                .catch(function (err) {
+                    if (body) {
+                        body.innerHTML = '<div class="empty" style="padding:16px;color:#c00;">' + (err.message || '加载失败') + '</div>';
+                    }
+                });
+        }
+
+        function restoreDeletedTaxRecord(id) {
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'restore_record',
+                    user_id: currentUserId(),
+                    id: id
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '恢复失败');
+                    }
+                    showMsg('已恢复', true);
+                    return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
+                })
+                .then(function (res) {
+                    renderTaxRecycleBinList(res[0] || []);
+                })
+                .catch(function (err) {
+                    showMsg('恢复失败：' + (err.message || ''), false);
+                });
+        }
+
+        function restoreAllDeletedTaxRecords() {
+            if (!taxRecycleBinCache.length) {
+                showConsultStrongAlert('回收站为空');
+                return;
+            }
+            if (!confirm('确定恢复回收站中的全部 ' + taxRecycleBinCache.length + ' 条记录？')) {
+                return;
+            }
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'restore_all_deleted_records',
+                    user_id: currentUserId()
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200) {
+                        throw new Error(data.msg || '恢复失败');
+                    }
+                    var n = data.data && data.data.restored != null ? Number(data.data.restored) : 0;
+                    showMsg(n > 0 ? '已恢复 ' + n + ' 条记录' : '回收站为空', true);
+                    return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
+                })
+                .then(function (res) {
+                    renderTaxRecycleBinList(res[0] || []);
+                })
+                .catch(function (err) {
+                    showMsg('恢复失败：' + (err.message || ''), false);
+                });
+        }
+
+        function exportDeletedTaxRecordsJson() {
+            var doExport = function (list) {
+                if (!list.length) {
+                    showConsultStrongAlert('回收站为空，无可导出记录');
+                    return;
+                }
+                var payload = {
+                    exported_at: new Date().toISOString(),
+                    user_id: currentUserId(),
+                    count: list.length,
+                    records: list
+                };
+                var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                var d = new Date();
+                var fname =
+                    'tax-records-deleted-' +
+                    d.getFullYear() +
+                    pad2(d.getMonth() + 1) +
+                    pad2(d.getDate()) +
+                    '.json';
+                a.href = url;
+                a.download = fname;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg('已导出 ' + list.length + ' 条记录', true);
+            };
+            if (taxRecycleBinCache.length) {
+                doExport(taxRecycleBinCache);
+                return;
+            }
+            apiFetchDeletedRecords()
+                .then(function (list) {
+                    doExport(list);
+                })
+                .catch(function (err) {
+                    showMsg('导出失败：' + (err.message || ''), false);
                 });
         }
 
@@ -3609,6 +3838,29 @@
             }
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', confirmDeleteTaxRecordsByCompany);
+            }
+        })();
+
+        (function bindTaxRecycleBinModal() {
+            var mask = document.getElementById('taxRecycleBinModalMask');
+            var closeX = document.getElementById('taxRecycleBinModalCloseX');
+            var closeBtn = document.getElementById('taxRecycleBinClose');
+            var restoreAllBtn = document.getElementById('taxRecycleBinRestoreAll');
+            var exportBtn = document.getElementById('taxRecycleBinExport');
+            if (mask) {
+                mask.addEventListener('click', closeTaxRecycleBin);
+            }
+            if (closeX) {
+                closeX.addEventListener('click', closeTaxRecycleBin);
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeTaxRecycleBin);
+            }
+            if (restoreAllBtn) {
+                restoreAllBtn.addEventListener('click', restoreAllDeletedTaxRecords);
+            }
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportDeletedTaxRecordsJson);
             }
         })();
 

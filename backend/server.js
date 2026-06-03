@@ -1339,6 +1339,21 @@ async function createTables() {
     /* 已存在或非致命 */
   }
 
+  try {
+    await conn.execute(
+      "ALTER TABLE tax_records ADD COLUMN deleted_at DATETIME(3) NULL COMMENT '软删除时间，非空表示在回收站'"
+    );
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute('CREATE INDEX idx_tax_user_deleted ON tax_records (user_id, deleted_at)');
+  } catch (e) {
+    /* 已存在或非致命 */
+  }
+
   var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
   var rootSalt = crypto.randomBytes(16);
@@ -1385,9 +1400,12 @@ async function createTables() {
   conn.release();
 }
 
+/** 用户可见的税务记录（未在回收站） */
+const TAX_RECORD_NOT_DELETED_SQL = 'deleted_at IS NULL';
+
 async function getRecords(userId, year) {
   const conn = await pool.getConnection();
-  let query = 'SELECT * FROM tax_records WHERE user_id = ?';
+  let query = 'SELECT * FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
   const params = [userId];
   
   if (year != null && year !== '') {
@@ -1625,7 +1643,8 @@ async function saveRecordInConn(conn, userId, record) {
         tax_free_income = ?, deduction_fee = ?, special_deduction = ?,
         other_deduction = ?, donation_deduction = ?,
         pension_insurance = ?, medical_insurance = ?,
-        unemployment_insurance = ?, housing_fund = ?
+        unemployment_insurance = ?, housing_fund = ?,
+        deleted_at = NULL
       WHERE id = ? AND user_id = ?
     `,
       [
@@ -1728,10 +1747,10 @@ async function resolveUniqueTaxRecordId(conn, userId, preferredId) {
   var id = base;
   var n = 0;
   while (true) {
-    const [rows] = await conn.execute('SELECT id FROM tax_records WHERE id = ? AND user_id = ?', [
-      id,
-      userId
-    ]);
+    const [rows] = await conn.execute(
+      'SELECT id FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [id, userId]
+    );
     if (rows.length === 0) {
       return id;
     }
@@ -1826,11 +1845,14 @@ async function batchSaveRecords(userId, records) {
 }
 
 async function deleteRecordInConn(conn, userId, id) {
-  const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+  const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL, [
+    id,
+    userId
+  ]);
   if (rows.length) {
     await insertTaxChangeLog(conn, userId, id, 'delete', taxRecordRowToSnapshot(rows[0]), null);
+    await conn.execute('UPDATE tax_records SET deleted_at = NOW(3) WHERE id = ? AND user_id = ?', [id, userId]);
   }
-  await conn.execute('DELETE FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
 }
 
 async function deleteRecord(userId, id) {
@@ -1889,17 +1911,24 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
 
 async function deleteAllRecords(userId) {
   const conn = await pool.getConnection();
-  await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [userId]);
-  conn.release();
+  try {
+    const [result] = await conn.execute(
+      'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [userId]
+    );
+    return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
+  } finally {
+    conn.release();
+  }
 }
 
 async function deleteRecordsByYear(userId, year) {
   const conn = await pool.getConnection();
   try {
-    const [result] = await conn.execute('DELETE FROM tax_records WHERE user_id = ? AND year = ?', [
-      userId,
-      year
-    ]);
+    const [result] = await conn.execute(
+      'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND year = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [userId, year]
+    );
     return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
   } finally {
     conn.release();
@@ -1914,7 +1943,8 @@ async function deleteRecordsByCompany(userId, companyName) {
   const conn = await pool.getConnection();
   try {
     const [result] = await conn.execute(
-      'DELETE FROM tax_records WHERE user_id = ? AND TRIM(company_name) = ?',
+      'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND TRIM(company_name) = ? AND ' +
+        TAX_RECORD_NOT_DELETED_SQL,
       [userId, name]
     );
     return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
@@ -1923,11 +1953,113 @@ async function deleteRecordsByCompany(userId, companyName) {
   }
 }
 
-async function getTaxRecordById(userId, id) {
+async function getTaxRecordById(userId, id, opts) {
+  opts = opts || {};
   const conn = await pool.getConnection();
-  const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [id, userId]);
+  var sql = 'SELECT * FROM tax_records WHERE id = ? AND user_id = ?';
+  if (!opts.includeDeleted) {
+    sql += ' AND ' + TAX_RECORD_NOT_DELETED_SQL;
+  }
+  const [rows] = await conn.execute(sql, [id, userId]);
   conn.release();
   return rows.length > 0 ? rows[0] : null;
+}
+
+function mapTaxRecordRowForClient(r) {
+  if (!r) {
+    return null;
+  }
+  return {
+    id: r.id != null ? String(r.id) : '',
+    user_id: r.user_id != null ? String(r.user_id) : '',
+    year: r.year != null ? Number(r.year) : null,
+    month: r.month != null ? Number(r.month) : null,
+    income_type: r.income_type != null ? String(r.income_type) : '',
+    income_subtype: r.income_subtype != null ? String(r.income_subtype) : '',
+    company_name: r.company_name != null ? String(r.company_name) : '',
+    company_tax_id: r.company_tax_id != null ? String(r.company_tax_id) : '',
+    tax_authority: r.tax_authority != null ? String(r.tax_authority) : '',
+    report_channel: r.report_channel != null ? String(r.report_channel) : '',
+    report_date: r.report_date != null ? String(r.report_date) : '',
+    tax_period: r.tax_period != null ? String(r.tax_period) : '',
+    income: r.income != null ? String(r.income) : '0',
+    tax_reported: r.tax_reported != null ? String(r.tax_reported) : '0',
+    income_this_period: r.income_this_period != null ? String(r.income_this_period) : '0',
+    tax_free_income: r.tax_free_income != null ? String(r.tax_free_income) : '0',
+    deduction_fee: r.deduction_fee != null ? String(r.deduction_fee) : '0',
+    special_deduction: r.special_deduction != null ? String(r.special_deduction) : '0',
+    other_deduction: r.other_deduction != null ? String(r.other_deduction) : '0',
+    donation_deduction: r.donation_deduction != null ? String(r.donation_deduction) : '0',
+    pension_insurance: r.pension_insurance != null ? String(r.pension_insurance) : '0',
+    medical_insurance: r.medical_insurance != null ? String(r.medical_insurance) : '0',
+    unemployment_insurance: r.unemployment_insurance != null ? String(r.unemployment_insurance) : '0',
+    housing_fund: r.housing_fund != null ? String(r.housing_fund) : '0',
+    created_at: r.created_at ? r.created_at.toISOString() : '',
+    updated_at: r.updated_at ? r.updated_at.toISOString() : '',
+    deleted_at: r.deleted_at ? r.deleted_at.toISOString() : ''
+  };
+}
+
+async function getDeletedTaxRecords(userId) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT * FROM tax_records WHERE user_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC, year DESC, month DESC, id ASC',
+      [userId]
+    );
+    return rows.map(mapTaxRecordRowForClient);
+  } finally {
+    conn.release();
+  }
+}
+
+async function restoreTaxRecord(userId, id) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.execute(
+      'SELECT * FROM tax_records WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL LIMIT 1',
+      [id, userId]
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return { restored: false };
+    }
+    await conn.execute('UPDATE tax_records SET deleted_at = NULL, updated_at = NOW(3) WHERE id = ? AND user_id = ?', [
+      id,
+      userId
+    ]);
+    await insertTaxChangeLog(
+      conn,
+      userId,
+      id,
+      'insert',
+      null,
+      taxRecordPayloadToSnapshot(mapTaxRecordRowForClient(rows[0]), id)
+    );
+    await conn.commit();
+    return { restored: true, id: id };
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+async function restoreAllDeletedTaxRecords(userId) {
+  const conn = await pool.getConnection();
+  try {
+    const [result] = await conn.execute(
+      'UPDATE tax_records SET deleted_at = NULL, updated_at = NOW(3) WHERE user_id = ? AND deleted_at IS NOT NULL',
+      [userId]
+    );
+    return { restored: result.affectedRows != null ? Number(result.affectedRows) : 0 };
+  } finally {
+    conn.release();
+  }
 }
 
 function formatTaxAmt(v, defaultStr) {
@@ -2038,7 +2170,9 @@ async function getTaxCalculationData(userId, recordId) {
       rows = [anchor];
     } else if (month == null || Number.isNaN(month)) {
       const [r2] = await conn.execute(
-        'SELECT * FROM tax_records WHERE user_id = ? AND year = ? ORDER BY month ASC, id ASC',
+        'SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND ' +
+          TAX_RECORD_NOT_DELETED_SQL +
+          ' ORDER BY month ASC, id ASC',
         [String(userId), year]
       );
       rows = r2;
@@ -2046,20 +2180,20 @@ async function getTaxCalculationData(userId, recordId) {
       const ct = anchor.company_tax_id != null ? String(anchor.company_tax_id).trim() : '';
       if (ct) {
         const [r2] = await conn.execute(
-          `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? AND TRIM(IFNULL(company_tax_id,'')) = ? ORDER BY month ASC, id ASC`,
+          `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? AND TRIM(IFNULL(company_tax_id,'')) = ? AND ${TAX_RECORD_NOT_DELETED_SQL} ORDER BY month ASC, id ASC`,
           [String(userId), year, month, ct]
         );
         rows = r2;
         if (rows.length === 0) {
           const [r3] = await conn.execute(
-            `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? ORDER BY month ASC, id ASC`,
+            `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? AND ${TAX_RECORD_NOT_DELETED_SQL} ORDER BY month ASC, id ASC`,
             [String(userId), year, month]
           );
           rows = r3;
         }
       } else {
         const [r2] = await conn.execute(
-          `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? ORDER BY month ASC, id ASC`,
+          `SELECT * FROM tax_records WHERE user_id = ? AND year = ? AND month IS NOT NULL AND month <= ? AND ${TAX_RECORD_NOT_DELETED_SQL} ORDER BY month ASC, id ASC`,
           [String(userId), year, month]
         );
         rows = r2;
@@ -2670,7 +2804,10 @@ async function buildUserTaxAvgSalaryMap(conn, usernames) {
     return '?';
   }).join(',');
   const [rows] = await conn.execute(
-    'SELECT user_id, year, month, income, tax_period FROM tax_records WHERE user_id IN (' + ph + ')',
+    'SELECT user_id, year, month, income, tax_period FROM tax_records WHERE user_id IN (' +
+      ph +
+      ') AND ' +
+      TAX_RECORD_NOT_DELETED_SQL,
     uniq
   );
   var byUser = {};
@@ -2817,7 +2954,10 @@ async function getUserInfoForApi(userId) {
   const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [uid]);
 
   const [employerRows] = await conn.execute('SELECT * FROM employers WHERE user_id = ?', [uid]);
-  const [taxCountRows] = await conn.execute('SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ?', [uid]);
+  const [taxCountRows] = await conn.execute(
+    'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+    [uid]
+  );
   conn.release();
 
   const defaults = {
@@ -4657,6 +4797,25 @@ async function handleTaxGet(req, res) {
       return res.status(500).json({ code: 500, msg: String(e.message) });
     }
   }
+  if (action === 'deleted_records') {
+    var uidBin = req.authUserId;
+    if (uidBin == null || uidBin === '') {
+      return res.status(400).json({ code: 400, msg: 'user_id required' });
+    }
+    try {
+      var deletedRows = await getDeletedTaxRecords(uidBin);
+      return res.json({
+        code: 200,
+        data: {
+          count: deletedRows.length,
+          records: deletedRows
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
   if (action !== 'records') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
@@ -5360,8 +5519,29 @@ async function handleTaxPost(req, res) {
       if (!userId) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
-      await deleteAllRecords(userId);
-      return res.json({ code: 200, data: {} });
+      var delAllOut = await deleteAllRecords(userId);
+      return res.json({ code: 200, data: delAllOut });
+    }
+    if (action === 'restore_record') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var restoreId = body.id;
+      if (restoreId == null || String(restoreId).trim() === '') {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      var restoreOne = await restoreTaxRecord(userId, String(restoreId).trim());
+      if (!restoreOne.restored) {
+        return res.status(404).json({ code: 404, msg: '回收站中未找到该记录' });
+      }
+      return res.json({ code: 200, data: restoreOne });
+    }
+    if (action === 'restore_all_deleted_records') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var restoreAllOut = await restoreAllDeletedTaxRecords(userId);
+      return res.json({ code: 200, data: restoreAllOut });
     }
     if (action === 'delete_records_by_year') {
       if (!userId) {
@@ -6426,7 +6606,7 @@ function funnelMetricsSqlAliases(userAlias) {
     tax7:
       'SUM(CASE WHEN EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = ' +
       u +
-      '.username AND TIMESTAMPDIFF(HOUR, ' +
+      '.username AND tr.deleted_at IS NULL AND TIMESTAMPDIFF(HOUR, ' +
       u +
       '.created_at, tr.created_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
     detail7:
@@ -7539,12 +7719,12 @@ async function handleAdminUsers(req, res) {
     }
     if (qTaxModifiedToday === '1') {
       whereClauses.push(
-        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND DATE(tr.updated_at) = ?)'
+        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL AND DATE(tr.updated_at) = ?)'
       );
       params.push(todayKey);
     } else if (qTaxModifiedToday === '0') {
       whereClauses.push(
-        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND DATE(tr.updated_at) = ?)'
+        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL AND DATE(tr.updated_at) = ?)'
       );
       params.push(todayKey);
     }
@@ -8344,7 +8524,7 @@ async function handleAdminUserDataDetail(req, res) {
       var sal = avgMap[username] || { avg_salary_6m: null, avg_salary_6m_label: '未填写' };
 
       const [taxRows] = await conn.execute(
-        ADMIN_TAX_RECORD_SELECT_SQL + ' WHERE user_id = ? ORDER BY year DESC, month DESC, id DESC LIMIT 120',
+        ADMIN_TAX_RECORD_SELECT_SQL + ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 120',
         [username]
       );
 
@@ -9311,7 +9491,7 @@ async function loadLatestDevicesForUsers(conn, usernames) {
 }
 
 function noTaxUserWhereSql(req) {
-  var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username)"];
+  var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL)"];
   var params = [];
   appendAdminUserScope(where, params, req.admin, 'users.username');
   return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params };
@@ -9444,7 +9624,7 @@ async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
         return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
       }
       const [taxCnt] = await conn.execute(
-        'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ?',
+        'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
         [username]
       );
       if (Number(taxCnt[0].c) > 0) {
@@ -10182,7 +10362,9 @@ async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
       'SUM(CASE WHEN DATE(updated_at) = ? THEN 1 ELSE 0 END) AS modified_on_date_cnt ' +
       'FROM tax_records WHERE user_id IN (' +
       ph +
-      ') GROUP BY user_id',
+      ') AND ' +
+      TAX_RECORD_NOT_DELETED_SQL +
+      ' GROUP BY user_id',
     [activityDate].concat(usernames)
   );
   rows.forEach(function (r) {
