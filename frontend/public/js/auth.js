@@ -463,6 +463,7 @@
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
+      var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
@@ -564,6 +565,9 @@
         document.documentElement.classList.add('app-ios-iphone17pro');
         upsertMeta('theme-color', '#2c80f4');
         upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      }
+      if (iosIPhone17ProMax) {
+        document.documentElement.classList.add('app-ios-iphone17promax');
       }
       if (iosIPhone16Pro) {
         document.documentElement.classList.add('app-ios-iphone16pro');

@@ -719,6 +719,22 @@
             font-size: 12px;
         }
 
+        /*
+         * iPhone 17 Pro / Pro Max：汇总字号放大后问号圆保持约 13px，勿随字高 1:1 放大。
+         */
+        html.app-ios-iphone17pro.platform-ios body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone17pro body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .summary-label .icon,
+        html.app-ios-iphone17promax body.page-shuiming-result .summary-label .icon {
+            width: 13px;
+            height: 13px;
+            min-width: 13px;
+            min-height: 13px;
+            font-size: 9px;
+        }
+
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,
         html.app-ios-iphone-promax-font body.page-shuiming-result .list-title {
             font-size: 18px;
