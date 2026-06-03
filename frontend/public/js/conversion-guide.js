@@ -799,7 +799,15 @@
     if (line) ctx.fillText(line, x, cy);
   }
 
+  function removeShuimingResultValueBar() {
+    if (currentPage() !== 'shuiming_result.html') return;
+    document.body.classList.remove('cg-has-value-bar');
+    var bar = document.getElementById('cg-value-action-bar');
+    if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+  }
+
   function mountValueActionBar(opts) {
+    if (currentPage() === 'shuiming_result.html') return;
     opts = opts || {};
     if (document.getElementById('cg-value-action-bar')) return;
     ensureGateStyles();
@@ -841,7 +849,7 @@
   }
 
   function mountShuimingValueBar(meta) {
-    return;
+    removeShuimingResultValueBar();
   }
 
   function mountNajiluPreviewBar(app, dataUrl) {
@@ -1130,6 +1138,7 @@
         runMineOnboarding();
         runConsultOnboarding();
         patchShuimingResultEmpty();
+        removeShuimingResultValueBar();
         renderShouyeTaxManageEntry();
         renderShouyeRetentionCard();
         if (!skipConversionPromo()) {

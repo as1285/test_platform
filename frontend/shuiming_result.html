@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260529-shuiming-result-top"></script>
+    <script src="/js/auth.js?v=20260603-no-shuiming-bar"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260601-ufs-split-label">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260601-ufs-split-label" data-scope=".page-root"></script>
@@ -1168,6 +1168,12 @@
                 });
         }
 
+        function stripShuimingBottomBar() {
+            document.body.classList.remove('cg-has-value-bar');
+            var bar = document.getElementById('cg-value-action-bar');
+            if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+        }
+
         function loadData() {
             var year = getUrlParam('year') || new Date().getFullYear();
 
@@ -1193,6 +1199,7 @@
                     syncRecordEmptyUi(false);
                 })
                 .finally(function () {
+                    stripShuimingBottomBar();
                     if (typeof window.appPageLoadingDispatchDataDone === 'function') {
                         window.appPageLoadingDispatchDataDone();
                     }
@@ -1213,6 +1220,9 @@
             });
         }
         refreshPurchaseWatermarkForTestAccount();
+        stripShuimingBottomBar();
+        var stripBarTimer = setInterval(stripShuimingBottomBar, 400);
+        setTimeout(function () { clearInterval(stripBarTimer); }, 4000);
         loadData();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
