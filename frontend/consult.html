@@ -1209,6 +1209,7 @@
                         <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
                         <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
+                        <button type="button" class="btn btn-default btn-sm" onclick="dedupeTaxRecords()">一键去重</button>
                         <button type="button" class="btn btn-default btn-sm" onclick="openDeleteTaxRecordsByCompanyModal()">一键删除公司数据</button>
                     </div>
                 </div>
@@ -2084,6 +2085,38 @@
                 })
                 .catch(function (err) {
                     showMsg('删除失败：' + (err.message || ''), false);
+                });
+        }
+
+        function dedupeTaxRecords() {
+            if (
+                !confirm(
+                    '将查找「同一扣缴单位 + 同一年月」的重复记录，保留最新一条，删除较早的记录。\n\n删除后可在回收站恢复。确定继续？'
+                )
+            ) {
+                return;
+            }
+            authFetch('api/tax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'dedupe_records',
+                    user_id: currentUserId()
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200) {
+                        var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                        showMsg(n > 0 ? '已去重，删除 ' + n + ' 条较早记录' : '未发现重复记录', true);
+                        return refreshRecordList();
+                    }
+                    throw new Error(data.msg || '去重失败');
+                })
+                .catch(function (err) {
+                    showMsg('去重失败：' + (err.message || ''), false);
                 });
         }
 

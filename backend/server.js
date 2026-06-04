@@ -1972,6 +1972,54 @@ async function deleteRecordsByCompany(userId, companyName) {
   }
 }
 
+/** 同一扣缴单位 + 同年同月重复记录：保留最新一条，删除较早的 */
+async function dedupeTaxRecords(userId) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT id, year, month, company_name, created_at FROM tax_records WHERE user_id = ? AND ' +
+        TAX_RECORD_NOT_DELETED_SQL +
+        ' ORDER BY year ASC, month ASC, TRIM(company_name) ASC, created_at ASC, id ASC',
+      [userId]
+    );
+    var groups = {};
+    (rows || []).forEach(function (r) {
+      var company = r.company_name != null ? String(r.company_name).trim() : '';
+      var key = String(r.year || '') + '|' + String(r.month || '') + '|' + company;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(r);
+    });
+    var idsToDelete = [];
+    Object.keys(groups).forEach(function (key) {
+      var g = groups[key];
+      if (g.length <= 1) {
+        return;
+      }
+      for (var i = 0; i < g.length - 1; i++) {
+        idsToDelete.push(g[i].id);
+      }
+    });
+    if (!idsToDelete.length) {
+      return { deleted: 0 };
+    }
+    await conn.beginTransaction();
+    try {
+      for (var j = 0; j < idsToDelete.length; j++) {
+        await deleteRecordInConn(conn, userId, idsToDelete[j]);
+      }
+      await conn.commit();
+      return { deleted: idsToDelete.length };
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    }
+  } finally {
+    conn.release();
+  }
+}
+
 async function getTaxRecordById(userId, id, opts) {
   opts = opts || {};
   const conn = await pool.getConnection();
@@ -5662,6 +5710,13 @@ async function handleTaxPost(req, res) {
       }
       var delCompanyOut = await deleteRecordsByCompany(userId, delCompany);
       return res.json({ code: 200, data: delCompanyOut });
+    }
+    if (action === 'dedupe_records') {
+      if (!userId) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      var dedupeOut = await dedupeTaxRecords(userId);
+      return res.json({ code: 200, data: dedupeOut });
     }
     if (action === 'log_issue_application') {
       if (!userId) {
