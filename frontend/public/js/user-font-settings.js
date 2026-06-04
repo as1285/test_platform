@@ -287,16 +287,16 @@
 
     function isManualFabHidden() {
         try {
-            return localStorage.getItem(FAB_MANUAL_HIDDEN_KEY) === '1';
+            return localStorage.getItem(FAB_MANUAL_HIDDEN_KEY) !== '0';
         } catch (e) {
-            return false;
+            return true;
         }
     }
 
     function setManualFabHidden(hidden) {
         try {
             if (hidden) localStorage.setItem(FAB_MANUAL_HIDDEN_KEY, '1');
-            else localStorage.removeItem(FAB_MANUAL_HIDDEN_KEY);
+            else localStorage.setItem(FAB_MANUAL_HIDDEN_KEY, '0');
         } catch (e) {}
         syncFabVisibility();
     }
