@@ -87,6 +87,7 @@
         var _registerGenderChartInstances = [];
         var _udGenderChartInstances = [];
         var _udFemaleAgeChartInstances = [];
+        var _auaDauChartInstances = [];
         var FEMALE_AGE_CHART_COLORS = {
             u18: '#c4b5fd',
             '18_22': '#f9a8d4',
@@ -1821,6 +1822,7 @@
         var _adminDeletedUsersLoaded = false;
         var _adminUserDataLoaded = false;
         var _adminUserBehaviorLoaded = false;
+        var _adminActivatedUserAnalysisLoaded = false;
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
@@ -1838,7 +1840,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1889,6 +1891,7 @@
                 'users-deleted': 1,
                 'user-data': 1,
                 'user-behavior': 1,
+                'activated-user-analysis': 1,
                 feedback: 1,
                 analytics: 1,
                 'channel-analysis': 1,
@@ -1933,6 +1936,11 @@
                 _adminUserBehaviorLoaded = true;
                 renderNoTaxScriptTemplates();
                 loadNoTaxBehaviorList(1);
+            }
+            if (pageKey === 'activated-user-analysis' && !_adminActivatedUserAnalysisLoaded) {
+                _adminActivatedUserAnalysisLoaded = true;
+                loadActivatedUserAnalysisOverview();
+                loadActivatedUserAnalysisUsers(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
@@ -4313,6 +4321,301 @@
                 });
         }
 
+        var auaUsersPage = 1;
+        var auaUsersLimit = 20;
+
+        function destroyAuaDauCharts() {
+            _auaDauChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e) {}
+            });
+            _auaDauChartInstances = [];
+        }
+
+        function renderActivatedUserAnalysisOverview(data) {
+            var wrap = document.getElementById('auaSummary');
+            var tablesWrap = document.getElementById('auaAnalyticsTables');
+            if (!wrap || !data) return;
+            var actDays = data.activity_days != null ? data.activity_days : 30;
+            var actHint = document.getElementById('auaActivityDaysHint');
+            if (actHint) actHint.textContent = String(actDays);
+            var cards = [
+                { label: '已激活用户', val: data.total_activated },
+                { label: '已填写个税', val: data.with_tax_records },
+                { label: '未填写个税', val: data.without_tax_records },
+                { label: '有工资数据', val: data.with_salary_filled },
+                { label: '今日日活', val: data.dau_today },
+                { label: '个税总条数', val: data.total_tax_records }
+            ];
+            var html = '';
+            cards.forEach(function (c) {
+                html +=
+                    '<div class="user-data-stat-card"><div class="ud-label">' +
+                    esc(c.label) +
+                    '</div><div class="ud-val">' +
+                    esc(String(c.val != null ? c.val : '—')) +
+                    '</div></div>';
+            });
+            wrap.innerHTML = html;
+            if (tablesWrap) tablesWrap.style.display = '';
+
+            var buckTb = document.getElementById('auaSalaryBucketsTbody');
+            if (buckTb) {
+                var bhtml = '';
+                (data.salary_buckets || []).forEach(function (b) {
+                    bhtml += '<tr><td>' + esc(b.label) + '</td><td>' + esc(b.count) + '</td></tr>';
+                });
+                buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+            var taxTb = document.getElementById('auaTaxBucketsTbody');
+            if (taxTb) {
+                var thtml = '';
+                (data.tax_record_buckets || []).forEach(function (b) {
+                    thtml += '<tr><td>' + esc(b.label) + '</td><td>' + esc(b.count) + '</td></tr>';
+                });
+                taxTb.innerHTML = thtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+            var freqTb = document.getElementById('auaActivityFreqTbody');
+            if (freqTb) {
+                var freq = data.activity_frequency || {};
+                var freqRows = [
+                    { label: '无活跃（0天）', val: freq.none },
+                    { label: '低频（1天）', val: freq.low },
+                    { label: '中频（2–4天）', val: freq.medium },
+                    { label: '高频（5天+）', val: freq.high }
+                ];
+                var fhtml = '';
+                freqRows.forEach(function (fr) {
+                    fhtml += '<tr><td>' + esc(fr.label) + '</td><td>' + esc(fr.val != null ? fr.val : 0) + '</td></tr>';
+                });
+                freqTb.innerHTML = fhtml;
+            }
+
+            var topTb = document.getElementById('auaTopPagesTbody');
+            if (topTb) {
+                var phtml = '';
+                (data.top_pages || []).forEach(function (p) {
+                    phtml += '<tr><td>' + esc(p.title || '—') + '</td><td>' + esc(p.hit_count) + '</td></tr>';
+                });
+                topTb.innerHTML = phtml || '<tr><td colspan="2">暂无</td></tr>';
+            }
+
+            destroyAuaDauCharts();
+            var chartWrap = document.getElementById('auaDauChartWrap');
+            var canvas = document.getElementById('auaDauChart');
+            var series = data.dau_series || [];
+            if (!series.length || typeof Chart === 'undefined' || !canvas) {
+                if (chartWrap) chartWrap.style.display = 'none';
+                return;
+            }
+            if (chartWrap) chartWrap.style.display = '';
+            var labels = series.map(function (r) {
+                return r.date;
+            });
+            var values = series.map(function (r) {
+                return Number(r.active_users) || 0;
+            });
+            _auaDauChartInstances.push(
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '激活用户日活',
+                                data: values,
+                                borderColor: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                                fill: true,
+                                tension: 0.25,
+                                pointRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                })
+            );
+        }
+
+        function loadActivatedUserAnalysisOverview() {
+            var wrap = document.getElementById('auaSummary');
+            if (wrap) wrap.textContent = '加载中…';
+            var daysEl = document.getElementById('auaOverviewDays');
+            var actEl = document.getElementById('auaActivityDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 14 : 14;
+            var actDays = actEl ? parseInt(actEl.value, 10) || 30 : 30;
+            adminFetch(
+                'api/admin/activated-user-analysis/overview?days=' +
+                    encodeURIComponent(days) +
+                    '&activity_days=' +
+                    encodeURIComponent(actDays)
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (wrap) wrap.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderActivatedUserAnalysisOverview(j.data);
+                })
+                .catch(function () {
+                    if (wrap) wrap.textContent = '加载失败';
+                });
+        }
+
+        function loadActivatedUserAnalysisUsers(p) {
+            if (p != null) auaUsersPage = p;
+            var stat = document.getElementById('auaUserListStat');
+            var tbody = document.getElementById('auaUsersTbody');
+            if (stat) stat.textContent = '加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            var username = document.getElementById('auaFilterUsername');
+            var taxF = document.getElementById('auaFilterTax');
+            var actF = document.getElementById('auaFilterActivity');
+            var salMin = document.getElementById('auaFilterSalaryMin');
+            var salMax = document.getElementById('auaFilterSalaryMax');
+            var actDaysEl = document.getElementById('auaActivityDays');
+            var actDays = actDaysEl ? parseInt(actDaysEl.value, 10) || 30 : 30;
+            var q =
+                'api/admin/activated-user-analysis/users?page=' +
+                encodeURIComponent(auaUsersPage) +
+                '&limit=' +
+                encodeURIComponent(auaUsersLimit) +
+                '&activity_days=' +
+                encodeURIComponent(actDays);
+            if (username && username.value.trim()) {
+                q += '&username=' + encodeURIComponent(username.value.trim());
+            }
+            if (taxF && taxF.value) {
+                q += '&tax_status=' + encodeURIComponent(taxF.value);
+            }
+            if (actF && actF.value) {
+                q += '&activity=' + encodeURIComponent(actF.value);
+            }
+            if (salMin && salMin.value.trim()) {
+                q += '&salary_min=' + encodeURIComponent(salMin.value.trim());
+            }
+            if (salMax && salMax.value.trim()) {
+                q += '&salary_max=' + encodeURIComponent(salMax.value.trim());
+            }
+            adminFetch(q)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (stat) stat.textContent = j.msg || '加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="11">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        return;
+                    }
+                    var d = j.data;
+                    var total = d.total || 0;
+                    if (stat) {
+                        stat.textContent =
+                            '已激活用户 ' +
+                            total +
+                            ' 人（本页 ' +
+                            (d.items || []).length +
+                            ' 人 · 近 ' +
+                            (d.activity_days || actDays) +
+                            ' 天统计）';
+                    }
+                    var totalPages = Math.ceil(total / auaUsersLimit) || 1;
+                    var pageInfo = document.getElementById('auaUsersPageInfo');
+                    if (pageInfo) {
+                        pageInfo.textContent = '第 ' + auaUsersPage + ' 页 / 共 ' + totalPages + ' 页';
+                    }
+                    var prevBtn = document.getElementById('auaUsersPrev');
+                    var nextBtn = document.getElementById('auaUsersNext');
+                    if (prevBtn) prevBtn.disabled = auaUsersPage <= 1;
+                    if (nextBtn) nextBtn.disabled = auaUsersPage >= totalPages;
+                    var html = '';
+                    (d.items || []).forEach(function (row) {
+                        var key = keyForUser(row.username);
+                        html += '<tr>';
+                        html += '<td class="cell-break"><code>' + esc(row.username) + '</code></td>';
+                        html += '<td>' + esc(row.real_name || '—') + '</td>';
+                        html +=
+                            '<td title="' +
+                            esc(row.avg_salary_6m_label || '未填写') +
+                            '">' +
+                            esc(row.avg_salary_6m_label || '未填写') +
+                            '</td>';
+                        html += '<td>' + esc(row.has_tax_records ? row.tax_record_count : '未填') + '</td>';
+                        html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
+                        html += '<td>' + esc(row.event_count != null ? row.event_count : 0) + '</td>';
+                        html += '<td>' + esc(row.events_per_active_day != null ? row.events_per_active_day : 0) + '</td>';
+                        html += '<td>' + esc(row.stay_label || '—') + '</td>';
+                        html += '<td>' + esc(row.last_active || '—') + '</td>';
+                        html += '<td class="cell-break" style="font-size:12px;color:#555;">' + esc(row.path_summary || '—') + '</td>';
+                        html +=
+                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-aua-path" data-u="' +
+                            esc(row.username) +
+                            '" data-k="' +
+                            key +
+                            '">路径</button></td>';
+                        html += '</tr>';
+                        html += '<tr id="aua_path_row_' + key + '" class="users-detail-row" style="display:none;">';
+                        html +=
+                            '<td colspan="11"><div id="aua_path_box_' +
+                            key +
+                            '">加载中…</div></td></tr>';
+                    });
+                    if (tbody) {
+                        tbody.innerHTML = html || '<tr><td colspan="11">暂无已激活用户</td></tr>';
+                        tbody.querySelectorAll('.btn-aua-path').forEach(function (btn) {
+                            btn.onclick = function () {
+                                var name = btn.getAttribute('data-u');
+                                var key = btn.getAttribute('data-k');
+                                var row = document.getElementById('aua_path_row_' + key);
+                                var box = document.getElementById('aua_path_box_' + key);
+                                if (!row || !box) return;
+                                var opening = row.style.display === 'none';
+                                if (!opening) {
+                                    row.style.display = 'none';
+                                    btn.textContent = '路径';
+                                    return;
+                                }
+                                row.style.display = '';
+                                btn.textContent = '收起';
+                                box.textContent = '加载中…';
+                                adminFetch(
+                                    'api/admin/activated-user-analysis/behavior-path?username=' +
+                                        encodeURIComponent(name)
+                                )
+                                    .then(function (r) {
+                                        return r.json();
+                                    })
+                                    .then(function (resp) {
+                                        if (resp.code !== 200 || !resp.data) {
+                                            box.textContent = resp.msg || '加载失败';
+                                            return;
+                                        }
+                                        box.innerHTML = buildNoTaxPathDetailHtml(name, resp.data);
+                                    })
+                                    .catch(function () {
+                                        box.textContent = '网络错误';
+                                    });
+                            };
+                        });
+                    }
+                })
+                .catch(function () {
+                    if (stat) stat.textContent = '加载失败';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载失败</td></tr>';
+                });
+        }
+
         function loadUserDataAnalytics() {
             var wrap = document.getElementById('userDataAnalytics');
             if (wrap) wrap.textContent = '分析数据加载中…';
@@ -5113,6 +5416,7 @@
             users: '注册用户',
             'user-data': '用户数据',
             'user-behavior': '用户行为',
+            'activated-user-analysis': '激活用户分析',
             feedback: '用户反馈',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
@@ -5445,6 +5749,47 @@
         if (udNoTaxNext) {
             udNoTaxNext.onclick = function () {
                 loadNoTaxBehaviorList(noTaxBehaviorPage + 1);
+            };
+        }
+        var btnRefreshAuaOverview = document.getElementById('btnRefreshAuaOverview');
+        if (btnRefreshAuaOverview) {
+            btnRefreshAuaOverview.onclick = function () {
+                loadActivatedUserAnalysisOverview();
+                loadActivatedUserAnalysisUsers(auaUsersPage);
+            };
+        }
+        var btnSearchAuaUsers = document.getElementById('btnSearchAuaUsers');
+        if (btnSearchAuaUsers) {
+            btnSearchAuaUsers.onclick = function () {
+                loadActivatedUserAnalysisUsers(1);
+            };
+        }
+        var btnResetAuaUsers = document.getElementById('btnResetAuaUsers');
+        if (btnResetAuaUsers) {
+            btnResetAuaUsers.onclick = function () {
+                var u = document.getElementById('auaFilterUsername');
+                var t = document.getElementById('auaFilterTax');
+                var a = document.getElementById('auaFilterActivity');
+                var sm = document.getElementById('auaFilterSalaryMin');
+                var sx = document.getElementById('auaFilterSalaryMax');
+                if (u) u.value = '';
+                if (t) t.value = '';
+                if (a) a.value = '';
+                if (sm) sm.value = '';
+                if (sx) sx.value = '';
+                loadActivatedUserAnalysisUsers(1);
+            };
+        }
+        var auaUsersPrev = document.getElementById('auaUsersPrev');
+        if (auaUsersPrev) {
+            auaUsersPrev.onclick = function () {
+                if (auaUsersPage > 1) loadActivatedUserAnalysisUsers(auaUsersPage - 1);
+            };
+        }
+        var auaUsersNext = document.getElementById('auaUsersNext');
+        if (auaUsersNext) {
+            auaUsersNext.onclick = function () {
+                loadActivatedUserAnalysisUsers(auaUsersPage + 1);
             };
         }
         document.getElementById('btnResetUsers').onclick = function() {

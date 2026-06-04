@@ -227,6 +227,7 @@ const ADMIN_MENU_KEYS = [
   'users',
   'user-data',
   'user-behavior',
+  'activated-user-analysis',
   'feedback',
   'login-log',
   'analytics',
@@ -1403,6 +1404,11 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'user-behavior' FROM admin_account_menus WHERE menu_key = 'user-data'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
   );
 
   conn.release();
@@ -9901,6 +9907,472 @@ async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
   }
 }
 
+function appendActivatedUserScope(whereClauses, params, admin, userCol) {
+  userCol = userCol || 'u.username';
+  var userAlias = userCol.indexOf('.') >= 0 ? userCol.split('.')[0] : 'u';
+  whereClauses.push(userAlias + '.account_active = 1');
+  whereClauses.push(userAlias + '.list_hidden_at IS NULL');
+  appendAdminUserScope(whereClauses, params, admin, userCol);
+}
+
+function activatedUserScopeSql(req, userCol) {
+  var where = [];
+  var params = [];
+  appendActivatedUserScope(where, params, req.admin, userCol || 'u.username');
+  return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params, where: where };
+}
+
+async function loadActivatedUserActivityMap(conn, usernames, activityDays) {
+  var map = {};
+  if (!usernames || !usernames.length) return map;
+  usernames.forEach(function (u) {
+    map[u] = { active_days: 0, last_active: '', event_count: 0 };
+  });
+  var span = Math.max(0, (Number(activityDays) || 30) - 1);
+  var ph = usernames.map(function () {
+    return '?';
+  }).join(',');
+  const [dauRows] = await conn.query(
+    `SELECT username, COUNT(DISTINCT activity_date) AS active_days, MAX(activity_date) AS last_active
+     FROM user_daily_activity
+     WHERE username IN (` +
+      ph +
+      `)
+       AND activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY username`,
+    usernames.concat([span])
+  );
+  dauRows.forEach(function (r) {
+    var u = String(r.username || '');
+    if (!map[u]) return;
+    map[u].active_days = Number(r.active_days) || 0;
+    if (r.last_active instanceof Date) {
+      map[u].last_active = r.last_active.toISOString().slice(0, 10);
+    } else if (r.last_active) {
+      map[u].last_active = String(r.last_active).slice(0, 10);
+    }
+  });
+  const [evtRows] = await conn.query(
+    `SELECT username, COUNT(*) AS cnt
+     FROM user_page_events
+     WHERE username IN (` +
+      ph +
+      `)
+       AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY username`,
+    usernames.concat([span])
+  );
+  evtRows.forEach(function (r) {
+    var u = String(r.username || '');
+    if (!map[u]) return;
+    map[u].event_count = Number(r.cnt) || 0;
+  });
+  return map;
+}
+
+async function handleAdminActivatedUserAnalysisOverview(req, res) {
+  try {
+    var days = clampAnalyticsDays(req.query.days, 14, 90);
+    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
+    var span = Math.max(0, days - 1);
+    var actSpan = Math.max(0, activityDays - 1);
+    const conn = await pool.getConnection();
+    try {
+      var scope = activatedUserScopeSql(req, 'u');
+      var scopeJoin = scope.sql ? scope.sql.replace(/^ WHERE /, ' AND ') : '';
+
+      const [[countRow]] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scope.sql, scope.params);
+      var totalActivated = Number(countRow.c) || 0;
+
+      const [taxStatRows] = await conn.query(
+        `SELECT COUNT(DISTINCT tr.user_id) AS with_tax, COUNT(*) AS total_records
+         FROM tax_records tr
+         INNER JOIN users u ON u.username = tr.user_id` +
+          scopeJoin +
+          ' AND ' +
+          TAX_RECORD_NOT_DELETED_SQL,
+        scope.params
+      );
+      var withTax = Number((taxStatRows[0] || {}).with_tax) || 0;
+      var totalTaxRecords = Number((taxStatRows[0] || {}).total_records) || 0;
+
+      const [allScoped] = await conn.query(
+        'SELECT u.username FROM users u' + scope.sql + ' ORDER BY u.id DESC LIMIT 5000',
+        scope.params
+      );
+      var scopedNames = allScoped.map(function (r) {
+        return String(r.username);
+      });
+      var avgMaps = await buildUserTaxAvgSalaryMap(conn, scopedNames);
+      var salaryBuckets = [
+        { label: '未填写', min: null, max: null, count: 0 },
+        { label: '5000以下', min: 0, max: 5000, count: 0 },
+        { label: '5000–1万', min: 5000, max: 10000, count: 0 },
+        { label: '1万–2万', min: 10000, max: 20000, count: 0 },
+        { label: '2万以上', min: 20000, max: null, count: 0 }
+      ];
+      var taxRecordBuckets = [
+        { label: '未填写', min: 0, max: 0, count: 0 },
+        { label: '1–6条', min: 1, max: 6, count: 0 },
+        { label: '7–12条', min: 7, max: 12, count: 0 },
+        { label: '13条以上', min: 13, max: null, count: 0 }
+      ];
+      var withSalary = 0;
+      scopedNames.forEach(function (uname) {
+        var sal = avgMaps[uname];
+        var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
+        if (v == null || !isFinite(v)) {
+          salaryBuckets[0].count++;
+        } else {
+          withSalary++;
+          if (v < 5000) salaryBuckets[1].count++;
+          else if (v < 10000) salaryBuckets[2].count++;
+          else if (v < 20000) salaryBuckets[3].count++;
+          else salaryBuckets[4].count++;
+        }
+      });
+
+      if (scopedNames.length) {
+        var ph = scopedNames.map(function () {
+          return '?';
+        }).join(',');
+        const [taxCntRows] = await conn.query(
+          `SELECT user_id, COUNT(*) AS cnt FROM tax_records
+           WHERE user_id IN (` +
+            ph +
+            `) AND ` +
+            TAX_RECORD_NOT_DELETED_SQL +
+            ' GROUP BY user_id',
+          scopedNames
+        );
+        var taxCntMap = {};
+        taxCntRows.forEach(function (r) {
+          taxCntMap[String(r.user_id)] = Number(r.cnt) || 0;
+        });
+        scopedNames.forEach(function (uname) {
+          var cnt = taxCntMap[uname] || 0;
+          if (cnt <= 0) taxRecordBuckets[0].count++;
+          else if (cnt <= 6) taxRecordBuckets[1].count++;
+          else if (cnt <= 12) taxRecordBuckets[2].count++;
+          else taxRecordBuckets[3].count++;
+        });
+      } else {
+        taxRecordBuckets[0].count = totalActivated;
+      }
+
+      const [dauSeries] = await conn.query(
+        `SELECT uda.activity_date AS d, COUNT(DISTINCT uda.username) AS cnt
+         FROM user_daily_activity uda
+         INNER JOIN users u ON u.username = uda.username` +
+          scopeJoin +
+          `
+         WHERE uda.activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY uda.activity_date
+         ORDER BY uda.activity_date ASC`,
+        scope.params.concat([span])
+      );
+
+      var todayKey = chinaDateKeyNow();
+      const [[todayDauRow]] = await conn.query(
+        `SELECT COUNT(DISTINCT uda.username) AS c
+         FROM user_daily_activity uda
+         INNER JOIN users u ON u.username = uda.username` +
+          scopeJoin +
+          ' AND uda.activity_date = ?',
+        scope.params.concat([todayKey])
+      );
+      var todayDau = Number((todayDauRow || {}).c) || 0;
+
+      var activityFreq = { none: 0, low: 0, medium: 0, high: 0 };
+      if (scopedNames.length) {
+        var actMap = await loadActivatedUserActivityMap(conn, scopedNames, activityDays);
+        scopedNames.forEach(function (uname) {
+          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
+          if (ad <= 0) activityFreq.none++;
+          else if (ad === 1) activityFreq.low++;
+          else if (ad <= 4) activityFreq.medium++;
+          else activityFreq.high++;
+        });
+      }
+
+      const [topPages] = await conn.query(
+        `SELECT e.page_path, COUNT(*) AS hit_count
+         FROM user_page_events e
+         INNER JOIN users u ON u.username = e.username` +
+          scopeJoin +
+          `
+         WHERE e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY e.page_path
+         ORDER BY hit_count DESC
+         LIMIT 12`,
+        scope.params.concat([actSpan])
+      );
+
+      return res.json({
+        code: 200,
+        data: {
+          days: days,
+          activity_days: activityDays,
+          total_activated: totalActivated,
+          with_tax_records: withTax,
+          without_tax_records: Math.max(0, totalActivated - withTax),
+          with_salary_filled: withSalary,
+          total_tax_records: totalTaxRecords,
+          dau_today: todayDau,
+          salary_buckets: salaryBuckets,
+          tax_record_buckets: taxRecordBuckets,
+          activity_frequency: activityFreq,
+          dau_series: dauSeries.map(function (r) {
+            return {
+              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+              active_users: Number(r.cnt) || 0
+            };
+          }),
+          top_pages: topPages.map(function (r) {
+            return {
+              title: chineseTitleFromPagePath(String(r.page_path || '')),
+              page_path: String(r.page_path || ''),
+              hit_count: Number(r.hit_count) || 0
+            };
+          })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminActivatedUserAnalysisUsers(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 50) limit = 50;
+    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
+
+    var qUsername = req.query.username != null ? String(req.query.username).trim() : '';
+    var qTax = req.query.tax_status != null ? String(req.query.tax_status).trim() : '';
+    var qActivity = req.query.activity != null ? String(req.query.activity).trim() : '';
+    var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
+    var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
+    var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
+    if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
+      return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
+    }
+
+    var where = [];
+    var params = [];
+    appendActivatedUserScope(where, params, req.admin, 'users.username');
+    if (qUsername) {
+      where.push('users.username LIKE ?');
+      params.push('%' + qUsername + '%');
+    }
+    if (qTax === 'with_tax') {
+      where.push(
+        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
+      );
+    } else if (qTax === 'without_tax') {
+      where.push(
+        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
+      );
+    }
+    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+    var actSpan = Math.max(0, activityDays - 1);
+
+    const conn = await pool.getConnection();
+    try {
+      var rows = [];
+      var total = 0;
+
+      if (hasSalaryFilter || qActivity === 'active_7d' || qActivity === 'inactive_7d') {
+        const [allRows] = await conn.query(
+          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
+            scopeSql +
+            ' ORDER BY id DESC',
+          params
+        );
+        var allNames = allRows.map(function (r) {
+          return String(r.username);
+        });
+        var avgMaps = await buildUserTaxAvgSalaryMap(conn, allNames);
+        var actMap = await loadActivatedUserActivityMap(conn, allNames, activityDays);
+        var filtered = [];
+        allRows.forEach(function (r) {
+          var uname = String(r.username);
+          var sal = avgMaps[uname] || { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
+          var v = sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
+          if (hasSalaryFilter) {
+            if (v == null || !isFinite(v)) {
+              if (qSalaryMin != null || qSalaryMax != null) return;
+            } else {
+              if (qSalaryMin != null && v < qSalaryMin) return;
+              if (qSalaryMax != null && v > qSalaryMax) return;
+            }
+          }
+          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
+          if (qActivity === 'active_7d' && ad < 1) return;
+          if (qActivity === 'inactive_7d' && ad > 0) return;
+          filtered.push({ row: r, sal: sal, act: actMap[uname] || { active_days: 0, last_active: '', event_count: 0 } });
+        });
+        total = filtered.length;
+        var offset = (page - 1) * limit;
+        var pageSlice = filtered.slice(offset, offset + limit);
+        rows = pageSlice.map(function (item) {
+          return Object.assign({}, item.row, { _sal: item.sal, _act: item.act });
+        });
+      } else {
+        const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM users' + scopeSql, params);
+        total = Number(countRow.c) || 0;
+        var offset2 = (page - 1) * limit;
+        const [userRows] = await conn.query(
+          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
+            scopeSql +
+            ' ORDER BY id DESC LIMIT ? OFFSET ?',
+          params.concat([limit, offset2])
+        );
+        rows = userRows;
+      }
+
+      var pageNames = rows.map(function (r) {
+        return String(r.username);
+      });
+      var batchMaps = await buildUserDataBatchMaps(conn, pageNames);
+      var avgMapsPage =
+        rows[0] && rows[0]._sal != null
+          ? null
+          : await buildUserTaxAvgSalaryMap(conn, pageNames);
+      var actMapPage =
+        rows[0] && rows[0]._act != null
+          ? null
+          : await loadActivatedUserActivityMap(conn, pageNames, activityDays);
+      var eventMap = await loadPageEventsForUsers(conn, pageNames, 400);
+
+      var items = rows.map(function (r) {
+        var uname = String(r.username);
+        var bd = batchMaps[uname] || {};
+        var sal =
+          r._sal ||
+          (avgMapsPage && avgMapsPage[uname]) || {
+            avg_salary_6m: null,
+            avg_salary_6m_label: '未填写',
+            salary_month_count: 0
+          };
+        var act = r._act || (actMapPage && actMapPage[uname]) || { active_days: 0, last_active: '', event_count: 0 };
+        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
+        var freqPerDay =
+          act.active_days > 0 ? Math.round((act.event_count / act.active_days) * 10) / 10 : 0;
+        return {
+          username: uname,
+          real_name: r.real_name != null ? String(r.real_name) : '',
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          channel_analysis_label: userChannelAnalysisLabel(
+            r.register_source_channel,
+            r.activation_source_channel
+          ),
+          avg_salary_6m: sal.avg_salary_6m,
+          avg_salary_6m_label: sal.avg_salary_6m_label || '未填写',
+          salary_month_count: sal.salary_month_count || 0,
+          tax_record_count: bd.tax_record_count || 0,
+          has_tax_records: (bd.tax_record_count || 0) > 0,
+          active_days: act.active_days,
+          event_count: act.event_count,
+          events_per_active_day: freqPerDay,
+          stay_label: metrics.stay_label,
+          distinct_page_count: metrics.distinct_page_count,
+          last_active: act.last_active || (metrics.last_at ? String(metrics.last_at).slice(0, 10) : ''),
+          path_summary: metrics.path_summary
+        };
+      });
+
+      return res.json({
+        code: 200,
+        data: {
+          items: items,
+          total: total,
+          page: page,
+          limit: limit,
+          activity_days: activityDays
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminActivatedUserAnalysisBehaviorPath(req, res) {
+  var username = req.query.username != null ? String(req.query.username).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
+      }
+      const [userRows] = await conn.execute(
+        'SELECT username, account_active FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+        [username]
+      );
+      if (!userRows.length) {
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      if (!(userRows[0].account_active === 1 || userRows[0].account_active === true)) {
+        return res.status(400).json({ code: 400, msg: '该用户未激活' });
+      }
+      const [rows] = await conn.execute(
+        `SELECT page_path, route_key, created_at
+         FROM user_page_events
+         WHERE username = ?
+         ORDER BY created_at ASC
+         LIMIT 800`,
+        [username]
+      );
+      var events = rows.map(function (r) {
+        return {
+          page_path: r.page_path != null ? String(r.page_path) : '',
+          route_key: r.route_key != null ? String(r.route_key) : '',
+          created_at: r.created_at
+        };
+      });
+      var metrics = computeBehaviorMetricsFromEvents(events);
+      var timeline = events.map(function (e, idx) {
+        var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
+        return {
+          step: idx + 1,
+          at: isNaN(ts.getTime()) ? '' : ts.toISOString(),
+          page_path: e.page_path,
+          route_key: e.route_key,
+          title: chineseTitleFromPagePath(e.page_path)
+        };
+      });
+      return res.json({
+        code: 200,
+        data: {
+          username: username,
+          metrics: metrics,
+          timeline: timeline
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 批量清理刷号机器人账号（默认：2026-05-22 00:00–01:00 北京、8位随机名、未激活） */
 async function handleAdminPurgeBotUsers(req, res) {
   var body = req.body || {};
@@ -11657,6 +12129,24 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('user-behavior'),
   handleAdminUserDataNoTaxBehaviorExport
+);
+app.get(
+  '/api/admin/activated-user-analysis/overview',
+  requireAdminAuth,
+  requireAdminMenu('activated-user-analysis'),
+  handleAdminActivatedUserAnalysisOverview
+);
+app.get(
+  '/api/admin/activated-user-analysis/users',
+  requireAdminAuth,
+  requireAdminMenu('activated-user-analysis'),
+  handleAdminActivatedUserAnalysisUsers
+);
+app.get(
+  '/api/admin/activated-user-analysis/behavior-path',
+  requireAdminAuth,
+  requireAdminMenu('activated-user-analysis'),
+  handleAdminActivatedUserAnalysisBehaviorPath
 );
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);

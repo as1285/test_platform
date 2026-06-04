@@ -29,6 +29,7 @@
                     <button type="button" class="nav-item" data-page="users-deleted" data-title="已删除账号">已删除账号</button>
                     <button type="button" class="nav-item" data-page="user-data" data-title="用户数据">用户数据</button>
                     <button type="button" class="nav-item" data-page="user-behavior" data-title="用户行为">用户行为</button>
+                    <button type="button" class="nav-item" data-page="activated-user-analysis" data-title="激活用户分析">激活用户分析</button>
                     <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
                 </div>
                 <div class="nav-group" data-nav-group="logs">
@@ -975,6 +976,133 @@
                     <span id="udNoTaxPageInfo">第 1 页</span>
                     <button type="button" class="btn-page" id="udNoTaxNext">下一页</button>
                 </div>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-activated-user-analysis" class="page-panel" role="tabpanel">
+        <section>
+            <h2>激活用户分析</h2>
+            <p class="hint">聚焦<strong>已激活</strong>账号：工资收入（近6月平均）、个税记录填写、日活与使用频率。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
+            <div class="form-row" style="align-items:center;margin-bottom:8px;">
+                <div>
+                    <label for="auaOverviewDays">日活趋势天数</label>
+                    <select id="auaOverviewDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14" selected>最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="auaActivityDays">使用频率统计</label>
+                    <select id="auaActivityDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14">最近 14 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshAuaOverview">刷新概览</button>
+            </div>
+            <div id="auaSummary" class="user-data-stats" aria-live="polite">进入本页后加载…</div>
+            <div class="user-data-analytics-grid" id="auaAnalyticsTables" style="display:none;margin-top:12px;">
+                <div class="scroll-x">
+                    <p class="stat">工资收入分布（近6月平均）</p>
+                    <table>
+                        <thead><tr><th>区间</th><th>用户数</th></tr></thead>
+                        <tbody id="auaSalaryBucketsTbody"></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x">
+                    <p class="stat">个税记录条数分布</p>
+                    <table>
+                        <thead><tr><th>区间</th><th>用户数</th></tr></thead>
+                        <tbody id="auaTaxBucketsTbody"></tbody>
+                    </table>
+                </div>
+                <div class="scroll-x">
+                    <p class="stat">使用频率（活跃天）</p>
+                    <table>
+                        <thead><tr><th>分层</th><th>用户数</th></tr></thead>
+                        <tbody id="auaActivityFreqTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="device-stats-charts-wrap" id="auaDauChartWrap" style="display:none;margin-top:16px;">
+                <div class="device-stats-chart-card chart-card-wide">
+                    <h4>激活用户日活趋势</h4>
+                    <div class="chart-canvas-wrap"><canvas id="auaDauChart" aria-label="激活用户日活折线图"></canvas></div>
+                </div>
+            </div>
+            <div class="scroll-x" style="margin-top:12px;">
+                <p class="stat" style="margin-bottom:8px;">热门页面 TOP（激活用户 · 近统计周期）</p>
+                <table class="user-detail-table">
+                    <thead><tr><th>中文标题</th><th>访问次数</th></tr></thead>
+                    <tbody id="auaTopPagesTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="user-filter-bar" style="margin-top:20px;">
+                <div class="user-filter-fields">
+                <div>
+                    <label>账号</label>
+                    <input type="text" id="auaFilterUsername" class="filter-text-wide" placeholder="搜索账号">
+                </div>
+                <div>
+                    <label>个税记录</label>
+                    <select id="auaFilterTax" class="filter-text-wide">
+                        <option value="">全部</option>
+                        <option value="with_tax">已填写</option>
+                        <option value="without_tax">未填写</option>
+                    </select>
+                </div>
+                <div>
+                    <label>近周期活跃</label>
+                    <select id="auaFilterActivity" class="filter-text-wide">
+                        <option value="">全部</option>
+                        <option value="active_7d">有活跃</option>
+                        <option value="inactive_7d">无活跃</option>
+                    </select>
+                </div>
+                <div>
+                    <label>工资下限(元)</label>
+                    <input type="number" id="auaFilterSalaryMin" class="filter-text-wide" placeholder="可选" min="0" step="100">
+                </div>
+                <div>
+                    <label>工资上限(元)</label>
+                    <input type="number" id="auaFilterSalaryMax" class="filter-text-wide" placeholder="可选" min="0" step="100">
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                    <button type="button" class="btn-primary" id="btnSearchAuaUsers">查询</button>
+                    <button type="button" class="btn-page" id="btnResetAuaUsers">重置</button>
+                </div>
+                </div>
+            </div>
+            <p class="stat" id="auaUserListStat" style="margin-top:12px;">用户列表进入本页后加载…</p>
+            <div class="scroll-x">
+                <table class="users-data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">账号</th>
+                            <th style="width:72px;">姓名</th>
+                            <th style="width:100px;">近6月平均工资</th>
+                            <th style="width:72px;">个税条数</th>
+                            <th style="width:56px;">活跃天</th>
+                            <th style="width:56px;">行为数</th>
+                            <th style="width:72px;">次/活跃天</th>
+                            <th style="width:88px;">APP停留</th>
+                            <th style="width:100px;">最近活跃</th>
+                            <th style="width:180px;">行为路径摘要</th>
+                            <th class="col-ops">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auaUsersTbody"><tr><td colspan="11">进入本页后加载…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="auaUsersPagination">
+                <button type="button" class="btn-page" id="auaUsersPrev">上一页</button>
+                <span id="auaUsersPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="auaUsersNext">下一页</button>
             </div>
         </section>
                 </div>
