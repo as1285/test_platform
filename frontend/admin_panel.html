@@ -1676,7 +1676,7 @@
                 <div id="page-user-login-log" class="page-panel" role="tabpanel">
         <section>
             <h2>普通用户登录流水</h2>
-            <p class="hint">普通用户账号密码登录记录（成功/失败），按时间倒序展示；可按账号与结果筛选。</p>
+            <p class="hint">普通用户账号密码登录记录（成功/失败），按时间倒序展示；可按账号、结果与失败原因筛选（原因支持中文模糊查询，如「密码」「封禁」）。</p>
             <div class="form-row" style="align-items: flex-end;">
                 <div>
                     <label for="userLoginLogUsername">用户账号</label>
@@ -1689,6 +1689,10 @@
                         <option value="1">成功</option>
                         <option value="0">失败</option>
                     </select>
+                </div>
+                <div>
+                    <label for="userLoginLogReasonFilter">原因</label>
+                    <input type="text" id="userLoginLogReasonFilter" placeholder="支持模糊查询，如 密码、封禁" style="width:220px;">
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshUserLoginLog">刷新列表</button>
                 <div>

@@ -4496,26 +4496,63 @@ function normalizeUserLoginFailReason(rawMsg) {
 
 function userLoginReasonLabel(reason) {
   var k = String(reason || '').trim();
-  var map = {
-    ok: '成功',
-    empty_password: '密码为空',
-    account_banned: '账号已封禁',
-    invalid_credentials: '账号或密码错误',
-    invalid_username: '账号格式错误',
-    other_error: '其他错误',
-    unknown_error: '未知错误',
-    register_ok: '注册成功',
-    'register_fail:duplicate': '注册-账号已存在',
-    'register_fail:rate_burst': '注册-频率过快',
-    'register_fail:rate_ip_day': '注册-IP日上限',
-    'register_fail:rate_fp_day': '注册-设备日上限',
-    'register_fail:backoff': '注册-失败退避',
-    'register_fail:captcha': '注册-验证码错误',
-    'register_fail:invalid_client': '注册-非官方客户端',
-    'register_fail:validation': '注册-参数校验失败'
-  };
-  return map[k] || k || '未知错误';
+  return USER_LOGIN_REASON_LABELS[k] || k || '未知错误';
 }
+
+function userLoginReasonKeysForFuzzyQuery(q) {
+  q = q != null ? String(q).trim() : '';
+  if (!q) return [];
+  var ql = q.toLowerCase();
+  var keys = [];
+  Object.keys(USER_LOGIN_REASON_LABELS).forEach(function (k) {
+    if (k.toLowerCase().indexOf(ql) >= 0 || String(USER_LOGIN_REASON_LABELS[k]).indexOf(q) >= 0) {
+      keys.push(k);
+    }
+  });
+  return keys;
+}
+
+function appendUserLoginReasonFuzzyFilter(whereClauses, params, qReason) {
+  qReason = qReason != null ? String(qReason).trim() : '';
+  if (!qReason) return;
+  var parts = ['reason LIKE ?'];
+  params.push('%' + qReason + '%');
+  var matchedKeys = userLoginReasonKeysForFuzzyQuery(qReason);
+  if (matchedKeys.length) {
+    parts.push(
+      'reason IN (' +
+        matchedKeys
+          .map(function () {
+            return '?';
+          })
+          .join(',') +
+        ')'
+    );
+    matchedKeys.forEach(function (k) {
+      params.push(k);
+    });
+  }
+  whereClauses.push('(' + parts.join(' OR ') + ')');
+}
+
+const USER_LOGIN_REASON_LABELS = {
+  ok: '成功',
+  empty_password: '密码为空',
+  account_banned: '账号已封禁',
+  invalid_credentials: '账号或密码错误',
+  invalid_username: '账号格式错误',
+  other_error: '其他错误',
+  unknown_error: '未知错误',
+  register_ok: '注册成功',
+  'register_fail:duplicate': '注册-账号已存在',
+  'register_fail:rate_burst': '注册-频率过快',
+  'register_fail:rate_ip_day': '注册-IP日上限',
+  'register_fail:rate_fp_day': '注册-设备日上限',
+  'register_fail:backoff': '注册-失败退避',
+  'register_fail:captcha': '注册-验证码错误',
+  'register_fail:invalid_client': '注册-非官方客户端',
+  'register_fail:validation': '注册-参数校验失败'
+};
 
 /** 将含记录 ID / 查询参数的 track_jump_* 合并为「页面级」一条，便于管理台统计 */
 function collapseTrackJumpEventKey(eventKey) {
@@ -11676,6 +11713,7 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
     }
     var qUsername = req.query.username != null ? String(req.query.username).trim() : '';
     var qOk = req.query.ok != null ? String(req.query.ok).trim() : '';
+    var qReason = req.query.reason != null ? String(req.query.reason).trim() : '';
     var where = [];
     var params = [];
     if (qUsername) {
@@ -11686,6 +11724,7 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       where.push('ok = ?');
       params.push(qOk === '1' ? 1 : 0);
     }
+    appendUserLoginReasonFuzzyFilter(where, params, qReason);
     if (!req.admin || !req.admin.is_super) {
       where.push(
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = user_login_events.username AND ac.owner_admin_username = ?)'

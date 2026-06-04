@@ -3046,11 +3046,16 @@
                 encodeURIComponent(lim);
             var uname = document.getElementById('userLoginLogUsername').value.trim();
             var okFilter = document.getElementById('userLoginLogOkFilter').value;
+            var reasonFilterEl = document.getElementById('userLoginLogReasonFilter');
+            var reasonFilter = reasonFilterEl ? reasonFilterEl.value.trim() : '';
             if (uname) {
                 query += '&username=' + encodeURIComponent(uname);
             }
             if (okFilter === '1' || okFilter === '0') {
                 query += '&ok=' + encodeURIComponent(okFilter);
+            }
+            if (reasonFilter) {
+                query += '&reason=' + encodeURIComponent(reasonFilter);
             }
             adminFetch(query)
                 .then(function (r) { return r.json(); })
