@@ -4327,6 +4327,8 @@
                 { label: '已填写个税', val: data.with_tax_records },
                 { label: '未填写个税', val: data.without_tax_records },
                 { label: '有工资数据', val: data.with_salary_filled },
+                { label: '平均工资', val: data.salary_avg_6m_label || '—' },
+                { label: '工资中位数', val: data.salary_median_6m_label || '—' },
                 { label: '今日日活', val: data.dau_today },
                 { label: '个税总条数', val: data.total_tax_records }
             ];
@@ -4341,6 +4343,18 @@
             });
             wrap.innerHTML = html;
             if (tablesWrap) tablesWrap.style.display = '';
+
+            var salaryStat = document.getElementById('auaSalaryStat');
+            if (salaryStat) {
+                var filled = data.with_salary_filled != null ? Number(data.with_salary_filled) : 0;
+                salaryStat.textContent =
+                    '工资收入分布（近6月平均）· 已填写 ' +
+                    filled +
+                    ' 人 · 平均 ' +
+                    (data.salary_avg_6m_label || '—') +
+                    ' · 中位数 ' +
+                    (data.salary_median_6m_label || '—');
+            }
 
             var buckTb = document.getElementById('auaSalaryBucketsTbody');
             if (buckTb) {

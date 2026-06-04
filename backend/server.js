@@ -10066,6 +10066,7 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
         { label: '13条以上', min: 13, max: null, count: 0 }
       ];
       var withSalary = 0;
+      var salaryValues = [];
       scopedNames.forEach(function (uname) {
         var sal = avgMaps[uname];
         var v = sal && sal.avg_salary_6m != null ? Number(sal.avg_salary_6m) : null;
@@ -10073,12 +10074,23 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
           salaryBuckets[0].count++;
         } else {
           withSalary++;
+          salaryValues.push(v);
           if (v < 5000) salaryBuckets[1].count++;
           else if (v < 10000) salaryBuckets[2].count++;
           else if (v < 20000) salaryBuckets[3].count++;
           else salaryBuckets[4].count++;
         }
       });
+      var salaryAvg = null;
+      var salaryMedian = null;
+      if (salaryValues.length) {
+        var salarySum = 0;
+        for (var si = 0; si < salaryValues.length; si++) {
+          salarySum += salaryValues[si];
+        }
+        salaryAvg = Math.round((salarySum / salaryValues.length) * 100) / 100;
+        salaryMedian = medianOfNumbers(salaryValues);
+      }
 
       if (scopedNames.length) {
         var ph = scopedNames.map(function () {
@@ -10165,6 +10177,10 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
           with_tax_records: withTax,
           without_tax_records: Math.max(0, totalActivated - withTax),
           with_salary_filled: withSalary,
+          salary_avg_6m: salaryAvg,
+          salary_median_6m: salaryMedian,
+          salary_avg_6m_label: salaryAvg != null ? formatAvgSalary6mLabel(salaryAvg, 0) : '—',
+          salary_median_6m_label: salaryMedian != null ? formatAvgSalary6mLabel(salaryMedian, 0) : '—',
           total_tax_records: totalTaxRecords,
           dau_today: todayDau,
           salary_buckets: salaryBuckets,
