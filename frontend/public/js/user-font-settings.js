@@ -6,7 +6,7 @@
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
-    var CONFIG_VERSION = 3;
+    var CONFIG_VERSION = 4;
 
     var PRESETS = {
         size: [
@@ -25,6 +25,15 @@
             { id: '400', label: '正常', value: '400' },
             { id: '600', label: '加粗', value: '600' },
             { id: '700', label: '更粗', value: '700' }
+        ],
+        spacing: [
+            { id: 'n004', label: '-0.04', value: '-0.04em' },
+            { id: 'n002', label: '-0.02', value: '-0.02em' },
+            { id: '0', label: '0', value: '0em' },
+            { id: '002', label: '0.02', value: '0.02em' },
+            { id: '004', label: '0.04', value: '0.04em' },
+            { id: '006', label: '0.06', value: '0.06em' },
+            { id: '008', label: '0.08', value: '0.08em' }
         ],
         color: [
             { id: '000', label: '纯黑', value: '#000000' },
@@ -111,12 +120,12 @@
         var p = (location.pathname || '').toLowerCase();
         if (p.indexOf('xiangqing') !== -1) {
             return (
-                '先点区域再调字号/粗细/颜色。「信息标签」为左侧带冒号字段，「信息数值」为右侧金额与文字；' +
+                '先点区域再调字号/粗细/间距/颜色。「信息标签」为左侧带冒号字段，「信息数值」为右侧金额与文字；' +
                 '「扣除标签」「扣除数值」同理。全局为各区域默认，可被分区覆盖。'
             );
         }
         return (
-            '先点区域再调字号。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
+            '先点区域再调字号/间距等。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
         );
     }
 
@@ -162,6 +171,7 @@
                     all: {
                         size: raw.size || undefined,
                         weight: raw.weight || undefined,
+                        spacing: raw.spacing || undefined,
                         color: raw.color || undefined
                     }
                 }
@@ -171,7 +181,7 @@
     }
 
     function targetHasStyle(t) {
-        return !!(t && (t.size || t.weight || t.color));
+        return !!(t && (t.size || t.weight || t.spacing || t.color));
     }
 
     function configIsEmpty(cfg) {
@@ -217,6 +227,8 @@
         else if (patch.size) cur.size = patch.size;
         if (patch.weight === null) delete cur.weight;
         else if (patch.weight) cur.weight = patch.weight;
+        if (patch.spacing === null) delete cur.spacing;
+        else if (patch.spacing) cur.spacing = patch.spacing;
         if (patch.color === null) delete cur.color;
         else if (patch.color) cur.color = patch.color;
         if (!targetHasStyle(cur)) {
@@ -237,6 +249,7 @@
         var eff = {};
         if (regional.size || global.size) eff.size = regional.size || global.size;
         if (regional.weight || global.weight) eff.weight = regional.weight || global.weight;
+        if (regional.spacing || global.spacing) eff.spacing = regional.spacing || global.spacing;
         if (regional.color || global.color) eff.color = regional.color || global.color;
         return eff;
     }
@@ -373,6 +386,7 @@
             }
         }
         if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
+        if (t.spacing) decl.push('letter-spacing:' + t.spacing + ' !important');
         if (t.color) decl.push('color:' + t.color + ' !important');
         return decl;
     }
@@ -578,6 +592,7 @@
 
         addPresetGroup('字号', 'size', false);
         addPresetGroup('粗细', 'weight', false);
+        addPresetGroup('字间距', 'spacing', false);
         addPresetGroup('颜色', 'color', true);
 
         var clearTargetBtn = document.createElement('button');
