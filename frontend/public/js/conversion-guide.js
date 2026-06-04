@@ -11,7 +11,6 @@
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
   var MAINT_MSG_DISMISS_KEY = 'cg_maint_msg_dismissed';
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
-  var SHOUYE_RETENTION_DISMISS_KEY = 'cg_shouye_retention_dismissed';
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
   var EDIT_HINT = '数据可随时在「我要咨询 → 税务记录」中修改或补充。';
@@ -1138,8 +1137,9 @@
     }
   }
 
-  function removeLegacyShouyeRetentionCard() {
-    /* 保留 cg-shouye-retention（阶段 4 二次使用卡片） */
+  function removeShouyeRetentionCard() {
+    var card = document.getElementById('cg-shouye-retention');
+    if (card && card.parentNode) card.parentNode.removeChild(card);
   }
 
   function removeShouyeTaxManageEntry() {
@@ -1152,51 +1152,7 @@
   }
 
   function renderShouyeRetentionCard() {
-    if (currentPage() !== 'shouye.html') return;
-    if (!isLoggedIn() || !hasTaxRecords()) return;
-    if (document.getElementById('cg-shouye-retention')) return;
-    try {
-      if (localStorage.getItem(SHOUYE_RETENTION_DISMISS_KEY) === '1') return;
-    } catch (e) {
-      return;
-    }
-    ensureGateStyles();
-    var content = document.querySelector('.shouye-content');
-    if (!content) return;
-    var lastYear = new Date().getFullYear() - 1;
-    var card = document.createElement('div');
-    card.id = 'cg-shouye-retention';
-    card.className = 'cg-shouye-card';
-    card.innerHTML =
-      '<h4>您的演示数据已就绪</h4>' +
-      '<p>查看收入汇总或纳税记录效果。' +
-      EDIT_HINT +
-      '</p>' +
-      '<div>' +
-      '<a class="cg-btn cg-btn-primary" id="cgShouyeGoLastYear" href="shuiming_result.html?year=' +
-      encodeURIComponent(String(lastYear)) +
-      '">查看去年汇总</a>' +
-      '<a class="cg-btn cg-btn-outline" href="najilu.html">纳税记录预览</a>' +
-      '<button type="button" class="cg-btn cg-btn-outline" id="cgShouyeRetentionDismiss" style="margin-left:8px;border-color:#ccc;color:#888;">关闭</button>' +
-      '</div>';
-    content.insertBefore(card, content.firstChild);
-    track('track_conversion_shouye_retention_shown', {});
-    var goLast = document.getElementById('cgShouyeGoLastYear');
-    if (goLast) {
-      goLast.addEventListener('click', function () {
-        track('track_conversion_shouye_retention_detail', { year: lastYear });
-      });
-    }
-    var dismiss = document.getElementById('cgShouyeRetentionDismiss');
-    if (dismiss) {
-      dismiss.onclick = function () {
-        track('track_conversion_shouye_retention_dismiss', {});
-        try {
-          localStorage.setItem(SHOUYE_RETENTION_DISMISS_KEY, '1');
-        } catch (e2) {}
-        if (card.parentNode) card.parentNode.removeChild(card);
-      };
-    }
+    removeShouyeRetentionCard();
   }
 
   function prependMaintenanceMessages(list) {
