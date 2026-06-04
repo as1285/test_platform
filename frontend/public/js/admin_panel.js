@@ -3117,8 +3117,8 @@
                                 esc(row.city || '') +
                                 '</td><td class="cell-break">' +
                                 esc(row.user_agent || '—') +
-                                '</td><td>' +
-                                esc(row.reason_label || row.reason_key || '—') +
+                                '</td><td class="cell-break">' +
+                                esc(row.reason_display || row.reason_label || row.reason_key || '—') +
                                 '</td></tr>';
                         });
                         document.getElementById('userLoginLogTbody').innerHTML =

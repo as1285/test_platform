@@ -244,6 +244,8 @@ CREATE TABLE IF NOT EXISTS user_login_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
     ok TINYINT(1) NOT NULL DEFAULT 1,
+    reason VARCHAR(120) NULL COMMENT '登录结果原因分类',
+    reason_detail VARCHAR(255) NULL COMMENT '失败时的原始错误信息',
     ip VARCHAR(128) NULL,
     city VARCHAR(255) NULL,
     user_agent VARCHAR(512) NULL,

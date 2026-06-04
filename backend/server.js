@@ -1217,6 +1217,7 @@ async function createTables() {
       username VARCHAR(255) NOT NULL,
       ok TINYINT(1) NOT NULL DEFAULT 1,
       reason VARCHAR(120) NULL,
+      reason_detail VARCHAR(255) NULL COMMENT '失败时的原始错误信息',
       ip VARCHAR(128) NULL,
       city VARCHAR(255) NULL,
       user_agent VARCHAR(512) NULL,
@@ -1229,6 +1230,15 @@ async function createTables() {
   try {
     await conn.execute(`
       ALTER TABLE user_login_events ADD COLUMN reason VARCHAR(120) NULL COMMENT '登录结果原因'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE user_login_events ADD COLUMN reason_detail VARCHAR(255) NULL COMMENT '失败时的原始错误信息'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
@@ -2967,6 +2977,8 @@ async function registerUser(username, password, registerSourceChannel) {
 }
 
 async function loginUser(username, password) {
+  if (username != null && typeof username !== 'string') username = String(username);
+  if (password != null && typeof password !== 'string') password = String(password);
   var u = validateUsername(username);
   if (u) throw new Error(u);
   if (!password) throw new Error('请输入密码');
@@ -4502,11 +4514,21 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   var clientId = ex && ex.client_id ? String(ex.client_id).substring(0, 128) : null;
   var uaDisp = displayUserAgentFromDevice(req);
   var reasonKey = sanitizeAuditText(ok ? 'ok' : normalizeUserLoginFailReason(reason), 120);
+  var reasonDetail = ok ? null : sanitizeAuditText(reason != null ? String(reason) : '', 255) || null;
   const conn = await pool.getConnection();
   try {
     await conn.execute(
-      `INSERT INTO user_login_events (username, ok, reason, ip, city, user_agent, device_fp) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [uname, ok ? 1 : 0, reasonKey || null, ip.substring(0, 128), city.substring(0, 255), ua.substring(0, 512), fp]
+      `INSERT INTO user_login_events (username, ok, reason, reason_detail, ip, city, user_agent, device_fp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uname,
+        ok ? 1 : 0,
+        reasonKey || null,
+        reasonDetail,
+        ip.substring(0, 128),
+        city.substring(0, 255),
+        ua.substring(0, 512),
+        fp
+      ]
     );
     if (ok) {
       await conn.execute(
@@ -4536,7 +4558,12 @@ function normalizeUserLoginFailReason(rawMsg) {
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
-  if (msg.indexOf('账号仅支持') >= 0 || msg.indexOf('账号长度') >= 0 || msg.indexOf('请输入账号') >= 0) {
+  if (
+    msg.indexOf('账号仅支持') >= 0 ||
+    msg.indexOf('账号长度') >= 0 ||
+    msg.indexOf('请输入账号') >= 0 ||
+    msg.indexOf('账号不能为空') >= 0
+  ) {
     return 'invalid_username';
   }
   return 'other_error';
@@ -4545,6 +4572,21 @@ function normalizeUserLoginFailReason(rawMsg) {
 function userLoginReasonLabel(reason) {
   var k = String(reason || '').trim();
   return USER_LOGIN_REASON_LABELS[k] || k || '未知错误';
+}
+
+function userLoginReasonDisplayLabel(reasonKey, reasonDetail) {
+  var label = userLoginReasonLabel(reasonKey);
+  var detail = reasonDetail != null ? String(reasonDetail).trim() : '';
+  if (!detail || String(reasonKey || '').trim() === 'ok') {
+    return label;
+  }
+  if (detail === label) {
+    return label;
+  }
+  if (String(reasonKey || '').trim() === 'other_error' || String(reasonKey || '').trim() === 'unknown_error') {
+    return label + '（' + detail + '）';
+  }
+  return label;
 }
 
 function userLoginReasonKeysForFuzzyQuery(q) {
@@ -11826,7 +11868,7 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       var offset = Math.max(0, ((page - 1) * limit) | 0);
       var limInt = limit | 0;
       const [rows] = await conn.query(
-        'SELECT username, ok, reason, ip, city, user_agent, created_at FROM user_login_events ' +
+        'SELECT username, ok, reason, reason_detail, ip, city, user_agent, created_at FROM user_login_events ' +
           whereSql +
           ' ' +
           'ORDER BY id DESC LIMIT ' +
@@ -11842,11 +11884,15 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
         code: 200,
         data: {
           items: rows.map(function (r) {
+            var reasonKey = r.reason != null ? String(r.reason) : '';
+            var reasonDetail = r.reason_detail != null ? String(r.reason_detail) : '';
             return {
               username: String(r.username),
               ok: !!(r.ok === 1 || r.ok === true),
-              reason_key: r.reason != null ? String(r.reason) : '',
+              reason_key: reasonKey,
               reason_label: userLoginReasonLabel(r.reason),
+              reason_detail: reasonDetail,
+              reason_display: userLoginReasonDisplayLabel(reasonKey, reasonDetail),
               ip: r.ip != null ? String(r.ip) : '',
               city: r.city != null ? String(r.city) : '',
               user_agent: r.user_agent != null ? String(r.user_agent) : '',
