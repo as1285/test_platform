@@ -714,7 +714,7 @@
 <body>
     <div class="header">
         <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回个人中心</span></a>
-        <button type="button" class="header-activate-btn" id="btnHeaderActivate" aria-label="添加QQ号">添加QQ号</button>
+        <button type="button" class="header-activate-btn" id="btnHeaderActivate" aria-label="添加QQ群">添加QQ群</button>
         <h1>个人中心</h1>
         <p class="header-promo">招代理，请添加QQ498771018</p>
     </div>
@@ -1511,7 +1511,7 @@
         }
 
         var consultXianyuPurchaseUrl = '';
-        var consultQqAddUrl = '';
+        var consultQqGroupUrl = '';
 
         function refreshConsultInstallPackageUrls() {
             return fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -1524,33 +1524,45 @@
                             body.data.xianyu_purchase_url != null
                                 ? String(body.data.xianyu_purchase_url).trim()
                                 : '';
-                        consultQqAddUrl =
-                            body.data.qq_add_url != null ? String(body.data.qq_add_url).trim() : '';
+                        consultQqGroupUrl =
+                            body.data.qq_group_url != null ? String(body.data.qq_group_url).trim() : '';
                     } else {
                         consultXianyuPurchaseUrl = '';
-                        consultQqAddUrl = '';
+                        consultQqGroupUrl = '';
                     }
                 })
                 .catch(function () {
                     consultXianyuPurchaseUrl = '';
-                    consultQqAddUrl = '';
+                    consultQqGroupUrl = '';
                 });
         }
 
-        function openConsultQqAddUrl() {
+        function openConsultQqGroupUrl() {
+            if (
+                window.ConversionGuide &&
+                typeof window.ConversionGuide.openQqGroup === 'function' &&
+                window.ConversionGuide.getQqGroupUrl &&
+                window.ConversionGuide.getQqGroupUrl()
+            ) {
+                window.ConversionGuide.openQqGroup('consult_header');
+                return;
+            }
             var openUrl = function (u) {
                 if (!u) {
-                    alert('暂未配置 QQ 添加链接，请在管理后台「系统设置」中填写');
+                    alert('暂未配置 QQ 加群链接，请在管理后台「系统设置」中填写');
                     return;
+                }
+                if (typeof window.trackUserAction === 'function') {
+                    window.trackUserAction('track_qq_group_click', { page: 'consult', source: 'header' });
                 }
                 window.open(u, '_blank', 'noopener,noreferrer');
             };
-            if (consultQqAddUrl) {
-                openUrl(consultQqAddUrl);
+            if (consultQqGroupUrl) {
+                openUrl(consultQqGroupUrl);
                 return;
             }
             refreshConsultInstallPackageUrls().then(function () {
-                openUrl(consultQqAddUrl);
+                openUrl(consultQqGroupUrl);
             });
         }
 
@@ -4916,10 +4928,7 @@
         }
 
         document.getElementById('btnHeaderActivate').addEventListener('click', function () {
-            if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_qq_add_click', { page: 'consult', source: 'header' });
-            }
-            openConsultQqAddUrl();
+            openConsultQqGroupUrl();
         });
 
         (function bindConsultActivateModal() {
