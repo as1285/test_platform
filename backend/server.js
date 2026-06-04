@@ -206,6 +206,7 @@ const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
 /** 个人中心顶栏「添加QQ号」外链 */
 const SETTING_KEY_QQ_ADD_URL = 'qq_add_url';
+const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 
@@ -441,12 +442,13 @@ async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?)',
+      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?, ?)',
       [
         SETTING_KEY_ANDROID_APK,
         SETTING_KEY_IOS_MOBILECONFIG,
         SETTING_KEY_XIANYU_PURCHASE,
-        SETTING_KEY_QQ_ADD_URL
+        SETTING_KEY_QQ_ADD_URL,
+        SETTING_KEY_QQ_GROUP_URL
       ]
     );
     var map = {};
@@ -458,7 +460,9 @@ async function getInstallPackageSettingsFromDb() {
     var xianyu =
       map[SETTING_KEY_XIANYU_PURCHASE] != null ? String(map[SETTING_KEY_XIANYU_PURCHASE]).trim() : '';
     var qq = map[SETTING_KEY_QQ_ADD_URL] != null ? String(map[SETTING_KEY_QQ_ADD_URL]).trim() : '';
-    return { android: android, ios: ios, xianyu: xianyu, qq: qq };
+    var qqGroup =
+      map[SETTING_KEY_QQ_GROUP_URL] != null ? String(map[SETTING_KEY_QQ_GROUP_URL]).trim() : '';
+    return { android: android, ios: ios, xianyu: xianyu, qq: qq, qq_group: qqGroup };
   } finally {
     conn.release();
   }
@@ -1173,6 +1177,10 @@ async function createTables() {
   ]);
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_QQ_ADD_URL,
+    ''
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_QQ_GROUP_URL,
     ''
   ]);
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
@@ -9049,6 +9057,7 @@ async function handleAdminSettingsGet(req, res) {
         ios_mobileconfig_download_url: installRaw.ios,
         xianyu_purchase_url: installRaw.xianyu,
         qq_add_url: sanitizeInstallDownloadUrl(installRaw.qq),
+        qq_group_url: sanitizeInstallDownloadUrl(installRaw.qq_group),
         wechat_pay_qrcode_url: qrRef,
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
         conversion_ab: conversionAb
@@ -9067,12 +9076,22 @@ async function handleAdminSettingsPost(req, res) {
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
   var hasQqAdd = Object.prototype.hasOwnProperty.call(body, 'qq_add_url');
+  var hasQqGroup = Object.prototype.hasOwnProperty.call(body, 'qq_group_url');
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
   var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
-  if (!hasMineUi && !hasAndroid && !hasIos && !hasXianyu && !hasQqAdd && !hasWechatPayQr && !hasConversionAb) {
+  if (
+    !hasMineUi &&
+    !hasAndroid &&
+    !hasIos &&
+    !hasXianyu &&
+    !hasQqAdd &&
+    !hasQqGroup &&
+    !hasWechatPayQr &&
+    !hasConversionAb
+  ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加/加群链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -9199,6 +9218,22 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasQqGroup) {
+      var rawQqGroup = body.qq_group_url;
+      var okQqGroup = sanitizeInstallDownloadUrl(rawQqGroup);
+      if (rawQqGroup != null && String(rawQqGroup).trim() !== '' && !okQqGroup) {
+        return res.status(400).json({
+          code: 400,
+          msg: 'QQ 加群链接无效（请使用 http 或 https 完整链接）'
+        });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_QQ_GROUP_URL, okQqGroup]
+      );
+    }
+
     if (hasWechatPayQr) {
       var rawQr = body.wechat_pay_qrcode_url;
       var okQr = '';
@@ -9255,6 +9290,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.ios_mobileconfig_download_url = installAfter.ios;
     outData.xianyu_purchase_url = installAfter.xianyu;
     outData.qq_add_url = sanitizeInstallDownloadUrl(installAfter.qq);
+    outData.qq_group_url = sanitizeInstallDownloadUrl(installAfter.qq_group);
     var qrAfter = await getWechatPayQrcodeUrl();
     outData.wechat_pay_qrcode_url = qrAfter;
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
@@ -9285,13 +9321,15 @@ async function handlePublicInstallPackages(req, res) {
     var ios = sanitizeInstallDownloadUrl(raw.ios);
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = sanitizeInstallDownloadUrl(raw.qq);
+    var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
     return res.json({
       code: 200,
       data: {
         android_apk_download_url: android,
         ios_mobileconfig_download_url: ios,
         xianyu_purchase_url: xianyu,
-        qq_add_url: qq
+        qq_add_url: qq,
+        qq_group_url: qqGroup
       }
     });
   } catch (e) {
@@ -10759,7 +10797,8 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_activate_prompt_cancel',
   'track_activate_prompt_confirm',
   'track_xianyu_purchase_click',
-  'track_qq_add_click'
+  'track_qq_add_click',
+  'track_qq_group_click'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -10768,7 +10807,7 @@ ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
 });
 
 var ACTIVATE_TRACK_EVENT_SQL =
-  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click' OR route_key LIKE '%#track_qq_add_click')";
+  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click' OR route_key LIKE '%#track_qq_add_click' OR route_key LIKE '%#track_qq_group_click')";
 
 function isActivateTrackEventKey(eventKey) {
   return !!ACTIVATE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
@@ -10780,7 +10819,8 @@ function activateTrackEventLabel(eventKey) {
     track_activate_prompt_cancel: '激活弹窗-取消',
     track_activate_prompt_confirm: '激活弹窗-确定',
     track_xianyu_purchase_click: '闲鱼购买',
-    track_qq_add_click: '添加QQ号'
+    track_qq_add_click: '添加QQ号',
+    track_qq_group_click: '加入QQ群'
   };
   return labels[eventKey] || eventKey;
 }

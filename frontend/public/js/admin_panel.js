@@ -1439,6 +1439,9 @@
             if (k === 'track_qq_add_click' || k === 'track_consult_qq_add_click') {
                 return { button: '添加QQ号', page: '我的/我要咨询（顶栏或咨询修改弹窗）' };
             }
+            if (k === 'track_qq_group_click') {
+                return { button: '加入QQ群', page: '激活成功/填税完成/消息/帮助页等' };
+            }
             if (k.indexOf('track_jump_') === 0) {
                 var raw = k.substring('track_jump_'.length);
                 if (raw === '_history_back__' || raw === '__history_back__') {
@@ -2163,7 +2166,8 @@
             'track_activate_prompt_cancel',
             'track_activate_prompt_confirm',
             'track_xianyu_purchase_click',
-            'track_qq_add_click'
+            'track_qq_add_click',
+            'track_qq_group_click'
         ];
 
         function activateDateDomKey(dateStr) {
@@ -5873,6 +5877,10 @@
                         if (qqEl && data.data.qq_add_url != null) {
                             qqEl.value = String(data.data.qq_add_url);
                         }
+                        var qqGroupEl = document.getElementById('qqGroupUrl');
+                        if (qqGroupEl && data.data.qq_group_url != null) {
+                            qqGroupEl.value = String(data.data.qq_group_url);
+                        }
                         var ab = data.data.conversion_ab;
                         if (ab) {
                             var enEl = document.getElementById('convAbEnabled');
@@ -5953,6 +5961,35 @@
                     btn.disabled = false;
                 });
         });
+        var btnSaveQqGroupUrl = document.getElementById('btnSaveQqGroupUrl');
+        if (btnSaveQqGroupUrl) {
+            btnSaveQqGroupUrl.addEventListener('click', function () {
+                var btn = btnSaveQqGroupUrl;
+                var url = document.getElementById('qqGroupUrl').value.trim();
+                btn.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ qq_group_url: url })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('QQ 加群链接已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
         var btnSaveConversionAb = document.getElementById('btnSaveConversionAb');
         if (btnSaveConversionAb) {
             btnSaveConversionAb.addEventListener('click', function () {
