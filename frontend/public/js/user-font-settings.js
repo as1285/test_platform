@@ -512,6 +512,7 @@
             if (hasCustom) chip.classList.add('has-custom');
             chip.textContent = role.label;
             chip.addEventListener('click', function (e) {
+                e.preventDefault();
                 e.stopPropagation();
                 runtimeCfg.activeTarget = role.id;
                 commitConfig(runtimeCfg, { refreshPanel: true });
@@ -663,6 +664,7 @@
         }
         panel.addEventListener('click', stopPanelEvent);
         panel.addEventListener('touchstart', stopPanelEvent, { passive: true });
+        panel.addEventListener('pointerdown', stopPanelEvent);
 
         host.appendChild(panel);
         refreshPanelUi(host, runtimeCfg);
@@ -677,14 +679,13 @@
         if (host.getAttribute('data-ufs-outside-bound') === '1') return;
         host.setAttribute('data-ufs-outside-bound', '1');
 
-        function onOutsidePointer(e) {
+        document.addEventListener('click', function (e) {
             if (!host.classList.contains('is-open')) return;
-            if (host.contains(e.target)) return;
+            var t = e.target;
+            if (!t || typeof t.closest !== 'function') return;
+            if (t.closest('#ufs-host')) return;
             closeFontPanel();
-        }
-
-        document.addEventListener('pointerdown', onOutsidePointer, true);
-        document.addEventListener('click', onOutsidePointer, true);
+        });
     }
 
     function bindHeaderRightRestore() {
