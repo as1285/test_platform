@@ -213,7 +213,7 @@ const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 const DEFAULT_CONVERSION_AB = {
   enabled: true,
   activate_title_a: '请输入激活码',
-  activate_subtitle_a: '激活后可填写个税演示数据',
+  activate_subtitle_a: '激活后去除水印',
   activate_title_b: '输入激活码，解锁完整功能',
   activate_subtitle_b: '永久使用，不限制设备',
   batch_example_prominent: false
@@ -6599,6 +6599,9 @@ async function loadConversionAbParsed() {
     var merged = Object.assign({}, DEFAULT_CONVERSION_AB, parsed && typeof parsed === 'object' ? parsed : {});
     if (merged.activate_subtitle_b === '30秒体验收入纳税明细') {
       merged.activate_subtitle_b = DEFAULT_CONVERSION_AB.activate_subtitle_b;
+    }
+    if (merged.activate_subtitle_a === '激活后可填写个税演示数据') {
+      merged.activate_subtitle_a = DEFAULT_CONVERSION_AB.activate_subtitle_a;
     }
     return merged;
   } catch (e) {
