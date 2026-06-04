@@ -1934,7 +1934,6 @@
             }
             if (pageKey === 'user-behavior' && !_adminUserBehaviorLoaded) {
                 _adminUserBehaviorLoaded = true;
-                renderNoTaxScriptTemplates();
                 loadNoTaxBehaviorList(1);
             }
             if (pageKey === 'activated-user-analysis' && !_adminActivatedUserAnalysisLoaded) {
@@ -3607,60 +3606,6 @@
                 .catch(function () {
                     el.textContent = '列表加载失败';
                 });
-        }
-
-        var NO_TAX_OUTREACH_SCRIPTS = [
-            {
-                title: '温和提醒（已激活未填税）',
-                text: '您好，看到您已激活账号但还没添加个税演示数据。在 APP「我要咨询」→ 税务记录里点「示例填写」，约 30 秒即可生成，然后在「收入纳税明细」查看效果。如需激活码或操作帮助请回复我。'
-            },
-            {
-                title: '针对逛过明细页',
-                text: '您好，您已打开过收入纳税明细，当前还没有演示数据。请进入「我要咨询」→「示例填写」→「一键生成税务记录」，生成后刷新明细即可看到完整效果。'
-            },
-            {
-                title: '未激活用户',
-                text: '您好，您的账号尚未激活。请在「我的」页点击「激活」输入激活码；若无激活码可通过闲鱼购买或添加客服 QQ 获取。激活后即可填写个税演示数据。'
-            }
-        ];
-
-        function renderNoTaxScriptTemplates() {
-            var wrap = document.getElementById('udNoTaxScriptTemplates');
-            if (!wrap) return;
-            var html = '';
-            NO_TAX_OUTREACH_SCRIPTS.forEach(function (item, idx) {
-                html +=
-                    '<div style="margin-bottom:12px;padding:10px 12px;background:#fff;border-radius:8px;border:1px solid #e8eef5;">';
-                html += '<div style="font-weight:600;margin-bottom:6px;">' + esc(item.title) + '</div>';
-                html +=
-                    '<p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#444;white-space:pre-wrap;">' +
-                    esc(item.text) +
-                    '</p>';
-                html +=
-                    '<button type="button" class="btn-page btn-copy-no-tax-script" data-idx="' +
-                    idx +
-                    '">复制话术</button></div>';
-            });
-            wrap.innerHTML = html;
-            wrap.querySelectorAll('.btn-copy-no-tax-script').forEach(function (btn) {
-                btn.onclick = function () {
-                    var i = parseInt(btn.getAttribute('data-idx'), 10);
-                    var t = NO_TAX_OUTREACH_SCRIPTS[i] ? NO_TAX_OUTREACH_SCRIPTS[i].text : '';
-                    if (!t) return;
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(t).then(
-                            function () {
-                                alert('已复制到剪贴板');
-                            },
-                            function () {
-                                alert(t);
-                            }
-                        );
-                    } else {
-                        alert(t);
-                    }
-                };
-            });
         }
 
         function exportNoTaxBehaviorCsv() {
