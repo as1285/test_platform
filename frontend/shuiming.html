@@ -739,7 +739,7 @@
             closePicker();
         });
         
-        // 查询（未激活也可进入结果页，仅展示水印）
+        // 查询（未激活也可进入结果页）
         function doQuery() {
             localStorage.setItem('selected_year', selectedYear);
             window.location.href = 'shuiming_result.html?year=' + selectedYear;
@@ -797,6 +797,5 @@
             });
         })();
     </script>
-    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

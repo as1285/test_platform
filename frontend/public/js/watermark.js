@@ -8,8 +8,6 @@
         try {
             var p = (window.location.pathname || '').toLowerCase();
             return (
-                p.endsWith('/shuiming.html') ||
-                p.endsWith('shuiming.html') ||
                 p.endsWith('/shuiming_result.html') ||
                 p.endsWith('shuiming_result.html')
             );
