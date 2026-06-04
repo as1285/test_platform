@@ -488,34 +488,6 @@
     }
 
     var captureHideButtonsBound = false;
-    var outsideClickBound = false;
-
-    function closePanel() {
-        if (panelHost) panelHost.classList.remove('is-open');
-    }
-
-    function bindOutsideClickToClose() {
-        if (outsideClickBound) return;
-        outsideClickBound = true;
-        document.addEventListener(
-            'click',
-            function (e) {
-                if (!panelHost || !panelHost.classList.contains('is-open')) return;
-                if (panelHost.contains(e.target)) return;
-                closePanel();
-            },
-            true
-        );
-        document.addEventListener(
-            'touchstart',
-            function (e) {
-                if (!panelHost || !panelHost.classList.contains('is-open')) return;
-                if (panelHost.contains(e.target)) return;
-                closePanel();
-            },
-            { capture: true, passive: true }
-        );
-    }
 
     function refreshPanelUi(host, cfg) {
         if (!panelUi) return;
@@ -644,7 +616,7 @@
         closePanelBtn.textContent = '收起面板';
         closePanelBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            closePanel();
+            host.classList.remove('is-open');
         });
         panel.appendChild(closePanelBtn);
 
@@ -658,7 +630,7 @@
         hideNowBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             setManualFabHidden(true);
-            closePanel();
+            host.classList.remove('is-open');
             showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
         });
         actions.appendChild(hideNowBtn);
@@ -672,7 +644,7 @@
             e.stopPropagation();
             runtimeCfg = normalizeConfig(null);
             commitConfig(runtimeCfg);
-            closePanel();
+            host.classList.remove('is-open');
         });
         panel.appendChild(resetBtn);
 
@@ -695,6 +667,24 @@
         host.appendChild(panel);
         refreshPanelUi(host, runtimeCfg);
         return panel;
+    }
+
+    function closeFontPanel() {
+        if (panelHost) panelHost.classList.remove('is-open');
+    }
+
+    function bindPanelOutsideClose(host) {
+        if (host.getAttribute('data-ufs-outside-bound') === '1') return;
+        host.setAttribute('data-ufs-outside-bound', '1');
+
+        function onOutsidePointer(e) {
+            if (!host.classList.contains('is-open')) return;
+            if (host.contains(e.target)) return;
+            closeFontPanel();
+        }
+
+        document.addEventListener('pointerdown', onOutsidePointer, true);
+        document.addEventListener('click', onOutsidePointer, true);
     }
 
     function bindHeaderRightRestore() {
@@ -732,7 +722,7 @@
 
         bindLongPress(fab, 600, function () {
             setManualFabHidden(true);
-            closePanel();
+            host.classList.remove('is-open');
             showToast('已隐藏；点击「' + getRestoreLinkLabel() + '」可恢复');
         });
 
@@ -759,7 +749,7 @@
         markScope();
         syncFabVisibility();
         bindHeaderRightRestore();
-        bindOutsideClickToClose();
+        bindPanelOutsideClose(host);
 
         if (!captureHideButtonsBound) {
             captureHideButtonsBound = true;
