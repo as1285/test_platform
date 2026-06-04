@@ -6403,7 +6403,7 @@ function userLoginRiskMatchSql(usernameExpr) {
 
 async function handleAdminUsersDailyConversion(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 7;
+    var days = parseInt(req.query.days, 10) || 1;
     if (days < 1) days = 1;
     if (days > 90) days = 90;
     var span = days - 1;

@@ -3634,7 +3634,7 @@
                 analyticsConvPage = 1;
             }
             var daysEl = document.getElementById('analyticsConversionDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '转化率加载中…';
             adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(days))
                 .then(function (r) { return r.json(); })
