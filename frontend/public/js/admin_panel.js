@@ -3031,7 +3031,39 @@
                 });
         }
 
+        var USER_LOGIN_REASON_FILTER_OPTIONS = [
+            { key: 'ok', label: '成功' },
+            { key: 'invalid_credentials', label: '账号或密码错误' },
+            { key: 'empty_password', label: '密码为空' },
+            { key: 'account_banned', label: '账号已封禁' },
+            { key: 'invalid_username', label: '账号格式错误' },
+            { key: 'other_error', label: '其他错误' },
+            { key: 'unknown_error', label: '未知错误' },
+            { key: 'register_ok', label: '注册成功' },
+            { key: 'register_fail:duplicate', label: '注册-账号已存在' },
+            { key: 'register_fail:rate_burst', label: '注册-频率过快' },
+            { key: 'register_fail:rate_ip_day', label: '注册-IP日上限' },
+            { key: 'register_fail:rate_fp_day', label: '注册-设备日上限' },
+            { key: 'register_fail:backoff', label: '注册-失败退避' },
+            { key: 'register_fail:captcha', label: '注册-验证码错误' },
+            { key: 'register_fail:invalid_client', label: '注册-非官方客户端' },
+            { key: 'register_fail:validation', label: '注册-参数校验失败' }
+        ];
+
+        function initUserLoginLogReasonFilter() {
+            var sel = document.getElementById('userLoginLogReasonFilter');
+            if (!sel || sel.getAttribute('data-inited') === '1') return;
+            sel.setAttribute('data-inited', '1');
+            USER_LOGIN_REASON_FILTER_OPTIONS.forEach(function (opt) {
+                var o = document.createElement('option');
+                o.value = opt.key;
+                o.textContent = opt.label;
+                sel.appendChild(o);
+            });
+        }
+
         function loadUserLoginRecentPage(page) {
+            initUserLoginLogReasonFilter();
             if (page != null && isFinite(page)) {
                 userLoginPage = Math.max(1, parseInt(page, 10) || 1);
             }
@@ -6919,6 +6951,12 @@
             userLoginLimit = parseInt(document.getElementById('userLoginLogPageSize').value, 10) || 20;
             loadUserLoginRecentPage(1);
         });
+        var userLoginLogReasonFilter = document.getElementById('userLoginLogReasonFilter');
+        if (userLoginLogReasonFilter) {
+            userLoginLogReasonFilter.addEventListener('change', function () {
+                loadUserLoginRecentPage(1);
+            });
+        }
 
         document.getElementById('feedbackAdminTbody').addEventListener('click', function (e) {
             var b = e.target.closest('button[data-feedback-id]');

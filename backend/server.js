@@ -4535,6 +4535,17 @@ function appendUserLoginReasonFuzzyFilter(whereClauses, params, qReason) {
   whereClauses.push('(' + parts.join(' OR ') + ')');
 }
 
+function appendUserLoginReasonFilter(whereClauses, params, qReason) {
+  qReason = qReason != null ? String(qReason).trim() : '';
+  if (!qReason) return;
+  if (Object.prototype.hasOwnProperty.call(USER_LOGIN_REASON_LABELS, qReason)) {
+    whereClauses.push('reason = ?');
+    params.push(qReason);
+    return;
+  }
+  appendUserLoginReasonFuzzyFilter(whereClauses, params, qReason);
+}
+
 const USER_LOGIN_REASON_LABELS = {
   ok: '成功',
   empty_password: '密码为空',
@@ -11724,7 +11735,7 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
       where.push('ok = ?');
       params.push(qOk === '1' ? 1 : 0);
     }
-    appendUserLoginReasonFuzzyFilter(where, params, qReason);
+    appendUserLoginReasonFilter(where, params, qReason);
     if (!req.admin || !req.admin.is_super) {
       where.push(
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = user_login_events.username AND ac.owner_admin_username = ?)'
