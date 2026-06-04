@@ -3472,7 +3472,7 @@
             }
             var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">激活后 7 日个税填写率</div><div class="ud-val">' +
+                '<div class="user-data-stat-card"><div class="ud-label">激活后 1 日个税填写率</div><div class="ud-val">' +
                 esc(data.rate_tax_after_activate_7d_pct || '—') +
                 '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
                 esc(data.tax_within_7d_after_activate) +
@@ -3480,7 +3480,7 @@
                 esc(data.activated_in_window) +
                 ' 人</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">有个税后 7 日明细查看率</div><div class="ud-val">' +
+                '<div class="user-data-stat-card"><div class="ud-label">有个税后 1 日明细查看率</div><div class="ud-val">' +
                 esc(data.rate_detail_after_tax_7d_pct || '—') +
                 '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
                 esc(data.viewed_detail_within_7d_after_tax) +
@@ -3490,9 +3490,9 @@
             html += '</div>';
 
             var actSeries = Array.isArray(data.series_by_activate_day) ? data.series_by_activate_day.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">按激活日：激活后 7 日个税填写率</p>';
+            html += '<p class="stat" style="margin:0 0 8px;">按激活日：激活后 1 日个税填写率</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
-            html += '<th>激活日</th><th>当日激活</th><th>7日内有个税</th><th>填写率</th></tr></thead><tbody>';
+            html += '<th>激活日</th><th>当日激活</th><th>1日内有个税</th><th>填写率</th></tr></thead><tbody>';
             if (!actSeries.length) {
                 html += '<tr><td colspan="4">暂无</td></tr>';
             } else {
@@ -3508,9 +3508,9 @@
             html += '</tbody></table></div>';
 
             var taxSeries = Array.isArray(data.series_by_first_tax_day) ? data.series_by_first_tax_day.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">按首次有个税日：有个税后 7 日明细查看率</p>';
+            html += '<p class="stat" style="margin:0 0 8px;">按首次有个税日：有个税后 1 日明细查看率</p>';
             html += '<div class="scroll-x"><table><thead><tr>';
-            html += '<th>有个税日</th><th>当日有个税</th><th>7日内看明细</th><th>查看率</th></tr></thead><tbody>';
+            html += '<th>有个税日</th><th>当日有个税</th><th>1日内看明细</th><th>查看率</th></tr></thead><tbody>';
             if (!taxSeries.length) {
                 html += '<tr><td colspan="4">暂无</td></tr>';
             } else {

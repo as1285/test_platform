@@ -6980,7 +6980,7 @@ async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
   }
 }
 
-/** 转化 KPI：激活后 7 日个税填写率、有个税后 7 日明细查看率 */
+/** 转化 KPI：激活后 1 日个税填写率、有个税后 1 日明细查看率 */
 async function handleAdminConversionKpis(req, res) {
   try {
     var days = parseInt(req.query.days, 10) || 30;
@@ -7007,7 +7007,7 @@ async function handleAdminConversionKpis(req, res) {
                   SELECT 1 FROM tax_records tr
                   WHERE tr.user_id = u.username
                     AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 168
+                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
                 ) THEN 1 ELSE 0 END) AS tax_within_7d
          FROM users u
          INNER JOIN activation_codes ac ON ac.used_by_username = u.username
@@ -7025,7 +7025,7 @@ async function handleAdminConversionKpis(req, res) {
                   SELECT 1 FROM user_page_events e
                   WHERE e.username = u.username
                     AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 168
+                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
                 ) THEN 1 ELSE 0 END) AS viewed_detail_7d
          FROM users u
          INNER JOIN (
@@ -7049,7 +7049,7 @@ async function handleAdminConversionKpis(req, res) {
                   SELECT 1 FROM tax_records tr
                   WHERE tr.user_id = u.username
                     AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 168
+                    AND TIMESTAMPDIFF(HOUR, ac.last_used_at, tr.created_at) BETWEEN 0 AND 24
                 ) THEN 1 ELSE 0 END) AS tax_within_7d
          FROM users u
          INNER JOIN activation_codes ac ON ac.used_by_username = u.username
@@ -7067,7 +7067,7 @@ async function handleAdminConversionKpis(req, res) {
                   SELECT 1 FROM user_page_events e
                   WHERE e.username = u.username
                     AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 168
+                    AND TIMESTAMPDIFF(HOUR, ft.first_tax_at, e.created_at) BETWEEN 0 AND 24
                 ) THEN 1 ELSE 0 END) AS viewed_detail_7d
          FROM users u
          INNER JOIN (
