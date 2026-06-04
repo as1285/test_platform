@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260601-shuiming-top-fix"></script>
+    <script src="/js/auth.js?v=20260604-shuiming-top-fix2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -36,15 +36,20 @@
             -moz-osx-font-smoothing: grayscale;
         }
         
-        /* 顶部导航 */
+        /* 顶部导航：默认贴顶固定，安全区仅在有 inset 时追加 */
         .header {
             background: #fff;
-            padding: calc(15px + env(safe-area-inset-top, 0px)) 16px 15px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 120;
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
             border-bottom: 1px solid #eee;
+            box-sizing: border-box;
         }
         
         .back-btn {
@@ -66,27 +71,17 @@
             color: #333;
         }
 
-        /* 顶栏铺满安全区白底，避免状态栏区露出空白（auth.js 亦按机型注入） */
-        html.app-top-safe-shell body.page-shuiming > .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 120;
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            padding-bottom: 15px;
-            box-sizing: border-box;
-        }
-
-        html.app-top-safe-shell body.page-shuiming > .content {
-            padding-top: calc(46px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-        }
-        
         /* 内容区域 */
         .content {
-            padding: 0 0 100px;
+            padding: calc(46px + env(safe-area-inset-top, 0px)) 0 100px;
+        }
+
+        html.app-cordova-shell.app-top-safe-shell body.page-shuiming > .header {
+            padding-top: calc(14px + var(--app-shell-statusbar-top, 48px));
+        }
+
+        html.app-cordova-shell.app-top-safe-shell body.page-shuiming > .content {
+            padding-top: calc(46px + var(--app-shell-statusbar-top, 48px));
         }
 
         /*
