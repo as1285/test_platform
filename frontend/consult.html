@@ -1894,15 +1894,20 @@
             } else {
                 o.id = editId;
             }
-            authFetch('api/tax.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'save_record',
-                    user_id: currentUserId(),
-                    record: o
+            apiFetchRecords()
+                .then(function (list) {
+                    o.tax_reported = computeSingleRecordTaxReported(o, list);
+                    document.getElementById('f_tax_reported').value = o.tax_reported;
+                    return authFetch('api/tax.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'save_record',
+                            user_id: currentUserId(),
+                            record: o
+                        })
+                    });
                 })
-            })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
@@ -1933,7 +1938,7 @@
                             return;
                         }
                     }
-                    showMsg(editId ? '记录已更新' : '记录已添加', true);
+                    showMsg(editId ? '记录已更新（已重算税额）' : '记录已添加（已重算税额）', true);
                 })
                 .catch(function (err) {
                     showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
@@ -4065,6 +4070,118 @@
                 }
             }
             return taxMap;
+        }
+
+        /** 单条记录：由表单字段推算当月应纳税所得额 */
+        function monthlyTaxableFromRecord(rec) {
+            var income = parseFloat(rec.income) || parseFloat(rec.income_this_period) || 0;
+            var taxFree = parseFloat(rec.tax_free_income) || 0;
+            var deductFee = parseFloat(rec.deduction_fee);
+            if (!isFinite(deductFee)) {
+                deductFee = 5000;
+            }
+            var spec = parseFloat(rec.special_deduction) || 0;
+            var other = parseFloat(rec.other_deduction) || 0;
+            var donation = parseFloat(rec.donation_deduction) || 0;
+            return round2(Math.max(0, income - taxFree - deductFee - spec - other - donation));
+        }
+
+        /** 已有各月应纳税所得额时，按累计预扣法算每月税额 */
+        function taxesMapFromMonthTaxableEntries(monthEntries) {
+            var taxMap = {};
+            var byYear = {};
+            var i;
+            for (i = 0; i < monthEntries.length; i++) {
+                var e = monthEntries[i];
+                if (!byYear[e.year]) {
+                    byYear[e.year] = [];
+                }
+                byYear[e.year].push({ month: e.month, taxable: e.taxable });
+            }
+            var years = Object.keys(byYear).map(function (x) {
+                return parseInt(x, 10);
+            });
+            years.sort(function (a, b) {
+                return a - b;
+            });
+            var yi;
+            for (yi = 0; yi < years.length; yi++) {
+                var y = years[yi];
+                var arr = byYear[y].slice().sort(function (a, b) {
+                    return a.month - b.month;
+                });
+                var prefix = [0];
+                var mi;
+                for (mi = 0; mi < arr.length; mi++) {
+                    prefix[mi + 1] = round2(prefix[mi] + (parseFloat(arr[mi].taxable) || 0));
+                }
+                for (mi = 0; mi < arr.length; mi++) {
+                    var mo = arr[mi].month;
+                    var taxM = round2(
+                        cumulativeTaxPayableFromCumulativeTaxable(prefix[mi + 1]) -
+                        cumulativeTaxPayableFromCumulativeTaxable(prefix[mi])
+                    );
+                    if (taxM < 0) {
+                        taxM = 0;
+                    }
+                    taxMap[y + '-' + pad2(mo)] = taxM;
+                }
+            }
+            return taxMap;
+        }
+
+        function recordMatchesSingleTaxCohort(rec, record) {
+            var year = parseInt(record.year, 10);
+            if (parseInt(rec.year, 10) !== year) {
+                return false;
+            }
+            if (String(rec.income_subtype || '').trim() === '全年一次性奖金收入') {
+                return false;
+            }
+            var companyTaxId = String(record.company_tax_id || '').trim();
+            var company = String(record.company_name || '').trim();
+            if (companyTaxId && String(rec.company_tax_id || '').trim() === companyTaxId) {
+                return true;
+            }
+            if (company && String(rec.company_name || '').trim() === company) {
+                return true;
+            }
+            return !companyTaxId && !company;
+        }
+
+        /** 单条添加/更新：按同年同单位累计预扣重算当月已申报税额 */
+        function computeSingleRecordTaxReported(record, allRecords) {
+            if (String(record.income_subtype || '').trim() === '全年一次性奖金收入') {
+                return String(yearEndBonusTaxSeparate(parseFloat(record.income) || 0));
+            }
+            var year = parseInt(record.year, 10);
+            var month = parseInt(record.month, 10);
+            if (!year || !month) {
+                return String(record.tax_reported != null ? record.tax_reported : '0.00');
+            }
+            var rid = String(record.id || '');
+            var merged = (allRecords || []).filter(function (r) {
+                return recordMatchesSingleTaxCohort(r, record) && String(r.id) !== rid;
+            });
+            merged.push(record);
+            var monthEntries = merged
+                .filter(function (r) {
+                    var m = parseInt(r.month, 10);
+                    return m >= 1 && m <= month;
+                })
+                .map(function (r) {
+                    return {
+                        year: year,
+                        month: parseInt(r.month, 10),
+                        taxable: monthlyTaxableFromRecord(r)
+                    };
+                })
+                .sort(function (a, b) {
+                    return a.month - b.month;
+                });
+            var taxMap = taxesMapFromMonthTaxableEntries(monthEntries);
+            var taxM = taxMap[year + '-' + pad2(month)];
+            return String(round2(taxM != null ? taxM : 0));
         }
 
         function batchEmpRandomSalaryInRange(minV, maxV) {
