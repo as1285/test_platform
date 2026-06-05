@@ -44,6 +44,7 @@
                 <div class="nav-group" data-nav-group="stats">
                     <div class="nav-group-label">数据统计</div>
                     <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
+                    <button type="button" class="nav-item" data-page="install-guide-stats" data-title="安装页统计">安装页统计</button>
                     <button type="button" class="nav-item" data-page="channel-analysis" data-title="渠道分析">渠道分析</button>
                     <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
                 </div>
@@ -1149,6 +1150,25 @@
                 <span id="feedbackAdminPageInfo">第 1 页</span>
                 <button type="button" class="btn-page" id="feedbackAdminNext">下一页</button>
             </div>
+        </section>
+                </div>
+
+                <div id="page-install-guide-stats" class="page-panel" role="tabpanel">
+        <section>
+            <h2>安装页访问统计</h2>
+            <p class="hint" style="margin-top:0;">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>及按钮/视频等行为。未登录用户通过 <code>client_id</code> 识别；离开页面时上报停留秒数。</p>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="installGuideStatsDays">统计天数</label>
+                    <select id="installGuideStatsDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新统计</button>
+            </div>
+            <div id="installGuideStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
         </section>
                 </div>
 

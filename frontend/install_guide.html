@@ -362,6 +362,36 @@
                 })
                 .catch(function () {});
         })();
+
+        (function installGuidePageAnalytics() {
+            if (typeof window.trackPublicAction !== 'function') {
+                return;
+            }
+            var startMs = Date.now();
+            var leaveSent = false;
+            function sendPageLeave() {
+                if (leaveSent) {
+                    return;
+                }
+                leaveSent = true;
+                var sec = Math.max(0, Math.round((Date.now() - startMs) / 1000));
+                if (sec > 86400) {
+                    sec = 86400;
+                }
+                window.trackPublicAction('track_install_page_leave', {
+                    page: 'install_guide',
+                    dwell_seconds: sec
+                });
+            }
+            window.trackPublicAction('track_install_page_view', { page: 'install_guide' });
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    sendPageLeave();
+                }
+            });
+            window.addEventListener('pagehide', sendPageLeave);
+            window.addEventListener('beforeunload', sendPageLeave);
+        })();
     </script>
 </body>
 </html>

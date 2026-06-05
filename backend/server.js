@@ -231,6 +231,7 @@ const ADMIN_MENU_KEYS = [
   'feedback',
   'login-log',
   'analytics',
+  'install-guide-stats',
   'channel-analysis',
   'api-analytics',
   'admin-accounts',
@@ -1338,6 +1339,23 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS install_guide_track_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      client_id VARCHAR(128) NULL,
+      device_fp CHAR(64) NULL,
+      event_key VARCHAR(80) NOT NULL,
+      dwell_seconds INT UNSIGNED NULL,
+      meta_json VARCHAR(1024) NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+      INDEX idx_created (created_at),
+      INDEX idx_event_created (event_key, created_at),
+      INDEX idx_client_created (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   var devCols = [
     "ALTER TABLE user_devices ADD COLUMN client_id VARCHAR(128) NULL COMMENT '客户端上报唯一 id'",
     'ALTER TABLE user_devices ADD COLUMN device_detail_json MEDIUMTEXT NULL COMMENT \'最近一次显式上报 JSON\'',
@@ -1419,6 +1437,11 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'install-guide-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
   );
 
   conn.release();
@@ -4326,6 +4349,87 @@ function recordUserPageEvent(req, routeKey) {
     });
 }
 
+var INSTALL_GUIDE_EVENT_LABELS = {
+  track_install_page_view: '页面浏览',
+  track_install_page_leave: '离开页面',
+  track_install_apk_click: 'Android 安装包点击',
+  track_install_ios_click: 'iOS 描述文件点击',
+  track_install_register_click: '注册入口点击',
+  track_install_ios_video_play: '苹果安装视频播放',
+  track_install_usage_video_play: '操作视频播放'
+};
+
+function isInstallGuideTrackContext(req, meta) {
+  var m = meta && typeof meta === 'object' ? meta : {};
+  if (String(m.page || '').trim() === 'install_guide') {
+    return true;
+  }
+  var pp = inferPagePathFromRequest(req);
+  return /install_guide\.html/i.test(pp);
+}
+
+function recordInstallGuideTrackEvent(req, action, meta) {
+  if (!pool) {
+    return;
+  }
+  var act = String(action || '').trim();
+  if (!/^track_[a-z0-9_]{1,80}$/i.test(act)) {
+    return;
+  }
+  if (!isInstallGuideTrackContext(req, meta) && !/^track_install_/i.test(act)) {
+    return;
+  }
+  var cid = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      cid = String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e0) {}
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var dwell = null;
+  if (meta && meta.dwell_seconds != null) {
+    var ds = parseInt(meta.dwell_seconds, 10);
+    if (isFinite(ds) && ds >= 0 && ds <= 86400) {
+      dwell = ds;
+    }
+  }
+  var metaJson = null;
+  try {
+    var mj = sanitizeAuditObjectTopLevel(meta);
+    if (mj) {
+      metaJson = JSON.stringify(mj).substring(0, 1024);
+    }
+  } catch (e1) {}
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  pool
+    .execute(
+      `INSERT INTO install_guide_track_events
+       (client_id, device_fp, event_key, dwell_seconds, meta_json, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [cid || null, fp || null, act.substring(0, 80), dwell, metaJson, ip || null, ua || null]
+    )
+    .catch(function (e) {
+      console.error('recordInstallGuideTrackEvent', e);
+    });
+}
+
+function installGuideEventLabel(eventKey) {
+  var k = String(eventKey || '').trim();
+  return INSTALL_GUIDE_EVENT_LABELS[k] || k;
+}
+
+function medianFromSortedNumbers(arr) {
+  if (!arr || !arr.length) {
+    return null;
+  }
+  var mid = Math.floor(arr.length / 2);
+  if (arr.length % 2 === 1) {
+    return arr[mid];
+  }
+  return Math.round((arr[mid - 1] + arr[mid]) / 2);
+}
+
 function touchUserDailyActivity(username) {
   if (!pool || username == null) {
     return;
@@ -5937,6 +6041,7 @@ async function handleAuthPost(req, res) {
   var action = body.action;
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      recordInstallGuideTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
     if (action === 'admin_issue_code') {
@@ -6955,6 +7060,152 @@ async function handleAdminActivationChannelFunnel(req, res) {
       });
 
       res.json({ code: 200, data: { days: days, items: items } });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** install_guide.html 访问、行为与停留统计 */
+async function handleAdminInstallGuideStats(req, res) {
+  try {
+    var days = parseInt(req.query.days, 10) || 30;
+    if (days < 1) days = 1;
+    if (days > 90) days = 90;
+    var span = days - 1;
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var cnSince = cnDay + ' >= DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL ? DAY)';
+    const conn = await pool.getConnection();
+    try {
+      const [viewRows] = await conn.query(
+        `SELECT COUNT(*) AS pv,
+                COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_page_view' AND ${cnSince}`,
+        [span]
+      );
+      const [leaveRows] = await conn.query(
+        `SELECT COUNT(*) AS leave_cnt, AVG(dwell_seconds) AS avg_dwell
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_page_leave'
+           AND dwell_seconds IS NOT NULL
+           AND ${cnSince}`,
+        [span]
+      );
+      const [dwellListRows] = await conn.query(
+        `SELECT dwell_seconds
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_page_leave'
+           AND dwell_seconds IS NOT NULL
+           AND ${cnSince}
+         ORDER BY dwell_seconds ASC`,
+        [span]
+      );
+      const [actionRows] = await conn.query(
+        `SELECT event_key, COUNT(*) AS total
+         FROM install_guide_track_events
+         WHERE event_key NOT IN ('track_install_page_view', 'track_install_page_leave')
+           AND ${cnSince}
+         GROUP BY event_key
+         ORDER BY total DESC`,
+        [span]
+      );
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d,
+                SUM(CASE WHEN event_key = 'track_install_page_view' THEN 1 ELSE 0 END) AS page_views,
+                COUNT(DISTINCT CASE
+                  WHEN event_key = 'track_install_page_view'
+                  THEN COALESCE(NULLIF(client_id, ''), device_fp)
+                END) AS unique_visitors,
+                AVG(CASE WHEN event_key = 'track_install_page_leave' THEN dwell_seconds END) AS avg_dwell_seconds
+         FROM install_guide_track_events
+         WHERE ${cnSince}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        [span]
+      );
+      const [recentRows] = await conn.query(
+        `SELECT client_id, device_fp, event_key, dwell_seconds, created_at
+         FROM install_guide_track_events
+         WHERE ${cnSince}
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [span]
+      );
+
+      var pv = Number((viewRows[0] || {}).pv) || 0;
+      var uv = Number((viewRows[0] || {}).uv) || 0;
+      var leaveCnt = Number((leaveRows[0] || {}).leave_cnt) || 0;
+      var avgDwell = Number((leaveRows[0] || {}).avg_dwell);
+      var dwellVals = (dwellListRows || [])
+        .map(function (r) {
+          return Number(r.dwell_seconds);
+        })
+        .filter(function (n) {
+          return isFinite(n);
+        });
+      var medianDwell = medianFromSortedNumbers(dwellVals);
+
+      var actions = (actionRows || []).map(function (r) {
+        var ek = String(r.event_key || '');
+        return {
+          event_key: ek,
+          label: installGuideEventLabel(ek),
+          total: Number(r.total) || 0
+        };
+      });
+
+      var daily = (dailyRows || []).map(function (r) {
+        var avg = Number(r.avg_dwell_seconds);
+        return {
+          date: formatDateKey(r.d),
+          page_views: Number(r.page_views) || 0,
+          unique_visitors: Number(r.unique_visitors) || 0,
+          avg_dwell_seconds: isFinite(avg) ? Math.round(avg) : null,
+          avg_dwell_label: isFinite(avg) ? formatStaySecondsLabel(avg) : '—'
+        };
+      });
+
+      var recent = (recentRows || []).map(function (r) {
+        var cid = r.client_id ? String(r.client_id) : '';
+        var fp = r.device_fp ? String(r.device_fp) : '';
+        var visitor = cid || fp || '—';
+        if (visitor.length > 12) {
+          visitor = visitor.substring(0, 6) + '…' + visitor.substring(visitor.length - 4);
+        }
+        var ek = String(r.event_key || '');
+        var ds = r.dwell_seconds != null ? Number(r.dwell_seconds) : null;
+        return {
+          at: r.created_at ? r.created_at.toISOString() : '',
+          visitor_key: visitor,
+          event_key: ek,
+          label: installGuideEventLabel(ek),
+          dwell_seconds: isFinite(ds) ? ds : null,
+          dwell_label: isFinite(ds) ? formatStaySecondsLabel(ds) : '—'
+        };
+      });
+
+      res.json({
+        code: 200,
+        data: {
+          days: days,
+          summary: {
+            page_views: pv,
+            unique_visitors: uv,
+            leave_events: leaveCnt,
+            avg_dwell_seconds: isFinite(avgDwell) ? Math.round(avgDwell) : null,
+            avg_dwell_label: isFinite(avgDwell) ? formatStaySecondsLabel(avgDwell) : '—',
+            median_dwell_seconds: medianDwell != null ? medianDwell : null,
+            median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—'
+          },
+          actions: actions,
+          daily: daily,
+          recent_events: recent
+        }
+      });
     } finally {
       conn.release();
     }
@@ -12230,6 +12481,12 @@ app.get(
   requireAdminAuth,
   requireAdminMenu('channel-analysis'),
   handleAdminActivationChannelFunnel
+);
+app.get(
+  '/api/admin/analytics/install-guide-stats',
+  requireAdminAuth,
+  requireAdminMenu('install-guide-stats'),
+  handleAdminInstallGuideStats
 );
 app.get(
   '/api/admin/analytics/install-track-stats',

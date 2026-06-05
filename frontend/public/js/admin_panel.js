@@ -1827,6 +1827,7 @@
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
         var _adminAnalyticsSeen = false;
+        var _adminInstallGuideStatsSeen = false;
         var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
@@ -1840,7 +1841,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1894,6 +1895,7 @@
                 'activated-user-analysis': 1,
                 feedback: 1,
                 analytics: 1,
+                'install-guide-stats': 1,
                 'channel-analysis': 1,
                 'api-analytics': 1,
                 'login-log': 1,
@@ -1953,6 +1955,10 @@
             if (pageKey === 'analytics' && !_adminAnalyticsSeen) {
                 _adminAnalyticsSeen = true;
                 loadAnalyticsDashboard();
+            }
+            if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
+                _adminInstallGuideStatsSeen = true;
+                loadInstallGuideStats();
             }
             if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
                 _adminChannelAnalysisSeen = true;
@@ -3439,6 +3445,128 @@
             });
             html += '</tbody></table></div>';
             el.innerHTML = html;
+        }
+
+        function formatIsoToCnShort(iso) {
+            if (!iso) return '—';
+            try {
+                var d = new Date(iso);
+                if (isNaN(d.getTime())) return String(iso);
+                var utc = d.getTime() + d.getTimezoneOffset() * 60000;
+                var cn = new Date(utc + 8 * 3600000);
+                var y = cn.getFullYear();
+                var m = String(cn.getMonth() + 1).padStart(2, '0');
+                var day = String(cn.getDate()).padStart(2, '0');
+                var hh = String(cn.getHours()).padStart(2, '0');
+                var mm = String(cn.getMinutes()).padStart(2, '0');
+                return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
+            } catch (e0) {
+                return String(iso);
+            }
+        }
+
+        function renderInstallGuideStats(data) {
+            var el = document.getElementById('installGuideStatsMount');
+            if (!el) return;
+            if (!data || !data.summary) {
+                el.textContent = '暂无安装页统计数据';
+                return;
+            }
+            var s = data.summary;
+            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">页面浏览 (PV)</div><div class="ud-val">' +
+                esc(String(s.page_views != null ? s.page_views : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">独立访客 (UV)</div><div class="ud-val">' +
+                esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">平均停留</div><div class="ud-val">' +
+                esc(s.avg_dwell_label || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">有效离开 ' +
+                esc(String(s.leave_events != null ? s.leave_events : 0)) +
+                ' 次</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">中位停留</div><div class="ud-val">' +
+                esc(s.median_dwell_label || '—') +
+                '</div></div>';
+            html += '</div>';
+
+            var actions = Array.isArray(data.actions) ? data.actions : [];
+            html += '<p class="stat" style="margin:0 0 8px;">用户行为（点击 / 播放等）</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr><th>行为</th><th>次数</th></tr></thead><tbody>';
+            if (!actions.length) {
+                html += '<tr><td colspan="2">暂无行为数据</td></tr>';
+            } else {
+                actions.forEach(function (row) {
+                    html += '<tr><td>' + esc(row.label || row.event_key) + '</td><td>' + esc(row.total) + '</td></tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
+            var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
+            html += '<p class="stat" style="margin:0 0 8px;">按日趋势</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html += '<th>日期</th><th>浏览量</th><th>独立访客</th><th>平均停留</th></tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="4">暂无</td></tr>';
+            } else {
+                daily.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(row.page_views) + '</td>';
+                    html += '<td>' + esc(row.unique_visitors) + '</td>';
+                    html += '<td>' + esc(row.avg_dwell_label || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
+            var recent = Array.isArray(data.recent_events) ? data.recent_events : [];
+            html += '<p class="stat" style="margin:0 0 8px;">最近事件（最多 50 条）</p>';
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html += '<th>时间</th><th>访客</th><th>行为</th><th>停留</th></tr></thead><tbody>';
+            if (!recent.length) {
+                html += '<tr><td colspan="4">暂无</td></tr>';
+            } else {
+                recent.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(formatIsoToCnShort(row.at)) + '</td>';
+                    html += '<td>' + esc(row.visitor_key || '—') + '</td>';
+                    html += '<td>' + esc(row.label || row.event_key) + '</td>';
+                    html +=
+                        '<td>' +
+                        esc(row.event_key === 'track_install_page_leave' ? row.dwell_label || '—' : '—') +
+                        '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadInstallGuideStats() {
+            var el = document.getElementById('installGuideStatsMount');
+            if (!el) return;
+            var daysEl = document.getElementById('installGuideStatsDays');
+            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/install-guide-stats?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderInstallGuideStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
         }
 
         function loadInstallTrackStats() {
@@ -5417,6 +5545,7 @@
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计',
+            'install-guide-stats': '安装页统计',
             'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
@@ -6685,6 +6814,18 @@
         if (analyticsInstallTrackDays) {
             analyticsInstallTrackDays.addEventListener('change', function () {
                 loadInstallTrackStats();
+            });
+        }
+        var btnRefreshInstallGuideStats = document.getElementById('btnRefreshInstallGuideStats');
+        if (btnRefreshInstallGuideStats) {
+            btnRefreshInstallGuideStats.onclick = function () {
+                loadInstallGuideStats();
+            };
+        }
+        var installGuideStatsDays = document.getElementById('installGuideStatsDays');
+        if (installGuideStatsDays) {
+            installGuideStatsDays.addEventListener('change', function () {
+                loadInstallGuideStats();
             });
         }
         var btnRefreshConversionKpis = document.getElementById('btnRefreshConversionKpis');
