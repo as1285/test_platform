@@ -68,6 +68,14 @@
     }
   }
 
+  function isAccountActive() {
+    try {
+      return localStorage.getItem('account_active') === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function showPrompt(options) {
     injectStyles();
     var title = options.title || '温馨提示';
@@ -150,6 +158,12 @@
 
   function maybeShowPostLoginPrompt() {
     if (currentPageName() !== 'mine.html') {
+      return;
+    }
+    if (isAccountActive()) {
+      try {
+        sessionStorage.removeItem(POST_LOGIN_PENDING_KEY);
+      } catch (e0) {}
       return;
     }
     var pending = false;

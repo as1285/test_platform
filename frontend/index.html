@@ -548,7 +548,7 @@
         </div>
     </div>
 
-    <script src="/js/tutorial-video-prompt.js?v=20260601-tutorial"></script>
+    <script src="/js/tutorial-video-prompt.js?v=20260601-no-active-prompt"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -915,7 +915,11 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
-                        if (window.TutorialVideoPrompt && typeof window.TutorialVideoPrompt.markPostLoginPending === 'function') {
+                        if (
+                            !act &&
+                            window.TutorialVideoPrompt &&
+                            typeof window.TutorialVideoPrompt.markPostLoginPending === 'function'
+                        ) {
                             window.TutorialVideoPrompt.markPostLoginPending();
                         }
                         window.location.href = 'mine.html';
