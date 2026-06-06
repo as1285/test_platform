@@ -1817,9 +1817,32 @@
         }
 
         var taxReportedManualEdit = false;
+        var taxReportedLoadedValue = null;
+
+        function taxAmountKey(v) {
+            var n = parseFloat(v);
+            if (!isFinite(n)) {
+                return '0.00';
+            }
+            return round2(n).toFixed(2);
+        }
 
         function resetTaxReportedManualEditFlag() {
             taxReportedManualEdit = false;
+            taxReportedLoadedValue = null;
+        }
+
+        function taxReportedWasManuallyChanged() {
+            if (taxReportedManualEdit) {
+                return true;
+            }
+            var editId = document.getElementById('editing_id').value;
+            if (!editId || taxReportedLoadedValue == null) {
+                return false;
+            }
+            var cur = taxAmountKey(document.getElementById('f_tax_reported').value);
+            var loaded = taxAmountKey(taxReportedLoadedValue);
+            return cur !== loaded;
         }
 
         function initTaxReportedManualEditTracking() {
@@ -1832,6 +1855,7 @@
             }
             el.addEventListener('input', markManual);
             el.addEventListener('change', markManual);
+            el.addEventListener('blur', markManual);
         }
 
         function applyToForm(r) {
@@ -1856,7 +1880,8 @@
             document.getElementById('f_report_date').value = r.report_date || '';
             document.getElementById('f_tax_period').value = r.tax_period || '';
             document.getElementById('f_income').value = r.income != null ? r.income : '0.00';
-            document.getElementById('f_tax_reported').value = r.tax_reported != null ? r.tax_reported : '0.00';
+            taxReportedLoadedValue = r.tax_reported != null ? String(r.tax_reported) : '0.00';
+            document.getElementById('f_tax_reported').value = taxReportedLoadedValue;
             document.getElementById('f_income_this_period').value = r.income_this_period != null ? r.income_this_period : '0.00';
             document.getElementById('f_tax_free_income').value = r.tax_free_income != null ? r.tax_free_income : '0.00';
             var dfRaw = parseFloat(r.deduction_fee) || 5000;
@@ -1914,11 +1939,12 @@
             } else {
                 o.id = editId;
             }
-            var usedManualTax = taxReportedManualEdit;
+            var usedManualTax = taxReportedWasManuallyChanged();
             apiFetchRecords()
                 .then(function (list) {
                     if (usedManualTax) {
-                        o.tax_reported = document.getElementById('f_tax_reported').value;
+                        o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
+                        document.getElementById('f_tax_reported').value = o.tax_reported;
                     } else {
                         o.tax_reported = computeSingleRecordTaxReported(o, list);
                         document.getElementById('f_tax_reported').value = o.tax_reported;
