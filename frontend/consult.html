@@ -979,7 +979,7 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>社保缴费基数（元）</label>
-                                        <input type="number" class="batch-emp-ss-base" step="0.01" min="0" value="0" placeholder="默认 0，不缴可保持 0">
+                                        <input type="number" class="batch-emp-ss-base" step="0.01" min="0" placeholder="留空表示不填">
                                     </div>
                                     <div class="form-group">
                                         <label>公积金缴费基数（元）</label>
@@ -3034,7 +3034,13 @@
             setVal('.batch-emp-em', data.em);
             setVal('.batch-emp-salary', data.salary);
             setVal('.batch-emp-salary-max', data.salary_max);
-            setVal('.batch-emp-ss-base', data.ss_base);
+            var ssBaseEl = row.querySelector('.batch-emp-ss-base');
+            if (ssBaseEl) {
+                var ssRaw = data.ss_base;
+                var ssNum = parseFloat(ssRaw);
+                ssBaseEl.value =
+                    ssRaw == null || ssRaw === '' || (!Number.isNaN(ssNum) && ssNum === 0) ? '' : String(ssRaw);
+            }
             setVal('.batch-emp-fund-base', data.fund_base);
             setVal('.batch-emp-pension-ratio', data.pension_ratio);
             setVal('.batch-emp-medical-ratio', data.medical_ratio);
@@ -3066,7 +3072,7 @@
                 em: cm,
                 salary: 15000,
                 salary_max: '',
-                ss_base: 0,
+                ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
                 medical_ratio: 2,
@@ -3112,7 +3118,7 @@
                 em: cm,
                 salary: 10000,
                 salary_max: '',
-                ss_base: 0,
+                ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
                 medical_ratio: 2,
@@ -3150,7 +3156,7 @@
                 em: cm,
                 salary: 12000,
                 salary_max: '',
-                ss_base: 0,
+                ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
                 medical_ratio: 2,
@@ -3259,7 +3265,7 @@
             var u = Number(unemployment) || 0;
             var f = Number(fund) || 0;
             if (p <= 0 && m <= 0 && u <= 0 && f <= 0) {
-                return { ss_base: 0, fund_base: '', pension_ratio: 8, medical_ratio: 2, unemployment_ratio: 0.5, fund_ratio: 12 };
+                return { ss_base: '', fund_base: '', pension_ratio: 8, medical_ratio: 2, unemployment_ratio: 0.5, fund_ratio: 12 };
             }
             var ssBase = 0;
             if (p > 0) {
