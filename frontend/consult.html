@@ -450,10 +450,12 @@
             font-weight: 600;
             color: #555;
         }
-        #panel-records .batch-emp-optional-meta {
+        #panel-records .batch-emp-optional-meta,
+        #panel-records .batch-emp-deduct-meta {
             margin-bottom: 4px;
         }
-        #panel-records .batch-emp-optional-toggle {
+        #panel-records .batch-emp-optional-toggle,
+        #panel-records .batch-emp-deduct-toggle {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -468,21 +470,26 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        #panel-records .batch-emp-optional-toggle:active {
+        #panel-records .batch-emp-optional-toggle:active,
+        #panel-records .batch-emp-deduct-toggle:active {
             opacity: 0.92;
         }
-        #panel-records .batch-emp-optional-toggle-icon {
+        #panel-records .batch-emp-optional-toggle-icon,
+        #panel-records .batch-emp-deduct-toggle-icon {
             font-size: 10px;
             color: #888;
             transition: transform 0.2s ease;
         }
-        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon {
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
+        #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon {
             transform: rotate(180deg);
         }
-        #panel-records .batch-emp-optional-body {
+        #panel-records .batch-emp-optional-body,
+        #panel-records .batch-emp-deduct-body {
             display: none;
         }
-        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body {
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body,
+        #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body {
             display: block;
         }
         #panel-records .batch-ym-inline {
@@ -974,6 +981,12 @@
                         </div>
                         <div class="form-group">
                             <label class="batch-salary-mode-title" style="margin-bottom:8px;">本段社保与专项附加（月，元）</label>
+                            <div class="batch-emp-deduct-meta">
+                                <button type="button" class="batch-emp-deduct-toggle" aria-expanded="false">
+                                    <span>社保/公积金基数与比例</span>
+                                    <span class="batch-emp-deduct-toggle-icon" aria-hidden="true">▼</span>
+                                </button>
+                                <div class="batch-emp-deduct-body">
                             <div class="batch-deduct-calc">
                                 <p class="batch-deduct-calc-hint">填写缴费基数与个人扣缴比例（%）后，自动填入下方三险一金金额；公积金基数留空时与社保基数相同。常见默认：养老 8%、医疗 2%、失业 0.5%、公积金 12%。</p>
                                 <div class="form-row">
@@ -1005,6 +1018,8 @@
                                         <label>公积金比例（%）</label>
                                         <input type="number" class="batch-emp-fund-ratio" step="0.01" min="0" max="100" value="12">
                                     </div>
+                                </div>
+                            </div>
                                 </div>
                             </div>
                             <div class="form-row">
@@ -2802,6 +2817,39 @@
             });
         }
 
+        function setBatchEmpDeductMetaExpanded(row, expanded) {
+            if (!row) return;
+            var wrap = row.querySelector('.batch-emp-deduct-meta');
+            var btn = row.querySelector('.batch-emp-deduct-toggle');
+            if (!wrap) return;
+            wrap.classList.toggle('is-open', !!expanded);
+            if (btn) btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        function syncBatchEmpDeductMetaExpanded(row) {
+            if (!row) return;
+            var ssEl = row.querySelector('.batch-emp-ss-base');
+            var fundBaseEl = row.querySelector('.batch-emp-fund-base');
+            var hasBase =
+                (ssEl && String(ssEl.value || '').trim()) ||
+                (fundBaseEl && String(fundBaseEl.value || '').trim());
+            if (hasBase) {
+                setBatchEmpDeductMetaExpanded(row, true);
+            }
+        }
+
+        function bindBatchEmpDeductMetaToggle(row) {
+            if (!row) return;
+            var btn = row.querySelector('.batch-emp-deduct-toggle');
+            var wrap = row.querySelector('.batch-emp-deduct-meta');
+            if (!btn || !wrap || btn.getAttribute('data-batch-deduct-bound') === '1') return;
+            btn.setAttribute('data-batch-deduct-bound', '1');
+            btn.addEventListener('click', function () {
+                var open = !wrap.classList.contains('is-open');
+                setBatchEmpDeductMetaExpanded(row, open);
+            });
+        }
+
         function tryApplyBatchCompanyProfileFromInput(inputEl) {
             if (!inputEl) return;
             var row = inputEl.closest('.batch-emp-row');
@@ -2965,6 +3013,8 @@
             bindBatchEmpCompanyMetaInputs(node);
             bindBatchEmpOptionalMetaToggle(node);
             syncBatchEmpOptionalMetaExpanded(node);
+            bindBatchEmpDeductMetaToggle(node);
+            syncBatchEmpDeductMetaExpanded(node);
             bindBatchEmpDeductionCalc(node);
             syncBatchEmpDeductionsFromBase(node);
             var msBtn = node.querySelector('.batch-emp-month-salary-btn');
@@ -3048,6 +3098,7 @@
             setVal('.batch-emp-fund-ratio', data.fund_ratio);
             setVal('.batch-emp-special', data.special);
             syncBatchEmpDeductionsFromBase(row);
+            syncBatchEmpDeductMetaExpanded(row);
             updateBatchEmpMonthSalaryBadge(row);
             syncBatchEmpOptionalMetaExpanded(row);
         }
