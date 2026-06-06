@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260529-iphone12pm-notch"></script>
+    <script src="/js/auth.js?v=20260606-tab-header-safe"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>办&查</title>
     <style>
@@ -27,6 +27,13 @@
         .bancha-header {
             position: relative;
             z-index: 1;
+            background: #2c80f4;
+        }
+
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .bancha-header {
+                padding-top: env(safe-area-inset-top, 0px);
+            }
         }
 
         .bancha-header img {
