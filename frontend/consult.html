@@ -3103,6 +3103,142 @@
             syncBatchEmpOptionalMetaExpanded(row);
         }
 
+        var BATCH_EXAMPLE_COMPANY_NAMES = ['北京华示例软件有限公司', '示例科技有限公司'];
+
+        function isBatchExampleCompanyName(name) {
+            return BATCH_EXAMPLE_COMPANY_NAMES.indexOf(String(name || '').trim()) >= 0;
+        }
+
+        function batchEmploymentsIncludeOwnCompany(employments) {
+            var i;
+            for (i = 0; i < employments.length; i++) {
+                var co = String(employments[i].company || '').trim();
+                if (co && !isBatchExampleCompanyName(co)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** 表单中同时存在示例行与真实公司时，移除示例工作经历行 */
+        function removeBatchExampleEmpRowsFromDomIfOwnPresent() {
+            var list = document.getElementById('batch_employment_list');
+            if (!list) {
+                return false;
+            }
+            var rows = list.querySelectorAll('.batch-emp-row');
+            var hasOwn = false;
+            var ri;
+            for (ri = 0; ri < rows.length; ri++) {
+                var coEl = rows[ri].querySelector('.batch-emp-company');
+                var co = coEl ? String(coEl.value || '').trim() : '';
+                if (co && !isBatchExampleCompanyName(co)) {
+                    hasOwn = true;
+                    break;
+                }
+            }
+            if (!hasOwn) {
+                return false;
+            }
+            var removed = false;
+            for (ri = rows.length - 1; ri >= 0; ri--) {
+                var coEl2 = rows[ri].querySelector('.batch-emp-company');
+                var co2 = coEl2 ? String(coEl2.value || '').trim() : '';
+                if (isBatchExampleCompanyName(co2)) {
+                    rows[ri].parentNode.removeChild(rows[ri]);
+                    removed = true;
+                }
+            }
+            return removed;
+        }
+
+        function filterBatchExampleEmploymentsIfOwnPresent(employments) {
+            if (!batchEmploymentsIncludeOwnCompany(employments)) {
+                return employments;
+            }
+            return employments.filter(function (e) {
+                return !isBatchExampleCompanyName(e.company);
+            });
+        }
+
+        function planBatchExampleRecordDeletion(employments, existingList) {
+            if (!batchEmploymentsIncludeOwnCompany(employments)) {
+                return { companies: [], count: 0 };
+            }
+            var currentNames = {};
+            employments.forEach(function (e) {
+                var n = String(e.company || '').trim();
+                if (n) {
+                    currentNames[n] = true;
+                }
+            });
+            var toDelete = {};
+            var count = 0;
+            (existingList || []).forEach(function (r) {
+                var name = String(r.company_name || '').trim();
+                if (isBatchExampleCompanyName(name) && !currentNames[name]) {
+                    toDelete[name] = true;
+                    count++;
+                }
+            });
+            return { companies: Object.keys(toDelete), count: count };
+        }
+
+        function deleteBatchExampleTaxRecordsPromise(companies) {
+            if (!companies || !companies.length) {
+                return Promise.resolve(0);
+            }
+            return Promise.all(
+                companies.map(function (company) {
+                    return authFetch('api/tax.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'delete_records_by_company',
+                            company_name: company
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code !== 200) {
+                                throw new Error(data.msg || '删除示例记录失败');
+                            }
+                            return data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                        });
+                })
+            ).then(function (counts) {
+                var total = 0;
+                var ci;
+                for (ci = 0; ci < counts.length; ci++) {
+                    total += counts[ci];
+                }
+                return total;
+            });
+        }
+
+        function prepareBatchAddEmploymentsFromDom() {
+            removeBatchExampleEmpRowsFromDomIfOwnPresent();
+            var parsed = parseBatchEmploymentsFromDom();
+            if (!parsed.ok) {
+                return parsed;
+            }
+            var employments = filterBatchExampleEmploymentsIfOwnPresent(parsed.employments);
+            if (!employments.length) {
+                return {
+                    ok: false,
+                    employments: [],
+                    error: '请至少填写一段您本人的工作经历（已忽略示例公司行）'
+                };
+            }
+            var ei;
+            for (ei = 0; ei < employments.length; ei++) {
+                employments[ei].empIdx = ei;
+            }
+            return { ok: true, employments: employments };
+        }
+
         /** 示例填写：一段完整公司工作经历（不自动提交） */
         function fillBatchTaxExample() {
             var list = document.getElementById('batch_employment_list');
@@ -4567,7 +4703,7 @@
         }
 
         function batchAddEmploymentTaxRecords() {
-            var parsed = parseBatchEmploymentsFromDom();
+            var parsed = prepareBatchAddEmploymentsFromDom();
             if (!parsed.ok) {
                 showConsultStrongAlert(parsed.error || '请检查工作经历');
                 return;
@@ -4588,34 +4724,60 @@
             var bonusTax = yearEndBonusTaxSeparate(bonus.yearEndBonus);
             var totalTax = round2(taxSumSalary + bonusTax);
             var lines = buildBatchConfirmLines(employments);
-            var bonusLine =
-                bonus.yearEndBonus > 0
-                    ? '\n年终奖 ' +
-                      bonus.yearEndBonus +
-                      ' 元（扣缴义务人「' +
-                      bonusCompany +
-                      '」，单独计税约 ' +
-                      bonusTax +
-                      ' 元，归属 ' +
-                      bonus.bonusYear +
-                      ' 年 ' +
-                      bonus.bonusMonth +
-                      ' 月）。'
-                    : '';
-            var msgParts = [
-                '将为以下工作经历写入工资薪金记录（同一经历内按自然年度分段累计预扣）：',
-                lines.join('\n'),
-                '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
-                bonusLine,
-                '税额总计约 ' + totalTax + ' 元。将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
-            ];
-            if (!confirm(msgParts.join('\n'))) {
-                return;
-            }
-            var records = assembleBatchTaxRecords(writes, base, uidKey, bonus);
-            setBatchSubmitBtnLoading(true);
-            postBatchTaxRecordsPromise(records)
-                .then(function (data) {
+            apiFetchRecords()
+                .then(function (existingList) {
+                    var examplePlan = planBatchExampleRecordDeletion(employments, existingList);
+                    var bonusLine =
+                        bonus.yearEndBonus > 0
+                            ? '\n年终奖 ' +
+                              bonus.yearEndBonus +
+                              ' 元（扣缴义务人「' +
+                              bonusCompany +
+                              '」，单独计税约 ' +
+                              bonusTax +
+                              ' 元，归属 ' +
+                              bonus.bonusYear +
+                              ' 年 ' +
+                              bonus.bonusMonth +
+                              ' 月）。'
+                            : '';
+                    var exampleDeleteLine =
+                        examplePlan.count > 0
+                            ? '\n将先删除此前示例填写产生的 ' +
+                              examplePlan.count +
+                              ' 条记录（' +
+                              examplePlan.companies.join('、') +
+                              '），再写入您的数据。'
+                            : '';
+                    var msgParts = [
+                        '将为以下工作经历写入工资薪金记录（同一经历内按自然年度分段累计预扣）：',
+                        lines.join('\n'),
+                        '工资薪金预扣税额合计约 ' + taxSumSalary + ' 元。',
+                        bonusLine,
+                        '税额总计约 ' + totalTax + ' 元。',
+                        exampleDeleteLine,
+                        '将新增写入，不会覆盖列表中已有记录（若编号已占用则自动使用新编号）。是否写入？'
+                    ];
+                    if (!confirm(msgParts.join('\n'))) {
+                        return null;
+                    }
+                    setBatchSubmitBtnLoading(true);
+                    var deletedExample = 0;
+                    return deleteBatchExampleTaxRecordsPromise(examplePlan.companies)
+                        .then(function (n) {
+                            deletedExample = n;
+                            var records = assembleBatchTaxRecords(writes, base, uidKey, bonus);
+                            return postBatchTaxRecordsPromise(records).then(function (data) {
+                                return { data: data, deletedExample: deletedExample };
+                            });
+                        });
+                })
+                .then(function (result) {
+                    if (!result) {
+                        return;
+                    }
+                    var data = result.data;
+                    var deletedExample = result.deletedExample;
                     rememberBatchEmploymentsProfiles(employments, bonus);
                     var tip =
                         '已按工作经历生成 ' +
@@ -4625,6 +4787,9 @@
                         ' 条月薪记录';
                     if (bonus.yearEndBonus > 0) {
                         tip += '（另含 1 条年终奖）';
+                    }
+                    if (deletedExample > 0) {
+                        tip += '（已删除示例记录 ' + deletedExample + ' 条）';
                     }
                     var reassigned = data && data.reassigned_ids != null ? Number(data.reassigned_ids) : 0;
                     if (reassigned > 0) {
