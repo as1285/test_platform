@@ -501,6 +501,14 @@
             padding: 5px 10px 5px 12px;
         }
 
+        /* iPhone：功能入口与下方菜单栏标题加粗 */
+        html.app-ios-client body.page-mine .function-title,
+        html[class*='app-ios'] body.page-mine .function-title,
+        html.app-ios-client body.page-mine .menu-text,
+        html[class*='app-ios'] body.page-mine .menu-text {
+            font-weight: 600;
+        }
+
         /* iPhone Safari 模拟/真机：未命中 app-ios-client 时税号仍 12px 单行 */
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
@@ -514,6 +522,11 @@
 
                 body.page-mine .user-tax-value {
                     letter-spacing: -0.05em;
+                }
+
+                body.page-mine .function-title,
+                body.page-mine .menu-text {
+                    font-weight: 600;
                 }
             }
         }
