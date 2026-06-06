@@ -25,18 +25,13 @@
         }
         
         .bancha-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 10;
+            position: relative;
+            z-index: 1;
         }
-        
-        .bancha-header::after {
-            content: '';
-            bottom: 0;
-            background: #f5f6fa;
-            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+
+        .bancha-header img {
+            width: 100%;
+            display: block;
         }
         
         .bancha-header-content {
@@ -59,7 +54,6 @@
         .bancha-content {
             background: #fff;
             border-radius: 16px 16px 0 0;
-            margin-top: 80px;
             position: relative;
             z-index: 5;
             min-height: calc(100vh - 120px);
@@ -225,7 +219,7 @@
 <body class="page-bancha">
     <div class="bancha-page">
         <div class="bancha-header">
-            <img id="assetBanchaHeader" src="db.jpg" alt="办&查" style="width: 100%; display: block;">
+            <img id="assetBanchaHeader" src="db.jpg" alt="办&查">
         </div>
         <div class="bancha-content">
             <div class="bancha-bs-wrap">
