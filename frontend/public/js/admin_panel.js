@@ -5555,7 +5555,10 @@
                         html += '<td class="cell-break">' + esc(u.list_hidden_by || '—') + '</td>';
                         if (refunded) {
                             html +=
-                                '<td class="col-ops"><span class="badge badge-no" title="激活退款，不可恢复">已退款</span></td>';
+                                '<td class="col-ops"><span class="badge badge-no" style="margin-right:6px;" title="曾执行激活退款">已退款</span>' +
+                                '<button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
+                                esc(u.username) +
+                                '" data-refunded="1">恢复</button></td>';
                         } else {
                             html +=
                                 '<td class="col-ops"><button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
@@ -5570,7 +5573,13 @@
                     document.getElementById('deletedUserTbody').querySelectorAll('.btn-restore-user').forEach(function (btn) {
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
-                            if (!confirm('确定恢复账号「' + name + '」至注册用户列表？')) return;
+                            var isRefunded = btn.getAttribute('data-refunded') === '1';
+                            var tip = isRefunded
+                                ? '确定恢复已退款账号「' +
+                                  name +
+                                  '」至注册用户列表？\n将解除封禁、恢复激活状态，激活数据重新计入统计。'
+                                : '确定恢复账号「' + name + '」至注册用户列表？';
+                            if (!confirm(tip)) return;
                             adminFetch('api/admin/user-restore', {
                                 method: 'POST',
                                 body: JSON.stringify({ username: name })

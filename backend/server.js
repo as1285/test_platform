@@ -11239,10 +11239,6 @@ async function handleAdminUserRestore(req, res) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
     }
-    if (urows[0].activation_refunded_at) {
-      conn.release();
-      return res.status(400).json({ code: 400, msg: '该账号已激活退款，不可恢复' });
-    }
     if (!urows[0].list_hidden_at) {
       conn.release();
       return res.status(400).json({ code: 400, msg: '该账号不在已删除列表中' });
@@ -11252,12 +11248,26 @@ async function handleAdminUserRestore(req, res) {
       conn.release();
       return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
     }
-    await conn.execute(
-      'UPDATE users SET list_hidden_at = NULL, list_hidden_by = NULL WHERE username = ?',
-      [target]
-    );
+    var wasRefunded = !!urows[0].activation_refunded_at;
+    if (wasRefunded) {
+      await conn.execute(
+        `UPDATE users SET list_hidden_at = NULL, list_hidden_by = NULL,
+                activation_refunded_at = NULL, activation_refunded_by = NULL,
+                banned = 0, account_active = 1
+         WHERE username = ?`,
+        [target]
+      );
+    } else {
+      await conn.execute(
+        'UPDATE users SET list_hidden_at = NULL, list_hidden_by = NULL WHERE username = ?',
+        [target]
+      );
+    }
     conn.release();
-    return res.json({ code: 200, data: { username: target, restored: true } });
+    return res.json({
+      code: 200,
+      data: { username: target, restored: true, was_refunded: wasRefunded }
+    });
   } catch (e) {
     try {
       conn.release();
