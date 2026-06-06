@@ -417,6 +417,16 @@
             opacity: 0.88;
         }
 
+        .user-name.user-name--editable {
+            display: inline-block;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .user-name.user-name--editable:active {
+            opacity: 0.88;
+        }
+
         .user-name {
             font-size: 14px;
             color: #333;
@@ -932,14 +942,14 @@
     <div class="content-wrapper">
         <div class="user-card">
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
-            <div
-                class="user-info user-info-text user-info-text--editable"
-                id="mineProfileEditHit"
-                role="button"
-                tabindex="0"
-                aria-label="修改姓名、纳税人识别号与性别"
-            >
-                <div class="user-name" id="mineDisplayName">--</div>
+            <div class="user-info user-info-text">
+                <div
+                    class="user-name user-name--editable"
+                    id="mineDisplayName"
+                    role="button"
+                    tabindex="0"
+                    aria-label="修改姓名、纳税人识别号与性别"
+                >--</div>
                 <div class="user-id" id="userTaxId">
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
@@ -1556,7 +1566,7 @@
                 }
             }
 
-            var profileEditHit = document.getElementById('mineProfileEditHit');
+            var profileEditHit = document.getElementById('mineDisplayName');
             if (profileEditHit) {
                 profileEditHit.addEventListener('click', openMineProfileEditModal);
                 profileEditHit.addEventListener('keydown', function (e) {
