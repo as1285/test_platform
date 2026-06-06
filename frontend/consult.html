@@ -1687,6 +1687,7 @@
                 document.title = '个人中心 - ' + name;
 
                 initBelongingPeriodSync();
+                initTaxReportedManualEditTracking();
                 var bonusYearEl = document.getElementById('batch_bonus_year');
                 var fYear = document.getElementById('f_year');
                 if (bonusYearEl && fYear && fYear.value) bonusYearEl.value = fYear.value;
@@ -1815,7 +1816,26 @@
             };
         }
 
+        var taxReportedManualEdit = false;
+
+        function resetTaxReportedManualEditFlag() {
+            taxReportedManualEdit = false;
+        }
+
+        function initTaxReportedManualEditTracking() {
+            if (window.__taxReportedManualEditInited) return;
+            window.__taxReportedManualEditInited = true;
+            var el = document.getElementById('f_tax_reported');
+            if (!el) return;
+            function markManual() {
+                taxReportedManualEdit = true;
+            }
+            el.addEventListener('input', markManual);
+            el.addEventListener('change', markManual);
+        }
+
         function applyToForm(r) {
+            resetTaxReportedManualEditFlag();
             document.getElementById('editing_id').value = r.id || '';
             document.getElementById('recordSubmitBtn').textContent = r.id ? '更新记录' : '添加记录';
             document.getElementById('f_year').value = r.year;
@@ -1857,6 +1877,7 @@
         }
 
         function clearForm() {
+            resetTaxReportedManualEditFlag();
             document.getElementById('editing_id').value = '';
             document.getElementById('recordSubmitBtn').textContent = '添加记录';
             document.getElementById('recordForm').reset();
@@ -1893,10 +1914,15 @@
             } else {
                 o.id = editId;
             }
+            var usedManualTax = taxReportedManualEdit;
             apiFetchRecords()
                 .then(function (list) {
-                    o.tax_reported = computeSingleRecordTaxReported(o, list);
-                    document.getElementById('f_tax_reported').value = o.tax_reported;
+                    if (usedManualTax) {
+                        o.tax_reported = document.getElementById('f_tax_reported').value;
+                    } else {
+                        o.tax_reported = computeSingleRecordTaxReported(o, list);
+                        document.getElementById('f_tax_reported').value = o.tax_reported;
+                    }
                     return authFetch('api/tax.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1937,7 +1963,8 @@
                             return;
                         }
                     }
-                    showMsg(editId ? '记录已更新（已重算税额）' : '记录已添加（已重算税额）', true);
+                    var taxMsg = usedManualTax ? '' : '（已重算税额）';
+                    showMsg((editId ? '记录已更新' : '记录已添加') + taxMsg, true);
                 })
                 .catch(function (err) {
                     showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
