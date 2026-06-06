@@ -6623,6 +6623,12 @@ function userLoginRiskMatchSql(usernameExpr) {
   );
 }
 
+/** 激活类统计：排除已退款、已从注册用户列表软删除的账号 */
+function userActivationStatsEligibleSql(userCol) {
+  var alias = userTableAliasFromCol(userCol || 'users.username');
+  return alias + '.activation_refunded_at IS NULL AND ' + alias + '.list_hidden_at IS NULL';
+}
+
 async function handleAdminUsersDailyConversion(req, res) {
   try {
     var days = parseInt(req.query.days, 10) || 1;
@@ -6659,7 +6665,8 @@ async function handleAdminUsersDailyConversion(req, res) {
       const [actRows] = await conn.query(
         'SELECT DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
           ' FROM activation_codes ac' +
-          ' INNER JOIN users u ON u.username = ac.used_by_username AND u.activation_refunded_at IS NULL' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username AND ' +
+          userActivationStatsEligibleSql('u.username') +
           ' WHERE ' +
           actWhere +
           ' GROUP BY DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))',
@@ -6751,6 +6758,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                   WHERE ac.used_by_username = u.username
                     AND ac.last_used_at IS NOT NULL
                     AND u.activation_refunded_at IS NULL
+                    AND u.list_hidden_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS activated_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6787,6 +6795,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                   WHERE ac.used_by_username = u.username
                     AND ac.last_used_at IS NOT NULL
                     AND u.activation_refunded_at IS NULL
+                    AND u.list_hidden_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS activated_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6927,8 +6936,8 @@ function funnelMetricsSqlAliases(userAlias) {
       'SUM(CASE WHEN EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       u +
       '.username AND ac.last_used_at IS NOT NULL AND ' +
-      u +
-      '.activation_refunded_at IS NULL AND TIMESTAMPDIFF(HOUR, ' +
+      userActivationStatsEligibleSql(u + '.username') +
+      ' AND TIMESTAMPDIFF(HOUR, ' +
       u +
       '.created_at, ac.last_used_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
     tax7:
@@ -7042,7 +7051,7 @@ async function handleAdminActivationChannelFunnel(req, res) {
 
     const conn = await pool.getConnection();
     try {
-      var where = [actSince, 'u.activation_refunded_at IS NULL'];
+      var where = [actSince, userActivationStatsEligibleSql('u.username')];
       var params = [days - 1];
       appendAdminUserScope(where, params, req.admin, 'u.username');
       var whereSql = ' WHERE ' + where.join(' AND ');
@@ -8154,7 +8163,7 @@ async function handleAdminRegisterChannelStats(req, res) {
     try {
       const [regRows] = await conn.query(
         'SELECT register_source_channel AS ch, COUNT(*) AS cnt, ' +
-          'SUM(CASE WHEN account_active = 1 AND activation_refunded_at IS NULL THEN 1 ELSE 0 END) AS activated_cnt ' +
+          'SUM(CASE WHEN account_active = 1 AND activation_refunded_at IS NULL AND list_hidden_at IS NULL THEN 1 ELSE 0 END) AS activated_cnt ' +
           'FROM users WHERE ' +
           scope.where +
           ' GROUP BY register_source_channel ORDER BY cnt DESC',
@@ -8164,7 +8173,7 @@ async function handleAdminRegisterChannelStats(req, res) {
       const [actRows] = await conn.query(
         'SELECT activation_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
           scope.where +
-          " AND account_active = 1 AND activation_refunded_at IS NULL AND activation_source_channel IS NOT NULL AND TRIM(activation_source_channel) <> '' " +
+          " AND account_active = 1 AND activation_refunded_at IS NULL AND list_hidden_at IS NULL AND activation_source_channel IS NOT NULL AND TRIM(activation_source_channel) <> '' " +
           'GROUP BY activation_source_channel ORDER BY cnt DESC',
         scope.params
       );
@@ -8670,10 +8679,9 @@ function userTableAliasFromCol(userCol) {
   return idx >= 0 ? String(userCol).slice(0, idx) : String(userCol);
 }
 
-/** 排除已激活退款的账号（不计入激活相关统计） */
+/** 排除已激活退款、已软删除的账号（不计入激活相关统计） */
 function appendNonRefundedUserFilter(whereClauses, userCol) {
-  var alias = userTableAliasFromCol(userCol || 'users.username');
-  whereClauses.push(alias + '.activation_refunded_at IS NULL');
+  whereClauses.push(userActivationStatsEligibleSql(userCol));
 }
 
 function sqlScopeAnd(scopeSql, clause) {
