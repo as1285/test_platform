@@ -1150,6 +1150,26 @@ async function createTables() {
     }
   }
 
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_refunded_at DATETIME NULL COMMENT '激活退款时间，不计入用户数据与激活统计'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN activation_refunded_by VARCHAR(255) NULL COMMENT '执行激活退款的管理员'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS app_settings (
       setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -6420,7 +6440,7 @@ async function handleAdminAccountActivatedUsers(req, res) {
              AND TRIM(used_by_username) <> ''
            GROUP BY used_by_username
          ) agg
-         INNER JOIN users u ON u.username = agg.used_by_username
+         INNER JOIN users u ON u.username = agg.used_by_username AND u.activation_refunded_at IS NULL
          ORDER BY agg.activated_at DESC, u.id DESC
          LIMIT ${limit} OFFSET ${offset}`,
         [ownerAdmin]
@@ -6618,9 +6638,8 @@ async function handleAdminUsersDailyConversion(req, res) {
       var regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
       var regParams = [span];
       var actWhere =
-        'last_used_at IS NOT NULL AND used_count > 0 AND ' +
-        cnActDay +
-        ' >= DATE_SUB(' +
+        'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
+        'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' +
         cnToday +
         ', INTERVAL ? DAY)';
       var actParams = [span];
@@ -6629,7 +6648,7 @@ async function handleAdminUsersDailyConversion(req, res) {
         regWhere +=
           ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
         regParams.push(req.admin.username);
-        actWhere += ' AND owner_admin_username = ?';
+        actWhere += ' AND ac.owner_admin_username = ?';
         actParams.push(req.admin.username);
       }
 
@@ -6638,12 +6657,12 @@ async function handleAdminUsersDailyConversion(req, res) {
         regParams
       );
       const [actRows] = await conn.query(
-        'SELECT ' +
-          cnActDay +
-          ' AS d, COUNT(DISTINCT used_by_username) AS cnt FROM activation_codes WHERE ' +
+        'SELECT DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+          ' FROM activation_codes ac' +
+          ' INNER JOIN users u ON u.username = ac.used_by_username AND u.activation_refunded_at IS NULL' +
+          ' WHERE ' +
           actWhere +
-          ' GROUP BY ' +
-          cnActDay,
+          ' GROUP BY DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))',
         actParams
       );
 
@@ -6731,6 +6750,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                   SELECT 1 FROM activation_codes ac
                   WHERE ac.used_by_username = u.username
                     AND ac.last_used_at IS NOT NULL
+                    AND u.activation_refunded_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS activated_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6766,6 +6786,7 @@ async function handleAdminRegistrationFunnel(req, res) {
                   SELECT 1 FROM activation_codes ac
                   WHERE ac.used_by_username = u.username
                     AND ac.last_used_at IS NOT NULL
+                    AND u.activation_refunded_at IS NULL
                     AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
                 ) THEN 1 ELSE 0 END) AS activated_7d,
                 SUM(CASE WHEN EXISTS (
@@ -6905,7 +6926,9 @@ function funnelMetricsSqlAliases(userAlias) {
     activated7:
       'SUM(CASE WHEN EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       u +
-      '.username AND ac.last_used_at IS NOT NULL AND TIMESTAMPDIFF(HOUR, ' +
+      '.username AND ac.last_used_at IS NOT NULL AND ' +
+      u +
+      '.activation_refunded_at IS NULL AND TIMESTAMPDIFF(HOUR, ' +
       u +
       '.created_at, ac.last_used_at) BETWEEN 0 AND 168) THEN 1 ELSE 0 END)',
     tax7:
@@ -7019,7 +7042,7 @@ async function handleAdminActivationChannelFunnel(req, res) {
 
     const conn = await pool.getConnection();
     try {
-      var where = [actSince];
+      var where = [actSince, 'u.activation_refunded_at IS NULL'];
       var params = [days - 1];
       appendAdminUserScope(where, params, req.admin, 'u.username');
       var whereSql = ' WHERE ' + where.join(' AND ');
@@ -7340,6 +7363,7 @@ async function handleAdminConversionKpis(req, res) {
     var scopeWhere = [];
     var scopeParams = [days - 1];
     appendAdminUserScope(scopeWhere, scopeParams, req.admin, 'u.username');
+    appendNonRefundedUserFilter(scopeWhere, 'u.username');
     var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
 
     function pct(n, d) {
@@ -8032,7 +8056,7 @@ async function handleAdminRegisterChannelStats(req, res) {
     try {
       const [regRows] = await conn.query(
         'SELECT register_source_channel AS ch, COUNT(*) AS cnt, ' +
-          'SUM(CASE WHEN account_active = 1 THEN 1 ELSE 0 END) AS activated_cnt ' +
+          'SUM(CASE WHEN account_active = 1 AND activation_refunded_at IS NULL THEN 1 ELSE 0 END) AS activated_cnt ' +
           'FROM users WHERE ' +
           scope.where +
           ' GROUP BY register_source_channel ORDER BY cnt DESC',
@@ -8042,7 +8066,7 @@ async function handleAdminRegisterChannelStats(req, res) {
       const [actRows] = await conn.query(
         'SELECT activation_source_channel AS ch, COUNT(*) AS cnt FROM users WHERE ' +
           scope.where +
-          " AND account_active = 1 AND activation_source_channel IS NOT NULL AND TRIM(activation_source_channel) <> '' " +
+          " AND account_active = 1 AND activation_refunded_at IS NULL AND activation_source_channel IS NOT NULL AND TRIM(activation_source_channel) <> '' " +
           'GROUP BY activation_source_channel ORDER BY cnt DESC',
         scope.params
       );
@@ -8540,6 +8564,18 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
       ' AND ac.owner_admin_username = ?)'
   );
   params.push(admin.username);
+}
+
+function userTableAliasFromCol(userCol) {
+  if (!userCol) return 'users';
+  var idx = String(userCol).indexOf('.');
+  return idx >= 0 ? String(userCol).slice(0, idx) : String(userCol);
+}
+
+/** 排除已激活退款的账号（不计入激活相关统计） */
+function appendNonRefundedUserFilter(whereClauses, userCol) {
+  var alias = userTableAliasFromCol(userCol || 'users.username');
+  whereClauses.push(alias + '.activation_refunded_at IS NULL');
 }
 
 function sqlScopeAnd(scopeSql, clause) {
@@ -10308,6 +10344,7 @@ function appendActivatedUserScope(whereClauses, params, admin, userCol) {
   var userAlias = userCol.indexOf('.') >= 0 ? userCol.split('.')[0] : 'u';
   whereClauses.push(userAlias + '.account_active = 1');
   whereClauses.push(userAlias + '.list_hidden_at IS NULL');
+  whereClauses.push(userAlias + '.activation_refunded_at IS NULL');
   appendAdminUserScope(whereClauses, params, admin, userCol);
 }
 
@@ -10830,6 +10867,76 @@ async function handleAdminPurgeBotUsers(req, res) {
   }
 }
 
+/** 激活退款：封禁、软删除，并从用户数据与激活统计中排除 */
+async function handleAdminUserRefund(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      'SELECT id, account_active, activation_refunded_at FROM users WHERE username = ? FOR UPDATE',
+      [target]
+    );
+    if (urows.length === 0) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].activation_refunded_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已退款' });
+    }
+    if (!(urows[0].account_active === 1 || urows[0].account_active === true)) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅已激活账号可退款' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var adminName = req.admin && req.admin.username ? String(req.admin.username) : '';
+    await conn.execute(
+      `UPDATE users SET banned = 1, session_rev = session_rev + 1, account_active = 0,
+              list_hidden_at = NOW(3), list_hidden_by = ?,
+              activation_refunded_at = NOW(3), activation_refunded_by = ?
+       WHERE username = ?`,
+      [adminName, adminName, target]
+    );
+    await conn.commit();
+    conn.release();
+    return res.json({
+      code: 200,
+      data: {
+        username: target,
+        banned: true,
+        hidden: true,
+        refunded: true,
+        activation_excluded_from_stats: true
+      }
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 /** 从注册用户列表软删除（保留数据库数据，可在「已删除账号」恢复） */
 async function handleAdminDeleteUser(req, res) {
   var body = req.body || {};
@@ -10925,7 +11032,7 @@ async function handleAdminDeletedUsers(req, res) {
     var total = totalRows[0].count;
     const [rows] = await conn.query(
       `SELECT id, username, real_name, account_active, banned, created_at, list_hidden_at, list_hidden_by,
-              register_source_channel, activation_source_channel
+              register_source_channel, activation_source_channel, activation_refunded_at, activation_refunded_by
        FROM users ${whereSql}
        ORDER BY list_hidden_at DESC, id DESC
        LIMIT ${limit} OFFSET ${offset}`,
@@ -10945,6 +11052,11 @@ async function handleAdminDeletedUsers(req, res) {
         list_hidden_by:
           r.list_hidden_by != null && String(r.list_hidden_by).trim() !== ''
             ? String(r.list_hidden_by).trim()
+            : '',
+        activation_refunded_at: r.activation_refunded_at ? r.activation_refunded_at.toISOString() : '',
+        activation_refunded_by:
+          r.activation_refunded_by != null && String(r.activation_refunded_by).trim() !== ''
+            ? String(r.activation_refunded_by).trim()
             : '',
         channel_analysis_label: userChannelAnalysisLabel(
           r.register_source_channel,
@@ -10972,12 +11084,16 @@ async function handleAdminUserRestore(req, res) {
   const conn = await pool.getConnection();
   try {
     const [urows] = await conn.execute(
-      'SELECT id, list_hidden_at FROM users WHERE username = ?',
+      'SELECT id, list_hidden_at, activation_refunded_at FROM users WHERE username = ?',
       [target]
     );
     if (urows.length === 0) {
       conn.release();
       return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].activation_refunded_at) {
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已激活退款，不可恢复' });
     }
     if (!urows[0].list_hidden_at) {
       conn.release();
@@ -12583,6 +12699,7 @@ app.post(
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
+app.post('/api/admin/user-refund', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRefund);
 app.post('/api/admin/user-restore', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRestore);
 app.post('/api/admin/users/purge-bots', requireAdminAuth, requireAdminMenu('users'), handleAdminPurgeBotUsers);
 app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);

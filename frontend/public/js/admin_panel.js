@@ -5129,6 +5129,9 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
+                        if (u.account_active) {
+                            ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
+                        }
                         
                         var detailKey = keyForUser(u.username);
                         html += '<tr>';
@@ -5197,6 +5200,28 @@
                                         loadUsers();
                                     } else {
                                         alert(d.msg || '删除失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-refund-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            if (!confirm(
+                                '确定对已激活账号「' + name + '」执行退款？\n' +
+                                    '将封禁并从列表移除，激活数据不计入用户数据与数据统计，且不可恢复。'
+                            )) return;
+                            adminFetch('api/admin/user-refund', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '退款失败');
                                     }
                                 })
                                 .catch(function () { alert('网络错误'); });
@@ -5271,6 +5296,7 @@
                     list.forEach(function (u) {
                         var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
+                        var refunded = !!(u.activation_refunded_at && String(u.activation_refunded_at).trim());
                         html += '<tr>';
                         html += '<td>' + esc(u.id) + '</td>';
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
@@ -5281,10 +5307,15 @@
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td>' + formatDt(u.list_hidden_at) + '</td>';
                         html += '<td class="cell-break">' + esc(u.list_hidden_by || '—') + '</td>';
-                        html +=
-                            '<td class="col-ops"><button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
-                            esc(u.username) +
-                            '">恢复</button></td>';
+                        if (refunded) {
+                            html +=
+                                '<td class="col-ops"><span class="badge badge-no" title="激活退款，不可恢复">已退款</span></td>';
+                        } else {
+                            html +=
+                                '<td class="col-ops"><button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
+                                esc(u.username) +
+                                '">恢复</button></td>';
+                        }
                         html += '</tr>';
                     });
                     document.getElementById('deletedUserTbody').innerHTML =

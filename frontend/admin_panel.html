@@ -659,7 +659,7 @@
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <p class="stat" id="purgeBotsStat" style="display:none;"></p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。</p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。<strong>退款</strong>（仅已激活账号）：封禁并移出列表，激活数据不计入用户数据与数据统计，且不可恢复。</p>
             <div class="scroll-x">
                 <table class="users-registry-table">
                     <thead>
@@ -703,7 +703,7 @@
                 <div id="page-users-deleted" class="page-panel" role="tabpanel">
         <section>
             <h2>已删除账号</h2>
-            <p class="hint">此处展示从「注册用户」列表软删除的账号；<strong>数据库数据仍保留</strong>，用户仍可正常登录。可在此恢复至注册用户列表。</p>
+            <p class="hint">此处展示从「注册用户」列表软删除的账号；<strong>数据库数据仍保留</strong>。普通删除可恢复；<strong>激活退款</strong>的账号已封禁且不可恢复，激活数据不计入统计。</p>
             <div class="user-filter-bar">
                 <div class="user-filter-fields">
                 <div>

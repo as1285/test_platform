@@ -151,6 +151,7 @@
         .btn-unban { background: #43a047; color: #fff; }
         .btn-copy { background: #5c6bc0; color: #fff; white-space: nowrap; }
         .btn-del-user { background: #8d6e63; color: #fff; white-space: nowrap; }
+        .btn-refund { background: #ef6c00; color: #fff; white-space: nowrap; }
         .section-head-actions {
             display: flex;
             align-items: flex-start;
