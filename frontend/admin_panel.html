@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260529-female-age-collapse">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260606-user-activate">
 </head>
 <body>
     <div class="layout">
@@ -1776,6 +1776,18 @@
             </div>
         </div>
     </div>
+    <div id="userActivateBackdrop" class="admin-modal-backdrop" hidden>
+        <div class="admin-modal-box" onclick="event.stopPropagation()">
+            <h2 class="admin-modal-title">激活账号</h2>
+            <p class="hint admin-modal-meta" id="userActivateMeta"></p>
+            <label class="field-label" for="userActivateCodeInput">激活码</label>
+            <input type="text" id="userActivateCodeInput" class="filter-text-wide" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters" style="width:100%;box-sizing:border-box;">
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn-primary" id="userActivateConfirm">确认激活</button>
+                <button type="button" class="btn-page" id="userActivateCancel">取消</button>
+            </div>
+        </div>
+    </div>
     <div id="feedbackReplyBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">回复用户反馈</h2>
@@ -1789,7 +1801,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260601-user-soft-delete"></script>
+    <script src="/js/admin_panel.js?v=20260606-user-activate"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260528-table-no-grid"></script>
 </body>

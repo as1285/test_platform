@@ -5212,6 +5212,83 @@
                 });
         }
 
+        var userActivateTarget = null;
+
+        function closeUserActivateModal() {
+            var bd = document.getElementById('userActivateBackdrop');
+            if (bd) {
+                bd.setAttribute('hidden', '');
+            }
+            userActivateTarget = null;
+            var inp = document.getElementById('userActivateCodeInput');
+            if (inp) {
+                inp.value = '';
+            }
+        }
+
+        function openUserActivateModal(username) {
+            userActivateTarget = username;
+            var metaEl = document.getElementById('userActivateMeta');
+            if (metaEl) {
+                metaEl.textContent = '为账号「' + username + '」输入激活码并确认激活。';
+            }
+            var inp = document.getElementById('userActivateCodeInput');
+            if (inp) {
+                inp.value = '';
+            }
+            var bd = document.getElementById('userActivateBackdrop');
+            if (bd) {
+                bd.removeAttribute('hidden');
+            }
+            if (inp) {
+                try {
+                    inp.focus();
+                } catch (eFocus) {}
+            }
+        }
+
+        function submitUserActivate() {
+            if (!userActivateTarget) {
+                return;
+            }
+            var codeEl = document.getElementById('userActivateCodeInput');
+            var code = codeEl ? String(codeEl.value || '').trim() : '';
+            if (!code) {
+                alert('请输入激活码');
+                return;
+            }
+            var confirmBtn = document.getElementById('userActivateConfirm');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = '激活中…';
+            }
+            adminFetch('api/admin/user-activate', {
+                method: 'POST',
+                body: JSON.stringify({ username: userActivateTarget, code: code })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (d) {
+                    if (d.code === 200) {
+                        closeUserActivateModal();
+                        loadUsers();
+                        alert(d.msg || '激活成功');
+                    } else {
+                        alert(d.msg || '激活失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .finally(function () {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = '确认激活';
+                    }
+                });
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -5281,7 +5358,14 @@
                                 '台</span>';
                         }
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
-                        var ops = (u.banned
+                        var ops = '';
+                        if (!u.account_active) {
+                            ops +=
+                                '<button type="button" class="btn-sm btn-activate btn-user-activate" data-u="' +
+                                esc(u.username) +
+                                '">激活</button> ';
+                        }
+                        ops += (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
@@ -5322,6 +5406,11 @@
                     document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="13">暂无数据</td></tr>';
                     
                     // 重新绑定事件
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
+                        btn.onclick = function () {
+                            openUserActivateModal(btn.getAttribute('data-u'));
+                        };
+                    });
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
@@ -7264,6 +7353,31 @@
                 closeFeedbackReplyModal();
             }
         });
+        var userActivateBackdrop = document.getElementById('userActivateBackdrop');
+        if (userActivateBackdrop) {
+            userActivateBackdrop.addEventListener('click', function (e) {
+                if (e.target.id === 'userActivateBackdrop') {
+                    closeUserActivateModal();
+                }
+            });
+        }
+        var userActivateCancel = document.getElementById('userActivateCancel');
+        if (userActivateCancel) {
+            userActivateCancel.addEventListener('click', closeUserActivateModal);
+        }
+        var userActivateConfirm = document.getElementById('userActivateConfirm');
+        if (userActivateConfirm) {
+            userActivateConfirm.addEventListener('click', submitUserActivate);
+        }
+        var userActivateCodeInput = document.getElementById('userActivateCodeInput');
+        if (userActivateCodeInput) {
+            userActivateCodeInput.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    submitUserActivate();
+                }
+            });
+        }
         document.getElementById('feedbackReplyCancel').addEventListener('click', closeFeedbackReplyModal);
         document.getElementById('feedbackReplySave').addEventListener('click', function () {
             if (!feedbackReplyEditingId) {

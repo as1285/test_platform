@@ -9544,6 +9544,56 @@ async function handleAdminCodes(req, res) {
   }
 }
 
+async function handleAdminUserActivate(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var code = body.code != null ? String(body.code).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (!code) {
+    return res.status(400).json({ code: 400, msg: '请输入激活码' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, account_active, list_hidden_at FROM users WHERE username = ?',
+      [target]
+    );
+    if (urows.length === 0) {
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var already =
+      urows[0].account_active === 1 ||
+      urows[0].account_active === true ||
+      Number(urows[0].account_active) === 1;
+    conn.release();
+    if (already) {
+      return res.json({ code: 200, data: { username: target, account_active: true }, msg: '账号已激活' });
+    }
+    await applyActivationCode(target, code);
+    return res.json({ code: 200, data: { username: target, account_active: true }, msg: '激活成功' });
+  } catch (e) {
+    try {
+      conn.release();
+    } catch (e2) {}
+    return res.status(400).json({ code: 400, msg: e.message || String(e) });
+  }
+}
+
 async function handleAdminBan(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -12795,6 +12845,7 @@ app.post(
   handleAdminIssueCodeBatch
 );
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
+app.post('/api/admin/user-activate', requireAdminAuth, requireAdminMenu('users'), handleAdminUserActivate);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
 app.post('/api/admin/user-refund', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRefund);
