@@ -7150,6 +7150,36 @@ async function handleAdminInstallGuideStats(req, res) {
          ORDER BY d ASC`,
         [span]
       );
+      var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+      var cnUserSince =
+        cnUserDay + ' >= DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL ? DAY)';
+      const [regDailyRows] = await conn.query(
+        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
+         FROM users u
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+         GROUP BY ${cnUserDay}
+         ORDER BY d ASC`,
+        [span]
+      );
+      const [regFromInstallRows] = await conn.query(
+        `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
+         FROM users u
+         INNER JOIN user_devices ud ON ud.username = u.username
+         INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'
+           AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = ${cnUserDay}
+           AND (
+             (ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)
+             OR (
+               ig.client_id IS NOT NULL AND ig.client_id <> ''
+               AND ud.client_id IS NOT NULL AND ud.client_id <> ''
+               AND ig.client_id = ud.client_id
+             )
+           )
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+         GROUP BY ${cnUserDay}
+         ORDER BY d ASC`,
+        [span]
+      );
       const [recentRows] = await conn.query(
         `SELECT client_id, device_fp, event_key, dwell_seconds, created_at
          FROM install_guide_track_events
@@ -7181,15 +7211,77 @@ async function handleAdminInstallGuideStats(req, res) {
         };
       });
 
-      var daily = (dailyRows || []).map(function (r) {
+      function pctText(n, d) {
+        if (!d || d <= 0) return null;
+        return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+      }
+
+      var regMap = {};
+      (regDailyRows || []).forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) regMap[k] = Number(r.registered) || 0;
+      });
+      var regInstallMap = {};
+      (regFromInstallRows || []).forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) regInstallMap[k] = Number(r.registered_from_install) || 0;
+      });
+
+      var dailyMap = {};
+      (dailyRows || []).forEach(function (r) {
+        var dk = formatDateKey(r.d);
+        if (!dk) return;
         var avg = Number(r.avg_dwell_seconds);
-        return {
-          date: formatDateKey(r.d),
+        var uv = Number(r.unique_visitors) || 0;
+        var regAll = regMap[dk] || 0;
+        var regInstall = regInstallMap[dk] || 0;
+        dailyMap[dk] = {
+          date: dk,
           page_views: Number(r.page_views) || 0,
-          unique_visitors: Number(r.unique_visitors) || 0,
+          unique_visitors: uv,
           avg_dwell_seconds: isFinite(avg) ? Math.round(avg) : null,
-          avg_dwell_label: isFinite(avg) ? formatStaySecondsLabel(avg) : '—'
+          avg_dwell_label: isFinite(avg) ? formatStaySecondsLabel(avg) : '—',
+          registered: regAll,
+          registered_from_install: regInstall,
+          register_rate: uv > 0 ? regInstall / uv : null,
+          register_rate_pct: pctText(regInstall, uv),
+          register_rate_all: uv > 0 ? regAll / uv : null,
+          register_rate_all_pct: pctText(regAll, uv)
         };
+      });
+
+      var todayKey = chinaDateKeyNow();
+      var todayParts = todayKey.split('-').map(Number);
+      var daily = [];
+      for (var di = 0; di < days; di++) {
+        var dt = new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - (days - 1 - di));
+        var key = formatDateKey(dt);
+        if (dailyMap[key]) {
+          daily.push(dailyMap[key]);
+        } else {
+          var regAll0 = regMap[key] || 0;
+          var regInstall0 = regInstallMap[key] || 0;
+          daily.push({
+            date: key,
+            page_views: 0,
+            unique_visitors: 0,
+            avg_dwell_seconds: null,
+            avg_dwell_label: '—',
+            registered: regAll0,
+            registered_from_install: regInstall0,
+            register_rate: null,
+            register_rate_pct: regAll0 > 0 ? '—' : null,
+            register_rate_all: null,
+            register_rate_all_pct: regAll0 > 0 ? '—' : null
+          });
+        }
+      }
+
+      var totalRegistered = 0;
+      var totalRegisteredFromInstall = 0;
+      daily.forEach(function (row) {
+        totalRegistered += row.registered || 0;
+        totalRegisteredFromInstall += row.registered_from_install || 0;
       });
 
       var recent = (recentRows || []).map(function (r) {
@@ -7222,7 +7314,13 @@ async function handleAdminInstallGuideStats(req, res) {
             avg_dwell_seconds: isFinite(avgDwell) ? Math.round(avgDwell) : null,
             avg_dwell_label: isFinite(avgDwell) ? formatStaySecondsLabel(avgDwell) : '—',
             median_dwell_seconds: medianDwell != null ? medianDwell : null,
-            median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—'
+            median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—',
+            registered: totalRegistered,
+            registered_from_install: totalRegisteredFromInstall,
+            register_rate: uv > 0 ? totalRegisteredFromInstall / uv : null,
+            register_rate_pct: pctText(totalRegisteredFromInstall, uv),
+            register_rate_all: uv > 0 ? totalRegistered / uv : null,
+            register_rate_all_pct: pctText(totalRegistered, uv)
           },
           actions: actions,
           daily: daily,

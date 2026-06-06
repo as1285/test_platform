@@ -88,6 +88,7 @@
         var _udGenderChartInstances = [];
         var _udFemaleAgeChartInstances = [];
         var _auaDauChartInstances = [];
+        var _installGuideChartInstances = [];
         var FEMALE_AGE_CHART_COLORS = {
             u18: '#c4b5fd',
             '18_22': '#f9a8d4',
@@ -160,6 +161,15 @@
                 } catch (e0) {}
             });
             _registerGenderChartInstances = [];
+        }
+
+        function destroyInstallGuideCharts() {
+            _installGuideChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _installGuideChartInstances = [];
         }
 
         function renderRegisterGenderAnalysis(data) {
@@ -3468,6 +3478,7 @@
         function renderInstallGuideStats(data) {
             var el = document.getElementById('installGuideStatsMount');
             if (!el) return;
+            destroyInstallGuideCharts();
             if (!data || !data.summary) {
                 el.textContent = '暂无安装页统计数据';
                 return;
@@ -3483,6 +3494,20 @@
                 esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
                 '</div></div>';
             html +=
+                '<div class="user-data-stat-card"><div class="ud-label">安装页→注册率</div><div class="ud-val">' +
+                esc(s.register_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">归因注册 ' +
+                esc(String(s.registered_from_install != null ? s.registered_from_install : 0)) +
+                ' / UV ' +
+                esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">当日总注册</div><div class="ud-val">' +
+                esc(String(s.registered != null ? s.registered : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">占 UV ' +
+                esc(s.register_rate_all_pct || '—') +
+                '</div></div>';
+            html +=
                 '<div class="user-data-stat-card"><div class="ud-label">平均停留</div><div class="ud-val">' +
                 esc(s.avg_dwell_label || '—') +
                 '</div><div class="hint" style="margin-top:4px;font-size:12px;">有效离开 ' +
@@ -3493,6 +3518,11 @@
                 esc(s.median_dwell_label || '—') +
                 '</div></div>';
             html += '</div>';
+
+            var daily = Array.isArray(data.daily) ? data.daily : [];
+            html += '<p class="stat" style="margin:0 0 8px;">每日访问与注册趋势</p>';
+            html +=
+                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideVisitRegChart" aria-label="安装页每日访问与注册折线图"></canvas></div></div>';
 
             var actions = Array.isArray(data.actions) ? data.actions : [];
             html += '<p class="stat" style="margin:0 0 8px;">用户行为（点击 / 播放等）</p>';
@@ -3506,18 +3536,21 @@
             }
             html += '</tbody></table></div>';
 
-            var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">按日趋势</p>';
+            html += '<p class="stat" style="margin:0 0 8px;">按日明细</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
-            html += '<th>日期</th><th>浏览量</th><th>独立访客</th><th>平均停留</th></tr></thead><tbody>';
+            html +=
+                '<th>日期</th><th>浏览量</th><th>独立访客</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th></tr></thead><tbody>';
             if (!daily.length) {
-                html += '<tr><td colspan="4">暂无</td></tr>';
+                html += '<tr><td colspan="7">暂无</td></tr>';
             } else {
-                daily.forEach(function (row) {
+                daily.slice().reverse().forEach(function (row) {
                     html += '<tr>';
                     html += '<td>' + esc(row.date || '—') + '</td>';
                     html += '<td>' + esc(row.page_views) + '</td>';
                     html += '<td>' + esc(row.unique_visitors) + '</td>';
+                    html += '<td>' + esc(row.registered_from_install != null ? row.registered_from_install : 0) + '</td>';
+                    html += '<td>' + esc(row.registered != null ? row.registered : 0) + '</td>';
+                    html += '<td>' + esc(row.register_rate_pct || (row.unique_visitors > 0 ? '0.0%' : '—')) + '</td>';
                     html += '<td>' + esc(row.avg_dwell_label || '—') + '</td>';
                     html += '</tr>';
                 });
@@ -3545,6 +3578,130 @@
             }
             html += '</tbody></table></div>';
             el.innerHTML = html;
+
+            if (typeof Chart !== 'undefined' && daily.length) {
+                var chartCanvas = document.getElementById('installGuideVisitRegChart');
+                if (chartCanvas) {
+                    var labels = daily.map(function (row) {
+                        return row.date ? String(row.date).slice(5) : '';
+                    });
+                    var rateData = daily.map(function (row) {
+                        var uv = Number(row.unique_visitors) || 0;
+                        var reg = Number(row.registered_from_install) || 0;
+                        if (uv <= 0) return null;
+                        return Math.round((reg / uv) * 1000) / 10;
+                    });
+                    _installGuideChartInstances.push(
+                        new Chart(chartCanvas, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    {
+                                        label: '独立访客 (UV)',
+                                        data: daily.map(function (row) {
+                                            return Number(row.unique_visitors) || 0;
+                                        }),
+                                        borderColor: '#1e6fff',
+                                        backgroundColor: '#1e6fff',
+                                        yAxisID: 'yCount',
+                                        tension: 0.3,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 3
+                                    },
+                                    {
+                                        label: '归因注册',
+                                        data: daily.map(function (row) {
+                                            return Number(row.registered_from_install) || 0;
+                                        }),
+                                        borderColor: '#22a06b',
+                                        backgroundColor: '#22a06b',
+                                        yAxisID: 'yCount',
+                                        tension: 0.3,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 3
+                                    },
+                                    {
+                                        label: '总注册',
+                                        data: daily.map(function (row) {
+                                            return Number(row.registered) || 0;
+                                        }),
+                                        borderColor: '#94a3b8',
+                                        backgroundColor: '#94a3b8',
+                                        yAxisID: 'yCount',
+                                        borderDash: [6, 4],
+                                        tension: 0.3,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 2
+                                    },
+                                    {
+                                        label: '注册率 (%)',
+                                        data: rateData,
+                                        borderColor: '#ef6c00',
+                                        backgroundColor: '#ef6c00',
+                                        yAxisID: 'yRate',
+                                        tension: 0.3,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 2,
+                                        spanGaps: true
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { position: 'bottom' },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function (items) {
+                                                if (!items || !items.length || !daily[items[0].dataIndex]) {
+                                                    return '';
+                                                }
+                                                return daily[items[0].dataIndex].date || '';
+                                            },
+                                            label: function (ctx) {
+                                                var label = ctx.dataset.label || '';
+                                                if (label.indexOf('注册率') >= 0) {
+                                                    return ctx.parsed.y == null
+                                                        ? label + ': —'
+                                                        : label + ': ' + ctx.parsed.y + '%';
+                                                }
+                                                return label + ': ' + ctx.parsed.y;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    yCount: {
+                                        type: 'linear',
+                                        position: 'left',
+                                        beginAtZero: true,
+                                        title: { display: true, text: '人数' }
+                                    },
+                                    yRate: {
+                                        type: 'linear',
+                                        position: 'right',
+                                        beginAtZero: true,
+                                        grid: { drawOnChartArea: false },
+                                        title: { display: true, text: '注册率 %' },
+                                        ticks: {
+                                            callback: function (v) {
+                                                return v + '%';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
         }
 
         function loadInstallGuideStats() {
