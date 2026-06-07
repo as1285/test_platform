@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260523-register-guard"></script>
+    <script src="/js/auth.js?v=20260608-install-referral"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -169,6 +169,15 @@
     <script>
         var regCaptchaId = '';
 
+        (function initInstallGuideReferralFromUrl() {
+            try {
+                var q = new URLSearchParams(window.location.search);
+                if (q.get('from') === 'install_guide' && typeof window.markInstallGuideReferral === 'function') {
+                    window.markInstallGuideReferral('url_param');
+                }
+            } catch (e) {}
+        })();
+
         function showErr(msg) {
             var el = document.getElementById('errBox');
             if (!msg) {
@@ -265,8 +274,14 @@
             }
 
             if (typeof window.trackPublicAction === 'function') {
-                window.trackPublicAction('track_register_submit', { page: 'register' });
+                window.trackPublicAction('track_register_submit', {
+                    page: 'register',
+                    from_install_guide: !!(typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral())
+                });
             }
+
+            var fromInstallGuide =
+                typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
@@ -280,6 +295,7 @@
                     password: password,
                     register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther,
+                    from_install_guide: fromInstallGuide ? 1 : 0,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns
                 })
@@ -289,7 +305,13 @@
                     if (data.code === 200 && data.data) {
                         var d = data.data;
                         if (typeof window.trackPublicAction === 'function') {
-                            window.trackPublicAction('track_register_success', { page: 'register' });
+                            window.trackPublicAction('track_register_success', {
+                                page: 'register',
+                                from_install_guide: fromInstallGuide
+                            });
+                        }
+                        if (typeof window.clearInstallGuideReferral === 'function') {
+                            window.clearInstallGuideReferral();
                         }
                         if (d.token) {
                             localStorage.setItem('token', d.token);

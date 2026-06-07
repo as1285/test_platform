@@ -8,6 +8,8 @@
   var LOGIN_PAGE = 'index.html';
   var ACTIVATE_PAGE = 'index.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
+  var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
+  var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var PUBLIC_PAGES = {
     'index.html': true,
     'register.html': true,
@@ -892,6 +894,52 @@
     return 'web_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
   }
 
+  function markInstallGuideReferral(source) {
+    try {
+      localStorage.setItem(
+        INSTALL_GUIDE_REFERRAL_KEY,
+        JSON.stringify({
+          at: Date.now(),
+          source: source ? String(source).substring(0, 32) : 'install_guide'
+        })
+      );
+    } catch (e) {}
+  }
+
+  function hasInstallGuideReferral() {
+    try {
+      var raw = localStorage.getItem(INSTALL_GUIDE_REFERRAL_KEY);
+      if (!raw) {
+        return false;
+      }
+      var o = JSON.parse(raw);
+      if (!o || !o.at) {
+        return false;
+      }
+      if (Date.now() - Number(o.at) > INSTALL_GUIDE_REFERRAL_TTL_MS) {
+        localStorage.removeItem(INSTALL_GUIDE_REFERRAL_KEY);
+        return false;
+      }
+      return true;
+    } catch (e2) {
+      return false;
+    }
+  }
+
+  function clearInstallGuideReferral() {
+    try {
+      localStorage.removeItem(INSTALL_GUIDE_REFERRAL_KEY);
+    } catch (e) {}
+  }
+
+  function consumeInstallGuideReferral() {
+    var ok = hasInstallGuideReferral();
+    if (ok) {
+      clearInstallGuideReferral();
+    }
+    return ok;
+  }
+
   function getOrCreateClientDeviceId() {
     try {
       var v = localStorage.getItem(CLIENT_DEVICE_STORAGE_KEY);
@@ -1248,6 +1296,10 @@
   window.authClearSession = clearSession;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
   window.buildClientDevicePayload = buildClientDevicePayload;
+  window.markInstallGuideReferral = markInstallGuideReferral;
+  window.hasInstallGuideReferral = hasInstallGuideReferral;
+  window.clearInstallGuideReferral = clearInstallGuideReferral;
+  window.consumeInstallGuideReferral = consumeInstallGuideReferral;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };

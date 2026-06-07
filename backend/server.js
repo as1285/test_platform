@@ -1002,6 +1002,15 @@ async function createTables() {
       throw e;
     }
   }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN registered_from_install_guide TINYINT(1) NOT NULL DEFAULT 0 COMMENT '注册时上报来自安装页引流'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS activation_codes (
@@ -2967,7 +2976,7 @@ async function buildUserTaxAvgSalaryMap(conn, usernames) {
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password, registerSourceChannel) {
+async function registerUser(username, password, registerSourceChannel, fromInstallGuide) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -3001,9 +3010,18 @@ async function registerUser(username, password, registerSourceChannel) {
     var storePlain =
       String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
-      [username, saltHex, hash, displayName, USER_TYPE_NORMAL, storePlain, registerSourceChannel]
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      [
+        username,
+        saltHex,
+        hash,
+        displayName,
+        USER_TYPE_NORMAL,
+        storePlain,
+        registerSourceChannel,
+        fromInstallGuide ? 1 : 0
+      ]
     );
     // 注册成功埋点（用于后台接口统计看转化）
     incrementApiDailyCounter('EVENT register_success', '认证注册');
@@ -4375,6 +4393,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
   track_install_register_click: '注册入口点击',
+  track_install_register_success: '安装页引流注册成功',
   track_install_ios_video_play: '苹果安装视频播放',
   track_install_usage_video_play: '操作视频播放'
 };
@@ -4386,6 +4405,12 @@ function isInstallGuideTrackContext(req, meta) {
   }
   var pp = inferPagePathFromRequest(req);
   return /install_guide\.html/i.test(pp);
+}
+
+function parseFromInstallGuideFlag(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var v = b.from_install_guide;
+  return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
 }
 
 function recordInstallGuideTrackEvent(req, action, meta) {
@@ -6126,11 +6151,18 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
-        var out = await registerUser(body.username, body.password, regSourceNorm.value);
+        var out = await registerUser(body.username, body.password, regSourceNorm.value, parseFromInstallGuideFlag(body));
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
         await recordUserRegistrationAttempt(out.username, true, req, 'register_ok');
+        if (parseFromInstallGuideFlag(body)) {
+          recordInstallGuideTrackEvent(req, 'track_install_register_success', {
+            page: 'register',
+            username: out.username,
+            reported: true
+          });
+        }
         out.token = signAccessToken(out);
         return res.json({ code: 200, data: out });
       } catch (regErr) {
@@ -7173,18 +7205,33 @@ async function handleAdminInstallGuideStats(req, res) {
       const [regFromInstallRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
          FROM users u
-         INNER JOIN user_devices ud ON ud.username = u.username
-         INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'
-           AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = ${cnUserDay}
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
            AND (
-             (ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)
-             OR (
-               ig.client_id IS NOT NULL AND ig.client_id <> ''
-               AND ud.client_id IS NOT NULL AND ud.client_id <> ''
-               AND ig.client_id = ud.client_id
+             u.registered_from_install_guide = 1
+             OR EXISTS (
+               SELECT 1
+               FROM user_devices ud
+               INNER JOIN install_guide_track_events ig ON ig.event_key = 'track_install_page_view'
+                 AND DATE(DATE_ADD(ig.created_at, INTERVAL 8 HOUR)) = ${cnUserDay}
+                 AND (
+                   (ig.device_fp IS NOT NULL AND ig.device_fp <> '' AND ig.device_fp = ud.device_fp)
+                   OR (
+                     ig.client_id IS NOT NULL AND ig.client_id <> ''
+                     AND ud.client_id IS NOT NULL AND ud.client_id <> ''
+                     AND ig.client_id = ud.client_id
+                   )
+                 )
+               WHERE ud.username = u.username
              )
            )
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+         GROUP BY ${cnUserDay}
+         ORDER BY d ASC`,
+        [span]
+      );
+      const [regFromInstallReportedRows] = await conn.query(
+        `SELECT ${cnUserDay} AS d, COUNT(*) AS registered_from_install_reported
+         FROM users u
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL AND u.registered_from_install_guide = 1
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
         [span]
@@ -7234,6 +7281,11 @@ async function handleAdminInstallGuideStats(req, res) {
       (regFromInstallRows || []).forEach(function (r) {
         var k = formatDateKey(r.d);
         if (k) regInstallMap[k] = Number(r.registered_from_install) || 0;
+      });
+      var regInstallReportedMap = {};
+      (regFromInstallReportedRows || []).forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) regInstallReportedMap[k] = Number(r.registered_from_install_reported) || 0;
       });
 
       var dailyMap = {};
@@ -7288,9 +7340,13 @@ async function handleAdminInstallGuideStats(req, res) {
 
       var totalRegistered = 0;
       var totalRegisteredFromInstall = 0;
+      var totalRegisteredFromInstallReported = 0;
       daily.forEach(function (row) {
         totalRegistered += row.registered || 0;
         totalRegisteredFromInstall += row.registered_from_install || 0;
+      });
+      Object.keys(regInstallReportedMap).forEach(function (k) {
+        totalRegisteredFromInstallReported += regInstallReportedMap[k] || 0;
       });
 
       var recent = (recentRows || []).map(function (r) {
@@ -7326,6 +7382,7 @@ async function handleAdminInstallGuideStats(req, res) {
             median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—',
             registered: totalRegistered,
             registered_from_install: totalRegisteredFromInstall,
+            registered_from_install_reported: totalRegisteredFromInstallReported,
             register_rate: uv > 0 ? totalRegisteredFromInstall / uv : null,
             register_rate_pct: pctText(totalRegisteredFromInstall, uv),
             register_rate_all: uv > 0 ? totalRegistered / uv : null,

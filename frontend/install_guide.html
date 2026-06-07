@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260513-jump-aggregate"></script>
+    <script src="/js/auth.js?v=20260608-install-referral"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>安装包和使用方法</title>
     <style>
@@ -190,7 +190,7 @@
             <h2>应用下载</h2>
             <div class="install-actions" id="installButtonsRow"></div>
             <div class="register-cta">
-                <a href="register.html" id="installRegisterLink">装好后点这里注册</a>
+                <a href="register.html?from=install_guide" id="installRegisterLink">装好后点这里注册</a>
             </div>
             <p class="hint" style="margin-top:10px;">本应用为界面演示与学习参考，非官方申报渠道。</p>
             <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
@@ -300,6 +300,9 @@
             var link = document.getElementById('installRegisterLink');
             if (!link) return;
             link.addEventListener('click', function () {
+                if (typeof window.markInstallGuideReferral === 'function') {
+                    window.markInstallGuideReferral('register_click');
+                }
                 if (typeof window.trackPublicAction === 'function') {
                     window.trackPublicAction('track_install_register_click', { page: 'install_guide' });
                 }
@@ -384,6 +387,9 @@
                 });
             }
             window.trackPublicAction('track_install_page_view', { page: 'install_guide' });
+            if (typeof window.markInstallGuideReferral === 'function') {
+                window.markInstallGuideReferral('page_view');
+            }
             document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState === 'hidden') {
                     sendPageLeave();

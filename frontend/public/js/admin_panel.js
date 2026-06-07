@@ -3500,6 +3500,9 @@
                 esc(String(s.registered_from_install != null ? s.registered_from_install : 0)) +
                 ' / UV ' +
                 esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
+                (s.registered_from_install_reported != null && Number(s.registered_from_install_reported) > 0
+                    ? ' · 注册回传 ' + esc(String(s.registered_from_install_reported))
+                    : '') +
                 '</div></div>';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">当日总注册</div><div class="ud-val">' +
