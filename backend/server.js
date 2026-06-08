@@ -4395,7 +4395,10 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_register_click: '注册入口点击',
   track_install_register_success: '安装页引流注册成功',
   track_install_ios_video_play: '苹果安装视频播放',
-  track_install_usage_video_play: '操作视频播放'
+  track_install_usage_video_play: '操作视频播放',
+  track_install_app_shell_register_prompt_show: 'App 内安装成功弹窗展示',
+  track_install_app_shell_register_prompt_ok: 'App 内弹窗-立即注册',
+  track_install_app_shell_register_prompt_later: 'App 内弹窗-稍后再说'
 };
 
 function isInstallGuideTrackContext(req, meta) {

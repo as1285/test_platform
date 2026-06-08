@@ -1386,6 +1386,115 @@
     }
   }
 
+  (function appShellRegisterPrompt() {
+    if (!isCordovaTaxAppShell()) {
+      return;
+    }
+    if (getToken()) {
+      return;
+    }
+    if (currentPageName() === 'admin_panel.html' || currentPageName() === 'register.html') {
+      return;
+    }
+    var KEY = 'app_shell_register_prompt_v1';
+    try {
+      if (localStorage.getItem(KEY) === '1') {
+        return;
+      }
+    } catch (e0) {
+      return;
+    }
+
+    function markPromptSeen() {
+      try {
+        localStorage.setItem(KEY, '1');
+      } catch (e1) {}
+    }
+
+    function injectPromptStyles() {
+      if (document.getElementById('app-shell-register-prompt-style')) {
+        return;
+      }
+      var style = document.createElement('style');
+      style.id = 'app-shell-register-prompt-style';
+      style.textContent =
+        '.app-shell-register-root{position:fixed;inset:0;z-index:10060;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;}' +
+        '.app-shell-register-mask{position:absolute;inset:0;background:rgba(0,0,0,.45);}' +
+        '.app-shell-register-panel{position:relative;width:100%;max-width:320px;background:#fff;border-radius:12px;padding:20px 16px 14px;box-shadow:0 8px 28px rgba(0,0,0,.18);}' +
+        '.app-shell-register-title{font-size:17px;font-weight:600;color:#333;margin:0 0 10px;line-height:1.35;}' +
+        '.app-shell-register-msg{font-size:14px;color:#666;line-height:1.55;margin:0 0 16px;}' +
+        '.app-shell-register-actions{display:flex;flex-direction:column;gap:10px;}' +
+        '.app-shell-register-btn{width:100%;min-height:44px;padding:10px 14px;border-radius:8px;font-size:15px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}' +
+        '.app-shell-register-btn-primary{background:#1e6fff;color:#fff;font-weight:600;}' +
+        '.app-shell-register-btn-secondary{background:#f0f0f0;color:#666;}';
+      document.head.appendChild(style);
+    }
+
+    function showPrompt() {
+      injectPromptStyles();
+      var root = document.createElement('div');
+      root.className = 'app-shell-register-root';
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      root.innerHTML =
+        '<div class="app-shell-register-mask" data-action="later"></div>' +
+        '<div class="app-shell-register-panel">' +
+        '<p class="app-shell-register-title">安装成功，去注册</p>' +
+        '<p class="app-shell-register-msg">请先注册账号，再在 App 内输入激活码完成激活，即可填写个税演示数据。</p>' +
+        '<div class="app-shell-register-actions">' +
+        '<button type="button" class="app-shell-register-btn app-shell-register-btn-primary" data-action="register">立即注册</button>' +
+        '<button type="button" class="app-shell-register-btn app-shell-register-btn-secondary" data-action="later">稍后再说</button>' +
+        '</div></div>';
+      document.body.appendChild(root);
+
+      function closePrompt() {
+        if (root.parentNode) {
+          root.parentNode.removeChild(root);
+        }
+      }
+
+      root.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-action]');
+        if (!el) {
+          return;
+        }
+        var action = el.getAttribute('data-action');
+        markPromptSeen();
+        if (action === 'register') {
+          if (typeof markInstallGuideReferral === 'function') {
+            markInstallGuideReferral('app_shell_first_open');
+          }
+          if (typeof trackPublicAction === 'function') {
+            trackPublicAction('track_install_app_shell_register_prompt_ok', { page: currentPageName() });
+          }
+          closePrompt();
+          window.location.href = 'register.html?from=install_guide';
+          return;
+        }
+        if (action === 'later') {
+          if (typeof trackPublicAction === 'function') {
+            trackPublicAction('track_install_app_shell_register_prompt_later', { page: currentPageName() });
+          }
+          closePrompt();
+        }
+      });
+
+      if (typeof trackPublicAction === 'function') {
+        trackPublicAction('track_install_app_shell_register_prompt_show', { page: currentPageName() });
+      }
+    }
+
+    function schedulePrompt() {
+      setTimeout(showPrompt, 500);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', schedulePrompt);
+    } else {
+      schedulePrompt();
+    }
+  })();
+
   (function loadBackArrowAssets() {
     var v = '20260525-jt';
     try {

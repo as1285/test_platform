@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260608-install-referral"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260608-app-shell-register"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>安装包和使用方法</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,7 +17,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
         }
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
@@ -63,24 +63,72 @@
             margin-bottom: 14px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
         }
-        .card h2 {
+        .card > h2 {
             font-size: 16px;
             color: #333;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+        .steps-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .step-pill {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.35;
+            padding: 8px 6px;
+            border-radius: 999px;
+            background: #eef2f7;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .step-pill.is-active {
+            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+            color: #fff;
+        }
+        .step-block {
+            margin-bottom: 18px;
+            padding-bottom: 18px;
             border-bottom: 1px solid #f0f0f0;
         }
-        .card p, .card li {
+        .step-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .step-block h3 {
+            font-size: 15px;
+            color: #1e293b;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-block p, .step-block li {
             font-size: 14px;
             color: #555;
             line-height: 1.65;
-            margin-bottom: 10px;
-        }
-        .card ol {
-            padding-left: 1.2em;
             margin-bottom: 8px;
         }
-        .card li { margin-bottom: 8px; }
+        .step-block ol {
+            padding-left: 1.25em;
+            margin: 8px 0 0;
+        }
         .install-actions {
             display: flex;
             flex-direction: column;
@@ -96,14 +144,7 @@
             justify-content: center;
             min-height: 48px;
         }
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
         .btn {
-            flex: 1;
-            min-width: 120px;
             padding: 11px 16px;
             border: none;
             border-radius: 10px;
@@ -116,11 +157,47 @@
             background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
             color: #fff;
         }
-        .btn-secondary {
-            background: #eef2f7;
-            color: #374151;
+        .desktop-qr {
+            text-align: center;
+            padding: 12px 0 4px;
         }
-        .video-card h2 { margin-bottom: 10px; }
+        .desktop-qr img {
+            width: 180px;
+            height: 180px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+        }
+        .desktop-qr p {
+            font-size: 13px;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+        .in-app-banner {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            font-size: 14px;
+            line-height: 1.55;
+            margin-bottom: 12px;
+        }
+        .in-app-banner.is-visible {
+            display: block;
+        }
+        .video-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .video-label strong {
+            color: #c2410c;
+            font-weight: 600;
+        }
         .video-wrap {
             border-radius: 12px;
             overflow: hidden;
@@ -149,31 +226,87 @@
             color: #888;
             line-height: 1.5;
         }
+        .usage-collapse {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fafbfc;
+        }
+        .usage-collapse summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .usage-collapse summary::-webkit-details-marker {
+            display: none;
+        }
+        .usage-collapse summary::after {
+            content: '展开';
+            float: right;
+            font-size: 12px;
+            color: #1e6fff;
+            font-weight: 600;
+        }
+        .usage-collapse[open] summary::after {
+            content: '收起';
+        }
+        .usage-collapse-body {
+            padding: 0 14px 14px;
+        }
         .hint {
             font-size: 12px;
             color: #888;
             margin-top: 10px;
             line-height: 1.5;
         }
-        .register-cta {
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 1px solid #f0f0f0;
-            text-align: center;
+        .sticky-register-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 60;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: rgba(255, 255, 255, 0.96);
+            border-top: 1px solid #e5e7eb;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
-        .register-cta a {
-            display: inline-flex;
+        .sticky-register-inner {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .sticky-register-hint {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 8px;
+            line-height: 1.45;
+        }
+        .sticky-register-btn {
+            display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            padding: 10px 18px;
+            width: 100%;
+            min-height: 48px;
             border-radius: 10px;
-            background: #fff7ed;
-            color: #c2410c;
-            font-size: 15px;
+            background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+            color: #fff;
+            font-size: 16px;
             font-weight: 600;
             text-decoration: none;
-            border: 1px solid #fed7aa;
+            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .is-hidden {
+            display: none !important;
+        }
+        .step-block.is-hidden {
+            display: none;
         }
     </style>
 </head>
@@ -187,26 +320,64 @@
 
     <div class="wrap">
         <section class="card">
-            <h2>应用下载</h2>
-            <div class="install-actions" id="installButtonsRow"></div>
-            <div class="register-cta">
-                <a href="register.html?from=install_guide" id="installRegisterLink">装好后点这里注册</a>
+            <h2>三步完成安装与注册</h2>
+            <div class="steps-bar" aria-hidden="true">
+                <div class="step-pill is-active" id="stepPill1">① 下载安装</div>
+                <div class="step-pill" id="stepPill2">② 完成安装</div>
+                <div class="step-pill" id="stepPill3">③ 注册激活</div>
             </div>
-            <p class="hint" style="margin-top:10px;">本应用为界面演示与学习参考，非官方申报渠道。</p>
-            <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
-        </section>
 
-        <section class="card video-card">
-            <h2>苹果安装视频</h2>
-            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 iPhone / iPad 下载并安装描述文件的步骤，可在管理后台「引导安装」中配置。</p>
-            <div id="iosInstallVideoContainer"></div>
-        </section>
+            <div class="in-app-banner" id="inAppBanner">
+                您已在 App 内打开，可跳过下载，直接完成注册并在 App 内输入激活码。
+            </div>
 
-        <section class="card video-card">
-            <h2>操作视频</h2>
-            <p class="hint" style="margin-bottom:12px;color:#555;">用于演示 APP 使用方法，可在管理后台「引导安装」中配置。</p>
-            <div id="usageVideoContainer"></div>
+            <div class="step-block" id="stepDownloadBlock">
+                <h3><span class="step-num">1</span>下载安装包</h3>
+                <div class="install-actions" id="installButtonsRow"></div>
+                <div class="desktop-qr" id="desktopQrBlock" hidden>
+                    <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
+                    <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
+                </div>
+                <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+            </div>
+
+            <div class="step-block" id="stepInstallBlock">
+                <h3><span class="step-num">2</span>按指引完成安装</h3>
+                <div id="androidInstallTips" class="is-hidden">
+                    <ol>
+                        <li>点击上方按钮下载 APK 安装包</li>
+                        <li>若提示「未知来源」或「禁止安装」，请在系统设置中允许本浏览器安装应用</li>
+                        <li>安装完成后打开 App，再点击下方「立即注册账号」</li>
+                    </ol>
+                </div>
+                <div id="iosInstallSection">
+                    <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
+                    <div id="iosInstallVideoContainer"></div>
+                </div>
+                <details id="usageVideoBlock" class="usage-collapse" hidden>
+                    <summary>安装后如何使用（操作演示，可选）</summary>
+                    <div class="usage-collapse-body">
+                        <p class="video-label" style="margin-bottom:10px;">演示注册、填写个税与查看明细，约 1–2 分钟即可上手</p>
+                        <div id="usageVideoContainer"></div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="step-block" id="stepRegisterBlock">
+                <h3><span class="step-num">3</span>注册并激活</h3>
+                <p>注册成功后，请在 App 内输入激活码完成激活，即可填写个税演示数据。</p>
+                <a href="register.html?from=install_guide" class="btn btn-primary install-register-link" style="display:flex;margin-top:12px;text-decoration:none;">立即注册账号</a>
+            </div>
+
+            <p class="hint" style="margin-top:14px;">本应用为界面演示与学习参考，非官方申报渠道。</p>
         </section>
+    </div>
+
+    <div class="sticky-register-bar">
+        <div class="sticky-register-inner">
+            <p class="sticky-register-hint">第 3 步：注册后需在 App 内输入激活码才能使用</p>
+            <a href="register.html?from=install_guide" class="sticky-register-btn install-register-link" id="installRegisterLink">立即注册账号</a>
+        </div>
     </div>
 
     <script>
@@ -228,10 +399,159 @@
             return s;
         }
 
+        function isLikelyIOSClient() {
+            var ua = navigator.userAgent || '';
+            if (/iPhone|iPad|iPod/i.test(ua)) {
+                return true;
+            }
+            try {
+                if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+                    return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
+        function isLikelyAndroidClient() {
+            return /Android/i.test(navigator.userAgent || '');
+        }
+
+        function isInAppShell() {
+            if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+                return true;
+            }
+            try {
+                if (window.CLIENT_APP_VERSION != null && String(window.CLIENT_APP_VERSION).trim() !== '') {
+                    return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
+        function isDesktopClient() {
+            return !isLikelyIOSClient() && !isLikelyAndroidClient() && !isInAppShell();
+        }
+
+        function bindInstallRegisterLinks() {
+            document.querySelectorAll('.install-register-link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    if (typeof window.markInstallGuideReferral === 'function') {
+                        window.markInstallGuideReferral('register_click');
+                    }
+                    if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_install_register_click', { page: 'install_guide' });
+                    }
+                });
+            });
+        }
+
+        function applyInstallPageLayout() {
+            var inApp = isInAppShell();
+            var ios = isLikelyIOSClient();
+            var android = isLikelyAndroidClient();
+            var desktop = isDesktopClient();
+            var downloadBlock = document.getElementById('stepDownloadBlock');
+            var inAppBanner = document.getElementById('inAppBanner');
+            var androidTips = document.getElementById('androidInstallTips');
+            var iosSection = document.getElementById('iosInstallSection');
+            var usageBlock = document.getElementById('usageVideoBlock');
+            var pill1 = document.getElementById('stepPill1');
+            var pill2 = document.getElementById('stepPill2');
+            var pill3 = document.getElementById('stepPill3');
+            var desktopQr = document.getElementById('desktopQrBlock');
+
+            if (inApp) {
+                if (inAppBanner) {
+                    inAppBanner.classList.add('is-visible');
+                }
+                if (downloadBlock) {
+                    downloadBlock.classList.add('is-hidden');
+                }
+                if (pill1) {
+                    pill1.textContent = '① 已安装';
+                    pill1.classList.remove('is-active');
+                }
+                if (pill2) {
+                    pill2.classList.remove('is-active');
+                }
+                if (pill3) {
+                    pill3.classList.add('is-active');
+                }
+                if (iosSection) {
+                    iosSection.hidden = true;
+                }
+                if (androidTips) {
+                    androidTips.classList.add('is-hidden');
+                }
+                if (usageBlock) {
+                    usageBlock.hidden = false;
+                    usageBlock.open = true;
+                }
+                return { platform: 'in_app', showApk: false, showIos: false, desktop: false };
+            }
+
+            if (ios) {
+                if (androidTips) {
+                    androidTips.classList.add('is-hidden');
+                }
+                if (iosSection) {
+                    iosSection.hidden = false;
+                }
+                if (usageBlock) {
+                    usageBlock.hidden = false;
+                }
+            } else if (android) {
+                if (androidTips) {
+                    androidTips.classList.remove('is-hidden');
+                }
+                if (iosSection) {
+                    iosSection.hidden = true;
+                }
+                if (usageBlock) {
+                    usageBlock.hidden = false;
+                }
+            } else if (desktop) {
+                if (androidTips) {
+                    androidTips.classList.add('is-hidden');
+                }
+                if (iosSection) {
+                    iosSection.hidden = false;
+                }
+                if (usageBlock) {
+                    usageBlock.hidden = false;
+                }
+                if (desktopQr) {
+                    desktopQr.hidden = false;
+                    var img = document.getElementById('desktopQrImg');
+                    if (img) {
+                        var pageUrl = window.location.href.split('#')[0];
+                        img.src =
+                            'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=' +
+                            encodeURIComponent(pageUrl);
+                    }
+                }
+            }
+
+            return {
+                platform: ios ? 'ios' : android ? 'android' : desktop ? 'desktop' : 'other',
+                showApk: android || desktop || (!ios && !android && !inApp),
+                showIos: ios || desktop || (!ios && !android && !inApp),
+                desktop: desktop
+            };
+        }
+
         (function initInstallButtons() {
             var row = document.getElementById('installButtonsRow');
             var empty = document.getElementById('installEmptyHint');
             if (!row) {
+                return;
+            }
+            var layout = applyInstallPageLayout();
+            if (layout.platform === 'in_app') {
+                row.innerHTML = '';
+                if (empty) {
+                    empty.style.display = 'none';
+                }
                 return;
             }
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -247,16 +567,21 @@
                     var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
                     var ios = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
                     row.innerHTML = '';
-                    if (!apk && !ios) {
+                    var showApk = layout.showApk && apk;
+                    var showIos = layout.showIos && ios;
+                    if (!showApk && !showIos) {
                         if (empty) {
                             empty.style.display = 'block';
+                            if (layout.desktop && (apk || ios)) {
+                                empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
+                            }
                         }
                         return;
                     }
                     if (empty) {
                         empty.style.display = 'none';
                     }
-                    if (apk) {
+                    if (showApk) {
                         var a = document.createElement('a');
                         a.className = 'btn btn-primary';
                         a.href = /^https?:\/\//i.test(apk)
@@ -266,7 +591,7 @@
                             a.target = '_blank';
                             a.rel = 'noopener noreferrer';
                         }
-                        a.textContent = '下载 Android 安装包';
+                        a.textContent = layout.desktop ? '下载 Android 安装包（请在手机打开）' : '下载 Android 安装包';
                         a.addEventListener('click', function () {
                             if (typeof window.trackPublicAction === 'function') {
                                 window.trackPublicAction('track_install_apk_click', { page: 'install_guide' });
@@ -274,12 +599,12 @@
                         });
                         row.appendChild(a);
                     }
-                    if (ios) {
+                    if (showIos) {
                         var href = toAbsoluteDownloadUrl(ios);
                         var ia = document.createElement('a');
                         ia.className = 'btn btn-primary';
                         ia.href = href || ios;
-                        ia.textContent = '下载 iOS 描述文件';
+                        ia.textContent = layout.desktop ? '下载 iOS 描述文件（请在 iPhone 打开）' : '下载 iOS 描述文件';
                         ia.addEventListener('click', function () {
                             if (typeof window.trackPublicAction === 'function') {
                                 window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
@@ -296,18 +621,7 @@
                 });
         })();
 
-        (function bindInstallRegisterLink() {
-            var link = document.getElementById('installRegisterLink');
-            if (!link) return;
-            link.addEventListener('click', function () {
-                if (typeof window.markInstallGuideReferral === 'function') {
-                    window.markInstallGuideReferral('register_click');
-                }
-                if (typeof window.trackPublicAction === 'function') {
-                    window.trackPublicAction('track_install_register_click', { page: 'install_guide' });
-                }
-            });
-        })();
+        bindInstallRegisterLinks();
 
         function toAssetUrl(path) {
             if (!path) return '';
@@ -320,6 +634,7 @@
         function renderVideo(containerId, url, emptyText) {
             var box = document.getElementById(containerId);
             if (!box) return;
+            box.innerHTML = '';
             var src = toAssetUrl(url);
             if (src) {
                 var v = document.createElement('video');
@@ -358,10 +673,12 @@
                     if (!body || body.code !== 200 || !body.data) {
                         return;
                     }
-                    document.getElementById('iosInstallVideoContainer').innerHTML = '';
-                    document.getElementById('usageVideoContainer').innerHTML = '';
                     renderVideo('iosInstallVideoContainer', body.data.install_ios_video || '', '暂未配置苹果安装视频');
                     renderVideo('usageVideoContainer', body.data.install_usage_video || '', '暂未配置操作视频');
+                    var usageBlock = document.getElementById('usageVideoBlock');
+                    if (usageBlock && body.data.install_usage_video) {
+                        usageBlock.hidden = false;
+                    }
                 })
                 .catch(function () {});
         })();
