@@ -2678,6 +2678,42 @@ async function requireActivated(req, res, next) {
   }
 }
 
+function normalizeUserApiPath(req) {
+  var p = req.path || '';
+  if (!p && req.url) {
+    p = String(req.url).split('?')[0];
+  }
+  return p.replace(/\/+$/, '') || '/';
+}
+
+/** 未激活账号仍可访问：user.php?action=info、埋点 track_*、反馈 feedback.php */
+function isUnactivatedAllowedRequest(req) {
+  var path = normalizeUserApiPath(req);
+  if (path.endsWith('/feedback.php')) {
+    return true;
+  }
+  if (!path.endsWith('/user.php')) {
+    return false;
+  }
+  if (req.method === 'GET') {
+    return String(req.query.action || '') === 'info';
+  }
+  if (req.method === 'POST') {
+    var action = req.body && req.body.action != null ? String(req.body.action) : '';
+    return /^track_[a-z0-9_]{1,80}$/i.test(action);
+  }
+  return false;
+}
+
+function requireAuthAndActivatedUnlessAllowed(req, res, next) {
+  requireAuth(req, res, function () {
+    if (isUnactivatedAllowedRequest(req)) {
+      return next();
+    }
+    requireActivated(req, res, next);
+  });
+}
+
 function signAdminToken(username) {
   return jwt.sign({ role: 'admin', sub: String(username || '') }, JWT_SECRET, { expiresIn: '12h' });
 }
@@ -5997,31 +6033,33 @@ app.get('/api/tax.php', async function taxGetEntry(req, res) {
     return;
   }
   requireAuth(req, res, function () {
-    handleTaxGet(req, res).catch(function (e) {
-      console.error(e);
-      if (!res.headersSent) {
-        res.status(500).json({ code: 500, msg: String(e.message) });
-      }
+    requireActivated(req, res, function () {
+      handleTaxGet(req, res).catch(function (e) {
+        console.error(e);
+        if (!res.headersSent) {
+          res.status(500).json({ code: 500, msg: String(e.message) });
+        }
+      });
     });
   });
 });
-app.post('/api/tax.php', requireAuth, handleTaxPost);
-app.get('/api/message.php', requireAuth, handleMessageGet);
-app.post('/api/message.php', requireAuth, handleMessagePost);
-app.get('/message.php', requireAuth, handleMessageGet);
-app.post('/message.php', requireAuth, handleMessagePost);
-app.get('/api/user.php', requireAuth, handleUserGet);
-app.post('/api/user.php', requireAuth, handleUserPost);
-app.get('/user.php', requireAuth, handleUserGet);
-app.post('/user.php', requireAuth, handleUserPost);
-app.get('/api/feedback.php', requireAuth, handleFeedbackGet);
-app.post('/api/feedback.php', requireAuth, handleFeedbackPost);
-app.get('/feedback.php', requireAuth, handleFeedbackGet);
-app.post('/feedback.php', requireAuth, handleFeedbackPost);
-app.get('/api/shenbao_jilu.php', requireAuth, handleShenbaoJiluGet);
-app.post('/api/shenbao_jilu.php', requireAuth, handleShenbaoJiluPost);
-app.get('/shenbao_jilu.php', requireAuth, handleShenbaoJiluGet);
-app.post('/shenbao_jilu.php', requireAuth, handleShenbaoJiluPost);
+app.post('/api/tax.php', requireAuth, requireActivated, handleTaxPost);
+app.get('/api/message.php', requireAuth, requireActivated, handleMessageGet);
+app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
+app.get('/message.php', requireAuth, requireActivated, handleMessageGet);
+app.post('/message.php', requireAuth, requireActivated, handleMessagePost);
+app.get('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserGet);
+app.post('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserPost);
+app.get('/user.php', requireAuthAndActivatedUnlessAllowed, handleUserGet);
+app.post('/user.php', requireAuthAndActivatedUnlessAllowed, handleUserPost);
+app.get('/api/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackGet);
+app.post('/api/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackPost);
+app.get('/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackGet);
+app.post('/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackPost);
+app.get('/api/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluGet);
+app.post('/api/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluPost);
+app.get('/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluGet);
+app.post('/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluPost);
 
 async function handleAuthGet(req, res) {
   if (req.query.action === 'register_captcha') {
