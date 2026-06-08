@@ -2073,10 +2073,18 @@
                 });
         }
 
+        function appendAutoDedupedTip(tip, data) {
+            var n = data && data.auto_deduped != null ? Number(data.auto_deduped) : 0;
+            if (n > 0) {
+                tip += '（已自动删除同单位同月重复旧记录 ' + n + ' 条）';
+            }
+            return tip;
+        }
+
         function dedupeTaxRecords() {
             if (
                 !confirm(
-                    '将查找「同一扣缴单位 + 同一年月」的重复记录，保留最新一条，删除较早的记录。\n\n删除后可在回收站恢复。确定继续？'
+                    '将查找「同一扣缴单位 + 同一年月 + 同一所得小类」的重复记录，保留最新一条，删除较早的记录。\n\n删除后可在回收站恢复。确定继续？'
                 )
             ) {
                 return;
@@ -4523,9 +4531,13 @@
             var bonusRec = buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus);
             setBatchSubmitBtnLoading(true);
             postBatchTaxRecordsPromise([bonusRec])
-                .then(function () {
+                .then(function (data) {
                     rememberBatchCompanyProfile(bonusProfile);
-                    showMsg('年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）', true);
+                    var tip = appendAutoDedupedTip(
+                        '年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）',
+                        data
+                    );
+                    showMsg(tip, true);
                     return refreshRecordList();
                 })
                 .catch(function (err) {
@@ -4708,6 +4720,7 @@
                     if (reassigned > 0) {
                         tip += '（' + reassigned + ' 条因编号已存在已另存为新记录，未覆盖原记录）';
                     }
+                    tip = appendAutoDedupedTip(tip, data);
                     showMsg(tip, true);
                     try {
                         localStorage.setItem('tax_record_count', String(Math.max(1, writes.length)));
@@ -4810,6 +4823,7 @@
                     } else if (batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length) {
                         tip += '，年终奖未改动已保留';
                     }
+                    tip = appendAutoDedupedTip(tip, data);
                     exitBatchTaxEditMode();
                     showMsg(tip, true);
                     return refreshRecordList();

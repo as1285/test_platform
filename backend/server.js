@@ -1908,12 +1908,14 @@ async function batchSaveRecords(userId, records) {
       saved.push(out);
     }
     await conn.commit();
+    var dedupeOut = await dedupeTaxRecords(userId);
     return {
       saved: saved.length,
       ids: saved.map(function (x) {
         return x.id;
       }),
-      reassigned_ids: reassigned
+      reassigned_ids: reassigned,
+      auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
     };
   } catch (e) {
     try {
@@ -1970,6 +1972,7 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
       saved.push(out);
     }
     await conn.commit();
+    var dedupeOut = await dedupeTaxRecords(userId);
     return {
       deleted: ids.filter(function (x) {
         return x != null && String(x).trim() !== '';
@@ -1978,7 +1981,8 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
       ids: saved.map(function (x) {
         return x.id;
       }),
-      reassigned_ids: reassigned
+      reassigned_ids: reassigned,
+      auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
     };
   } catch (e) {
     try {
@@ -2034,20 +2038,29 @@ async function deleteRecordsByCompany(userId, companyName) {
   }
 }
 
-/** 同一扣缴单位 + 同年同月重复记录：保留最新一条，删除较早的 */
+/** 去重分组键：同扣缴单位 + 同年同月 + 同所得小类（工资与年终奖分开） */
+function taxRecordDedupeGroupKey(r) {
+  var company = r.company_name != null ? String(r.company_name).trim() : '';
+  var subtype = r.income_subtype != null ? String(r.income_subtype).trim() : '正常工资薪金';
+  if (!subtype) {
+    subtype = '正常工资薪金';
+  }
+  return String(r.year || '') + '|' + String(r.month || '') + '|' + company + '|' + subtype;
+}
+
+/** 同一扣缴单位 + 同年同月 + 同所得小类重复记录：保留最新一条，删除较早的 */
 async function dedupeTaxRecords(userId) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT id, year, month, company_name, created_at FROM tax_records WHERE user_id = ? AND ' +
+      'SELECT id, year, month, company_name, income_subtype, created_at FROM tax_records WHERE user_id = ? AND ' +
         TAX_RECORD_NOT_DELETED_SQL +
-        ' ORDER BY year ASC, month ASC, TRIM(company_name) ASC, created_at ASC, id ASC',
+        ' ORDER BY year ASC, month ASC, TRIM(company_name) ASC, income_subtype ASC, created_at ASC, id ASC',
       [userId]
     );
     var groups = {};
     (rows || []).forEach(function (r) {
-      var company = r.company_name != null ? String(r.company_name).trim() : '';
-      var key = String(r.year || '') + '|' + String(r.month || '') + '|' + company;
+      var key = taxRecordDedupeGroupKey(r);
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -5796,7 +5809,13 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: 'record required' });
       }
       var out = await saveRecord(userId, record);
-      return res.json({ code: 200, data: out });
+      var saveDedupeOut = await dedupeTaxRecords(userId);
+      return res.json({
+        code: 200,
+        data: Object.assign({}, out, {
+          auto_deduped: saveDedupeOut.deleted != null ? saveDedupeOut.deleted : 0
+        })
+      });
     }
     if (action === 'batch_save_records') {
       if (!userId) {
