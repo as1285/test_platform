@@ -2686,21 +2686,25 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：user.php?action=info、埋点 track_*、反馈 feedback.php */
+/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 基础信息与任职、埋点 track_*、反馈 feedback.php */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
-  if (path.endsWith('/feedback.php')) {
+  if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
     return true;
   }
   if (!path.endsWith('/user.php')) {
     return false;
   }
   if (req.method === 'GET') {
-    return String(req.query.action || '') === 'info';
+    var getAction = String(req.query.action || '');
+    return getAction === 'info' || getAction === 'employers';
   }
   if (req.method === 'POST') {
     var action = req.body && req.body.action != null ? String(req.body.action) : '';
-    return /^track_[a-z0-9_]{1,80}$/i.test(action);
+    if (/^track_[a-z0-9_]{1,80}$/i.test(action)) {
+      return true;
+    }
+    return action === 'add_employer' || action === 'update_employer' || action === 'delete_employer';
   }
   return false;
 }
@@ -6032,18 +6036,16 @@ app.get('/api/tax.php', async function taxGetEntry(req, res) {
     }
     return;
   }
-  requireAuth(req, res, function () {
-    requireActivated(req, res, function () {
-      handleTaxGet(req, res).catch(function (e) {
-        console.error(e);
-        if (!res.headersSent) {
-          res.status(500).json({ code: 500, msg: String(e.message) });
-        }
-      });
+  requireAuthAndActivatedUnlessAllowed(req, res, function () {
+    handleTaxGet(req, res).catch(function (e) {
+      console.error(e);
+      if (!res.headersSent) {
+        res.status(500).json({ code: 500, msg: String(e.message) });
+      }
     });
   });
 });
-app.post('/api/tax.php', requireAuth, requireActivated, handleTaxPost);
+app.post('/api/tax.php', requireAuthAndActivatedUnlessAllowed, handleTaxPost);
 app.get('/api/message.php', requireAuth, requireActivated, handleMessageGet);
 app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
 app.get('/message.php', requireAuth, requireActivated, handleMessageGet);
