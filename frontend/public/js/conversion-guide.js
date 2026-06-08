@@ -20,124 +20,6 @@
   var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
   var captureHideTimer = null;
   var conversionCfg = null;
-  var qqGroupUrl = '';
-
-  function getQqGroupUrl() {
-    return qqGroupUrl || '';
-  }
-
-  function loadPublicInstallSettings() {
-    var headers = {};
-    if (typeof getClientDeviceHeaders === 'function') {
-      headers = getClientDeviceHeaders();
-    }
-    return fetch('/api/public/install-packages', { credentials: 'same-origin', headers: headers })
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (j) {
-        if (j.code === 200 && j.data && j.data.qq_group_url != null) {
-          qqGroupUrl = String(j.data.qq_group_url).trim();
-        }
-      })
-      .catch(function () {});
-  }
-
-  function openQqGroup(source) {
-    var url = getQqGroupUrl();
-    track('track_qq_group_click', { page: currentPage(), source: source || '' });
-    if (!url) {
-      alert('暂未配置用户交流群链接，请在管理后台「系统设置」中填写 QQ 加群链接');
-      return false;
-    }
-    window.location.href = url;
-    return true;
-  }
-
-  function renderQqGroupButtonHtml(id, label, styleExtra) {
-    if (!getQqGroupUrl()) return '';
-    return (
-      '<button type="button" class="cg-btn cg-btn-primary" id="' +
-      id +
-      '" style="background:#12b886;' +
-      (styleExtra || '') +
-      '">' +
-      (label || '加入用户交流群') +
-      '</button>'
-    );
-  }
-
-  function bindQqGroupButton(id, source, onBeforeOpen) {
-    var btn = document.getElementById(id);
-    if (!btn) return;
-    btn.onclick = function () {
-      if (typeof onBeforeOpen === 'function') {
-        onBeforeOpen();
-      }
-      openQqGroup(source);
-    };
-  }
-
-  function showQqGroupPromptDialog(opts) {
-    opts = opts || {};
-    if (!getQqGroupUrl()) return;
-    if (document.getElementById('cg-qq-group-overlay')) return;
-    ensureGateStyles();
-    track('track_conversion_qq_group_prompt_shown', {
-      page: currentPage(),
-      scene: opts.scene || ''
-    });
-    var ov = document.createElement('div');
-    ov.id = 'cg-qq-group-overlay';
-    ov.className = 'cg-value-overlay';
-    ov.innerHTML =
-      '<div class="cg-value-panel" role="dialog" aria-labelledby="cgQqGroupTitle">' +
-      '<h3 id="cgQqGroupTitle">' +
-      (opts.title || '加入用户交流群') +
-      '</h3>' +
-      '<p>' +
-      (opts.body ||
-        '加入用户群，获取版本更新与填写模板；与其他用户交流演示数据维护经验。') +
-      '</p>' +
-      '<p style="font-size:12px;color:#999;margin-bottom:12px;">' +
-      DEMO_DISCLAIMER +
-      '</p>' +
-      renderQqGroupButtonHtml('cgQqGroupJoinBtn', opts.primaryLabel || '加入用户交流群') +
-      '<button type="button" class="cg-btn cg-btn-ghost" id="cgQqGroupLater">' +
-      (opts.laterLabel || '稍后再说') +
-      '</button>' +
-      '</div>';
-    document.body.appendChild(ov);
-    function closeOv(action) {
-      track('track_conversion_qq_group_prompt_' + action, {
-        page: currentPage(),
-        scene: opts.scene || ''
-      });
-      if (ov.parentNode) ov.parentNode.removeChild(ov);
-    }
-    bindQqGroupButton('cgQqGroupJoinBtn', opts.scene || 'prompt', function () {
-      closeOv('join');
-    });
-    document.getElementById('cgQqGroupLater').onclick = function () {
-      closeOv('later');
-      if (typeof opts.onLater === 'function') {
-        opts.onLater();
-      }
-    };
-    ov.addEventListener('click', function (e) {
-      if (e.target === ov) closeOv('dismiss');
-    });
-  }
-
-  function showPostActivateQqGroupPrompt() {
-    showQqGroupPromptDialog({
-      scene: 'post_activate',
-      title: '激活成功',
-      body: '加入用户群，获取更新与填写模板；有问题可在群内交流演示数据维护。',
-      primaryLabel: '加入用户交流群',
-      laterLabel: '先去填写演示数据'
-    });
-  }
 
   function getToastDurationMs() {
     var ms =
@@ -722,14 +604,6 @@
         } catch (e2) {}
       }
     }, 500);
-    try {
-      if (sessionStorage.getItem('cg_post_activate') === '1') {
-        sessionStorage.removeItem('cg_post_activate');
-        setTimeout(function () {
-          showPostActivateQqGroupPrompt();
-        }, 900);
-      }
-    } catch (ePostAct) {}
   }
 
   function patchShuimingResultEmpty() {
@@ -760,9 +634,6 @@
     track('track_conversion_activate_success', { page: currentPage() });
     removeMineConversionUi();
     removeActivationPromoUi();
-    try {
-      sessionStorage.setItem('cg_post_activate', '1');
-    } catch (e) {}
     setTimeout(function () {
       window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
     }, 300);
@@ -791,14 +662,6 @@
       '</p>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail">查看收入纳税明细</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
-      (getQqGroupUrl()
-        ? '<p style="font-size:12px;color:#12b886;margin:0 0 8px;text-align:center;">进群交流演示数据怎么填、怎么截图展示</p>'
-        : '') +
-      renderQqGroupButtonHtml(
-        'cgValueGoQqGroup',
-        '加入用户交流群',
-        'background:#12b886;'
-      ) +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoManage" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">继续管理税务数据</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
@@ -815,9 +678,6 @@
       closeOv('najilu');
       goNajilu();
     };
-    bindQqGroupButton('cgValueGoQqGroup', 'value_confirm_tax', function () {
-      closeOv('qq_group');
-    });
     document.getElementById('cgValueGoManage').onclick = function () {
       closeOv('manage');
       goManageTaxRecords();
@@ -1015,41 +875,15 @@
     if (currentPage() !== 'shuiming_result.html' || urlParam('from') !== 'tax_save') return;
     if (document.getElementById('cg-post-tax-banner')) return;
     ensureGateStyles();
-    var qqPart = getQqGroupUrl()
-      ? ' 也可 <button type="button" id="cgPostTaxQqGroup" style="border:none;background:none;padding:0;color:#12b886;font-weight:600;font-size:inherit;font-family:inherit;">加入用户交流群</button>，交流怎么填、怎么截图展示。'
-      : '';
     var banner = document.createElement('div');
     banner.id = 'cg-post-tax-banner';
     banner.className = 'cg-inline-hint';
     banner.style.margin = '0 16px 12px';
     banner.innerHTML =
-      '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。' +
-      qqPart;
+      '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
     var list = document.querySelector('.list');
     if (list && list.parentNode) {
       list.parentNode.insertBefore(banner, list);
-    }
-    var qqBtn = document.getElementById('cgPostTaxQqGroup');
-    if (qqBtn) {
-      qqBtn.onclick = function () {
-        openQqGroup('post_tax_save_banner');
-      };
-    }
-    if (getQqGroupUrl()) {
-      try {
-        if (sessionStorage.getItem('cg_post_tax_qq_prompt') === '1') return;
-        sessionStorage.setItem('cg_post_tax_qq_prompt', '1');
-      } catch (eQqOnce) {
-        return;
-      }
-      setTimeout(function () {
-        showQqGroupPromptDialog({
-          scene: 'post_tax_save',
-          body: '进群交流演示数据怎么填、怎么截图展示。',
-          primaryLabel: '加入用户交流群',
-          laterLabel: '稍后再说'
-        });
-      }, 1400);
     }
   }
 
@@ -1171,17 +1005,13 @@
     var maintText = hasTaxRecords()
       ? '您的个税演示数据可随时在「我要咨询 → 税务记录」中修改。'
       : '建议在「我要咨询」添加个税演示数据，便于查看收入纳税明细与纳税记录效果。';
-    var qqText = getQqGroupUrl()
-      ? '欢迎加入用户交流群，获取版本更新与填写模板（进入详情可一键加群）。'
-      : '';
     var tip = {
       id: 'cg-demo-maint',
       title: '演示数据维护提醒',
-      content: qqText ? maintText + ' ' + qqText : maintText,
+      content: maintText,
       msg_date: dateStr,
       is_read: 0,
-      _cg_demo: true,
-      _cg_has_qq_group: !!getQqGroupUrl()
+      _cg_demo: true
     };
     arr.unshift(tip);
     return arr;
@@ -1205,51 +1035,39 @@
     );
   }
 
-  function renderHelpCenterQqGroupEntry() {
-    if (currentPage() !== 'help_center.html') return;
-    if (!isLoggedIn() || !getQqGroupUrl()) return;
-    if (document.getElementById('cg-help-qq-group')) return;
+  function init() {
+    initCapturePrivacy();
+    bindMineScreenshotModeUi();
+    if (!isLoggedIn()) return;
     ensureGateStyles();
-    var header = document.querySelector('.page-help-center .header');
-    if (!header || !header.parentNode) return;
-    var card = document.createElement('div');
-    card.id = 'cg-help-qq-group';
-    card.className = 'cg-help-qq-card';
-    card.innerHTML =
-      '<h4>用户交流群</h4>' +
-      '<p>加入用户群，获取版本更新与填写模板；与其他用户交流演示数据维护与截图展示技巧。</p>' +
-      '<button type="button" class="cg-btn" id="cgHelpQqGroupBtn">加入用户交流群</button>';
-    header.parentNode.insertBefore(card, header.nextSibling);
-    bindQqGroupButton('cgHelpQqGroupBtn', 'help_center');
-    track('track_conversion_help_qq_shown', { page: 'help_center' });
-  }
-
-  function renderAboutUpdateQqGroupEntry() {
-    if (currentPage() !== 'about_update.html') return;
-    if (!isLoggedIn() || !getQqGroupUrl()) return;
-    if (document.getElementById('cg-about-qq-row')) return;
-    ensureGateStyles();
-    var wrap = document.querySelector('.list-wrap');
-    if (!wrap) return;
-    var row = document.createElement('div');
-    row.id = 'cg-about-qq-row';
-    row.className = 'cg-about-qq-row';
-    row.setAttribute('role', 'button');
-    row.setAttribute('tabindex', '0');
-    row.innerHTML =
-      '<div><div>用户交流群</div><div class="cg-sub">获取更新与填写模板</div></div><span class="arrow" style="color:#c7c7cc;">&gt;</span>';
-    wrap.insertBefore(row, wrap.firstChild);
-    function go() {
-      openQqGroup('about_update');
-    }
-    row.addEventListener('click', go);
-    row.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        go();
-      }
-    });
-    track('track_conversion_help_qq_shown', { page: 'about_update' });
+    loadConversionConfig()
+      .then(function () {
+        applyActivateModalCopy();
+        applyConsultBatchUi();
+      })
+      .then(function () {
+        return fetchProfileCounts();
+      })
+      .then(function () {
+        if (skipConversionPromo()) {
+          removeActivationPromoUi();
+        }
+        runMineOnboarding();
+        runConsultOnboarding();
+        patchShuimingResultEmpty();
+        removeShuimingResultValueBar();
+        renderShouyeTaxManageEntry();
+        renderShouyeRetentionCard();
+        if (!skipConversionPromo()) {
+          bumpIncomeBrowseVisit();
+          renderShuimingHint();
+          renderAboutUpdateNudge();
+          renderCareVersionHint();
+        } else {
+          renderAboutUpdateNudge();
+        }
+        maybeShowPostTaxSaveBanner();
+      });
   }
 
   function renderAboutUpdateNudge() {
@@ -1298,44 +1116,6 @@
     track('track_conversion_care_hint_shown', {});
   }
 
-  function init() {
-    initCapturePrivacy();
-    bindMineScreenshotModeUi();
-    if (!isLoggedIn()) return;
-    ensureGateStyles();
-    loadConversionConfig()
-      .then(function () {
-        applyActivateModalCopy();
-        applyConsultBatchUi();
-        return loadPublicInstallSettings();
-      })
-      .then(function () {
-        return fetchProfileCounts();
-      })
-      .then(function () {
-        if (skipConversionPromo()) {
-          removeActivationPromoUi();
-        }
-        runMineOnboarding();
-        runConsultOnboarding();
-        patchShuimingResultEmpty();
-        removeShuimingResultValueBar();
-        renderShouyeTaxManageEntry();
-        renderShouyeRetentionCard();
-        renderHelpCenterQqGroupEntry();
-        renderAboutUpdateQqGroupEntry();
-        if (!skipConversionPromo()) {
-          bumpIncomeBrowseVisit();
-          renderShuimingHint();
-          renderAboutUpdateNudge();
-          renderCareVersionHint();
-        } else {
-          renderAboutUpdateNudge();
-        }
-        maybeShowPostTaxSaveBanner();
-      });
-  }
-
   window.ConversionGuide = {
     isAccountActive: isAccountActive,
     hasTaxRecords: hasTaxRecords,
@@ -1354,8 +1134,6 @@
     onIncomeDetailEmpty: onIncomeDetailEmpty,
     mountShuimingValueBar: mountShuimingValueBar,
     mountNajiluPreviewBar: mountNajiluPreviewBar,
-    openQqGroup: openQqGroup,
-    getQqGroupUrl: getQqGroupUrl,
     prependMaintenanceMessages: prependMaintenanceMessages,
     bindMaintenanceMessageDismiss: bindMaintenanceMessageDismiss,
     refresh: fetchProfileCounts,

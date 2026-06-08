@@ -21,14 +21,6 @@
             position: relative;
         }
         .header h1 { font-size: 14px; font-weight: 500; line-height: 1.25; }
-        .header-promo {
-            font-size: 12px;
-            font-weight: 400;
-            color: rgba(255, 248, 220, 0.98);
-            margin-top: 8px;
-            line-height: 1.35;
-            letter-spacing: 0.04em;
-        }
         .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 6px; line-height: 1.25; }
 
         .tabs {
@@ -181,30 +173,6 @@
             top: calc(20px + env(safe-area-inset-top, 0px));
             max-width: 46%;
             line-height: 1.2;
-        }
-
-        .header-activate-btn {
-            position: absolute;
-            right: 12px;
-            top: calc(20px + env(safe-area-inset-top, 0px));
-            padding: 6px 14px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #1e6fff;
-            background: #fff;
-            border: none;
-            border-radius: 999px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-            cursor: pointer;
-            z-index: 2;
-            max-width: 42%;
-            white-space: nowrap;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .header-activate-btn:active {
-            opacity: 0.9;
-            transform: scale(0.98);
         }
 
         /* 激活码弹窗（含闲鱼购买，链接来自后台「引导安装」） */
@@ -721,9 +689,7 @@
 <body>
     <div class="header">
         <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回个人中心</span></a>
-        <button type="button" class="header-activate-btn" id="btnHeaderActivate" aria-label="添加QQ群">添加QQ群</button>
         <h1>个人中心</h1>
-        <p class="header-promo">招代理，请添加QQ群</p>
     </div>
 
     <div id="consultActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="consultActivateModalTitle">
@@ -1479,21 +1445,6 @@
             } catch (e0) {}
         }
 
-        function updateConsultActivateButton(user) {
-            var btn = document.getElementById('btnHeaderActivate');
-            if (!btn) {
-                return;
-            }
-            var active = false;
-            if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
-                active = true;
-            } else {
-                try {
-                    active = localStorage.getItem('account_active') === '1';
-                } catch (e0) {}
-            }
-            btn.style.display = active ? 'none' : '';
-        }
 
         function loadUserInfoFromApi() {
             var userId = currentUserId();
@@ -1515,18 +1466,15 @@
                         localStorage.setItem('bank_card_count', user.bank_card_count);
                         localStorage.setItem('gender', user.gender);
                         syncAccountActiveToStorage(user);
-                        updateConsultActivateButton(user);
                         updateProfileForm(user);
                     }
                 })
                 .catch(function (err) {
                     console.error('loadUserInfoFromApi', err);
-                    updateConsultActivateButton(null);
                 });
         }
 
         var consultXianyuPurchaseUrl = '';
-        var consultQqGroupUrl = '';
 
         function refreshConsultInstallPackageUrls() {
             return fetch('/api/public/install-packages', { credentials: 'same-origin' })
@@ -1539,46 +1487,13 @@
                             body.data.xianyu_purchase_url != null
                                 ? String(body.data.xianyu_purchase_url).trim()
                                 : '';
-                        consultQqGroupUrl =
-                            body.data.qq_group_url != null ? String(body.data.qq_group_url).trim() : '';
                     } else {
                         consultXianyuPurchaseUrl = '';
-                        consultQqGroupUrl = '';
                     }
                 })
                 .catch(function () {
                     consultXianyuPurchaseUrl = '';
-                    consultQqGroupUrl = '';
                 });
-        }
-
-        function openConsultQqGroupUrl() {
-            if (
-                window.ConversionGuide &&
-                typeof window.ConversionGuide.openQqGroup === 'function' &&
-                window.ConversionGuide.getQqGroupUrl &&
-                window.ConversionGuide.getQqGroupUrl()
-            ) {
-                window.ConversionGuide.openQqGroup('consult_header');
-                return;
-            }
-            var openUrl = function (u) {
-                if (!u) {
-                    alert('暂未配置 QQ 加群链接，请在管理后台「系统设置」中填写');
-                    return;
-                }
-                if (typeof window.trackUserAction === 'function') {
-                    window.trackUserAction('track_qq_group_click', { page: 'consult', source: 'header' });
-                }
-                window.open(u, '_blank', 'noopener,noreferrer');
-            };
-            if (consultQqGroupUrl) {
-                openUrl(consultQqGroupUrl);
-                return;
-            }
-            refreshConsultInstallPackageUrls().then(function () {
-                openUrl(consultQqGroupUrl);
-            });
         }
 
         function closeConsultActivateModal() {
@@ -1639,7 +1554,6 @@
                         if (d.real_name) {
                             localStorage.setItem('real_name', d.real_name);
                         }
-                        updateConsultActivateButton({ account_active: true });
                         if (typeof window.refreshWatermarkFromApi === 'function') {
                             window.refreshWatermarkFromApi();
                         }
@@ -1707,7 +1621,6 @@
                 var fYear = document.getElementById('f_year');
                 if (bonusYearEl && fYear && fYear.value) bonusYearEl.value = fYear.value;
 
-                updateConsultActivateButton(null);
                 loadUserInfoFromApi();
             } catch (err) {
                 console.error('initHeader', err);
@@ -5425,10 +5338,6 @@
                 });
             tryEditFromUrl();
         }
-
-        document.getElementById('btnHeaderActivate').addEventListener('click', function () {
-            openConsultQqGroupUrl();
-        });
 
         (function bindConsultActivateModal() {
             var okBtn = document.getElementById('btnConsultActivateOk');

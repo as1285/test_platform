@@ -326,7 +326,6 @@
                             msg.content || '',
                             false
                         );
-                        appendMaintDetailQqGroupBtn();
                         try {
                             localStorage.setItem('cg_maint_msg_dismissed', '1');
                         } catch (e) {}
@@ -343,51 +342,6 @@
                 '您的个税演示数据可随时在「我要咨询 → 税务记录」中修改；如需更新年度汇总，可重新批量生成或编辑单条记录。',
                 false
             );
-            appendMaintDetailQqGroupBtn();
-        }
-
-        function appendMaintDetailQqGroupBtn() {
-            if (document.getElementById('cgMsgDetailQqGroup')) return;
-            function mountBtn(url) {
-                if (!url || document.getElementById('cgMsgDetailQqGroup')) return;
-                var root = document.getElementById('detailRoot');
-                if (!root) return;
-                var wrap = document.createElement('div');
-                wrap.style.marginTop = '18px';
-                wrap.innerHTML =
-                    '<button type="button" id="cgMsgDetailQqGroup" style="display:block;width:100%;padding:12px;border:none;border-radius:8px;background:#12b886;color:#fff;font-size:16px;font-family:inherit;">加入用户交流群</button>' +
-                    '<p style="margin:10px 0 0;font-size:13px;color:#999;line-height:1.5;">获取版本更新与填写模板；本群为演示交流，非官方税务服务。</p>';
-                root.appendChild(wrap);
-                document.getElementById('cgMsgDetailQqGroup').onclick = function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_qq_group_click', {
-                            page: 'message_detail',
-                            source: 'maint_detail'
-                        });
-                    }
-                    window.location.href = url;
-                };
-            }
-            if (
-                window.ConversionGuide &&
-                typeof window.ConversionGuide.getQqGroupUrl === 'function' &&
-                window.ConversionGuide.getQqGroupUrl()
-            ) {
-                mountBtn(window.ConversionGuide.getQqGroupUrl());
-                return;
-            }
-            fetch('/api/public/install-packages', { credentials: 'same-origin' })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    var url =
-                        j && j.code === 200 && j.data && j.data.qq_group_url
-                            ? String(j.data.qq_group_url).trim()
-                            : '';
-                    mountBtn(url);
-                })
-                .catch(function () {});
         }
 
         (function bindBack() {
