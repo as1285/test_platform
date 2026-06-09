@@ -662,7 +662,6 @@
       '</p>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail">查看收入纳税明细</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
-      '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoManage" style="border:1px solid #1e6fff;color:#1e6fff;background:#fff;">继续管理税务数据</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
     document.body.appendChild(ov);
@@ -677,10 +676,6 @@
     document.getElementById('cgValueGoNajilu').onclick = function () {
       closeOv('najilu');
       goNajilu();
-    };
-    document.getElementById('cgValueGoManage').onclick = function () {
-      closeOv('manage');
-      goManageTaxRecords();
     };
     document.getElementById('cgValueLater').onclick = function () {
       closeOv('later');
