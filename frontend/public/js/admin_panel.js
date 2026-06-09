@@ -3620,23 +3620,48 @@
             }
             html += '</tbody></table></div>';
 
-            var recent = Array.isArray(data.recent_events) ? data.recent_events : [];
-            html += '<p class="stat" style="margin:0 0 8px;">最近事件（最多 50 条）</p>';
+            var recentVisitors = Array.isArray(data.recent_visitors) ? data.recent_visitors : [];
+            html += '<p class="stat" style="margin:0 0 8px;">最近访客行为（最多 20 位访客，同一访客合并展示）</p>';
             html += '<div class="scroll-x"><table><thead><tr>';
-            html += '<th>时间</th><th>访客</th><th>行为</th><th>停留</th></tr></thead><tbody>';
-            if (!recent.length) {
-                html += '<tr><td colspan="4">暂无</td></tr>';
+            html += '<th>访客</th><th>IP</th><th>设备</th><th>时间</th><th>行为</th><th>停留</th></tr></thead><tbody>';
+            if (!recentVisitors.length) {
+                html += '<tr><td colspan="6">暂无</td></tr>';
             } else {
-                recent.forEach(function (row) {
-                    html += '<tr>';
-                    html += '<td>' + esc(formatIsoToCnShort(row.at)) + '</td>';
-                    html += '<td>' + esc(row.visitor_key || '—') + '</td>';
-                    html += '<td>' + esc(row.label || row.event_key) + '</td>';
-                    html +=
-                        '<td>' +
-                        esc(row.event_key === 'track_install_page_leave' ? row.dwell_label || '—' : '—') +
-                        '</td>';
-                    html += '</tr>';
+                recentVisitors.forEach(function (visitor, vIdx) {
+                    var events = Array.isArray(visitor.events) ? visitor.events : [];
+                    if (!events.length) {
+                        return;
+                    }
+                    events.forEach(function (row, idx) {
+                        var rowStyle = vIdx > 0 && idx === 0 ? ' style="border-top:2px solid #e2e8f0;"' : '';
+                        html += '<tr' + rowStyle + '>';
+                        if (idx === 0) {
+                            html +=
+                                '<td rowspan="' +
+                                events.length +
+                                '" class="cell-break"><code title="' +
+                                esc(visitor.visitor_id || '') +
+                                '">' +
+                                esc(visitor.visitor_key || '—') +
+                                '</code></td>';
+                            html += '<td rowspan="' + events.length + '">' + esc(visitor.ip || '—') + '</td>';
+                            html +=
+                                '<td rowspan="' +
+                                events.length +
+                                '" class="cell-break" title="' +
+                                esc(visitor.user_agent || '') +
+                                '">' +
+                                esc(visitor.device_label || '—') +
+                                '</td>';
+                        }
+                        html += '<td>' + esc(formatIsoToCnShort(row.at)) + '</td>';
+                        html += '<td>' + esc(row.label || row.event_key) + '</td>';
+                        html +=
+                            '<td>' +
+                            esc(row.event_key === 'track_install_page_leave' ? row.dwell_label || '—' : '—') +
+                            '</td>';
+                        html += '</tr>';
+                    });
                 });
             }
             html += '</tbody></table></div>';

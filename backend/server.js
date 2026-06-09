@@ -4572,6 +4572,99 @@ function installGuideEventLabel(eventKey) {
   return INSTALL_GUIDE_EVENT_LABELS[k] || k;
 }
 
+function truncateInstallGuideVisitorKey(key) {
+  var visitor = key ? String(key) : '—';
+  if (visitor.length > 14) {
+    return visitor.substring(0, 7) + '…' + visitor.substring(visitor.length - 4);
+  }
+  return visitor;
+}
+
+function installGuideDeviceSummaryFromUa(uaRaw) {
+  var ua = uaRaw != null ? String(uaRaw).trim() : '';
+  if (!ua) {
+    return '—';
+  }
+  var c = classifyUserDeviceRow(ua, null);
+  var parts = [];
+  if (c.model_label) {
+    parts.push(c.model_label);
+  }
+  if (c.os_version) {
+    parts.push(c.os_version);
+  } else if (c.os_key && DEVICE_STATS_OS_FAMILY_LABEL[c.os_key]) {
+    parts.push(DEVICE_STATS_OS_FAMILY_LABEL[c.os_key]);
+  }
+  if (parts.length) {
+    return parts.join(' · ');
+  }
+  return ua.length > 100 ? ua.substring(0, 100) + '…' : ua;
+}
+
+function buildInstallGuideRecentVisitors(rows, maxVisitors) {
+  maxVisitors = maxVisitors || 20;
+  var groups = {};
+  (rows || []).forEach(function (r) {
+    var cid = r.client_id ? String(r.client_id).trim() : '';
+    var fp = r.device_fp ? String(r.device_fp).trim() : '';
+    var vid = cid || fp;
+    if (!vid) {
+      vid = 'row_' + String(r.id != null ? r.id : '');
+    }
+    if (!groups[vid]) {
+      groups[vid] = {
+        visitor_id: vid,
+        visitor_key: truncateInstallGuideVisitorKey(vid),
+        ip: '',
+        device_label: '—',
+        user_agent: '',
+        latest_at: 0,
+        events: []
+      };
+    }
+    var g = groups[vid];
+    var at = r.created_at ? r.created_at.toISOString() : '';
+    var atMs = r.created_at ? new Date(r.created_at).getTime() : 0;
+    if (atMs >= g.latest_at) {
+      g.latest_at = atMs;
+      if (r.ip) {
+        g.ip = String(r.ip);
+      }
+      if (r.user_agent) {
+        g.user_agent = String(r.user_agent);
+        g.device_label = installGuideDeviceSummaryFromUa(g.user_agent);
+      }
+    }
+    if (!g.ip && r.ip) {
+      g.ip = String(r.ip);
+    }
+    if (!g.user_agent && r.user_agent) {
+      g.user_agent = String(r.user_agent);
+      g.device_label = installGuideDeviceSummaryFromUa(g.user_agent);
+    }
+    var ek = String(r.event_key || '');
+    var ds = r.dwell_seconds != null ? Number(r.dwell_seconds) : null;
+    g.events.push({
+      at: at,
+      event_key: ek,
+      label: installGuideEventLabel(ek),
+      dwell_seconds: isFinite(ds) ? ds : null,
+      dwell_label: isFinite(ds) ? formatStaySecondsLabel(ds) : '—'
+    });
+  });
+  var list = Object.keys(groups).map(function (k) {
+    var item = groups[k];
+    item.events.sort(function (a, b) {
+      return String(b.at).localeCompare(String(a.at));
+    });
+    return item;
+  });
+  list.sort(function (a, b) {
+    return (b.latest_at || 0) - (a.latest_at || 0);
+  });
+  return list.slice(0, maxVisitors);
+}
+
 function medianFromSortedNumbers(arr) {
   if (!arr || !arr.length) {
     return null;
@@ -7353,11 +7446,11 @@ async function handleAdminInstallGuideStats(req, res) {
         [span]
       );
       const [recentRows] = await conn.query(
-        `SELECT client_id, device_fp, event_key, dwell_seconds, created_at
+        `SELECT id, client_id, device_fp, event_key, dwell_seconds, created_at, ip, user_agent
          FROM install_guide_track_events
          WHERE ${cnSince}
          ORDER BY created_at DESC
-         LIMIT 50`,
+         LIMIT 300`,
         [span]
       );
 
@@ -7465,24 +7558,7 @@ async function handleAdminInstallGuideStats(req, res) {
         totalRegisteredFromInstallReported += regInstallReportedMap[k] || 0;
       });
 
-      var recent = (recentRows || []).map(function (r) {
-        var cid = r.client_id ? String(r.client_id) : '';
-        var fp = r.device_fp ? String(r.device_fp) : '';
-        var visitor = cid || fp || '—';
-        if (visitor.length > 12) {
-          visitor = visitor.substring(0, 6) + '…' + visitor.substring(visitor.length - 4);
-        }
-        var ek = String(r.event_key || '');
-        var ds = r.dwell_seconds != null ? Number(r.dwell_seconds) : null;
-        return {
-          at: r.created_at ? r.created_at.toISOString() : '',
-          visitor_key: visitor,
-          event_key: ek,
-          label: installGuideEventLabel(ek),
-          dwell_seconds: isFinite(ds) ? ds : null,
-          dwell_label: isFinite(ds) ? formatStaySecondsLabel(ds) : '—'
-        };
-      });
+      var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 20);
 
       res.json({
         code: 200,
@@ -7506,7 +7582,7 @@ async function handleAdminInstallGuideStats(req, res) {
           },
           actions: actions,
           daily: daily,
-          recent_events: recent
+          recent_visitors: recentVisitors
         }
       });
     } finally {
