@@ -54,6 +54,13 @@ const MINE_UI_IMAGE_KEYS = [
   'piaojia_goumai',
   'piaojia_xiaoshou'
 ];
+/** 安装页效果预览（不受「默认配图」开关影响） */
+const INSTALL_SHOWCASE_IMAGE_KEYS = [
+  'install_showcase_gif',
+  'install_showcase_img_1',
+  'install_showcase_img_2',
+  'install_showcase_img_3'
+];
 /** mine_ui JSON 中可配置的视频字段（相对路径、uploads/ 或 https） */
 const MINE_UI_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 
@@ -381,7 +388,11 @@ function cloneMineUiDefaults() {
     piaojia_goumai: 'piaojia-goumai.png',
     piaojia_xiaoshou: 'piaojia-xiaoshou.png',
     install_ios_video: '',
-    install_usage_video: ''
+    install_usage_video: '',
+    install_showcase_gif: '',
+    install_showcase_img_1: '',
+    install_showcase_img_2: '',
+    install_showcase_img_3: ''
   };
 }
 
@@ -566,6 +577,14 @@ async function getMineUiForApi() {
       }
     }
   });
+  INSTALL_SHOWCASE_IMAGE_KEYS.forEach(function (k) {
+    if (parsed[k] != null) {
+      var okShow = sanitizeMineUiImageRef(parsed[k]);
+      if (okShow) {
+        out[k] = okShow;
+      }
+    }
+  });
   return out;
 }
 
@@ -594,6 +613,14 @@ async function getMineUiForAdminForm() {
       var ok = sanitizeMineUiImageRef(parsed[k]);
       if (ok) {
         form[k] = ok;
+      }
+    }
+  });
+  INSTALL_SHOWCASE_IMAGE_KEYS.forEach(function (k) {
+    if (parsed[k] != null) {
+      var okShow = sanitizeMineUiImageRef(parsed[k]);
+      if (okShow) {
+        form[k] = okShow;
       }
     }
   });
@@ -4446,6 +4473,8 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
   track_install_register_click: '注册入口点击',
+  track_install_showcase_view: '效果预览展示',
+  track_install_showcase_slide: '效果预览滑动',
   track_install_register_success: '安装页引流注册成功',
   track_install_ios_video_play: '苹果安装视频播放',
   track_install_usage_video_play: '操作视频播放',
@@ -9837,6 +9866,14 @@ async function handleAdminSettingsPost(req, res) {
             }
           }
         });
+        INSTALL_SHOWCASE_IMAGE_KEYS.forEach(function (k) {
+          if (prev[k] != null) {
+            var okPrevShow = sanitizeMineUiImageRef(prev[k]);
+            if (okPrevShow) {
+              merged[k] = okPrevShow;
+            }
+          }
+        });
       }
       var incoming = body.mine_ui;
       if (incoming.theme === 'blue' || incoming.theme === 'yellow') {
@@ -9870,6 +9907,14 @@ async function handleAdminSettingsPost(req, res) {
           var ok = sanitizeMineUiImageRef(String(incoming[k]).trim());
           if (ok) {
             merged[k] = ok;
+          }
+        }
+      });
+      INSTALL_SHOWCASE_IMAGE_KEYS.forEach(function (k) {
+        if (incoming[k] != null && String(incoming[k]).trim() !== '') {
+          var okShow = sanitizeMineUiImageRef(String(incoming[k]).trim());
+          if (okShow) {
+            merged[k] = okShow;
           }
         }
       });

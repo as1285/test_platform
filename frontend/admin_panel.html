@@ -142,7 +142,7 @@
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
         <section>
             <h2>引导安装（用户端）</h2>
-            <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）与「操作教程」（<a href="tutorial_video.html" target="_blank" rel="noopener">在新标签预览</a>）。下方集中配置<strong>安装包下载地址</strong>与<strong>安装引导视频</strong>；其它界面配图仍在左侧「用户端外观」。</p>
+            <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）与「操作教程」（<a href="tutorial_video.html" target="_blank" rel="noopener">在新标签预览</a>）。下方可配置<strong>安装包下载</strong>、<strong>引导视频</strong>与<strong>首屏效果预览</strong>（动图 + 截图横滑）；其它界面配图仍在左侧「用户端外观」。</p>
         </section>
         <section>
             <h2>安装包下载（用户端）</h2>
@@ -195,6 +195,45 @@
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
                 <button type="button" class="btn-primary" id="btnSaveInstallPackages">保存引导安装配置</button>
             </div>
+        </section>
+        <section>
+            <h2>安装页效果预览</h2>
+            <p class="hint">在「安装包和使用方法」页<strong>首屏</strong>展示个税明细效果：1 张动图（GIF/WebP 自动循环）+ 最多 3 张静图横滑（明细 / 申报 / 税记录）。支持 <code>uploads/</code> 相对路径或 https 外链；留空则不显示对应位。</p>
+            <div class="mine-ui-block" style="max-width:760px;">
+                <div class="mine-ui-row">
+                    <label for="img_install_showcase_gif">首屏动图（5–8 秒循环）</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_showcase_gif" maxlength="500" placeholder="如 uploads/install_showcase.gif">
+                        <input type="file" class="mine-ui-file" accept="image/gif,image/webp,image/png" data-target="img_install_showcase_gif" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_install_showcase_img_1">静图 1 · 收入纳税明细</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_showcase_img_1" maxlength="500" placeholder="如 uploads/showcase_detail.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_install_showcase_img_1" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_install_showcase_img_2">静图 2 · 申报记录</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_showcase_img_2" maxlength="500" placeholder="如 uploads/showcase_shenbao.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_install_showcase_img_2" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+                <div class="mine-ui-row">
+                    <label for="img_install_showcase_img_3">静图 3 · 税务记录</label>
+                    <div class="mine-ui-controls">
+                        <input type="text" id="img_install_showcase_img_3" maxlength="500" placeholder="如 uploads/showcase_tax.png">
+                        <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_install_showcase_img_3" hidden>
+                        <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                    </div>
+                </div>
+            </div>
+            <p class="hint" style="margin-top:8px;">动图建议宽度 750px、≤2MB；静图建议手机截图比例。保存方式与上方「保存引导安装配置」相同。</p>
         </section>
                 </div>
 

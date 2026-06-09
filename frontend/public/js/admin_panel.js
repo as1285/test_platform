@@ -6688,6 +6688,12 @@
                                 el.value = m[k] != null ? String(m[k]) : '';
                             }
                         });
+                        MINE_INSTALL_SHOWCASE_KEYS.forEach(function (k) {
+                            var el = document.getElementById('img_' + k);
+                            if (el) {
+                                el.value = m[k] != null ? String(m[k]) : '';
+                            }
+                        });
                         syncMineUiDefaultToggle();
                     }
                 })
@@ -6856,10 +6862,19 @@
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
                     xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
-                    mine_ui: {
-                        install_ios_video: document.getElementById('img_install_ios_video').value.trim(),
-                        install_usage_video: document.getElementById('img_install_usage_video').value.trim()
-                    }
+                    mine_ui: (function () {
+                        var ui = {
+                            install_ios_video: document.getElementById('img_install_ios_video').value.trim(),
+                            install_usage_video: document.getElementById('img_install_usage_video').value.trim()
+                        };
+                        MINE_INSTALL_SHOWCASE_KEYS.forEach(function (k) {
+                            var el = document.getElementById('img_' + k);
+                            if (el) {
+                                ui[k] = el.value.trim();
+                            }
+                        });
+                        return ui;
+                    })()
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -6884,6 +6899,12 @@
         ];
 
         var MINE_INSTALL_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
+        var MINE_INSTALL_SHOWCASE_KEYS = [
+            'install_showcase_gif',
+            'install_showcase_img_1',
+            'install_showcase_img_2',
+            'install_showcase_img_3'
+        ];
 
         function syncMineUiDefaultToggle() {
             var on = document.getElementById('mineUseDefaultImages').checked;

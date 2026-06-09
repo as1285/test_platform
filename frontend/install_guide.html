@@ -309,6 +309,86 @@
         .step-block.is-hidden {
             display: none;
         }
+        .showcase-card h2 {
+            font-size: 17px;
+            color: #1e293b;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .showcase-lead {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+        .showcase-gif-wrap {
+            margin-bottom: 14px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0f172a;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+        }
+        .showcase-gif-wrap img {
+            display: block;
+            width: 100%;
+            max-height: min(420px, 62vh);
+            object-fit: contain;
+            margin: 0 auto;
+        }
+        .showcase-carousel-wrap {
+            margin-bottom: 14px;
+        }
+        .showcase-carousel {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 2px 2px 6px;
+        }
+        .showcase-carousel::-webkit-scrollbar {
+            display: none;
+        }
+        .showcase-slide {
+            flex: 0 0 78%;
+            max-width: 300px;
+            scroll-snap-align: center;
+        }
+        .showcase-slide img {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            background: #fff;
+        }
+        .showcase-slide figcaption {
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .showcase-swipe-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 6px;
+        }
+        .showcase-register-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            margin-top: 4px;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(30, 111, 255, 0.22);
+        }
+        .showcase-disclaimer {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body class="page-install-guide">
@@ -320,6 +400,20 @@
     </header>
 
     <div class="wrap">
+        <section class="card showcase-card" id="installShowcaseCard" hidden>
+            <h2>安装后能生成这样的个税明细</h2>
+            <p class="showcase-lead">注册并填写演示数据，即可查看收入纳税明细、申报记录与税务记录样式。</p>
+            <div class="showcase-gif-wrap" id="installShowcaseGifWrap" hidden>
+                <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="eager" decoding="async">
+            </div>
+            <div class="showcase-carousel-wrap" id="installShowcaseCarouselWrap" hidden>
+                <div class="showcase-carousel" id="installShowcaseCarousel" role="list"></div>
+                <p class="showcase-swipe-hint">左右滑动查看：明细 · 申报 · 税记录</p>
+            </div>
+            <a href="register.html?from=install_guide" class="btn btn-primary install-register-link install-register-showcase showcase-register-btn">立即注册，体验效果</a>
+            <p class="hint showcase-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
+        </section>
+
         <section class="card">
             <h2>三步完成安装与注册</h2>
             <div class="steps-bar" aria-hidden="true">
@@ -435,12 +529,20 @@
 
         function bindInstallRegisterLinks() {
             document.querySelectorAll('.install-register-link').forEach(function (link) {
+                if (link.dataset.registerBound === '1') {
+                    return;
+                }
+                link.dataset.registerBound = '1';
                 link.addEventListener('click', function () {
                     if (typeof window.markInstallGuideReferral === 'function') {
                         window.markInstallGuideReferral('register_click');
                     }
                     if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_install_register_click', { page: 'install_guide' });
+                        var meta = { page: 'install_guide' };
+                        if (link.classList.contains('install-register-showcase')) {
+                            meta.source = 'showcase';
+                        }
+                        window.trackPublicAction('track_install_register_click', meta);
                     }
                 });
             });
@@ -632,6 +734,92 @@
             return '/' + path;
         }
 
+        function renderInstallShowcase(data) {
+            var card = document.getElementById('installShowcaseCard');
+            if (!card || !data) {
+                return;
+            }
+            var gifWrap = document.getElementById('installShowcaseGifWrap');
+            var gifImg = document.getElementById('installShowcaseGif');
+            var carouselWrap = document.getElementById('installShowcaseCarouselWrap');
+            var carousel = document.getElementById('installShowcaseCarousel');
+            var gifUrl = toAssetUrl(data.install_showcase_gif || '');
+            var slides = [
+                { key: 'install_showcase_img_1', label: '收入纳税明细' },
+                { key: 'install_showcase_img_2', label: '申报记录' },
+                { key: 'install_showcase_img_3', label: '税务记录' }
+            ];
+            var hasGif = !!gifUrl;
+            var hasSlides = false;
+
+            if (gifWrap && gifImg) {
+                if (hasGif) {
+                    gifImg.src = gifUrl;
+                    gifWrap.hidden = false;
+                } else {
+                    gifWrap.hidden = true;
+                    gifImg.removeAttribute('src');
+                }
+            }
+
+            if (carousel) {
+                carousel.innerHTML = '';
+                slides.forEach(function (slide) {
+                    var src = toAssetUrl(data[slide.key] || '');
+                    if (!src) {
+                        return;
+                    }
+                    hasSlides = true;
+                    var figure = document.createElement('figure');
+                    figure.className = 'showcase-slide';
+                    figure.setAttribute('role', 'listitem');
+                    var img = document.createElement('img');
+                    img.src = src;
+                    img.alt = slide.label + '效果预览';
+                    img.loading = 'lazy';
+                    img.decoding = 'async';
+                    var cap = document.createElement('figcaption');
+                    cap.textContent = slide.label;
+                    figure.appendChild(img);
+                    figure.appendChild(cap);
+                    carousel.appendChild(figure);
+                });
+            }
+            if (carouselWrap) {
+                carouselWrap.hidden = !hasSlides;
+            }
+
+            if (hasGif || hasSlides) {
+                card.hidden = false;
+                bindInstallRegisterLinks();
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction('track_install_showcase_view', {
+                        page: 'install_guide',
+                        has_gif: hasGif ? 1 : 0,
+                        slide_count: carousel ? carousel.children.length : 0
+                    });
+                }
+                if (carousel && hasSlides) {
+                    var slideTracked = false;
+                    carousel.addEventListener(
+                        'scroll',
+                        function () {
+                            if (slideTracked) {
+                                return;
+                            }
+                            slideTracked = true;
+                            if (typeof window.trackPublicAction === 'function') {
+                                window.trackPublicAction('track_install_showcase_slide', { page: 'install_guide' });
+                            }
+                        },
+                        { passive: true }
+                    );
+                }
+            } else {
+                card.hidden = true;
+            }
+        }
+
         function renderVideo(containerId, url, emptyText) {
             var box = document.getElementById(containerId);
             if (!box) return;
@@ -676,6 +864,7 @@
                     }
                     renderVideo('iosInstallVideoContainer', body.data.install_ios_video || '', '暂未配置苹果安装视频');
                     renderVideo('usageVideoContainer', body.data.install_usage_video || '', '暂未配置操作视频');
+                    renderInstallShowcase(body.data);
                     var usageBlock = document.getElementById('usageVideoBlock');
                     if (usageBlock && body.data.install_usage_video) {
                         usageBlock.hidden = false;
