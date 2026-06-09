@@ -130,6 +130,10 @@
             padding-left: 1.25em;
             margin: 8px 0 0;
         }
+        .install-top-download {
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
         .install-actions {
             display: flex;
             flex-direction: column;
@@ -400,6 +404,15 @@
     </header>
 
     <div class="wrap">
+        <section class="card install-top-download" id="installTopDownload">
+            <div class="install-actions" id="installButtonsRow"></div>
+            <div class="desktop-qr" id="desktopQrBlock" hidden>
+                <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
+                <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
+            </div>
+            <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+        </section>
+
         <section class="card showcase-card" id="installShowcaseCard" hidden>
             <h2>安装后能生成这样的个税明细</h2>
             <p class="showcase-lead">注册并填写演示数据，即可查看收入纳税明细、申报记录与税务记录样式。</p>
@@ -428,19 +441,14 @@
 
             <div class="step-block" id="stepDownloadBlock">
                 <h3><span class="step-num">1</span>下载安装包</h3>
-                <div class="install-actions" id="installButtonsRow"></div>
-                <div class="desktop-qr" id="desktopQrBlock" hidden>
-                    <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
-                    <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
-                </div>
-                <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+                <p class="hint">点击页面顶部按钮下载安装包；下载完成后继续第 2 步。</p>
             </div>
 
             <div class="step-block" id="stepInstallBlock">
                 <h3><span class="step-num">2</span>按指引完成安装</h3>
                 <div id="androidInstallTips" class="is-hidden">
                     <ol>
-                        <li>点击上方按钮下载 APK 安装包</li>
+                        <li>点击页面顶部按钮下载 APK 安装包</li>
                         <li>若提示「未知来源」或「禁止安装」，请在系统设置中允许本浏览器安装应用</li>
                         <li>安装完成后打开 App，再点击下方「立即注册账号」</li>
                     </ol>
@@ -553,6 +561,7 @@
             var ios = isLikelyIOSClient();
             var android = isLikelyAndroidClient();
             var desktop = isDesktopClient();
+            var topDownload = document.getElementById('installTopDownload');
             var downloadBlock = document.getElementById('stepDownloadBlock');
             var inAppBanner = document.getElementById('inAppBanner');
             var androidTips = document.getElementById('androidInstallTips');
@@ -566,6 +575,9 @@
             if (inApp) {
                 if (inAppBanner) {
                     inAppBanner.classList.add('is-visible');
+                }
+                if (topDownload) {
+                    topDownload.classList.add('is-hidden');
                 }
                 if (downloadBlock) {
                     downloadBlock.classList.add('is-hidden');
