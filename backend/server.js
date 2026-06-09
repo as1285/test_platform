@@ -2713,25 +2713,20 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 基础信息与任职、埋点 track_*、反馈 feedback.php */
+/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
     return true;
   }
-  if (!path.endsWith('/user.php')) {
-    return false;
-  }
-  if (req.method === 'GET') {
-    var getAction = String(req.query.action || '');
-    return getAction === 'info' || getAction === 'employers';
+  if (path.endsWith('/user.php')) {
+    return true;
   }
   if (req.method === 'POST') {
     var action = req.body && req.body.action != null ? String(req.body.action) : '';
     if (/^track_[a-z0-9_]{1,80}$/i.test(action)) {
       return true;
     }
-    return action === 'add_employer' || action === 'update_employer' || action === 'delete_employer';
   }
   return false;
 }
