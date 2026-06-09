@@ -3108,6 +3108,7 @@
         var USER_LOGIN_REASON_FILTER_OPTIONS = [
             { key: 'ok', label: '成功' },
             { key: 'invalid_credentials', label: '账号或密码错误' },
+            { key: 'wrong_password', label: '密码错误' },
             { key: 'empty_password', label: '密码为空' },
             { key: 'account_banned', label: '账号已封禁' },
             { key: 'invalid_username', label: '账号格式错误' },

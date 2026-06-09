@@ -848,7 +848,8 @@
         }
         function showLoginErrorModal(msg) {
             var text = String(msg || '登录失败');
-            if (text.indexOf('账号或密码错误') < 0) {
+            var isWrongPassword = text.indexOf('密码错误') >= 0;
+            if (!isWrongPassword) {
                 alert(text);
                 return;
             }
@@ -858,7 +859,7 @@
                 alert(text);
                 return;
             }
-            body.textContent = text;
+            body.textContent = '密码错误。如忘记密码，请通过激活码找回账号与密码。';
             root.classList.add('is-open');
         }
 

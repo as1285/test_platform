@@ -3161,7 +3161,7 @@ async function loginUser(username, password) {
 
   if (check !== rec.hash) {
     conn.release();
-    throw new Error('账号或密码错误');
+    throw new Error('密码错误，请通过激活码找回密码');
   }
 
   /* 历史账号未存明文时，登录成功即回填，供管理后台展示 */
@@ -4814,6 +4814,7 @@ function normalizeUserLoginFailReason(rawMsg) {
   if (!msg) return 'unknown_error';
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
+  if (msg.indexOf('密码错误') >= 0 && msg.indexOf('激活码') >= 0) return 'wrong_password';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
   if (
     msg.indexOf('账号仅支持') >= 0 ||
@@ -4898,6 +4899,7 @@ const USER_LOGIN_REASON_LABELS = {
   empty_password: '密码为空',
   account_banned: '账号已封禁',
   invalid_credentials: '账号或密码错误',
+  wrong_password: '密码错误',
   invalid_username: '账号格式错误',
   other_error: '其他错误',
   unknown_error: '未知错误',
