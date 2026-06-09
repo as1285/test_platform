@@ -299,7 +299,7 @@
             var tbody = document.getElementById('registerGenderTbody');
             var cardsEl = document.getElementById('registerGenderCards');
             var daysEl = document.getElementById('analyticsRegisterGenderDays');
-            var days = daysEl ? String(daysEl.value) : '0';
+            var days = daysEl ? String(daysEl.value) : '1';
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
@@ -700,7 +700,7 @@
             var actTbody = document.getElementById('channelActivationTbody');
             var cardsEl = document.getElementById('channelAnalysisCards');
             var daysEl = document.getElementById('channelAnalysisDays');
-            var days = daysEl ? String(daysEl.value) : '7';
+            var days = daysEl ? String(daysEl.value) : '1';
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -923,7 +923,7 @@
             var tbody = document.getElementById('registerTimeDetailTbody');
             var cardsEl = document.getElementById('registerTimePeriodCards');
             var daysEl = document.getElementById('analyticsRegisterTimeDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
@@ -2160,7 +2160,7 @@
         }
 
         function loadApiAnalyticsPanel() {
-            var daysA = parseInt(document.getElementById('apiAnalyticsDays').value, 10) || 7;
+            var daysA = parseInt(document.getElementById('apiAnalyticsDays').value, 10) || 1;
             document.getElementById('apiAnalyticsCatTbody').innerHTML =
                 '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
@@ -2512,7 +2512,7 @@
         }
 
         function loadAnalyticsActivityPage() {
-            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
+            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 1;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
@@ -2577,7 +2577,7 @@
 
         function loadAnalyticsTrackingPage() {
             loadInstallTrackStats();
-            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 14;
+            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 1;
             document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             var evtHintInit = document.getElementById('analyticsEventsHint');
             if (evtHintInit) evtHintInit.textContent = '加载中…';
@@ -3386,7 +3386,7 @@
             var el = document.getElementById('analyticsRegistrationFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '漏斗加载中…';
             adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3435,7 +3435,7 @@
             var el = document.getElementById('analyticsChannelFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsChannelFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 7 : 7;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '渠道漏斗加载中…';
             adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3482,7 +3482,7 @@
             var el = document.getElementById('analyticsActivationChannelFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsActivationChannelFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 7 : 7;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '激活渠道漏斗加载中…';
             adminFetch('api/admin/analytics/activation-channel-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3792,7 +3792,7 @@
             var el = document.getElementById('analyticsInstallTrack');
             if (!el) return;
             var daysEl = document.getElementById('analyticsInstallTrackDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '安装埋点加载中…';
             adminFetch('api/admin/analytics/install-track-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3878,7 +3878,7 @@
             var el = document.getElementById('analyticsConversionKpis');
             if (!el) return;
             var daysEl = document.getElementById('analyticsConversionKpiDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = 'KPI 加载中…';
             adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -7288,7 +7288,7 @@
             }
         });
         document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
-            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 14;
+            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 1;
             if (
                 !confirm(
                     '确定删除最近 ' +
