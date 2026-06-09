@@ -3711,7 +3711,7 @@
             var el = document.getElementById('installGuideStatsMount');
             if (!el) return;
             var daysEl = document.getElementById('installGuideStatsDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 30 : 30;
+            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '加载中…';
             adminFetch('api/admin/analytics/install-guide-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
