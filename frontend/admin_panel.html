@@ -43,7 +43,11 @@
                 </div>
                 <div class="nav-group" data-nav-group="stats">
                     <div class="nav-group-label">数据统计</div>
-                    <button type="button" class="nav-item" data-page="analytics" data-title="数据统计">数据统计</button>
+                    <button type="button" class="nav-item" data-page="analytics-conversion" data-title="转化分析">转化分析</button>
+                    <button type="button" class="nav-item" data-page="analytics-activity" data-title="用户活跃">用户活跃</button>
+                    <button type="button" class="nav-item" data-page="analytics-register" data-title="注册分析">注册分析</button>
+                    <button type="button" class="nav-item" data-page="analytics-tracking" data-title="埋点分析">埋点分析</button>
+                    <button type="button" class="nav-item" data-page="analytics-devices" data-title="设备分析">设备分析</button>
                     <button type="button" class="nav-item" data-page="install-guide-stats" data-title="安装页统计">安装页统计</button>
                     <button type="button" class="nav-item" data-page="channel-analysis" data-title="渠道分析">渠道分析</button>
                     <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
@@ -1212,11 +1216,7 @@
         </section>
                 </div>
 
-                <div id="page-analytics" class="page-panel" role="tabpanel">
-        <section>
-            <h2>埋点说明</h2>
-            <p class="hint"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>（携带用户 JWT）的去重账号数，不含纯浏览静态页、不含管理后台；点击「查看账号」可展开当日活跃用户列表（每页 10 条）。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span> 表示该日有新增或更新个税记录，<span class="dau-tax-badge has-records">有个税记录</span> 表示历史已有个税数据但非当日改动。<strong>接口调用</strong>与<strong>高频接口</strong>：见侧栏<strong>接口统计</strong>（按业务分类合计、TOP 路由；含管理后台与公开接口）。<strong>登录</strong>：记录账号密码登录成功/失败（不含注册）；单条流水、分页查询见侧栏<strong>登录流水</strong>。<strong>设备</strong>：客户端每次请求通过请求头 <code>X-Client-Device</code> 上报 JSON（含 <code>client_id</code>、机型字段可由 App WebView 注入）；服务端按 <code>client_id</code> 聚合同一终端，并在每次已登录接口调用时刷新详情与「接口同步次数」。</p>
-        </section>
+                <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
         <section>
             <h2>注册转化率</h2>
             <p class="hint" style="margin-top:0;">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。</p>
@@ -1253,22 +1253,6 @@
             <div id="analyticsRegistrationFunnel" class="analytics-conv-wrap" aria-live="polite">漏斗加载中…</div>
         </section>
         <section>
-            <h2>安装页埋点汇总</h2>
-            <p class="hint" style="margin-top:0;">来自 <code>analytics_api_daily</code>：安装包点击、视频播放与注册成功事件（公开页 <code>track_install_*</code>）。</p>
-            <div class="form-row" style="align-items: center; margin-top: 8px;">
-                <div>
-                    <label for="analyticsInstallTrackDays">统计天数</label>
-                    <select id="analyticsInstallTrackDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="7">最近 7 天</option>
-                        <option value="30" selected>最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
-                </div>
-                <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
-            </div>
-            <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
-        </section>
-        <section>
             <h2>运营 KPI</h2>
             <p class="hint" style="margin-top:0;"><strong>激活后 1 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 24 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 1 日明细查看率</strong> = 窗口内首次有个税的用户中，24 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
@@ -1290,6 +1274,9 @@
             <button type="button" class="btn-page" id="btnRefreshPendingActivate24h" style="margin-bottom:10px;">刷新列表</button>
             <div id="analyticsPendingActivate24h" class="analytics-conv-wrap" aria-live="polite">列表加载中…</div>
         </section>
+                </div>
+
+                <div id="page-analytics-register" class="page-panel" role="tabpanel">
         <section>
             <h2>注册时段分析</h2>
             <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
@@ -1379,8 +1366,12 @@
                 </div>
             </div>
         </section>
+                </div>
+
+                <div id="page-analytics-activity" class="page-panel" role="tabpanel">
         <section>
             <h2>用户日活与登录趋势</h2>
+            <p class="hint" style="margin-top:0;"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。登录流水详见侧栏「登录流水」。</p>
             <div class="form-row" style="align-items: center;">
                 <div>
                     <label for="analyticsOverviewDays">统计天数</label>
@@ -1419,7 +1410,38 @@
             </div>
             <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
         </section>
+                </div>
+
+                <div id="page-analytics-tracking" class="page-panel" role="tabpanel">
         <section>
+            <h2>安装页埋点汇总</h2>
+            <p class="hint" style="margin-top:0;">来自 <code>analytics_api_daily</code>：安装包点击、视频播放与注册成功事件（公开页 <code>track_install_*</code>）。安装页 PV/停留详见侧栏「安装页统计」。</p>
+            <div class="form-row" style="align-items: center; margin-top: 8px;">
+                <div>
+                    <label for="analyticsInstallTrackDays">统计天数</label>
+                    <select id="analyticsInstallTrackDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="30" selected>最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
+            </div>
+            <div id="analyticsInstallTrack" class="analytics-conv-wrap" aria-live="polite">安装埋点加载中…</div>
+        </section>
+        <section>
+            <div class="form-row" style="align-items: center; margin-bottom: 8px;">
+                <div>
+                    <label for="analyticsTrackingDays">行为埋点统计天数</label>
+                    <select id="analyticsTrackingDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
+                        <option value="7">最近 7 天</option>
+                        <option value="14" selected>最近 14 天</option>
+                        <option value="30">最近 30 天</option>
+                        <option value="90">最近 90 天</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
+            </div>
             <h2>激活相关埋点</h2>
             <p class="hint" style="margin-top:0;margin-bottom:8px;">单独统计激活弹窗、闲鱼购买与添加QQ号（<code>track_activate_prompt_*</code>、<code>track_xianyu_purchase_click</code>、<code>track_qq_add_click</code>）。按<strong>北京时间自然日</strong>汇总点击次数；可展开查看当日点击过的账号及每人各按钮次数。数据来自用户上报流水 <code>user_page_events</code>。</p>
             <div class="scroll-x" style="margin-bottom:10px;">
@@ -1470,9 +1492,13 @@
             </div>
             <p id="analyticsEventsHint" class="hint" style="margin-top:8px;">—</p>
         </section>
+                </div>
+
+                <div id="page-analytics-devices" class="page-panel" role="tabpanel">
         <section>
             <h2>机型与操作系统分布</h2>
-            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code> 含 <code>os_version</code>、<code>model</code>、<code>brand</code>），否则从 UA 推断。操作系统列按<strong>系统+版本</strong>展示图标；机型列按<strong>品牌/机型规则</strong>匹配图标（如 iPhone、小米代号 23127PN、荣耀 PGT-AN 等），悬停行可查看识别说明。</p>
+            <p class="hint" style="margin:0 0 8px;">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code>），否则从 UA 推断。</p>
+            <button type="button" class="btn-page" id="btnRefreshDeviceStats" style="margin-bottom:10px;">刷新设备分布</button>
             <p id="deviceStatsSummary" class="hint" style="margin:0 0 8px;">加载中…</p>
             <div id="deviceStatsLegend" class="device-stats-legend" style="display:none;"></div>
             <div id="deviceStatsChartsWrap" class="device-stats-charts-wrap" style="display:none;">
@@ -1614,7 +1640,7 @@
         </section>
         <section>
             <h2>分渠道 7 日转化漏斗（注册来源）</h2>
-            <p class="hint" style="margin-top:0;">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与数据统计页「四段转化漏斗」一致）。</p>
+            <p class="hint" style="margin-top:0;">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与转化分析页「四段转化漏斗」一致）。</p>
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
                     <label for="analyticsChannelFunnelDays">统计天数</label>

@@ -1836,7 +1836,11 @@
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
-        var _adminAnalyticsSeen = false;
+        var _adminAnalyticsConversionSeen = false;
+        var _adminAnalyticsActivitySeen = false;
+        var _adminAnalyticsRegisterSeen = false;
+        var _adminAnalyticsTrackingSeen = false;
+        var _adminAnalyticsDevicesSeen = false;
         var _adminInstallGuideStatsSeen = false;
         var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
@@ -1847,11 +1851,14 @@
             if (!menuKey) return false;
             if (menuKey === 'user-login-log') menuKey = 'login-log';
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
-            return !!(currentAdminProfile && Array.isArray(currentAdminProfile.menus) && currentAdminProfile.menus.indexOf(menuKey) >= 0);
+            var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
+            if (menus.indexOf(menuKey) >= 0) return true;
+            if (menuKey.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
+            return false;
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (adminHasMenu(order[i])) return order[i];
             }
@@ -1892,6 +1899,7 @@
             var k = String(raw || '').replace(/^#/, '').trim().toLowerCase();
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
+            if (k === 'analytics') k = 'analytics-conversion';
             var ok = {
                 settings: 1,
                 'install-guide': 1,
@@ -1904,7 +1912,11 @@
                 'user-behavior': 1,
                 'activated-user-analysis': 1,
                 feedback: 1,
-                analytics: 1,
+                'analytics-conversion': 1,
+                'analytics-activity': 1,
+                'analytics-register': 1,
+                'analytics-tracking': 1,
+                'analytics-devices': 1,
                 'install-guide-stats': 1,
                 'channel-analysis': 1,
                 'api-analytics': 1,
@@ -1962,9 +1974,25 @@
                 _adminAccountsLoaded = true;
                 loadAdminAccounts();
             }
-            if (pageKey === 'analytics' && !_adminAnalyticsSeen) {
-                _adminAnalyticsSeen = true;
-                loadAnalyticsDashboard();
+            if (pageKey === 'analytics-conversion' && !_adminAnalyticsConversionSeen) {
+                _adminAnalyticsConversionSeen = true;
+                loadAnalyticsConversionPage();
+            }
+            if (pageKey === 'analytics-activity' && !_adminAnalyticsActivitySeen) {
+                _adminAnalyticsActivitySeen = true;
+                loadAnalyticsActivityPage();
+            }
+            if (pageKey === 'analytics-register' && !_adminAnalyticsRegisterSeen) {
+                _adminAnalyticsRegisterSeen = true;
+                loadAnalyticsRegisterPage();
+            }
+            if (pageKey === 'analytics-tracking' && !_adminAnalyticsTrackingSeen) {
+                _adminAnalyticsTrackingSeen = true;
+                loadAnalyticsTrackingPage();
+            }
+            if (pageKey === 'analytics-devices' && !_adminAnalyticsDevicesSeen) {
+                _adminAnalyticsDevicesSeen = true;
+                loadAnalyticsDevicesPage();
             }
             if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
                 _adminInstallGuideStatsSeen = true;
@@ -2471,35 +2499,88 @@
                 });
         }
 
-        function loadAnalyticsDashboard() {
+        function loadAnalyticsConversionPage() {
             loadAnalyticsDailyConversion();
             loadRegistrationFunnel();
-            loadInstallTrackStats();
             loadConversionKpis();
             loadPendingActivate24h(1);
+        }
+
+        function loadAnalyticsRegisterPage() {
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
+        }
+
+        function loadAnalyticsActivityPage() {
             var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO))
+                .then(function (r) { return r.json(); })
+                .then(function (ov) {
+                    if (ov.code === 200 && ov.data && ov.data.dau) {
+                        var dh = '';
+                        ov.data.dau.forEach(function (row) {
+                            var dk = dauDateDomKey(row.date);
+                            dh += '<tr class="dau-summary-row">';
+                            dh += '<td>' + esc(row.date) + '</td>';
+                            dh += '<td>' + esc(String(row.active_users)) + '</td>';
+                            dh +=
+                                '<td><button type="button" class="btn-sm btn-detail btn-dau-users-toggle" data-date="' +
+                                esc(row.date) +
+                                '">查看账号</button></td>';
+                            dh += '</tr>';
+                            dh +=
+                                '<tr id="dau_users_row_' +
+                                dk +
+                                '" class="dau-users-detail-row" style="display:none;"><td colspan="3"><div id="dau_users_box_' +
+                                dk +
+                                '" class="dau-users-box">点击「查看账号」加载列表…</div></td></tr>';
+                        });
+                        document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
+                    } else {
+                        document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">' + esc(ov.msg || '加载失败') + '</td></tr>';
+                    }
+
+                    if (ov.code === 200 && ov.data && ov.data.logins) {
+                        var lh = '';
+                        ov.data.logins.forEach(function (row) {
+                            lh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.success)) + '</td><td>' + esc(String(row.fail)) + '</td></tr>';
+                        });
+                        document.getElementById('analyticsLoginTbody').innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
+                    } else {
+                        document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">—</td></tr>';
+                    }
+                    if (ov.code === 200 && ov.data && Array.isArray(ov.data.fail_reasons)) {
+                        var rh2 = '';
+                        ov.data.fail_reasons.forEach(function (row) {
+                            rh2 +=
+                                '<tr><td class="cell-break">' +
+                                esc(row.reason_label || row.reason_key || '未知错误') +
+                                '</td><td>' +
+                                esc(String(row.cnt || 0)) +
+                                '</td></tr>';
+                        });
+                        document.getElementById('analyticsLoginReasonTbody').innerHTML =
+                            rh2 || '<tr><td colspan="2">暂无失败记录</td></tr>';
+                    } else {
+                        document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">—</td></tr>';
+                    }
+                })
+                .catch(function () {
+                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                });
+        }
+
+        function loadAnalyticsTrackingPage() {
+            loadInstallTrackStats();
+            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 14;
             document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             var evtHintInit = document.getElementById('analyticsEventsHint');
             if (evtHintInit) evtHintInit.textContent = '加载中…';
-            document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('deviceStatsSummary').textContent = '加载中…';
-            destroyDeviceStatsCharts();
-            var chartsWrapInit = document.getElementById('deviceStatsChartsWrap');
-            if (chartsWrapInit) {
-                chartsWrapInit.style.display = 'none';
-            }
-            renderDeviceStatsLegend([]);
-            var _mHint = document.getElementById('deviceStatsModelHint');
-            if (_mHint) {
-                _mHint.textContent = '';
-            }
-
             document.getElementById('activateEventsSummaryTbody').innerHTML =
                 '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('activateEventsDailyTbody').innerHTML =
@@ -2510,66 +2591,14 @@
             }
 
             Promise.all([
-                adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/device-stats').then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysO)).then(function (r) { return r.json(); }),
-                adminFetch('api/admin/analytics/activate-events?days=' + encodeURIComponent(daysO)).then(function (r) {
+                adminFetch('api/admin/analytics/events?days=' + encodeURIComponent(daysT)).then(function (r) { return r.json(); }),
+                adminFetch('api/admin/analytics/activate-events?days=' + encodeURIComponent(daysT)).then(function (r) {
                     return r.json();
                 })
             ]).then(function (results) {
-                var ov = results[0];
-                var dev = results[1];
-                var ev = results[2];
-                var act = results[3];
+                var ev = results[0];
+                var act = results[1];
 
-                if (ov.code === 200 && ov.data && ov.data.dau) {
-                    var dh = '';
-                    ov.data.dau.forEach(function (row) {
-                        var dk = dauDateDomKey(row.date);
-                        dh += '<tr class="dau-summary-row">';
-                        dh += '<td>' + esc(row.date) + '</td>';
-                        dh += '<td>' + esc(String(row.active_users)) + '</td>';
-                        dh +=
-                            '<td><button type="button" class="btn-sm btn-detail btn-dau-users-toggle" data-date="' +
-                            esc(row.date) +
-                            '">查看账号</button></td>';
-                        dh += '</tr>';
-                        dh +=
-                            '<tr id="dau_users_row_' +
-                            dk +
-                            '" class="dau-users-detail-row" style="display:none;"><td colspan="3"><div id="dau_users_box_' +
-                            dk +
-                            '" class="dau-users-box">点击「查看账号」加载列表…</div></td></tr>';
-                    });
-                    document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
-                } else {
-                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">' + esc(ov.msg || '加载失败') + '</td></tr>';
-                }
-
-                if (ov.code === 200 && ov.data && ov.data.logins) {
-                    var lh = '';
-                    ov.data.logins.forEach(function (row) {
-                        lh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.success)) + '</td><td>' + esc(String(row.fail)) + '</td></tr>';
-                    });
-                    document.getElementById('analyticsLoginTbody').innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
-                } else {
-                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">—</td></tr>';
-                }
-                if (ov.code === 200 && ov.data && Array.isArray(ov.data.fail_reasons)) {
-                    var rh2 = '';
-                    ov.data.fail_reasons.forEach(function (row) {
-                        rh2 +=
-                            '<tr><td class="cell-break">' +
-                            esc(row.reason_label || row.reason_key || '未知错误') +
-                            '</td><td>' +
-                            esc(String(row.cnt || 0)) +
-                            '</td></tr>';
-                    });
-                    document.getElementById('analyticsLoginReasonTbody').innerHTML =
-                        rh2 || '<tr><td colspan="2">暂无失败记录</td></tr>';
-                } else {
-                    document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">—</td></tr>';
-                }
                 if (act.code === 200 && act.data) {
                     renderActivateEventsAnalytics(act.data);
                 } else {
@@ -2611,91 +2640,10 @@
                     var evtHintE = document.getElementById('analyticsEventsHint');
                     if (evtHintE) evtHintE.textContent = '埋点统计加载失败';
                 }
-
-                if (dev.code === 200 && dev.data) {
-                    var totalDev = dev.data.total_devices != null ? Number(dev.data.total_devices) : 0;
-                    document.getElementById('deviceStatsSummary').textContent =
-                        '当前共有 ' + totalDev + ' 条设备指纹记录。';
-                    renderDeviceStatsLegend(dev.data.icon_summary || []);
-                    renderDeviceStatsCharts(dev.data);
-
-                    var osRows = dev.data.by_os || [];
-                    var oh = '';
-                    osRows.forEach(function (row) {
-                        var hint = row.icon_hint ? ' title="' + esc(row.icon_hint) + '"' : '';
-                        oh +=
-                            '<tr' +
-                            hint +
-                            '><td>' +
-                            statIconHtml(row.icon_key) +
-                            '</td><td>' +
-                            esc(row.label) +
-                            '</td><td>' +
-                            esc(String(row.count)) +
-                            '</td></tr>';
-                    });
-                    document.getElementById('deviceStatsOsTbody').innerHTML =
-                        oh || '<tr><td colspan="3">暂无数据</td></tr>';
-
-                    var modelRows = dev.data.by_model || [];
-                    var maxModelRows = 40;
-                    var slice = modelRows.slice(0, maxModelRows);
-                    var mh = '';
-                    slice.forEach(function (row) {
-                        mh += deviceStatRowHtml(row);
-                    });
-                    document.getElementById('deviceStatsModelTbody').innerHTML =
-                        mh || '<tr><td colspan="3">暂无数据</td></tr>';
-                    var mhHint = document.getElementById('deviceStatsModelHint');
-                    if (mhHint) {
-                        if (modelRows.length > maxModelRows) {
-                            mhHint.textContent =
-                                '仅展示设备数前 ' +
-                                maxModelRows +
-                                ' 种机型（共 ' +
-                                modelRows.length +
-                                ' 种）。';
-                        } else {
-                            mhHint.textContent = '';
-                        }
-                    }
-                } else {
-                    renderDeviceStatsLegend([]);
-                    destroyDeviceStatsCharts();
-                    var chartsWrapFail = document.getElementById('deviceStatsChartsWrap');
-                    if (chartsWrapFail) {
-                        chartsWrapFail.style.display = 'none';
-                    }
-                    document.getElementById('deviceStatsSummary').textContent =
-                        esc(dev.msg || '设备分布加载失败');
-                    document.getElementById('deviceStatsOsTbody').innerHTML =
-                        '<tr><td colspan="3">—</td></tr>';
-                    document.getElementById('deviceStatsModelTbody').innerHTML =
-                        '<tr><td colspan="3">—</td></tr>';
-                    var mhHintE = document.getElementById('deviceStatsModelHint');
-                    if (mhHintE) {
-                        mhHintE.textContent = '';
-                    }
-                }
-
             }).catch(function () {
-                document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                 var evtHintErr = document.getElementById('analyticsEventsHint');
                 if (evtHintErr) evtHintErr.textContent = '埋点统计加载失败（网络错误）';
-                renderDeviceStatsLegend([]);
-                destroyDeviceStatsCharts();
-                var chartsWrapErr = document.getElementById('deviceStatsChartsWrap');
-                if (chartsWrapErr) {
-                    chartsWrapErr.style.display = 'none';
-                }
-                document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
-                document.getElementById('deviceStatsOsTbody').innerHTML =
-                    '<tr><td colspan="3">网络错误</td></tr>';
-                document.getElementById('deviceStatsModelTbody').innerHTML =
-                    '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('activateEventsSummaryTbody').innerHTML =
                     '<tr><td colspan="3">网络错误</td></tr>';
                 document.getElementById('activateEventsDailyTbody').innerHTML =
@@ -2705,6 +2653,117 @@
                     actHintErr.textContent = '激活埋点加载失败（网络错误）';
                 }
             });
+        }
+
+        function loadAnalyticsDeviceStats() {
+            document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            document.getElementById('deviceStatsSummary').textContent = '加载中…';
+            destroyDeviceStatsCharts();
+            var chartsWrapInit = document.getElementById('deviceStatsChartsWrap');
+            if (chartsWrapInit) {
+                chartsWrapInit.style.display = 'none';
+            }
+            renderDeviceStatsLegend([]);
+            var _mHint = document.getElementById('deviceStatsModelHint');
+            if (_mHint) {
+                _mHint.textContent = '';
+            }
+
+            adminFetch('api/admin/analytics/device-stats')
+                .then(function (r) { return r.json(); })
+                .then(function (dev) {
+                    if (dev.code === 200 && dev.data) {
+                        var totalDev = dev.data.total_devices != null ? Number(dev.data.total_devices) : 0;
+                        document.getElementById('deviceStatsSummary').textContent =
+                            '当前共有 ' + totalDev + ' 条设备指纹记录。';
+                        renderDeviceStatsLegend(dev.data.icon_summary || []);
+                        renderDeviceStatsCharts(dev.data);
+
+                        var osRows = dev.data.by_os || [];
+                        var oh = '';
+                        osRows.forEach(function (row) {
+                            var hint = row.icon_hint ? ' title="' + esc(row.icon_hint) + '"' : '';
+                            oh +=
+                                '<tr' +
+                                hint +
+                                '><td>' +
+                                statIconHtml(row.icon_key) +
+                                '</td><td>' +
+                                esc(row.label) +
+                                '</td><td>' +
+                                esc(String(row.count)) +
+                                '</td></tr>';
+                        });
+                        document.getElementById('deviceStatsOsTbody').innerHTML =
+                            oh || '<tr><td colspan="3">暂无数据</td></tr>';
+
+                        var modelRows = dev.data.by_model || [];
+                        var maxModelRows = 40;
+                        var slice = modelRows.slice(0, maxModelRows);
+                        var mh = '';
+                        slice.forEach(function (row) {
+                            mh += deviceStatRowHtml(row);
+                        });
+                        document.getElementById('deviceStatsModelTbody').innerHTML =
+                            mh || '<tr><td colspan="3">暂无数据</td></tr>';
+                        var mhHint = document.getElementById('deviceStatsModelHint');
+                        if (mhHint) {
+                            if (modelRows.length > maxModelRows) {
+                                mhHint.textContent =
+                                    '仅展示设备数前 ' +
+                                    maxModelRows +
+                                    ' 种机型（共 ' +
+                                    modelRows.length +
+                                    ' 种）。';
+                            } else {
+                                mhHint.textContent = '';
+                            }
+                        }
+                    } else {
+                        renderDeviceStatsLegend([]);
+                        destroyDeviceStatsCharts();
+                        var chartsWrapFail = document.getElementById('deviceStatsChartsWrap');
+                        if (chartsWrapFail) {
+                            chartsWrapFail.style.display = 'none';
+                        }
+                        document.getElementById('deviceStatsSummary').textContent =
+                            esc(dev.msg || '设备分布加载失败');
+                        document.getElementById('deviceStatsOsTbody').innerHTML =
+                            '<tr><td colspan="3">—</td></tr>';
+                        document.getElementById('deviceStatsModelTbody').innerHTML =
+                            '<tr><td colspan="3">—</td></tr>';
+                        var mhHintE = document.getElementById('deviceStatsModelHint');
+                        if (mhHintE) {
+                            mhHintE.textContent = '';
+                        }
+                    }
+                })
+                .catch(function () {
+                    renderDeviceStatsLegend([]);
+                    destroyDeviceStatsCharts();
+                    var chartsWrapErr = document.getElementById('deviceStatsChartsWrap');
+                    if (chartsWrapErr) {
+                        chartsWrapErr.style.display = 'none';
+                    }
+                    document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
+                    document.getElementById('deviceStatsOsTbody').innerHTML =
+                        '<tr><td colspan="3">网络错误</td></tr>';
+                    document.getElementById('deviceStatsModelTbody').innerHTML =
+                        '<tr><td colspan="3">网络错误</td></tr>';
+                });
+        }
+
+        function loadAnalyticsDevicesPage() {
+            loadAnalyticsDeviceStats();
+        }
+
+        function loadAnalyticsDashboard() {
+            loadAnalyticsConversionPage();
+            loadAnalyticsActivityPage();
+            loadAnalyticsRegisterPage();
+            loadAnalyticsTrackingPage();
+            loadAnalyticsDevicesPage();
         }
 
         function formatMonitorUptime(sec) {
@@ -5833,7 +5892,12 @@
             feedback: '用户反馈',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
-            analytics: '数据统计',
+            analytics: '数据统计（旧）',
+            'analytics-conversion': '转化分析',
+            'analytics-activity': '用户活跃',
+            'analytics-register': '注册分析',
+            'analytics-tracking': '埋点分析',
+            'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
             'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
@@ -7043,7 +7107,7 @@
         loadAdminSettings();
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
-            loadAnalyticsDashboard();
+            loadAnalyticsActivityPage();
         });
         var btnRefreshServerMonitor = document.getElementById('btnRefreshServerMonitor');
         if (btnRefreshServerMonitor) {
@@ -7112,6 +7176,24 @@
         if (analyticsActivationChannelFunnelDays) {
             analyticsActivationChannelFunnelDays.addEventListener('change', function () {
                 loadActivationChannelFunnel();
+            });
+        }
+        var btnRefreshAnalyticsTracking = document.getElementById('btnRefreshAnalyticsTracking');
+        if (btnRefreshAnalyticsTracking) {
+            btnRefreshAnalyticsTracking.addEventListener('click', function () {
+                loadAnalyticsTrackingPage();
+            });
+        }
+        var analyticsTrackingDays = document.getElementById('analyticsTrackingDays');
+        if (analyticsTrackingDays) {
+            analyticsTrackingDays.addEventListener('change', function () {
+                if (_adminAnalyticsTrackingSeen) loadAnalyticsTrackingPage();
+            });
+        }
+        var btnRefreshDeviceStats = document.getElementById('btnRefreshDeviceStats');
+        if (btnRefreshDeviceStats) {
+            btnRefreshDeviceStats.addEventListener('click', function () {
+                loadAnalyticsDeviceStats();
             });
         }
         var btnRefreshInstallTrack = document.getElementById('btnRefreshInstallTrack');
@@ -7206,11 +7288,11 @@
             }
         });
         document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
-            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 14;
+            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 14;
             if (
                 !confirm(
                     '确定删除最近 ' +
-                        daysO +
+                        daysT +
                         ' 天内的 C 端行为埋点统计数据？\n仅删除 track_* / EVENT 类埋点，不影响日活、接口调用等其它统计。此操作不可恢复。'
                 )
             ) {
@@ -7218,7 +7300,7 @@
             }
             var btn = this;
             btn.disabled = true;
-            adminFetch('api/admin/analytics/events/clear?days=' + encodeURIComponent(daysO), { method: 'POST' })
+            adminFetch('api/admin/analytics/events/clear?days=' + encodeURIComponent(daysT), { method: 'POST' })
                 .then(function (r) {
                     return r.json();
                 })
@@ -7226,7 +7308,7 @@
                     if (j.code === 200) {
                         var n = j.data && j.data.deleted_rows != null ? j.data.deleted_rows : 0;
                         alert('已删除 ' + n + ' 条埋点聚合记录');
-                        loadAnalyticsDashboard();
+                        loadAnalyticsTrackingPage();
                     } else {
                         alert(j.msg || '删除失败');
                     }
@@ -7459,7 +7541,7 @@
         });
 
         document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
-            if (_adminAnalyticsSeen) loadAnalyticsDashboard();
+            if (_adminAnalyticsActivitySeen) loadAnalyticsActivityPage();
         });
         document.getElementById('apiAnalyticsDays').addEventListener('change', function () {
             if (_adminApiAnalyticsSeen) loadApiAnalyticsPanel();

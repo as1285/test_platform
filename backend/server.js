@@ -237,7 +237,11 @@ const ADMIN_MENU_KEYS = [
   'activated-user-analysis',
   'feedback',
   'login-log',
-  'analytics',
+  'analytics-conversion',
+  'analytics-activity',
+  'analytics-register',
+  'analytics-tracking',
+  'analytics-devices',
   'install-guide-stats',
   'channel-analysis',
   'api-analytics',
@@ -1499,6 +1503,21 @@ async function createTables() {
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'install-guide-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
   );
+
+  var analyticsSplitMenus = [
+    'analytics-conversion',
+    'analytics-activity',
+    'analytics-register',
+    'analytics-tracking',
+    'analytics-devices'
+  ];
+  for (var asi = 0; asi < analyticsSplitMenus.length; asi++) {
+    await conn.execute(
+      `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+       SELECT admin_id, ? FROM admin_account_menus WHERE menu_key = 'analytics'`,
+      [analyticsSplitMenus[asi]]
+    );
+  }
 
   conn.release();
 }
@@ -2782,7 +2801,16 @@ function adminHasMenu(admin, menuKey) {
   if (admin.is_super) {
     return true;
   }
-  return Array.isArray(admin.menus) && admin.menus.indexOf(menuKey) >= 0;
+  if (!Array.isArray(admin.menus)) {
+    return false;
+  }
+  if (admin.menus.indexOf(menuKey) >= 0) {
+    return true;
+  }
+  if (menuKey.indexOf('analytics-') === 0 && admin.menus.indexOf('analytics') >= 0) {
+    return true;
+  }
+  return false;
 }
 
 function requireAdminMenu(menuKey) {
@@ -12904,11 +12932,16 @@ app.get(
   requireAdminMenu('user-data'),
   handleAdminUserDataDetail
 );
-app.get('/api/admin/analytics/daily-conversion', requireAdminAuth, requireAdminMenu('analytics'), handleAdminUsersDailyConversion);
+app.get(
+  '/api/admin/analytics/daily-conversion',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-conversion', 'analytics']),
+  handleAdminUsersDailyConversion
+);
 app.get(
   '/api/admin/analytics/registration-funnel',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-conversion', 'analytics']),
   handleAdminRegistrationFunnel
 );
 app.get(
@@ -12932,31 +12965,31 @@ app.get(
 app.get(
   '/api/admin/analytics/install-track-stats',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   handleAdminInstallTrackStats
 );
 app.get(
   '/api/admin/analytics/conversion-kpis',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-conversion', 'analytics']),
   handleAdminConversionKpis
 );
 app.get(
   '/api/admin/users/pending-activate-24h',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-conversion', 'analytics']),
   handleAdminUsersPendingActivate24h
 );
 app.get(
   '/api/admin/analytics/register-time',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-register', 'analytics']),
   handleAdminRegisterTimeDistribution
 );
 app.get(
   '/api/admin/analytics/register-gender',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-register', 'analytics', 'channel-analysis']),
   handleAdminRegisterGenderStats
 );
 app.get(
@@ -12968,7 +13001,7 @@ app.get(
 app.get(
   '/api/admin/analytics/female-age',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-register', 'analytics']),
   handleAdminFemaleAgeStats
 );
 app.get(
@@ -13028,30 +13061,55 @@ app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), 
 app.post('/api/admin/user-refund', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRefund);
 app.post('/api/admin/user-restore', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRestore);
 app.post('/api/admin/users/purge-bots', requireAdminAuth, requireAdminMenu('users'), handleAdminPurgeBotUsers);
-app.get('/api/admin/analytics/overview', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsOverview);
-app.get('/api/admin/analytics/dau-users', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDauUsers);
+app.get(
+  '/api/admin/analytics/overview',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-activity', 'analytics']),
+  handleAdminAnalyticsOverview
+);
+app.get(
+  '/api/admin/analytics/dau-users',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-activity', 'analytics']),
+  handleAdminAnalyticsDauUsers
+);
 app.get('/api/admin/analytics/api-stats', requireAdminAuth, requireAdminMenu('api-analytics'), handleAdminAnalyticsApi);
-app.get('/api/admin/analytics/events', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsEvents);
+app.get(
+  '/api/admin/analytics/events',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-tracking', 'analytics']),
+  handleAdminAnalyticsEvents
+);
 app.get(
   '/api/admin/analytics/activate-events',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   handleAdminAnalyticsActivateEvents
 );
 app.get(
   '/api/admin/analytics/activate-events/users',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   handleAdminAnalyticsActivateEventUsers
 );
 app.post(
   '/api/admin/analytics/events/clear',
   requireAdminAuth,
-  requireAdminMenu('analytics'),
+  requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   handleAdminAnalyticsEventsClear
 );
-app.get('/api/admin/analytics/devices', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDevices);
-app.get('/api/admin/analytics/device-stats', requireAdminAuth, requireAdminMenu('analytics'), handleAdminAnalyticsDeviceStats);
+app.get(
+  '/api/admin/analytics/devices',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-devices', 'analytics']),
+  handleAdminAnalyticsDevices
+);
+app.get(
+  '/api/admin/analytics/device-stats',
+  requireAdminAuth,
+  requireAdminAnyMenu(['analytics-devices', 'analytics']),
+  handleAdminAnalyticsDeviceStats
+);
 app.get('/api/admin/analytics/login-recent', requireAdminAuth, requireAdminMenu('login-log'), handleAdminAnalyticsLoginRecent);
 app.get('/api/admin/admin-login-logs', requireAdminAuth, requireAdminMenu('login-log'), handleAdminLoginLogs);
 app.get('/api/admin/admin-operation-logs', requireAdminAuth, requireAdminMenu('login-log'), handleAdminOperationLogs);
