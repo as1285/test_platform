@@ -537,6 +537,12 @@
 
         function bindInstallRegisterLinks() {
             document.querySelectorAll('.install-register-link').forEach(function (link) {
+                if (typeof window.appendSalesChannelToUrl === 'function') {
+                    var href = link.getAttribute('href') || link.href;
+                    if (href) {
+                        link.setAttribute('href', window.appendSalesChannelToUrl(href));
+                    }
+                }
                 if (link.dataset.registerBound === '1') {
                     return;
                 }
@@ -547,6 +553,12 @@
                     }
                     if (typeof window.trackPublicAction === 'function') {
                         var meta = { page: 'install_guide' };
+                        if (typeof window.getSalesChannel === 'function') {
+                            var salesCh = window.getSalesChannel();
+                            if (salesCh) {
+                                meta.sales_ch = salesCh;
+                            }
+                        }
                         if (link.classList.contains('install-register-showcase')) {
                             meta.source = 'showcase';
                         }
@@ -709,7 +721,17 @@
                         a.textContent = layout.desktop ? '下载 Android 安装包（请在手机打开）' : '下载 Android 安装包';
                         a.addEventListener('click', function () {
                             if (typeof window.trackPublicAction === 'function') {
-                                window.trackPublicAction('track_install_apk_click', { page: 'install_guide' });
+                                var apkMeta = { page: 'install_guide' };
+                                if (typeof window.getSalesChannel === 'function') {
+                                    var salesCh = window.getSalesChannel();
+                                    if (salesCh) {
+                                        apkMeta.sales_ch = salesCh;
+                                    }
+                                }
+                                window.trackPublicAction('track_install_apk_click', apkMeta);
+                            }
+                            if (typeof window.persistSalesChannelAttribution === 'function') {
+                                window.persistSalesChannelAttribution('install_guide_apk_click');
                             }
                         });
                         row.appendChild(a);
@@ -905,7 +927,19 @@
                     dwell_seconds: sec
                 });
             }
-            window.trackPublicAction('track_install_page_view', { page: 'install_guide' });
+            window.trackPublicAction('track_install_page_view', (function () {
+                var meta = { page: 'install_guide' };
+                if (typeof window.getSalesChannel === 'function') {
+                    var salesCh = window.getSalesChannel();
+                    if (salesCh) {
+                        meta.sales_ch = salesCh;
+                    }
+                }
+                return meta;
+            })());
+            if (typeof window.persistSalesChannelAttribution === 'function') {
+                window.persistSalesChannelAttribution('install_guide_page_view');
+            }
             if (typeof window.markInstallGuideReferral === 'function') {
                 window.markInstallGuideReferral('page_view');
             }

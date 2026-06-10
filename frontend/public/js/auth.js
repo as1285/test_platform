@@ -966,7 +966,126 @@
     });
   }
 
+  function persistSalesChannelAttribution(sourcePage) {
+    var ch = getSalesChannel();
+    if (!ch) {
+      return Promise.resolve();
+    }
+    var headers = { 'Content-Type': 'application/json' };
+    if (typeof getClientDeviceHeaders === 'function') {
+      Object.assign(headers, getClientDeviceHeaders());
+    }
+    return fetch('/api/public/sales-channel-attribution', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: headers,
+      body: JSON.stringify({
+        sales_ch: ch,
+        source_page: sourcePage != null ? String(sourcePage).substring(0, 128) : ''
+      })
+    }).catch(function () {});
+  }
+
+  function resolveSalesChannelFromServer() {
+    if (getSalesChannel()) {
+      return Promise.resolve(getSalesChannel());
+    }
+    var headers = {};
+    if (typeof getClientDeviceHeaders === 'function') {
+      headers = getClientDeviceHeaders();
+    }
+    return fetch('/api/public/resolve-sales-channel', { credentials: 'same-origin', headers: headers })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        if (body && body.code === 200 && body.data && body.data.sales_ch) {
+          var ch = sanitizeSalesChannelId(body.data.sales_ch);
+          if (ch) {
+            try {
+              localStorage.setItem(
+                SALES_CHANNEL_KEY,
+                JSON.stringify({
+                  ch: ch,
+                  at: Date.now(),
+                  source: 'server_resolve'
+                })
+              );
+            } catch (e) {}
+            return ch;
+          }
+        }
+        return '';
+      })
+      .catch(function () {
+        return '';
+      });
+  }
+
+  function appendSalesChannelToUrl(url) {
+    var ch = getSalesChannel();
+    if (!ch || !url) {
+      return url;
+    }
+    try {
+      var u = new URL(url, window.location.href);
+      if (!u.searchParams.get('ch') && !u.searchParams.get('channel')) {
+        u.searchParams.set('ch', ch);
+      }
+      return u.pathname + u.search + u.hash;
+    } catch (e) {
+      if (url.indexOf('ch=') >= 0 || url.indexOf('channel=') >= 0) {
+        return url;
+      }
+      return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'ch=' + encodeURIComponent(ch);
+    }
+  }
+
+  function refreshPublicInstallPackagesUi() {
+    var url = getPublicInstallPackagesUrl();
+    return fetch(url, { credentials: 'same-origin' })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        var data = body && body.code === 200 && body.data ? body.data : null;
+        if (data && data.sales_channel && !getSalesChannel()) {
+          try {
+            localStorage.setItem(
+              SALES_CHANNEL_KEY,
+              JSON.stringify({
+                ch: sanitizeSalesChannelId(data.sales_channel),
+                at: Date.now(),
+                source: 'install_packages'
+              })
+            );
+          } catch (e) {}
+        }
+        applyXianyuPurchaseVisibility(data);
+        return data;
+      })
+      .catch(function () {
+        applyXianyuPurchaseVisibility(null);
+        return null;
+      });
+  }
+
   initSalesChannelFromUrl();
+
+  (function bootstrapSalesChannel() {
+    var ch = getSalesChannel();
+    if (ch) {
+      persistSalesChannelAttribution(window.location.pathname || 'direct');
+      refreshPublicInstallPackagesUi();
+      return;
+    }
+    resolveSalesChannelFromServer().then(function (resolved) {
+      if (resolved) {
+        persistSalesChannelAttribution('server_resolve');
+      }
+      refreshPublicInstallPackagesUi();
+    });
+  })();
 
   function markInstallGuideReferral(source) {
     try {
@@ -1377,6 +1496,10 @@
   window.getSalesChannel = getSalesChannel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
   window.applyXianyuPurchaseVisibility = applyXianyuPurchaseVisibility;
+  window.persistSalesChannelAttribution = persistSalesChannelAttribution;
+  window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
+  window.appendSalesChannelToUrl = appendSalesChannelToUrl;
+  window.refreshPublicInstallPackagesUi = refreshPublicInstallPackagesUi;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };

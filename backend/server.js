@@ -519,6 +519,116 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   return (hideList || []).indexOf(ch) >= 0;
 }
 
+function readClientIdFromRequest(req) {
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      return String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e) {}
+  return '';
+}
+
+function deviceModelKeyFromRequest(req) {
+  var ex = req.clientDevicePayload;
+  if (ex && ex.model) {
+    return slugDeviceStatsKey(String(ex.model));
+  }
+  var ua = normalizeUserAgentHeader(req);
+  if (!ua) {
+    return '';
+  }
+  return slugDeviceStatsKey(classifyUserDeviceRow(ua, null).model_label || '');
+}
+
+async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
+  if (!pool) {
+    return;
+  }
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) {
+    return;
+  }
+  var cid = readClientIdFromRequest(req);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
+  var modelKey = deviceModelKeyFromRequest(req);
+  var src = sourcePage != null ? String(sourcePage).trim().substring(0, 128) : '';
+  var expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  try {
+    await pool.execute(
+      `INSERT INTO sales_channel_attributions
+       (sales_ch, client_id, device_fp, ip, user_agent, device_model, source_page, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [ch, cid || null, fp || null, ip || null, ua || null, modelKey || null, src || null, expiresAt]
+    );
+  } catch (e) {
+    console.error('recordSalesChannelAttribution', e);
+  }
+}
+
+async function resolveSalesChannelForRequest(req) {
+  if (!pool) {
+    return '';
+  }
+  var cid = readClientIdFromRequest(req);
+  var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var modelKey = deviceModelKeyFromRequest(req);
+  var conn = await pool.getConnection();
+  try {
+    if (cid) {
+      const [rows] = await conn.execute(
+        `SELECT sales_ch FROM sales_channel_attributions
+         WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)
+         ORDER BY created_at DESC LIMIT 1`,
+        [cid]
+      );
+      if (rows.length && rows[0].sales_ch) {
+        return sanitizeSalesChannelId(rows[0].sales_ch);
+      }
+    }
+    if (fp) {
+      const [rowsFp] = await conn.execute(
+        `SELECT sales_ch FROM sales_channel_attributions
+         WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)
+         ORDER BY created_at DESC LIMIT 1`,
+        [fp]
+      );
+      if (rowsFp.length && rowsFp[0].sales_ch) {
+        return sanitizeSalesChannelId(rowsFp[0].sales_ch);
+      }
+    }
+    if (ip && modelKey) {
+      const [rowsIp] = await conn.execute(
+        `SELECT sales_ch FROM sales_channel_attributions
+         WHERE ip = ? AND device_model = ? AND expires_at > UTC_TIMESTAMP(3)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
+         ORDER BY created_at DESC LIMIT 1`,
+        [ip, modelKey]
+      );
+      if (rowsIp.length && rowsIp[0].sales_ch) {
+        return sanitizeSalesChannelId(rowsIp[0].sales_ch);
+      }
+    }
+    if (ip) {
+      const [rowsIpOnly] = await conn.execute(
+        `SELECT sales_ch FROM sales_channel_attributions
+         WHERE ip = ? AND expires_at > UTC_TIMESTAMP(3)
+           AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)
+         ORDER BY created_at DESC LIMIT 1`,
+        [ip]
+      );
+      if (rowsIpOnly.length && rowsIpOnly[0].sales_ch) {
+        return sanitizeSalesChannelId(rowsIpOnly[0].sales_ch);
+      }
+    }
+    return '';
+  } finally {
+    conn.release();
+  }
+}
+
 async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
@@ -1486,6 +1596,24 @@ async function createTables() {
       INDEX idx_created (created_at),
       INDEX idx_event_created (event_key, created_at),
       INDEX idx_client_created (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS sales_channel_attributions (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      sales_ch VARCHAR(64) NOT NULL,
+      client_id VARCHAR(128) NULL,
+      device_fp CHAR(64) NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      device_model VARCHAR(128) NULL,
+      source_page VARCHAR(128) NULL,
+      created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+      expires_at DATETIME(3) NOT NULL,
+      INDEX idx_sc_client_exp (client_id, expires_at),
+      INDEX idx_sc_fp_exp (device_fp, expires_at),
+      INDEX idx_sc_ip_model_exp (ip, device_model, expires_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
@@ -10262,6 +10390,38 @@ async function handlePublicMineUi(req, res) {
   }
 }
 
+async function handlePublicSalesChannelAttribution(req, res) {
+  try {
+    var body = req.body || {};
+    var ch = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+    if (!ch) {
+      return res.status(400).json({ code: 400, msg: 'sales_ch required' });
+    }
+    var sourcePage = body.source_page != null ? String(body.source_page).trim().substring(0, 128) : '';
+    await recordSalesChannelAttribution(req, ch, sourcePage);
+    return res.json({ code: 200, data: { ok: true, sales_ch: ch } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handlePublicResolveSalesChannel(req, res) {
+  try {
+    var ch = await resolveSalesChannelForRequest(req);
+    return res.json({
+      code: 200,
+      data: {
+        sales_ch: ch || null,
+        resolved: !!ch
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handlePublicInstallPackages(req, res) {
   try {
     var raw = await getInstallPackageSettingsFromDb();
@@ -10271,6 +10431,11 @@ async function handlePublicInstallPackages(req, res) {
     var qq = sanitizeInstallDownloadUrl(raw.qq);
     var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
     var salesCh = sanitizeSalesChannelId(req.query.sales_ch || req.query.ch || '');
+    if (!salesCh) {
+      try {
+        salesCh = await resolveSalesChannelForRequest(req);
+      } catch (eResolve) {}
+    }
     var hideXianyu = shouldHideXianyuForSalesChannel(salesCh, raw.xianyu_hide_channels);
     if (hideXianyu) {
       xianyu = '';
@@ -13081,6 +13246,8 @@ app.post(
 app.post('/api/admin/settings', requireAdminAuth, requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), handleAdminSettingsPost);
 app.get('/api/public/mine-ui', handlePublicMineUi);
 app.get('/api/public/install-packages', handlePublicInstallPackages);
+app.get('/api/public/resolve-sales-channel', handlePublicResolveSalesChannel);
+app.post('/api/public/sales-channel-attribution', handlePublicSalesChannelAttribution);
 app.get('/api/public/conversion-config', handlePublicConversionConfig);
 app.get('/api/admin/users/deleted', requireAdminAuth, requireAdminMenu('users'), handleAdminDeletedUsers);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
