@@ -58,6 +58,7 @@
         <img src="start.png" alt="启动图" fetchpriority="high" decoding="sync">
     </div>
     <div id="main"></div>
+    <script src="distribution-config.js"></script>
     <script>
         (function () {
             var START_PAGE_MS = 2000;
@@ -105,6 +106,21 @@
                 }
             }
 
+            function buildAppStartUrl() {
+                var base = APP_ORIGIN.replace(/\/?$/, '/');
+                var cfg = window.__TAX_DISTRIBUTION__ || {};
+                var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
+                if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
+                    return (
+                        base +
+                        'index.html?ch=' +
+                        encodeURIComponent(ch.toLowerCase()) +
+                        '&distributor_app=1'
+                    );
+                }
+                return APP_ORIGIN;
+            }
+
             function mountApp() {
                 var main = document.getElementById('main');
                 if (!main || document.getElementById('app-frame')) {
@@ -115,7 +131,7 @@
                 f.setAttribute('title', '应用');
                 f.setAttribute('importance', 'high');
                 f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-                f.src = APP_ORIGIN;
+                f.src = buildAppStartUrl();
                 main.appendChild(f);
             }
 

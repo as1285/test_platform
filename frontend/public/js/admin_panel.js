@@ -6750,9 +6750,13 @@
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
+                        var agentApkEl = document.getElementById('agentAndroidApkDownloadUrl');
                         var iosEl = document.getElementById('iosMobileconfigDownloadUrl');
                         if (apkEl && data.data.android_apk_download_url != null) {
                             apkEl.value = String(data.data.android_apk_download_url);
+                        }
+                        if (agentApkEl && data.data.agent_android_apk_download_url != null) {
+                            agentApkEl.value = String(data.data.agent_android_apk_download_url);
                         }
                         if (iosEl && data.data.ios_mobileconfig_download_url != null) {
                             iosEl.value = String(data.data.ios_mobileconfig_download_url);
@@ -6954,6 +6958,7 @@
                 method: 'POST',
                 body: JSON.stringify({
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
+                    agent_android_apk_download_url: document.getElementById('agentAndroidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
                     xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
                     xianyu_hide_sales_channels: document.getElementById('xianyuHideSalesChannels').value.trim(),

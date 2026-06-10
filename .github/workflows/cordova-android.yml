@@ -9,6 +9,11 @@ name: Cordova Android Debug APK
 
 on:
   workflow_dispatch:
+    inputs:
+      agent_channel:
+        description: "代理渠道 ID（留空=公开包，不可在 App 内注册需单独填渠道打包）"
+        required: false
+        default: ""
   push:
     branches: [master, main]
     paths:
@@ -66,6 +71,19 @@ jobs:
           npm ci
           npx cordova telemetry off
 
+      - name: Apply agent distribution config
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.agent_channel != '' }}
+        run: |
+          CHANNEL="${{ github.event.inputs.agent_channel }}"
+          CHANNEL_LOWER="$(echo "$CHANNEL" | tr '[:upper:]' '[:lower:]')"
+          cat > www/distribution-config.js <<EOF
+          window.__TAX_DISTRIBUTION__ = Object.freeze({
+            agentSalesChannel: '${CHANNEL_LOWER}',
+            disableInAppRegister: true
+          });
+          EOF
+          sed -i "s|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1\" />|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1 TaxPlatformDistributor/${CHANNEL_LOWER}\" />|" config.xml
+
       - name: Generate splash & icon assets
         run: |
           python3 -m pip install --user --quiet Pillow
@@ -80,6 +98,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
+          name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.agent_channel != '' && format('android-agent-{0}-apk', github.event.inputs.agent_channel) || 'android-debug-apk' }}
           path: cordova-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

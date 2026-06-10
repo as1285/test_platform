@@ -209,6 +209,7 @@ const TEST_ACCOUNT_COMPANY_NAME_DEFAULT = process.env.TEST_ACCOUNT_COMPANY_NAME 
 const SETTING_KEY_TEST_COMPANY = 'test_account_company_name';
 const SETTING_KEY_MINE_UI = 'mine_ui_json';
 const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';
+const SETTING_KEY_AGENT_ANDROID_APK = 'agent_android_apk_download_url';
 const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 /** 闲鱼购买等外链，与引导安装一同在后台配置 */
 const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
@@ -711,9 +712,10 @@ async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)',
+      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?, ?)',
       [
         SETTING_KEY_ANDROID_APK,
+        SETTING_KEY_AGENT_ANDROID_APK,
         SETTING_KEY_IOS_MOBILECONFIG,
         SETTING_KEY_XIANYU_PURCHASE,
         SETTING_KEY_QQ_ADD_URL,
@@ -726,6 +728,8 @@ async function getInstallPackageSettingsFromDb() {
       map[r.setting_key] = r.setting_value;
     });
     var android = map[SETTING_KEY_ANDROID_APK] != null ? String(map[SETTING_KEY_ANDROID_APK]).trim() : '';
+    var agentAndroid =
+      map[SETTING_KEY_AGENT_ANDROID_APK] != null ? String(map[SETTING_KEY_AGENT_ANDROID_APK]).trim() : '';
     var ios = map[SETTING_KEY_IOS_MOBILECONFIG] != null ? String(map[SETTING_KEY_IOS_MOBILECONFIG]).trim() : '';
     var xianyu =
       map[SETTING_KEY_XIANYU_PURCHASE] != null ? String(map[SETTING_KEY_XIANYU_PURCHASE]).trim() : '';
@@ -735,6 +739,7 @@ async function getInstallPackageSettingsFromDb() {
     var hideChannels = parseXianyuHideSalesChannels(map[SETTING_KEY_XIANYU_HIDE_CHANNELS]);
     return {
       android: android,
+      agent_android: agentAndroid,
       ios: ios,
       xianyu: xianyu,
       qq: qq,
@@ -6616,6 +6621,11 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, clientChk.reason);
           return res.status(403).json({ code: 403, msg: clientChk.msg });
         }
+        var distChk = registerGuard.checkRegisterDistributorBlock(req);
+        if (!distChk.ok) {
+          await recordUserRegistrationAttempt(regUser, false, req, distChk.reason);
+          return res.status(403).json({ code: 403, msg: distChk.msg });
+        }
         var rateChk = await registerGuard.checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint);
         if (!rateChk.ok) {
           await recordUserRegistrationAttempt(regUser, false, req, rateChk.reason);
@@ -10203,6 +10213,7 @@ async function handleAdminSettingsGet(req, res) {
       data: {
         mine_ui: mineUi,
         android_apk_download_url: installRaw.android,
+        agent_android_apk_download_url: installRaw.agent_android,
         ios_mobileconfig_download_url: installRaw.ios,
         xianyu_purchase_url: installRaw.xianyu,
         xianyu_hide_sales_channels: (installRaw.xianyu_hide_channels || []).join('\n'),
@@ -10223,6 +10234,7 @@ async function handleAdminSettingsPost(req, res) {
   var body = req.body || {};
   var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
   var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
+  var hasAgentAndroid = Object.prototype.hasOwnProperty.call(body, 'agent_android_apk_download_url');
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
   var hasXianyuHideChannels = Object.prototype.hasOwnProperty.call(body, 'xianyu_hide_sales_channels');
@@ -10233,6 +10245,7 @@ async function handleAdminSettingsPost(req, res) {
   if (
     !hasMineUi &&
     !hasAndroid &&
+    !hasAgentAndroid &&
     !hasIos &&
     !hasXianyu &&
     !hasXianyuHideChannels &&
@@ -10342,6 +10355,22 @@ async function handleAdminSettingsPost(req, res) {
         `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
         [SETTING_KEY_ANDROID_APK, okA]
+      );
+    }
+
+    if (hasAgentAndroid) {
+      var rawAgentA = body.agent_android_apk_download_url;
+      var okAgentA = sanitizeInstallDownloadUrl(rawAgentA);
+      if (rawAgentA != null && String(rawAgentA).trim() !== '' && !okAgentA) {
+        return res.status(400).json({
+          code: 400,
+          msg: '代理专用安卓安装包地址无效（请使用 http 或 https 完整链接）'
+        });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_AGENT_ANDROID_APK, okAgentA]
       );
     }
 
@@ -10464,6 +10493,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
     outData.android_apk_download_url = installAfter.android;
+    outData.agent_android_apk_download_url = installAfter.agent_android;
     outData.ios_mobileconfig_download_url = installAfter.ios;
     outData.xianyu_purchase_url = installAfter.xianyu;
     outData.xianyu_hide_sales_channels = (installAfter.xianyu_hide_channels || []).join('\n');
@@ -10536,6 +10566,10 @@ async function handlePublicInstallPackages(req, res) {
     var hideXianyu = shouldHideXianyuForSalesChannel(salesCh, raw.xianyu_hide_channels);
     if (hideXianyu) {
       xianyu = '';
+      var agentApk = sanitizeInstallDownloadUrl(raw.agent_android);
+      if (agentApk) {
+        android = agentApk;
+      }
     }
     return res.json({
       code: 200,

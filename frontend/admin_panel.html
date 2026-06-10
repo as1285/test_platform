@@ -161,6 +161,15 @@
                     </div>
                 </div>
                 <div style="width:100%;max-width:640px;margin-top:12px;">
+                    <label for="agentAndroidApkDownloadUrl">代理专用安卓安装包（APK）</label>
+                    <div class="mine-ui-controls" style="margin-top:6px;">
+                        <input type="text" id="agentAndroidApkDownloadUrl" maxlength="2048" placeholder="上传代理专用 APK（App 内不可注册、内置渠道），代理推广链接下载时使用" style="flex:1;min-width:180px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
+                        <input type="file" class="install-pkg-file" accept=".apk,application/vnd.android.package-archive" data-target="agentAndroidApkDownloadUrl" hidden>
+                        <button type="button" class="btn-file install-pkg-pick">上传 APK</button>
+                    </div>
+                    <p class="hint" style="margin-top:6px;">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p>
+                </div>
+                <div style="width:100%;max-width:640px;margin-top:12px;">
                     <label for="iosMobileconfigDownloadUrl">苹果描述文件（mobileconfig）</label>
                     <div class="mine-ui-controls" style="margin-top:6px;">
                         <input type="text" id="iosMobileconfigDownloadUrl" maxlength="2048" placeholder="上传描述文件自动填入 uploads/…，或填 /personal.mobileconfig / https://" style="flex:1;min-width:180px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">

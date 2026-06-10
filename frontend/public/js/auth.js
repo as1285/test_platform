@@ -11,6 +11,7 @@
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
+  var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
   var SALES_CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var PUBLIC_PAGES = {
     'index.html': true,
@@ -924,6 +925,36 @@
     } catch (e) {}
   }
 
+  function initDistributorAppFromUrl() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('distributor_app') === '1' || p.get('distributor') === '1') {
+        localStorage.setItem(
+          DISTRIBUTOR_APP_KEY,
+          JSON.stringify({
+            at: Date.now()
+          })
+        );
+      }
+    } catch (e) {}
+  }
+
+  function isDistributorApp() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('distributor_app') === '1' || p.get('distributor') === '1') {
+        return true;
+      }
+      return !!localStorage.getItem(DISTRIBUTOR_APP_KEY);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isInAppRegisterDisabled() {
+    return isCordovaTaxAppShell() && isDistributorApp();
+  }
+
   function getSalesChannel() {
     try {
       var raw = localStorage.getItem(SALES_CHANNEL_KEY);
@@ -1074,6 +1105,7 @@
   }
 
   initSalesChannelFromUrl();
+  initDistributorAppFromUrl();
 
   (function bootstrapSalesChannel() {
     var ch = getSalesChannel();
@@ -1498,6 +1530,8 @@
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
   window.getSalesChannel = getSalesChannel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
+  window.isDistributorApp = isDistributorApp;
+  window.isInAppRegisterDisabled = isInAppRegisterDisabled;
   window.applyXianyuPurchaseVisibility = applyXianyuPurchaseVisibility;
   window.persistSalesChannelAttribution = persistSalesChannelAttribution;
   window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
@@ -1589,8 +1623,31 @@
     }
   }
 
+  (function applyDistributorAppUi() {
+    if (!isInAppRegisterDisabled()) {
+      return;
+    }
+    if (currentPageName() === 'register.html') {
+      window.location.replace('index.html');
+      return;
+    }
+    function hideRegisterEntry() {
+      document.querySelectorAll('a.register-btn, a[href*="register.html"]').forEach(function (el) {
+        el.style.display = 'none';
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', hideRegisterEntry);
+    } else {
+      hideRegisterEntry();
+    }
+  })();
+
   (function appShellRegisterPrompt() {
     if (!isCordovaTaxAppShell()) {
+      return;
+    }
+    if (isInAppRegisterDisabled()) {
       return;
     }
     if (getToken()) {

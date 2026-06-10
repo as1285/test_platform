@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 
 const CORDOVA_UA_RE = /TaxPlatformCordovaApp\//i;
+const DISTRIBUTOR_UA_RE = /TaxPlatformDistributor\//i;
 
 var _pool = null;
 var _captchaStore = new Map();
@@ -98,6 +99,22 @@ function verifyRegisterCaptcha(captchaId, answer) {
 function isCordovaUserAgent(req) {
   var ua = req && req.headers ? String(req.headers['user-agent'] || '') : '';
   return CORDOVA_UA_RE.test(ua);
+}
+
+function isDistributorCordovaUserAgent(req) {
+  var ua = req && req.headers ? String(req.headers['user-agent'] || '') : '';
+  return CORDOVA_UA_RE.test(ua) && DISTRIBUTOR_UA_RE.test(ua);
+}
+
+function checkRegisterDistributorBlock(req) {
+  if (!isDistributorCordovaUserAgent(req)) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    reason: 'register_fail:distributor_app',
+    msg: '代理版 App 不支持自助注册，请使用代理提供的注册链接在浏览器中注册，或联系代理开通账号'
+  };
 }
 
 function verifyAppSignHeader(req) {
@@ -404,6 +421,7 @@ module.exports = {
   issueRegisterCaptcha: issueRegisterCaptcha,
   verifyRegisterCaptcha: verifyRegisterCaptcha,
   checkRegisterClient: checkRegisterClient,
+  checkRegisterDistributorBlock: checkRegisterDistributorBlock,
   checkRegisterRateLimits: checkRegisterRateLimits,
   markRegisterAttemptSuccess: markRegisterAttemptSuccess,
   markRegisterAttemptFail: markRegisterAttemptFail,
@@ -412,5 +430,6 @@ module.exports = {
   countBotPurgeCandidates: countBotPurgeCandidates,
   purgeBotUsersBatch: purgeBotUsersBatch,
   buildBotPurgeWhere: buildBotPurgeWhere,
-  CORDOVA_UA_RE: CORDOVA_UA_RE
+  CORDOVA_UA_RE: CORDOVA_UA_RE,
+  DISTRIBUTOR_UA_RE: DISTRIBUTOR_UA_RE
 };
