@@ -336,6 +336,41 @@
             margin: -4px 0 12px;
         }
 
+        /* 修改个人信息弹框：Android WebView 下 flex 居中易贴底，改用 fixed + transform */
+        body.mine-profile-edit-modal-open {
+            position: fixed;
+            width: 100%;
+            overflow: hidden;
+            left: 0;
+            right: 0;
+        }
+
+        #mineProfileEditModal.activate-modal-root {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #mineProfileEditModal.activate-modal-root.is-open {
+            display: block;
+        }
+
+        #mineProfileEditModal .activate-modal-mask {
+            position: fixed;
+        }
+
+        #mineProfileEditModal .activate-modal-panel {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            width: calc(100% - 32px);
+            max-height: calc(100dvh - 32px);
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .activate-modal-actions {
             display: flex;
             flex-wrap: wrap;
@@ -1222,6 +1257,22 @@
                 });
             }
 
+            var mineProfileEditScrollLockY = 0;
+
+            function lockMineProfileEditScroll() {
+                mineProfileEditScrollLockY =
+                    window.scrollY || document.documentElement.scrollTop || 0;
+                document.body.classList.add('mine-profile-edit-modal-open');
+                document.body.style.top = '-' + mineProfileEditScrollLockY + 'px';
+            }
+
+            function unlockMineProfileEditScroll() {
+                if (!document.body.classList.contains('mine-profile-edit-modal-open')) return;
+                document.body.classList.remove('mine-profile-edit-modal-open');
+                document.body.style.top = '';
+                window.scrollTo(0, mineProfileEditScrollLockY);
+            }
+
             function openMineProfileEditModal() {
                 var root = document.getElementById('mineProfileEditModal');
                 var nameInp = document.getElementById('mineEditRealName');
@@ -1238,15 +1289,20 @@
                     var g = localStorage.getItem('gender');
                     genderSel.value = g === '2' ? '2' : '1';
                 }
+                lockMineProfileEditScroll();
                 root.classList.add('is-open');
-                setTimeout(function () {
-                    nameInp.focus();
-                }, 0);
+                var ua = navigator.userAgent || '';
+                if (!/Android/i.test(ua)) {
+                    setTimeout(function () {
+                        nameInp.focus();
+                    }, 0);
+                }
             }
 
             function closeMineProfileEditModal() {
                 var root = document.getElementById('mineProfileEditModal');
                 if (root) root.classList.remove('is-open');
+                unlockMineProfileEditScroll();
             }
 
             function saveMineProfileEdit() {
