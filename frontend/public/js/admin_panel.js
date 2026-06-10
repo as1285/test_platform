@@ -6761,6 +6761,10 @@
                         if (xyEl && data.data.xianyu_purchase_url != null) {
                             xyEl.value = String(data.data.xianyu_purchase_url);
                         }
+                        var xyHideEl = document.getElementById('xianyuHideSalesChannels');
+                        if (xyHideEl && data.data.xianyu_hide_sales_channels != null) {
+                            xyHideEl.value = String(data.data.xianyu_hide_sales_channels);
+                        }
                     }
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
@@ -6952,6 +6956,7 @@
                     android_apk_download_url: document.getElementById('androidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
                     xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
+                    xianyu_hide_sales_channels: document.getElementById('xianyuHideSalesChannels').value.trim(),
                     mine_ui: (function () {
                         var ui = {
                             install_ios_video: document.getElementById('img_install_ios_video').value.trim(),

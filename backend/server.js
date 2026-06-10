@@ -211,6 +211,7 @@ const SETTING_KEY_ANDROID_APK = 'android_apk_download_url';
 const SETTING_KEY_IOS_MOBILECONFIG = 'ios_mobileconfig_download_url';
 /** 闲鱼购买等外链，与引导安装一同在后台配置 */
 const SETTING_KEY_XIANYU_PURCHASE = 'xianyu_purchase_url';
+const SETTING_KEY_XIANYU_HIDE_CHANNELS = 'xianyu_hide_sales_channels';
 /** 个人中心顶栏「添加QQ号」外链 */
 const SETTING_KEY_QQ_ADD_URL = 'qq_add_url';
 const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
@@ -455,17 +456,81 @@ function sanitizeXianyuPurchaseText(raw) {
   return s;
 }
 
+function sanitizeSalesChannelId(raw) {
+  var s = String(raw || '').trim().toLowerCase();
+  if (!s || s.length > 64) {
+    return '';
+  }
+  if (!/^[a-z0-9_-]+$/.test(s)) {
+    return '';
+  }
+  return s;
+}
+
+function parseXianyuHideSalesChannels(raw) {
+  if (raw == null) {
+    return [];
+  }
+  var s = String(raw).trim();
+  if (!s) {
+    return [];
+  }
+  try {
+    if (s.charAt(0) === '[') {
+      var arr = JSON.parse(s);
+      if (Array.isArray(arr)) {
+        var out = [];
+        arr.forEach(function (item) {
+          var id = sanitizeSalesChannelId(item);
+          if (id && out.indexOf(id) < 0) {
+            out.push(id);
+          }
+        });
+        return out;
+      }
+    }
+  } catch (e) {}
+  var list = [];
+  s.split(/[\n,;]+/).forEach(function (part) {
+    var id = sanitizeSalesChannelId(part);
+    if (id && list.indexOf(id) < 0) {
+      list.push(id);
+    }
+  });
+  return list;
+}
+
+function serializeXianyuHideSalesChannels(list) {
+  var out = [];
+  (list || []).forEach(function (item) {
+    var id = sanitizeSalesChannelId(item);
+    if (id && out.indexOf(id) < 0) {
+      out.push(id);
+    }
+  });
+  return JSON.stringify(out);
+}
+
+function shouldHideXianyuForSalesChannel(salesCh, hideList) {
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) {
+    return false;
+  }
+  return (hideList || []).indexOf(ch) >= 0;
+}
+
 async function getInstallPackageSettingsFromDb() {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?, ?)',
+      'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)',
       [
         SETTING_KEY_ANDROID_APK,
         SETTING_KEY_IOS_MOBILECONFIG,
         SETTING_KEY_XIANYU_PURCHASE,
         SETTING_KEY_QQ_ADD_URL,
-        SETTING_KEY_QQ_GROUP_URL
+        SETTING_KEY_QQ_GROUP_URL,
+        SETTING_KEY_XIANYU_HIDE_CHANNELS
       ]
     );
     var map = {};
@@ -479,7 +544,15 @@ async function getInstallPackageSettingsFromDb() {
     var qq = map[SETTING_KEY_QQ_ADD_URL] != null ? String(map[SETTING_KEY_QQ_ADD_URL]).trim() : '';
     var qqGroup =
       map[SETTING_KEY_QQ_GROUP_URL] != null ? String(map[SETTING_KEY_QQ_GROUP_URL]).trim() : '';
-    return { android: android, ios: ios, xianyu: xianyu, qq: qq, qq_group: qqGroup };
+    var hideChannels = parseXianyuHideSalesChannels(map[SETTING_KEY_XIANYU_HIDE_CHANNELS]);
+    return {
+      android: android,
+      ios: ios,
+      xianyu: xianyu,
+      qq: qq,
+      qq_group: qqGroup,
+      xianyu_hide_channels: hideChannels
+    };
   } finally {
     conn.release();
   }
@@ -9902,6 +9975,7 @@ async function handleAdminSettingsGet(req, res) {
         android_apk_download_url: installRaw.android,
         ios_mobileconfig_download_url: installRaw.ios,
         xianyu_purchase_url: installRaw.xianyu,
+        xianyu_hide_sales_channels: (installRaw.xianyu_hide_channels || []).join('\n'),
         qq_add_url: sanitizeInstallDownloadUrl(installRaw.qq),
         qq_group_url: sanitizeInstallDownloadUrl(installRaw.qq_group),
         wechat_pay_qrcode_url: qrRef,
@@ -9921,6 +9995,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasAndroid = Object.prototype.hasOwnProperty.call(body, 'android_apk_download_url');
   var hasIos = Object.prototype.hasOwnProperty.call(body, 'ios_mobileconfig_download_url');
   var hasXianyu = Object.prototype.hasOwnProperty.call(body, 'xianyu_purchase_url');
+  var hasXianyuHideChannels = Object.prototype.hasOwnProperty.call(body, 'xianyu_hide_sales_channels');
   var hasQqAdd = Object.prototype.hasOwnProperty.call(body, 'qq_add_url');
   var hasQqGroup = Object.prototype.hasOwnProperty.call(body, 'qq_group_url');
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
@@ -9930,6 +10005,7 @@ async function handleAdminSettingsPost(req, res) {
     !hasAndroid &&
     !hasIos &&
     !hasXianyu &&
+    !hasXianyuHideChannels &&
     !hasQqAdd &&
     !hasQqGroup &&
     !hasWechatPayQr &&
@@ -9937,7 +10013,7 @@ async function handleAdminSettingsPost(req, res) {
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、QQ 添加/加群链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -10064,6 +10140,15 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasXianyuHideChannels) {
+      var hideList = parseXianyuHideSalesChannels(body.xianyu_hide_sales_channels);
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_XIANYU_HIDE_CHANNELS, serializeXianyuHideSalesChannels(hideList)]
+      );
+    }
+
     if (hasQqAdd) {
       var rawQq = body.qq_add_url;
       var okQq = sanitizeInstallDownloadUrl(rawQq);
@@ -10151,6 +10236,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.android_apk_download_url = installAfter.android;
     outData.ios_mobileconfig_download_url = installAfter.ios;
     outData.xianyu_purchase_url = installAfter.xianyu;
+    outData.xianyu_hide_sales_channels = (installAfter.xianyu_hide_channels || []).join('\n');
     outData.qq_add_url = sanitizeInstallDownloadUrl(installAfter.qq);
     outData.qq_group_url = sanitizeInstallDownloadUrl(installAfter.qq_group);
     var qrAfter = await getWechatPayQrcodeUrl();
@@ -10184,12 +10270,19 @@ async function handlePublicInstallPackages(req, res) {
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = sanitizeInstallDownloadUrl(raw.qq);
     var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
+    var salesCh = sanitizeSalesChannelId(req.query.sales_ch || req.query.ch || '');
+    var hideXianyu = shouldHideXianyuForSalesChannel(salesCh, raw.xianyu_hide_channels);
+    if (hideXianyu) {
+      xianyu = '';
+    }
     return res.json({
       code: 200,
       data: {
         android_apk_download_url: android,
         ios_mobileconfig_download_url: ios,
         xianyu_purchase_url: xianyu,
+        show_xianyu_purchase: !hideXianyu && !!xianyu,
+        sales_channel: salesCh || null,
         qq_add_url: qq,
         qq_group_url: qqGroup
       }

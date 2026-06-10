@@ -1362,7 +1362,12 @@
                     doCopy(t);
                     return;
                 }
-                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                fetch(
+                    typeof getPublicInstallPackagesUrl === 'function'
+                        ? getPublicInstallPackagesUrl()
+                        : '/api/public/install-packages',
+                    { credentials: 'same-origin' }
+                )
                     .then(function (r) { return r.json(); })
                     .then(function (body) {
                         if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
@@ -1447,12 +1452,19 @@
             var mineXianyuPurchaseUrl = '';
 
             function fetchMineXianyuUrl() {
-                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                var url =
+                    typeof getPublicInstallPackagesUrl === 'function'
+                        ? getPublicInstallPackagesUrl()
+                        : '/api/public/install-packages';
+                fetch(url, { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (body) {
                         if (body && body.code === 200 && body.data) {
                             if (body.data.xianyu_purchase_url) {
                                 mineXianyuPurchaseUrl = String(body.data.xianyu_purchase_url).trim();
+                            }
+                            if (typeof applyXianyuPurchaseVisibility === 'function') {
+                                applyXianyuPurchaseVisibility(body.data);
                             }
                         }
                     })

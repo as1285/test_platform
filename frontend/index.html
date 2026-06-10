@@ -607,18 +607,27 @@
         initActivateFromUrl();
 
         function prefetchXianyuPurchaseUrl() {
-            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+            var url =
+                typeof getPublicInstallPackagesUrl === 'function'
+                    ? getPublicInstallPackagesUrl()
+                    : '/api/public/install-packages';
+            fetch(url, { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })
                 .then(function (body) {
+                    var data = body && body.code === 200 && body.data ? body.data : null;
                     window.__xianyuPurchaseUrl =
-                        body && body.code === 200 && body.data && body.data.xianyu_purchase_url
-                            ? String(body.data.xianyu_purchase_url).trim()
-                            : '';
+                        data && data.xianyu_purchase_url ? String(data.xianyu_purchase_url).trim() : '';
+                    if (typeof applyXianyuPurchaseVisibility === 'function') {
+                        applyXianyuPurchaseVisibility(data);
+                    }
                 })
                 .catch(function () {
                     window.__xianyuPurchaseUrl = '';
+                    if (typeof applyXianyuPurchaseVisibility === 'function') {
+                        applyXianyuPurchaseVisibility(null);
+                    }
                 });
         }
         prefetchXianyuPurchaseUrl();
@@ -642,7 +651,11 @@
                 doCopy(cached);
                 return;
             }
-            fetch('/api/public/install-packages', { credentials: 'same-origin' })
+            var pkgUrl =
+                typeof getPublicInstallPackagesUrl === 'function'
+                    ? getPublicInstallPackagesUrl()
+                    : '/api/public/install-packages';
+            fetch(pkgUrl, { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })

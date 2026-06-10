@@ -1503,7 +1503,11 @@
         var consultXianyuPurchaseUrl = '';
 
         function refreshConsultInstallPackageUrls() {
-            return fetch('/api/public/install-packages', { credentials: 'same-origin' })
+            var url =
+                typeof getPublicInstallPackagesUrl === 'function'
+                    ? getPublicInstallPackagesUrl()
+                    : '/api/public/install-packages';
+            return fetch(url, { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })
@@ -1513,12 +1517,21 @@
                             body.data.xianyu_purchase_url != null
                                 ? String(body.data.xianyu_purchase_url).trim()
                                 : '';
+                        if (typeof applyXianyuPurchaseVisibility === 'function') {
+                            applyXianyuPurchaseVisibility(body.data);
+                        }
                     } else {
                         consultXianyuPurchaseUrl = '';
+                        if (typeof applyXianyuPurchaseVisibility === 'function') {
+                            applyXianyuPurchaseVisibility(null);
+                        }
                     }
                 })
                 .catch(function () {
                     consultXianyuPurchaseUrl = '';
+                    if (typeof applyXianyuPurchaseVisibility === 'function') {
+                        applyXianyuPurchaseVisibility(null);
+                    }
                 });
         }
 
@@ -5793,7 +5806,12 @@
                         doCopy(cached);
                         return;
                     }
-                    fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                    fetch(
+                        typeof getPublicInstallPackagesUrl === 'function'
+                            ? getPublicInstallPackagesUrl()
+                            : '/api/public/install-packages',
+                        { credentials: 'same-origin' }
+                    )
                         .then(function (r) {
                             return r.json();
                         })

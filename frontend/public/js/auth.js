@@ -10,6 +10,8 @@
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  var SALES_CHANNEL_KEY = 'sales_channel_v1';
+  var SALES_CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var PUBLIC_PAGES = {
     'index.html': true,
     'register.html': true,
@@ -894,6 +896,78 @@
     return 'web_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
   }
 
+  function sanitizeSalesChannelId(raw) {
+    var s = String(raw || '').trim().toLowerCase();
+    if (!s || s.length > 64) {
+      return '';
+    }
+    if (!/^[a-z0-9_-]+$/.test(s)) {
+      return '';
+    }
+    return s;
+  }
+
+  function initSalesChannelFromUrl() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var ch = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
+      if (!ch) {
+        return;
+      }
+      localStorage.setItem(
+        SALES_CHANNEL_KEY,
+        JSON.stringify({
+          ch: ch,
+          at: Date.now()
+        })
+      );
+    } catch (e) {}
+  }
+
+  function getSalesChannel() {
+    try {
+      var raw = localStorage.getItem(SALES_CHANNEL_KEY);
+      if (!raw) {
+        return '';
+      }
+      var o = JSON.parse(raw);
+      if (!o || !o.ch) {
+        return '';
+      }
+      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
+        localStorage.removeItem(SALES_CHANNEL_KEY);
+        return '';
+      }
+      return sanitizeSalesChannelId(o.ch);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getPublicInstallPackagesUrl() {
+    var ch = getSalesChannel();
+    if (ch) {
+      return '/api/public/install-packages?sales_ch=' + encodeURIComponent(ch);
+    }
+    return '/api/public/install-packages';
+  }
+
+  function applyXianyuPurchaseVisibility(data) {
+    var show =
+      data &&
+      data.show_xianyu_purchase !== false &&
+      data.xianyu_purchase_url &&
+      String(data.xianyu_purchase_url).trim();
+    ['btnXianyuPurchase', 'btnMineActivateXianyu', 'btnConsultActivateXianyu'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.style.display = show ? '' : 'none';
+      }
+    });
+  }
+
+  initSalesChannelFromUrl();
+
   function markInstallGuideReferral(source) {
     try {
       localStorage.setItem(
@@ -1300,6 +1374,9 @@
   window.hasInstallGuideReferral = hasInstallGuideReferral;
   window.clearInstallGuideReferral = clearInstallGuideReferral;
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
+  window.getSalesChannel = getSalesChannel;
+  window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
+  window.applyXianyuPurchaseVisibility = applyXianyuPurchaseVisibility;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };

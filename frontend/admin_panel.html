@@ -173,6 +173,11 @@
                     <input type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则激活页不显示该按钮" style="width:100%;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;">
                     <p class="hint" style="margin-top:6px;">用户在个人中心点「激活」时的弹窗中点击「闲鱼购买」会复制此处全文到剪贴板。</p>
                 </div>
+                <div style="width:100%;max-width:640px;margin-top:12px;">
+                    <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>
+                    <textarea id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li" style="width:100%;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical;"></textarea>
+                    <p class="hint" style="margin-top:6px;">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>register.html?ch=agent_zhang</code>），从该链接进入的用户不显示「闲鱼购买」；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。渠道 ID 仅支持字母、数字、下划线与连字符。</p>
+                </div>
             </div>
         </section>
         <section>
