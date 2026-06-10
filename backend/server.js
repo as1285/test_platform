@@ -541,12 +541,17 @@ function promoSegmentFilter(segment, userAlias, agentChannels) {
       return '?';
     })
     .join(',');
-  var agentSql = '(LOWER(TRIM(' + col + ')) IN (' + ph + '))';
+  var normCh = 'LOWER(TRIM(' + col + '))';
+  var agentSql = '(' + normCh + ' IN (' + ph + '))';
   var params = agentChannels.slice();
   if (segment === 'agent') {
     return { sql: agentSql, params: params };
   }
-  return { sql: 'NOT ' + agentSql, params: params };
+  // 自有流量：未填渠道（NULL/空）或渠道不在代理列表；避免 NOT (NULL IN …) 在 SQL 中恒为 UNKNOWN 导致漏计
+  return {
+    sql: '(' + col + ' IS NULL OR TRIM(' + col + ') = \'\' OR ' + normCh + ' NOT IN (' + ph + '))',
+    params: params
+  };
 }
 
 function analyticsConversionPct(n, d) {
@@ -6907,11 +6912,7 @@ async function handleAuthPost(req, res) {
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
         var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
-        if (!regSalesCh) {
-          try {
-            regSalesCh = await resolveSalesChannelForRequest(req);
-          } catch (eSales) {}
-        }
+        // 仅注册请求显式携带 ch/sales_ch 时写入用户渠道；设备归因不写入，避免闲鱼等自有流量误计入代理推广
         var out = await registerUser(
           body.username,
           body.password,
