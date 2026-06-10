@@ -622,6 +622,7 @@
         </div>
     </div>
     
+    <script src="/js/tax-year.js?v=20260601-tax-year"></script>
     <script>
         const yearSelect = document.getElementById('yearSelect');
         const yearDisplay = document.getElementById('yearDisplay');
@@ -632,29 +633,32 @@
         const pickerList = document.getElementById('pickerList');
         const pickerItems = document.querySelectorAll('.picker-item');
         
-        // 从URL参数或localStorage获取上次选择的年份，默认当前年份
+        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（校验 2019–2026）
         function getInitialYear() {
             var urlParams = new URLSearchParams(window.location.search);
             // reset=1 时清除记忆，回到当前年份
             if (urlParams.get('reset') === '1') {
                 localStorage.removeItem('selected_year');
-                return new Date().getFullYear().toString();
+                return String(normalizeTaxYear(null));
             }
             // 优先从URL参数获取
             var yearFromUrl = urlParams.get('year');
-            if (yearFromUrl) return yearFromUrl;
+            if (yearFromUrl) return String(normalizeTaxYear(yearFromUrl));
             // 其次从localStorage获取
             var yearFromStorage = localStorage.getItem('selected_year');
-            if (yearFromStorage) return yearFromStorage;
+            if (yearFromStorage) return String(normalizeTaxYear(yearFromStorage));
             // 默认当前年份
-            return new Date().getFullYear().toString();
+            return String(normalizeTaxYear(null));
         }
         
         let selectedYear = getInitialYear();
         const itemHeight = 40; // 每个选项的高度
         
-        // 初始化显示
-        document.getElementById('yearDisplay').textContent = selectedYear;
+        // 初始化显示（纠正 localStorage / 异常系统时间）
+        yearDisplay.textContent = selectedYear;
+        try {
+            localStorage.setItem('selected_year', selectedYear);
+        } catch (e) {}
         
         // 打开选择器
         yearSelect.addEventListener('click', function() {
@@ -696,8 +700,9 @@
             }, 100);
         });
         
-        // 根据滚动位置更新选中的选项
+        // 根据滚动位置更新选中的选项（仅在选择器打开时生效，避免 WebView 初始化误改年份）
         function updateSelectedItem() {
+            if (!yearPicker.classList.contains('show')) return;
             const scrollTop = pickerList.scrollTop;
             const centerIndex = Math.round(scrollTop / itemHeight);
             
@@ -735,12 +740,15 @@
         
         // 确定选择
         pickerConfirm.addEventListener('click', function() {
+            selectedYear = String(normalizeTaxYear(selectedYear));
             yearDisplay.textContent = selectedYear;
             closePicker();
         });
         
         // 查询（未激活也可进入结果页）
         function doQuery() {
+            selectedYear = String(normalizeTaxYear(selectedYear));
+            yearDisplay.textContent = selectedYear;
             localStorage.setItem('selected_year', selectedYear);
             window.location.href = 'shuiming_result.html?year=' + selectedYear;
         }

@@ -918,6 +918,7 @@
     </div>
     </div>
 
+    <script src="/js/tax-year.js?v=20260601-tax-year"></script>
     <script>
         function syncTopFixedHeight() {
             var summary = document.querySelector('.summary');
@@ -1175,7 +1176,11 @@
         }
 
         function loadData() {
-            var year = getUrlParam('year') || new Date().getFullYear();
+            var year = String(
+                typeof normalizeTaxYear === 'function'
+                    ? normalizeTaxYear(getUrlParam('year'))
+                    : getUrlParam('year') || new Date().getFullYear()
+            );
 
             authFetch('api/tax.php?action=records&year=' + encodeURIComponent(year))
                 .then(function(response) { return response.json(); })

@@ -21,6 +21,18 @@
   var captureHideTimer = null;
   var conversionCfg = null;
 
+  function normalizeTaxYearLocal(raw) {
+    var minY = 2019;
+    var maxY = 2026;
+    var defY = (function () {
+      var now = new Date().getFullYear();
+      return now >= minY && now <= maxY ? now : maxY;
+    })();
+    var y = parseInt(String(raw == null ? '' : raw).trim(), 10);
+    if (!y || isNaN(y) || y < minY || y > maxY) return defY;
+    return y;
+  }
+
   function getToastDurationMs() {
     var ms =
       typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
@@ -191,10 +203,10 @@
   }
 
   function goIncomeDetail(year) {
-    var y = year || new Date().getFullYear();
+    var y = normalizeTaxYearLocal(year);
     try {
       var sy = localStorage.getItem('selected_year');
-      if (sy) y = sy;
+      if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
     window.location.href = 'shuiming_result.html?year=' + encodeURIComponent(String(y));
   }
@@ -688,10 +700,10 @@
   function afterTaxRecordsCreated(opts) {
     opts = opts || {};
     track('track_conversion_tax_created', { page: 'consult', source: opts.source || 'batch' });
-    var y = new Date().getFullYear();
+    var y = normalizeTaxYearLocal(null);
     try {
       var sy = localStorage.getItem('selected_year');
-      if (sy) y = Number(sy) || y;
+      if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
     if (opts.source === 'single_save') {
       showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
