@@ -1412,10 +1412,15 @@
             }
         }
 
-        function renderFeedbackWechatPayQr(displayUrl) {
+        function renderFeedbackWechatPayQr(displayUrl, showXianyu) {
             var card = document.getElementById('feedbackWechatPayCard');
             var img = document.getElementById('feedbackWechatPayImg');
             if (!card || !img) return;
+            if (showXianyu === false) {
+                card.style.display = 'none';
+                img.removeAttribute('src');
+                return;
+            }
             var u = displayUrl != null ? String(displayUrl).trim() : '';
             if (!u) {
                 card.style.display = 'none';
@@ -1426,6 +1431,20 @@
             card.style.display = 'block';
         }
 
+        function applyFeedbackConfigData(data) {
+            if (!data) {
+                renderFeedbackWechatPayQr('', false);
+                return;
+            }
+            var show =
+                data.show_xianyu_purchase !== false &&
+                !!(data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url);
+            renderFeedbackWechatPayQr(
+                data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url,
+                show
+            );
+        }
+
         function loadFeedbackWechatPayQr() {
             return authFetch('api/feedback.php?action=config')
                 .then(function (r) {
@@ -1433,15 +1452,13 @@
                 })
                 .then(function (res) {
                     if (res.code === 200 && res.data) {
-                        renderFeedbackWechatPayQr(
-                            res.data.wechat_pay_qrcode_display_url || res.data.wechat_pay_qrcode_url
-                        );
+                        applyFeedbackConfigData(res.data);
                         return;
                     }
-                    renderFeedbackWechatPayQr('');
+                    applyFeedbackConfigData(null);
                 })
                 .catch(function () {
-                    renderFeedbackWechatPayQr('');
+                    applyFeedbackConfigData(null);
                 });
         }
 
@@ -1507,7 +1524,7 @@
                 typeof getPublicInstallPackagesUrl === 'function'
                     ? getPublicInstallPackagesUrl()
                     : '/api/public/install-packages';
-            return fetch(url, { credentials: 'same-origin' })
+            return authFetch(url, { credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json();
                 })
@@ -5663,9 +5680,7 @@
                 })
                 .then(function (res) {
                     if (res.code === 200 && res.data && Array.isArray(res.data.items)) {
-                        renderFeedbackWechatPayQr(
-                            res.data.wechat_pay_qrcode_display_url || res.data.wechat_pay_qrcode_url
-                        );
+                        applyFeedbackConfigData(res.data);
                         renderFeedbackListFromArray(res.data.items);
                         return;
                     }

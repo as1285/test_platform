@@ -519,6 +519,83 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   return (hideList || []).indexOf(ch) >= 0;
 }
 
+function tryAuthUserIdFromRequest(req) {
+  var auth = req && req.headers ? req.headers.authorization || '' : '';
+  var m = /^Bearer\s+(\S+)/i.exec(auth);
+  if (!m) {
+    return '';
+  }
+  try {
+    var payload = jwt.verify(m[1], JWT_SECRET);
+    if (payload.role === 'admin') {
+      return '';
+    }
+    return String(payload.sub || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+async function getUserSalesPromoChannel(userId) {
+  if (!pool || userId == null || String(userId).trim() === '') {
+    return '';
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT sales_promo_channel FROM users WHERE username = ? LIMIT 1', [
+      String(userId).trim()
+    ]);
+    if (!rows.length || rows[0].sales_promo_channel == null) {
+      return '';
+    }
+    return sanitizeSalesChannelId(rows[0].sales_promo_channel);
+  } finally {
+    conn.release();
+  }
+}
+
+async function resolveEffectiveSalesChannel(req) {
+  var ch = sanitizeSalesChannelId((req.query && (req.query.sales_ch || req.query.ch)) || '');
+  if (ch) {
+    return ch;
+  }
+  var uid = tryAuthUserIdFromRequest(req);
+  if (uid) {
+    ch = await getUserSalesPromoChannel(uid);
+    if (ch) {
+      return ch;
+    }
+  }
+  try {
+    return await resolveSalesChannelForRequest(req);
+  } catch (e) {
+    return '';
+  }
+}
+
+async function shouldHideXianyuForRequest(req) {
+  var raw = await getInstallPackageSettingsFromDb();
+  var hideList = raw.xianyu_hide_channels || [];
+  var ch = await resolveEffectiveSalesChannel(req);
+  return shouldHideXianyuForSalesChannel(ch, hideList);
+}
+
+function feedbackConfigPayload(qrRef, hideXianyu) {
+  if (hideXianyu) {
+    return {
+      wechat_pay_qrcode_url: '',
+      wechat_pay_qrcode_display_url: '',
+      show_xianyu_purchase: false
+    };
+  }
+  var ref = qrRef != null ? String(qrRef).trim() : '';
+  return {
+    wechat_pay_qrcode_url: ref,
+    wechat_pay_qrcode_display_url: resolvePublicAssetUrl(ref),
+    show_xianyu_purchase: !!ref
+  };
+}
+
 function readClientIdFromRequest(req) {
   try {
     if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
@@ -1210,6 +1287,15 @@ async function createTables() {
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN activation_source_channel VARCHAR(32) NULL COMMENT '激活码渠道（如闲鱼）'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN sales_promo_channel VARCHAR(64) NULL COMMENT '代理推广渠道 ch'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
@@ -3280,7 +3366,7 @@ async function buildUserTaxAvgSalaryMap(conn, usernames) {
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password, registerSourceChannel, fromInstallGuide) {
+async function registerUser(username, password, registerSourceChannel, fromInstallGuide, salesPromoChannel) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -3294,6 +3380,7 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
     throw new Error(srcErr);
   }
   registerSourceChannel = String(registerSourceChannel).trim();
+  salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     throw new Error('该账号名保留，请换一个');
@@ -3314,8 +3401,8 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
     var storePlain =
       String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, sales_promo_channel)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
       [
         username,
         saltHex,
@@ -3324,7 +3411,8 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
         USER_TYPE_NORMAL,
         storePlain,
         registerSourceChannel,
-        fromInstallGuide ? 1 : 0
+        fromInstallGuide ? 1 : 0,
+        salesPromoChannel || null
       ]
     );
     // 注册成功埋点（用于后台接口统计看转化）
@@ -5685,12 +5773,10 @@ async function handleFeedbackGet(req, res) {
   if (action === 'config') {
     try {
       var qrRef = await getWechatPayQrcodeUrl();
+      var hideXianyu = await shouldHideXianyuForRequest(req);
       return res.json({
         code: 200,
-        data: {
-          wechat_pay_qrcode_url: qrRef,
-          wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
-        }
+        data: feedbackConfigPayload(qrRef, hideXianyu)
       });
     } catch (e) {
       console.error(e);
@@ -5709,6 +5795,8 @@ async function handleFeedbackGet(req, res) {
     );
     conn.release();
     var qrRef = await getWechatPayQrcodeUrl();
+    var hideXianyu = await shouldHideXianyuForRequest(req);
+    var fbCfg = feedbackConfigPayload(qrRef, hideXianyu);
     var out = rows.map(function (r) {
       return {
         id: r.id,
@@ -5721,11 +5809,12 @@ async function handleFeedbackGet(req, res) {
     });
     res.json({
       code: 200,
-      data: {
-        items: out,
-        wechat_pay_qrcode_url: qrRef,
-        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef)
-      }
+      data: Object.assign(
+        {
+          items: out
+        },
+        fbCfg
+      )
     });
   } catch (e) {
     console.error(e);
@@ -6561,7 +6650,19 @@ async function handleAuthPost(req, res) {
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
-        var out = await registerUser(body.username, body.password, regSourceNorm.value, parseFromInstallGuideFlag(body));
+        var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+        if (!regSalesCh) {
+          try {
+            regSalesCh = await resolveSalesChannelForRequest(req);
+          } catch (eSales) {}
+        }
+        var out = await registerUser(
+          body.username,
+          body.password,
+          regSourceNorm.value,
+          parseFromInstallGuideFlag(body),
+          regSalesCh
+        );
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
@@ -10430,12 +10531,7 @@ async function handlePublicInstallPackages(req, res) {
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = sanitizeInstallDownloadUrl(raw.qq);
     var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
-    var salesCh = sanitizeSalesChannelId(req.query.sales_ch || req.query.ch || '');
-    if (!salesCh) {
-      try {
-        salesCh = await resolveSalesChannelForRequest(req);
-      } catch (eResolve) {}
-    }
+    var salesCh = await resolveEffectiveSalesChannel(req);
     var hideXianyu = shouldHideXianyuForSalesChannel(salesCh, raw.xianyu_hide_channels);
     if (hideXianyu) {
       xianyu = '';

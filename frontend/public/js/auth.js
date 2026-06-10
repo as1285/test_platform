@@ -1043,7 +1043,10 @@
 
   function refreshPublicInstallPackagesUi() {
     var url = getPublicInstallPackagesUrl();
-    return fetch(url, { credentials: 'same-origin' })
+    var opts = { credentials: 'same-origin' };
+    var req =
+      getToken() && typeof authFetch === 'function' ? authFetch(url, opts) : fetch(url, opts);
+    return req
       .then(function (r) {
         return r.json();
       })

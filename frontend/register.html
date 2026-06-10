@@ -282,6 +282,8 @@
 
             var fromInstallGuide =
                 typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
+            var regSalesCh =
+                typeof window.getSalesChannel === 'function' ? window.getSalesChannel() : '';
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
@@ -296,6 +298,7 @@
                     register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther,
                     from_install_guide: fromInstallGuide ? 1 : 0,
+                    sales_ch: regSalesCh || undefined,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns
                 })
