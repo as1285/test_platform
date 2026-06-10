@@ -411,6 +411,9 @@
         .user-info-text.user-info-text--editable {
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            position: relative;
+            z-index: 1;
         }
 
         .user-info-text.user-info-text--editable:active {
@@ -418,9 +421,12 @@
         }
 
         .user-name.user-name--editable {
-            display: inline-block;
+            display: block;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            padding: 4px 0;
+            min-height: 28px;
         }
 
         .user-name.user-name--editable:active {
@@ -955,7 +961,7 @@
     <div class="content-wrapper">
         <div class="user-card">
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
-            <div class="user-info user-info-text">
+            <div class="user-info user-info-text user-info-text--editable" id="mineProfileEditHit">
                 <div
                     class="user-name user-name--editable"
                     id="mineDisplayName"
@@ -1159,6 +1165,61 @@
                     localStorage.getItem('username') ||
                     ''
                 );
+            }
+
+            function bindMineProfileEditTap(el) {
+                if (!el || el.__mineProfileEditTapBound) return;
+                el.__mineProfileEditTapBound = true;
+                var lastFire = 0;
+                var touchMoved = false;
+                var touchStartX = 0;
+                var touchStartY = 0;
+                function fire(e) {
+                    var now = Date.now();
+                    if (now - lastFire < 320) return;
+                    lastFire = now;
+                    openMineProfileEditModal();
+                }
+                el.addEventListener(
+                    'touchstart',
+                    function (e) {
+                        touchMoved = false;
+                        if (e.touches && e.touches[0]) {
+                            touchStartX = e.touches[0].clientX;
+                            touchStartY = e.touches[0].clientY;
+                        }
+                    },
+                    { passive: true }
+                );
+                el.addEventListener(
+                    'touchmove',
+                    function (e) {
+                        if (!e.touches || !e.touches[0]) return;
+                        if (
+                            Math.abs(e.touches[0].clientX - touchStartX) > 12 ||
+                            Math.abs(e.touches[0].clientY - touchStartY) > 12
+                        ) {
+                            touchMoved = true;
+                        }
+                    },
+                    { passive: true }
+                );
+                el.addEventListener(
+                    'touchend',
+                    function (e) {
+                        if (touchMoved) return;
+                        e.preventDefault();
+                        fire(e);
+                    },
+                    { passive: false }
+                );
+                el.addEventListener('click', fire);
+                el.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fire(e);
+                    }
+                });
             }
 
             function openMineProfileEditModal() {
@@ -1588,19 +1649,13 @@
                         mineTaxRevealState = !mineTaxRevealState;
                         renderTaxId();
                     });
+                    taxToggleBtn.addEventListener('touchend', function (e) {
+                        e.stopPropagation();
+                    });
                 }
             }
 
-            var profileEditHit = document.getElementById('mineDisplayName');
-            if (profileEditHit) {
-                profileEditHit.addEventListener('click', openMineProfileEditModal);
-                profileEditHit.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openMineProfileEditModal();
-                    }
-                });
-            }
+            bindMineProfileEditTap(document.getElementById('mineProfileEditHit'));
             var profileEditOk = document.getElementById('btnMineProfileEditOk');
             var profileEditCancel = document.getElementById('btnMineProfileEditCancel');
             var profileEditMask = document.getElementById('mineProfileEditModalMask');
