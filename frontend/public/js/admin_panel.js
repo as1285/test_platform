@@ -3255,53 +3255,34 @@
             });
         }
 
-        var analyticsConvPage = 1;
-        var analyticsConvLimit = 10;
         var analyticsConvCache = null;
 
-        function renderAnalyticsDailyConversion(data, page) {
-            var el = document.getElementById('analyticsDailyConversion');
-            if (!el) return;
-            if (!data || !data.today) {
-                analyticsConvCache = null;
-                el.textContent = '转化率暂无数据';
-                return;
+        function renderDailyConversionSegmentBlock(title, segmentData) {
+            var html = '<div class="analytics-segment-block">';
+            html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+            if (!segmentData || !segmentData.today) {
+                html += '<p class="hint">暂无数据</p></div>';
+                return html;
             }
-            analyticsConvCache = data;
-            if (page != null) {
-                analyticsConvPage = page;
-            }
-            var today = data.today;
+            var today = segmentData.today;
             var todayKey = today.date || '';
-            var rateText = today.rate_pct != null ? today.rate_pct : (today.registered > 0 ? '0.0%' : '—');
-            var html = '<div class="analytics-conv-summary">';
+            var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
+            html += '<div class="analytics-conv-summary">';
             html += '<div class="conv-label">今日转化率（' + esc(todayKey) + '）</div>';
             html += '<div class="conv-today">' + esc(rateText) + '</div>';
             html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
             html += '</div>';
 
-            var series = Array.isArray(data.series) ? data.series.slice() : [];
-            series.reverse();
-            var totalRows = series.length;
-            var totalPages = Math.max(1, Math.ceil(totalRows / analyticsConvLimit) || 1);
-            if (analyticsConvPage > totalPages) {
-                analyticsConvPage = totalPages;
-            }
-            if (analyticsConvPage < 1) {
-                analyticsConvPage = 1;
-            }
-            var start = (analyticsConvPage - 1) * analyticsConvLimit;
-            var pageRows = series.slice(start, start + analyticsConvLimit);
-
+            var series = Array.isArray(segmentData.series) ? segmentData.series.slice().reverse() : [];
             html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
             html += '<th>日期</th><th>注册数</th><th>激活数</th><th>转化率</th>';
             html += '</tr></thead><tbody>';
-            if (!pageRows.length) {
+            if (!series.length) {
                 html += '<tr><td colspan="4">暂无数据</td></tr>';
             } else {
-                pageRows.forEach(function (row) {
+                series.forEach(function (row) {
                     if (!row || !row.date) return;
-                    var pct = row.rate_pct != null ? row.rate_pct : (row.registered > 0 ? '0.0%' : '—');
+                    var pct = row.rate_pct != null ? row.rate_pct : row.registered > 0 ? '0.0%' : '—';
                     var isToday = row.date === todayKey;
                     html += '<tr' + (isToday ? ' class="conv-row-today"' : '') + '>';
                     html += '<td>' + esc(row.date) + (isToday ? ' <span style="color:#1677ff;font-size:12px;">今日</span>' : '') + '</td>';
@@ -3311,44 +3292,41 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table>';
-            if (totalRows > 0) {
-                html +=
-                    '<div class="pagination analytics-conv-pagination">' +
-                    '<button type="button" class="btn-page" id="analyticsConvPrev"' +
-                    (analyticsConvPage <= 1 ? ' disabled' : '') +
-                    '>上一页</button>' +
-                    '<span id="analyticsConvPageInfo">第 ' +
-                    esc(String(analyticsConvPage)) +
-                    ' 页 / 共 ' +
-                    esc(String(totalPages)) +
-                    ' 页（共 ' +
-                    esc(String(totalRows)) +
-                    ' 天）</span>' +
-                    '<button type="button" class="btn-page" id="analyticsConvNext"' +
-                    (analyticsConvPage >= totalPages ? ' disabled' : '') +
-                    '>下一页</button>' +
-                    '</div>';
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        function renderAnalyticsDailyConversion(data) {
+            var el = document.getElementById('analyticsDailyConversion');
+            if (!el) return;
+            if (!data || !data.segments) {
+                analyticsConvCache = null;
+                el.textContent = '转化率暂无数据';
+                return;
             }
-            html += '</div>';
+            analyticsConvCache = data;
+            var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
+            var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
+            var html = renderDailyConversionSegmentBlock('自有流量', data.segments.own);
+            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent);
             el.innerHTML = html;
         }
 
-        function renderRegistrationFunnel(data) {
-            var el = document.getElementById('analyticsRegistrationFunnel');
-            if (!el) return;
-            if (!data || !data.summary) {
-                el.textContent = '漏斗暂无数据';
-                return;
+        function renderRegistrationFunnelSegmentBlock(title, segmentData) {
+            var html = '<div class="analytics-segment-block">';
+            html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+            if (!segmentData || !segmentData.summary) {
+                html += '<p class="hint">暂无数据</p></div>';
+                return html;
             }
-            var s = data.summary;
+            var s = segmentData.summary;
             var cards = [
                 { label: '注册用户', val: s.registered },
                 { label: '7日内激活', val: (s.activated_7d || 0) + ' (' + (s.rate_activate_7d_pct || '—') + ')' },
                 { label: '7日内有个税', val: (s.tax_7d || 0) + ' (' + (s.rate_tax_7d_pct || '—') + ')' },
                 { label: '7日内看明细', val: (s.viewed_detail_7d || 0) + ' (' + (s.rate_detail_7d_pct || '—') + ')' }
             ];
-            var html = '<div class="user-data-stats" style="margin-bottom:12px;">';
+            html += '<div class="user-data-stats" style="margin-bottom:12px;">';
             cards.forEach(function (c) {
                 html +=
                     '<div class="user-data-stat-card"><div class="ud-label">' +
@@ -3364,8 +3342,8 @@
                 ' · 有个税→看明细 ' +
                 esc(s.rate_detail_of_tax_pct || '—') +
                 '</p>';
-            var series = Array.isArray(data.series) ? data.series.slice().reverse() : [];
-            html += '<div class="scroll-x"><table><thead><tr>';
+            var series = Array.isArray(segmentData.series) ? segmentData.series.slice().reverse() : [];
+            html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
             html +=
                 '<th>注册日</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th></tr></thead><tbody>';
             if (!series.length) {
@@ -3383,7 +3361,21 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        function renderRegistrationFunnel(data) {
+            var el = document.getElementById('analyticsRegistrationFunnel');
+            if (!el) return;
+            if (!data || !data.segments) {
+                el.textContent = '漏斗暂无数据';
+                return;
+            }
+            var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
+            var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
+            var html = renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
+            html += renderRegistrationFunnelSegmentBlock('代理推广' + agentHint, data.segments.agent);
             el.innerHTML = html;
         }
 
@@ -4004,12 +3996,9 @@
                 });
         }
 
-        function loadAnalyticsDailyConversion(resetPage) {
+        function loadAnalyticsDailyConversion() {
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
-            if (resetPage !== false) {
-                analyticsConvPage = 1;
-            }
             var daysEl = document.getElementById('analyticsConversionDays');
             var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
             el.textContent = '转化率加载中…';
@@ -4021,7 +4010,7 @@
                         el.textContent = '转化率加载失败';
                         return;
                     }
-                    renderAnalyticsDailyConversion(j.data, analyticsConvPage);
+                    renderAnalyticsDailyConversion(j.data);
                 })
                 .catch(function () {
                     analyticsConvCache = null;
@@ -7177,10 +7166,10 @@
             });
         }
         document.getElementById('btnRefreshConversion').addEventListener('click', function () {
-            loadAnalyticsDailyConversion(true);
+            loadAnalyticsDailyConversion();
         });
         document.getElementById('analyticsConversionDays').addEventListener('change', function () {
-            loadAnalyticsDailyConversion(true);
+            loadAnalyticsDailyConversion();
         });
         var btnRefreshRegistrationFunnel = document.getElementById('btnRefreshRegistrationFunnel');
         if (btnRefreshRegistrationFunnel) {
@@ -7314,19 +7303,6 @@
                 loadChannelAnalysis();
             });
         }
-        document.getElementById('analyticsDailyConversion').addEventListener('click', function (ev) {
-            if (!analyticsConvCache) return;
-            var t = ev.target;
-            if (t && t.id === 'analyticsConvPrev' && analyticsConvPage > 1) {
-                renderAnalyticsDailyConversion(analyticsConvCache, analyticsConvPage - 1);
-            } else if (t && t.id === 'analyticsConvNext') {
-                var series = Array.isArray(analyticsConvCache.series) ? analyticsConvCache.series.length : 0;
-                var totalPages = Math.max(1, Math.ceil(series / analyticsConvLimit) || 1);
-                if (analyticsConvPage < totalPages) {
-                    renderAnalyticsDailyConversion(analyticsConvCache, analyticsConvPage + 1);
-                }
-            }
-        });
         document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
             var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 1;
             if (

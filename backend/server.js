@@ -521,6 +521,236 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   return (hideList || []).indexOf(ch) >= 0;
 }
 
+/** 后台「代理推广渠道」列表，用于区分自有流量与代理推广用户 */
+async function getAgentPromoChannelListFromSettings() {
+  var raw = await getInstallPackageSettingsFromDb();
+  return raw.xianyu_hide_channels || [];
+}
+
+/** segment: own | agent；按 users.sales_promo_channel 是否在代理渠道列表中划分 */
+function promoSegmentFilter(segment, userAlias, agentChannels) {
+  var col = userAlias + '.sales_promo_channel';
+  if (!agentChannels || !agentChannels.length) {
+    if (segment === 'agent') {
+      return { sql: '1=0', params: [] };
+    }
+    return { sql: '1=1', params: [] };
+  }
+  var ph = agentChannels
+    .map(function () {
+      return '?';
+    })
+    .join(',');
+  var agentSql = '(LOWER(TRIM(' + col + ')) IN (' + ph + '))';
+  var params = agentChannels.slice();
+  if (segment === 'agent') {
+    return { sql: agentSql, params: params };
+  }
+  return { sql: 'NOT ' + agentSql, params: params };
+}
+
+function analyticsConversionPct(n, d) {
+  if (!d || d <= 0) {
+    return null;
+  }
+  return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
+}
+
+function buildDailyConversionSeries(days, regMap, actMap) {
+  var series = [];
+  var todayKey = chinaDateKeyNow();
+  var todayParts = todayKey.split('-').map(Number);
+  for (var i = 0; i < days; i++) {
+    var dt = new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - (days - 1 - i));
+    var key = formatDateKey(dt);
+    var registered = regMap[key] || 0;
+    var activated = actMap[key] || 0;
+    var rate = registered > 0 ? activated / registered : null;
+    series.push({
+      date: key,
+      registered: registered,
+      activated: activated,
+      rate: rate,
+      rate_pct: rate == null ? null : analyticsConversionPct(activated, registered)
+    });
+  }
+  var todayRow = series.length ? series[series.length - 1] : { date: todayKey, registered: 0, activated: 0, rate: null, rate_pct: null };
+  if (todayRow.date !== todayKey) {
+    todayRow = {
+      date: todayKey,
+      registered: regMap[todayKey] || 0,
+      activated: actMap[todayKey] || 0,
+      rate: null,
+      rate_pct: null
+    };
+    if (todayRow.registered > 0) {
+      todayRow.rate = todayRow.activated / todayRow.registered;
+      todayRow.rate_pct = analyticsConversionPct(todayRow.activated, todayRow.registered);
+    }
+  }
+  return { today: todayRow, series: series };
+}
+
+async function queryDailyConversionSegment(conn, days, span, admin, segment, agentChannels) {
+  var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  var segUsers = promoSegmentFilter(segment, 'users', agentChannels);
+  var segU = promoSegmentFilter(segment, 'u', agentChannels);
+
+  var regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY) AND ' + segUsers.sql;
+  var regParams = [span].concat(segUsers.params);
+  var actWhere =
+    'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
+    'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' +
+    cnToday +
+    ', INTERVAL ? DAY) AND ' +
+    segU.sql;
+  var actParams = [span].concat(segU.params);
+
+  if (!admin || !admin.is_super) {
+    regWhere +=
+      ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
+    regParams.push(admin.username);
+    actWhere += ' AND ac.owner_admin_username = ?';
+    actParams.push(admin.username);
+  }
+
+  const [regRows] = await conn.query(
+    'SELECT ' + cnUserDay + ' AS d, COUNT(*) AS cnt FROM users WHERE ' + regWhere + ' GROUP BY ' + cnUserDay,
+    regParams
+  );
+  const [actRows] = await conn.query(
+    'SELECT DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+      ' FROM activation_codes ac' +
+      ' INNER JOIN users u ON u.username = ac.used_by_username AND ' +
+      userActivationStatsEligibleSql('u.username') +
+      ' WHERE ' +
+      actWhere +
+      ' GROUP BY DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))',
+    actParams
+  );
+
+  var regMap = {};
+  regRows.forEach(function (r) {
+    var k = formatDateKey(r.d);
+    if (k) {
+      regMap[k] = Number(r.cnt) || 0;
+    }
+  });
+  var actMap = {};
+  actRows.forEach(function (r) {
+    var k = formatDateKey(r.d);
+    if (k) {
+      actMap[k] = Number(r.cnt) || 0;
+    }
+  });
+  return buildDailyConversionSeries(days, regMap, actMap);
+}
+
+async function queryRegistrationFunnelSegment(conn, days, admin, segment, agentChannels) {
+  var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+  var seg = promoSegmentFilter(segment, 'u', agentChannels);
+
+  var where = [regSince, seg.sql];
+  var params = [days - 1].concat(seg.params);
+  appendAdminUserScope(where, params, admin, 'u.username');
+  var whereSql = ' WHERE ' + where.join(' AND ');
+
+  const [sumRows] = await conn.query(
+    `SELECT COUNT(*) AS registered,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM activation_codes ac
+              WHERE ac.used_by_username = u.username
+                AND ac.last_used_at IS NOT NULL
+                AND u.activation_refunded_at IS NULL
+                AND u.list_hidden_at IS NULL
+                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS activated_7d,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM tax_records tr
+              WHERE tr.user_id = u.username
+                AND tr.deleted_at IS NULL
+                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS tax_7d,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM user_page_events e
+              WHERE e.username = u.username
+                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+     FROM users u` + whereSql,
+    params
+  );
+  var sum = sumRows[0] || {};
+  var registered = Number(sum.registered) || 0;
+  var activated7 = Number(sum.activated_7d) || 0;
+  var tax7 = Number(sum.tax_7d) || 0;
+  var detail7 = Number(sum.viewed_detail_7d) || 0;
+
+  const [dayRows] = await conn.query(
+    `SELECT ${cnUserDay} AS d,
+            COUNT(*) AS registered,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM activation_codes ac
+              WHERE ac.used_by_username = u.username
+                AND ac.last_used_at IS NOT NULL
+                AND u.activation_refunded_at IS NULL
+                AND u.list_hidden_at IS NULL
+                AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS activated_7d,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM tax_records tr
+              WHERE tr.user_id = u.username
+                AND tr.deleted_at IS NULL
+                AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS tax_7d,
+            SUM(CASE WHEN EXISTS (
+              SELECT 1 FROM user_page_events e
+              WHERE e.username = u.username
+                AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
+                AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
+            ) THEN 1 ELSE 0 END) AS viewed_detail_7d
+     FROM users u` +
+      whereSql +
+      ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
+    params
+  );
+
+  var series = (dayRows || []).map(function (r) {
+    var reg = Number(r.registered) || 0;
+    var a7 = Number(r.activated_7d) || 0;
+    var t7 = Number(r.tax_7d) || 0;
+    var v7 = Number(r.viewed_detail_7d) || 0;
+    return {
+      date: formatDateKey(r.d),
+      registered: reg,
+      activated_7d: a7,
+      tax_7d: t7,
+      viewed_detail_7d: v7,
+      rate_activate_7d_pct: analyticsConversionPct(a7, reg),
+      rate_tax_7d_pct: analyticsConversionPct(t7, reg),
+      rate_detail_7d_pct: analyticsConversionPct(v7, reg)
+    };
+  });
+
+  return {
+    summary: {
+      registered: registered,
+      activated_7d: activated7,
+      tax_7d: tax7,
+      viewed_detail_7d: detail7,
+      rate_activate_7d_pct: analyticsConversionPct(activated7, registered),
+      rate_tax_7d_pct: analyticsConversionPct(tax7, registered),
+      rate_detail_7d_pct: analyticsConversionPct(detail7, registered),
+      rate_tax_of_activated_pct: analyticsConversionPct(tax7, activated7),
+      rate_detail_of_tax_pct: analyticsConversionPct(detail7, tax7)
+    },
+    series: series
+  };
+}
+
 function tryAuthUserIdFromRequest(req) {
   var auth = req && req.headers ? req.headers.authorization || '' : '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
@@ -7204,94 +7434,22 @@ async function handleAdminUsersDailyConversion(req, res) {
     if (days < 1) days = 1;
     if (days > 90) days = 90;
     var span = days - 1;
-    var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-    var cnActDay = 'DATE(DATE_ADD(last_used_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    var agentChannels = await getAgentPromoChannelListFromSettings();
 
     const conn = await pool.getConnection();
     try {
-      var regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      var regParams = [span];
-      var actWhere =
-        'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
-        'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' +
-        cnToday +
-        ', INTERVAL ? DAY)';
-      var actParams = [span];
-
-      if (!req.admin || !req.admin.is_super) {
-        regWhere +=
-          ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-        regParams.push(req.admin.username);
-        actWhere += ' AND ac.owner_admin_username = ?';
-        actParams.push(req.admin.username);
-      }
-
-      const [regRows] = await conn.query(
-        'SELECT ' + cnUserDay + ' AS d, COUNT(*) AS cnt FROM users WHERE ' + regWhere + ' GROUP BY ' + cnUserDay,
-        regParams
-      );
-      const [actRows] = await conn.query(
-        'SELECT DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
-          ' FROM activation_codes ac' +
-          ' INNER JOIN users u ON u.username = ac.used_by_username AND ' +
-          userActivationStatsEligibleSql('u.username') +
-          ' WHERE ' +
-          actWhere +
-          ' GROUP BY DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))',
-        actParams
-      );
-
-      var regMap = {};
-      regRows.forEach(function (r) {
-        var k = formatDateKey(r.d);
-        if (k) regMap[k] = Number(r.cnt) || 0;
-      });
-      var actMap = {};
-      actRows.forEach(function (r) {
-        var k = formatDateKey(r.d);
-        if (k) actMap[k] = Number(r.cnt) || 0;
-      });
-
-      var series = [];
-      var todayKey = chinaDateKeyNow();
-      var todayParts = todayKey.split('-').map(Number);
-      for (var i = 0; i < days; i++) {
-        var dt = new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - (days - 1 - i));
-        var key = formatDateKey(dt);
-        var registered = regMap[key] || 0;
-        var activated = actMap[key] || 0;
-        var rate = registered > 0 ? activated / registered : null;
-        series.push({
-          date: key,
-          registered: registered,
-          activated: activated,
-          rate: rate,
-          rate_pct: rate == null ? null : (Math.round(rate * 1000) / 10).toFixed(1) + '%'
-        });
-      }
-
-      var todayRow = series.length ? series[series.length - 1] : { date: todayKey, registered: 0, activated: 0, rate: null, rate_pct: null };
-      if (todayRow.date !== todayKey) {
-        todayRow = {
-          date: todayKey,
-          registered: regMap[todayKey] || 0,
-          activated: actMap[todayKey] || 0,
-          rate: null,
-          rate_pct: null
-        };
-        if (todayRow.registered > 0) {
-          todayRow.rate = todayRow.activated / todayRow.registered;
-          todayRow.rate_pct = (Math.round(todayRow.rate * 1000) / 10).toFixed(1) + '%';
-        }
-      }
+      var ownSeg = await queryDailyConversionSegment(conn, days, span, req.admin, 'own', agentChannels);
+      var agentSeg = await queryDailyConversionSegment(conn, days, span, req.admin, 'agent', agentChannels);
 
       res.json({
         code: 200,
         data: {
           days: days,
-          today: todayRow,
-          series: series
+          agent_channel_ids: agentChannels,
+          segments: {
+            own: ownSeg,
+            agent: agentSeg
+          }
         }
       });
     } finally {
@@ -7309,115 +7467,22 @@ async function handleAdminRegistrationFunnel(req, res) {
     var days = parseInt(req.query.days, 10) || 30;
     if (days < 1) days = 1;
     if (days > 90) days = 90;
-    var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var agentChannels = await getAgentPromoChannelListFromSettings();
 
     const conn = await pool.getConnection();
     try {
-      var where = [regSince];
-      var params = [days - 1];
-      appendAdminUserScope(where, params, req.admin, 'u.username');
-      var whereSql = ' WHERE ' + where.join(' AND ');
-
-      const [sumRows] = await conn.query(
-        `SELECT COUNT(*) AS registered,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM activation_codes ac
-                  WHERE ac.used_by_username = u.username
-                    AND ac.last_used_at IS NOT NULL
-                    AND u.activation_refunded_at IS NULL
-                    AND u.list_hidden_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS activated_7d,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS tax_7d,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u` + whereSql,
-        params
-      );
-      var sum = sumRows[0] || {};
-      var registered = Number(sum.registered) || 0;
-      var activated7 = Number(sum.activated_7d) || 0;
-      var tax7 = Number(sum.tax_7d) || 0;
-      var detail7 = Number(sum.viewed_detail_7d) || 0;
-
-      function pct(n, d) {
-        if (!d || d <= 0) return null;
-        return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
-      }
-
-      const [dayRows] = await conn.query(
-        `SELECT ${cnUserDay} AS d,
-                COUNT(*) AS registered,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM activation_codes ac
-                  WHERE ac.used_by_username = u.username
-                    AND ac.last_used_at IS NOT NULL
-                    AND u.activation_refunded_at IS NULL
-                    AND u.list_hidden_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS activated_7d,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM tax_records tr
-                  WHERE tr.user_id = u.username
-                    AND tr.deleted_at IS NULL
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, tr.created_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS tax_7d,
-                SUM(CASE WHEN EXISTS (
-                  SELECT 1 FROM user_page_events e
-                  WHERE e.username = u.username
-                    AND (e.page_path LIKE '%shuiming%' OR e.page_path LIKE '%xiangqing%')
-                    AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
-                ) THEN 1 ELSE 0 END) AS viewed_detail_7d
-         FROM users u` +
-          whereSql +
-          ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
-        params
-      );
-
-      var series = (dayRows || []).map(function (r) {
-        var reg = Number(r.registered) || 0;
-        var a7 = Number(r.activated_7d) || 0;
-        var t7 = Number(r.tax_7d) || 0;
-        var v7 = Number(r.viewed_detail_7d) || 0;
-        return {
-          date: formatDateKey(r.d),
-          registered: reg,
-          activated_7d: a7,
-          tax_7d: t7,
-          viewed_detail_7d: v7,
-          rate_activate_7d_pct: pct(a7, reg),
-          rate_tax_7d_pct: pct(t7, reg),
-          rate_detail_7d_pct: pct(v7, reg)
-        };
-      });
+      var ownSeg = await queryRegistrationFunnelSegment(conn, days, req.admin, 'own', agentChannels);
+      var agentSeg = await queryRegistrationFunnelSegment(conn, days, req.admin, 'agent', agentChannels);
 
       res.json({
         code: 200,
         data: {
           days: days,
-          summary: {
-            registered: registered,
-            activated_7d: activated7,
-            tax_7d: tax7,
-            viewed_detail_7d: detail7,
-            rate_activate_7d_pct: pct(activated7, registered),
-            rate_tax_7d_pct: pct(tax7, registered),
-            rate_detail_7d_pct: pct(detail7, registered),
-            rate_tax_of_activated_pct: pct(tax7, activated7),
-            rate_detail_of_tax_pct: pct(detail7, tax7)
-          },
-          series: series
+          agent_channel_ids: agentChannels,
+          segments: {
+            own: ownSeg,
+            agent: agentSeg
+          }
         }
       });
     } finally {

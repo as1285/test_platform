@@ -567,6 +567,18 @@
         .analytics-conv-wrap {
             margin-top: 12px;
         }
+        .analytics-segment-block {
+            margin-bottom: 24px;
+        }
+        .analytics-segment-block:last-child {
+            margin-bottom: 0;
+        }
+        .analytics-segment-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 10px;
+        }
         .analytics-conv-summary {
             max-width: 320px;
             padding: 12px 16px;
