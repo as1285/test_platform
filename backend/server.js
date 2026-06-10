@@ -75,6 +75,7 @@ const REGISTER_SOURCE_CHANNELS = {
   tieba: '百度贴吧',
   zhihu: '知乎',
   friend: '朋友介绍',
+  github: 'GitHub',
   other: '其他',
   xianyu: '闲鱼'
 };
