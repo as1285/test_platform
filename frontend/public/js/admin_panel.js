@@ -1893,6 +1893,10 @@
                 );
                 group.style.display = anyVisible ? '' : 'none';
             });
+            var batchBtn = document.getElementById('btnIssueBatch100');
+            if (batchBtn) {
+                batchBtn.style.display = currentAdminProfile && currentAdminProfile.is_super ? '' : 'none';
+            }
         }
 
         function normalizeAdminPage(raw) {

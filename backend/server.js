@@ -9937,6 +9937,9 @@ async function handleAdminIssueCode(req, res) {
 
 /** 批量生成激活码（闲鱼等），默认 100 条，写入库并返回列表供前端导出 TXT */
 async function handleAdminIssueCodeBatch(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成闲鱼激活码' });
+  }
   var body = req.body || {};
   var count = parseInt(body.count, 10);
   if (!count || count < 1) {
