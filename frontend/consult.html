@@ -256,6 +256,19 @@
             margin-bottom: 10px;
             font-weight: 500;
         }
+        .feedback-submit-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .feedback-submit-head .card-title {
+            margin-bottom: 0;
+        }
+        #btnFeedbackXianyu {
+            flex-shrink: 0;
+        }
         .feedback-wechat-pay img {
             max-width: 220px;
             width: 100%;
@@ -899,7 +912,10 @@
                 <img id="feedbackWechatPayImg" src="" alt="闲鱼购买">
             </div>
             <div class="card">
-                <div class="card-title">提交反馈</div>
+                <div class="feedback-submit-head">
+                    <div class="card-title">提交反馈</div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnFeedbackXianyu" style="display:none;">闲鱼购买</button>
+                </div>
                 <p class="hint" style="margin-bottom:12px;line-height:1.5;">欢迎反馈 APP 使用中的 BUG 或功能优化建议，我们会在管理后台查看并尽快回复（回复内容将显示在下方列表）。</p>
                 <div class="form-group fb-type-options">
                     <label class="batch-salary-mode-title">反馈类型</label>
@@ -1412,11 +1428,11 @@
             }
         }
 
-        function renderFeedbackWechatPayQr(displayUrl, showXianyu) {
+        function renderFeedbackWechatPayQr(displayUrl, showQr) {
             var card = document.getElementById('feedbackWechatPayCard');
             var img = document.getElementById('feedbackWechatPayImg');
             if (!card || !img) return;
-            if (showXianyu === false) {
+            if (!showQr) {
                 card.style.display = 'none';
                 img.removeAttribute('src');
                 return;
@@ -1431,18 +1447,26 @@
             card.style.display = 'block';
         }
 
+        var feedbackXianyuPurchaseUrl = '';
+
+        function updateFeedbackXianyuButton(xianyuText, show) {
+            var btn = document.getElementById('btnFeedbackXianyu');
+            if (!btn) return;
+            feedbackXianyuPurchaseUrl = xianyuText != null ? String(xianyuText).trim() : '';
+            btn.style.display = show && feedbackXianyuPurchaseUrl ? '' : 'none';
+        }
+
         function applyFeedbackConfigData(data) {
             if (!data) {
                 renderFeedbackWechatPayQr('', false);
+                updateFeedbackXianyuButton('', false);
                 return;
             }
-            var show =
-                data.show_xianyu_purchase !== false &&
-                !!(data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url);
-            renderFeedbackWechatPayQr(
-                data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url,
-                show
-            );
+            var show = data.show_xianyu_purchase !== false;
+            var qrUrl = data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url;
+            renderFeedbackWechatPayQr(qrUrl, show && !!qrUrl);
+            var xy = data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
+            updateFeedbackXianyuButton(xy, show && !!xy);
         }
 
         function loadFeedbackWechatPayQr() {
@@ -1461,6 +1485,55 @@
                     applyFeedbackConfigData(null);
                 });
         }
+
+        (function bindFeedbackXianyuButton() {
+            var btn = document.getElementById('btnFeedbackXianyu');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                if (typeof window.trackUserAction === 'function') {
+                    window.trackUserAction('track_xianyu_purchase_click', {
+                        page: 'consult',
+                        source: 'feedback_tab'
+                    });
+                }
+                function doCopy(txt) {
+                    if (!txt) {
+                        alert('暂未配置闲鱼购买文案，请在管理后台「引导安装」中填写');
+                        return;
+                    }
+                    if (typeof copyXianyuPurchaseText !== 'function') {
+                        alert('复制功能不可用');
+                        return;
+                    }
+                    copyXianyuPurchaseText(txt).catch(function () {
+                        alert('复制失败，请长按手动复制');
+                    });
+                }
+                if (feedbackXianyuPurchaseUrl) {
+                    doCopy(feedbackXianyuPurchaseUrl);
+                    return;
+                }
+                authFetch('api/feedback.php?action=config')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (res) {
+                        if (res.code === 200 && res.data) {
+                            applyFeedbackConfigData(res.data);
+                            var t =
+                                res.data.xianyu_purchase_url != null
+                                    ? String(res.data.xianyu_purchase_url).trim()
+                                    : '';
+                            doCopy(t);
+                            return;
+                        }
+                        doCopy('');
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            });
+        })();
 
         function initTabs() {
             document.querySelectorAll('.tabs .tab').forEach(function(a) {

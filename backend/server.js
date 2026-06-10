@@ -578,23 +578,34 @@ async function resolveEffectiveSalesChannel(req) {
 async function shouldHideXianyuForRequest(req) {
   var raw = await getInstallPackageSettingsFromDb();
   var hideList = raw.xianyu_hide_channels || [];
+  var uid =
+    req && req.authUserId != null && String(req.authUserId).trim() !== ''
+      ? String(req.authUserId).trim()
+      : tryAuthUserIdFromRequest(req);
+  if (uid) {
+    var userCh = await getUserSalesPromoChannel(uid);
+    return shouldHideXianyuForSalesChannel(userCh, hideList);
+  }
   var ch = await resolveEffectiveSalesChannel(req);
   return shouldHideXianyuForSalesChannel(ch, hideList);
 }
 
-function feedbackConfigPayload(qrRef, hideXianyu) {
+function feedbackConfigPayload(qrRef, hideXianyu, xianyuText) {
   if (hideXianyu) {
     return {
       wechat_pay_qrcode_url: '',
       wechat_pay_qrcode_display_url: '',
+      xianyu_purchase_url: '',
       show_xianyu_purchase: false
     };
   }
   var ref = qrRef != null ? String(qrRef).trim() : '';
+  var xy = xianyuText != null ? String(xianyuText).trim() : '';
   return {
     wechat_pay_qrcode_url: ref,
     wechat_pay_qrcode_display_url: resolvePublicAssetUrl(ref),
-    show_xianyu_purchase: !!ref
+    xianyu_purchase_url: xy,
+    show_xianyu_purchase: !!(ref || xy)
   };
 }
 
@@ -5779,10 +5790,12 @@ async function handleFeedbackGet(req, res) {
   if (action === 'config') {
     try {
       var qrRef = await getWechatPayQrcodeUrl();
+      var installRaw = await getInstallPackageSettingsFromDb();
+      var xianyuText = sanitizeXianyuPurchaseText(installRaw.xianyu);
       var hideXianyu = await shouldHideXianyuForRequest(req);
       return res.json({
         code: 200,
-        data: feedbackConfigPayload(qrRef, hideXianyu)
+        data: feedbackConfigPayload(qrRef, hideXianyu, hideXianyu ? '' : xianyuText)
       });
     } catch (e) {
       console.error(e);
@@ -5801,8 +5814,10 @@ async function handleFeedbackGet(req, res) {
     );
     conn.release();
     var qrRef = await getWechatPayQrcodeUrl();
+    var installRaw = await getInstallPackageSettingsFromDb();
+    var xianyuText = sanitizeXianyuPurchaseText(installRaw.xianyu);
     var hideXianyu = await shouldHideXianyuForRequest(req);
-    var fbCfg = feedbackConfigPayload(qrRef, hideXianyu);
+    var fbCfg = feedbackConfigPayload(qrRef, hideXianyu, hideXianyu ? '' : xianyuText);
     var out = rows.map(function (r) {
       return {
         id: r.id,
