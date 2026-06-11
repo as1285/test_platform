@@ -1039,6 +1039,22 @@
   var CERT_TABLE_ROW_H = 56;
   var CERT_FOOTER_BLOCK_H = 292;
   var CERT_BODY_FONT = 'SimSun, STSong, serif';
+  /** 导出倍率：2x 画布提升文字、表格线与公章锐度（逻辑坐标不变） */
+  var CERT_RENDER_SCALE = 2;
+
+  function createCertCanvas(logicalWidth, logicalHeight) {
+    var scale = CERT_RENDER_SCALE;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(logicalWidth * scale);
+    canvas.height = Math.round(logicalHeight * scale);
+    var ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    return { canvas: canvas, ctx: ctx };
+  }
 
   function chunkRecords(records, pageSize) {
     pageSize = pageSize || CERT_MAX_ROWS_PER_PAGE;
