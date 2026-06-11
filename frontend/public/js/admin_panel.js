@@ -6075,11 +6075,13 @@
                         html += '</td>';
                         html += '</tr>';
                         if (!isSuper) {
-                            html += '<tr><td colspan="6">';
+                            html += '<tr id="admin_acc_edit_row_' + accKey + '" style="display:none;"><td colspan="6">';
+                            html += '<div class="admin-account-edit-panel" data-username="' + esc(a.username) + '">';
                             html += '<div class="form-row" style="margin:0 0 6px;align-items:center;gap:8px;">';
                             html += '<label style="font-size:12px;color:#666;">姓名</label>';
                             html += '<input type="text" class="admin-account-fullname" data-username="' + esc(a.username) + '" value="' + esc(a.full_name || '') + '" placeholder="填写姓名">';
                             html += '</div>';
+                            html += '<div style="margin:0 0 6px;font-size:12px;color:#666;">可用菜单</div>';
                             html += '<div class="form-row admin-account-menu-row" data-username="' + esc(a.username) + '" style="gap:12px;margin:0;padding:0 0 2px;">';
                             adminMenuKeyList.forEach(function (mk) {
                                 var checked = a.menus && a.menus.indexOf(mk) >= 0;
@@ -6088,6 +6090,10 @@
                                 html += '<span>' + esc(menuLabel(mk)) + '</span>';
                                 html += '</label>';
                             });
+                            html += '</div>';
+                            html += '<div style="margin-top:8px;">';
+                            html += '<button type="button" class="btn-sm btn-primary btn-admin-account-save" data-username="' + esc(a.username) + '">保存</button>';
+                            html += '</div>';
                             html += '</div></td></tr>';
                         }
                         html +=
@@ -6632,6 +6638,22 @@
             var editBtn = e.target.closest('.btn-admin-account-edit');
             if (editBtn) {
                 var uname = editBtn.getAttribute('data-username');
+                var keyE = keyForAdminAccount(uname);
+                var editRow = document.getElementById('admin_acc_edit_row_' + keyE);
+                if (!editRow) return;
+                var openingE = editRow.style.display === 'none';
+                if (!openingE) {
+                    editRow.style.display = 'none';
+                    editBtn.textContent = '改菜单';
+                    return;
+                }
+                editRow.style.display = '';
+                editBtn.textContent = '收起';
+                return;
+            }
+            var saveBtn = e.target.closest('.btn-admin-account-save');
+            if (saveBtn) {
+                var uname = saveBtn.getAttribute('data-username');
                 var row = document.querySelector('.admin-account-menu-row[data-username="' + uname + '"]');
                 var pwdInput = document.querySelector('.admin-account-newpwd[data-username="' + uname + '"]');
                 var fullNameInput = document.querySelector('.admin-account-fullname[data-username="' + uname + '"]');
