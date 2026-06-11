@@ -175,28 +175,31 @@
             line-height: 1.2;
         }
 
-        /* 激活码弹窗（含闲鱼购买，链接来自后台「引导安装」） */
+        /* 激活码弹窗（含闲鱼购买）；Android WebView 下 flex 居中易贴底，改用 fixed + transform */
         .activate-modal-root {
             position: fixed;
             inset: 0;
             z-index: 9999;
             display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
             box-sizing: border-box;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .activate-modal-root.is-open {
-            display: flex;
+            display: block;
         }
         .activate-modal-mask {
-            position: absolute;
+            position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.45);
         }
         .activate-modal-panel {
-            position: relative;
-            width: 100%;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            width: calc(100% - 32px);
             max-width: 320px;
             background: #fff;
             border-radius: 12px;
