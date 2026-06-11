@@ -499,17 +499,31 @@
     return raw;
   }
 
+  /** 章面机关名：只保留到市级，不写区/县/新区（如「国家税务局重庆市税务局」） */
+  function authorityToCityStampText(raw) {
+    var v = cleanText(raw);
+    if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
+    if (/国家税务局.+?市税务局/.test(v) && v.indexOf('区') < 0 && v.indexOf('县') < 0) {
+      return v.replace(/国家税务总局/g, '国家税务局');
+    }
+    var m = v.match(/国家(?:税务总)?局([^省自治区]+?市)/);
+    if (m) return '国家税务局' + m[1] + '税务局';
+    if (v.indexOf('深圳市') >= 0) return '国家税务局深圳市税务局';
+    if (v.indexOf('税务局') >= 0) {
+      return v
+        .replace(/国家税务总局/g, '国家税务局')
+        .replace(/(.+?市)[^市]+?(税务局|税务分局).*/, '$1税务局');
+    }
+    return v;
+  }
+
   function stampAuthority(rows) {
     rows = Array.isArray(rows) ? rows : [];
     for (var i = 0; i < rows.length; i++) {
-      var v = cleanText(rows[i] && rows[i].tax_authority);
-      if (!v) continue;
-      if (/^[\dA-Z]{15,20}$/.test(v)) continue;
-      if (v.indexOf('国家税务总局深圳市') >= 0) return '国家税务总局深圳市税务局';
-      if (v.indexOf('税务局') >= 0) return v;
-      return v;
+      var t = authorityToCityStampText(rows[i] && rows[i].tax_authority);
+      if (t) return t;
     }
-    return '国家税务总局深圳市税务局';
+    return '国家税务局重庆市税务局';
   }
 
   function queryCode(app) {
@@ -1403,40 +1417,40 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（参考官方：整章同色深红，弧文与「业务专用章」一致） */
+  /** 纳税记录右下角章（参考官方电子章：细圆框、上弧机关名、中心五角星、下横「业务专用章」） */
   function drawStamp(ctx, cx, cy, authority) {
-    var name = cleanText(authority) || '国家税务总局深圳市税务局';
-    var stampRed = '#c01820';
-    var radius = 72;
-    var font = 'SimSun, STSong, serif';
+    var name = authorityToCityStampText(authority) || '国家税务局重庆市税务局';
+    var stampRed = '#c41e24';
+    var radius = 74;
+    var font = 'STSong, SimSun, serif';
     ctx.save();
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = stampRed;
-    ctx.lineWidth = 2.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
     var arcSize = name.length > 14 ? 12 : name.length > 11 ? 13 : 14;
-    var arcGap = name.length > 14 ? 6 : name.length > 11 ? 5 : 4;
-    drawArcText(ctx, name, cx, cy, radius - 9, Math.PI * 1.06, Math.PI * 1.94, {
+    var arcGap = name.length > 14 ? 5 : name.length > 11 ? 4 : 3;
+    drawArcText(ctx, name, cx, cy, radius - 11, Math.PI * 1.08, Math.PI * 1.92, {
       size: arcSize,
       color: stampRed,
-      strokeWidth: 0.4,
+      strokeWidth: 0,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 1.04
+      maxSpanRad: Math.PI * 0.98
     });
     ctx.save();
     ctx.fillStyle = stampRed;
-    drawStar(ctx, cx, cy - 2, 10, 4.2);
+    drawStar(ctx, cx, cy, 11, 4.6);
     ctx.restore();
-    drawSpacedText(ctx, '业务专用章', cx, cy + 24, {
+    drawSpacedText(ctx, '业务专用章', cx, cy + 22, {
       size: 13,
       weight: 'normal',
       color: stampRed,
-      letterGap: 5,
-      font: 'STSong, SimSun, serif',
+      letterGap: 6,
+      font: font,
       baseline: 'middle'
     });
   }
