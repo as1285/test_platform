@@ -883,7 +883,9 @@
     ctx.font = (opt.weight ? opt.weight + ' ' : '') + (opt.size || 28) + 'px ' + (opt.font || 'serif');
     ctx.textAlign = opt.align || 'left';
     ctx.textBaseline = opt.baseline || 'alphabetic';
-    ctx.fillText(String(text == null ? '' : text), x, y);
+    var px = Math.round(x);
+    var py = Math.round(y);
+    ctx.fillText(String(text == null ? '' : text), px, py);
     ctx.restore();
   }
 
@@ -991,8 +993,10 @@
   var TAX_RECORD_HEADER_SRC = '/tax_record_header.png';
   /** 纳税记录页眉楷体（纳税人信息等正文） */
   var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
-  /** 页眉整图在画布上的显示宽度（原图 297×190） */
+  /** 页眉整图在画布上的显示宽度（原图约 305px 宽，避免大幅放大导致模糊） */
   var CERT_HEADER_DISPLAY_W = 580;
+  /** 导出倍率：2x 像素密度，提升文字/表格/公章清晰度 */
+  var CERT_RENDER_SCALE = 2;
 
   function loadTaxRecordHeader() {
     return new Promise(function (resolve) {
@@ -1015,10 +1019,18 @@
 
   /** 绘制页眉整图（国徽+标题），返回实际占用高度；失败返回 0 */
   function drawTaxRecordHeader(ctx, headerImg, centerX, topY, targetW) {
-    var h = taxRecordHeaderDisplayHeight(headerImg, targetW);
-    if (!h || !headerImg || !headerImg.complete) return 0;
-    var w = targetW || headerImg.naturalWidth;
+    if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) return 0;
+    var maxW = headerImg.naturalWidth * CERT_RENDER_SCALE;
+    var w = Math.min(targetW || headerImg.naturalWidth, maxW);
+    var h = taxRecordHeaderDisplayHeight(headerImg, w);
+    if (!h) return 0;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
     ctx.drawImage(headerImg, centerX - w / 2, topY, w, h);
+    ctx.restore();
     return h;
   }
 
@@ -1095,10 +1107,16 @@
       var explainY = y0 + tableTotalH + 48;
       var height = explainY + CERT_FOOTER_BLOCK_H;
       var dataRowsOnPage = rows.length;
+      var renderScale = CERT_RENDER_SCALE;
       var canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = Math.round(width * renderScale);
+      canvas.height = Math.round(height * renderScale);
       var ctx = canvas.getContext('2d');
+      ctx.scale(renderScale, renderScale);
+      ctx.imageSmoothingEnabled = true;
+      if (typeof ctx.imageSmoothingQuality === 'string') {
+        ctx.imageSmoothingQuality = 'high';
+      }
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = '#d6d6d6';
@@ -1275,7 +1293,12 @@
       return new Promise(function (resolve) {
         QRCode.toDataURL(
           verifyUrl,
-          { width: 185, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } },
+          {
+            width: 185 * CERT_RENDER_SCALE,
+            margin: 1,
+            errorCorrectionLevel: 'M',
+            color: { dark: '#111111', light: '#ffffff' }
+          },
           function (err, dataUrl) {
             if (err || !dataUrl) {
               resolve(paintAllPages(null, headerImg));
