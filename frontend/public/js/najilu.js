@@ -1333,20 +1333,6 @@
       .join('');
   }
 
-  function drawStar(ctx, cx, cy, outer, inner) {
-    ctx.beginPath();
-    for (var i = 0; i < 10; i++) {
-      var r = i % 2 === 0 ? outer : inner;
-      var a = -Math.PI / 2 + i * Math.PI / 5;
-      var x = cx + Math.cos(a) * r;
-      var y = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
   /** 横排文字，可加大字间距（章内「业务专用章」） */
   function drawSpacedText(ctx, text, cx, y, opt) {
     opt = opt || {};
@@ -1399,7 +1385,11 @@
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
     ctx.lineWidth = strokeW;
-    ctx.font = (opt.size || 16) + 'px ' + (opt.font || 'SimSun, STSong, serif');
+    ctx.font =
+      (opt.weight ? opt.weight + ' ' : '') +
+      (opt.size || 16) +
+      'px ' +
+      (opt.font || 'SimSun, STSong, serif');
     var widths = chars.map(function (ch) {
       return ctx.measureText(ch).width;
     });
@@ -1456,7 +1446,7 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（参考官方电子章：细圆框、上弧机关名、中心五角星、下横「业务专用章」） */
+  /** 纳税记录右下角章（参考官方电子章：细圆框、上弧加粗机关名、下横「业务专用章」，无中心五角星） */
   function drawStamp(ctx, cx, cy, authority) {
     var name = authorityToCityStampText(authority) || '国家税务局重庆市税务局';
     var stampRed = '#c41e24';
@@ -1474,17 +1464,14 @@
     var arcGap = name.length > 14 ? 5 : name.length > 11 ? 4 : 3;
     drawArcText(ctx, name, cx, cy, radius - 11, Math.PI * 1.08, Math.PI * 1.92, {
       size: arcSize,
+      weight: 'bold',
       color: stampRed,
       strokeWidth: 0,
       font: font,
       arcLetterGap: arcGap,
       maxSpanRad: Math.PI * 0.98
     });
-    ctx.save();
-    ctx.fillStyle = stampRed;
-    drawStar(ctx, cx, cy, 11, 4.6);
-    ctx.restore();
-    drawSpacedText(ctx, '业务专用章', cx, cy + 22, {
+    drawSpacedText(ctx, '业务专用章', cx, cy + 16, {
       size: 13,
       weight: 'normal',
       color: stampRed,
