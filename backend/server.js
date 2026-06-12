@@ -3271,7 +3271,7 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php */
+/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、message.php 列表/详情 */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
@@ -3279,6 +3279,12 @@ function isUnactivatedAllowedRequest(req) {
   }
   if (path.endsWith('/user.php')) {
     return true;
+  }
+  if (path.endsWith('/message.php') && req.method === 'GET') {
+    var msgAction = req.query && req.query.action != null ? String(req.query.action) : '';
+    if (msgAction === 'list' || msgAction === 'detail') {
+      return true;
+    }
   }
   if (req.method === 'POST') {
     var action = req.body && req.body.action != null ? String(req.body.action) : '';
@@ -6739,9 +6745,9 @@ app.get('/api/tax.php', async function taxGetEntry(req, res) {
   });
 });
 app.post('/api/tax.php', requireAuthAndActivatedUnlessAllowed, handleTaxPost);
-app.get('/api/message.php', requireAuth, requireActivated, handleMessageGet);
+app.get('/api/message.php', requireAuthAndActivatedUnlessAllowed, handleMessageGet);
 app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
-app.get('/message.php', requireAuth, requireActivated, handleMessageGet);
+app.get('/message.php', requireAuthAndActivatedUnlessAllowed, handleMessageGet);
 app.post('/message.php', requireAuth, requireActivated, handleMessagePost);
 app.get('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserGet);
 app.post('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserPost);
@@ -6912,7 +6918,6 @@ async function handleAuthPost(req, res) {
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
         var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
-        // 仅注册请求显式携带 ch/sales_ch 时写入用户渠道；设备归因不写入，避免闲鱼等自有流量误计入代理推广
         var out = await registerUser(
           body.username,
           body.password,
