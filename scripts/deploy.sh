@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+bash "$ROOT/scripts/regenerate-ios-mobileconfig.sh"
 bash "$ROOT/scripts/generate-selfsigned-https-cert.sh"
 cp -f "$ROOT/certs/selfsigned-ip.crt" "$ROOT/certs/active-fullchain.crt"
 cp -f "$ROOT/certs/selfsigned-ip.key" "$ROOT/certs/active-privkey.key"
