@@ -919,7 +919,8 @@
         SALES_CHANNEL_KEY,
         JSON.stringify({
           ch: ch,
-          at: Date.now()
+          at: Date.now(),
+          source: 'url'
         })
       );
     } catch (e) {}
@@ -953,6 +954,34 @@
 
   function isInAppRegisterDisabled() {
     return isCordovaTaxAppShell() && isDistributorApp();
+  }
+
+  /** 注册时绑定代理渠道：普通注册仅认当前页 URL 的 ch；安装指南来源可沿用非 IP 归因缓存 */
+  function getRegisterSalesChannel(fromInstallGuide) {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var urlCh = sanitizeSalesChannelId(p.get('ch') || p.get('channel') || '');
+      if (urlCh) {
+        return urlCh;
+      }
+      if (!fromInstallGuide) {
+        return '';
+      }
+      var raw = localStorage.getItem(SALES_CHANNEL_KEY);
+      if (!raw) {
+        return '';
+      }
+      var o = JSON.parse(raw);
+      if (!o || !o.ch) {
+        return '';
+      }
+      if (o.source === 'server_resolve' || o.source === 'install_packages') {
+        return '';
+      }
+      return sanitizeSalesChannelId(o.ch);
+    } catch (e) {
+      return '';
+    }
   }
 
   function getSalesChannel() {
@@ -1540,6 +1569,7 @@
   window.clearInstallGuideReferral = clearInstallGuideReferral;
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
   window.getSalesChannel = getSalesChannel;
+  window.getRegisterSalesChannel = getRegisterSalesChannel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
   window.isDistributorApp = isDistributorApp;
   window.isInAppRegisterDisabled = isInAppRegisterDisabled;

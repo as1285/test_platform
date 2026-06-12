@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260608-install-referral"></script>
+    <script src="/js/auth.js?v=20260612-register-ch"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -284,7 +284,9 @@
             var fromInstallGuide =
                 typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
             var regSalesCh =
-                typeof window.getSalesChannel === 'function' ? window.getSalesChannel() : '';
+                typeof window.getRegisterSalesChannel === 'function'
+                    ? window.getRegisterSalesChannel(fromInstallGuide)
+                    : '';
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
