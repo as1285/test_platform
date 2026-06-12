@@ -617,6 +617,62 @@
     return null;
   }
 
+  function deleteApplication(id) {
+    var apps = loadApplications();
+    var next = apps.filter(function (app) {
+      return String(app.id) !== String(id);
+    });
+    if (next.length === apps.length) {
+      return false;
+    }
+    saveApplications(next);
+    return true;
+  }
+
+  var APP_LONG_PRESS_MS = 550;
+  var appLongPressTimer = null;
+  var appLongPressTriggered = false;
+
+  function clearApplicationLongPress() {
+    if (appLongPressTimer) {
+      clearTimeout(appLongPressTimer);
+      appLongPressTimer = null;
+    }
+    document.querySelectorAll('.application-card.is-longpress').forEach(function (el) {
+      el.classList.remove('is-longpress');
+    });
+  }
+
+  function confirmDeleteApplication(id) {
+    var app = findApplication(id);
+    if (!app) {
+      alert('申请记录不存在');
+      return;
+    }
+    var period = periodText(app.period_start, app.period_end);
+    if (!confirm('确定删除这条申请记录？\n税款所属期：' + period)) {
+      return;
+    }
+    if (!deleteApplication(id)) {
+      alert('删除失败');
+      return;
+    }
+    renderApplicationsPage();
+  }
+
+  function startApplicationLongPress(cardEl, id) {
+    clearApplicationLongPress();
+    appLongPressTriggered = false;
+    if (cardEl) {
+      cardEl.classList.add('is-longpress');
+    }
+    appLongPressTimer = setTimeout(function () {
+      appLongPressTriggered = true;
+      clearApplicationLongPress();
+      confirmDeleteApplication(id);
+    }, APP_LONG_PRESS_MS);
+  }
+
   function renderBackBtn(backHref) {
     var href =
       backHref === 'back' || backHref === ':back' || backHref == null || backHref === ''
@@ -659,7 +715,8 @@
       '<div class="record-tips">' +
       '<div>温馨提示：</div>' +
       '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
-      '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>。</div>' +
+      '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>；</div>' +
+      '<div>3.长按记录可删除。</div>' +
       '</div><div class="application-list">';
 
     if (!apps.length) {
@@ -678,7 +735,23 @@
     }
     html += '</div></div>';
     document.body.innerHTML = html;
-    document.body.addEventListener('click', function (e) {
+    bindApplicationListEvents();
+  }
+
+  function bindApplicationListEvents() {
+    var list = document.querySelector('.application-list');
+    if (!list || list.getAttribute('data-events-bound') === '1') {
+      return;
+    }
+    list.setAttribute('data-events-bound', '1');
+
+    list.addEventListener('click', function (e) {
+      if (appLongPressTriggered) {
+        appLongPressTriggered = false;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       var btn = e.target.closest ? e.target.closest('.application-action') : null;
       if (!btn) return;
       var id = btn.getAttribute('data-id');
@@ -693,6 +766,28 @@
         saveCertificate(app);
       }
     });
+
+    function onPressStart(ev) {
+      if (ev.target.closest && ev.target.closest('.application-action')) {
+        return;
+      }
+      var card = ev.target.closest ? ev.target.closest('.application-card') : null;
+      if (!card) {
+        return;
+      }
+      var id = card.getAttribute('data-id');
+      if (id) {
+        startApplicationLongPress(card, id);
+      }
+    }
+
+    list.addEventListener('touchstart', onPressStart, { passive: true });
+    list.addEventListener('mousedown', onPressStart);
+    list.addEventListener('touchend', clearApplicationLongPress);
+    list.addEventListener('touchcancel', clearApplicationLongPress);
+    list.addEventListener('touchmove', clearApplicationLongPress);
+    list.addEventListener('mouseup', clearApplicationLongPress);
+    list.addEventListener('mouseleave', clearApplicationLongPress);
   }
 
   function generateRecord(start, end, user, records) {

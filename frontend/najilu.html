@@ -412,6 +412,13 @@
         .application-card {
             padding: 16px 16px 10px;
             border-bottom: 8px solid #f5f6fa;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .application-card.is-longpress {
+            background: #f0f6ff;
         }
 
         .application-line {
@@ -703,7 +710,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260611-stamp-bold"></script>
+    <script src="/js/najilu.js?v=20260611-rec-longpress"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>
