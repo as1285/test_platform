@@ -10647,7 +10647,8 @@ async function handlePublicInstallPackages(req, res) {
     var qq = sanitizeInstallDownloadUrl(raw.qq);
     var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
     var salesCh = await resolveEffectiveSalesChannel(req);
-    var hideXianyu = shouldHideXianyuForSalesChannel(salesCh, raw.xianyu_hide_channels);
+    // 已登录用户仅以账号 sales_promo_channel 判断是否隐藏闲鱼，避免 IP 归因误判普通注册用户
+    var hideXianyu = await shouldHideXianyuForRequest(req);
     if (hideXianyu) {
       xianyu = '';
       var agentApk = sanitizeInstallDownloadUrl(raw.agent_android);

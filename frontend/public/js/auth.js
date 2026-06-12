@@ -976,6 +976,10 @@
   }
 
   function getPublicInstallPackagesUrl() {
+    // 已登录用户不带 localStorage 推广渠道，由服务端按账号 sales_promo_channel 判断
+    if (getToken()) {
+      return '/api/public/install-packages';
+    }
     var ch = getSalesChannel();
     if (ch) {
       return '/api/public/install-packages?sales_ch=' + encodeURIComponent(ch);
@@ -1033,16 +1037,18 @@
         if (body && body.code === 200 && body.data && body.data.sales_ch) {
           var ch = sanitizeSalesChannelId(body.data.sales_ch);
           if (ch) {
-            try {
-              localStorage.setItem(
-                SALES_CHANNEL_KEY,
-                JSON.stringify({
-                  ch: ch,
-                  at: Date.now(),
-                  source: 'server_resolve'
-                })
-              );
-            } catch (e) {}
+            if (!getToken()) {
+              try {
+                localStorage.setItem(
+                  SALES_CHANNEL_KEY,
+                  JSON.stringify({
+                    ch: ch,
+                    at: Date.now(),
+                    source: 'server_resolve'
+                  })
+                );
+              } catch (e) {}
+            }
             return ch;
           }
         }
@@ -1072,18 +1078,23 @@
     }
   }
 
-  function refreshPublicInstallPackagesUi() {
+  function fetchPublicInstallPackages() {
     var url = getPublicInstallPackagesUrl();
     var opts = { credentials: 'same-origin' };
-    var req =
-      getToken() && typeof authFetch === 'function' ? authFetch(url, opts) : fetch(url, opts);
+    return getToken() && typeof authFetch === 'function'
+      ? authFetch(url, opts)
+      : fetch(url, opts);
+  }
+
+  function refreshPublicInstallPackagesUi() {
+    var req = fetchPublicInstallPackages();
     return req
       .then(function (r) {
         return r.json();
       })
       .then(function (body) {
         var data = body && body.code === 200 && body.data ? body.data : null;
-        if (data && data.sales_channel && !getSalesChannel()) {
+        if (data && data.sales_channel && !getToken() && !getSalesChannel()) {
           try {
             localStorage.setItem(
               SALES_CHANNEL_KEY,
@@ -1537,6 +1548,7 @@
   window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
   window.refreshPublicInstallPackagesUi = refreshPublicInstallPackagesUi;
+  window.fetchPublicInstallPackages = fetchPublicInstallPackages;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };
