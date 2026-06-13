@@ -410,15 +410,15 @@
             flex-shrink: 0;
         }
 
-        /* iOS：细线 SVG 绘制「?」，避免 PingFang 字重偏厚（含 iPhone 17 标准版 393×852，不依赖机型 class） */
+        /* iOS：SVG 绘制「?」，笔画适中（介于 PingFang 粗体与极细线之间） */
         html.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-text {
             display: none;
         }
 
         html.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg {
             display: block;
-            width: 6px;
-            height: 7.5px;
+            width: 7.5px;
+            height: 9px;
         }
 
         html.user-font-custom.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-text {
@@ -773,8 +773,8 @@
         html.app-ios-iphone17promax.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg,
         html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .summary-label .icon .icon-help-svg,
         html.app-ios-iphone17promax body.page-shuiming-result .summary-label .icon .icon-help-svg {
-            width: 5px;
-            height: 6.5px;
+            width: 6.5px;
+            height: 8px;
         }
 
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,
@@ -944,7 +944,7 @@
         <div class="summary">
             <div class="summary-item">
                 <span class="summary-label">
-                    <span class="summary-label-text">收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明"><span class="icon-help-text" aria-hidden="true">?</span><svg class="icon-help-svg" viewBox="0 0 7 9" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M3.5 1.1c-1.35 0-2.35.9-2.35 2 0 .58.3 1.05.75 1.32" fill="none" stroke="currentColor" stroke-width=".58" stroke-linecap="round"></path><circle cx="3.5" cy="7.45" r=".58" fill="currentColor"></circle></svg></span><span class="summary-colon">：</span></span>
+                    <span class="summary-label-text">收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明"><span class="icon-help-text" aria-hidden="true">?</span><svg class="icon-help-svg" viewBox="0 0 7 9" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M3.5 1c-1.3 0-2.25.85-2.25 1.95 0 .55.28 1 .72 1.28" fill="none" stroke="currentColor" stroke-width=".88" stroke-linecap="round"></path><circle cx="3.5" cy="7.4" r=".72" fill="currentColor"></circle></svg></span><span class="summary-colon">：</span></span>
                 </span>
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
