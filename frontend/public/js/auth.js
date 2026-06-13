@@ -177,7 +177,23 @@
     }
   }
 
-  /** iPhone 17 Pro Max / 16 Pro Max 等 6.9 寸档逻辑屏约 440×956（容差）。 */
+  /** iPhone 17 标准版等 6.1 寸档逻辑屏约 393×852（容差）。 */
+  function isIPhone393x852Viewport() {
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 390 && shortSide <= 396 && longSide >= 848 && longSide <= 856;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** iPhone 17 / 17 Pro Max 等 6.9 寸档逻辑屏约 440×956（容差）。 */
   function isIPhone440x956Viewport() {
     try {
       var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
@@ -208,7 +224,7 @@
     if (/iPhone\s*17(?:\s*Pro)?\b|iPhone\s*17\s*Air\b|iPhone18,1\b|iPhone18,3\b|iPhone18,4\b|iPhone19,1\b/i.test(ua)) {
       return true;
     }
-    if (getIOSMajorVersion() >= 26 && isIPhone402x874Viewport()) {
+    if (getIOSMajorVersion() >= 26 && (isIPhone393x852Viewport() || isIPhone402x874Viewport())) {
       return true;
     }
     return false;

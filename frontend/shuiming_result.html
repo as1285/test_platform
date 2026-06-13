@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260613-iphone17-help-icon"></script>
+    <script src="/js/auth.js?v=20260613-ios-help-svg"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260604-ufs-chip-fix">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260604-ufs-chip-fix" data-scope=".page-root"></script>
@@ -201,6 +201,19 @@
             flex-shrink: 0;
             box-sizing: border-box;
             vertical-align: middle;
+        }
+
+        .summary-label .icon .icon-help-svg {
+            display: none;
+            width: 5px;
+            height: 6.5px;
+            flex-shrink: 0;
+            pointer-events: none;
+        }
+
+        .summary-label .icon .icon-help-text {
+            display: block;
+            line-height: 1;
         }
 
         /* 问号与冒号紧贴；与「收入合计」仅留极小间距，贴近官方 */
@@ -392,8 +405,28 @@
             height: 16px;
             min-width: 16px;
             min-height: 16px;
-            font-size: 11px;
+            font-size: 0;
+            line-height: 0;
             flex-shrink: 0;
+        }
+
+        /* iOS：细线 SVG 绘制「?」，避免 PingFang 字重偏厚（含 iPhone 17 标准版 393×852，不依赖机型 class） */
+        html.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-text {
+            display: none;
+        }
+
+        html.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg {
+            display: block;
+            width: 6px;
+            height: 7.5px;
+        }
+
+        html.user-font-custom.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-text {
+            display: none !important;
+        }
+
+        html.user-font-custom.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg {
+            display: block !important;
         }
 
         .list-date {
@@ -720,7 +753,7 @@
         }
 
         /*
-         * iPhone 17 系列：汇总问号圆保持约 13px；用细线 SVG 绘制「?」，避免 PingFang 字重过粗。
+         * iPhone 17 Pro / Pro Max：汇总问号圆保持约 13px，内嵌 SVG 略缩小。
          */
         html.app-ios-iphone17pro.platform-ios body.page-shuiming-result .summary-label .icon,
         html.app-ios-iphone17pro body.page-shuiming-result .summary-label .icon,
@@ -732,14 +765,16 @@
             height: 13px;
             min-width: 13px;
             min-height: 13px;
-            font-size: 0;
-            line-height: 0;
-            color: transparent;
-            font-synthesis: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 9'%3E%3Cpath d='M3.5 1.1c-1.35 0-2.35.9-2.35 2 0 .58.3 1.05.75 1.32' fill='none' stroke='%230e60f1' stroke-width='.58' stroke-linecap='round'/%3E%3Ccircle cx='3.5' cy='7.45' r='.58' fill='%230e60f1'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 5px 6.5px;
+        }
+
+        html.app-ios-iphone17pro.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg,
+        html.app-ios-iphone17pro body.page-shuiming-result .summary-label .icon .icon-help-svg,
+        html.app-ios-iphone17promax.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .summary-label .icon .icon-help-svg,
+        html.app-ios-iphone17promax.app-ios-iphone-promax-font body.page-shuiming-result .summary-label .icon .icon-help-svg,
+        html.app-ios-iphone17promax body.page-shuiming-result .summary-label .icon .icon-help-svg {
+            width: 5px;
+            height: 6.5px;
         }
 
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,
@@ -909,7 +944,7 @@
         <div class="summary">
             <div class="summary-item">
                 <span class="summary-label">
-                    <span class="summary-label-text">收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明">?</span><span class="summary-colon">：</span></span>
+                    <span class="summary-label-text">收入合计</span><span class="summary-help-with-colon"><span class="icon" title="说明"><span class="icon-help-text" aria-hidden="true">?</span><svg class="icon-help-svg" viewBox="0 0 7 9" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M3.5 1.1c-1.35 0-2.35.9-2.35 2 0 .58.3 1.05.75 1.32" fill="none" stroke="currentColor" stroke-width=".58" stroke-linecap="round"></path><circle cx="3.5" cy="7.45" r=".58" fill="currentColor"></circle></svg></span><span class="summary-colon">：</span></span>
                 </span>
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
