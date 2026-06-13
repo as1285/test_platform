@@ -720,7 +720,8 @@
         }
 
         /*
-         * iPhone 17 Pro / Pro Max：汇总字号放大后问号圆保持约 13px，勿随字高 1:1 放大。
+         * iPhone 17 Pro / Pro Max：汇总字号放大后问号圆保持约 13px，勿随字高 1:1 放大；
+         * PingFang 下「?」字重偏厚，降为 300 并略缩小字号。
          */
         html.app-ios-iphone17pro.platform-ios body.page-shuiming-result .summary-label .icon,
         html.app-ios-iphone17pro body.page-shuiming-result .summary-label .icon,
@@ -732,7 +733,9 @@
             height: 13px;
             min-width: 13px;
             min-height: 13px;
-            font-size: 9px;
+            font-size: 8px;
+            font-weight: 300;
+            font-synthesis: none;
         }
 
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,
