@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260603-no-shuiming-bar"></script>
+    <script src="/js/auth.js?v=20260613-iphone17-help-icon"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260604-ufs-chip-fix">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260604-ufs-chip-fix" data-scope=".page-root"></script>
@@ -720,8 +720,7 @@
         }
 
         /*
-         * iPhone 17 Pro / Pro Max：汇总字号放大后问号圆保持约 13px，勿随字高 1:1 放大；
-         * PingFang 下「?」字重偏厚，降为 300 并略缩小字号。
+         * iPhone 17 系列：汇总问号圆保持约 13px；用细线 SVG 绘制「?」，避免 PingFang 字重过粗。
          */
         html.app-ios-iphone17pro.platform-ios body.page-shuiming-result .summary-label .icon,
         html.app-ios-iphone17pro body.page-shuiming-result .summary-label .icon,
@@ -733,9 +732,14 @@
             height: 13px;
             min-width: 13px;
             min-height: 13px;
-            font-size: 8px;
-            font-weight: 300;
+            font-size: 0;
+            line-height: 0;
+            color: transparent;
             font-synthesis: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 9'%3E%3Cpath d='M3.5 1.1c-1.35 0-2.35.9-2.35 2 0 .58.3 1.05.75 1.32' fill='none' stroke='%230e60f1' stroke-width='.58' stroke-linecap='round'/%3E%3Ccircle cx='3.5' cy='7.45' r='.58' fill='%230e60f1'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 5px 6.5px;
         }
 
         html.app-ios-iphone-promax-font.platform-ios body.page-shuiming-result .list-title,

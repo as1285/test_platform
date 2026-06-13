@@ -156,9 +156,46 @@
     }
   }
 
+  function getIOSMajorVersion() {
+    var m = String(navigator.userAgent || '').match(/OS (\d+)[_.]/i);
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  /** iPhone 17 / 17 Pro / 17 Air 等 6.3 寸档逻辑屏约 402×874（容差）。 */
+  function isIPhone402x874Viewport() {
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 399 && shortSide <= 405 && longSide >= 868 && longSide <= 878;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** iPhone 17 Pro Max / 16 Pro Max 等 6.9 寸档逻辑屏约 440×956（容差）。 */
+  function isIPhone440x956Viewport() {
+    try {
+      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
+      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
+      if (!sw || !sh) {
+        return false;
+      }
+      var shortSide = Math.min(sw, sh);
+      var longSide = Math.max(sw, sh);
+      return shortSide >= 436 && shortSide <= 444 && longSide >= 948 && longSide <= 962;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
-   * iPhone 17 Pro（非 Max）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
-   * UA 含型号时优先；内部型号多为 iPhone18,1 / iPhone19,1（预留）。
+   * iPhone 17 系列 6.3 寸（17 / 17 Pro / 17 Air 等，非 Max）：收入纳税明细顶栏「返回」「批量申诉」字号单独放大。
+   * UA 含型号时优先；Safari 无型号时用 iOS 26+ 且 402×874 视口与 16 Pro 区分。
    */
   function isIPhone17ProLikeClient() {
     if (!isLikelyIOSViewportClient()) {
@@ -168,7 +205,10 @@
     if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2|iPhone19,2/i.test(ua)) {
       return false;
     }
-    if (/iPhone\s*17\s*Pro\b|iPhone18,1\b|iPhone19,1\b/i.test(ua)) {
+    if (/iPhone\s*17(?:\s*Pro)?\b|iPhone\s*17\s*Air\b|iPhone18,1\b|iPhone18,3\b|iPhone18,4\b|iPhone19,1\b/i.test(ua)) {
+      return true;
+    }
+    if (getIOSMajorVersion() >= 26 && isIPhone402x874Viewport()) {
       return true;
     }
     return false;
@@ -234,7 +274,7 @@
 
   /**
    * iPhone 17 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
-   * UA：iPhone18,2 / iPhone19,2（预留）；逻辑屏约 440×956（容差）。
+   * UA：iPhone18,2 / iPhone19,2（预留）；Safari 无型号时用 iOS 26+ 且 440×956 与 16 Pro Max 区分。
    */
   function isIPhone17ProMaxClient() {
     if (!isLikelyIOSViewportClient()) {
@@ -244,18 +284,7 @@
     if (/iPhone\s*17\s*Pro\s*Max|iPhone18,2\b|iPhone19,2\b/i.test(ua)) {
       return true;
     }
-    try {
-      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
-      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-      if (!sw || !sh) {
-        return false;
-      }
-      var shortSide = Math.min(sw, sh);
-      var longSide = Math.max(sw, sh);
-      return shortSide >= 436 && shortSide <= 444 && longSide >= 948 && longSide <= 962;
-    } catch (e) {
-      return false;
-    }
+    return getIOSMajorVersion() >= 26 && isIPhone440x956Viewport();
   }
 
   function isIPhoneProMaxLargeFontClient() {
@@ -320,18 +349,10 @@
     if (/iPhone\s*16\s*Pro\b|iPhone17,1\b/i.test(ua)) {
       return true;
     }
-    try {
-      var sw = window.screen && window.screen.width ? Number(window.screen.width) : 0;
-      var sh = window.screen && window.screen.height ? Number(window.screen.height) : 0;
-      if (!sw || !sh) {
-        return false;
-      }
-      var shortSide = Math.min(sw, sh);
-      var longSide = Math.max(sw, sh);
-      return shortSide >= 399 && shortSide <= 405 && longSide >= 868 && longSide <= 878;
-    } catch (e) {
+    if (getIOSMajorVersion() >= 26 && isIPhone402x874Viewport()) {
       return false;
     }
+    return isIPhone402x874Viewport();
   }
 
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
