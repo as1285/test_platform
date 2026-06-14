@@ -9,7 +9,6 @@
   var INCOME_VISIT_KEY = 'cg_income_visit_count';
   var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
-  var MAINT_MSG_DISMISS_KEY = 'cg_maint_msg_dismissed';
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
@@ -305,9 +304,7 @@
       SCREENSHOT_MODE_CLASS +
       ' #cg-about-nudge,html.' +
       CAPTURE_HIDE_CLASS +
-      ' .message-item[data-cg-demo-maint="1"],html.' +
-      SCREENSHOT_MODE_CLASS +
-      ' .message-item[data-cg-demo-maint="1"],html.' +
+      ' #cgMineScreenshotBar,html.' +
       SCREENSHOT_MODE_CLASS +
       ' #cgMineScreenshotBar,html.' +
       SCREENSHOT_MODE_CLASS +
@@ -997,49 +994,7 @@
   }
 
   function prependMaintenanceMessages(list) {
-    var arr = Array.isArray(list) ? list.slice() : [];
-    if (!isLoggedIn()) return arr;
-    try {
-      if (localStorage.getItem(MAINT_MSG_DISMISS_KEY) === '1') return arr;
-    } catch (e) {
-      return arr;
-    }
-    var d = new Date();
-    var mo = d.getMonth() + 1;
-    var da = d.getDate();
-    var dateStr =
-      d.getFullYear() + '-' + (mo < 10 ? '0' + mo : String(mo)) + '-' + (da < 10 ? '0' + da : String(da));
-    var maintText = hasTaxRecords()
-      ? '您的个税演示数据可随时在「我要咨询 → 税务记录」中修改。'
-      : '建议在「我要咨询」添加个税演示数据，便于查看收入纳税明细与纳税记录效果。';
-    var tip = {
-      id: 'cg-demo-maint',
-      title: '演示数据维护提醒',
-      content: maintText,
-      msg_date: dateStr,
-      is_read: 0,
-      _cg_demo: true
-    };
-    arr.unshift(tip);
-    return arr;
-  }
-
-  function bindMaintenanceMessageDismiss(listEl) {
-    if (!listEl) return;
-    listEl.addEventListener(
-      'click',
-      function (e) {
-        var item = e.target.closest('.message-item');
-        if (!item) return;
-        var title = item.querySelector('.message-content-title');
-        if (!title || title.textContent.indexOf('演示数据维护') < 0) return;
-        try {
-          localStorage.setItem(MAINT_MSG_DISMISS_KEY, '1');
-        } catch (err) {}
-        track('track_conversion_maint_msg_read', {});
-      },
-      true
-    );
+    return Array.isArray(list) ? list.slice() : [];
   }
 
   function init() {
@@ -1142,7 +1097,6 @@
     mountShuimingValueBar: mountShuimingValueBar,
     mountNajiluPreviewBar: mountNajiluPreviewBar,
     prependMaintenanceMessages: prependMaintenanceMessages,
-    bindMaintenanceMessageDismiss: bindMaintenanceMessageDismiss,
     refresh: fetchProfileCounts,
     hideDemoUiForCapture: hideDemoUiForCapture,
     setScreenshotMode: setScreenshotMode,
