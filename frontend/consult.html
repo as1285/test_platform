@@ -1075,23 +1075,25 @@
                             <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
                             <span class="batch-emp-month-salary-badge" hidden></span>
                         </div>
+                        <div class="batch-emp-bonus-block" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;">
+                            <div class="form-group">
+                                <label>年终奖（元，可选；单独计税并生成独立记录）</label>
+                                <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>年终奖归属年度</label>
+                                    <input type="number" class="batch-emp-bonus-year" min="1990" max="2100">
+                                </div>
+                                <div class="form-group">
+                                    <label>归属月份（1–12 月）</label>
+                                    <input type="number" class="batch-emp-bonus-month" min="1" max="12" value="12" inputmode="numeric" placeholder="月">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </template>
                 <datalist id="batchCompanyHistoryDatalist"></datalist>
-                <div class="form-group">
-                    <label for="batch_year_end_bonus">年终奖（元，可选；单独计税并生成独立记录）</label>
-                    <input type="number" step="0.01" id="batch_year_end_bonus" value="0" min="0" placeholder="无则填 0">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="batch_bonus_year">年终奖归属年度</label>
-                        <input type="number" id="batch_bonus_year" min="1990" max="2100" value="2026">
-                    </div>
-                    <div class="form-group">
-                    <label for="batch_bonus_month">归属月份（1–12 月）</label>
-                    <input type="number" id="batch_bonus_month" min="1" max="12" value="12" inputmode="numeric" placeholder="月">
-                    </div>
-                </div>
                 <button type="button" class="btn btn-default btn-block" style="margin-bottom:10px;" onclick="batchAddYearEndBonusOnly()">仅添加年终奖</button>
                 <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="batchAddEmploymentTaxRecords()">一键生成税务记录</button>
                 <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">批量修改并覆盖</button>
@@ -1749,9 +1751,6 @@
 
                 initBelongingPeriodSync();
                 initTaxReportedManualEditTracking();
-                var bonusYearEl = document.getElementById('batch_bonus_year');
-                var fYear = document.getElementById('f_year');
-                if (bonusYearEl && fYear && fYear.value) bonusYearEl.value = fYear.value;
 
                 loadUserInfoFromApi();
             } catch (err) {
@@ -1791,29 +1790,6 @@
             return last;
         }
 
-        /** 年终奖扣缴义务人信息：最后一段工作经历 → 单条表单 */
-        function resolveBonusCompanyProfile() {
-            var lastRowProf = getBatchEmpProfileFromRow(getLastBatchEmpRowFromDom());
-            if (lastRowProf.name) {
-                return lastRowProf;
-            }
-            return {
-                name: resolveLegacyCompanyFromForm(),
-                company_tax_id: String(document.getElementById('f_company_tax_id').value || '').trim(),
-                tax_authority: String(document.getElementById('f_tax_authority').value || '').trim()
-            };
-        }
-
-        /** 年终奖扣缴义务人：最后一段工作经历 → 单条表单 */
-        function resolveBonusCompanyName() {
-            return resolveBonusCompanyProfile().name;
-        }
-
-        function getLastBatchEmpRowFromDom() {
-            var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
-            return rows.length ? rows[rows.length - 1] : null;
-        }
-
         function getBatchEmpProfileFromRow(row) {
             if (!row) return { name: '', company_tax_id: '', tax_authority: '' };
             var companyEl = row.querySelector('.batch-emp-company');
@@ -1826,26 +1802,54 @@
             };
         }
 
-        function requireBonusCompanyOrAlert() {
-            var name = resolveBonusCompanyName();
-            if (!name) {
-                showConsultStrongAlert(
-                    '请在工作经历中填写扣缴义务人（公司全称），或与下方「添加记录」中扣缴义务人名称一致。'
-                );
-                try {
-                    var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
-                    var lastRow = rows.length ? rows[rows.length - 1] : null;
-                    var companyInput = lastRow ? lastRow.querySelector('.batch-emp-company') : null;
-                    if (companyInput) {
-                        companyInput.focus();
-                    } else {
-                        var legacy = document.getElementById('f_company_name');
-                        if (legacy) legacy.focus();
-                    }
-                } catch (e0) {}
-                return false;
-            }
-            return true;
+        function collectBatchBonusSnapshot() {
+            var rows = document.querySelectorAll('#batch_employment_list .batch-emp-row');
+            var out = [];
+            rows.forEach(function (row) {
+                var prof = getBatchEmpProfileFromRow(row);
+                var bonusEl = row.querySelector('.batch-emp-bonus');
+                var bonusYearEl = row.querySelector('.batch-emp-bonus-year');
+                var bonusMonthEl = row.querySelector('.batch-emp-bonus-month');
+                out.push({
+                    company: prof.name,
+                    yearEndBonus: bonusEl ? parseFloat(bonusEl.value) || 0 : 0,
+                    bonusYear: bonusYearEl ? parseInt(bonusYearEl.value, 10) || 0 : 0,
+                    bonusMonth: bonusMonthEl ? parseInt(bonusMonthEl.value, 10) || 0 : 0
+                });
+            });
+            return out;
+        }
+
+        function sumEmploymentBonusTax(employments) {
+            var sum = 0;
+            (employments || []).forEach(function (emp) {
+                if (emp.yearEndBonus > 0) {
+                    sum = round2(sum + yearEndBonusTaxSeparate(emp.yearEndBonus));
+                }
+            });
+            return sum;
+        }
+
+        function buildBatchBonusConfirmText(employments) {
+            var parts = [];
+            (employments || []).forEach(function (emp) {
+                if (emp.yearEndBonus > 0) {
+                    parts.push(
+                        '\n年终奖 ' +
+                            emp.yearEndBonus +
+                            ' 元（扣缴义务人「' +
+                            emp.company +
+                            '」，单独计税约 ' +
+                            yearEndBonusTaxSeparate(emp.yearEndBonus) +
+                            ' 元，归属 ' +
+                            emp.bonusYear +
+                            ' 年 ' +
+                            emp.bonusMonth +
+                            ' 月）'
+                    );
+                }
+            });
+            return parts.join('') + (parts.length ? '。' : '');
         }
 
         function formObjectFromInputs() {
@@ -2701,6 +2705,9 @@
                 unemployment: batchEmpRowInputVal(row, '.batch-emp-unemployment'),
                 fund: batchEmpRowInputVal(row, '.batch-emp-fund'),
                 special: batchEmpRowInputVal(row, '.batch-emp-special'),
+                yearEndBonus: batchEmpRowInputVal(row, '.batch-emp-bonus'),
+                bonusYear: batchEmpRowInputVal(row, '.batch-emp-bonus-year'),
+                bonusMonth: batchEmpRowInputVal(row, '.batch-emp-bonus-month'),
                 monthSalaryMap: row._monthSalaryMap ? JSON.parse(JSON.stringify(row._monthSalaryMap)) : {},
                 optionalOpen: !!(optionalMeta && optionalMeta.classList.contains('is-open')),
                 deductOpen: !!(deductMeta && deductMeta.classList.contains('is-open'))
@@ -2710,9 +2717,6 @@
         function batchTaxDraftHasContent(draft) {
             if (!draft) {
                 return false;
-            }
-            if (draft.bonus && parseFloat(draft.bonus.yearEndBonus) > 0) {
-                return true;
             }
             var rows = draft.employments || [];
             var i;
@@ -2727,9 +2731,15 @@
                 if (String(r.company_tax_id || '').trim() || String(r.tax_authority || '').trim()) {
                     return true;
                 }
+                if (parseFloat(r.yearEndBonus) > 0) {
+                    return true;
+                }
                 if (r.monthSalaryMap && Object.keys(r.monthSalaryMap).length) {
                     return true;
                 }
+            }
+            if (draft.bonus && parseFloat(draft.bonus.yearEndBonus) > 0) {
+                return true;
             }
             return false;
         }
@@ -2741,10 +2751,9 @@
                 employments.push(serializeBatchEmpRow(row));
             });
             return {
-                v: 1,
+                v: 2,
                 savedAt: Date.now(),
-                employments: employments,
-                bonus: collectBatchBonusParams()
+                employments: employments
             };
         }
 
@@ -2778,21 +2787,18 @@
             } catch (eClear) {}
         }
 
-        function applyBatchTaxBonusDraft(bonus) {
-            if (!bonus) {
+        function migrateLegacyBatchBonusDraft(draft) {
+            if (!draft || !draft.bonus || !Array.isArray(draft.employments) || !draft.employments.length) {
                 return;
             }
-            var bonusEl = document.getElementById('batch_year_end_bonus');
-            var bonusYearEl = document.getElementById('batch_bonus_year');
-            var bonusMonthEl = document.getElementById('batch_bonus_month');
-            if (bonusEl && bonus.yearEndBonus != null) {
-                bonusEl.value = String(bonus.yearEndBonus);
+            var first = draft.employments[0];
+            if (parseFloat(first.yearEndBonus) > 0) {
+                return;
             }
-            if (bonusYearEl && bonus.bonusYear) {
-                bonusYearEl.value = String(bonus.bonusYear);
-            }
-            if (bonusMonthEl && bonus.bonusMonth) {
-                bonusMonthEl.value = String(bonus.bonusMonth);
+            if (parseFloat(draft.bonus.yearEndBonus) > 0) {
+                first.yearEndBonus = draft.bonus.yearEndBonus;
+                first.bonusYear = draft.bonus.bonusYear;
+                first.bonusMonth = draft.bonus.bonusMonth;
             }
         }
 
@@ -2819,6 +2825,7 @@
             if (!draft || !batchTaxDraftHasContent(draft) || !Array.isArray(draft.employments) || !draft.employments.length) {
                 return false;
             }
+            migrateLegacyBatchBonusDraft(draft);
             _batchTaxDraftRestoring = true;
             list.innerHTML = '';
             draft.employments.forEach(function (rowData) {
@@ -2828,7 +2835,6 @@
                     setBatchEmpRowValues(row, rowData);
                 }
             });
-            applyBatchTaxBonusDraft(draft.bonus);
             _batchTaxDraftRestoring = false;
             saveBatchTaxDraftNow();
             return true;
@@ -3401,6 +3407,7 @@
             syncBatchEmpDeductionsFromBase(node);
             bindBatchMonthInput(node.querySelector('.batch-emp-sm'));
             bindBatchMonthInput(node.querySelector('.batch-emp-em'));
+            bindBatchMonthInput(node.querySelector('.batch-emp-bonus-month'));
             var msBtn = node.querySelector('.batch-emp-month-salary-btn');
             if (msBtn) {
                 msBtn.addEventListener('click', function () {
@@ -3440,6 +3447,10 @@
             if (ey) ey.value = String(cy);
             if (sm) sm.value = '1';
             if (em) em.value = String(cm);
+            var by = node.querySelector('.batch-emp-bonus-year');
+            var bm = node.querySelector('.batch-emp-bonus-month');
+            if (by && !by.value) by.value = String(cy);
+            if (bm && !bm.value) bm.value = '12';
             bindBatchEmpRow(node);
             list.appendChild(node);
             scheduleBatchTaxDraftSave();
@@ -3492,6 +3503,9 @@
             setVal('.batch-emp-medical', data.medical);
             setVal('.batch-emp-unemployment', data.unemployment);
             setVal('.batch-emp-fund', data.fund);
+            setVal('.batch-emp-bonus', data.yearEndBonus != null ? data.yearEndBonus : data.bonus);
+            setVal('.batch-emp-bonus-year', data.bonusYear);
+            setVal('.batch-emp-bonus-month', data.bonusMonth != null ? data.bonusMonth : 12);
             if (typeof data.optionalOpen === 'boolean') {
                 setBatchEmpOptionalMetaExpanded(row, data.optionalOpen);
             } else {
@@ -3669,12 +3683,6 @@
                 fund_ratio: 12,
                 special: 2000
             });
-            var bonusYearEl = document.getElementById('batch_bonus_year');
-            if (bonusYearEl) bonusYearEl.value = String(cy);
-            var bonusEl = document.getElementById('batch_year_end_bonus');
-            if (bonusEl && (!bonusEl.value || parseFloat(bonusEl.value) === 0)) {
-                bonusEl.value = '0';
-            }
             var card = document.getElementById('batchTaxCard');
             if (card) {
                 try {
@@ -3715,10 +3723,6 @@
                 fund_ratio: 12,
                 special: 0
             });
-            var bonusYearEl = document.getElementById('batch_bonus_year');
-            if (bonusYearEl) bonusYearEl.value = String(cy);
-            var bonusEl = document.getElementById('batch_year_end_bonus');
-            if (bonusEl) bonusEl.value = '0';
             if (typeof window.trackUserAction === 'function') {
                 window.trackUserAction('track_conversion_quick_minimal_template', { page: 'consult' });
             }
@@ -3753,10 +3757,6 @@
                 fund_ratio: 12,
                 special: 1500
             });
-            var bonusYearEl = document.getElementById('batch_bonus_year');
-            if (bonusYearEl) bonusYearEl.value = String(cy);
-            var bonusEl = document.getElementById('batch_year_end_bonus');
-            if (bonusEl) bonusEl.value = '0';
             var card = document.getElementById('batchTaxCard');
             if (card) {
                 try {
@@ -3983,7 +3983,7 @@
                 hint.textContent = inEdit
                     ? '已载入 ' +
                       batchTaxEditMode.scopeIds.length +
-                      ' 条月薪相关记录。修改表单后点击「批量修改并覆盖」将删除原月薪记录并重新生成（同事务）；已有年终奖默认保留，仅当您手动修改年终奖字段时才会更新。'
+                      ' 条月薪相关记录。修改表单后点击「批量修改并覆盖」将删除原月薪记录并重新生成（同事务）；各段工作经历中的年终奖默认保留，仅当您修改对应年终奖字段时才会更新。'
                     : '按工作经历生成多月工资薪金；添加后可用「从已有记录回填」载入并批量修改。';
             }
             if (banner) {
@@ -3991,8 +3991,8 @@
                     banner.hidden = false;
                     var bonusKeepNote =
                         batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length
-                            ? '已有 ' + batchTaxEditMode.bonusRecordIds.length + ' 条年终奖将保留不变（除非您修改下方年终奖字段）。'
-                            : '未检测到年终奖记录；仅当您填写年终奖时才会新增。';
+                            ? '已有 ' + batchTaxEditMode.bonusRecordIds.length + ' 条年终奖将保留不变（除非您修改对应工作经历中的年终奖字段）。'
+                            : '未检测到年终奖记录；仅当您在某段工作经历中填写年终奖时才会新增。';
                     banner.textContent =
                         '修改模式：将覆盖回填时关联的 ' +
                         batchTaxEditMode.scopeIds.length +
@@ -4026,19 +4026,24 @@
             }
         }
 
-        function batchBonusSnapshotKey(bonus) {
-            return [
-                round2(parseFloat(bonus && bonus.yearEndBonus) || 0).toFixed(2),
-                String(parseInt(bonus && bonus.bonusYear, 10) || 0),
-                String(parseInt(bonus && bonus.bonusMonth, 10) || 0)
-            ].join('|');
+        function batchBonusSnapshotKey(bonuses) {
+            return JSON.stringify(
+                (bonuses || []).map(function (bonus) {
+                    return [
+                        round2(parseFloat(bonus && bonus.yearEndBonus) || 0).toFixed(2),
+                        String(parseInt(bonus && bonus.bonusYear, 10) || 0),
+                        String(parseInt(bonus && bonus.bonusMonth, 10) || 0),
+                        String((bonus && bonus.company) || '')
+                    ];
+                })
+            );
         }
 
         function batchBonusWasManuallyChanged() {
             if (!batchTaxEditMode || !batchTaxEditMode.bonusSnapshot) {
                 return false;
             }
-            var cur = collectBatchBonusParams();
+            var cur = collectBatchBonusSnapshot();
             return batchBonusSnapshotKey(cur) !== batchBonusSnapshotKey(batchTaxEditMode.bonusSnapshot);
         }
 
@@ -4080,7 +4085,17 @@
                     var bonusRecordIds = bonusRecs.map(function (br) {
                         return String(br.id);
                     });
-                    var bonusSnapshot = null;
+                    var bonusByCompany = {};
+                    bonusRecs.forEach(function (br) {
+                        var cn = String(br.company_name || '').trim();
+                        if (!cn) {
+                            return;
+                        }
+                        var prev = bonusByCompany[cn];
+                        if (!prev || recordYmKey(br) >= recordYmKey(prev)) {
+                            bonusByCompany[cn] = br;
+                        }
+                    });
                     var listEl = document.getElementById('batch_employment_list');
                     if (!listEl) {
                         return;
@@ -4095,6 +4110,15 @@
                             continue;
                         }
                         setBatchEmpRowValues(row, payloads[pi].rowData);
+                        var rowCompany = String(payloads[pi].rowData.company || '').trim();
+                        var matchedBonus = rowCompany ? bonusByCompany[rowCompany] : null;
+                        if (matchedBonus) {
+                            setBatchEmpRowValues(row, {
+                                yearEndBonus: round2(parseFloat(matchedBonus.income) || 0),
+                                bonusYear: parseInt(matchedBonus.year, 10),
+                                bonusMonth: parseInt(matchedBonus.month, 10)
+                            });
+                        }
                         var am = payloads[pi].amounts;
                         var pel = row.querySelector('.batch-emp-pension');
                         var mel = row.querySelector('.batch-emp-medical');
@@ -4107,45 +4131,7 @@
                         row._monthSalaryMap = payloads[pi].overrides || {};
                         updateBatchEmpMonthSalaryBadge(row);
                     }
-                    if (bonusRecs.length === 1) {
-                        var b0 = bonusRecs[0];
-                        var bonusEl = document.getElementById('batch_year_end_bonus');
-                        var bonusYearEl = document.getElementById('batch_bonus_year');
-                        var bonusMonthEl = document.getElementById('batch_bonus_month');
-                        if (bonusEl) {
-                            bonusEl.value = String(round2(parseFloat(b0.income) || 0));
-                        }
-                        if (bonusYearEl) {
-                            bonusYearEl.value = String(parseInt(b0.year, 10));
-                        }
-                        if (bonusMonthEl) {
-                            bonusMonthEl.value = String(parseInt(b0.month, 10));
-                        }
-                        bonusSnapshot = collectBatchBonusParams();
-                    } else if (bonusRecs.length > 1) {
-                        var latestB = bonusRecs.slice().sort(function (a, b) {
-                            return recordYmKey(b) - recordYmKey(a);
-                        })[0];
-                        var bonusEl2 = document.getElementById('batch_year_end_bonus');
-                        var bonusYearEl2 = document.getElementById('batch_bonus_year');
-                        var bonusMonthEl2 = document.getElementById('batch_bonus_month');
-                        if (bonusEl2) {
-                            bonusEl2.value = String(round2(parseFloat(latestB.income) || 0));
-                        }
-                        if (bonusYearEl2) {
-                            bonusYearEl2.value = String(parseInt(latestB.year, 10));
-                        }
-                        if (bonusMonthEl2) {
-                            bonusMonthEl2.value = String(parseInt(latestB.month, 10));
-                        }
-                        bonusSnapshot = collectBatchBonusParams();
-                    } else {
-                        var bonusEl0 = document.getElementById('batch_year_end_bonus');
-                        if (bonusEl0) {
-                            bonusEl0.value = '0';
-                        }
-                        bonusSnapshot = collectBatchBonusParams();
-                    }
+                    var bonusSnapshot = collectBatchBonusSnapshot();
                     enterBatchTaxEditMode(scopeIds, {
                         bonusSnapshot: bonusSnapshot,
                         bonusRecordIds: bonusRecordIds
@@ -4250,56 +4236,31 @@
             return lines;
         }
 
-        function collectBatchBonusParams() {
-            var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
-            var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
-            var bonusYearEl = document.getElementById('batch_bonus_year');
-            var bonusYear = bonusYearEl ? parseInt(bonusYearEl.value, 10) : NaN;
-            if (yearEndBonus < 0) {
-                yearEndBonus = 0;
-            }
-            return {
-                yearEndBonus: yearEndBonus,
-                bonusMonth: bonusMonth,
-                bonusYear: bonusYear
-            };
-        }
-
-        function validateBatchBonusParams(bonus) {
-            if (!bonus.bonusMonth || bonus.bonusMonth < 1 || bonus.bonusMonth > 12) {
-                showConsultStrongAlert('请选择合法的年终奖归属月份（1–12 月）');
-                return false;
-            }
-            if (!bonus.bonusYear || bonus.bonusYear < 1990 || bonus.bonusYear > 2100) {
-                showConsultStrongAlert('请填写合法的年终奖归属年度');
-                return false;
-            }
-            if (bonus.yearEndBonus > 0 && !resolveBonusCompanyName()) {
-                showConsultStrongAlert('填写了年终奖时请在工作经历中填写扣缴义务人（公司全称）');
-                return false;
-            }
-            return true;
-        }
-
-        function assembleBatchTaxRecords(writes, base, uidKey, bonus) {
+        function assembleBatchTaxRecords(writes, base, uidKey, employments) {
             var records = [];
             var wi;
             for (wi = 0; wi < writes.length; wi++) {
                 records.push(buildBatchSalaryRecord(writes[wi], base, uidKey));
             }
-            if (bonus.yearEndBonus > 0) {
-                var bonusProfile = resolveBonusCompanyProfile();
-                records.push(
-                    buildBatchYearEndBonusRecord(
-                        uidKey,
-                        base,
-                        bonusProfile,
-                        bonus.bonusYear,
-                        bonus.bonusMonth,
-                        bonus.yearEndBonus
-                    )
-                );
-            }
+            (employments || []).forEach(function (emp) {
+                if (emp.yearEndBonus > 0) {
+                    records.push(
+                        buildBatchYearEndBonusRecord(
+                            uidKey,
+                            base,
+                            {
+                                name: emp.company,
+                                company_tax_id: emp.company_tax_id || '',
+                                tax_authority: emp.tax_authority || ''
+                            },
+                            emp.bonusYear,
+                            emp.bonusMonth,
+                            emp.yearEndBonus,
+                            emp.empIdx
+                        )
+                    );
+                }
+            });
             return records;
         }
 
@@ -4435,6 +4396,20 @@
             if (!months.length) {
                 return { ok: false, error: '第 ' + seg + ' 段在职区间无效（结束应不早于起始）' };
             }
+            var yearEndBonus = parseFloat((row.querySelector('.batch-emp-bonus') || {}).value) || 0;
+            if (yearEndBonus < 0) {
+                yearEndBonus = 0;
+            }
+            var bonusMonth = parseInt((row.querySelector('.batch-emp-bonus-month') || {}).value, 10);
+            var bonusYear = parseInt((row.querySelector('.batch-emp-bonus-year') || {}).value, 10);
+            if (yearEndBonus > 0) {
+                if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
+                    return { ok: false, error: '第 ' + seg + ' 段年终奖归属月份不合法（1–12 月）' };
+                }
+                if (!bonusYear || bonusYear < 1990 || bonusYear > 2100) {
+                    return { ok: false, error: '第 ' + seg + ' 段年终奖归属年度不合法' };
+                }
+            }
             var rawMap = row._monthSalaryMap || {};
             var monthSalaryOverrides = {};
             var mi;
@@ -4463,7 +4438,10 @@
                     housingFund: round2(housingFund),
                     specialAdd: round2(specialAdd),
                     months: months,
-                    monthSalaryOverrides: monthSalaryOverrides
+                    monthSalaryOverrides: monthSalaryOverrides,
+                    yearEndBonus: round2(yearEndBonus),
+                    bonusMonth: bonusMonth,
+                    bonusYear: bonusYear
                 }
             };
         }
@@ -4920,7 +4898,7 @@
             return o;
         }
 
-        function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus) {
+        function buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus, empIdx) {
             var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
             var b = JSON.parse(JSON.stringify(base));
             b.company_name = bonusProfile.name;
@@ -4930,7 +4908,7 @@
             b.month = bonusMonth;
             b.tax_period = taxPeriodFromYearMonth(year, bonusMonth);
             b.report_date = reportDateOneMonthAfterBelonging(year, bonusMonth, 15);
-            b.id = 'tr_' + uidKey + '_' + year + '_' + bonusMonth + '_bonus';
+            b.id = 'tr_' + uidKey + '_' + year + '_' + bonusMonth + '_bonus_' + (empIdx != null ? empIdx : 0);
             b.income_type = '工资薪金';
             b.income_subtype = '全年一次性奖金收入';
             b.income = String(round2(yearEndBonus));
@@ -4969,57 +4947,54 @@
         }
 
         function batchAddYearEndBonusOnly() {
-            var yearEl = document.getElementById('batch_bonus_year');
-            var year = yearEl ? parseInt(yearEl.value, 10) : NaN;
-            var yearEndBonus = parseFloat(document.getElementById('batch_year_end_bonus').value) || 0;
-            var bonusMonth = parseInt(document.getElementById('batch_bonus_month').value, 10);
-            if (!year || year < 1990 || year > 2100) {
-                showConsultStrongAlert('请填写合法的年终奖归属年度');
+            var parsed = parseBatchEmploymentsFromDom();
+            if (!parsed.ok) {
+                showConsultStrongAlert(parsed.error || '请检查工作经历');
                 return;
             }
-            if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
-                showConsultStrongAlert('请选择合法的年终奖归属月份（1–12 月）');
-                return;
-            }
-            if (yearEndBonus <= 0) {
-                showConsultStrongAlert('请先填写年终奖金额（大于 0）');
+            var employments = parsed.employments.filter(function (emp) {
+                return emp.yearEndBonus > 0;
+            });
+            if (!employments.length) {
+                showConsultStrongAlert('请至少在某段工作经历中填写年终奖金额（大于 0）');
                 return;
             }
             var uid = currentUserId();
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
             var base = formObjectFromInputs();
             delete base.id;
-            if (!requireBonusCompanyOrAlert()) {
-                return;
-            }
-            var bonusProfile = resolveBonusCompanyProfile();
-            var bonusTax = yearEndBonusTaxSeparate(yearEndBonus);
+            var confirmLines = buildBatchBonusConfirmText(employments).replace(/^\n/, '');
             if (
                 !confirm(
-                    '将写入全年一次性奖金收入 ' +
-                        yearEndBonus +
-                        ' 元（扣缴义务人「' +
-                        bonusProfile.name +
-                        '」，归属 ' +
-                        year +
-                        ' 年 ' +
-                        bonusMonth +
-                        ' 月），单独计税约 ' +
-                        bonusTax +
-                        ' 元。是否确认？'
+                    '将为 ' +
+                        employments.length +
+                        ' 家公司写入年终奖记录：' +
+                        confirmLines +
+                        '\n是否确认？'
                 )
             ) {
                 return;
             }
-            var bonusRec = buildBatchYearEndBonusRecord(uidKey, base, bonusProfile, year, bonusMonth, yearEndBonus);
+            var bonusRecs = employments.map(function (emp) {
+                return buildBatchYearEndBonusRecord(
+                    uidKey,
+                    base,
+                    {
+                        name: emp.company,
+                        company_tax_id: emp.company_tax_id || '',
+                        tax_authority: emp.tax_authority || ''
+                    },
+                    emp.bonusYear,
+                    emp.bonusMonth,
+                    emp.yearEndBonus,
+                    emp.empIdx
+                );
+            });
             setBatchSubmitBtnLoading(true);
-            postBatchTaxRecordsPromise([bonusRec])
+            postBatchTaxRecordsPromise(bonusRecs)
                 .then(function (data) {
-                    rememberBatchCompanyProfile(bonusProfile);
-                    var tip = appendAutoDedupedTip(
-                        '年终奖记录已保存（' + year + ' 年 ' + bonusMonth + ' 月）',
-                        data
-                    );
+                    rememberBatchEmploymentsProfiles(employments);
+                    var tip = appendAutoDedupedTip('已保存 ' + bonusRecs.length + ' 条年终奖记录', data);
                     showMsg(tip, true);
                     return refreshRecordList();
                 })
@@ -5076,25 +5051,13 @@
                 rows[1].querySelector('.batch-emp-em').value = String(new Date().getMonth() + 1);
                 rows[1].querySelector('.batch-emp-salary').value = String(salB);
             }
-            var bonusEl = document.getElementById('batch_year_end_bonus');
-            if (bonusEl && (!bonusEl.value || parseFloat(bonusEl.value) === 0)) {
-                bonusEl.value = '0';
-            }
-            var card = document.getElementById('batchTaxCard');
-            if (card) {
-                try {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } catch (e0) {
-                    card.scrollIntoView(true);
-                }
-            }
             showMsg('已填入两段演示工作经历（A：2024-05～2025-06；B：2025-07～当前月），请在确认框中核对后写入', true);
             setTimeout(function () {
                 batchAddEmploymentTaxRecords();
             }, 280);
         }
 
-        function rememberBatchEmploymentsProfiles(employments, bonus) {
+        function rememberBatchEmploymentsProfiles(employments) {
             employments.forEach(function (e) {
                 rememberBatchCompanyProfile({
                     name: e.company,
@@ -5102,12 +5065,25 @@
                     tax_authority: e.tax_authority || ''
                 });
             });
-            if (bonus.yearEndBonus > 0) {
-                var bonusProfile = resolveBonusCompanyProfile();
-                if (bonusProfile.name) {
-                    rememberBatchCompanyProfile(bonusProfile);
-                }
+        }
+
+        function employmentsForBonusAssembly(employments, includeBonus) {
+            if (includeBonus) {
+                return employments;
             }
+            return employments.map(function (emp) {
+                return Object.assign({}, emp, { yearEndBonus: 0 });
+            });
+        }
+
+        function countEmploymentBonuses(employments) {
+            var n = 0;
+            (employments || []).forEach(function (emp) {
+                if (emp.yearEndBonus > 0) {
+                    n++;
+                }
+            });
+            return n;
         }
 
         function batchAddEmploymentTaxRecords() {
@@ -5117,11 +5093,6 @@
                 return;
             }
             var employments = parsed.employments;
-            var bonus = collectBatchBonusParams();
-            if (!validateBatchBonusParams(bonus)) {
-                return;
-            }
-            var bonusCompany = resolveBonusCompanyName();
             var uid = currentUserId();
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
             var base = formObjectFromInputs();
@@ -5129,26 +5100,13 @@
             var built = buildBatchEmploymentWrites(employments);
             var writes = built.writes;
             var taxSumSalary = built.taxSumSalary;
-            var bonusTax = yearEndBonusTaxSeparate(bonus.yearEndBonus);
-            var totalTax = round2(taxSumSalary + bonusTax);
+            var bonusTaxSum = sumEmploymentBonusTax(employments);
+            var totalTax = round2(taxSumSalary + bonusTaxSum);
             var lines = buildBatchConfirmLines(employments);
+            var bonusLine = buildBatchBonusConfirmText(employments);
             apiFetchRecords()
                 .then(function (existingList) {
                     var examplePlan = planBatchExampleRecordDeletion(employments, existingList);
-                    var bonusLine =
-                        bonus.yearEndBonus > 0
-                            ? '\n年终奖 ' +
-                              bonus.yearEndBonus +
-                              ' 元（扣缴义务人「' +
-                              bonusCompany +
-                              '」，单独计税约 ' +
-                              bonusTax +
-                              ' 元，归属 ' +
-                              bonus.bonusYear +
-                              ' 年 ' +
-                              bonus.bonusMonth +
-                              ' 月）。'
-                            : '';
                     var exampleDeleteLine =
                         examplePlan.count > 0
                             ? '\n将先删除此前示例填写产生的 ' +
@@ -5174,7 +5132,7 @@
                     return deleteBatchExampleTaxRecordsPromise(examplePlan.companies)
                         .then(function (n) {
                             deletedExample = n;
-                            var records = assembleBatchTaxRecords(writes, base, uidKey, bonus);
+                            var records = assembleBatchTaxRecords(writes, base, uidKey, employments);
                             return postBatchTaxRecordsPromise(records).then(function (data) {
                                 return { data: data, deletedExample: deletedExample };
                             });
@@ -5186,15 +5144,16 @@
                     }
                     var data = result.data;
                     var deletedExample = result.deletedExample;
-                    rememberBatchEmploymentsProfiles(employments, bonus);
+                    rememberBatchEmploymentsProfiles(employments);
+                    var bonusCount = countEmploymentBonuses(employments);
                     var tip =
                         '已按工作经历生成 ' +
                         employments.length +
                         ' 段用工共 ' +
                         writes.length +
                         ' 条月薪记录';
-                    if (bonus.yearEndBonus > 0) {
-                        tip += '（另含 1 条年终奖）';
+                    if (bonusCount > 0) {
+                        tip += '（另含 ' + bonusCount + ' 条年终奖）';
                     }
                     if (deletedExample > 0) {
                         tip += '（已删除示例记录 ' + deletedExample + ' 条）';
@@ -5237,11 +5196,6 @@
                 return;
             }
             var employments = parsed.employments;
-            var bonus = collectBatchBonusParams();
-            if (!validateBatchBonusParams(bonus)) {
-                return;
-            }
-            var bonusCompany = resolveBonusCompanyName();
             var uid = currentUserId();
             var uidKey = String(uid).replace(/[^a-zA-Z0-9_-]/g, '_');
             var base = formObjectFromInputs();
@@ -5250,22 +5204,18 @@
             var writes = built.writes;
             var taxSumSalary = built.taxSumSalary;
             var bonusChanged = batchBonusWasManuallyChanged();
-            var bonusTax = yearEndBonusTaxSeparate(bonus.yearEndBonus);
-            var totalTax = round2(taxSumSalary + (bonusChanged ? bonusTax : 0));
+            var bonusTaxSum = sumEmploymentBonusTax(employments);
+            var totalTax = round2(taxSumSalary + (bonusChanged ? bonusTaxSum : 0));
             var lines = buildBatchConfirmLines(employments);
             var scopeN = batchTaxEditMode.scopeIds.length;
             var bonusLine = '';
             if (bonusChanged) {
-                bonusLine =
-                    bonus.yearEndBonus > 0
-                        ? '\n年终奖 ' +
-                          bonus.yearEndBonus +
-                          ' 元（扣缴义务人「' +
-                          bonusCompany +
-                          '」，单独计税约 ' +
-                          bonusTax +
-                          ' 元），将更新年终奖记录。'
-                        : '\n年终奖已清空，将删除原有年终奖记录。';
+                bonusLine = buildBatchBonusConfirmText(employments);
+                if (!bonusLine) {
+                    bonusLine = '\n年终奖已清空，将删除原有年终奖记录。';
+                } else {
+                    bonusLine = bonusLine.replace(/。$/, '，将更新年终奖记录。');
+                }
             } else if (batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length) {
                 bonusLine =
                     '\n已有 ' +
@@ -5286,7 +5236,7 @@
                 writes,
                 base,
                 uidKey,
-                bonusChanged ? bonus : { yearEndBonus: 0, bonusMonth: bonus.bonusMonth, bonusYear: bonus.bonusYear }
+                employmentsForBonusAssembly(employments, bonusChanged)
             );
             var idsToDelete = batchTaxEditMode.scopeIds.slice();
             if (bonusChanged && batchTaxEditMode.bonusRecordIds && batchTaxEditMode.bonusRecordIds.length) {
@@ -5295,12 +5245,12 @@
             setBatchTaxActionLoading(true, true);
             postBatchReplaceTaxRecordsPromise(idsToDelete, records)
                 .then(function (data) {
-                    rememberBatchEmploymentsProfiles(employments, bonusChanged ? bonus : { yearEndBonus: 0, bonusMonth: bonus.bonusMonth, bonusYear: bonus.bonusYear });
+                    rememberBatchEmploymentsProfiles(employments);
                     var deleted = data && data.deleted != null ? Number(data.deleted) : idsToDelete.length;
                     var saved = data && data.saved != null ? Number(data.saved) : records.length;
                     var tip =
                         '已覆盖修改：删除 ' + deleted + ' 条，写入 ' + saved + ' 条（' + employments.length + ' 段工作经历）';
-                    if (bonusChanged && bonus.yearEndBonus > 0) {
+                    if (bonusChanged && countEmploymentBonuses(employments) > 0) {
                         tip += '，已更新年终奖';
                     } else if (bonusChanged) {
                         tip += '，已移除年终奖';
@@ -5818,7 +5768,6 @@
             initHeader();
             initBatchEmploymentRows();
             initBatchTaxDraftAutosave();
-            bindBatchMonthInput(document.getElementById('batch_bonus_month'));
             restoreSingleTaxDraftIfAny();
             initSingleTaxDraftAutosave();
             initBatchCompanyHistoryUi();
