@@ -3463,57 +3463,80 @@
             addBatchEmpRow();
         }
 
-        /** 将示例或预设数据写入单段工作经历行 */
+        /** 将示例或预设数据写入单段工作经历行（仅更新 data 中显式提供的字段） */
         function setBatchEmpRowValues(row, data) {
             if (!row || !data) return;
-            function setVal(sel, val) {
+            function has(k) {
+                return Object.prototype.hasOwnProperty.call(data, k);
+            }
+            function setVal(sel, val, key) {
+                if (key && !has(key)) return;
                 var el = row.querySelector(sel);
                 if (!el) return;
                 el.value = val == null || val === '' ? '' : String(val);
             }
-            setVal('.batch-emp-company', data.company);
-            setVal('.batch-emp-company-tax-id', data.company_tax_id);
-            setVal('.batch-emp-tax-authority', data.tax_authority);
-            setVal('.batch-emp-sy', data.sy);
-            setVal('.batch-emp-sm', data.sm);
-            setVal('.batch-emp-ey', data.ey);
-            setVal('.batch-emp-em', data.em);
-            setVal('.batch-emp-salary', data.salary);
-            setVal('.batch-emp-salary-max', data.salary_max);
-            var ssBaseEl = row.querySelector('.batch-emp-ss-base');
-            if (ssBaseEl) {
-                var ssRaw = data.ss_base;
-                var ssNum = parseFloat(ssRaw);
-                ssBaseEl.value =
-                    ssRaw == null || ssRaw === '' || (!Number.isNaN(ssNum) && ssNum === 0) ? '' : String(ssRaw);
+            setVal('.batch-emp-company', data.company, 'company');
+            setVal('.batch-emp-company-tax-id', data.company_tax_id, 'company_tax_id');
+            setVal('.batch-emp-tax-authority', data.tax_authority, 'tax_authority');
+            setVal('.batch-emp-sy', data.sy, 'sy');
+            setVal('.batch-emp-sm', data.sm, 'sm');
+            setVal('.batch-emp-ey', data.ey, 'ey');
+            setVal('.batch-emp-em', data.em, 'em');
+            setVal('.batch-emp-salary', data.salary, 'salary');
+            setVal('.batch-emp-salary-max', data.salary_max, 'salary_max');
+            if (has('ss_base')) {
+                var ssBaseEl = row.querySelector('.batch-emp-ss-base');
+                if (ssBaseEl) {
+                    var ssRaw = data.ss_base;
+                    var ssNum = parseFloat(ssRaw);
+                    ssBaseEl.value =
+                        ssRaw == null || ssRaw === '' || (!Number.isNaN(ssNum) && ssNum === 0) ? '' : String(ssRaw);
+                }
             }
-            setVal('.batch-emp-fund-base', data.fund_base);
-            setVal('.batch-emp-pension-ratio', data.pension_ratio);
-            setVal('.batch-emp-medical-ratio', data.medical_ratio);
-            setVal('.batch-emp-unemployment-ratio', data.unemployment_ratio);
-            setVal('.batch-emp-fund-ratio', data.fund_ratio);
-            setVal('.batch-emp-special', data.special);
-            if (data.monthSalaryMap && typeof data.monthSalaryMap === 'object') {
+            setVal('.batch-emp-fund-base', data.fund_base, 'fund_base');
+            setVal('.batch-emp-pension-ratio', data.pension_ratio, 'pension_ratio');
+            setVal('.batch-emp-medical-ratio', data.medical_ratio, 'medical_ratio');
+            setVal('.batch-emp-unemployment-ratio', data.unemployment_ratio, 'unemployment_ratio');
+            setVal('.batch-emp-fund-ratio', data.fund_ratio, 'fund_ratio');
+            setVal('.batch-emp-special', data.special, 'special');
+            if (has('monthSalaryMap') && data.monthSalaryMap && typeof data.monthSalaryMap === 'object') {
                 row._monthSalaryMap = JSON.parse(JSON.stringify(data.monthSalaryMap));
-            } else {
+            } else if (has('monthSalaryMap')) {
                 row._monthSalaryMap = {};
             }
-            syncBatchEmpDeductionsFromBase(row);
-            setVal('.batch-emp-pension', data.pension);
-            setVal('.batch-emp-medical', data.medical);
-            setVal('.batch-emp-unemployment', data.unemployment);
-            setVal('.batch-emp-fund', data.fund);
-            setVal('.batch-emp-bonus', data.yearEndBonus != null ? data.yearEndBonus : data.bonus);
-            setVal('.batch-emp-bonus-year', data.bonusYear);
-            setVal('.batch-emp-bonus-month', data.bonusMonth != null ? data.bonusMonth : 12);
+            if (
+                has('ss_base') ||
+                has('fund_base') ||
+                has('pension_ratio') ||
+                has('medical_ratio') ||
+                has('unemployment_ratio') ||
+                has('fund_ratio')
+            ) {
+                syncBatchEmpDeductionsFromBase(row);
+            }
+            setVal('.batch-emp-pension', data.pension, 'pension');
+            setVal('.batch-emp-medical', data.medical, 'medical');
+            setVal('.batch-emp-unemployment', data.unemployment, 'unemployment');
+            setVal('.batch-emp-fund', data.fund, 'fund');
+            if (has('yearEndBonus') || has('bonus')) {
+                setVal('.batch-emp-bonus', data.yearEndBonus != null ? data.yearEndBonus : data.bonus, 'yearEndBonus');
+            }
+            setVal('.batch-emp-bonus-year', data.bonusYear, 'bonusYear');
+            setVal('.batch-emp-bonus-month', data.bonusMonth, 'bonusMonth');
             if (typeof data.optionalOpen === 'boolean') {
                 setBatchEmpOptionalMetaExpanded(row, data.optionalOpen);
-            } else {
+            } else if (has('company_tax_id') || has('tax_authority')) {
                 syncBatchEmpOptionalMetaExpanded(row);
             }
             if (typeof data.deductOpen === 'boolean') {
                 setBatchEmpDeductMetaExpanded(row, data.deductOpen);
-            } else {
+            } else if (
+                has('ss_base') ||
+                has('pension') ||
+                has('medical') ||
+                has('unemployment') ||
+                has('fund')
+            ) {
                 syncBatchEmpDeductMetaExpanded(row);
             }
             updateBatchEmpMonthSalaryBadge(row);
@@ -3909,12 +3932,21 @@
             var unemployment = parseFloat(first.unemployment_insurance) || 0;
             var fund = parseFloat(first.housing_fund) || 0;
             var special = parseFloat(first.other_deduction) || 0;
+            seg.forEach(function (r) {
+                var o = parseFloat(r.other_deduction) || 0;
+                if (o > special) {
+                    special = o;
+                }
+            });
             var ded = inferBatchSsBaseFromDeductions(pension, medical, unemployment, fund);
+            var company = String(first.company_name || '').trim();
+            var companyTaxId = first.company_tax_id != null ? String(first.company_tax_id).trim() : '';
+            var taxAuthority = first.tax_authority != null ? String(first.tax_authority).trim() : '';
             return {
                 rowData: {
-                    company: String(first.company_name || '').trim(),
-                    company_tax_id: first.company_tax_id || '',
-                    tax_authority: first.tax_authority || '',
+                    company: company,
+                    company_tax_id: companyTaxId,
+                    tax_authority: taxAuthority,
                     sy: parseInt(first.year, 10),
                     sm: parseInt(first.month, 10),
                     ey: parseInt(last.year, 10),
@@ -3927,7 +3959,9 @@
                     medical_ratio: ded.medical_ratio,
                     unemployment_ratio: ded.unemployment_ratio,
                     fund_ratio: ded.fund_ratio,
-                    special: special
+                    special: round2(special),
+                    optionalOpen: !!(companyTaxId || taxAuthority),
+                    deductOpen: pension > 0 || medical > 0 || unemployment > 0 || fund > 0 || ded.ss_base > 0
                 },
                 overrides: overrides,
                 amounts: { pension: pension, medical: medical, unemployment: unemployment, fund: fund },
@@ -4130,7 +4164,14 @@
                         if (fel) fel.value = String(round2(am.fund));
                         row._monthSalaryMap = payloads[pi].overrides || {};
                         updateBatchEmpMonthSalaryBadge(row);
+                        rememberBatchCompanyProfile({
+                            name: rowCompany,
+                            company_tax_id: payloads[pi].rowData.company_tax_id || '',
+                            tax_authority: payloads[pi].rowData.tax_authority || ''
+                        });
                     }
+                    refreshBatchCompanyHistoryDatalist();
+                    listEl.querySelectorAll('.batch-emp-company').forEach(bindBatchEmpCompanyHistoryInput);
                     var bonusSnapshot = collectBatchBonusSnapshot();
                     enterBatchTaxEditMode(scopeIds, {
                         bonusSnapshot: bonusSnapshot,
