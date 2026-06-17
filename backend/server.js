@@ -2074,7 +2074,7 @@ async function getRecords(userId, year) {
     params.push(parseInt(year, 10));
   }
   
-  query += ' ORDER BY year DESC, month DESC';
+  query += ' ORDER BY year DESC, month DESC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
   
   const [rows] = await conn.execute(query, params);
   conn.release();
