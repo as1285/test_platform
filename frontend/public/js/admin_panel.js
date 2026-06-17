@@ -1836,7 +1836,6 @@
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
-        var _adminAnalyticsConversionSeen = false;
         var _adminAnalyticsActivitySeen = false;
         var _adminAnalyticsRegisterSeen = false;
         var _adminAnalyticsTrackingSeen = false;
@@ -1978,8 +1977,7 @@
                 _adminAccountsLoaded = true;
                 loadAdminAccounts();
             }
-            if (pageKey === 'analytics-conversion' && !_adminAnalyticsConversionSeen) {
-                _adminAnalyticsConversionSeen = true;
+            if (pageKey === 'analytics-conversion') {
                 loadAnalyticsConversionPage();
             }
             if (pageKey === 'analytics-activity' && !_adminAnalyticsActivitySeen) {
