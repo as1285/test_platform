@@ -115,17 +115,13 @@
     return /2410DPN6CC/i.test(ua);
   }
 
-  /**
-   * Redmi K80 等（25060RK16C，Android 16 Cordova）：收入纳税明细「扣缴义务人」需完整展示。
-   * 仅按 UA 型号匹配，不影响其它机型。
-   */
+  /** Redmi K80 等（25060RK16C，Android 16 Cordova）。仅按 UA 型号匹配。 */
   function isAndroid25060RK16CClient() {
     return /25060RK16C/i.test(navigator.userAgent || '');
   }
 
   /**
-   * iPhone 16 Pro（非 Max）：收入纳税明细「扣缴义务人」约 13 个汉字需完整展示。
-   * UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别，避免影响其它 iPhone。
+   * iPhone 16 Pro（非 Max）。UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别。
    */
   /**
    * iPhone 11 Pro：收入纳税明细汇总与「工资薪金」等标题在 PingFang 下偏粗，单独降字重。

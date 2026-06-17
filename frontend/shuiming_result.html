@@ -458,36 +458,6 @@
             text-overflow: ellipsis;
         }
 
-        /* 25060RK16C / iPhone 16 Pro：扣缴义务人完整展示（其它机型保持单行省略） */
-        html.app-android-25060rk16c body.page-shuiming-result .list-company,
-        html.app-ios-iphone16pro body.page-shuiming-result .list-company {
-            white-space: nowrap;
-            overflow: visible;
-            text-overflow: clip;
-            line-height: 1.32;
-        }
-
-        html.app-ios-iphone16pro body.page-shuiming-result .list-row-with-arrow {
-            align-items: flex-start;
-            gap: 6px;
-        }
-
-        html.app-ios-iphone16pro body.page-shuiming-result .list-row-left {
-            min-width: 0;
-            flex: 1 1 auto;
-        }
-
-        html.app-ios-iphone16pro body.page-shuiming-result .list-arrow {
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        html.app-android-25060rk16c body.page-shuiming-result .list-company {
-            white-space: normal;
-            word-break: break-all;
-            line-height: 1.4;
-        }
-
         /*
          * 华为 CLS-AL00（Android 12 Cordova）：收入纳税明细顶栏 + 汇总区对齐官方稿
          * UA: CLS-AL00 Build/HUAWEICLS-AL00 … TaxPlatformCordovaApp
@@ -759,29 +729,6 @@
             font-size: 16px;
         }
 
-        /* Pro Max：扣缴义务人约 13 字完整展示（与 16 Pro 一致） */
-        html.app-ios-iphone-promax-font body.page-shuiming-result .list-company {
-            white-space: nowrap;
-            overflow: visible;
-            text-overflow: clip;
-            line-height: 1.32;
-        }
-
-        html.app-ios-iphone-promax-font body.page-shuiming-result .list-row-with-arrow {
-            align-items: flex-start;
-            gap: 6px;
-        }
-
-        html.app-ios-iphone-promax-font body.page-shuiming-result .list-row-left {
-            min-width: 0;
-            flex: 1 1 auto;
-        }
-
-        html.app-ios-iphone-promax-font body.page-shuiming-result .list-arrow {
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
         html.app-ios-iphone-promax-font.app-top-safe-shell body.page-shuiming-result .page-root {
             --safe-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
@@ -1025,6 +972,22 @@
             return out;
         }
 
+        /** 按字符数截断：超过 maxChars 个字则保留前 maxChars 字并加省略号。 */
+        function truncateChars(s, maxChars) {
+            if (s == null || s === '') return '';
+            var str = String(s);
+            var n = 0;
+            var out = '';
+            for (var ch of str) {
+                if (n >= maxChars) {
+                    return out + '...';
+                }
+                out += ch;
+                n += 1;
+            }
+            return out;
+        }
+
         /** 无记录时的空状态：shuiming_empty.png 为高清截切（仅插画+「页面空空如也」） */
         window.getNoRecordsHtml = function getNoRecordsHtml() {
             return (
@@ -1042,10 +1005,7 @@
                 var subtype = record.income_subtype || '正常工资薪金';
                 var company = record.company_name || '';
                 var subtypeShow = truncateDisplayWidth(subtype, 20);
-                var companyFullWidth =
-                    document.documentElement.classList.contains('app-android-25060rk16c') ||
-                    document.documentElement.classList.contains('app-ios-iphone16pro');
-                var companyShow = companyFullWidth ? company : truncateDisplayWidth(company, 22);
+                var companyShow = truncateChars(company, 12);
                 var id = record.id != null ? record.id : '';
                 listHtml += '<a href="xiangqing.html?id=' + encodeURIComponent(id) + '&year=' + encodeURIComponent(String(listYear)) + '" class="list-item" style="text-decoration: none; display: block;">';
                 listHtml += '<div class="list-header">';
