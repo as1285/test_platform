@@ -300,7 +300,12 @@
   }
 
   function isIPhoneProMaxLargeFontClient() {
-    return isIPhone12ProMaxClient() || isIPhone15PlusProMaxLikeClient() || isIPhone17ProMaxClient();
+    return (
+      isIPhone12ProMaxClient() ||
+      isIPhone15PlusProMaxLikeClient() ||
+      isIPhone16ProMaxClient() ||
+      isIPhone17ProMaxClient()
+    );
   }
 
   /**
@@ -314,7 +319,7 @@
     if (isIPhone16ProLikeClient() || isIPhone17ProLikeClient() || isIPhone11ProLikeClient()) {
       return false;
     }
-    if (isIPhone12ProMaxClient() || isIPhone15PlusProMaxLikeClient() || isIPhone17ProMaxClient()) {
+    if (isIPhone12ProMaxClient() || isIPhone15PlusProMaxLikeClient() || isIPhone16ProMaxClient() || isIPhone17ProMaxClient()) {
       return false;
     }
     var ua = navigator.userAgent || '';
@@ -365,6 +370,24 @@
       return false;
     }
     return isIPhone402x874Viewport();
+  }
+
+  /**
+   * iPhone 16 Pro Max（440×956，iPhone17,2）：收入纳税明细顶栏勿铺满状态栏，避免白底遮挡系统时间。
+   * iOS 26+ 同尺寸归 17 Pro Max 档（见 isIPhone17ProMaxClient）。
+   */
+  function isIPhone16ProMaxClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    if (isIPhone17ProMaxClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*16\s*Pro\s*Max|iPhone17,2\b/i.test(ua)) {
+      return true;
+    }
+    return isIPhone440x956Viewport();
   }
 
   /** 荣耀 ANN-AN00（Android 15 / MagicOS）顶部安全区单独适配 */
@@ -458,7 +481,8 @@
         !document.documentElement.classList.contains('app-ios-iphone16pro') &&
         !document.documentElement.classList.contains('app-ios-iphone17pro') &&
         !document.documentElement.classList.contains('app-ios-iphone-promax-font') &&
-        !document.documentElement.classList.contains('app-ios-iphone15promax')
+        !document.documentElement.classList.contains('app-ios-iphone15promax') &&
+        !document.documentElement.classList.contains('app-ios-iphone16promax')
       ) {
         return;
       }
@@ -502,6 +526,7 @@
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
+      var iosIPhone16ProMax = iosClient && isIPhone16ProMaxClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
@@ -612,6 +637,9 @@
         /* 16 Pro 状态栏区易露出 html 白底；首页顶栏为蓝，与 theme-color 对齐 */
         upsertMeta('theme-color', '#2c80f4');
         upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      }
+      if (iosIPhone16ProMax) {
+        document.documentElement.classList.add('app-ios-iphone16promax');
       }
       if (iosIPhone14) {
         document.documentElement.classList.add('app-ios-iphone14');
@@ -793,16 +821,16 @@
           'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
           'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:101 !important;}' +
           'html.app-ios-iphone14.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
-          /* iPhone 15 Plus / 15 Pro Max：筛选页顶栏铺满安全区白底（同 16 Pro） */
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:#fff !important;z-index:122 !important;pointer-events:none !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;z-index:auto !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed{position:relative !important;z-index:auto !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;padding:15px 16px !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          /* iPhone 15 Plus / 15 Pro Max / 16 Pro Max：筛选页顶栏铺满安全区白底（同 16 Pro） */
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming > .header,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming > .content,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result::before,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:#fff !important;z-index:122 !important;pointer-events:none !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .page-root,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:var(--app-shell-statusbar-top) !important;z-index:auto !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed{position:relative !important;z-index:auto !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;padding:15px 16px !important;background:#fff !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;display:flex !important;align-items:center !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;background:#fff !important;z-index:121 !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shuiming-result .list,html.app-ios-iphone16promax.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           /* iPhone 17 Pro：收入纳税明细结果页顶栏与安全区（同 16 Pro）+ 左右操作字号 */
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone17pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
