@@ -1062,6 +1062,29 @@
     ctx.restore();
   }
 
+  /** 右上角二维码：先绘制再轻微模糊，避免可扫描 */
+  function drawBlurredQr(ctx, x, y, size, qrImg, seed) {
+    var blurPx = 6;
+    var pad = blurPx * 2;
+    var tmp = document.createElement('canvas');
+    tmp.width = size + pad * 2;
+    tmp.height = size + pad * 2;
+    var tctx = tmp.getContext('2d');
+    tctx.fillStyle = '#fff';
+    tctx.fillRect(0, 0, tmp.width, tmp.height);
+    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
+      tctx.drawImage(qrImg, pad, pad, size, size);
+    } else {
+      drawQr(tctx, pad, pad, size, seed);
+    }
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x, y, size, size);
+    ctx.filter = 'blur(' + blurPx + 'px)';
+    ctx.drawImage(tmp, x - pad, y - pad);
+    ctx.restore();
+  }
+
   function buildCertificateVerifyUrl(app) {
     var code = queryCode(app);
     try {
@@ -1224,13 +1247,7 @@
       if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
         drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
       }
-      if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(width - 257, 42, 185, 185);
-        ctx.drawImage(qrImg, width - 257, 42, 185, 185);
-      } else {
-        drawQr(ctx, width - 257, 42, 185, app.id + verifyCode);
-      }
+      drawBlurredQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
       drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
       drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
         size: 26,
