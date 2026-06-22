@@ -477,13 +477,13 @@
                 <div id="batchIssueWrap" style="display:none;flex-wrap:wrap;gap:8px;align-items:flex-end;">
                     <div>
                         <label for="batchIssueCount">批量数量（闲鱼）</label>
-                        <input type="number" id="batchIssueCount" min="1" max="500" value="100" inputmode="numeric" style="width:100px;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+                        <input type="number" id="batchIssueCount" min="1" value="100" inputmode="numeric" style="width:100px;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
                     </div>
                     <button type="button" class="btn-primary" id="btnIssueBatch" style="margin-bottom:1px;">批量生成</button>
                 </div>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量（1–500），一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。</p>
+            <p class="hint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。</p>
             <p class="stat" id="codeListStat" style="margin:0 0 10px;"></p>
         </section>
 
@@ -1898,7 +1898,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260617-batch-issue-count"></script>
+    <script src="/js/admin_panel.js?v=20260622-batch-no-cap"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260617-qr-blur"></script>
 </body>

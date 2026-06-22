@@ -6463,12 +6463,7 @@
                 var countEl = document.getElementById('batchIssueCount');
                 var count = countEl ? parseInt(countEl.value, 10) : 0;
                 if (!count || count < 1) {
-                    alert('请输入 1–500 之间的批量数量');
-                    if (countEl) countEl.focus();
-                    return;
-                }
-                if (count > 500) {
-                    alert('单次最多批量生成 500 个激活码');
+                    alert('请输入大于 0 的批量数量');
                     if (countEl) countEl.focus();
                     return;
                 }

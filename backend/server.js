@@ -10021,7 +10021,7 @@ async function handleAdminIssueCode(req, res) {
   }
 }
 
-/** 批量生成激活码（闲鱼等），数量可自定义（1–500），写入库并返回列表供前端导出 TXT */
+/** 批量生成激活码（闲鱼等），数量可自定义，写入库并返回列表供前端导出 TXT */
 async function handleAdminIssueCodeBatch(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成闲鱼激活码' });
@@ -10029,10 +10029,7 @@ async function handleAdminIssueCodeBatch(req, res) {
   var body = req.body || {};
   var count = parseInt(body.count, 10);
   if (!count || count < 1) {
-    return res.status(400).json({ code: 400, msg: '批量数量须为 1–500 之间的整数' });
-  }
-  if (count > 500) {
-    return res.status(400).json({ code: 400, msg: '单次最多批量生成 500 个激活码' });
+    return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
   }
   var noteRaw = body.note != null ? String(body.note).trim() : '闲鱼批量';
   var note = noteRaw || '闲鱼批量';
