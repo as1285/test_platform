@@ -1892,9 +1892,9 @@
                 );
                 group.style.display = anyVisible ? '' : 'none';
             });
-            var batchBtn = document.getElementById('btnIssueBatch100');
-            if (batchBtn) {
-                batchBtn.style.display = currentAdminProfile && currentAdminProfile.is_super ? '' : 'none';
+            var batchWrap = document.getElementById('batchIssueWrap');
+            if (batchWrap) {
+                batchWrap.style.display = currentAdminProfile && currentAdminProfile.is_super ? 'flex' : 'none';
             }
         }
 
@@ -6457,20 +6457,34 @@
                 .finally(function () { btn.disabled = false; });
         });
 
-        var btnIssueBatch100 = document.getElementById('btnIssueBatch100');
-        if (btnIssueBatch100) {
-            btnIssueBatch100.addEventListener('click', function () {
+        var btnIssueBatch = document.getElementById('btnIssueBatch');
+        if (btnIssueBatch) {
+            btnIssueBatch.addEventListener('click', function () {
+                var countEl = document.getElementById('batchIssueCount');
+                var count = countEl ? parseInt(countEl.value, 10) : 0;
+                if (!count || count < 1) {
+                    alert('请输入 1–500 之间的批量数量');
+                    if (countEl) countEl.focus();
+                    return;
+                }
+                if (count > 500) {
+                    alert('单次最多批量生成 500 个激活码');
+                    if (countEl) countEl.focus();
+                    return;
+                }
                 if (
                     !confirm(
-                        '将一次性生成 100 个激活码（备注：闲鱼批量），写入数据库并下载 TXT 文件。是否继续？'
+                        '将一次性生成 ' +
+                            count +
+                            ' 个激活码（备注：闲鱼批量），写入数据库并下载 TXT 文件。是否继续？'
                     )
                 ) {
                     return;
                 }
-                btnIssueBatch100.disabled = true;
+                btnIssueBatch.disabled = true;
                 adminFetch('api/admin/issue-code-batch', {
                     method: 'POST',
-                    body: JSON.stringify({ count: 100, note: '闲鱼批量' })
+                    body: JSON.stringify({ count: count, note: '闲鱼批量' })
                 })
                     .then(function (r) {
                         return r.json();
@@ -6507,7 +6521,7 @@
                         alert('网络错误');
                     })
                     .finally(function () {
-                        btnIssueBatch100.disabled = false;
+                        btnIssueBatch.disabled = false;
                     });
             });
         }
