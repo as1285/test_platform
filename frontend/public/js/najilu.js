@@ -1062,9 +1062,9 @@
     ctx.restore();
   }
 
-  /** 右上角二维码：先绘制再轻微模糊，避免可扫描 */
+  /** 右上角二维码：轻微柔化，避免过于清晰可扫 */
   function drawBlurredQr(ctx, x, y, size, qrImg, seed) {
-    var blurPx = 6;
+    var blurPx = 2;
     var pad = blurPx * 2;
     var tmp = document.createElement('canvas');
     tmp.width = size + pad * 2;
