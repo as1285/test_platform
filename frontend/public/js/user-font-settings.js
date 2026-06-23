@@ -6,7 +6,7 @@
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
-    var CONFIG_VERSION = 4;
+    var CONFIG_VERSION = 5;
 
     var PRESETS = {
         size: [
@@ -34,6 +34,17 @@
             { id: '004', label: '0.04', value: '0.04em' },
             { id: '006', label: '0.06', value: '0.06em' },
             { id: '008', label: '0.08', value: '0.08em' }
+        ],
+        lineHeight: [
+            { id: '100', label: '1.0', value: '1' },
+            { id: '110', label: '1.1', value: '1.1' },
+            { id: '120', label: '1.2', value: '1.2' },
+            { id: '130', label: '1.3', value: '1.3' },
+            { id: '140', label: '1.4', value: '1.4' },
+            { id: '150', label: '1.5', value: '1.5' },
+            { id: '160', label: '1.6', value: '1.6' },
+            { id: '180', label: '1.8', value: '1.8' },
+            { id: '200', label: '2.0', value: '2' }
         ],
         color: [
             { id: '000', label: '纯黑', value: '#000000' },
@@ -120,12 +131,12 @@
         var p = (location.pathname || '').toLowerCase();
         if (p.indexOf('xiangqing') !== -1) {
             return (
-                '先点区域再调字号/粗细/间距/颜色。「信息标签」为左侧带冒号字段，「信息数值」为右侧金额与文字；' +
+                '先点区域再调字号/粗细/间距/行高/颜色。「信息标签」为左侧带冒号字段，「信息数值」为右侧金额与文字；' +
                 '「扣除标签」「扣除数值」同理。全局为各区域默认，可被分区覆盖。'
             );
         }
         return (
-            '先点区域再调字号/间距等。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
+            '先点区域再调字号/字间距/行高等。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
         );
     }
 
@@ -172,6 +183,7 @@
                         size: raw.size || undefined,
                         weight: raw.weight || undefined,
                         spacing: raw.spacing || undefined,
+                        lineHeight: raw.lineHeight || undefined,
                         color: raw.color || undefined
                     }
                 }
@@ -181,7 +193,7 @@
     }
 
     function targetHasStyle(t) {
-        return !!(t && (t.size || t.weight || t.spacing || t.color));
+        return !!(t && (t.size || t.weight || t.spacing || t.lineHeight || t.color));
     }
 
     function configIsEmpty(cfg) {
@@ -229,6 +241,8 @@
         else if (patch.weight) cur.weight = patch.weight;
         if (patch.spacing === null) delete cur.spacing;
         else if (patch.spacing) cur.spacing = patch.spacing;
+        if (patch.lineHeight === null) delete cur.lineHeight;
+        else if (patch.lineHeight) cur.lineHeight = patch.lineHeight;
         if (patch.color === null) delete cur.color;
         else if (patch.color) cur.color = patch.color;
         if (!targetHasStyle(cur)) {
@@ -250,6 +264,7 @@
         if (regional.size || global.size) eff.size = regional.size || global.size;
         if (regional.weight || global.weight) eff.weight = regional.weight || global.weight;
         if (regional.spacing || global.spacing) eff.spacing = regional.spacing || global.spacing;
+        if (regional.lineHeight || global.lineHeight) eff.lineHeight = regional.lineHeight || global.lineHeight;
         if (regional.color || global.color) eff.color = regional.color || global.color;
         return eff;
     }
@@ -378,11 +393,13 @@
         var decl = [];
         if (t.size) {
             decl.push('font-size:' + t.size + ' !important');
-            if (roleId === 'summary') {
-                var px = parseFloat(String(t.size));
-                if (!isNaN(px) && px > 0) {
-                    decl.push('line-height:' + Math.round(px * 1.43) + 'px !important');
-                }
+        }
+        if (t.lineHeight) {
+            decl.push('line-height:' + t.lineHeight + ' !important');
+        } else if (t.size && roleId === 'summary') {
+            var px = parseFloat(String(t.size));
+            if (!isNaN(px) && px > 0) {
+                decl.push('line-height:' + Math.round(px * 1.43) + 'px !important');
             }
         }
         if (t.weight) decl.push('font-weight:' + t.weight + ' !important');
@@ -593,7 +610,8 @@
 
         addPresetGroup('字号', 'size', false);
         addPresetGroup('粗细', 'weight', false);
-        addPresetGroup('字间距', 'spacing', false);
+        addPresetGroup('字间距(横)', 'spacing', false);
+        addPresetGroup('行高', 'lineHeight', false);
         addPresetGroup('颜色', 'color', true);
 
         var clearTargetBtn = document.createElement('button');
