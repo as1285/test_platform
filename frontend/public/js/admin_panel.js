@@ -5093,16 +5093,21 @@
                 html += '</tbody></table></div>';
             }
 
-            var safeKey = esc(username).replace(/[^a-zA-Z0-9_-]/g, '_');
+            var safeKey = userDataCertSafeKey(username);
             var latestIssue = data.latest_issue_application || null;
             html +=
                 '<div class="ud-certificate-head">' +
-                '<div style="color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（下方为管理端含公章预览；可生成与 C 端一致的无章图）</span></div>' +
-                '<button type="button" class="btn-sm ud-cert-client-btn" id="ud_certificate_client_btn_' +
+                '<div style="color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（可在含公章预览与 C 端无章图之间切换）</span></div>' +
+                '<div class="ud-cert-mode-btns">' +
+                '<button type="button" class="btn-sm ud-cert-mode-btn is-active" id="ud_certificate_stamp_btn_' +
+                safeKey +
+                '">含公章预览</button>' +
+                '<button type="button" class="btn-sm ud-cert-mode-btn" id="ud_certificate_client_btn_' +
                 safeKey +
                 '" data-u="' +
                 esc(username) +
-                '">生成C端无章图</button>' +
+                '">C端无章图</button>' +
+                '</div>' +
                 '</div>';
             if (latestIssue && latestIssue.period_start && latestIssue.period_end) {
                 html +=
@@ -5120,15 +5125,16 @@
             html +=
                 '<div class="ud-certificate-wrap" id="ud_certificate_' +
                 safeKey +
-                '">正在生成凭证预览…</div>' +
-                '<div class="ud-certificate-wrap ud-certificate-client" id="ud_certificate_client_' +
-                safeKey +
-                '" hidden></div>';
+                '">正在生成凭证预览…</div>';
 
             html += '<div style="margin:10px 0 6px;color:#666;">个税记录（' + (data.tax_records || []).length + ' 条）</div>';
             html += renderAdminTaxRecordsTable(data.tax_records || []);
             html += '</div>';
             return html;
+        }
+
+        function userDataCertSafeKey(username) {
+            return String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
         }
 
         function renderUserDataCertificateImages(container, data, options) {
@@ -5202,38 +5208,64 @@
         }
 
         function mountUserDataCertificate(username, data) {
-            var safeKey = String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            var safeKey = userDataCertSafeKey(username);
             var el = document.getElementById('ud_certificate_' + safeKey);
-            var clientEl = document.getElementById('ud_certificate_client_' + safeKey);
+            var stampBtn = document.getElementById('ud_certificate_stamp_btn_' + safeKey);
             var clientBtn = document.getElementById('ud_certificate_client_btn_' + safeKey);
-            renderUserDataCertificateImages(el, data, { showStamp: true, altSuffix: '（管理端）' });
-            if (clientBtn) {
-                var issue = data && data.latest_issue_application;
-                var canRender =
-                    issue &&
-                    issue.period_start &&
-                    issue.period_end &&
-                    data &&
-                    (data.tax_records || []).length &&
-                    window.TaxIssueCertificate &&
-                    typeof window.TaxIssueCertificate.renderDataUrl === 'function';
-                if (!canRender) {
+            var issue = data && data.latest_issue_application;
+            var canRender =
+                issue &&
+                issue.period_start &&
+                issue.period_end &&
+                data &&
+                (data.tax_records || []).length &&
+                window.TaxIssueCertificate &&
+                typeof window.TaxIssueCertificate.renderDataUrl === 'function';
+            var certCache = { stamp: '', client: '' };
+
+            function setModeActive(showStamp) {
+                if (stampBtn) stampBtn.classList.toggle('is-active', showStamp);
+                if (clientBtn) clientBtn.classList.toggle('is-active', !showStamp);
+            }
+
+            function showCachedOrRender(showStamp) {
+                if (!el) return Promise.resolve();
+                var cacheKey = showStamp ? 'stamp' : 'client';
+                if (certCache[cacheKey]) {
+                    el.innerHTML = certCache[cacheKey];
+                    setModeActive(showStamp);
+                    return Promise.resolve();
+                }
+                setModeActive(showStamp);
+                return renderUserDataCertificateImages(el, data, {
+                    showStamp: showStamp,
+                    altSuffix: showStamp ? '（管理端）' : '（C端无章）'
+                }).then(function () {
+                    certCache[cacheKey] = el.innerHTML;
+                });
+            }
+
+            if (!canRender) {
+                renderUserDataCertificateImages(el, data, { showStamp: true, altSuffix: '（管理端）' });
+                if (clientBtn) {
                     clientBtn.disabled = true;
                     clientBtn.title = '需有 C 端开具记录及个税明细';
-                    return;
                 }
+                if (stampBtn) stampBtn.disabled = true;
+                return;
+            }
+
+            showCachedOrRender(true);
+            if (stampBtn) {
+                stampBtn.onclick = function () {
+                    if (stampBtn.classList.contains('is-active')) return;
+                    showCachedOrRender(true);
+                };
+            }
+            if (clientBtn) {
                 clientBtn.onclick = function () {
-                    if (!clientEl) return;
-                    clientBtn.disabled = true;
-                    clientBtn.textContent = '生成中…';
-                    clientEl.hidden = false;
-                    renderUserDataCertificateImages(clientEl, data, {
-                        showStamp: false,
-                        altSuffix: '（C端无章）'
-                    }).finally(function () {
-                        clientBtn.disabled = false;
-                        clientBtn.textContent = '重新生成C端无章图';
-                    });
+                    if (clientBtn.classList.contains('is-active')) return;
+                    showCachedOrRender(false);
                 };
             }
         }

@@ -754,9 +754,15 @@
             flex-wrap: wrap;
             margin: 14px 0 6px;
         }
-        .ud-certificate-client {
-            background: #f6ffed;
-            border-color: #b7eb8f;
+        .ud-cert-mode-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .ud-cert-mode-btn.is-active {
+            background: #1677ff;
+            border-color: #1677ff;
+            color: #fff;
         }
         .ud-cert-preview-label {
             margin-bottom: 8px;
