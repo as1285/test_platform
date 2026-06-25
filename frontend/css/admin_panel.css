@@ -746,6 +746,30 @@
             border-radius: 8px;
             text-align: center;
         }
+        .ud-certificate-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 14px 0 6px;
+        }
+        .ud-certificate-client {
+            background: #f6ffed;
+            border-color: #b7eb8f;
+        }
+        .ud-cert-preview-label {
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #666;
+            text-align: left;
+        }
+        .ud-cert-preview-page + .ud-cert-preview-page {
+            margin-top: 12px;
+        }
+        .ud-cert-preview-actions {
+            margin-top: 8px;
+        }
         .ud-certificate-wrap img {
             max-width: 100%;
             height: auto;

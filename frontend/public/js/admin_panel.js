@@ -5093,9 +5093,17 @@
                 html += '</tbody></table></div>';
             }
 
+            var safeKey = esc(username).replace(/[^a-zA-Z0-9_-]/g, '_');
             var latestIssue = data.latest_issue_application || null;
             html +=
-                '<div style="margin:14px 0 6px;color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（按 C 端最近一次开具生成；管理端预览含公章）</span></div>';
+                '<div class="ud-certificate-head">' +
+                '<div style="color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（下方为管理端含公章预览；可生成与 C 端一致的无章图）</span></div>' +
+                '<button type="button" class="btn-sm ud-cert-client-btn" id="ud_certificate_client_btn_' +
+                safeKey +
+                '" data-u="' +
+                esc(username) +
+                '">生成C端无章图</button>' +
+                '</div>';
             if (latestIssue && latestIssue.period_start && latestIssue.period_end) {
                 html +=
                     '<div style="margin:0 0 8px;padding:8px 10px;background:#fff7e6;border-radius:6px;font-size:13px;color:#614700;">C 端最近开具：' +
@@ -5111,8 +5119,11 @@
             }
             html +=
                 '<div class="ud-certificate-wrap" id="ud_certificate_' +
-                esc(username).replace(/[^a-zA-Z0-9_-]/g, '_') +
-                '">正在生成凭证预览…</div>';
+                safeKey +
+                '">正在生成凭证预览…</div>' +
+                '<div class="ud-certificate-wrap ud-certificate-client" id="ud_certificate_client_' +
+                safeKey +
+                '" hidden></div>';
 
             html += '<div style="margin:10px 0 6px;color:#666;">个税记录（' + (data.tax_records || []).length + ' 条）</div>';
             html += renderAdminTaxRecordsTable(data.tax_records || []);
@@ -5120,48 +5131,110 @@
             return html;
         }
 
+        function renderUserDataCertificateImages(container, data, options) {
+            options = options || {};
+            var showStamp = options.showStamp === true;
+            var altSuffix = options.altSuffix || '';
+            if (!container) return Promise.resolve();
+            if (!window.TaxIssueCertificate || typeof window.TaxIssueCertificate.renderDataUrl !== 'function') {
+                container.textContent = '凭证组件未加载，请刷新页面';
+                return Promise.resolve();
+            }
+            var issue = data && data.latest_issue_application;
+            if (!issue || !issue.period_start || !issue.period_end) {
+                container.textContent = '暂无 C 端纳税记录开具记录（用户端生成成功后会自动上报）';
+                return Promise.resolve();
+            }
+            if (!data || !(data.tax_records || []).length) {
+                container.textContent = '暂无个税记录，无法生成凭证预览';
+                return Promise.resolve();
+            }
+            container.textContent = showStamp ? '正在生成含公章预览…' : '正在生成 C 端无章图…';
+            try {
+                var app = window.TaxIssueCertificate.buildAppFromAdminDetail(data);
+                return window.TaxIssueCertificate.renderDataUrl(app, { showStamp: showStamp })
+                    .then(function (urlOrUrls) {
+                        var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+                        var title = showStamp ? '管理端预览含公章' : 'C 端无章预览';
+                        var downloadBase =
+                            (data.user && (data.user.real_name || data.user.username)) ||
+                            (issue.record_no ? '纳税记录_' + issue.record_no : '纳税记录');
+                        container.innerHTML =
+                            '<div class="ud-cert-preview-label">' +
+                            esc(title) +
+                            '</div>' +
+                            urls
+                                .map(function (u, i) {
+                                    var gap = i < urls.length - 1 ? ' style="margin-bottom:12px"' : '';
+                                    var pageSuffix = urls.length > 1 ? '_第' + (i + 1) + '页' : '';
+                                    return (
+                                        '<div class="ud-cert-preview-page"' +
+                                        gap +
+                                        '>' +
+                                        '<img src="' +
+                                        u +
+                                        '" alt="纳税记录凭证' +
+                                        pageSuffix +
+                                        esc(altSuffix) +
+                                        '" title="' +
+                                        esc(title) +
+                                        '">' +
+                                        '<div class="ud-cert-preview-actions">' +
+                                        '<a class="btn-sm" href="' +
+                                        u +
+                                        '" download="' +
+                                        esc(downloadBase + (showStamp ? '_管理端' : '_C端无章') + pageSuffix + '.png') +
+                                        '">下载' +
+                                        (urls.length > 1 ? '第' + (i + 1) + '页' : '') +
+                                        '</a>' +
+                                        '</div></div>'
+                                    );
+                                })
+                                .join('');
+                    })
+                    .catch(function (err) {
+                        container.textContent = (err && err.message) || '凭证生成失败';
+                    });
+            } catch (e) {
+                container.textContent = (e && e.message) || '凭证生成失败';
+                return Promise.resolve();
+            }
+        }
+
         function mountUserDataCertificate(username, data) {
             var safeKey = String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
             var el = document.getElementById('ud_certificate_' + safeKey);
-            if (!el) return;
-            var issue = data && data.latest_issue_application;
-            if (!issue || !issue.period_start || !issue.period_end) {
-                el.textContent = '暂无 C 端纳税记录开具记录（用户端生成成功后会自动上报）';
-                return;
-            }
-            if (!data || !(data.tax_records || []).length) {
-                el.textContent = '暂无个税记录，无法生成凭证预览';
-                return;
-            }
-            if (!window.TaxIssueCertificate || typeof window.TaxIssueCertificate.renderDataUrl !== 'function') {
-                el.textContent = '凭证组件未加载，请刷新页面';
-                return;
-            }
-            try {
-                var app = window.TaxIssueCertificate.buildAppFromAdminDetail(data);
-                window.TaxIssueCertificate.renderDataUrl(app, { showStamp: true })
-                    .then(function (urlOrUrls) {
-                        var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
-                        el.innerHTML = urls
-                            .map(function (u, i) {
-                                var gap = i < urls.length - 1 ? ' style="margin-bottom:12px"' : '';
-                                return (
-                                    '<img src="' +
-                                    u +
-                                    '" alt="纳税记录凭证第' +
-                                    (i + 1) +
-                                    '页（管理端）" title="管理端预览含公章"' +
-                                    gap +
-                                    '>'
-                                );
-                            })
-                            .join('');
-                    })
-                    .catch(function (err) {
-                        el.textContent = (err && err.message) || '凭证生成失败';
+            var clientEl = document.getElementById('ud_certificate_client_' + safeKey);
+            var clientBtn = document.getElementById('ud_certificate_client_btn_' + safeKey);
+            renderUserDataCertificateImages(el, data, { showStamp: true, altSuffix: '（管理端）' });
+            if (clientBtn) {
+                var issue = data && data.latest_issue_application;
+                var canRender =
+                    issue &&
+                    issue.period_start &&
+                    issue.period_end &&
+                    data &&
+                    (data.tax_records || []).length &&
+                    window.TaxIssueCertificate &&
+                    typeof window.TaxIssueCertificate.renderDataUrl === 'function';
+                if (!canRender) {
+                    clientBtn.disabled = true;
+                    clientBtn.title = '需有 C 端开具记录及个税明细';
+                    return;
+                }
+                clientBtn.onclick = function () {
+                    if (!clientEl) return;
+                    clientBtn.disabled = true;
+                    clientBtn.textContent = '生成中…';
+                    clientEl.hidden = false;
+                    renderUserDataCertificateImages(clientEl, data, {
+                        showStamp: false,
+                        altSuffix: '（C端无章）'
+                    }).finally(function () {
+                        clientBtn.disabled = false;
+                        clientBtn.textContent = '重新生成C端无章图';
                     });
-            } catch (e) {
-                el.textContent = (e && e.message) || '凭证生成失败';
+                };
             }
         }
 
