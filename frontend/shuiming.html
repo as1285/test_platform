@@ -745,12 +745,53 @@
             closePicker();
         });
         
+        function getSelectedIncomeTypes() {
+            var types = [];
+            document.querySelectorAll('.type-list .type-item').forEach(function (item) {
+                var icon = item.querySelector('.check-icon');
+                var textEl = item.querySelector('.type-text');
+                if (!icon || icon.classList.contains('check-off') || !textEl) return;
+                var label = textEl.textContent.trim();
+                if (label) types.push(label);
+            });
+            return types;
+        }
+
+        function setIncomeTypeSelections(labels) {
+            if (!Array.isArray(labels) || !labels.length) return;
+            var labelSet = {};
+            labels.forEach(function (l) { labelSet[String(l).trim()] = true; });
+            document.querySelectorAll('.type-list .type-item').forEach(function (item) {
+                var icon = item.querySelector('.check-icon');
+                var textEl = item.querySelector('.type-text');
+                if (!icon || !textEl) return;
+                var on = !!labelSet[textEl.textContent.trim()];
+                icon.classList.toggle('check-off', !on);
+                item.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
+        }
+
+        try {
+            var savedTypes = localStorage.getItem('selected_income_types');
+            if (savedTypes) setIncomeTypeSelections(JSON.parse(savedTypes));
+        } catch (e) {}
+
         // 查询（未激活也可进入结果页）
         function doQuery() {
             selectedYear = String(normalizeTaxYear(selectedYear));
             yearDisplay.textContent = selectedYear;
             localStorage.setItem('selected_year', selectedYear);
-            window.location.href = 'shuiming_result.html?year=' + selectedYear;
+            var types = getSelectedIncomeTypes();
+            if (!types.length) {
+                alert('请至少选择一种所得类型');
+                return;
+            }
+            try {
+                localStorage.setItem('selected_income_types', JSON.stringify(types));
+            } catch (e) {}
+            var q = 'year=' + encodeURIComponent(selectedYear) +
+                '&types=' + encodeURIComponent(types.join(','));
+            window.location.href = 'shuiming_result.html?' + q;
         }
         
         // 所得类型：默认四项，点击「其他类型」展开全部，「收起」还原

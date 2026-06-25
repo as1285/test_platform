@@ -1153,14 +1153,34 @@
             if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
         }
 
+        function getSelectedIncomeTypesFromUrl() {
+            var raw = getUrlParam('types');
+            if (raw) {
+                return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+            }
+            try {
+                var stored = localStorage.getItem('selected_income_types');
+                if (stored) {
+                    var parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length) return parsed;
+                }
+            } catch (e) {}
+            return null;
+        }
+
         function loadData() {
             var year = String(
                 typeof normalizeTaxYear === 'function'
                     ? normalizeTaxYear(getUrlParam('year'))
                     : getUrlParam('year') || new Date().getFullYear()
             );
+            var incomeTypes = getSelectedIncomeTypesFromUrl();
+            var apiUrl = 'api/tax.php?action=records&year=' + encodeURIComponent(year);
+            if (incomeTypes && incomeTypes.length) {
+                apiUrl += '&types=' + encodeURIComponent(incomeTypes.join(','));
+            }
 
-            authFetch('api/tax.php?action=records&year=' + encodeURIComponent(year))
+            authFetch(apiUrl)
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
                     if (data.code === 200 && data.data) {

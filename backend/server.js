@@ -2064,7 +2064,28 @@ async function createTables() {
 /** 用户可见的税务记录（未在回收站） */
 const TAX_RECORD_NOT_DELETED_SQL = 'deleted_at IS NULL';
 
-async function getRecords(userId, year) {
+function normalizeIncomeTypeLabel(t) {
+  var s = t != null ? String(t).trim() : '';
+  if (s.endsWith('所得')) {
+    s = s.slice(0, -2);
+  }
+  return s;
+}
+
+function recordMatchesIncomeTypes(record, incomeTypes) {
+  if (!incomeTypes || !incomeTypes.length) {
+    return true;
+  }
+  var rt = normalizeIncomeTypeLabel(record.income_type);
+  for (var i = 0; i < incomeTypes.length; i++) {
+    if (normalizeIncomeTypeLabel(incomeTypes[i]) === rt) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function getRecords(userId, year, incomeTypes) {
   const conn = await pool.getConnection();
   let query = 'SELECT * FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
   const params = [userId];
@@ -2078,10 +2099,17 @@ async function getRecords(userId, year) {
   
   const [rows] = await conn.execute(query, params);
   conn.release();
+
+  var filtered = rows;
+  if (incomeTypes && incomeTypes.length) {
+    filtered = rows.filter(function (r) {
+      return recordMatchesIncomeTypes(r, incomeTypes);
+    });
+  }
   
   let income = 0;
   let tax = 0;
-  rows.forEach(function (r) {
+  filtered.forEach(function (r) {
     income += parseFloat(r.income) || 0;
     tax += parseFloat(r.tax_reported) || 0;
   });
@@ -2089,7 +2117,7 @@ async function getRecords(userId, year) {
   return {
     income_total: income.toFixed(2),
     tax_total: tax.toFixed(2),
-    records: rows
+    records: filtered
   };
 }
 
@@ -5897,8 +5925,18 @@ async function handleTaxGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'user_id required' });
   }
   var year = req.query.year;
+  var typesParam = req.query.types;
+  var incomeTypes = null;
+  if (typesParam != null && String(typesParam).trim() !== '') {
+    incomeTypes = String(typesParam)
+      .split(',')
+      .map(function (s) {
+        return s.trim();
+      })
+      .filter(Boolean);
+  }
   try {
-    var data = await getRecords(userId, year);
+    var data = await getRecords(userId, year, incomeTypes);
     res.json({ code: 200, data: data });
   } catch (e) {
     console.error(e);
