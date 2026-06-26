@@ -7496,6 +7496,24 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
       days: lastDay
     };
   }
+  var fixedMonth = s.match(/^month_(\d{4})-(\d{2})$/);
+  if (fixedMonth) {
+    var fy = parseInt(fixedMonth[1], 10);
+    var fm = parseInt(fixedMonth[2], 10);
+    if (fm >= 1 && fm <= 12 && fy >= 2019 && fy <= 2100) {
+      var fStart = fy + '-' + String(fm).padStart(2, '0') + '-01';
+      var fLastDay = new Date(fy, fm, 0).getDate();
+      var fEnd = fy + '-' + String(fm).padStart(2, '0') + '-' + String(fLastDay).padStart(2, '0');
+      return {
+        mode: 'range',
+        start: fStart,
+        end: fEnd,
+        label: fy + '年' + fm + '月',
+        period_key: s,
+        days: fLastDay
+      };
+    }
+  }
   var days = parseInt(s, 10) || 1;
   if (days < 1) days = 1;
   if (days > maxDays) days = maxDays;
@@ -7514,6 +7532,61 @@ function conversionAnalyticsPeriodMeta(period) {
     period_label: period.label,
     period_start: period.mode === 'range' ? period.start : null,
     period_end: period.mode === 'range' ? period.end : null
+  };
+}
+
+var parseAnalyticsPeriod = parseConversionAnalyticsPeriod;
+
+function analyticsPeriodCnDateFilter(dateExpr, period) {
+  if (period.mode === 'range') {
+    return {
+      sql: '(' + dateExpr + ' >= ? AND ' + dateExpr + ' <= ?)',
+      params: [period.start, period.end]
+    };
+  }
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  return {
+    sql: '(' + dateExpr + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY))',
+    params: [period.span]
+  };
+}
+
+function analyticsPeriodStatDateFilter(period) {
+  if (period.mode === 'range') {
+    return {
+      sql: '(stat_date >= ? AND stat_date <= ?)',
+      params: [period.start, period.end]
+    };
+  }
+  return {
+    sql: '(stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY))',
+    params: [period.span]
+  };
+}
+
+function analyticsPeriodActivityDateFilter(period) {
+  if (period.mode === 'range') {
+    return {
+      sql: '(activity_date >= ? AND activity_date <= ?)',
+      params: [period.start, period.end]
+    };
+  }
+  return {
+    sql: '(activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY))',
+    params: [period.span]
+  };
+}
+
+function analyticsPeriodLoginDatetimeFilter(period) {
+  if (period.mode === 'range') {
+    return {
+      sql: '(DATE(created_at) >= ? AND DATE(created_at) <= ?)',
+      params: [period.start, period.end]
+    };
+  }
+  return {
+    sql: '(created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY))',
+    params: [period.span]
   };
 }
 
@@ -7790,18 +7863,15 @@ function funnelMetricsSqlAliases(userAlias) {
 /** 按注册来源渠道的 7 日转化漏斗 */
 async function handleAdminChannelRegistrationFunnel(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
+    var period = parseAnalyticsPeriod(req.query.days, 90);
     var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var pf = analyticsPeriodCnDateFilter(cnUserDay, period);
     var fm = funnelMetricsSqlAliases('u');
 
     const conn = await pool.getConnection();
     try {
-      var where = [regSince];
-      var params = [days - 1];
+      var where = [pf.sql];
+      var params = pf.params.slice();
       appendAdminUserScope(where, params, req.admin, 'u.username');
       var whereSql = ' WHERE ' + where.join(' AND ');
 
@@ -7841,7 +7911,10 @@ async function handleAdminChannelRegistrationFunnel(req, res) {
         };
       });
 
-      res.json({ code: 200, data: { days: days, items: items } });
+      res.json({
+        code: 200,
+        data: Object.assign({ items: items }, conversionAnalyticsPeriodMeta(period))
+      });
     } finally {
       conn.release();
     }
@@ -7873,18 +7946,15 @@ function activationFunnelMetricsSqlAliases(userAlias, actAlias) {
 /** 按激活来源渠道的 7 日转化（激活 cohort：激活后有个税 / 看明细） */
 async function handleAdminActivationChannelFunnel(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
+    var period = parseAnalyticsPeriod(req.query.days, 90);
     var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var actSince = cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var pf = analyticsPeriodCnDateFilter(cnActDay, period);
     var fm = activationFunnelMetricsSqlAliases('u', 'ac');
 
     const conn = await pool.getConnection();
     try {
-      var where = [actSince, userActivationStatsEligibleSql('u.username')];
-      var params = [days - 1];
+      var where = [pf.sql, userActivationStatsEligibleSql('u.username')];
+      var params = pf.params.slice();
       appendAdminUserScope(where, params, req.admin, 'u.username');
       var whereSql = ' WHERE ' + where.join(' AND ');
 
@@ -7923,7 +7993,10 @@ async function handleAdminActivationChannelFunnel(req, res) {
         };
       });
 
-      res.json({ code: 200, data: { days: days, items: items } });
+      res.json({
+        code: 200,
+        data: Object.assign({ items: items }, conversionAnalyticsPeriodMeta(period))
+      });
     } finally {
       conn.release();
     }
@@ -7936,12 +8009,11 @@ async function handleAdminActivationChannelFunnel(req, res) {
 /** install_guide.html 访问、行为与停留统计 */
 async function handleAdminInstallGuideStats(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
-    var span = days - 1;
+    var period = parseAnalyticsPeriod(req.query.days, 90);
     var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-    var cnSince = cnDay + ' >= DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL ? DAY)';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var cnSince = pf.sql;
+    var sinceParams = pf.params.slice();
     const conn = await pool.getConnection();
     try {
       const [viewRows] = await conn.query(
@@ -7949,7 +8021,7 @@ async function handleAdminInstallGuideStats(req, res) {
                 COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
          FROM install_guide_track_events
          WHERE event_key = 'track_install_page_view' AND ${cnSince}`,
-        [span]
+        sinceParams
       );
       const [leaveRows] = await conn.query(
         `SELECT COUNT(*) AS leave_cnt, AVG(dwell_seconds) AS avg_dwell
@@ -7957,7 +8029,7 @@ async function handleAdminInstallGuideStats(req, res) {
          WHERE event_key = 'track_install_page_leave'
            AND dwell_seconds IS NOT NULL
            AND ${cnSince}`,
-        [span]
+        sinceParams
       );
       const [dwellListRows] = await conn.query(
         `SELECT dwell_seconds
@@ -7966,7 +8038,7 @@ async function handleAdminInstallGuideStats(req, res) {
            AND dwell_seconds IS NOT NULL
            AND ${cnSince}
          ORDER BY dwell_seconds ASC`,
-        [span]
+        sinceParams
       );
       const [actionRows] = await conn.query(
         `SELECT event_key, COUNT(*) AS total
@@ -7975,7 +8047,7 @@ async function handleAdminInstallGuideStats(req, res) {
            AND ${cnSince}
          GROUP BY event_key
          ORDER BY total DESC`,
-        [span]
+        sinceParams
       );
       const [dailyRows] = await conn.query(
         `SELECT ${cnDay} AS d,
@@ -7989,18 +8061,19 @@ async function handleAdminInstallGuideStats(req, res) {
          WHERE ${cnSince}
          GROUP BY ${cnDay}
          ORDER BY d ASC`,
-        [span]
+        sinceParams
       );
       var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-      var cnUserSince =
-        cnUserDay + ' >= DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL ? DAY)';
+      var userPf = analyticsPeriodCnDateFilter(cnUserDay, period);
+      var cnUserSince = userPf.sql;
+      var userSinceParams = userPf.params.slice();
       const [regDailyRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
          FROM users u
          WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
-        [span]
+        userSinceParams
       );
       const [regFromInstallRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
@@ -8026,7 +8099,7 @@ async function handleAdminInstallGuideStats(req, res) {
            )
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
-        [span]
+        userSinceParams
       );
       const [regFromInstallReportedRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(*) AS registered_from_install_reported
@@ -8034,7 +8107,7 @@ async function handleAdminInstallGuideStats(req, res) {
          WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL AND u.registered_from_install_guide = 1
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
-        [span]
+        userSinceParams
       );
       const [recentRows] = await conn.query(
         `SELECT id, client_id, device_fp, event_key, dwell_seconds, created_at, ip, user_agent
@@ -8042,7 +8115,7 @@ async function handleAdminInstallGuideStats(req, res) {
          WHERE ${cnSince}
          ORDER BY created_at DESC
          LIMIT 300`,
-        [span]
+        sinceParams
       );
 
       var pv = Number((viewRows[0] || {}).pv) || 0;
@@ -8112,11 +8185,12 @@ async function handleAdminInstallGuideStats(req, res) {
       });
 
       var todayKey = chinaDateKeyNow();
-      var todayParts = todayKey.split('-').map(Number);
       var daily = [];
-      for (var di = 0; di < days; di++) {
-        var dt = new Date(todayParts[0], todayParts[1] - 1, todayParts[2] - (days - 1 - di));
-        var key = formatDateKey(dt);
+      var dateKeys =
+        period.mode === 'range'
+          ? dateKeysBetween(period.start, period.end)
+          : chinaDateKeysForSpan(period.span + 1);
+      dateKeys.forEach(function (key) {
         if (dailyMap[key]) {
           daily.push(dailyMap[key]);
         } else {
@@ -8136,7 +8210,7 @@ async function handleAdminInstallGuideStats(req, res) {
             register_rate_all_pct: regAll0 > 0 ? '—' : null
           });
         }
-      }
+      });
 
       var totalRegistered = 0;
       var totalRegisteredFromInstall = 0;
@@ -8153,28 +8227,30 @@ async function handleAdminInstallGuideStats(req, res) {
 
       res.json({
         code: 200,
-        data: {
-          days: days,
-          summary: {
-            page_views: pv,
-            unique_visitors: uv,
-            leave_events: leaveCnt,
-            avg_dwell_seconds: isFinite(avgDwell) ? Math.round(avgDwell) : null,
-            avg_dwell_label: isFinite(avgDwell) ? formatStaySecondsLabel(avgDwell) : '—',
-            median_dwell_seconds: medianDwell != null ? medianDwell : null,
-            median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—',
-            registered: totalRegistered,
-            registered_from_install: totalRegisteredFromInstall,
-            registered_from_install_reported: totalRegisteredFromInstallReported,
-            register_rate: uv > 0 ? totalRegisteredFromInstall / uv : null,
-            register_rate_pct: pctText(totalRegisteredFromInstall, uv),
-            register_rate_all: uv > 0 ? totalRegistered / uv : null,
-            register_rate_all_pct: pctText(totalRegistered, uv)
+        data: Object.assign(
+          {
+            summary: {
+              page_views: pv,
+              unique_visitors: uv,
+              leave_events: leaveCnt,
+              avg_dwell_seconds: isFinite(avgDwell) ? Math.round(avgDwell) : null,
+              avg_dwell_label: isFinite(avgDwell) ? formatStaySecondsLabel(avgDwell) : '—',
+              median_dwell_seconds: medianDwell != null ? medianDwell : null,
+              median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—',
+              registered: totalRegistered,
+              registered_from_install: totalRegisteredFromInstall,
+              registered_from_install_reported: totalRegisteredFromInstallReported,
+              register_rate: uv > 0 ? totalRegisteredFromInstall / uv : null,
+              register_rate_pct: pctText(totalRegisteredFromInstall, uv),
+              register_rate_all: uv > 0 ? totalRegistered / uv : null,
+              register_rate_all_pct: pctText(totalRegistered, uv)
+            },
+            actions: actions,
+            daily: daily,
+            recent_visitors: recentVisitors
           },
-          actions: actions,
-          daily: daily,
-          recent_visitors: recentVisitors
-        }
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -8188,22 +8264,21 @@ async function handleAdminInstallGuideStats(req, res) {
 /** 安装页与注册相关埋点汇总（analytics_api_daily） */
 async function handleAdminInstallTrackStats(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var pf = analyticsPeriodStatDateFilter(period);
     const conn = await pool.getConnection();
     try {
       const [rows] = await conn.query(
         `SELECT route_key, SUM(cnt) AS total
          FROM analytics_api_daily
-         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${pf.sql}
            AND (
              route_key LIKE '%track_install_%'
              OR route_key = 'EVENT register_success'
            )
          GROUP BY route_key
          ORDER BY total DESC`,
-        [days - 1]
+        pf.params
       );
       var labelMap = {
         'POST auth.php#track_install_apk_click': 'Android 安装包点击',
@@ -8224,7 +8299,10 @@ async function handleAdminInstallTrackStats(req, res) {
           total: Number(r.total) || 0
         };
       });
-      res.json({ code: 200, data: { days: days, items: items } });
+      res.json({
+        code: 200,
+        data: Object.assign({ items: items }, conversionAnalyticsPeriodMeta(period))
+      });
     } finally {
       conn.release();
     }
@@ -8517,17 +8595,11 @@ async function handleAdminUsersPendingActivate24h(req, res) {
 /** 注册时段分布（按北京时间 created_at） */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
-    var days = clampAnalyticsDays(req.query.days, 30, 365);
-    var span = Math.max(0, days - 1);
+    var period = parseAnalyticsPeriod(req.query.days, 365);
     var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var where =
-      'DATE(' +
-      cnCreated +
-      ') >= DATE_SUB(' +
-      cnToday +
-      ', INTERVAL ? DAY)';
-    var params = [span];
+    var pf = analyticsPeriodCnDateFilter('DATE(' + cnCreated + ')', period);
+    var where = pf.sql;
+    var params = pf.params.slice();
 
     if (!req.admin || !req.admin.is_super) {
       where +=
@@ -8635,22 +8707,24 @@ async function handleAdminRegisterTimeDistribution(req, res) {
 
       res.json({
         code: 200,
-        data: {
-          days: days,
-          timezone: 'Asia/Shanghai (UTC+8)',
-          total: total,
-          periods: periods,
-          detail_buckets: detailBuckets,
-          peak_period: peakPeriod
-            ? {
-                key: peakPeriod.key,
-                label: peakPeriod.label,
-                count: peakPeriod.count,
-                pct_text: peakPeriod.pct_text
-              }
-            : null,
-          by_hour: byHour
-        }
+        data: Object.assign(
+          {
+            timezone: 'Asia/Shanghai (UTC+8)',
+            total: total,
+            periods: periods,
+            detail_buckets: detailBuckets,
+            peak_period: peakPeriod
+              ? {
+                  key: peakPeriod.key,
+                  label: peakPeriod.label,
+                  count: peakPeriod.count,
+                  pct_text: peakPeriod.pct_text
+                }
+              : null,
+            by_hour: byHour
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -8719,6 +8793,17 @@ function computeAgeFullYears(birthIso, refParts) {
   return age;
 }
 
+function registerScopeLabel(scope, suffix) {
+  suffix = suffix || '';
+  if (scope.all_time) {
+    return '全部注册用户' + suffix;
+  }
+  if (scope.period && scope.period.mode === 'range') {
+    return scope.period.label + '注册用户' + suffix;
+  }
+  return '最近 ' + scope.span_days + ' 天注册用户' + suffix;
+}
+
 function buildRegisterUserScopeWhere(daysRaw, admin) {
   var allTime =
     daysRaw === '0' ||
@@ -8726,27 +8811,34 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
     daysRaw === '' ||
     daysRaw == null ||
     daysRaw === undefined;
-  var days = allTime ? 0 : clampAnalyticsDays(daysRaw, 30, 365);
   var where = '1=1';
   var params = [];
+  var period = null;
   if (!allTime) {
-    var span = Math.max(0, days - 1);
-    var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    where +=
-      ' AND DATE(' +
-      cnCreated +
-      ') >= DATE_SUB(' +
-      cnToday +
-      ', INTERVAL ? DAY)';
-    params.push(span);
+    period = parseAnalyticsPeriod(daysRaw, 365);
+    var cnCreated = 'DATE(DATE_ADD(users.created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnCreated, period);
+    where += ' AND ' + pf.sql;
+    params = params.concat(pf.params);
   }
   if (!admin || !admin.is_super) {
     where +=
       ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
     params.push(admin.username);
   }
-  return { where: where, params: params, days: days, all_time: allTime };
+  var spanDays = allTime
+    ? 0
+    : period.mode === 'range'
+      ? period.days
+      : period.span + 1;
+  return {
+    where: where,
+    params: params,
+    days: allTime ? 0 : period.period_key,
+    span_days: spanDays,
+    all_time: allTime,
+    period: period
+  };
 }
 
 /** 女性用户年龄分析（未满 max_age 周岁筛选） */
@@ -8904,6 +8996,29 @@ function registerChannelStatsKey(raw) {
   return c || '__empty__';
 }
 
+/** 北京时间日期序列：startIso ~ endIso（含首尾） */
+function dateKeysBetween(startIso, endIso) {
+  var keys = [];
+  var p = String(startIso || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+  var endP = String(endIso || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+  if (p.length < 3 || endP.length < 3) {
+    return keys;
+  }
+  var dt = new Date(Date.UTC(p[0], p[1] - 1, p[2], 12, 0, 0));
+  var endDt = new Date(Date.UTC(endP[0], endP[1] - 1, endP[2], 12, 0, 0));
+  while (dt.getTime() <= endDt.getTime()) {
+    keys.push(formatDateKey(dt));
+    dt = new Date(dt.getTime() + 86400000);
+  }
+  return keys;
+}
+
 /** 北京时间日期序列：含首尾共 spanDays 天（从今天往前） */
 function chinaDateKeysForSpan(spanDays) {
   var n = Math.max(1, parseInt(spanDays, 10) || 1);
@@ -8919,17 +9034,23 @@ function chinaDateKeysForSpan(spanDays) {
 
 /** 注册渠道按日趋势（仅统计已填写 register_source_channel 的用户） */
 async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
-  var span = Math.max(0, trendSpanDays - 1);
   var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
-  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
   var dayWhere =
     scope.where +
-    " AND register_source_channel IS NOT NULL AND TRIM(register_source_channel) <> '' AND DATE(" +
-    cnCreated +
-    ') >= DATE_SUB(' +
-    cnToday +
-    ', INTERVAL ? DAY)';
-  var dayParams = scope.params.concat([span]);
+    " AND register_source_channel IS NOT NULL AND TRIM(register_source_channel) <> ''";
+  var dayParams = scope.params.slice();
+  var dateKeys;
+  if (scope.period && scope.period.mode === 'range') {
+    dateKeys = dateKeysBetween(scope.period.start, scope.period.end);
+  } else {
+    var span = Math.max(0, trendSpanDays - 1);
+    dayWhere +=
+      ' AND DATE(' +
+      cnCreated +
+      ') >= DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL ? DAY)';
+    dayParams.push(span);
+    dateKeys = chinaDateKeysForSpan(trendSpanDays);
+  }
   const [dayRows] = await conn.query(
     'SELECT DATE(' +
       cnCreated +
@@ -8957,7 +9078,6 @@ async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
     dayMap[dk].channels[ck] = (dayMap[dk].channels[ck] || 0) + c;
     channelTotals[ck] = (channelTotals[ck] || 0) + c;
   });
-  var dateKeys = chinaDateKeysForSpan(trendSpanDays);
   var byDay = dateKeys.map(function (dk) {
     var row = dayMap[dk] || { date: dk, total: 0, channels: {} };
     var chList = Object.keys(row.channels).map(function (ck) {
@@ -9009,7 +9129,6 @@ function buildChannelStatsItems(rows, total, labelFn) {
 async function handleAdminRegisterChannelStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
-    var days = scope.days;
     var allTime = scope.all_time;
 
     const conn = await pool.getConnection();
@@ -9079,8 +9198,13 @@ async function handleAdminRegisterChannelStats(req, res) {
       var trendDays = 0;
       var trendScopeLabel = '';
       var channelRankInTrend = [];
-      var trendSpan =
-        allTime ? 90 : days > 0 ? Math.min(days, 365) : 0;
+      var trendSpan = allTime
+        ? 90
+        : scope.period && scope.period.mode === 'range'
+          ? scope.period.days
+          : scope.span_days > 0
+            ? Math.min(scope.span_days, 365)
+            : 0;
       if (trendSpan > 0) {
         trendDays = trendSpan;
         var trendResult = await queryRegisterChannelByDay(conn, scope, trendSpan);
@@ -9091,6 +9215,14 @@ async function handleAdminRegisterChannelStats(req, res) {
             '近 ' +
             trendSpan +
             ' 日每日注册（汇总统计仍为全部注册用户；未填渠道不计入趋势）';
+        } else if (scope.period && scope.period.mode === 'range') {
+          trendScopeLabel =
+            scope.period.label +
+            '每日注册（' +
+            scope.period.start +
+            ' ~ ' +
+            scope.period.end +
+            '；未填渠道不计入）';
         } else {
           trendScopeLabel =
             '近 ' +
@@ -9104,35 +9236,35 @@ async function handleAdminRegisterChannelStats(req, res) {
         channelDefs.push({ key: k, label: REGISTER_SOURCE_CHANNELS[k] });
       });
 
-      var scopeLabel = allTime
-        ? '全部注册用户'
-        : '最近 ' + days + ' 天注册用户';
+      var scopeLabel = registerScopeLabel(scope);
 
       res.json({
         code: 200,
-        data: {
-          days: days,
-          all_time: allTime,
-          scope_label: scopeLabel,
-          timezone: 'Asia/Shanghai (UTC+8)',
-          total: withChannel,
-          all_users_total: regTotal,
-          with_register_channel: withChannel,
-          without_register_channel: withoutChannel,
-          excludes_empty_channel: true,
-          activated_users: activatedUsers,
-          overall_activation_pct: overallActivationPct,
-          overall_activation_pct_text:
-            withChannel > 0 ? overallActivationPct.toFixed(1) + '%' : '—',
-          register_channels: registerItems,
-          activation_channels: activationItems,
-          activation_total: actTotal,
-          trend_days: trendDays,
-          trend_scope_label: trendScopeLabel,
-          by_day: byDay,
-          trend_channel_rank: channelRankInTrend,
-          channel_definitions: channelDefs
-        }
+        data: Object.assign(
+          {
+            all_time: allTime,
+            scope_label: scopeLabel,
+            timezone: 'Asia/Shanghai (UTC+8)',
+            total: withChannel,
+            all_users_total: regTotal,
+            with_register_channel: withChannel,
+            without_register_channel: withoutChannel,
+            excludes_empty_channel: true,
+            activated_users: activatedUsers,
+            overall_activation_pct: overallActivationPct,
+            overall_activation_pct_text:
+              withChannel > 0 ? overallActivationPct.toFixed(1) + '%' : '—',
+            register_channels: registerItems,
+            activation_channels: activationItems,
+            activation_total: actTotal,
+            trend_days: trendDays,
+            trend_scope_label: trendScopeLabel,
+            by_day: byDay,
+            trend_channel_rank: channelRankInTrend,
+            channel_definitions: channelDefs
+          },
+          scope.period ? conversionAnalyticsPeriodMeta(scope.period) : { days: 0 }
+        )
       });
     } finally {
       conn.release();
@@ -9146,7 +9278,6 @@ async function handleAdminRegisterChannelStats(req, res) {
 async function handleAdminRegisterGenderStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
-    var days = scope.days;
     var allTime = scope.all_time;
 
     const conn = await pool.getConnection();
@@ -9219,20 +9350,20 @@ async function handleAdminRegisterGenderStats(req, res) {
         ratioText = '当前统计期内均为女性';
       }
 
-      var scopeLabel = allTime
-        ? '全部注册用户（按资料中的性别字段）'
-        : '最近 ' + days + ' 天注册用户（按资料中的性别字段）';
+      var scopeLabel = registerScopeLabel(scope, '（按资料中的性别字段）');
 
       res.json({
         code: 200,
-        data: {
-          days: days,
-          all_time: allTime,
-          scope_label: scopeLabel,
-          total: total,
-          items: items,
-          ratio_text: ratioText
-        }
+        data: Object.assign(
+          {
+            all_time: allTime,
+            scope_label: scopeLabel,
+            total: total,
+            items: items,
+            ratio_text: ratioText
+          },
+          scope.period ? conversionAnalyticsPeriodMeta(scope.period) : { days: 0 }
+        )
       });
     } finally {
       conn.release();
@@ -12799,57 +12930,60 @@ async function handleAdminAnalyticsDauUsers(req, res) {
 
 async function handleAdminAnalyticsOverview(req, res) {
   try {
-    var days = clampAnalyticsDays(req.query.days, 14, 90);
-    var span = Math.max(0, days - 1);
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var actPf = analyticsPeriodActivityDateFilter(period);
+    var loginPf = analyticsPeriodLoginDatetimeFilter(period);
     const conn = await pool.getConnection();
     try {
       const [dauRows] = await conn.execute(
         `SELECT activity_date AS d, COUNT(*) AS cnt FROM user_daily_activity
-         WHERE activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${actPf.sql}
          GROUP BY activity_date ORDER BY activity_date ASC`,
-        [span]
+        actPf.params
       );
       const [loginRows] = await conn.execute(
         `SELECT DATE(created_at) AS d,
            SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS success_cnt,
            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS fail_cnt
          FROM user_login_events
-         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${loginPf.sql}
          GROUP BY DATE(created_at) ORDER BY d ASC`,
-        [span]
+        loginPf.params
       );
       const [failReasonRows] = await conn.execute(
         `SELECT COALESCE(NULLIF(reason, ''), 'unknown_error') AS reason_key, COUNT(*) AS cnt
          FROM user_login_events
          WHERE ok = 0
-           AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+           AND ${loginPf.sql}
          GROUP BY reason_key
          ORDER BY cnt DESC
          LIMIT 20`,
-        [span]
+        loginPf.params
       );
       return res.json({
         code: 200,
-        data: {
-          days: days,
-          dau: dauRows.map(function (r) {
-            return {
-              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
-              active_users: Number(r.cnt)
-            };
-          }),
-          logins: loginRows.map(function (r) {
-            return {
-              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
-              success: Number(r.success_cnt || 0),
-              fail: Number(r.fail_cnt || 0)
-            };
-          }),
-          fail_reasons: failReasonRows.map(function (r) {
-            var k = r.reason_key != null ? String(r.reason_key) : 'unknown_error';
-            return { reason_key: k, reason_label: userLoginReasonLabel(k), cnt: Number(r.cnt || 0) };
-          })
-        }
+        data: Object.assign(
+          {
+            dau: dauRows.map(function (r) {
+              return {
+                date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+                active_users: Number(r.cnt)
+              };
+            }),
+            logins: loginRows.map(function (r) {
+              return {
+                date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
+                success: Number(r.success_cnt || 0),
+                fail: Number(r.fail_cnt || 0)
+              };
+            }),
+            fail_reasons: failReasonRows.map(function (r) {
+              var k = r.reason_key != null ? String(r.reason_key) : 'unknown_error';
+              return { reason_key: k, reason_label: userLoginReasonLabel(k), cnt: Number(r.cnt || 0) };
+            })
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -12862,40 +12996,42 @@ async function handleAdminAnalyticsOverview(req, res) {
 
 async function handleAdminAnalyticsApi(req, res) {
   try {
-    var days = clampAnalyticsDays(req.query.days, 7, 90);
-    var span = Math.max(0, days - 1);
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var pf = analyticsPeriodStatDateFilter(period);
     const conn = await pool.getConnection();
     try {
       const [byCat] = await conn.execute(
         `SELECT biz_category AS cat, SUM(cnt) AS total FROM analytics_api_daily
-         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${pf.sql}
          GROUP BY biz_category ORDER BY total DESC`,
-        [span]
+        pf.params
       );
       const [topRoutes] = await conn.execute(
         `SELECT MAX(biz_category) AS cat, route_key AS route, SUM(cnt) AS total
          FROM analytics_api_daily
-         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${pf.sql}
            AND biz_category <> '管理后台'
          GROUP BY route_key
          ORDER BY total DESC LIMIT 10`,
-        [span]
+        pf.params
       );
       return res.json({
         code: 200,
-        data: {
-          days: days,
-          by_category: byCat.map(function (r) {
-            return { category: String(r.cat), calls: Number(r.total) };
-          }),
-          top_routes: topRoutes.map(function (r) {
-            return {
-              category: String(r.cat),
-              route_key: String(r.route),
-              cnt: Number(r.total)
-            };
-          })
-        }
+        data: Object.assign(
+          {
+            by_category: byCat.map(function (r) {
+              return { category: String(r.cat), calls: Number(r.total) };
+            }),
+            top_routes: topRoutes.map(function (r) {
+              return {
+                category: String(r.cat),
+                route_key: String(r.route),
+                cnt: Number(r.total)
+              };
+            })
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -12946,26 +13082,27 @@ function activateTrackEventLabel(eventKey) {
 
 async function handleAdminAnalyticsEventsClear(req, res) {
   try {
-    var days = clampAnalyticsDays(
+    var period = parseAnalyticsPeriod(
       req.query.days != null ? req.query.days : req.body && req.body.days,
-      14,
       90
     );
-    var span = Math.max(0, days - 1);
+    var pf = analyticsPeriodStatDateFilter(period);
     const conn = await pool.getConnection();
     try {
       const [result] = await conn.execute(
         `DELETE FROM analytics_api_daily
-         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${pf.sql}
            AND ${ANALYTICS_TRACK_EVENT_SQL}`,
-        [span]
+        pf.params
       );
       return res.json({
         code: 200,
-        data: {
-          days: days,
-          deleted_rows: result && result.affectedRows != null ? Number(result.affectedRows) : 0
-        }
+        data: Object.assign(
+          {
+            deleted_rows: result && result.affectedRows != null ? Number(result.affectedRows) : 0
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -12978,18 +13115,18 @@ async function handleAdminAnalyticsEventsClear(req, res) {
 
 async function handleAdminAnalyticsEvents(req, res) {
   try {
-    var days = clampAnalyticsDays(req.query.days, 14, 90);
-    var span = Math.max(0, days - 1);
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var pf = analyticsPeriodStatDateFilter(period);
     const conn = await pool.getConnection();
     try {
       const [rows] = await conn.execute(
         `SELECT stat_date, route_key, SUM(cnt) AS total
          FROM analytics_api_daily
-         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${pf.sql}
            AND ${ANALYTICS_TRACK_EVENT_SQL}
          GROUP BY stat_date, route_key
          ORDER BY stat_date ASC`,
-        [span]
+        pf.params
       );
       var eventMap = {};
       var dayMap = {};
@@ -13028,12 +13165,14 @@ async function handleAdminAnalyticsEvents(req, res) {
         });
       return res.json({
         code: 200,
-        data: {
-          days: days,
-          total_events: rows.length,
-          by_day: byDay,
-          top_events: topEvents.slice(0, 200)
-        }
+        data: Object.assign(
+          {
+            total_events: rows.length,
+            by_day: byDay,
+            top_events: topEvents.slice(0, 200)
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -13046,8 +13185,8 @@ async function handleAdminAnalyticsEvents(req, res) {
 
 async function handleAdminAnalyticsActivateEvents(req, res) {
   try {
-    var days = clampAnalyticsDays(req.query.days, 14, 90);
-    var span = Math.max(0, days - 1);
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var loginPf = analyticsPeriodLoginDatetimeFilter(period);
     const conn = await pool.getConnection();
     try {
       const [rows] = await conn.execute(
@@ -13055,11 +13194,11 @@ async function handleAdminAnalyticsActivateEvents(req, res) {
                 SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
                 COUNT(*) AS cnt
          FROM user_page_events
-         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         WHERE ${loginPf.sql}
            AND ${ACTIVATE_TRACK_EVENT_SQL}
          GROUP BY DATE(created_at), username, event_key
          ORDER BY stat_date DESC`,
-        [span]
+        loginPf.params
       );
       var eventTotals = {};
       ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
@@ -13122,13 +13261,15 @@ async function handleAdminAnalyticsActivateEvents(req, res) {
       });
       return res.json({
         code: 200,
-        data: {
-          days: days,
-          event_keys: ACTIVATE_TRACK_EVENT_KEYS.slice(),
-          summary: summary,
-          total_clicks: grandTotal,
-          by_day: byDay
-        }
+        data: Object.assign(
+          {
+            event_keys: ACTIVATE_TRACK_EVENT_KEYS.slice(),
+            summary: summary,
+            total_clicks: grandTotal,
+            by_day: byDay
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();

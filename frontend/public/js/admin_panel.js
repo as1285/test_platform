@@ -3,6 +3,13 @@
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        function analyticsPeriodVal(el) {
+            if (window.AdminAnalyticsPeriod) {
+                return AdminAnalyticsPeriod.getValue(el);
+            }
+            return el ? String(el.value || '1') : '1';
+        }
+
         /** 设备统计图标（与接口 icon_key 对应，含机型品牌分析） */
         function statIconHtml(iconKey) {
             var k = String(iconKey || 'other');
@@ -299,7 +306,7 @@
             var tbody = document.getElementById('registerGenderTbody');
             var cardsEl = document.getElementById('registerGenderCards');
             var daysEl = document.getElementById('analyticsRegisterGenderDays');
-            var days = daysEl ? String(daysEl.value) : '1';
+            var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
@@ -700,7 +707,7 @@
             var actTbody = document.getElementById('channelActivationTbody');
             var cardsEl = document.getElementById('channelAnalysisCards');
             var daysEl = document.getElementById('channelAnalysisDays');
-            var days = daysEl ? String(daysEl.value) : '1';
+            var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
             if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -739,13 +746,23 @@
             if (chartsEmpty) chartsEmpty.style.display = 'none';
 
             var total = Number(data && data.total) || 0;
-            var days = Number(data && data.days) || 30;
+            var periodLabel =
+                (data && data.period_label) ||
+                (data && data.days != null && String(data.days).match(/^month_/)
+                    ? String(data.days)
+                    : null);
+            var daysHint = periodLabel
+                ? periodLabel +
+                  (data.period_start && data.period_end
+                      ? '（' + data.period_start + ' ~ ' + data.period_end + '）'
+                      : '')
+                : '最近 ' + (Number(data && data.days) || 30) + ' 天';
             var periods = (data && data.periods) || [];
             var detail = (data && data.detail_buckets) || [];
             var peak = data && data.peak_period;
 
             if (!total) {
-                summaryEl.textContent = '最近 ' + days + ' 天内暂无注册用户。';
+                summaryEl.textContent = daysHint + '内暂无注册用户。';
                 cardsEl.innerHTML = '';
                 tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
                 if (chartsWrap) {
@@ -760,9 +777,8 @@
 
             if (peak && peak.label) {
                 summaryEl.textContent =
-                    '最近 ' +
-                    days +
-                    ' 天共注册 ' +
+                    daysHint +
+                    '共注册 ' +
                     total +
                     ' 人；注册最集中时段为「' +
                     peak.label +
@@ -772,7 +788,7 @@
                     peak.count +
                     ' 人）。';
             } else {
-                summaryEl.textContent = '最近 ' + days + ' 天共注册 ' + total + ' 人。';
+                summaryEl.textContent = daysHint + '共注册 ' + total + ' 人。';
             }
 
             var cardsHtml = '';
@@ -923,7 +939,7 @@
             var tbody = document.getElementById('registerTimeDetailTbody');
             var cardsEl = document.getElementById('registerTimePeriodCards');
             var daysEl = document.getElementById('analyticsRegisterTimeDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var days = analyticsPeriodVal(daysEl);
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
@@ -2162,7 +2178,7 @@
         }
 
         function loadApiAnalyticsPanel() {
-            var daysA = parseInt(document.getElementById('apiAnalyticsDays').value, 10) || 1;
+            var daysA = analyticsPeriodVal(document.getElementById('apiAnalyticsDays'));
             document.getElementById('apiAnalyticsCatTbody').innerHTML =
                 '<tr><td colspan="2">加载中…</td></tr>';
             document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
@@ -2514,7 +2530,7 @@
         }
 
         function loadAnalyticsActivityPage() {
-            var daysO = parseInt(document.getElementById('analyticsOverviewDays').value, 10) || 1;
+            var daysO = analyticsPeriodVal(document.getElementById('analyticsOverviewDays'));
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
@@ -2579,7 +2595,7 @@
 
         function loadAnalyticsTrackingPage() {
             loadInstallTrackStats();
-            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 1;
+            var daysT = analyticsPeriodVal(document.getElementById('analyticsTrackingDays'));
             document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             var evtHintInit = document.getElementById('analyticsEventsHint');
             if (evtHintInit) evtHintInit.textContent = '加载中…';
@@ -3256,6 +3272,12 @@
         var analyticsConvCache = null;
 
         function analyticsPeriodHintHtml(data) {
+            if (window.AdminAnalyticsPeriod && AdminAnalyticsPeriod.hintHtml) {
+                return AdminAnalyticsPeriod.hintHtml(data).replace(
+                    'class="hint analytics-period-hint"',
+                    'class="hint" style="margin:0 0 12px;"'
+                );
+            }
             if (!data || !data.period_label) return '';
             var hint = '统计区间：' + data.period_label;
             if (data.period_start && data.period_end) {
@@ -3411,7 +3433,7 @@
             var el = document.getElementById('analyticsRegistrationFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsFunnelDays');
-            var periodVal = daysEl ? daysEl.value : '1';
+            var periodVal = analyticsPeriodVal(daysEl);
             el.textContent = '漏斗加载中…';
             adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(periodVal))
                 .then(function (r) {
@@ -3437,7 +3459,8 @@
                 el.textContent = '暂无渠道漏斗数据';
                 return;
             }
-            var html = '<div class="scroll-x"><table><thead><tr>';
+            var html = analyticsPeriodHintHtml(data);
+            html += '<div class="scroll-x"><table><thead><tr>';
             html +=
                 '<th>注册渠道</th><th>注册</th><th>7日激活</th><th>7日个税</th><th>7日看明细</th><th>激活率</th><th>个税率</th><th>明细率</th></tr></thead><tbody>';
             items.forEach(function (row) {
@@ -3460,7 +3483,7 @@
             var el = document.getElementById('analyticsChannelFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsChannelFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var days = analyticsPeriodVal(daysEl);
             el.textContent = '渠道漏斗加载中…';
             adminFetch('api/admin/analytics/channel-registration-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3486,7 +3509,8 @@
                 el.textContent = '暂无激活渠道漏斗数据';
                 return;
             }
-            var html = '<div class="scroll-x"><table><thead><tr>';
+            var html = analyticsPeriodHintHtml(data);
+            html += '<div class="scroll-x"><table><thead><tr>';
             html +=
                 '<th>激活渠道</th><th>激活</th><th>7日个税</th><th>7日看明细</th><th>个税率</th><th>明细率</th></tr></thead><tbody>';
             items.forEach(function (row) {
@@ -3507,7 +3531,7 @@
             var el = document.getElementById('analyticsActivationChannelFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsActivationChannelFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var days = analyticsPeriodVal(daysEl);
             el.textContent = '激活渠道漏斗加载中…';
             adminFetch('api/admin/analytics/activation-channel-funnel?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3533,7 +3557,8 @@
                 el.textContent = '暂无安装埋点数据';
                 return;
             }
-            var html = '<div class="scroll-x"><table><thead><tr><th>事件</th><th>次数</th></tr></thead><tbody>';
+            var html = analyticsPeriodHintHtml(data);
+            html += '<div class="scroll-x"><table><thead><tr><th>事件</th><th>次数</th></tr></thead><tbody>';
             items.forEach(function (row) {
                 html += '<tr><td>' + esc(row.label || row.route_key) + '</td><td>' + esc(row.total) + '</td></tr>';
             });
@@ -3568,7 +3593,8 @@
                 return;
             }
             var s = data.summary;
-            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
+            var html = analyticsPeriodHintHtml(data);
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">页面浏览 (PV)</div><div class="ud-val">' +
                 esc(String(s.page_views != null ? s.page_views : 0)) +
@@ -3820,7 +3846,7 @@
             var el = document.getElementById('installGuideStatsMount');
             if (!el) return;
             var daysEl = document.getElementById('installGuideStatsDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var days = analyticsPeriodVal(daysEl);
             el.textContent = '加载中…';
             adminFetch('api/admin/analytics/install-guide-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3842,7 +3868,7 @@
             var el = document.getElementById('analyticsInstallTrack');
             if (!el) return;
             var daysEl = document.getElementById('analyticsInstallTrackDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var days = analyticsPeriodVal(daysEl);
             el.textContent = '安装埋点加载中…';
             adminFetch('api/admin/analytics/install-track-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -3929,7 +3955,7 @@
             var el = document.getElementById('analyticsConversionKpis');
             if (!el) return;
             var daysEl = document.getElementById('analyticsConversionKpiDays');
-            var periodVal = daysEl ? daysEl.value : '1';
+            var periodVal = analyticsPeriodVal(daysEl);
             el.textContent = 'KPI 加载中…';
             adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(periodVal))
                 .then(function (r) {
@@ -4029,7 +4055,7 @@
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
             var daysEl = document.getElementById('analyticsConversionDays');
-            var periodVal = daysEl ? daysEl.value : '1';
+            var periodVal = analyticsPeriodVal(daysEl);
             el.textContent = '转化率加载中…';
             adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(periodVal))
                 .then(function (r) { return r.json(); })
@@ -7476,12 +7502,17 @@
             });
         }
         document.getElementById('btnClearAnalyticsEvents').addEventListener('click', function () {
-            var daysT = parseInt(document.getElementById('analyticsTrackingDays').value, 10) || 1;
+            var trackingEl = document.getElementById('analyticsTrackingDays');
+            var daysT = analyticsPeriodVal(trackingEl);
+            var periodLabel =
+                trackingEl && trackingEl.selectedOptions && trackingEl.selectedOptions[0]
+                    ? trackingEl.selectedOptions[0].textContent
+                    : daysT;
             if (
                 !confirm(
-                    '确定删除最近 ' +
-                        daysT +
-                        ' 天内的 C 端行为埋点统计数据？\n仅删除 track_* / EVENT 类埋点，不影响日活、接口调用等其它统计。此操作不可恢复。'
+                    '确定删除「' +
+                        periodLabel +
+                        '」区间内的 C 端行为埋点统计数据？\n仅删除 track_* / EVENT 类埋点，不影响日活、接口调用等其它统计。此操作不可恢复。'
                 )
             ) {
                 return;
@@ -7780,4 +7811,7 @@
             });
         });
         window.addEventListener('hashchange', applyAdminRoute);
+        if (window.AdminAnalyticsPeriod) {
+            AdminAnalyticsPeriod.initAll();
+        }
         initAdminSession();

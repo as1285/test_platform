@@ -1229,13 +1229,8 @@
             <p class="hint" style="margin-top:0;">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>及按钮/视频等行为。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。未登录用户通过 <code>client_id</code> 识别；离开页面时上报停留秒数。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="installGuideStatsDays">统计天数</label>
-                    <select id="installGuideStatsDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="installGuideStatsDays">统计区间</label>
+                    <select id="installGuideStatsDays" class="js-analytics-period-select" data-day-options="1,7,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新统计</button>
             </div>
@@ -1250,20 +1245,7 @@
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsConversionDays">统计区间</label>
-                    <select id="analyticsConversionDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <optgroup label="按月">
-                            <option value="month_current">当月</option>
-                            <option value="month_prev">上月</option>
-                            <option value="month_prev2">上上月</option>
-                        </optgroup>
-                        <optgroup label="按天">
-                            <option value="1" selected>最近 1 天</option>
-                            <option value="7">最近 7 天</option>
-                            <option value="14">最近 14 天</option>
-                            <option value="30">最近 30 天</option>
-                            <option value="90">最近 90 天</option>
-                        </optgroup>
-                    </select>
+                    <select id="analyticsConversionDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
             </div>
@@ -1275,20 +1257,7 @@
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsFunnelDays">统计区间</label>
-                    <select id="analyticsFunnelDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <optgroup label="按月">
-                            <option value="month_current">当月</option>
-                            <option value="month_prev">上月</option>
-                            <option value="month_prev2">上上月</option>
-                        </optgroup>
-                        <optgroup label="按天">
-                            <option value="1" selected>最近 1 天</option>
-                            <option value="7">最近 7 天</option>
-                            <option value="14">最近 14 天</option>
-                            <option value="30">最近 30 天</option>
-                            <option value="90">最近 90 天</option>
-                        </optgroup>
-                    </select>
+                    <select id="analyticsFunnelDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
             </div>
@@ -1300,19 +1269,7 @@
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsConversionKpiDays">统计区间</label>
-                    <select id="analyticsConversionKpiDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <optgroup label="按月">
-                            <option value="month_current">当月</option>
-                            <option value="month_prev">上月</option>
-                            <option value="month_prev2">上上月</option>
-                        </optgroup>
-                        <optgroup label="按天">
-                            <option value="1" selected>最近 1 天</option>
-                            <option value="7">最近 7 天</option>
-                            <option value="30">最近 30 天</option>
-                            <option value="90">最近 90 天</option>
-                        </optgroup>
-                    </select>
+                    <select id="analyticsConversionKpiDays" class="js-analytics-period-select" data-day-options="1,7,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshConversionKpis">刷新 KPI</button>
             </div>
@@ -1332,15 +1289,8 @@
             <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="analyticsRegisterTimeDays">统计天数</label>
-                    <select id="analyticsRegisterTimeDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                        <option value="180">最近 180 天</option>
-                        <option value="365">最近 365 天</option>
-                    </select>
+                    <label for="analyticsRegisterTimeDays">统计区间</label>
+                    <select id="analyticsRegisterTimeDays" class="js-analytics-period-select" data-day-options="1,7,30,90,180,365" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegisterTime">刷新时段分析</button>
             </div>
@@ -1381,14 +1331,7 @@
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsRegisterGenderDays">统计范围</label>
-                    <select id="analyticsRegisterGenderDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="0">全部注册用户</option>
-                        <option value="1" selected>最近 1 天注册</option>
-                        <option value="7">最近 7 天注册</option>
-                        <option value="30">最近 30 天注册</option>
-                        <option value="90">最近 90 天注册</option>
-                        <option value="365">最近 365 天注册</option>
-                    </select>
+                    <select id="analyticsRegisterGenderDays" class="js-analytics-period-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegisterGender">刷新性别统计</button>
             </div>
@@ -1426,14 +1369,8 @@
             <p class="hint" style="margin-top:0;"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。登录流水详见侧栏「登录流水」。</p>
             <div class="form-row" style="align-items: center;">
                 <div>
-                    <label for="analyticsOverviewDays">统计天数</label>
-                    <select id="analyticsOverviewDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="analyticsOverviewDays">统计区间</label>
+                    <select id="analyticsOverviewDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshAnalytics">刷新统计</button>
                 <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
@@ -1471,13 +1408,8 @@
             <p class="hint" style="margin-top:0;">来自 <code>analytics_api_daily</code>：安装包点击、视频播放与注册成功事件（公开页 <code>track_install_*</code>）。安装页 PV/停留详见侧栏「安装页统计」。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="analyticsInstallTrackDays">统计天数</label>
-                    <select id="analyticsInstallTrackDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="analyticsInstallTrackDays">统计区间</label>
+                    <select id="analyticsInstallTrackDays" class="js-analytics-period-select" data-day-options="1,7,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
             </div>
@@ -1486,14 +1418,8 @@
         <section>
             <div class="form-row" style="align-items: center; margin-bottom: 8px;">
                 <div>
-                    <label for="analyticsTrackingDays">行为埋点统计天数</label>
-                    <select id="analyticsTrackingDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="analyticsTrackingDays">行为埋点统计区间</label>
+                    <select id="analyticsTrackingDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
             </div>
@@ -1625,14 +1551,7 @@
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
                     <label for="channelAnalysisDays">统计范围</label>
-                    <select id="channelAnalysisDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
-                        <option value="0">全部注册用户</option>
-                        <option value="1" selected>最近 1 天注册</option>
-                        <option value="7">最近 7 天注册</option>
-                        <option value="30">最近 30 天注册</option>
-                        <option value="90">最近 90 天注册</option>
-                        <option value="365">最近 365 天注册</option>
-                    </select>
+                    <select id="channelAnalysisDays" class="js-analytics-period-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="1" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshChannelAnalysis">刷新分析</button>
             </div>
@@ -1699,14 +1618,8 @@
             <p class="hint" style="margin-top:0;">按<strong>注册来源渠道</strong>拆分注册后 7 日激活 / 有个税 / 看明细（cohort 口径与转化分析页「四段转化漏斗」一致）。</p>
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
-                    <label for="analyticsChannelFunnelDays">统计天数</label>
-                    <select id="analyticsChannelFunnelDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="analyticsChannelFunnelDays">统计区间</label>
+                    <select id="analyticsChannelFunnelDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshChannelFunnel">刷新渠道漏斗</button>
             </div>
@@ -1717,14 +1630,8 @@
             <p class="hint" style="margin-top:0;">按<strong>激活来源渠道</strong>（<code>activation_source_channel</code>，如闲鱼码）拆分：激活后 168 小时内有个税 / 看明细。</p>
             <div class="form-row" style="align-items:center;margin-top:8px;">
                 <div>
-                    <label for="analyticsActivationChannelFunnelDays">统计天数</label>
-                    <select id="analyticsActivationChannelFunnelDays" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
-                    </select>
+                    <label for="analyticsActivationChannelFunnelDays">统计区间</label>
+                    <select id="analyticsActivationChannelFunnelDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshActivationChannelFunnel">刷新激活渠道漏斗</button>
             </div>
@@ -1738,13 +1645,8 @@
             <p class="hint" style="margin:0 0 12px;">按自然日聚合各 API 与业务分类；下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP 列表<strong>不含</strong>管理后台类接口。</p>
             <div class="form-row" style="align-items: center;">
                 <div>
-                    <label for="apiAnalyticsDays">统计天数</label>
-                    <select id="apiAnalyticsDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                    </select>
+                    <label for="apiAnalyticsDays">统计区间</label>
+                    <select id="apiAnalyticsDays" class="js-analytics-period-select" data-day-options="1,7,14,30,90" data-default="1" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshApiAnalytics">刷新</button>
             </div>
@@ -1926,7 +1828,8 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260626-conv-month-total"></script>
+    <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
+    <script src="/js/admin_panel.js?v=20260611-month-pick"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260622-qr-blur-light"></script>
 </body>
