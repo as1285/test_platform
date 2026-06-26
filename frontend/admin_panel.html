@@ -1249,13 +1249,20 @@
             <p class="hint" style="margin-top:0;">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>代理推广</strong>：注册链接/表单显式带了「引导安装 → 代理推广渠道」中的 <code>ch</code>（如 <code>register.html?ch=langzi</code>）。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="analyticsConversionDays">统计天数</label>
+                    <label for="analyticsConversionDays">统计区间</label>
                     <select id="analyticsConversionDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
+                        <optgroup label="按月">
+                            <option value="month_current">当月</option>
+                            <option value="month_prev">上月</option>
+                            <option value="month_prev2">上上月</option>
+                        </optgroup>
+                        <optgroup label="按天">
+                            <option value="1" selected>最近 1 天</option>
+                            <option value="7">最近 7 天</option>
+                            <option value="14">最近 14 天</option>
+                            <option value="30">最近 30 天</option>
+                            <option value="90">最近 90 天</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshConversion">刷新转化率</button>
@@ -1267,13 +1274,20 @@
             <p class="hint" style="margin-top:0;">按用户<strong>注册日</strong> cohort：<strong>注册 → 7 日内激活 → 7 日内有个税 → 7 日内看收入明细</strong>（<code>shuiming</code> / <code>xiangqing</code>；激活数不含已退款、已删除账号）。下方分<strong>自有流量</strong>与<strong>代理推广</strong>两套漏斗；按注册来源渠道拆分见侧栏「渠道分析」。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="analyticsFunnelDays">统计天数</label>
+                    <label for="analyticsFunnelDays">统计区间</label>
                     <select id="analyticsFunnelDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="14">最近 14 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
+                        <optgroup label="按月">
+                            <option value="month_current">当月</option>
+                            <option value="month_prev">上月</option>
+                            <option value="month_prev2">上上月</option>
+                        </optgroup>
+                        <optgroup label="按天">
+                            <option value="1" selected>最近 1 天</option>
+                            <option value="7">最近 7 天</option>
+                            <option value="14">最近 14 天</option>
+                            <option value="30">最近 30 天</option>
+                            <option value="90">最近 90 天</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
@@ -1285,12 +1299,19 @@
             <p class="hint" style="margin-top:0;"><strong>激活后 1 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 24 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 1 日明细查看率</strong> = 窗口内首次有个税的用户中，24 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
-                    <label for="analyticsConversionKpiDays">统计天数</label>
+                    <label for="analyticsConversionKpiDays">统计区间</label>
                     <select id="analyticsConversionKpiDays" style="border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px;">
-                        <option value="1" selected>最近 1 天</option>
-                        <option value="7">最近 7 天</option>
-                        <option value="30">最近 30 天</option>
-                        <option value="90">最近 90 天</option>
+                        <optgroup label="按月">
+                            <option value="month_current">当月</option>
+                            <option value="month_prev">上月</option>
+                            <option value="month_prev2">上上月</option>
+                        </optgroup>
+                        <optgroup label="按天">
+                            <option value="1" selected>最近 1 天</option>
+                            <option value="7">最近 7 天</option>
+                            <option value="30">最近 30 天</option>
+                            <option value="90">最近 90 天</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshConversionKpis">刷新 KPI</button>
@@ -1905,7 +1926,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260626-login-inactive"></script>
+    <script src="/js/admin_panel.js?v=20260626-conv-month"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260622-qr-blur-light"></script>
 </body>

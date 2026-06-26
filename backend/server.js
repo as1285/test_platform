@@ -593,24 +593,74 @@ function buildDailyConversionSeries(days, regMap, actMap) {
       todayRow.rate_pct = analyticsConversionPct(todayRow.activated, todayRow.registered);
     }
   }
-  return { today: todayRow, series: series };
+  return { today: todayRow, series: series, today_is_current: true };
 }
 
-async function queryDailyConversionSegment(conn, days, span, admin, segment, agentChannels) {
+function buildDailyConversionSeriesForRange(startKey, endKey, regMap, actMap) {
+  var series = [];
+  var startParts = startKey.split('-').map(Number);
+  var endParts = endKey.split('-').map(Number);
+  var cur = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+  var end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+  var todayKey = chinaDateKeyNow();
+  while (cur.getTime() <= end.getTime()) {
+    var key = formatDateKey(cur);
+    var registered = regMap[key] || 0;
+    var activated = actMap[key] || 0;
+    var rate = registered > 0 ? activated / registered : null;
+    series.push({
+      date: key,
+      registered: registered,
+      activated: activated,
+      rate: rate,
+      rate_pct: rate == null ? null : analyticsConversionPct(activated, registered)
+    });
+    cur.setDate(cur.getDate() + 1);
+  }
+  var lastRow = series.length
+    ? series[series.length - 1]
+    : { date: endKey, registered: 0, activated: 0, rate: null, rate_pct: null };
+  return {
+    today: lastRow,
+    series: series,
+    today_is_current: lastRow.date === todayKey
+  };
+}
+
+async function queryDailyConversionSegment(conn, period, admin, segment, agentChannels) {
   var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
   var segUsers = promoSegmentFilter(segment, 'users', agentChannels);
   var segU = promoSegmentFilter(segment, 'u', agentChannels);
+  var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
 
-  var regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY) AND ' + segUsers.sql;
-  var regParams = [span].concat(segUsers.params);
-  var actWhere =
-    'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
-    'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' +
-    cnToday +
-    ', INTERVAL ? DAY) AND ' +
-    segU.sql;
-  var actParams = [span].concat(segU.params);
+  var regWhere;
+  var regParams;
+  var actWhere;
+  var actParams;
+  if (period.mode === 'range') {
+    regWhere = cnUserDay + ' >= ? AND ' + cnUserDay + ' <= ? AND ' + segUsers.sql;
+    regParams = [period.start, period.end].concat(segUsers.params);
+    actWhere =
+      'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
+      cnActDay +
+      ' >= ? AND ' +
+      cnActDay +
+      ' <= ? AND ' +
+      segU.sql;
+    actParams = [period.start, period.end].concat(segU.params);
+  } else {
+    regWhere = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY) AND ' + segUsers.sql;
+    regParams = [period.span].concat(segUsers.params);
+    actWhere =
+      'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' +
+      cnActDay +
+      ' >= DATE_SUB(' +
+      cnToday +
+      ', INTERVAL ? DAY) AND ' +
+      segU.sql;
+    actParams = [period.span].concat(segU.params);
+  }
 
   if (!admin || !admin.is_super) {
     regWhere +=
@@ -649,17 +699,28 @@ async function queryDailyConversionSegment(conn, days, span, admin, segment, age
       actMap[k] = Number(r.cnt) || 0;
     }
   });
-  return buildDailyConversionSeries(days, regMap, actMap);
+  if (period.mode === 'range') {
+    return buildDailyConversionSeriesForRange(period.start, period.end, regMap, actMap);
+  }
+  return buildDailyConversionSeries(period.days, regMap, actMap);
 }
 
-async function queryRegistrationFunnelSegment(conn, days, admin, segment, agentChannels) {
+async function queryRegistrationFunnelSegment(conn, period, admin, segment, agentChannels) {
   var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-  var regSince = cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
   var seg = promoSegmentFilter(segment, 'u', agentChannels);
 
-  var where = [regSince, seg.sql];
-  var params = [days - 1].concat(seg.params);
+  var where = [];
+  var params = [];
+  if (period.mode === 'range') {
+    where.push(cnUserDay + ' >= ? AND ' + cnUserDay + ' <= ?');
+    params.push(period.start, period.end);
+  } else {
+    where.push(cnUserDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
+    params.push(period.span);
+  }
+  where.push(seg.sql);
+  params = params.concat(seg.params);
   appendAdminUserScope(where, params, admin, 'u.username');
   var whereSql = ' WHERE ' + where.join(' AND ');
 
@@ -7372,6 +7433,70 @@ function chinaDateKeyNow() {
   return formatDateKey(new Date(utcMs + 8 * 3600000));
 }
 
+function chinaDatePartsNow() {
+  var todayKey = chinaDateKeyNow();
+  var p = todayKey.split('-').map(Number);
+  return { year: p[0], month: p[1], day: p[2], todayKey: todayKey };
+}
+
+/** 转化分析页：按天或按自然月（北京时间）解析统计区间 */
+function parseConversionAnalyticsPeriod(raw, maxDays) {
+  maxDays = maxDays == null ? 90 : maxDays;
+  var s = raw != null ? String(raw).trim() : '';
+  if (s === 'month_current') {
+    var cn = chinaDatePartsNow();
+    var start = cn.year + '-' + String(cn.month).padStart(2, '0') + '-01';
+    return {
+      mode: 'range',
+      start: start,
+      end: cn.todayKey,
+      label: '当月',
+      period_key: s,
+      days:
+        Math.floor(
+          (Date.UTC(cn.year, cn.month - 1, cn.day) - Date.UTC(cn.year, cn.month - 1, 1)) / 86400000
+        ) + 1
+    };
+  }
+  if (s === 'month_prev' || s === 'month_prev2') {
+    var cn2 = chinaDatePartsNow();
+    var offset = s === 'month_prev2' ? 2 : 1;
+    var dt = new Date(cn2.year, cn2.month - 1 - offset, 1);
+    var y = dt.getFullYear();
+    var m = dt.getMonth() + 1;
+    var start2 = y + '-' + String(m).padStart(2, '0') + '-01';
+    var lastDay = new Date(y, m, 0).getDate();
+    var end2 = y + '-' + String(m).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+    return {
+      mode: 'range',
+      start: start2,
+      end: end2,
+      label: s === 'month_prev2' ? '上上月' : '上月',
+      period_key: s,
+      days: lastDay
+    };
+  }
+  var days = parseInt(s, 10) || 1;
+  if (days < 1) days = 1;
+  if (days > maxDays) days = maxDays;
+  return {
+    mode: 'days',
+    days: days,
+    span: days - 1,
+    label: '最近 ' + days + ' 天',
+    period_key: String(days)
+  };
+}
+
+function conversionAnalyticsPeriodMeta(period) {
+  return {
+    days: period.period_key,
+    period_label: period.label,
+    period_start: period.mode === 'range' ? period.start : null,
+    period_end: period.mode === 'range' ? period.end : null
+  };
+}
+
 /** 注册用户列表登录风控：不同登录 IP 数、关联设备数 */
 var USER_LOGIN_RISK_IP_THRESHOLD = 2;
 var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
@@ -7490,27 +7615,23 @@ function userActivationStatsEligibleSql(userCol) {
 
 async function handleAdminUsersDailyConversion(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 1;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
-    var span = days - 1;
+    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
     var agentChannels = await getAgentPromoChannelListFromSettings();
 
     const conn = await pool.getConnection();
     try {
-      var ownSeg = await queryDailyConversionSegment(conn, days, span, req.admin, 'own', agentChannels);
-      var agentSeg = await queryDailyConversionSegment(conn, days, span, req.admin, 'agent', agentChannels);
+      var ownSeg = await queryDailyConversionSegment(conn, period, req.admin, 'own', agentChannels);
+      var agentSeg = await queryDailyConversionSegment(conn, period, req.admin, 'agent', agentChannels);
 
       res.json({
         code: 200,
-        data: {
-          days: days,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
           agent_channel_ids: agentChannels,
           segments: {
             own: ownSeg,
             agent: agentSeg
           }
-        }
+        })
       });
     } finally {
       conn.release();
@@ -7524,26 +7645,23 @@ async function handleAdminUsersDailyConversion(req, res) {
 /** 注册后 7 日内漏斗：激活 / 有个税 / 查看收入明细（按用户注册日 cohort） */
 async function handleAdminRegistrationFunnel(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
+    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
     var agentChannels = await getAgentPromoChannelListFromSettings();
 
     const conn = await pool.getConnection();
     try {
-      var ownSeg = await queryRegistrationFunnelSegment(conn, days, req.admin, 'own', agentChannels);
-      var agentSeg = await queryRegistrationFunnelSegment(conn, days, req.admin, 'agent', agentChannels);
+      var ownSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'own', agentChannels);
+      var agentSeg = await queryRegistrationFunnelSegment(conn, period, req.admin, 'agent', agentChannels);
 
       res.json({
         code: 200,
-        data: {
-          days: days,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
           agent_channel_ids: agentChannels,
           segments: {
             own: ownSeg,
             agent: agentSeg
           }
-        }
+        })
       });
     } finally {
       conn.release();
@@ -8163,17 +8281,32 @@ async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
 /** 转化 KPI：激活后 1 日个税填写率、有个税后 1 日明细查看率 */
 async function handleAdminConversionKpis(req, res) {
   try {
-    var days = parseInt(req.query.days, 10) || 30;
-    if (days < 1) days = 1;
-    if (days > 90) days = 90;
+    var period = parseConversionAnalyticsPeriod(req.query.days, 90);
     var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    var actSince =
-      'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+    var cnFirstTaxDay = 'DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR))';
+    var actSince;
+    var taxSince;
+    var scopeParams;
+    if (period.mode === 'range') {
+      actSince = cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
+      taxSince = cnFirstTaxDay + ' >= ? AND ' + cnFirstTaxDay + ' <= ?';
+      scopeParams = [period.start, period.end];
+    } else {
+      actSince = cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+      taxSince = cnFirstTaxDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+      scopeParams = [period.span];
+    }
     var scopeWhere = [];
-    var scopeParams = [days - 1];
-    appendAdminUserScope(scopeWhere, scopeParams, req.admin, 'u.username');
+    var actParams = scopeParams.slice();
+    appendAdminUserScope(scopeWhere, actParams, req.admin, 'u.username');
     appendNonRefundedUserFilter(scopeWhere, 'u.username');
     var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
+    var taxScopeWhere = [];
+    var taxParams = scopeParams.slice();
+    appendAdminUserScope(taxScopeWhere, taxParams, req.admin, 'u.username');
+    appendNonRefundedUserFilter(taxScopeWhere, 'u.username');
+    var taxScopeSql = taxScopeWhere.length ? ' AND ' + taxScopeWhere.join(' AND ') : '';
 
     function pct(n, d) {
       if (!d || d <= 0) return null;
@@ -8194,7 +8327,7 @@ async function handleAdminConversionKpis(req, res) {
          INNER JOIN activation_codes ac ON ac.used_by_username = u.username
            AND ac.last_used_at IS NOT NULL
          WHERE ${actSince}${scopeSql}`,
-        scopeParams
+        actParams
       );
       var act = actRows[0] || {};
       var activated = Number(act.activated) || 0;
@@ -8215,14 +8348,13 @@ async function handleAdminConversionKpis(req, res) {
            WHERE deleted_at IS NULL
            GROUP BY user_id
          ) ft ON ft.username = u.username
-         WHERE DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) >= DATE_SUB(${cnToday}, INTERVAL ? DAY)${scopeSql}`,
-        scopeParams
+         WHERE ${taxSince}${taxScopeSql}`,
+        taxParams
       );
       var tax = taxRows[0] || {};
       var withTax = Number(tax.with_tax) || 0;
       var viewed7 = Number(tax.viewed_detail_7d) || 0;
 
-      var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
       const [actDayRows] = await conn.query(
         `SELECT ${cnActDay} AS d,
                 COUNT(DISTINCT u.username) AS activated,
@@ -8238,11 +8370,11 @@ async function handleAdminConversionKpis(req, res) {
          WHERE ${actSince}${scopeSql}
          GROUP BY ${cnActDay}
          ORDER BY d ASC`,
-        scopeParams
+        actParams
       );
 
       const [taxDayRows] = await conn.query(
-        `SELECT DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) AS d,
+        `SELECT ${cnFirstTaxDay} AS d,
                 COUNT(DISTINCT u.username) AS with_tax,
                 SUM(CASE WHEN EXISTS (
                   SELECT 1 FROM user_page_events e
@@ -8257,10 +8389,10 @@ async function handleAdminConversionKpis(req, res) {
            WHERE deleted_at IS NULL
            GROUP BY user_id
          ) ft ON ft.username = u.username
-         WHERE DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR)) >= DATE_SUB(${cnToday}, INTERVAL ? DAY)${scopeSql}
-         GROUP BY DATE(DATE_ADD(ft.first_tax_at, INTERVAL 8 HOUR))
+         WHERE ${taxSince}${taxScopeSql}
+         GROUP BY ${cnFirstTaxDay}
          ORDER BY d ASC`,
-        scopeParams
+        taxParams
       );
 
       var seriesByActivateDay = (actDayRows || []).map(function (r) {
@@ -8287,8 +8419,7 @@ async function handleAdminConversionKpis(req, res) {
 
       res.json({
         code: 200,
-        data: {
-          days: days,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
           activated_in_window: activated,
           tax_within_7d_after_activate: taxWithin7,
           rate_tax_after_activate_7d_pct: pct(taxWithin7, activated),
@@ -8297,7 +8428,7 @@ async function handleAdminConversionKpis(req, res) {
           rate_detail_after_tax_7d_pct: pct(viewed7, withTax),
           series_by_activate_day: seriesByActivateDay,
           series_by_first_tax_day: seriesByFirstTaxDay
-        }
+        })
       });
     } finally {
       conn.release();

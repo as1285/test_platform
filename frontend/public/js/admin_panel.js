@@ -3255,6 +3255,15 @@
 
         var analyticsConvCache = null;
 
+        function analyticsPeriodHintHtml(data) {
+            if (!data || !data.period_label) return '';
+            var hint = '统计区间：' + data.period_label;
+            if (data.period_start && data.period_end) {
+                hint += '（' + data.period_start + ' ~ ' + data.period_end + '，北京时间）';
+            }
+            return '<p class="hint" style="margin:0 0 12px;">' + esc(hint) + '</p>';
+        }
+
         function renderDailyConversionSegmentBlock(title, segmentData) {
             var html = '<div class="analytics-segment-block">';
             html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
@@ -3265,8 +3274,9 @@
             var today = segmentData.today;
             var todayKey = today.date || '';
             var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
+            var summaryTitle = segmentData.today_is_current === false ? '末日转化率' : '今日转化率';
             html += '<div class="analytics-conv-summary">';
-            html += '<div class="conv-label">今日转化率（' + esc(todayKey) + '）</div>';
+            html += '<div class="conv-label">' + summaryTitle + '（' + esc(todayKey) + '）</div>';
             html += '<div class="conv-today">' + esc(rateText) + '</div>';
             html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
             html += '</div>';
@@ -3305,7 +3315,8 @@
             analyticsConvCache = data;
             var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
             var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
-            var html = renderDailyConversionSegmentBlock('自有流量', data.segments.own);
+            var html = analyticsPeriodHintHtml(data);
+            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own);
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent);
             el.innerHTML = html;
         }
@@ -3372,7 +3383,8 @@
             }
             var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
             var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
-            var html = renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
+            var html = analyticsPeriodHintHtml(data);
+            html += renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
             html += renderRegistrationFunnelSegmentBlock('代理推广' + agentHint, data.segments.agent);
             el.innerHTML = html;
         }
@@ -3381,9 +3393,9 @@
             var el = document.getElementById('analyticsRegistrationFunnel');
             if (!el) return;
             var daysEl = document.getElementById('analyticsFunnelDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var periodVal = daysEl ? daysEl.value : '1';
             el.textContent = '漏斗加载中…';
-            adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(days))
+            adminFetch('api/admin/analytics/registration-funnel?days=' + encodeURIComponent(periodVal))
                 .then(function (r) {
                     return r.json();
                 })
@@ -3837,7 +3849,8 @@
                 el.textContent = '暂无 KPI 数据';
                 return;
             }
-            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
+            var html = analyticsPeriodHintHtml(data);
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">激活后 1 日个税填写率</div><div class="ud-val">' +
                 esc(data.rate_tax_after_activate_7d_pct || '—') +
@@ -3898,9 +3911,9 @@
             var el = document.getElementById('analyticsConversionKpis');
             if (!el) return;
             var daysEl = document.getElementById('analyticsConversionKpiDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var periodVal = daysEl ? daysEl.value : '1';
             el.textContent = 'KPI 加载中…';
-            adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(days))
+            adminFetch('api/admin/analytics/conversion-kpis?days=' + encodeURIComponent(periodVal))
                 .then(function (r) {
                     return r.json();
                 })
@@ -3998,9 +4011,9 @@
             var el = document.getElementById('analyticsDailyConversion');
             if (!el) return;
             var daysEl = document.getElementById('analyticsConversionDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 1 : 1;
+            var periodVal = daysEl ? daysEl.value : '1';
             el.textContent = '转化率加载中…';
-            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(days))
+            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(periodVal))
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
