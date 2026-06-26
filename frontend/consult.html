@@ -92,6 +92,15 @@
             border-color: #1e6fff;
             background: #fff;
         }
+        .form-group input[readonly] {
+            color: #666;
+            background: #f0f0f0;
+            cursor: not-allowed;
+        }
+        .form-group input[readonly]:focus {
+            border-color: #e0e0e0;
+            background: #f0f0f0;
+        }
 
         .form-row {
             display: grid;
@@ -1118,7 +1127,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>所得项目</label>
-                            <input type="text" name="income_type" id="f_income_type" value="工资薪金">
+                            <input type="text" name="income_type" id="f_income_type" value="工资薪金" readonly tabindex="-1" aria-readonly="true">
                         </div>
                         <div class="form-group">
                             <label>所得子项目</label>
@@ -1857,7 +1866,7 @@
                 id: document.getElementById('editing_id').value || ('tr_' + Date.now()),
                 year: parseInt(document.getElementById('f_year').value, 10),
                 month: parseInt(document.getElementById('f_month').value, 10),
-                income_type: document.getElementById('f_income_type').value,
+                income_type: '工资薪金',
                 income_subtype: document.getElementById('f_income_subtype').value,
                 company_name: document.getElementById('f_company_name').value,
                 company_tax_id: document.getElementById('f_company_tax_id').value,
@@ -1931,7 +1940,7 @@
             document.getElementById('recordSubmitBtn').textContent = r.id ? '更新记录' : '添加记录';
             document.getElementById('f_year').value = r.year;
             document.getElementById('f_month').value = r.month;
-            document.getElementById('f_income_type').value = r.income_type || '工资薪金';
+            document.getElementById('f_income_type').value = '工资薪金';
             document.getElementById('f_income_subtype').value = r.income_subtype || '';
             document.getElementById('f_company_name').value = r.company_name || '';
             document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
