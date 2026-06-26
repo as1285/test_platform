@@ -7376,6 +7376,22 @@ function chinaDateKeyNow() {
 var USER_LOGIN_RISK_IP_THRESHOLD = 2;
 var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
 
+/** SQL：账号最近成功登录（无记录则用注册时间）早于 N 天前 */
+function userLoginInactiveSinceSql(days, usernameExpr) {
+  var u = usernameExpr || 'users.username';
+  var d = parseInt(days, 10);
+  if (!isFinite(d) || d < 1) {
+    d = 30;
+  }
+  return (
+    'COALESCE((SELECT MAX(ule.created_at) FROM user_login_events ule WHERE ule.username = ' +
+    u +
+    ' AND ule.ok = 1), users.created_at) < DATE_SUB(NOW(), INTERVAL ' +
+    d +
+    ' DAY)'
+  );
+}
+
 function userLoginRiskIpUnionSubquery(usernameExpr) {
   var u = usernameExpr || 'users.username';
   return (
@@ -9094,6 +9110,7 @@ async function handleAdminUsers(req, res) {
     var qSalaryMin = parseSalaryRangeFilterParam(req.query.salary_min);
     var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
     var qTaxModifiedToday = req.query.tax_modified_today; // '1' 当日有改动, '0' 当日无改动
+    var qLoginInactiveDays = parseInt(req.query.login_inactive_days, 10);
     var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
     var todayKey = chinaDateKeyNow();
     if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
@@ -9144,6 +9161,9 @@ async function handleAdminUsers(req, res) {
         'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL AND DATE(tr.updated_at) = ?)'
       );
       params.push(todayKey);
+    }
+    if (isFinite(qLoginInactiveDays) && qLoginInactiveDays > 0) {
+      whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
     if (!req.admin || !req.admin.is_super) {
       whereClauses.push(

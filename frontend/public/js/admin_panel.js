@@ -5491,6 +5491,8 @@
             var salaryMax = salaryMaxEl ? salaryMaxEl.value.trim() : '';
             var taxModEl = document.getElementById('filterTaxModifiedToday');
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
+            var loginInactiveEl = document.getElementById('filterLoginInactive');
+            var loginInactiveDays = loginInactiveEl ? loginInactiveEl.value : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -5503,6 +5505,9 @@
             if (salaryMax !== '') url += '&salary_max=' + encodeURIComponent(salaryMax);
             if (taxModifiedToday !== '') {
                 url += '&tax_modified_today=' + encodeURIComponent(taxModifiedToday);
+            }
+            if (loginInactiveDays !== '') {
+                url += '&login_inactive_days=' + encodeURIComponent(loginInactiveDays);
             }
 
             adminFetch(url)
@@ -6413,6 +6418,8 @@
             if (salaryMaxEl) salaryMaxEl.value = '';
             var taxModReset = document.getElementById('filterTaxModifiedToday');
             if (taxModReset) taxModReset.value = '';
+            var loginInactiveReset = document.getElementById('filterLoginInactive');
+            if (loginInactiveReset) loginInactiveReset.value = '';
             loadUsers(1);
         };
 

@@ -712,6 +712,13 @@
                         <option value="0">当日无修改</option>
                     </select>
                 </div>
+                <div>
+                    <label>最近登录</label>
+                    <select id="filterLoginInactive" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="30">30天未登录</option>
+                    </select>
+                </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                     <button type="button" class="btn-page" id="btnResetUsers">重置</button>
@@ -722,7 +729,7 @@
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <p class="stat" id="purgeBotsStat" style="display:none;"></p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。<strong>退款</strong>（仅已激活账号）：封禁并移出列表，激活数据暂不计入统计；可在「已删除账号」恢复。</p>
+            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。<strong>30天未登录</strong>：按普通用户登录流水中的最近成功登录时间判断；从未成功登录的账号以注册时间为准。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。<strong>退款</strong>（仅已激活账号）：封禁并移出列表，激活数据暂不计入统计；可在「已删除账号」恢复。</p>
             <div class="scroll-x">
                 <table class="users-registry-table">
                     <thead>
@@ -1898,7 +1905,7 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-    <script src="/js/admin_panel.js?v=20260625-ud-cert-toggle"></script>
+    <script src="/js/admin_panel.js?v=20260626-login-inactive"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260622-qr-blur-light"></script>
 </body>
