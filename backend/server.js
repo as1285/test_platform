@@ -561,6 +561,20 @@ function analyticsConversionPct(n, d) {
   return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
 }
 
+function sumConversionSeriesTotals(series) {
+  var registered = 0;
+  var activated = 0;
+  (series || []).forEach(function (row) {
+    registered += Number(row.registered) || 0;
+    activated += Number(row.activated) || 0;
+  });
+  return {
+    registered: registered,
+    activated: activated,
+    rate_pct: analyticsConversionPct(activated, registered)
+  };
+}
+
 function buildDailyConversionSeries(days, regMap, actMap) {
   var series = [];
   var todayKey = chinaDateKeyNow();
@@ -593,7 +607,12 @@ function buildDailyConversionSeries(days, regMap, actMap) {
       todayRow.rate_pct = analyticsConversionPct(todayRow.activated, todayRow.registered);
     }
   }
-  return { today: todayRow, series: series, today_is_current: true };
+  return {
+    today: todayRow,
+    series: series,
+    today_is_current: true,
+    period_total: sumConversionSeriesTotals(series)
+  };
 }
 
 function buildDailyConversionSeriesForRange(startKey, endKey, regMap, actMap) {
@@ -623,7 +642,8 @@ function buildDailyConversionSeriesForRange(startKey, endKey, regMap, actMap) {
   return {
     today: lastRow,
     series: series,
-    today_is_current: lastRow.date === todayKey
+    today_is_current: lastRow.date === todayKey,
+    period_total: sumConversionSeriesTotals(series)
   };
 }
 

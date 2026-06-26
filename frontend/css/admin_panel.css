@@ -603,6 +603,13 @@
             color: #666;
             margin-top: 4px;
         }
+        .analytics-conv-period-total {
+            background: #f0f7ff;
+            border-color: #91caff;
+        }
+        .analytics-conv-period-total .conv-today {
+            color: #0958d9;
+        }
         .analytics-conv-table-wrap {
             background: #fff;
             border: 1px solid #e3e8ef;

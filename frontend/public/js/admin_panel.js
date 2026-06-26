@@ -3264,12 +3264,30 @@
             return '<p class="hint" style="margin:0 0 12px;">' + esc(hint) + '</p>';
         }
 
-        function renderDailyConversionSegmentBlock(title, segmentData) {
+        function renderDailyConversionSegmentBlock(title, segmentData, pageData) {
             var html = '<div class="analytics-segment-block">';
             html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
             if (!segmentData || !segmentData.today) {
                 html += '<p class="hint">暂无数据</p></div>';
                 return html;
+            }
+            var pt = segmentData.period_total;
+            if (pageData && pageData.period_start && pt) {
+                var periodRate =
+                    pt.rate_pct != null ? pt.rate_pct : pt.registered > 0 ? '0.0%' : '—';
+                html += '<div class="analytics-conv-summary analytics-conv-period-total">';
+                html +=
+                    '<div class="conv-label">区间合计（' +
+                    esc(pageData.period_label || '') +
+                    '）</div>';
+                html += '<div class="conv-today">' + esc(periodRate) + '</div>';
+                html +=
+                    '<div class="conv-sub">注册 ' +
+                    esc(String(pt.registered)) +
+                    ' · 激活 ' +
+                    esc(String(pt.activated)) +
+                    '</div>';
+                html += '</div>';
             }
             var today = segmentData.today;
             var todayKey = today.date || '';
@@ -3316,8 +3334,8 @@
             var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
             var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
             var html = analyticsPeriodHintHtml(data);
-            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own);
-            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent);
+            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
+            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data);
             el.innerHTML = html;
         }
 
