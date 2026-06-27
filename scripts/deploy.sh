@@ -36,7 +36,7 @@ if command -v curl >/dev/null 2>&1; then
   else
     echo "[deploy] WARN: https://127.0.0.1/ failed — check certs mount and docker compose logs frontend"
   fi
-  SSLIP_HOST="${HTTPS_SSLIP_HOST:-139-199-191-204.sslip.io}"
+  SSLIP_HOST="${HTTPS_SSLIP_HOST:-85-137-247-81.sslip.io}"
   if curl -fsS --max-time 8 -o /dev/null "https://${SSLIP_HOST}/"; then
     echo "[deploy] probe OK: https://${SSLIP_HOST}/ (trusted LE cert)"
   elif curl -kfsS --max-time 8 -o /dev/null "https://${SSLIP_HOST}/"; then

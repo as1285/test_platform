@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CERT_DIR="${ROOT}/certs"
 CRT="${CERT_DIR}/selfsigned-ip.crt"
 KEY="${CERT_DIR}/selfsigned-ip.key"
-IP="${HTTPS_SELF_SIGNED_IP:-139.199.191.204}"
+IP="${HTTPS_SELF_SIGNED_IP:-85.137.247.81}"
 DAYS="${HTTPS_SELF_SIGNED_DAYS:-825}"
 
 mkdir -p "$CERT_DIR"

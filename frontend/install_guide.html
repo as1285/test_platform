@@ -456,7 +456,7 @@
                 <div id="iosInstallSection">
                     <p class="hint ios-cert-hint" id="iosCertHint" style="margin-bottom:10px;line-height:1.55;">
                         若打开 App 时提示「<strong>此连接非私人连接</strong>」，请点页面底部「<strong>访问此网站</strong>」继续；或删除桌面图标后，用
-                        <a href="http://139.199.191.204/install_guide.html">http://139.199.191.204/install_guide.html</a>
+                        <a href="http://85.137.247.81/install_guide.html">http://85.137.247.81/install_guide.html</a>
                         重新下载描述文件（请勿使用 https 地址）。
                     </p>
                     <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
@@ -494,11 +494,11 @@
                 var origin = window.location.origin || '';
                 // iPhone 用 IP 的 HTTPS 会命中自签证书拦截；安装页与描述文件统一走 HTTP
                 if (/^https:\/\/139\.199\.191\.204(?::\d+)?$/i.test(origin)) {
-                    return 'http://139.199.191.204';
+                    return 'http://85.137.247.81';
                 }
                 return origin;
             } catch (e) {
-                return 'http://139.199.191.204';
+                return 'http://85.137.247.81';
             }
         }
 

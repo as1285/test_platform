@@ -2,7 +2,7 @@
 # 为 sslip.io 主机名申请 Let's Encrypt 证书（无需自购域名）
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOST="${HTTPS_SSLIP_HOST:-139-199-191-204.sslip.io}"
+HOST="${HTTPS_SSLIP_HOST:-85-137-247-81.sslip.io}"
 WEBROOT="${ROOT}/certbot-webroot"
 CERT_DIR="${ROOT}/certs"
 EMAIL="${LETSENCRYPT_EMAIL:-}"
