@@ -2,7 +2,9 @@
 FROM node:18-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm config set registry https://registry.npmjs.org/ \
+  && sed -i 's|http://mirrors.tencentyun.com/npm/|https://registry.npmjs.org/|g' package-lock.json \
+  && npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
