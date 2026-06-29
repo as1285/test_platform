@@ -1297,6 +1297,117 @@
             document.body.removeChild(ta);
         }
 
+        var _agentPromoLinksCache = [];
+
+        function parseAgentChannelIds(raw) {
+            return String(raw || '')
+                .split(/[\r\n,;]+/)
+                .map(function (s) {
+                    return s.trim();
+                })
+                .filter(function (s) {
+                    return /^[a-zA-Z0-9_-]+$/.test(s);
+                })
+                .filter(function (s, i, arr) {
+                    return arr.indexOf(s) === i;
+                });
+        }
+
+        function buildAgentPromoLink(origin, page, channelId) {
+            var base = String(origin || window.location.origin || '').replace(/\/+$/, '');
+            return base + '/' + page + '?ch=' + encodeURIComponent(channelId);
+        }
+
+        function renderAgentPromoLinks(channelIds) {
+            var mount = document.getElementById('agentPromoLinksMount');
+            var copyAllBtn = document.getElementById('btnCopyAllAgentPromoLinks');
+            if (!mount) {
+                return;
+            }
+            if (!channelIds.length) {
+                mount.style.display = 'none';
+                mount.innerHTML = '';
+                _agentPromoLinksCache = [];
+                if (copyAllBtn) {
+                    copyAllBtn.style.display = 'none';
+                }
+                alert('请先在上方填写至少一个渠道 ID（每行一个）');
+                return;
+            }
+            var origin = window.location.origin || '';
+            var linkDefs = [
+                { label: '安装引导页', page: 'install_guide.html' },
+                { label: '注册页', page: 'register.html' }
+            ];
+            var allLines = [];
+            var html =
+                '<div class="agent-promo-links-head"><span>站点：<code>' +
+                esc(origin) +
+                '</code></span><span>共 ' +
+                channelIds.length +
+                ' 个渠道</span></div>';
+            channelIds.forEach(function (ch) {
+                html += '<div class="agent-promo-channel-block">';
+                html += '<div class="agent-promo-channel-title">' + esc(ch) + '</div>';
+                linkDefs.forEach(function (def) {
+                    var url = buildAgentPromoLink(origin, def.page, ch);
+                    allLines.push(ch + ' · ' + def.label + '：' + url);
+                    html +=
+                        '<div class="agent-promo-link-row">' +
+                        '<span class="agent-promo-link-label">' +
+                        esc(def.label) +
+                        '</span>' +
+                        '<code class="agent-promo-link-url">' +
+                        esc(url) +
+                        '</code>' +
+                        '<button type="button" class="btn-sm btn-copy btn-copy-agent-promo" data-copy="' +
+                        esc(url) +
+                        '">复制</button>' +
+                        '</div>';
+                });
+                html += '</div>';
+            });
+            mount.innerHTML = html;
+            mount.style.display = 'block';
+            _agentPromoLinksCache = allLines;
+            if (copyAllBtn) {
+                copyAllBtn.style.display = 'inline-block';
+            }
+        }
+
+        function bindAgentPromoLinksUi() {
+            var genBtn = document.getElementById('btnGenerateAgentPromoLinks');
+            var copyAllBtn = document.getElementById('btnCopyAllAgentPromoLinks');
+            var mount = document.getElementById('agentPromoLinksMount');
+            if (genBtn && genBtn.getAttribute('data-bound') !== '1') {
+                genBtn.setAttribute('data-bound', '1');
+                genBtn.addEventListener('click', function () {
+                    var raw = document.getElementById('xianyuHideSalesChannels');
+                    renderAgentPromoLinks(parseAgentChannelIds(raw ? raw.value : ''));
+                });
+            }
+            if (copyAllBtn && copyAllBtn.getAttribute('data-bound') !== '1') {
+                copyAllBtn.setAttribute('data-bound', '1');
+                copyAllBtn.addEventListener('click', function () {
+                    if (!_agentPromoLinksCache.length) {
+                        alert('请先生成代理推广链接');
+                        return;
+                    }
+                    copyCode(_agentPromoLinksCache.join('\n'));
+                });
+            }
+            if (mount && mount.getAttribute('data-copy-bound') !== '1') {
+                mount.setAttribute('data-copy-bound', '1');
+                mount.addEventListener('click', function (e) {
+                    var btn = e.target.closest('.btn-copy-agent-promo');
+                    if (!btn) {
+                        return;
+                    }
+                    copyCode(btn.getAttribute('data-copy') || '');
+                });
+            }
+        }
+
         function keyForUser(username) {
             return encodeURIComponent(String(username || '')).replace(/%/g, '_');
         }
@@ -7331,6 +7442,7 @@
 
         bindMineUiUploads();
         bindInstallPackageUploads();
+        bindAgentPromoLinksUi();
         loadAdminSettings();
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {

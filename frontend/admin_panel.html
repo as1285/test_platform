@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260606-user-activate">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260629-agent-promo">
 </head>
 <body>
     <div class="layout">
@@ -185,6 +185,11 @@
                 <div style="width:100%;max-width:640px;margin-top:12px;">
                     <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>
                     <textarea id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li" style="width:100%;margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical;"></textarea>
+                    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button type="button" class="btn-primary" id="btnGenerateAgentPromoLinks">生成代理推广链接</button>
+                        <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>
+                    </div>
+                    <div id="agentPromoLinksMount" class="agent-promo-links-mount" style="display:none;margin-top:12px;"></div>
                     <p class="hint" style="margin-top:6px;">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（48 小时内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p>
                 </div>
             </div>
@@ -1829,7 +1834,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260611-month-pick"></script>
+    <script src="/js/admin_panel.js?v=20260629-agent-promo"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260622-qr-blur-light"></script>
 </body>
