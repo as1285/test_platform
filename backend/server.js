@@ -3380,7 +3380,7 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、message.php 列表/详情 */
+/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、message.php 全部读写 */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
@@ -3389,11 +3389,8 @@ function isUnactivatedAllowedRequest(req) {
   if (path.endsWith('/user.php')) {
     return true;
   }
-  if (path.endsWith('/message.php') && req.method === 'GET') {
-    var msgAction = req.query && req.query.action != null ? String(req.query.action) : '';
-    if (msgAction === 'list' || msgAction === 'detail') {
-      return true;
-    }
+  if (path.endsWith('/message.php')) {
+    return true;
   }
   if (req.method === 'POST') {
     var action = req.body && req.body.action != null ? String(req.body.action) : '';
@@ -6865,9 +6862,9 @@ app.get('/api/tax.php', async function taxGetEntry(req, res) {
 });
 app.post('/api/tax.php', requireAuthAndActivatedUnlessAllowed, handleTaxPost);
 app.get('/api/message.php', requireAuthAndActivatedUnlessAllowed, handleMessageGet);
-app.post('/api/message.php', requireAuth, requireActivated, handleMessagePost);
+app.post('/api/message.php', requireAuthAndActivatedUnlessAllowed, handleMessagePost);
 app.get('/message.php', requireAuthAndActivatedUnlessAllowed, handleMessageGet);
-app.post('/message.php', requireAuth, requireActivated, handleMessagePost);
+app.post('/message.php', requireAuthAndActivatedUnlessAllowed, handleMessagePost);
 app.get('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserGet);
 app.post('/api/user.php', requireAuthAndActivatedUnlessAllowed, handleUserPost);
 app.get('/user.php', requireAuthAndActivatedUnlessAllowed, handleUserGet);
