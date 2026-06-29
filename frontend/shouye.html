@@ -323,10 +323,32 @@
             position: relative;
             display: block;
             line-height: 0;
+            background: #fff;
         }
         .shouye-lb-wrap > img {
             width: 100%;
             display: block;
+        }
+        .shouye-news-more {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 10px 16px 14px;
+            font-size: 14px;
+            color: #999;
+            text-decoration: none;
+            background: #fff;
+            line-height: 1.4;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .shouye-news-more:active {
+            opacity: 0.72;
+        }
+        .shouye-news-more-chevron {
+            font-size: 13px;
+            color: #bbb;
+            transform: translateY(-0.5px);
         }
         .lb-svc-hot {
             position: absolute;
@@ -507,6 +529,10 @@
         <div class="shouye-content">
             <div class="shouye-lb-wrap">
                 <img id="assetShouyeLb" src="lb.jpg?v=2" alt="轮播">
+                <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">
+                    查看更多
+                    <span class="shouye-news-more-chevron" aria-hidden="true">&gt;</span>
+                </a>
             </div>
         </div>
     </div>
