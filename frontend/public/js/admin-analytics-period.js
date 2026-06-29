@@ -12,6 +12,9 @@
         return { year: cn.getFullYear(), month: cn.getMonth() + 1, day: cn.getDate() };
     }
 
+    /** 指定月份列表最早年份（不含 2023–2025 等更早月份） */
+    var FIXED_MONTH_MIN_YEAR = 2026;
+
     function buildFixedMonthOptions(count) {
         count = count || 24;
         var cn = chinaNowParts();
@@ -20,6 +23,7 @@
         for (var i = 0; i < count; i++) {
             var y = dt.getFullYear();
             var m = dt.getMonth() + 1;
+            if (y < FIXED_MONTH_MIN_YEAR) break;
             html +=
                 '<option value="month_' +
                 y +
