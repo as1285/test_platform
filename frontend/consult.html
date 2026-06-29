@@ -490,7 +490,7 @@
             gap: 8px;
             align-items: stretch;
         }
-        #panel-records .batch-ym-inline input[type="number"] {
+        #panel-records .batch-ym-inline input.batch-ym-field {
             flex: 1 1 0;
             min-width: 0;
             min-height: 44px;
@@ -500,6 +500,8 @@
             border: 1px solid #e0e0e0;
             border-radius: 6px;
             background: #fafafa;
+            -webkit-appearance: none;
+            appearance: none;
         }
         #panel-records .batch-ym-inline input.batch-emp-sm,
         #panel-records .batch-ym-inline input.batch-emp-em {
@@ -507,7 +509,7 @@
             width: 88px;
             text-align: center;
         }
-        #panel-records .batch-ym-inline input[type="number"]:focus {
+        #panel-records .batch-ym-inline input.batch-ym-field:focus {
             outline: none;
             border-color: #1e6fff;
             background: #fff;
@@ -990,15 +992,15 @@
                             <div class="form-group">
                                 <label>起始年月</label>
                                 <div class="batch-ym-inline">
-                                    <input type="number" class="batch-emp-sy" min="1990" max="2100" placeholder="年" inputmode="numeric">
-                                    <input type="number" class="batch-emp-sm" min="1" max="12" placeholder="月" inputmode="numeric" aria-label="起始月">
+                                    <input type="text" class="batch-emp-sy batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                    <input type="text" class="batch-emp-sm batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="起始月">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>结束年月</label>
                                 <div class="batch-ym-inline batch-emp-end-inputs">
-                                    <input type="number" class="batch-emp-ey" min="1990" max="2100" placeholder="年" inputmode="numeric">
-                                    <input type="number" class="batch-emp-em" min="1" max="12" placeholder="月" inputmode="numeric" aria-label="结束月">
+                                    <input type="text" class="batch-emp-ey batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                    <input type="text" class="batch-emp-em batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="结束月">
                                 </div>
                             </div>
                         </div>
@@ -1092,11 +1094,11 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>年终奖归属年度</label>
-                                    <input type="number" class="batch-emp-bonus-year" min="1990" max="2100">
+                                    <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
                                 </div>
                                 <div class="form-group">
                                     <label>归属月份（1–12 月）</label>
-                                    <input type="number" class="batch-emp-bonus-month" min="1" max="12" value="12" inputmode="numeric" placeholder="月">
+                                    <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
                                 </div>
                             </div>
                         </div>
@@ -1116,11 +1118,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>年份</label>
-                            <input type="number" name="year" id="f_year" value="2026" required>
+                            <input type="text" name="year" id="f_year" class="batch-ym-field" value="2026" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" required>
                         </div>
                         <div class="form-group">
                             <label>月份</label>
-                            <input type="number" name="month" id="f_month" value="4" min="1" max="12" required>
+                            <input type="text" name="month" id="f_month" class="batch-ym-field" value="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" required>
                         </div>
                     </div>
 
@@ -1325,6 +1327,8 @@
             var yearEl = document.getElementById('f_year');
             var monthEl = document.getElementById('f_month');
             if (!yearEl || !monthEl) return;
+            bindBatchYearInput(yearEl);
+            bindBatchMonthInput(monthEl);
             if (!window.__belongingPeriodSyncInited) {
                 window.__belongingPeriodSyncInited = true;
                 function onYmChange() {
@@ -3326,17 +3330,52 @@
             }
         }
 
-        function bindBatchMonthInput(inputEl) {
-            if (!inputEl || inputEl.getAttribute('data-month-bound') === '1') {
+        function clampBatchYearInput(inputEl) {
+            if (!inputEl) return;
+            var raw = String(inputEl.value || '').trim();
+            if (!raw) return;
+            var v = parseInt(raw, 10);
+            if (Number.isNaN(v)) {
+                inputEl.value = '';
                 return;
             }
-            inputEl.setAttribute('data-month-bound', '1');
-            inputEl.addEventListener('change', function () {
-                clampBatchMonthInput(inputEl);
+            if (v < 1990) inputEl.value = '1990';
+            else if (v > 2100) inputEl.value = '2100';
+        }
+
+        function bindBatchYmNumericInput(inputEl, opts) {
+            if (!inputEl || inputEl.getAttribute('data-ym-bound') === '1') return;
+            inputEl.setAttribute('data-ym-bound', '1');
+            opts = opts || {};
+            var min = opts.min;
+            var max = opts.max;
+            var maxLen = opts.maxLength;
+            inputEl.addEventListener('input', function () {
+                var cleaned = String(inputEl.value || '').replace(/\D/g, '');
+                if (maxLen) cleaned = cleaned.slice(0, maxLen);
+                if (cleaned !== inputEl.value) inputEl.value = cleaned;
             });
-            inputEl.addEventListener('blur', function () {
-                clampBatchMonthInput(inputEl);
-            });
+            function clamp() {
+                var raw = String(inputEl.value || '').trim();
+                if (!raw) return;
+                var v = parseInt(raw, 10);
+                if (Number.isNaN(v)) {
+                    inputEl.value = '';
+                    return;
+                }
+                if (min != null && v < min) inputEl.value = String(min);
+                else if (max != null && v > max) inputEl.value = String(max);
+            }
+            inputEl.addEventListener('change', clamp);
+            inputEl.addEventListener('blur', clamp);
+        }
+
+        function bindBatchMonthInput(inputEl) {
+            bindBatchYmNumericInput(inputEl, { min: 1, max: 12, maxLength: 2 });
+        }
+
+        function bindBatchYearInput(inputEl) {
+            bindBatchYmNumericInput(inputEl, { min: 1990, max: 2100, maxLength: 4 });
         }
 
         function parseBatchRatioPct(el) {
@@ -3417,6 +3456,9 @@
             bindBatchMonthInput(node.querySelector('.batch-emp-sm'));
             bindBatchMonthInput(node.querySelector('.batch-emp-em'));
             bindBatchMonthInput(node.querySelector('.batch-emp-bonus-month'));
+            bindBatchYearInput(node.querySelector('.batch-emp-sy'));
+            bindBatchYearInput(node.querySelector('.batch-emp-ey'));
+            bindBatchYearInput(node.querySelector('.batch-emp-bonus-year'));
             var msBtn = node.querySelector('.batch-emp-month-salary-btn');
             if (msBtn) {
                 msBtn.addEventListener('click', function () {
