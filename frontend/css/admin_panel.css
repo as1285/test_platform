@@ -975,7 +975,23 @@
             background: #fff;
             cursor: pointer;
         }
-        .btn-page:disabled { background: #f5f5f5; color: #ccc; cursor: not-allowed; }
+        .btn-link-pwd {
+            border: none;
+            background: transparent;
+            padding: 0;
+            font: inherit;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            color: #1e6fff;
+            cursor: pointer;
+            text-align: left;
+            max-width: 100%;
+            word-break: break-all;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-link-pwd:hover {
+            text-decoration: underline;
+        }
         .agent-promo-links-mount {
             border: 1px solid #e8e8e8;
             border-radius: 10px;

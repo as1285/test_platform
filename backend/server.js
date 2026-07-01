@@ -10587,6 +10587,50 @@ async function handleAdminUserActivate(req, res) {
   }
 }
 
+async function handleAdminUserPassword(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var newPassword = body.new_password != null ? String(body.new_password) : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  var pwdErr = validatePassword(newPassword);
+  if (pwdErr) {
+    return res.status(400).json({ code: 400, msg: pwdErr });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [urows] = await conn.execute('SELECT id FROM users WHERE username = ?', [target]);
+      if (urows.length === 0) {
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+      var saltBuf = crypto.randomBytes(16);
+      var saltHex = saltBuf.toString('hex');
+      var hashHex = hashPasswordWithSalt(newPassword, saltBuf);
+      var storePlain = String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0';
+      var plainVal = storePlain ? newPassword : null;
+      await conn.execute(
+        'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
+        [saltHex, hashHex, plainVal, target]
+      );
+      return res.json({ code: 200, data: { username: target }, msg: '密码已修改' });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminBan(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -13959,6 +14003,7 @@ app.post(
 );
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/user-activate', requireAdminAuth, requireAdminMenu('users'), handleAdminUserActivate);
+app.post('/api/admin/user-password', requireAdminAuth, requireAdminMenu('users'), handleAdminUserPassword);
 app.post('/api/admin/ban', requireAdminAuth, requireAdminMenu('users'), handleAdminBan);
 app.post('/api/admin/user-delete', requireAdminAuth, requireAdminMenu('users'), handleAdminDeleteUser);
 app.post('/api/admin/user-refund', requireAdminAuth, requireAdminMenu('users'), handleAdminUserRefund);

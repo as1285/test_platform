@@ -5565,6 +5565,101 @@
         }
 
         var userActivateTarget = null;
+        var userPasswordTarget = null;
+
+        function closeUserPasswordModal() {
+            var bd = document.getElementById('userPasswordBackdrop');
+            if (bd) {
+                bd.setAttribute('hidden', '');
+            }
+            userPasswordTarget = null;
+            var inp = document.getElementById('userPasswordInput');
+            var inp2 = document.getElementById('userPasswordConfirmInput');
+            if (inp) {
+                inp.value = '';
+            }
+            if (inp2) {
+                inp2.value = '';
+            }
+        }
+
+        function openUserPasswordModal(username, currentPassword) {
+            userPasswordTarget = username;
+            var metaEl = document.getElementById('userPasswordMeta');
+            if (metaEl) {
+                metaEl.textContent =
+                    '为账号「' +
+                    username +
+                    '」设置新密码（当前：' +
+                    (currentPassword ? currentPassword : '—') +
+                    '）。保存后用户需用新密码登录，已登录会话将失效。';
+            }
+            var inp = document.getElementById('userPasswordInput');
+            var inp2 = document.getElementById('userPasswordConfirmInput');
+            if (inp) {
+                inp.value = '';
+            }
+            if (inp2) {
+                inp2.value = '';
+            }
+            var bd = document.getElementById('userPasswordBackdrop');
+            if (bd) {
+                bd.removeAttribute('hidden');
+            }
+            if (inp) {
+                try {
+                    inp.focus();
+                } catch (eFocus) {}
+            }
+        }
+
+        function submitUserPassword() {
+            if (!userPasswordTarget) {
+                return;
+            }
+            var pwdEl = document.getElementById('userPasswordInput');
+            var pwd2El = document.getElementById('userPasswordConfirmInput');
+            var pwd = pwdEl ? String(pwdEl.value || '') : '';
+            var pwd2 = pwd2El ? String(pwd2El.value || '') : '';
+            if (!pwd) {
+                alert('请输入新密码');
+                return;
+            }
+            if (pwd !== pwd2) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            var confirmBtn = document.getElementById('userPasswordConfirm');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = '保存中…';
+            }
+            adminFetch('api/admin/user-password', {
+                method: 'POST',
+                body: JSON.stringify({ username: userPasswordTarget, new_password: pwd })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (d) {
+                    if (d.code === 200) {
+                        closeUserPasswordModal();
+                        loadUsers();
+                        alert(d.msg || '密码已修改');
+                    } else {
+                        alert(d.msg || '修改失败');
+                    }
+                })
+                .catch(function () {
+                    alert('网络错误');
+                })
+                .finally(function () {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = '保存';
+                    }
+                });
+        }
 
         function closeUserActivateModal() {
             var bd = document.getElementById('userActivateBackdrop');
@@ -5744,7 +5839,7 @@
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
-                        html += '<td class="cell-break"><code>' + esc(u.password) + '</code></td>';
+                        html += '<td class="cell-break"><button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
@@ -5763,6 +5858,11 @@
                     document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="13">暂无数据</td></tr>';
                     
                     // 重新绑定事件
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-password').forEach(function (btn) {
+                        btn.onclick = function () {
+                            openUserPasswordModal(btn.getAttribute('data-u'), btn.getAttribute('data-pwd') || '');
+                        };
+                    });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
                         btn.onclick = function () {
                             openUserActivateModal(btn.getAttribute('data-u'));
@@ -7799,6 +7899,31 @@
                 closeFeedbackReplyModal();
             }
         });
+        var userPasswordBackdrop = document.getElementById('userPasswordBackdrop');
+        if (userPasswordBackdrop) {
+            userPasswordBackdrop.addEventListener('click', function (e) {
+                if (e.target.id === 'userPasswordBackdrop') {
+                    closeUserPasswordModal();
+                }
+            });
+        }
+        var userPasswordCancel = document.getElementById('userPasswordCancel');
+        if (userPasswordCancel) {
+            userPasswordCancel.addEventListener('click', closeUserPasswordModal);
+        }
+        var userPasswordConfirm = document.getElementById('userPasswordConfirm');
+        if (userPasswordConfirm) {
+            userPasswordConfirm.addEventListener('click', submitUserPassword);
+        }
+        var userPasswordInput = document.getElementById('userPasswordInput');
+        if (userPasswordInput) {
+            userPasswordInput.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    submitUserPassword();
+                }
+            });
+        }
         var userActivateBackdrop = document.getElementById('userActivateBackdrop');
         if (userActivateBackdrop) {
             userActivateBackdrop.addEventListener('click', function (e) {

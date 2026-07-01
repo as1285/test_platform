@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260629-agent-promo">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260629-user-pwd">
 </head>
 <body>
     <div class="layout">
@@ -1808,6 +1808,20 @@
             </div>
         </div>
     </div>
+    <div id="userPasswordBackdrop" class="admin-modal-backdrop" hidden>
+        <div class="admin-modal-box" onclick="event.stopPropagation()">
+            <h2 class="admin-modal-title">修改用户密码</h2>
+            <p class="hint admin-modal-meta" id="userPasswordMeta"></p>
+            <label class="field-label" for="userPasswordInput">新密码</label>
+            <input type="text" id="userPasswordInput" class="filter-text-wide" placeholder="1～64 位" autocomplete="new-password" style="width:100%;box-sizing:border-box;">
+            <label class="field-label" for="userPasswordConfirmInput" style="margin-top:10px;display:block;">确认新密码</label>
+            <input type="text" id="userPasswordConfirmInput" class="filter-text-wide" placeholder="再次输入新密码" autocomplete="new-password" style="width:100%;box-sizing:border-box;">
+            <div class="form-actions modal-actions">
+                <button type="button" class="btn-primary" id="userPasswordConfirm">保存</button>
+                <button type="button" class="btn-page" id="userPasswordCancel">取消</button>
+            </div>
+        </div>
+    </div>
     <div id="userActivateBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">激活账号</h2>
@@ -1834,7 +1848,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260629-agent-promo"></script>
+    <script src="/js/admin_panel.js?v=20260629-user-pwd"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260622-qr-blur-light"></script>
 </body>
