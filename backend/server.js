@@ -368,6 +368,33 @@ function invalidateTestCompanyNameCache() {
   _testCompanyNameCache = null;
 }
 
+/** 用户数据分析中不计入 TOP / 公司数的测试或无效扣缴义务人名称 */
+function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
+  var names = ['1', '北京华示示例软件有限公司', '北京华示例软件有限公司', '示例科技有限公司'];
+  var tc = testCompanyName != null ? String(testCompanyName).trim() : '';
+  if (tc) {
+    names.push(tc);
+  }
+  var seen = {};
+  return names.filter(function (n) {
+    if (!n || seen[n]) {
+      return false;
+    }
+    seen[n] = true;
+    return true;
+  });
+}
+
+function sqlCompanyNotInExcludedClause(excludedCompanies, columnExpr) {
+  if (!excludedCompanies || !excludedCompanies.length) {
+    return { sql: '', params: [] };
+  }
+  return {
+    sql: ' AND ' + columnExpr + ' NOT IN (' + excludedCompanies.map(function () { return '?'; }).join(',') + ')',
+    params: excludedCompanies.slice()
+  };
+}
+
 function cloneMineUiDefaults() {
   return {
     theme: DEFAULT_MINE_UI.theme,
@@ -9838,6 +9865,9 @@ async function buildUserDataBatchMaps(conn, usernames) {
 async function handleAdminUserDataAnalytics(req, res) {
   try {
     const conn = await pool.getConnection();
+    var testCompanyName = await getTestAccountCompanyName();
+    var excludedCompanies = getUserDataAnalyticsExcludedCompanies(testCompanyName);
+    var companyExclude = sqlCompanyNotInExcludedClause(excludedCompanies, 'TRIM(tr.company_name)');
     var where = [];
     var params = [];
     appendAdminUserScope(where, params, req.admin, 'u.username');
@@ -9846,14 +9876,17 @@ async function handleAdminUserDataAnalytics(req, res) {
     const [totalUserRows] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scopeSql, params);
     var totalUsers = Number(totalUserRows[0].c) || 0;
 
+    var taxParams = params.concat(companyExclude.params);
     const [taxStats] = await conn.query(
       `SELECT COUNT(DISTINCT tr.user_id) AS users_with_tax,
               COUNT(*) AS total_records,
-              COUNT(DISTINCT NULLIF(TRIM(tr.company_name), '')) AS distinct_companies,
+              COUNT(DISTINCT CASE WHEN NULLIF(TRIM(tr.company_name), '') IS NOT NULL` +
+        companyExclude.sql +
+        ` THEN TRIM(tr.company_name) END) AS distinct_companies,
               COUNT(DISTINCT NULLIF(TRIM(tr.tax_authority), '')) AS distinct_authorities
        FROM tax_records tr
        INNER JOIN users u ON u.username = tr.user_id` + scopeSql,
-      params
+      taxParams
     );
 
     const [famRows] = await conn.query(
@@ -9867,13 +9900,15 @@ async function handleAdminUserDataAnalytics(req, res) {
       params
     );
 
+    var topCompanyParams = params.concat(companyExclude.params);
     const [topCompanies] = await conn.query(
       `SELECT NULLIF(TRIM(tr.company_name), '') AS name, COUNT(DISTINCT tr.user_id) AS user_count
        FROM tax_records tr
        INNER JOIN users u ON u.username = tr.user_id` +
         sqlScopeAnd(scopeSql, "NULLIF(TRIM(tr.company_name), '') IS NOT NULL") +
+        companyExclude.sql +
         ` GROUP BY name ORDER BY user_count DESC, name ASC LIMIT 12`,
-      params
+      topCompanyParams
     );
 
     const [topAuthorities] = await conn.query(
