@@ -115,11 +115,72 @@ https://www.installguide1.top/
 
 本仓库为**私有源码**，含前端静态页、`backend/` Node API、MySQL 与 Docker Compose。
 
+### 项目概况
+
+| 项 | 数量 / 说明 |
+|----|-------------|
+| **源码规模** | 约 **118** 个源文件、**6.5 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
+| **前端页面** | **56** 个 HTML 页面（`frontend/*.html`） |
+| **后端 API** | 单文件 `backend/server.js`（约 **1.4 万** 行） |
+| **数据库表** | **18** 张表（见 `backend/schema.sql`） |
+| **GitHub Actions** | 3 个工作流：Android APK、iOS 打包、MySQL 定时备份 |
+| **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
+
+### 代码规模（按语言，2026-07）
+
+| 语言 | 文件数 | 行数 |
+|------|--------|------|
+| JavaScript | 33 | ~33,000 |
+| HTML | 57 | ~29,000 |
+| CSS | 5 | ~1,800 |
+| Shell / YAML / SQL / 其他 | 15 | ~1,100 |
+| **合计** | **118** | **~65,400** |
+
+按模块：`frontend/` 约 4.8 万行 · `backend/` 约 1.5 万行 · `scripts/` + CI 约 0.1 万行。
+
+核心大文件：`backend/server.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`、`frontend/public/js/auth.js`。
+
+### 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 前端 | 静态 HTML/CSS/JS，多页应用，主题可配置 |
+| 后端 | Node.js + Express 风格 API（`server.js`） |
+| 数据库 | MySQL 8.0（库名 `personal_tax`） |
+| 部署 | Docker Compose（`frontend` + `backend` + `db`） |
+| 移动端 | Cordova（Android / iOS WebView 壳） |
+
+### 常用命令
+
 | 操作 | 命令 |
 |------|------|
-| 本地部署 | 在仓库根目录执行 `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
-| 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入：注册/激活动线、门禁、价值确认、留存轻触达） |
-| 管理后台 | `admin_panel.html` → **数据统计**（注册后 7 日漏斗、分渠道漏斗、转化 KPI、安装埋点）、**用户行为**（未填个税分析/导出）、**系统设置**（转化 A/B） |
+| 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
+| 仅部署前端/后端 | `DEPLOY_SERVICES=frontend ./scripts/deploy.sh` |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/` |
+| 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
+| 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
+
+### 管理后台能力
+
+`admin_panel.html` 主要模块：
+
+- **数据统计**：注册转化率、7 日漏斗、渠道分析、安装页统计、API 调用分析
+- **用户管理**：注册/删除/封禁、激活、**修改密码**、退款
+- **用户数据**：扣缴义务人分析、工资分布、未填个税行为导出
+- **引导安装**：APK / 描述文件、代理推广链接生成
+- **系统设置**：转化 A/B、外观主题、QQ / 收款码
+
+### 数据库备份（GitHub Actions）
+
+工作流：`.github/workflows/mysql-backup.yml`
+
+- **调度**：每天 UTC 19:00（约北京时间 03:00）
+- **方式**：SSH 连服务器 → `docker exec` mysqldump → 上传 **Artifact**（保留 90 天）
+- **手动触发**：Actions → **MySQL Database Backup** → Run workflow
+
+首次使用需在仓库 **Settings → Secrets** 配置：`BACKUP_SSH_HOST`、`BACKUP_SSH_USER`、`BACKUP_SSH_KEY`（可选 `BACKUP_DB_ROOT_PASSWORD`）。详见 workflow 文件头注释。
+
+> 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
 
 环境变量与数据库初始化见 `docker-compose.yml` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
