@@ -1,0 +1,80 @@
+# 定时备份生产服务器 Docker MySQL（personal_tax），上传为 GitHub Actions Artifact。
+#
+# 首次使用前在仓库 Settings → Secrets and variables → Actions 配置：
+#   BACKUP_SSH_HOST      服务器 IP，如 85.137.247.81
+#   BACKUP_SSH_USER      SSH 用户，如 root
+#   BACKUP_SSH_KEY       私钥全文（对应公钥已写入服务器 ~/.ssh/authorized_keys）
+#   BACKUP_SSH_PORT      可选，默认 22
+#   BACKUP_DB_ROOT_PASSWORD  可选，MySQL root 密码，默认 password
+#
+# 下载备份：Actions → MySQL Database Backup → 选一次成功运行 → Artifacts
+# 手动触发：Actions → MySQL Database Backup → Run workflow
+#
+# 调度：UTC 19:00 ≈ 北京时间 03:00；Artifact 默认保留 90 天。
+name: MySQL Database Backup
+
+on:
+  schedule:
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check required secrets
+        run: |
+          test -n "${{ secrets.BACKUP_SSH_HOST }}" || { echo "缺少 secret: BACKUP_SSH_HOST"; exit 1; }
+          test -n "${{ secrets.BACKUP_SSH_USER }}" || { echo "缺少 secret: BACKUP_SSH_USER"; exit 1; }
+          test -n "${{ secrets.BACKUP_SSH_KEY }}" || { echo "缺少 secret: BACKUP_SSH_KEY"; exit 1; }
+
+      - name: Dump database over SSH
+        env:
+          SSH_HOST: ${{ secrets.BACKUP_SSH_HOST }}
+          SSH_USER: ${{ secrets.BACKUP_SSH_USER }}
+          SSH_KEY: ${{ secrets.BACKUP_SSH_KEY }}
+          SSH_PORT: ${{ secrets.BACKUP_SSH_PORT }}
+          DB_PASSWORD: ${{ secrets.BACKUP_DB_ROOT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          PORT="${SSH_PORT:-22}"
+          DB_PASS="${DB_PASSWORD:-password}"
+          STAMP="$(date -u +%Y%m%d-%H%M%S)"
+          OUT="personal_tax-${STAMP}.sql.gz"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/backup_key
+          chmod 600 ~/.ssh/backup_key
+          ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
+            -i ~/.ssh/backup_key -p "$PORT" \
+            "${SSH_USER}@${SSH_HOST}" \
+            "docker exec test_platform_db mysqldump -uroot -p'${DB_PASS}' --single-transaction --routines --triggers personal_tax | gzip -c" \
+            > "$OUT"
+          ls -lh "$OUT"
+          BYTES="$(wc -c < "$OUT" | tr -d ' ')"
+          if [[ "$BYTES" -lt 1024 ]]; then
+            echo "备份文件过小（${BYTES} bytes），可能导出失败" >&2
+            exit 1
+          fi
+          echo "BACKUP_FILE=$OUT" >> "$GITHUB_ENV"
+          echo "BACKUP_BYTES=$BYTES" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-backup-${{ github.run_number }}-${{ github.run_attempt }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Summary
+        run: |
+          {
+            echo "### MySQL 备份完成"
+            echo "- 文件: \`${{ env.BACKUP_FILE }}\`"
+            echo "- 大小: $(numfmt --to=iec-i --suffix=B ${{ env.BACKUP_BYTES }} 2>/dev/null || echo ${{ env.BACKUP_BYTES }} bytes)"
+            echo "- 保留: 90 天（GitHub Artifact）"
+          } >> "$GITHUB_STEP_SUMMARY"

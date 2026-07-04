@@ -23,3 +23,8 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Database backups (local + import staging)
+data/db-backups/
+*.sql.gz
+personal_tax.sql
