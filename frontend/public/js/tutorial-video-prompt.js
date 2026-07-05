@@ -14,9 +14,9 @@
     var style = document.createElement('style');
     style.id = 'tutorial-video-prompt-style';
     style.textContent =
-      '.tutorial-video-prompt-root{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px}' +
-      '.tutorial-video-prompt-mask{position:absolute;inset:0;background:rgba(0,0,0,.45)}' +
-      '.tutorial-video-prompt-panel{position:relative;z-index:1;width:100%;max-width:320px;background:#fff;border-radius:12px;padding:22px 20px 18px;box-shadow:0 8px 32px rgba(0,0,0,.12)}' +
+      '.tutorial-video-prompt-root{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;z-index:10000;overflow:hidden}' +
+      '.tutorial-video-prompt-mask{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.45)}' +
+      '.tutorial-video-prompt-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);-webkit-transform:translate(-50%,-50%);z-index:1;width:calc(100% - 48px);max-width:320px;background:#fff;border-radius:12px;padding:22px 20px 18px;box-shadow:0 8px 32px rgba(0,0,0,.12)}' +
       '.tutorial-video-prompt-title{font-size:17px;font-weight:600;color:#333;text-align:center;margin-bottom:14px}' +
       '.tutorial-video-prompt-body{font-size:15px;line-height:1.65;color:#444;text-align:center}' +
       '.tutorial-video-prompt-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}' +
@@ -97,8 +97,11 @@
       (options.dismissLabel || '我知道了') +
       '</button></div></div>';
     document.body.appendChild(root);
+    var prevBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     function closePrompt() {
+      document.body.style.overflow = prevBodyOverflow;
       if (root.parentNode) {
         root.parentNode.removeChild(root);
       }
