@@ -34,7 +34,7 @@
             --mine-safe-top: env(safe-area-inset-top, 0px);
             /* 激活按钮：相对顶栏下移，与头像中下缘齐平 */
             --mine-activate-btn-top-offset: 66px;
-            background: linear-gradient(180deg, #5eb3ff 0%, #3d94f7 55%, #2d7ae8 100%);
+            background: linear-gradient(180deg, #6fc0ff 0%, #4da8f8 55%, #3d96ef 100%);
         }
 
         html.app-top-safe-shell body.page-mine .header-bg {
@@ -57,7 +57,7 @@
             right: 0;
             top: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            background: linear-gradient(180deg, #5eb3ff 0%, #3d94f7 100%);
+            background: linear-gradient(180deg, #6fc0ff 0%, #4da8f8 100%);
             z-index: 8;
             pointer-events: none;
         }
@@ -407,7 +407,7 @@
         }
 
         .user-card {
-            background: linear-gradient(105deg, #f3d9b4 0%, #eed3aa 42%, #e6c89a 100%);
+            background: linear-gradient(105deg, #f8ead8 0%, #f3e2cc 42%, #edd9bf 100%);
             margin: -70px 16px 0;
             border-radius: 12px 12px 0 0;
             padding: 14px 86px 14px 16px;
@@ -455,7 +455,7 @@
         .user-name {
             font-size: 14px;
             color: #333;
-            font-weight: 600;
+            font-weight: 400;
             margin-bottom: 8px;
             line-height: 1.35;
         }
@@ -469,7 +469,7 @@
             width: 100%;
             min-width: 0;
             font-size: 12px;
-            color: #b46d03;
+            color: #c8863a;
             line-height: 1.35;
         }
 
@@ -561,7 +561,7 @@
             height: 18px;
             border: none;
             background: transparent;
-            color: #b46d03;
+            color: #c8863a;
             line-height: 1;
             display: inline-flex;
             align-items: center;
@@ -838,24 +838,26 @@
 
         .function-btn {
             display: inline-block;
-            padding: 2px 10px;
+            padding: 2px 12px;
             border-radius: 15px;
             font-size: 12px;
+            font-weight: 400;
             border: none;
             cursor: pointer;
             font-family: inherit;
+            line-height: 1.5;
         }
 
         .function-btn.orange {
-            background: transparent;
-            color: #0050fd;
-            border: 1px solid #0050fd;
+            background: #fff;
+            color: #4285f4;
+            border: 1px solid #4285f4;
         }
 
         .function-btn.blue {
-            background: linear-gradient(135deg, #1a94ff 0%, #008afd 100%);
-            color: #fff;
-            border: none;
+            background: #fff;
+            color: #4285f4;
+            border: 1px solid #4285f4;
         }
 
         /* 菜单 */
@@ -997,8 +999,8 @@
                                 <path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="currentColor"></path>
                             </svg>
                             <svg class="tax-eye-open" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#b46d03"></path>
-                                <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#b46d03"></path>
+                                <path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#c8863a"></path>
+                                <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#c8863a"></path>
                             </svg>
                         </button>
                 </div>
@@ -1362,7 +1364,7 @@
                 if (employerBtn) {
                     if (user && !isNaN(ec) && ec > 0) {
                         employerBtn.textContent = ec + '家';
-                        employerBtn.className = 'function-btn blue';
+                        employerBtn.className = 'function-btn orange';
                     } else {
                         employerBtn.textContent = '暂无';
                         employerBtn.className = 'function-btn orange';
@@ -1371,7 +1373,7 @@
                 if (familyBtn && familyWrap) {
                     if (user && !isNaN(fc) && fc > 0) {
                         familyBtn.textContent = fc + '人';
-                        familyWrap.className = 'function-btn blue';
+                        familyWrap.className = 'function-btn orange';
                         familyWrap.setAttribute('href', 'jtcy.html');
                         familyWrap.setAttribute('aria-label', '家庭成员');
                     } else {
@@ -1384,7 +1386,7 @@
                 if (bankBtn && bankWrap) {
                     if (user && !isNaN(bc) && bc > 0) {
                         bankBtn.textContent = bc + '张';
-                        bankWrap.className = 'function-btn blue';
+                        bankWrap.className = 'function-btn orange';
                         bankWrap.setAttribute('href', 'yhk.html');
                         bankWrap.setAttribute('aria-label', '银行卡');
                     } else {
