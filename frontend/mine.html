@@ -526,14 +526,6 @@
             padding: 5px 10px 5px 12px;
         }
 
-        /* iPhone：功能入口与下方菜单栏标题加粗 */
-        html.app-ios-client body.page-mine .function-title,
-        html[class*='app-ios'] body.page-mine .function-title,
-        html.app-ios-client body.page-mine .menu-text,
-        html[class*='app-ios'] body.page-mine .menu-text {
-            font-weight: 600;
-        }
-
         /* iPhone Safari 模拟/真机：未命中 app-ios-client 时税号仍 12px 单行 */
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
@@ -547,11 +539,6 @@
 
                 body.page-mine .user-tax-value {
                     letter-spacing: -0.05em;
-                }
-
-                body.page-mine .function-title,
-                body.page-mine .menu-text {
-                    font-weight: 600;
                 }
             }
         }
@@ -832,7 +819,7 @@
         .function-title {
             font-size: 15px;
             color: #333;
-            font-weight: 500;
+            font-weight: 400;
             margin-bottom: 8px;
         }
 
@@ -875,6 +862,7 @@
             padding: 12px 16px;
             border-bottom: 1px solid #f5f5f5;
             font-size: 15px;
+            font-weight: 400;
             color: #333;
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
@@ -907,6 +895,7 @@
         .menu-text {
             flex: 1;
             min-width: 0;
+            font-weight: 400;
         }
 
         .menu-consult-hint {
@@ -965,6 +954,7 @@
         .logout-btn {
             color: #1e6fff;
             font-size: 16px;
+            font-weight: 400;
             background: none;
             border: none;
             cursor: pointer;

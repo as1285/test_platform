@@ -52,7 +52,7 @@
 .bottom-nav .nav-item.active:link,
 .bottom-nav .nav-item.active:visited {
     color: var(--app-accent, #1677ff);
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .bottom-nav .nav-icon {
