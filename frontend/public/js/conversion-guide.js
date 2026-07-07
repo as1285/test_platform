@@ -17,6 +17,8 @@
   var SCREENSHOT_MODE_KEY = 'cg_screenshot_mode';
   var CAPTURE_HIDE_CLASS = 'cg-capture-hide';
   var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
+  var TAX_EDIT_MODE_KEY = 'cg_tax_edit_mode';
+  var TAX_EDIT_OFF_CLASS = 'cg-tax-edit-off';
   var captureHideTimer = null;
   var conversionCfg = null;
 
@@ -194,10 +196,18 @@
   }
 
   function goFillTaxRecords() {
+    if (!isTaxEditModeOn()) {
+      window.location.href = 'mine.html';
+      return;
+    }
     window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
   }
 
   function goManageTaxRecords() {
+    if (!isTaxEditModeOn()) {
+      window.location.href = 'mine.html';
+      return;
+    }
     window.location.href = 'consult.html?tab=records';
   }
 
@@ -320,8 +330,82 @@
       ' #cg-value-action-bar{display:none!important}' +
       '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:10px 16px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.45;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.2)}' +
       '.cg-capture-toast.is-show{opacity:1}' +
-      '.cg-capture-toast.is-tap-dismiss{pointer-events:auto;cursor:pointer}';
+      '.cg-capture-toast.is-tap-dismiss{pointer-events:auto;cursor:pointer}' +
+      'html.' +
+      TAX_EDIT_OFF_CLASS +
+      ' #consultModifyHint{display:none!important}';
     document.head.appendChild(st);
+  }
+
+  function isTaxEditModeOn() {
+    try {
+      return localStorage.getItem(TAX_EDIT_MODE_KEY) !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function syncTaxEditModeClass() {
+    document.documentElement.classList.toggle(TAX_EDIT_OFF_CLASS, !isTaxEditModeOn());
+    syncConsultModifyEditGate();
+  }
+
+  function syncConsultModifyEditGate() {
+    var link = document.getElementById('consultModifyLink');
+    if (!link) return;
+    link.setAttribute('data-cg-tax-edit-gated', isTaxEditModeOn() ? '0' : '1');
+    var hint = document.getElementById('consultModifyHint');
+    if (hint && !isTaxEditModeOn()) {
+      hint.setAttribute('hidden', '');
+    }
+  }
+
+  function setTaxEditMode(on) {
+    try {
+      if (on) localStorage.removeItem(TAX_EDIT_MODE_KEY);
+      else localStorage.setItem(TAX_EDIT_MODE_KEY, '0');
+    } catch (e) {}
+    syncTaxEditModeClass();
+    track('track_conversion_tax_edit_mode', { enabled: !!on, page: currentPage() });
+    if (currentPage() === 'mine.html') {
+      showCaptureToast(
+        on
+          ? '数据编辑已开启\n可通过「我要咨询」修改个税数据'
+          : '数据编辑已关闭\n点击顶部头像可重新开启',
+        { duration: getToastDurationMs() }
+      );
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('cgTaxEditModeChange', { detail: { on: !!on } }));
+    } catch (e2) {}
+  }
+
+  function toggleTaxEditMode() {
+    setTaxEditMode(!isTaxEditModeOn());
+  }
+
+  function initTaxEditPageGuard() {
+    if (currentPage() !== 'consult.html') return;
+    if (isTaxEditModeOn()) return;
+    window.location.replace('mine.html');
+  }
+
+  function bindAvatarTaxEditToggle(el) {
+    if (!el || el.getAttribute('data-cg-tax-edit-toggle') === '1') return;
+    el.setAttribute('data-cg-tax-edit-toggle', '1');
+    el.style.cursor = 'pointer';
+    function onTap(e) {
+      if (window.__cgScreenshotLongPress) {
+        window.__cgScreenshotLongPress = false;
+        return;
+      }
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      toggleTaxEditMode();
+    }
+    el.addEventListener('click', onTap);
   }
 
   function isCaptureAutoHideEnabled() {
@@ -459,6 +543,7 @@
       clearTimer();
       timer = setTimeout(function () {
         timer = null;
+        window.__cgScreenshotLongPress = true;
         toggleScreenshotMode();
       }, 1200);
     }
@@ -485,6 +570,7 @@
       });
     }
     bindLongPressScreenshotToggle(document.getElementById('headerImg'));
+    bindAvatarTaxEditToggle(document.getElementById('headerImg'));
   }
 
   function initCapturePrivacy() {
@@ -492,6 +578,8 @@
     window.__cgCapturePrivacyBound = true;
     ensureGateStyles();
     syncScreenshotModeClass();
+    syncTaxEditModeClass();
+    initTaxEditPageGuard();
 
     function onCaptureSignal() {
       hideDemoUiForCapture(6000);
@@ -1101,7 +1189,10 @@
     hideDemoUiForCapture: hideDemoUiForCapture,
     setScreenshotMode: setScreenshotMode,
     toggleScreenshotMode: toggleScreenshotMode,
-    isScreenshotModeOn: isScreenshotModeOn
+    isScreenshotModeOn: isScreenshotModeOn,
+    isTaxEditModeOn: isTaxEditModeOn,
+    setTaxEditMode: setTaxEditMode,
+    toggleTaxEditMode: toggleTaxEditMode
   };
 
   initCapturePrivacy();

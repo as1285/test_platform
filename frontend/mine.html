@@ -965,7 +965,7 @@
 </head>
 <body class="page-mine">
     <div class="header-bg">
-        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按可切换截图模式">
+        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，点击切换数据编辑">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
     </div>
 
@@ -1393,7 +1393,11 @@
                 var hint = document.getElementById('consultModifyHint');
                 if (!hint) return;
                 var loggedIn = !!localStorage.getItem('user_id');
-                if (loggedIn && !hasTaxRecords()) {
+                var editOn =
+                    !window.ConversionGuide ||
+                    typeof window.ConversionGuide.isTaxEditModeOn !== 'function' ||
+                    window.ConversionGuide.isTaxEditModeOn();
+                if (loggedIn && editOn && !hasTaxRecords()) {
                     hint.removeAttribute('hidden');
                 } else {
                     hint.setAttribute('hidden', '');
@@ -1729,12 +1733,28 @@
                 });
             }
 
+            window.addEventListener('cgTaxEditModeChange', function () {
+                syncConsultModifyHint();
+            });
+
             loadUserInfo();
             fetchMineXianyuUrl();
             installLegacyActivatePromptShim();
 
             function handleConsultMenuClick(e) {
                 e.preventDefault();
+                if (!localStorage.getItem('user_id')) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.isTaxEditModeOn === 'function' &&
+                    !window.ConversionGuide.isTaxEditModeOn()
+                ) {
+                    window.location.href = 'help_center.html';
+                    return;
+                }
                 goConsultPage();
             }
             var consultModifyLink = document.getElementById('consultModifyLink');
