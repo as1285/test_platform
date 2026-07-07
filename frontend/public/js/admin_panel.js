@@ -3397,7 +3397,9 @@
             return '<p class="hint" style="margin:0 0 12px;">' + esc(hint) + '</p>';
         }
 
-        function renderDailyConversionSegmentBlock(title, segmentData, pageData) {
+        function renderDailyConversionSegmentBlock(title, segmentData, pageData, options) {
+            options = options || {};
+            var activationOnly = !!options.activationOnly;
             var html = '<div class="analytics-segment-block">';
             html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
             if (!segmentData || !segmentData.today) {
@@ -3406,48 +3408,70 @@
             }
             var pt = segmentData.period_total;
             if (pageData && pageData.period_start && pt) {
-                var periodRate =
-                    pt.rate_pct != null ? pt.rate_pct : pt.registered > 0 ? '0.0%' : '—';
                 html += '<div class="analytics-conv-summary analytics-conv-period-total">';
                 html +=
                     '<div class="conv-label">区间合计（' +
                     esc(pageData.period_label || '') +
                     '）</div>';
-                html += '<div class="conv-today">' + esc(periodRate) + '</div>';
-                html +=
-                    '<div class="conv-sub">注册 ' +
-                    esc(String(pt.registered)) +
-                    ' · 激活 ' +
-                    esc(String(pt.activated)) +
-                    '</div>';
+                if (activationOnly) {
+                    html += '<div class="conv-today">' + esc(String(pt.activated != null ? pt.activated : 0)) + '</div>';
+                    html += '<div class="conv-sub">闲鱼激活</div>';
+                } else {
+                    var periodRate =
+                        pt.rate_pct != null ? pt.rate_pct : pt.registered > 0 ? '0.0%' : '—';
+                    html += '<div class="conv-today">' + esc(periodRate) + '</div>';
+                    html +=
+                        '<div class="conv-sub">注册 ' +
+                        esc(String(pt.registered)) +
+                        ' · 激活 ' +
+                        esc(String(pt.activated)) +
+                        '</div>';
+                }
                 html += '</div>';
             }
             var today = segmentData.today;
             var todayKey = today.date || '';
-            var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
-            var summaryTitle = segmentData.today_is_current === false ? '末日转化率' : '今日转化率';
+            var summaryTitle = segmentData.today_is_current === false ? '末日' : '今日';
             html += '<div class="analytics-conv-summary">';
-            html += '<div class="conv-label">' + summaryTitle + '（' + esc(todayKey) + '）</div>';
-            html += '<div class="conv-today">' + esc(rateText) + '</div>';
-            html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
+            if (activationOnly) {
+                html += '<div class="conv-label">' + summaryTitle + '闲鱼激活（' + esc(todayKey) + '）</div>';
+                html += '<div class="conv-today">' + esc(String(today.activated != null ? today.activated : 0)) + '</div>';
+                html += '<div class="conv-sub">仅统计 admin 名下通过闲鱼码/渠道激活的用户</div>';
+            } else {
+                var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
+                html += '<div class="conv-label">' + summaryTitle + '转化率（' + esc(todayKey) + '）</div>';
+                html += '<div class="conv-today">' + esc(rateText) + '</div>';
+                html += '<div class="conv-sub">激活 ' + esc(String(today.activated)) + ' / 注册 ' + esc(String(today.registered)) + '</div>';
+            }
             html += '</div>';
 
             var series = Array.isArray(segmentData.series) ? segmentData.series.slice().reverse() : [];
             html += '<div class="scroll-x analytics-conv-table-wrap"><table><thead><tr>';
-            html += '<th>日期</th><th>注册数</th><th>激活数</th><th>转化率</th>';
+            html += '<th>日期</th>';
+            if (!activationOnly) {
+                html += '<th>注册数</th>';
+            }
+            html += '<th>激活数</th>';
+            if (!activationOnly) {
+                html += '<th>转化率</th>';
+            }
             html += '</tr></thead><tbody>';
             if (!series.length) {
-                html += '<tr><td colspan="4">暂无数据</td></tr>';
+                html += '<tr><td colspan="' + (activationOnly ? 2 : 4) + '">暂无数据</td></tr>';
             } else {
                 series.forEach(function (row) {
                     if (!row || !row.date) return;
-                    var pct = row.rate_pct != null ? row.rate_pct : row.registered > 0 ? '0.0%' : '—';
                     var isToday = row.date === todayKey;
                     html += '<tr' + (isToday ? ' class="conv-row-today"' : '') + '>';
                     html += '<td>' + esc(row.date) + (isToday ? ' <span style="color:#1677ff;font-size:12px;">今日</span>' : '') + '</td>';
-                    html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
+                    if (!activationOnly) {
+                        html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
+                    }
                     html += '<td>' + esc(String(row.activated != null ? row.activated : 0)) + '</td>';
-                    html += '<td class="conv-rate-cell">' + esc(pct) + '</td>';
+                    if (!activationOnly) {
+                        var pct = row.rate_pct != null ? row.rate_pct : row.registered > 0 ? '0.0%' : '—';
+                        html += '<td class="conv-rate-cell">' + esc(pct) + '</td>';
+                    }
                     html += '</tr>';
                 });
             }
@@ -3466,9 +3490,18 @@
             analyticsConvCache = data;
             var agentIds = Array.isArray(data.agent_channel_ids) ? data.agent_channel_ids : [];
             var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
+            var ownerHint = data.owner_admin_username
+                ? '（仅统计 <code>' + esc(data.owner_admin_username) + '</code> 名下用户）'
+                : '';
             var html = analyticsPeriodHintHtml(data);
+            if (ownerHint) {
+                html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
+            }
             html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data);
+            if (data.segments.xianyu) {
+                html += renderDailyConversionSegmentBlock('闲鱼激活', data.segments.xianyu, data, { activationOnly: true });
+            }
             el.innerHTML = html;
         }
 

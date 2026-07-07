@@ -709,12 +709,13 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
     actParams = [period.span].concat(segU.params);
   }
 
-  if (!admin || !admin.is_super) {
+  var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
+  if (ownerAdmin) {
     regWhere +=
       ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-    regParams.push(admin.username);
+    regParams.push(ownerAdmin);
     actWhere += ' AND ac.owner_admin_username = ?';
-    actParams.push(admin.username);
+    actParams.push(ownerAdmin);
   }
 
   const [regRows] = await conn.query(
@@ -752,6 +753,55 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
   return buildDailyConversionSeries(period.days, regMap, actMap);
 }
 
+async function queryDailyXianyuActivationSegment(conn, period, admin) {
+  var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
+  var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
+  var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+  var xyFilter = xianyuActivationFilterSql('u', 'ac');
+
+  var actWhere = 'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' + xyFilter;
+  var actParams = ['xianyu', '%闲鱼%'];
+  if (ownerAdmin) {
+    actWhere += ' AND ac.owner_admin_username = ?';
+    actParams.push(ownerAdmin);
+  }
+  if (period.mode === 'range') {
+    actWhere += ' AND ' + cnActDay + ' >= ? AND ' + cnActDay + ' <= ?';
+    actParams.push(period.start, period.end);
+  } else {
+    actWhere += ' AND ' + cnActDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+    actParams.push(period.span);
+  }
+
+  const [actRows] = await conn.query(
+    'SELECT DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR)) AS d, COUNT(DISTINCT ac.used_by_username) AS cnt' +
+      ' FROM activation_codes ac' +
+      ' INNER JOIN users u ON u.username = ac.used_by_username AND ' +
+      userActivationStatsEligibleSql('u.username') +
+      ' WHERE ' +
+      actWhere +
+      ' GROUP BY DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))',
+    actParams
+  );
+
+  var actMap = {};
+  actRows.forEach(function (r) {
+    var k = formatDateKey(r.d);
+    if (k) {
+      actMap[k] = Number(r.cnt) || 0;
+    }
+  });
+  var regMap = {};
+  var result;
+  if (period.mode === 'range') {
+    result = buildDailyConversionSeriesForRange(period.start, period.end, regMap, actMap);
+  } else {
+    result = buildDailyConversionSeries(period.days, regMap, actMap);
+  }
+  result.activation_only = true;
+  return result;
+}
+
 async function queryRegistrationFunnelSegment(conn, period, admin, segment, agentChannels) {
   var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
@@ -768,15 +818,20 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
   }
   where.push(seg.sql);
   params = params.concat(seg.params);
-  appendAdminUserScope(where, params, admin, 'u.username');
+  appendConversionAnalyticsAdminScope(where, params, admin, 'u.username');
   var whereSql = ' WHERE ' + where.join(' AND ');
+  var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
+  var actOwnerSql = ownerAdmin ? ' AND ac.owner_admin_username = ?' : '';
+  var funnelParams = ownerAdmin ? params.concat([ownerAdmin]) : params.slice();
 
   const [sumRows] = await conn.query(
     `SELECT COUNT(*) AS registered,
             SUM(CASE WHEN EXISTS (
               SELECT 1 FROM activation_codes ac
               WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL
+                AND ac.last_used_at IS NOT NULL` +
+      actOwnerSql +
+      `
                 AND u.activation_refunded_at IS NULL
                 AND u.list_hidden_at IS NULL
                 AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
@@ -794,7 +849,7 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
                 AND TIMESTAMPDIFF(HOUR, u.created_at, e.created_at) BETWEEN 0 AND 168
             ) THEN 1 ELSE 0 END) AS viewed_detail_7d
      FROM users u` + whereSql,
-    params
+    funnelParams
   );
   var sum = sumRows[0] || {};
   var registered = Number(sum.registered) || 0;
@@ -808,7 +863,9 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
             SUM(CASE WHEN EXISTS (
               SELECT 1 FROM activation_codes ac
               WHERE ac.used_by_username = u.username
-                AND ac.last_used_at IS NOT NULL
+                AND ac.last_used_at IS NOT NULL` +
+      actOwnerSql +
+      `
                 AND u.activation_refunded_at IS NULL
                 AND u.list_hidden_at IS NULL
                 AND TIMESTAMPDIFF(HOUR, u.created_at, ac.last_used_at) BETWEEN 0 AND 168
@@ -828,7 +885,7 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
      FROM users u` +
       whereSql +
       ` GROUP BY ${cnUserDay} ORDER BY d ASC`,
-    params
+    funnelParams
   );
 
   var series = (dayRows || []).map(function (r) {
@@ -7739,14 +7796,17 @@ async function handleAdminUsersDailyConversion(req, res) {
     try {
       var ownSeg = await queryDailyConversionSegment(conn, period, req.admin, 'own', agentChannels);
       var agentSeg = await queryDailyConversionSegment(conn, period, req.admin, 'agent', agentChannels);
+      var xianyuSeg = await queryDailyXianyuActivationSegment(conn, period, req.admin);
 
       res.json({
         code: 200,
         data: Object.assign(conversionAnalyticsPeriodMeta(period), {
           agent_channel_ids: agentChannels,
+          owner_admin_username: conversionAnalyticsOwnerAdmin(req.admin),
           segments: {
             own: ownSeg,
-            agent: agentSeg
+            agent: agentSeg,
+            xianyu: xianyuSeg
           }
         })
       });
@@ -8421,12 +8481,12 @@ async function handleAdminConversionKpis(req, res) {
     }
     var scopeWhere = [];
     var actParams = scopeParams.slice();
-    appendAdminUserScope(scopeWhere, actParams, req.admin, 'u.username');
+    appendConversionAnalyticsAdminScope(scopeWhere, actParams, req.admin, 'u.username');
     appendNonRefundedUserFilter(scopeWhere, 'u.username');
     var scopeSql = scopeWhere.length ? ' AND ' + scopeWhere.join(' AND ') : '';
     var taxScopeWhere = [];
     var taxParams = scopeParams.slice();
-    appendAdminUserScope(taxScopeWhere, taxParams, req.admin, 'u.username');
+    appendConversionAnalyticsAdminScope(taxScopeWhere, taxParams, req.admin, 'u.username');
     appendNonRefundedUserFilter(taxScopeWhere, 'u.username');
     var taxScopeSql = taxScopeWhere.length ? ' AND ' + taxScopeWhere.join(' AND ') : '';
 
@@ -9683,6 +9743,42 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
       ' AND ac.owner_admin_username = ?)'
   );
   params.push(admin.username);
+}
+
+/** 转化分析页：超级管理员仅统计主账号（admin）名下用户，子管理员仍只看自己 */
+function conversionAnalyticsOwnerAdmin(admin) {
+  if (!admin || !admin.username) {
+    return null;
+  }
+  if (admin.is_super) {
+    return String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+  }
+  return String(admin.username).trim();
+}
+
+function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCol) {
+  var owner = conversionAnalyticsOwnerAdmin(admin);
+  if (!owner) {
+    return;
+  }
+  whereClauses.push(
+    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      userCol +
+      ' AND ac.owner_admin_username = ?)'
+  );
+  params.push(owner);
+}
+
+function xianyuActivationFilterSql(userAlias, codeAlias) {
+  return (
+    '(' +
+    userAlias +
+    '.activation_source_channel = ? OR (' +
+    codeAlias +
+    '.note IS NOT NULL AND ' +
+    codeAlias +
+    '.note LIKE ?))'
+  );
 }
 
 function userTableAliasFromCol(userCol) {
