@@ -145,6 +145,14 @@
             background: #f9fafb;
         }
 
+        html.cg-tax-edit-off .info-row--tap {
+            cursor: default;
+        }
+
+        html.cg-tax-edit-off .info-row--tap:active {
+            background: transparent;
+        }
+
         .sheet-mask {
             display: none;
             position: fixed;
@@ -503,6 +511,20 @@
     <script>
         var lastTaxId = '';
 
+        function requireProfileEdit() {
+            if (
+                !window.ConversionGuide ||
+                typeof window.ConversionGuide.isTaxEditModeOn !== 'function' ||
+                window.ConversionGuide.isTaxEditModeOn()
+            ) {
+                return true;
+            }
+            if (typeof window.ConversionGuide.notifyProfileEditLocked === 'function') {
+                window.ConversionGuide.notifyProfileEditLocked();
+            }
+            return false;
+        }
+
         function maskId(num) {
             if (!num || String(num).length < 2) {
                 return '--';
@@ -562,6 +584,7 @@
         }
 
         function openTextSheet(title, label, value, apiField, opts) {
+            if (!requireProfileEdit()) return;
             opts = opts || {};
             __textCtx = {
                 apiField: apiField,
@@ -664,6 +687,7 @@
         }
 
         function openBirthDateEditor() {
+            if (!requireProfileEdit()) return;
             authFetch('api/user.php?action=info')
                 .then(function (r) {
                     return r.json();
@@ -704,6 +728,7 @@
         }
 
         function openGenderEditor() {
+            if (!requireProfileEdit()) return;
             var list = document.getElementById('optionSheetList');
             document.getElementById('optionSheetTitle').textContent = '选择性别';
             list.innerHTML = '';
@@ -794,6 +819,7 @@
         }
 
         function openRegionPicker(target) {
+            if (!requireProfileEdit()) return;
             __regionCtx = { target: target, province: '', city: '', district: '', tab: 0 };
             var mask = document.getElementById('regionSheetMask');
             loadPca()
@@ -932,6 +958,7 @@
         }
 
         function saveProfileFields(payload, onOk) {
+            if (!requireProfileEdit()) return;
             authFetch('api/user.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -956,6 +983,7 @@
         }
 
         function openAddressEditor(target) {
+            if (!requireProfileEdit()) return;
             __addressCtx.target = target;
             var key = regionDetailKey(target);
             var titles = { huji: '户籍详细地址', living: '经常居住地详细地址', contact: '联系地址详细地址' };
@@ -1010,6 +1038,7 @@
         var ETHNICITY_OPTIONS = ['汉族', '蒙古族', '回族', '藏族', '维吾尔族', '苗族', '彝族', '壮族', '布依族', '朝鲜族', '满族', '侗族', '瑶族', '白族', '土家族', '哈尼族', '哈萨克族', '傣族', '黎族', '傈僳族', '佤族', '畲族', '高山族', '拉祜族', '水族', '东乡族', '纳西族', '景颇族', '柯尔克孜族', '土族', '达斡尔族', '仫佬族', '羌族', '布朗族', '撒拉族', '毛南族', '仡佬族', '锡伯族', '阿昌族', '普米族', '塔吉克族', '怒族', '乌孜别克族', '俄罗斯族', '鄂温克族', '德昂族', '保安族', '裕固族', '京族', '塔塔尔族', '独龙族', '鄂伦春族', '赫哲族', '门巴族', '珞巴族', '基诺族', '其他'];
 
         function fillOptionSheet(title, options, apiField, wrapId, spanId, emptyPh) {
+            if (!requireProfileEdit()) return;
             document.getElementById('optionSheetTitle').textContent = title;
             var list = document.getElementById('optionSheetList');
             list.innerHTML = '';
@@ -1052,6 +1081,7 @@
         }
 
         function openEmailEditor() {
+            if (!requireProfileEdit()) return;
             authFetch('api/user.php?action=info')
                 .then(function (r) {
                     return r.json();

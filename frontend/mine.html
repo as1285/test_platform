@@ -766,6 +766,16 @@
             display: flex !important;
         }
 
+        html.cg-tax-edit-off body.page-mine .user-info-text.user-info-text--editable,
+        html.cg-tax-edit-off body.page-mine .user-name.user-name--editable {
+            cursor: default;
+        }
+
+        html.cg-tax-edit-off body.page-mine .user-info-text.user-info-text--editable:active,
+        html.cg-tax-edit-off body.page-mine .user-name.user-name--editable:active {
+            opacity: 1;
+        }
+
         /* 功能入口 */
         .function-cards {
             display: flex;
@@ -1196,6 +1206,38 @@
                 );
             }
 
+            function isMineDataEditEnabled() {
+                return (
+                    !window.ConversionGuide ||
+                    typeof window.ConversionGuide.isTaxEditModeOn !== 'function' ||
+                    window.ConversionGuide.isTaxEditModeOn()
+                );
+            }
+
+            function syncMineProfileEditGate() {
+                var hit = document.getElementById('mineProfileEditHit');
+                var nameEl = document.getElementById('mineDisplayName');
+                var on = isMineDataEditEnabled();
+                if (hit) {
+                    hit.classList.toggle('user-info-text--editable', on);
+                }
+                if (nameEl) {
+                    nameEl.classList.toggle('user-name--editable', on);
+                    if (on) {
+                        nameEl.setAttribute('role', 'button');
+                        nameEl.setAttribute('tabindex', '0');
+                        nameEl.setAttribute('aria-label', '修改姓名、纳税人识别号与性别');
+                    } else {
+                        nameEl.removeAttribute('role');
+                        nameEl.removeAttribute('tabindex');
+                        nameEl.removeAttribute('aria-label');
+                    }
+                }
+                if (!on) {
+                    closeMineProfileEditModal();
+                }
+            }
+
             function bindMineProfileEditTap(el) {
                 if (!el || el.__mineProfileEditTapBound) return;
                 el.__mineProfileEditTapBound = true;
@@ -1204,6 +1246,7 @@
                 var touchStartX = 0;
                 var touchStartY = 0;
                 function fire(e) {
+                    if (!isMineDataEditEnabled()) return;
                     var now = Date.now();
                     if (now - lastFire < 320) return;
                     lastFire = now;
@@ -1268,6 +1311,7 @@
             }
 
             function openMineProfileEditModal() {
+                if (!isMineDataEditEnabled()) return;
                 var root = document.getElementById('mineProfileEditModal');
                 var nameInp = document.getElementById('mineEditRealName');
                 var taxInp = document.getElementById('mineEditTaxId');
@@ -1300,6 +1344,10 @@
             }
 
             function saveMineProfileEdit() {
+                if (!isMineDataEditEnabled()) {
+                    closeMineProfileEditModal();
+                    return;
+                }
                 var nameInp = document.getElementById('mineEditRealName');
                 var taxInp = document.getElementById('mineEditTaxId');
                 var genderSel = document.getElementById('mineEditGender');
@@ -1753,9 +1801,11 @@
 
             window.addEventListener('cgTaxEditModeChange', function () {
                 syncConsultModifyHint();
+                syncMineProfileEditGate();
             });
 
             loadUserInfo();
+            syncMineProfileEditGate();
             fetchMineXianyuUrl();
             installLegacyActivatePromptShim();
 

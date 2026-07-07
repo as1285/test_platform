@@ -337,6 +337,12 @@
     document.head.appendChild(st);
   }
 
+  function notifyProfileEditLocked() {
+    showCaptureToast('数据编辑已关闭\n连续点击头像3次可重新开启', {
+      duration: getToastDurationMs()
+    });
+  }
+
   function isTaxEditModeOn() {
     try {
       return localStorage.getItem(TAX_EDIT_MODE_KEY) !== '0';
@@ -1160,6 +1166,11 @@
   function init() {
     initCapturePrivacy();
     bindMinePageSecretGestures();
+    try {
+      window.dispatchEvent(
+        new CustomEvent('cgTaxEditModeChange', { detail: { on: isTaxEditModeOn() } })
+      );
+    } catch (e) {}
     if (!isLoggedIn()) return;
     ensureGateStyles();
     loadConversionConfig()
@@ -1264,7 +1275,8 @@
     isScreenshotModeOn: isScreenshotModeOn,
     isTaxEditModeOn: isTaxEditModeOn,
     setTaxEditMode: setTaxEditMode,
-    toggleTaxEditMode: toggleTaxEditMode
+    toggleTaxEditMode: toggleTaxEditMode,
+    notifyProfileEditLocked: notifyProfileEditLocked
   };
 
   initCapturePrivacy();
