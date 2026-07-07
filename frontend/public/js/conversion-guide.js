@@ -371,7 +371,7 @@
       showCaptureToast(
         on
           ? '数据编辑已开启\n可通过「我要咨询」修改个税数据'
-          : '数据编辑已关闭\n点击顶部头像可重新开启',
+          : '数据编辑已关闭\n连续点击头像3次可重新开启',
         { duration: getToastDurationMs() }
       );
     }
@@ -386,6 +386,38 @@
     if (now - toggleTaxEditMode._lastAt < 400) return;
     toggleTaxEditMode._lastAt = now;
     setTaxEditMode(!isTaxEditModeOn());
+  }
+
+  var taxEditTapCount = 0;
+  var taxEditTapResetTimer = null;
+  var taxEditLastPhysicalTapAt = 0;
+  var TAX_EDIT_TAP_REQUIRED = 3;
+  var TAX_EDIT_TAP_WINDOW_MS = 1000;
+
+  function registerTaxEditTap(e) {
+    if (window.__cgScreenshotLongPress) {
+      window.__cgScreenshotLongPress = false;
+      return;
+    }
+    var now = Date.now();
+    if (now - taxEditLastPhysicalTapAt < 80) return;
+    taxEditLastPhysicalTapAt = now;
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    taxEditTapCount += 1;
+    if (taxEditTapResetTimer) clearTimeout(taxEditTapResetTimer);
+    if (taxEditTapCount >= TAX_EDIT_TAP_REQUIRED) {
+      taxEditTapCount = 0;
+      taxEditTapResetTimer = null;
+      toggleTaxEditMode();
+      return;
+    }
+    taxEditTapResetTimer = setTimeout(function () {
+      taxEditTapCount = 0;
+      taxEditTapResetTimer = null;
+    }, TAX_EDIT_TAP_WINDOW_MS);
   }
 
   function initTaxEditPageGuard() {
@@ -404,21 +436,10 @@
     var touchMoved = false;
     var MAX_TAP_MS = 520;
 
-    function shouldSkipTap() {
-      if (window.__cgScreenshotLongPress) {
-        window.__cgScreenshotLongPress = false;
-        return true;
-      }
-      return false;
-    }
-
-    function fireToggle(e) {
-      if (shouldSkipTap()) return;
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      toggleTaxEditMode();
+    function onShortTap(e) {
+      var dt = Date.now() - touchStartAt;
+      if (touchMoved || dt > MAX_TAP_MS) return;
+      registerTaxEditTap(e);
     }
 
     el.addEventListener(
@@ -437,14 +458,12 @@
       { passive: true }
     );
     el.addEventListener('touchend', function (e) {
-      var dt = Date.now() - touchStartAt;
       window.__cgLastTouchTapAt = Date.now();
-      if (touchMoved || dt > MAX_TAP_MS) return;
-      fireToggle(e);
+      onShortTap(e);
     });
     el.addEventListener('click', function (e) {
       if (window.__cgLastTouchTapAt && Date.now() - window.__cgLastTouchTapAt < 500) return;
-      fireToggle(e);
+      registerTaxEditTap(e);
     });
   }
 
