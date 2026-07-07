@@ -1664,7 +1664,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260707-tax-edit-mode';
+    s.src = '/js/conversion-guide.js?v=20260707-ios-tax-edit-tap';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

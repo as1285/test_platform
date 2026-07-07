@@ -381,6 +381,10 @@
   }
 
   function toggleTaxEditMode() {
+    if (!toggleTaxEditMode._lastAt) toggleTaxEditMode._lastAt = 0;
+    var now = Date.now();
+    if (now - toggleTaxEditMode._lastAt < 400) return;
+    toggleTaxEditMode._lastAt = now;
     setTaxEditMode(!isTaxEditModeOn());
   }
 
@@ -394,18 +398,63 @@
     if (!el || el.getAttribute('data-cg-tax-edit-toggle') === '1') return;
     el.setAttribute('data-cg-tax-edit-toggle', '1');
     el.style.cursor = 'pointer';
-    function onTap(e) {
+    el.style.webkitTouchCallout = 'none';
+    el.style.webkitUserSelect = 'none';
+    var touchStartAt = 0;
+    var touchMoved = false;
+    var MAX_TAP_MS = 520;
+
+    function shouldSkipTap() {
       if (window.__cgScreenshotLongPress) {
         window.__cgScreenshotLongPress = false;
-        return;
+        return true;
       }
+      return false;
+    }
+
+    function fireToggle(e) {
+      if (shouldSkipTap()) return;
       if (e) {
         e.preventDefault();
         e.stopPropagation();
       }
       toggleTaxEditMode();
     }
-    el.addEventListener('click', onTap);
+
+    el.addEventListener(
+      'touchstart',
+      function () {
+        touchStartAt = Date.now();
+        touchMoved = false;
+      },
+      { passive: true }
+    );
+    el.addEventListener(
+      'touchmove',
+      function () {
+        touchMoved = true;
+      },
+      { passive: true }
+    );
+    el.addEventListener('touchend', function (e) {
+      var dt = Date.now() - touchStartAt;
+      window.__cgLastTouchTapAt = Date.now();
+      if (touchMoved || dt > MAX_TAP_MS) return;
+      fireToggle(e);
+    });
+    el.addEventListener('click', function (e) {
+      if (window.__cgLastTouchTapAt && Date.now() - window.__cgLastTouchTapAt < 500) return;
+      fireToggle(e);
+    });
+  }
+
+  function bindMineTaxEditAvatar() {
+    if (currentPage() !== 'mine.html') return;
+    if (document.body.getAttribute('data-cg-tax-edit-ui') === '1') return;
+    document.body.setAttribute('data-cg-tax-edit-ui', '1');
+    bindAvatarTaxEditToggle(document.getElementById('headerImg'));
+    bindAvatarTaxEditToggle(document.querySelector('body.page-mine .header-bg'));
+    bindAvatarTaxEditToggle(document.getElementById('mineAvatarEditHit'));
   }
 
   function isCaptureAutoHideEnabled() {
@@ -570,7 +619,11 @@
       });
     }
     bindLongPressScreenshotToggle(document.getElementById('headerImg'));
-    bindAvatarTaxEditToggle(document.getElementById('headerImg'));
+  }
+
+  function bindMinePageSecretGestures() {
+    bindMineTaxEditAvatar();
+    bindMineScreenshotModeUi();
   }
 
   function initCapturePrivacy() {
@@ -608,9 +661,9 @@
     });
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindMineScreenshotModeUi);
+      document.addEventListener('DOMContentLoaded', bindMinePageSecretGestures);
     } else {
-      bindMineScreenshotModeUi();
+      bindMinePageSecretGestures();
     }
   }
 
@@ -1087,7 +1140,7 @@
 
   function init() {
     initCapturePrivacy();
-    bindMineScreenshotModeUi();
+    bindMinePageSecretGestures();
     if (!isLoggedIn()) return;
     ensureGateStyles();
     loadConversionConfig()

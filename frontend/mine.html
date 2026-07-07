@@ -414,7 +414,24 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
-            overflow: hidden;
+            overflow: visible;
+        }
+
+        /* 头像热区：卡通头像在顶图内，信息卡上移后会挡住点击，单独留出触控区 */
+        .mine-avatar-edit-hit {
+            position: absolute;
+            left: 8px;
+            top: -62px;
+            width: 80px;
+            height: 80px;
+            border: none;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            z-index: 15;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .user-info {
@@ -971,6 +988,7 @@
 
     <div class="content-wrapper">
         <div class="user-card">
+            <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             <div class="user-info user-info-text user-info-text--editable" id="mineProfileEditHit">
                 <div
