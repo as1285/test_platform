@@ -711,9 +711,9 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
 
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
   if (ownerAdmin) {
-    regWhere +=
-      ' AND EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)';
-    regParams.push(ownerAdmin);
+    var regWhereParts = [regWhere];
+    appendConversionAnalyticsRegistrationScope(regWhereParts, regParams, admin, 'users.username');
+    regWhere = regWhereParts.join(' AND ');
     actWhere += ' AND ac.owner_admin_username = ?';
     actParams.push(ownerAdmin);
   }
@@ -818,7 +818,7 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
   }
   where.push(seg.sql);
   params = params.concat(seg.params);
-  appendConversionAnalyticsAdminScope(where, params, admin, 'u.username');
+  appendConversionAnalyticsRegistrationScope(where, params, admin, 'u.username');
   var whereSql = ' WHERE ' + where.join(' AND ');
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
   var actOwnerSql = ownerAdmin ? ' AND ac.owner_admin_username = ?' : '';
@@ -9762,6 +9762,31 @@ function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCo
     return;
   }
   whereClauses.push(
+    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      userCol +
+      ' AND ac.owner_admin_username = ?)'
+  );
+  params.push(owner);
+}
+
+/** 注册转化率：注册数按注册日统计；超级管理员排除已归属其他子管理员的用户，含未激活 */
+function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
+  var owner = conversionAnalyticsOwnerAdmin(admin);
+  if (!owner) {
+    return;
+  }
+  if (admin.is_super) {
+    whereParts.push(
+      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        userCol +
+        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
+        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
+        ' AND ac.owner_admin_username <> ?)'
+    );
+    params.push(owner);
+    return;
+  }
+  whereParts.push(
     'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       userCol +
       ' AND ac.owner_admin_username = ?)'
