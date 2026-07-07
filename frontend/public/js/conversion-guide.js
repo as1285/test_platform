@@ -405,6 +405,9 @@
       window.__cgScreenshotLongPress = false;
       return;
     }
+    if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
+      return;
+    }
     var now = Date.now();
     if (now - taxEditLastPhysicalTapAt < 80) return;
     taxEditLastPhysicalTapAt = now;
@@ -443,6 +446,9 @@
     var MAX_TAP_MS = 520;
 
     function onShortTap(e) {
+      if (e && e.target && e.target.closest && e.target.closest('#mineActivateBtn')) {
+        return;
+      }
       var dt = Date.now() - touchStartAt;
       if (touchMoved || dt > MAX_TAP_MS) return;
       registerTaxEditTap(e);
@@ -478,7 +484,6 @@
     if (document.body.getAttribute('data-cg-tax-edit-ui') === '1') return;
     document.body.setAttribute('data-cg-tax-edit-ui', '1');
     bindAvatarTaxEditToggle(document.getElementById('headerImg'));
-    bindAvatarTaxEditToggle(document.querySelector('body.page-mine .header-bg'));
     bindAvatarTaxEditToggle(document.getElementById('mineAvatarEditHit'));
   }
 
