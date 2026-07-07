@@ -579,6 +579,35 @@
             color: #333;
             margin: 0 0 10px;
         }
+        .analytics-segment-collapsible > summary.analytics-segment-title {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 0 0 10px;
+            user-select: none;
+        }
+        .analytics-segment-collapsible > summary.analytics-segment-title::-webkit-details-marker {
+            display: none;
+        }
+        .analytics-segment-collapsible > summary.analytics-segment-title::after {
+            content: '展开';
+            font-size: 12px;
+            font-weight: 500;
+            color: #1677ff;
+            flex-shrink: 0;
+        }
+        .analytics-segment-collapsible[open] > summary.analytics-segment-title::after {
+            content: '收起';
+        }
+        .analytics-segment-collapsible[open] > summary.analytics-segment-title {
+            margin-bottom: 10px;
+        }
+        .analytics-segment-collapsible:not([open]) > summary.analytics-segment-title {
+            margin-bottom: 0;
+        }
         .analytics-conv-summary {
             max-width: 320px;
             padding: 12px 16px;

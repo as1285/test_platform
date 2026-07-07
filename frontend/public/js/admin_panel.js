@@ -3400,10 +3400,16 @@
         function renderDailyConversionSegmentBlock(title, segmentData, pageData, options) {
             options = options || {};
             var activationOnly = !!options.activationOnly;
-            var html = '<div class="analytics-segment-block">';
-            html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+            var collapsed = !!options.collapsed;
+            var wrapStart = collapsed
+                ? '<details class="analytics-segment-block analytics-segment-collapsible">'
+                : '<div class="analytics-segment-block">';
+            var titleHtml = collapsed
+                ? '<summary class="analytics-segment-title">' + esc(title) + '</summary>'
+                : '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+            var html = wrapStart + titleHtml;
             if (!segmentData || !segmentData.today) {
-                html += '<p class="hint">暂无数据</p></div>';
+                html += '<p class="hint">暂无数据</p>' + (collapsed ? '</details>' : '</div>');
                 return html;
             }
             var pt = segmentData.period_total;
@@ -3475,7 +3481,7 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table></div></div>';
+            html += '</tbody></table></div>' + (collapsed ? '</details>' : '</div>');
             return html;
         }
 
@@ -3498,18 +3504,25 @@
                 html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
             }
             html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
-            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data);
+            html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
             if (data.segments.xianyu) {
                 html += renderDailyConversionSegmentBlock('闲鱼激活', data.segments.xianyu, data, { activationOnly: true });
             }
             el.innerHTML = html;
         }
 
-        function renderRegistrationFunnelSegmentBlock(title, segmentData) {
-            var html = '<div class="analytics-segment-block">';
-            html += '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+        function renderRegistrationFunnelSegmentBlock(title, segmentData, options) {
+            options = options || {};
+            var collapsed = !!options.collapsed;
+            var wrapStart = collapsed
+                ? '<details class="analytics-segment-block analytics-segment-collapsible">'
+                : '<div class="analytics-segment-block">';
+            var titleHtml = collapsed
+                ? '<summary class="analytics-segment-title">' + esc(title) + '</summary>'
+                : '<h3 class="analytics-segment-title">' + esc(title) + '</h3>';
+            var html = wrapStart + titleHtml;
             if (!segmentData || !segmentData.summary) {
-                html += '<p class="hint">暂无数据</p></div>';
+                html += '<p class="hint">暂无数据</p>' + (collapsed ? '</details>' : '</div>');
                 return html;
             }
             var s = segmentData.summary;
@@ -3554,7 +3567,7 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table></div></div>';
+            html += '</tbody></table></div>' + (collapsed ? '</details>' : '</div>');
             return html;
         }
 
@@ -3569,7 +3582,7 @@
             var agentHint = agentIds.length ? '（' + agentIds.join('、') + '）' : '（未配置代理渠道）';
             var html = analyticsPeriodHintHtml(data);
             html += renderRegistrationFunnelSegmentBlock('自有流量', data.segments.own);
-            html += renderRegistrationFunnelSegmentBlock('代理推广' + agentHint, data.segments.agent);
+            html += renderRegistrationFunnelSegmentBlock('代理推广' + agentHint, data.segments.agent, { collapsed: true });
             el.innerHTML = html;
         }
 
