@@ -338,7 +338,7 @@
   }
 
   function notifyProfileEditLocked() {
-    showCaptureToast('数据编辑已关闭\n连续点击头像3次可重新开启', {
+    showCaptureToast('数据编辑已关闭\n连续点击头像5次可重新开启', {
       duration: getToastDurationMs()
     });
   }
@@ -377,7 +377,7 @@
       showCaptureToast(
         on
           ? '数据编辑已开启\n可通过「我要咨询」修改个税数据'
-          : '数据编辑已关闭\n连续点击头像3次可重新开启',
+          : '数据编辑已关闭\n连续点击头像5次可重新开启',
         { duration: getToastDurationMs() }
       );
     }
@@ -397,7 +397,7 @@
   var taxEditTapCount = 0;
   var taxEditTapResetTimer = null;
   var taxEditLastPhysicalTapAt = 0;
-  var TAX_EDIT_TAP_REQUIRED = 3;
+  var TAX_EDIT_TAP_REQUIRED = 5;
   var TAX_EDIT_TAP_WINDOW_MS = 1000;
 
   function registerTaxEditTap(e) {
