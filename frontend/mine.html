@@ -871,8 +871,8 @@
         }
 
         .function-btn.blue {
-            background: #fff;
-            color: #4285f4;
+            background: #4285f4;
+            color: #fff;
             border: 1px solid #4285f4;
         }
 
@@ -1422,7 +1422,7 @@
                 if (employerBtn) {
                     if (user && !isNaN(ec) && ec > 0) {
                         employerBtn.textContent = ec + '家';
-                        employerBtn.className = 'function-btn orange';
+                        employerBtn.className = 'function-btn blue';
                     } else {
                         employerBtn.textContent = '暂无';
                         employerBtn.className = 'function-btn orange';
@@ -1431,7 +1431,7 @@
                 if (familyBtn && familyWrap) {
                     if (user && !isNaN(fc) && fc > 0) {
                         familyBtn.textContent = fc + '人';
-                        familyWrap.className = 'function-btn orange';
+                        familyWrap.className = 'function-btn blue';
                         familyWrap.setAttribute('href', 'jtcy.html');
                         familyWrap.setAttribute('aria-label', '家庭成员');
                     } else {
@@ -1444,7 +1444,7 @@
                 if (bankBtn && bankWrap) {
                     if (user && !isNaN(bc) && bc > 0) {
                         bankBtn.textContent = bc + '张';
-                        bankWrap.className = 'function-btn orange';
+                        bankWrap.className = 'function-btn blue';
                         bankWrap.setAttribute('href', 'yhk.html');
                         bankWrap.setAttribute('aria-label', '银行卡');
                     } else {
