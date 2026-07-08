@@ -63,15 +63,24 @@
     var ua = navigator.userAgent || '';
     return (
       /PKB110|B60P01/i.test(ua) ||
-      /Xiaomi\s*14|23127PN|2201PN|2211133C/i.test(ua) ||
+      /Xiaomi\s*14|23127PN|2201PN/i.test(ua) ||
       getAndroidMajorVersion() >= 15
     );
+  }
+
+  /** 小米 13（2211133C 等） */
+  function isXiaomi13Client() {
+    var ua = navigator.userAgent || '';
+    return /2211133C|2210132C|Xiaomi\s*13\b/i.test(ua);
   }
 
   /** 小米 14 / HyperOS 等：UA 偶无型号时仍按 Android 15+ 顶栏高度处理 */
   function isXiaomi14LikeClient() {
     var ua = navigator.userAgent || '';
-    if (/Xiaomi\s*14|23127PN|2201PN|2211133C/i.test(ua)) {
+    if (isXiaomi13Client()) {
+      return false;
+    }
+    if (/Xiaomi\s*14|23127PN|2201PN/i.test(ua)) {
       return true;
     }
     if (!/Xiaomi|Miui|Redmi|HyperOS/i.test(ua)) {
