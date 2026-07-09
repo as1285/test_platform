@@ -124,6 +124,11 @@
             color: #c0c0c0;
         }
 
+        .info-value.info-value--muted,
+        .info-value.info-value--muted span {
+            color: #c0c0c0;
+        }
+
         .info-arrow {
             color: #ccc;
             font-size: 12px;
@@ -308,14 +313,14 @@
         </div>
         <div class="info-row">
             <span class="info-label">证件类型</span>
-            <div class="info-value">
+            <div class="info-value info-value--muted">
                 <span id="idType">居民身份证</span>
                 <span class="info-arrow">&gt;</span>
             </div>
         </div>
         <div class="info-row info-row--tap" onclick="openIdNumberEditor()">
             <span class="info-label">证件号码</span>
-            <div class="info-value">
+            <div class="info-value info-value--muted">
                 <span id="idNumber">--</span>
                 <span class="info-arrow">&gt;</span>
             </div>
@@ -343,7 +348,7 @@
         </div>
         <div class="info-row">
             <span class="info-label">国籍(地区)</span>
-            <div class="info-value">
+            <div class="info-value info-value--muted">
                 <span id="nationality">中华人民共和国</span>
                 <span class="info-arrow">&gt;</span>
             </div>
