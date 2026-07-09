@@ -324,8 +324,16 @@
         }
     }
 
+    function isTaxEditModeOn() {
+        if (!window.ConversionGuide || typeof window.ConversionGuide.isTaxEditModeOn !== 'function') {
+            return true;
+        }
+        return window.ConversionGuide.isTaxEditModeOn();
+    }
+
     function syncFabVisibility() {
-        document.documentElement.classList.toggle('ufs-fab-hidden', isManualFabHidden());
+        var hidden = isManualFabHidden() || !isTaxEditModeOn();
+        document.documentElement.classList.toggle('ufs-fab-hidden', hidden);
     }
 
     function setCaptureHideTemporary(ms) {
@@ -712,6 +720,7 @@
                 'click',
                 function (e) {
                     if (!isManualFabHidden()) return;
+                    if (!isTaxEditModeOn()) return;
                     e.preventDefault();
                     e.stopPropagation();
                     setManualFabHidden(false);
@@ -780,6 +789,12 @@
         runtimeCfg = loadConfig();
         applyConfig(runtimeCfg);
         syncFabVisibility();
+        window.addEventListener('cgTaxEditModeChange', function () {
+            if (!isTaxEditModeOn()) {
+                closeFontPanel();
+            }
+            syncFabVisibility();
+        });
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
                 markScope();
