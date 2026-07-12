@@ -491,11 +491,19 @@
     return '';
   }
 
+  /** 凭证表「所得项目」：库内多为「工资薪金」，展示需带「所得」 */
+  function displayIncomeTypeForCert(r) {
+    var s = cleanText(r && r.income_type) || '工资薪金';
+    if (s.endsWith('所得')) return s;
+    return s + '所得';
+  }
+
   function rowRemark(r) {
     var raw = cleanText(r.remark || r.remarks || r.remark_text);
-    if (!raw) return '原申报';
+    if (!raw) return '原始申报';
     raw = raw.replace(/[\r\n\u2028\u2029\u0085]+/g, '');
     raw = raw.replace(/\s+/g, '');
+    if (raw === '原申报') return '原始申报';
     return raw;
   }
 
@@ -1332,7 +1340,7 @@
           displayReportDateFromRecord(r),
           money(r.tax_reported),
           displayInboundDateFromRecord(r),
-          r.income_type || '工资薪金所得',
+          displayIncomeTypeForCert(r),
           displayTaxPeriodFromRecord(r),
           r.tax_authority || '',
           rowRemark(r)
@@ -1791,7 +1799,7 @@
           income: r.income,
           tax_reported: r.tax_reported,
           tax_period: r.tax_period,
-          income_type: r.income_type || '工资薪金所得',
+          income_type: displayIncomeTypeForCert(r),
           remark: r.remark
         };
       })
