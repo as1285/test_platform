@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const registerGuard = require('./register-guard');
 const serverMonitor = require('./serverMonitor');
+const dbLogRetention = require('./dbLogRetention');
 const { inferBankNameFromCardNo } = require('./bank_card_bins');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
@@ -14252,6 +14253,42 @@ app.get('/health', healthHandler);
 // 与 nginx `location /api/` 代理一致，便于经前端反代做探活
 app.get('/api/health', healthHandler);
 
+const DB_LOG_PURGE_INTERVAL_MS = parseInt(process.env.DB_LOG_PURGE_INTERVAL_MS || String(24 * 60 * 60 * 1000), 10);
+var _dbLogPurgeRunning = false;
+
+function scheduleDbLogRetention() {
+  var run = function (reason) {
+    if (_dbLogPurgeRunning || !pool) return;
+    _dbLogPurgeRunning = true;
+    dbLogRetention
+      .purgeOldDbLogs(pool)
+      .then(function (summary) {
+        if (summary.deleted_total > 0) {
+          console.log(
+            '[db-log-retention] ' +
+              reason +
+              ' deleted=' +
+              summary.deleted_total +
+              ' retain_days=' +
+              summary.retain_days
+          );
+        }
+      })
+      .catch(function (e) {
+        console.error('[db-log-retention] failed', e);
+      })
+      .finally(function () {
+        _dbLogPurgeRunning = false;
+      });
+  };
+  setTimeout(function () {
+    run('startup');
+  }, 5 * 60 * 1000);
+  setInterval(function () {
+    run('interval');
+  }, Math.max(60 * 60 * 1000, DB_LOG_PURGE_INTERVAL_MS));
+}
+
 async function startServer() {
   await initDatabase();
   try {
@@ -14261,6 +14298,7 @@ async function startServer() {
   }
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
   serverMonitor.startServerMonitor();
+  scheduleDbLogRetention();
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

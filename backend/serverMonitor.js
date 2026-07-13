@@ -94,7 +94,7 @@ function calcNetworkRates(sample) {
 }
 
 async function getDiskUsage(dir) {
-  var target = dir || _uploadDir || '/';
+  var target = dir || '/';
   try {
     if (fs.promises.statfs) {
       var st = await fs.promises.statfs(target);
@@ -113,6 +113,43 @@ async function getDiskUsage(dir) {
     /* fall through */
   }
   return { path: target, total_bytes: null, used_bytes: null, free_bytes: null, used_percent: null };
+}
+
+async function getDirectorySizeBytes(dir) {
+  if (!dir) return null;
+  var total = 0;
+  async function walk(current) {
+    var entries;
+    try {
+      entries = await fs.promises.readdir(current, { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+    for (var i = 0; i < entries.length; i++) {
+      var ent = entries[i];
+      var full = path.join(current, ent.name);
+      if (ent.isDirectory()) {
+        await walk(full);
+      } else if (ent.isFile()) {
+        try {
+          var st = await fs.promises.stat(full);
+          total += st.size;
+        } catch (e2) {
+          /* skip unreadable file */
+        }
+      }
+    }
+  }
+  await walk(dir);
+  return total;
+}
+
+function withDiskLabels(disk) {
+  return Object.assign({}, disk, {
+    total_label: formatBytes(disk.total_bytes),
+    used_label: formatBytes(disk.used_bytes),
+    free_label: formatBytes(disk.free_bytes)
+  });
 }
 
 function fetchWithTimeout(url, timeoutMs) {
@@ -292,7 +329,9 @@ async function runMonitorTick() {
     process_heap_used_bytes: process.memoryUsage().heapUsed
   };
 
-  var disk = await getDiskUsage(_uploadDir);
+  var diskRoot = await getDiskUsage('/');
+  var uploadsPath = _uploadDir || '/data/uploads';
+  var uploadsDirBytes = await getDirectorySizeBytes(uploadsPath);
   var services = [];
   for (var i = 0; i < SERVICE_DEFS.length; i++) {
     services.push(await probeService(SERVICE_DEFS[i]));
@@ -309,11 +348,14 @@ async function runMonitorTick() {
     rx_bps_label: formatBps(netRates.rx_bps),
     tx_bps_label: formatBps(netRates.tx_bps)
   };
-  _state.disk = Object.assign({}, disk, {
-    total_label: formatBytes(disk.total_bytes),
-    used_label: formatBytes(disk.used_bytes),
-    free_label: formatBytes(disk.free_bytes)
-  });
+  _state.disk_root = withDiskLabels(diskRoot);
+  _state.disk_uploads = {
+    path: uploadsPath,
+    dir_bytes: uploadsDirBytes,
+    dir_label: formatBytes(uploadsDirBytes)
+  };
+  /* 兼容旧字段：disk 仍指向系统盘 */
+  _state.disk = _state.disk_root;
   _state.smtp_configured = mail.isMailConfigured();
   _state.alert_email = MONITOR_ALERT_EMAIL;
 
@@ -392,5 +434,7 @@ module.exports = {
   sendTestAlertEmail,
   runMonitorTick,
   formatBytes,
-  formatBps
+  formatBps,
+  getDiskUsage,
+  getDirectorySizeBytes
 };

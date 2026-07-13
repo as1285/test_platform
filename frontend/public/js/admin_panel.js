@@ -2975,7 +2975,8 @@
             }
 
             var net = data.network || {};
-            var disk = data.disk || {};
+            var diskRoot = data.disk_root || data.disk || {};
+            var diskUploads = data.disk_uploads || {};
             var netDiskGrid = document.getElementById('monitorNetDiskGrid');
             if (netDiskGrid) {
                 netDiskGrid.innerHTML =
@@ -2985,13 +2986,20 @@
                     '<div class="monitor-stat-card"><div class="monitor-stat-label">上行带宽</div><div class="monitor-stat-val">' +
                     esc(net.tx_bps_label || '—') +
                     '</div></div>' +
-                    '<div class="monitor-stat-card"><div class="monitor-stat-label">磁盘 (' +
-                    esc(disk.path || '—') +
+                    '<div class="monitor-stat-card"><div class="monitor-stat-label">系统磁盘 (' +
+                    esc(diskRoot.path || '/') +
                     ')</div><div class="monitor-stat-val">' +
-                    esc(disk.used_percent != null ? disk.used_percent + '%' : '—') +
+                    esc(diskRoot.used_percent != null ? diskRoot.used_percent + '%' : '—') +
                     '</div><div class="monitor-stat-sub">' +
-                    esc((disk.used_label || '—') + ' / ' + (disk.total_label || '—')) +
-                    '</div></div>';
+                    esc((diskRoot.used_label || '—') + ' / ' + (diskRoot.total_label || '—')) +
+                    '，剩余 ' +
+                    esc(diskRoot.free_label || '—') +
+                    '</div></div>' +
+                    '<div class="monitor-stat-card"><div class="monitor-stat-label">上传目录 (' +
+                    esc(diskUploads.path || 'uploads') +
+                    ')</div><div class="monitor-stat-val">' +
+                    esc(diskUploads.dir_label || '—') +
+                    '</div><div class="monitor-stat-sub">仅统计 uploads 文件体积，不含 MySQL / Docker</div></div>';
             }
 
             var alerts = Array.isArray(data.alerts) ? data.alerts : [];
