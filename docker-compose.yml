@@ -61,6 +61,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     ports:
       # 后端仅由前端 Nginx 通过 Docker 内网访问；宿主本机保留调试入口
       - "127.0.0.1:3000:3000"
