@@ -7,7 +7,8 @@ services:
       MYSQL_DATABASE: personal_tax
     ports:
       # 避免与宿主机已有 MySQL 抢 3306
-      - "3308:3306"
+      # 仅允许服务器本机访问，禁止公网直连数据库
+      - "127.0.0.1:3308:3306"
     volumes:
       # 独立卷，避免与同机 LMeterX 等共用 test_platform_mysql_data 导致 ibdata 锁冲突
       - personal_tax_mysql_data:/var/lib/mysql
@@ -52,7 +53,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
     ports:
-      - "0.0.0.0:3000:3000"
+      # 后端仅由前端 Nginx 通过 Docker 内网访问；宿主本机保留调试入口
+      - "127.0.0.1:3000:3000"
     depends_on:
       db:
         condition: service_healthy

@@ -999,7 +999,7 @@
     </div>
 
     <div class="content-wrapper">
-        <div class="user-card" id="mineUserCardEditHit">
+        <div class="user-card">
             <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             <div class="user-info user-info-text user-info-text--editable" id="mineProfileEditHit">
@@ -1288,6 +1288,7 @@
                     'touchend',
                     function (e) {
                         if (touchMoved) return;
+                        if (isExcludedTarget(e.target)) return;
                         e.preventDefault();
                         fire(e);
                     },
@@ -1775,8 +1776,7 @@
                 }
             }
 
-            bindMineProfileEditTap(document.getElementById('mineProfileEditHit'));
-            bindMineProfileEditTap(document.getElementById('mineUserCardEditHit'));
+            bindMineProfileEditTap(document.getElementById('mineDisplayName'));
             var profileEditOk = document.getElementById('btnMineProfileEditOk');
             var profileEditCancel = document.getElementById('btnMineProfileEditCancel');
             var profileEditMask = document.getElementById('mineProfileEditModalMask');
