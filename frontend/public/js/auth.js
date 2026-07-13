@@ -825,15 +825,6 @@
           'html.app-huawei-pura70.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
           /* 华为 Pura 70 Cordova：壳已避开状态栏，顶栏贴 WebView 顶；高度由首页 JS 写入 --shouye-fixed-top-h */
           'html.app-cordova-huawei-pura70.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:0px !important;}' +
-          /* vivo X200 Pro Cordova：壳已避开状态栏，筛选页顶栏/内容勿再叠 56px 占位 */
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:0px !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming > .header{padding-top:14px !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming > .content{padding-top:46px !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,52px) !important;padding:8px 16px !important;box-sizing:border-box !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:var(--header-height,52px) !important;}' +
-          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:var(--header-height,52px) !important;}' +
           'html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:6px !important;padding-bottom:6px !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
           'html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
           /* 华为 Pura 70 非 Cordova（浏览器调试） */
