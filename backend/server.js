@@ -28,6 +28,11 @@ const DB_PASSWORD = process.env.DB_PASSWORD || 'password';
 const DB_DATABASE = process.env.DB_DATABASE || 'personal_tax';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+const LOGIN_RATE_PER_IP_MIN = parseInt(process.env.LOGIN_RATE_PER_IP_MIN || '20', 10);
+const LOGIN_RATE_PER_USER_MIN = parseInt(process.env.LOGIN_RATE_PER_USER_MIN || '8', 10);
+const ADMIN_LOGIN_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_LOGIN_RATE_PER_IP_MIN || '10', 10);
+const ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_API_RATE_PER_IP_MIN || '240', 10);
+const HEAVY_ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.HEAVY_ADMIN_API_RATE_PER_IP_MIN || '60', 10);
 
 /** mine_ui JSON 中可配置的图片字段（相对路径、uploads/ 或 https） */
 const MINE_UI_IMAGE_KEYS = [
@@ -1363,6 +1368,63 @@ function getClientIp(req) {
   if (rip) return String(rip).trim().replace(/^::ffff:/, '');
   var ra = req.socket && req.socket.remoteAddress;
   return ra ? String(ra).replace(/^::ffff:/, '') : '';
+}
+
+var memoryRateBuckets = new Map();
+
+function pruneMemoryRateBuckets(now) {
+  if (memoryRateBuckets.size < 20000) return;
+  memoryRateBuckets.forEach(function (v, k) {
+    if (!v || v.reset_at <= now) memoryRateBuckets.delete(k);
+  });
+}
+
+function consumeMemoryRateLimit(bucket, key, max, windowMs) {
+  var limit = Number(max) || 0;
+  if (limit <= 0) return { ok: true };
+  var now = Date.now();
+  pruneMemoryRateBuckets(now);
+  var fullKey = bucket + ':' + String(key || 'unknown').substring(0, 160);
+  var row = memoryRateBuckets.get(fullKey);
+  if (!row || row.reset_at <= now) {
+    row = { count: 0, reset_at: now + windowMs };
+  }
+  row.count += 1;
+  memoryRateBuckets.set(fullKey, row);
+  if (row.count > limit) {
+    return { ok: false, retry_after_ms: Math.max(1000, row.reset_at - now) };
+  }
+  return { ok: true };
+}
+
+function sendRateLimited(res, result, msg) {
+  var retryMs = result && result.retry_after_ms ? Number(result.retry_after_ms) : 60000;
+  res.set('Retry-After', String(Math.ceil(retryMs / 1000)));
+  return res.status(429).json({ code: 429, msg: msg || '请求过于频繁，请稍后再试', retry_after_ms: retryMs });
+}
+
+function checkLoginBusinessRate(req, username) {
+  var ip = getClientIp(req) || 'unknown';
+  var byIp = consumeMemoryRateLimit('login-ip', ip, LOGIN_RATE_PER_IP_MIN, 60 * 1000);
+  if (!byIp.ok) return byIp;
+  if (username) {
+    return consumeMemoryRateLimit('login-user', String(username).toLowerCase(), LOGIN_RATE_PER_USER_MIN, 60 * 1000);
+  }
+  return { ok: true };
+}
+
+function adminApiRateLimit(req, res, next) {
+  var ip = getClientIp(req) || 'unknown';
+  var result = consumeMemoryRateLimit('admin-api-ip', ip, ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
+  if (!result.ok) return sendRateLimited(res, result, '管理后台请求过于频繁，请稍后再试');
+  next();
+}
+
+function heavyAdminApiRateLimit(req, res, next) {
+  var ip = getClientIp(req) || 'unknown';
+  var result = consumeMemoryRateLimit('admin-heavy-ip', ip, HEAVY_ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
+  if (!result.ok) return sendRateLimited(res, result, '统计/查询接口请求过于频繁，请稍后再试');
+  next();
 }
 
 function cityLabelFromIp(ip) {
@@ -7157,6 +7219,14 @@ async function handleAuthPost(req, res) {
       return res.json({ code: 200, data: recovered });
     }
     if (action === 'login') {
+      var loginUserName = body.username != null ? String(body.username).trim() : '';
+      var loginRate = checkLoginBusinessRate(req, loginUserName);
+      if (!loginRate.ok) {
+        if (loginUserName) {
+          recordUserLoginAttempt(loginUserName, false, req, 'rate_limited').catch(function () {});
+        }
+        return sendRateLimited(res, loginRate, '登录过于频繁，请稍后再试');
+      }
       var out2 = await loginUser(body.username, body.password);
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
@@ -7200,6 +7270,11 @@ async function handleAdminLogin(req, res) {
   var body = req.body || {};
   var u = String(body.username || '').trim();
   var p = String(body.password || '');
+  var loginRate = consumeMemoryRateLimit('admin-login-ip', getClientIp(req) || 'unknown', ADMIN_LOGIN_RATE_PER_IP_MIN, 60 * 1000);
+  if (!loginRate.ok) {
+    recordAdminLoginAttempt(u || 'unknown', false, 'rate_limited', req).catch(function () {});
+    return sendRateLimited(res, loginRate, '管理后台登录过于频繁，请稍后再试');
+  }
   if (!u || !p) {
     recordAdminLoginAttempt(u || 'unknown', false, 'missing_credentials', req).catch(function () {});
     return res.status(400).json({ code: 400, msg: '请输入账号和密码' });
@@ -13991,6 +14066,11 @@ async function handleAdminFeedbackReply(req, res) {
     return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
+
+app.use('/api/admin/analytics', heavyAdminApiRateLimit);
+app.use('/api/admin/user-data', heavyAdminApiRateLimit);
+app.use('/api/admin/activated-user-analysis', heavyAdminApiRateLimit);
+app.use('/api/admin', adminApiRateLimit);
 
 app.post('/api/admin/login', handleAdminLogin);
 app.get('/api/admin/me', requireAdminAuth, handleAdminMe);

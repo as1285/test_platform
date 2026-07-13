@@ -11,6 +11,10 @@ const MONITOR_CHECK_INTERVAL_MS = parseInt(process.env.MONITOR_CHECK_INTERVAL_MS
 const MONITOR_ALERT_COOLDOWN_MS = parseInt(process.env.MONITOR_ALERT_COOLDOWN_MS || '1800000', 10);
 const MONITOR_FRONTEND_URL = process.env.MONITOR_FRONTEND_URL || 'http://frontend/';
 const MONITOR_REQUEST_TIMEOUT_MS = parseInt(process.env.MONITOR_REQUEST_TIMEOUT_MS || '8000', 10);
+const MONITOR_NET_RX_ALERT_BPS = parseInt(process.env.MONITOR_NET_RX_ALERT_BPS || String(80 * 1024 * 1024), 10);
+const MONITOR_NET_TX_ALERT_BPS = parseInt(process.env.MONITOR_NET_TX_ALERT_BPS || String(80 * 1024 * 1024), 10);
+const MONITOR_LOAD_ALERT_PERCENT = parseFloat(process.env.MONITOR_LOAD_ALERT_PERCENT || '90');
+const MONITOR_MEMORY_ALERT_PERCENT = parseFloat(process.env.MONITOR_MEMORY_ALERT_PERCENT || '90');
 
 /** @type {import('mysql2/promise').Pool|null} */
 var _pool = null;
@@ -299,6 +303,60 @@ async function notifyServiceRecovered(svc) {
   delete _serviceDownSince[svc.id];
 }
 
+async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
+  if (!canSendAlert(metricId)) {
+    return;
+  }
+  _alertCooldown[metricId] = Date.now();
+  var subject = '[test_platform] 服务器指标异常：' + label;
+  var text =
+    '检测到服务器指标异常，请及时处理。\n\n' +
+    '指标：' +
+    label +
+    '\n' +
+    '详情：' +
+    message +
+    '\n' +
+    '时间：' +
+    new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) +
+    '\n' +
+    '主机：' +
+    (hostSnapshot.hostname || '—') +
+    '\n' +
+    'CPU 负载：' +
+    (hostSnapshot.load_percent_1 != null ? hostSnapshot.load_percent_1 + '%' : '—') +
+    '\n' +
+    '内存使用：' +
+    (hostSnapshot.memory_used_percent != null ? hostSnapshot.memory_used_percent + '%' : '—') +
+    '\n\n' +
+    '— test_platform 服务器监控';
+
+  var alertEntry = {
+    at: new Date().toISOString(),
+    service_id: metricId,
+    service_label: label,
+    message: message,
+    email_sent: false,
+    email_error: null
+  };
+
+  if (mail.isMailConfigured()) {
+    try {
+      await mail.sendMail({ to: MONITOR_ALERT_EMAIL, subject: subject, text: text });
+      alertEntry.email_sent = true;
+      console.log('[monitor] metric alert email sent for', metricId, '->', MONITOR_ALERT_EMAIL);
+    } catch (e) {
+      alertEntry.email_error = String(e && e.message ? e.message : e);
+      console.error('[monitor] metric alert email failed', e);
+    }
+  } else {
+    alertEntry.email_error = '未配置 SMTP（SMTP_USER / SMTP_PASS）';
+    console.warn('[monitor] metric alert but SMTP not configured:', metricId, message);
+  }
+
+  pushAlert(alertEntry);
+}
+
 async function runMonitorTick() {
   var netSample = readNetBytes();
   var netRates = calcNetworkRates(netSample);
@@ -369,6 +427,23 @@ async function runMonitorTick() {
     } else if (_serviceDownSince[s.id]) {
       await notifyServiceRecovered(s);
     }
+  }
+
+  if (netRates.rx_bps != null && MONITOR_NET_RX_ALERT_BPS > 0 && netRates.rx_bps >= MONITOR_NET_RX_ALERT_BPS) {
+    await notifyHostMetricAlert('metric:net-rx', '入网带宽', '当前入网 ' + formatBps(netRates.rx_bps), host);
+  }
+  if (netRates.tx_bps != null && MONITOR_NET_TX_ALERT_BPS > 0 && netRates.tx_bps >= MONITOR_NET_TX_ALERT_BPS) {
+    await notifyHostMetricAlert('metric:net-tx', '出网带宽', '当前出网 ' + formatBps(netRates.tx_bps), host);
+  }
+  if (host.load_percent_1 != null && MONITOR_LOAD_ALERT_PERCENT > 0 && host.load_percent_1 >= MONITOR_LOAD_ALERT_PERCENT) {
+    await notifyHostMetricAlert('metric:load', 'CPU 负载', '1 分钟负载约 ' + host.load_percent_1 + '%', host);
+  }
+  if (
+    host.memory_used_percent != null &&
+    MONITOR_MEMORY_ALERT_PERCENT > 0 &&
+    host.memory_used_percent >= MONITOR_MEMORY_ALERT_PERCENT
+  ) {
+    await notifyHostMetricAlert('metric:memory', '内存使用率', '当前内存使用 ' + host.memory_used_percent + '%', host);
   }
 }
 
