@@ -129,6 +129,20 @@
     return /25060RK16C/i.test(navigator.userAgent || '');
   }
 
+  /** vivo X200 Pro / X200 Pro mini（OriginOS 6 等，V2405A / V2413 / V2419A）。 */
+  function isVivoX200ProLikeClient() {
+    var ua = navigator.userAgent || '';
+    return /V2405A|V2405DA|V2413\b|V2419A|vivo[\s_]*X200\s*Pro/i.test(ua);
+  }
+
+  /** Cordova 壳 + vivo X200 Pro：WebView 已由壳体下移，勿再叠 Android 15 的 56px 顶栏占位。 */
+  function isCordovaVivoX200ProClient() {
+    if (!isCordovaTaxAppShell()) {
+      return false;
+    }
+    return isVivoX200ProLikeClient();
+  }
+
   /**
    * iPhone 16 Pro（非 Max）。UA 含型号时优先匹配；否则按 screen 逻辑像素 402×874（容差）识别。
    */
@@ -532,6 +546,8 @@
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
+      var vivoX200ProClient = androidClient && isVivoX200ProLikeClient();
+      var cordovaVivoX200Pro = cordovaShell && vivoX200ProClient;
       var iosIPhone11Pro = iosClient && isIPhone11ProLikeClient();
       var iosIPhone17Pro = iosClient && isIPhone17ProLikeClient();
       var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
@@ -626,6 +642,12 @@
       }
       if (android25060RK16C) {
         document.documentElement.classList.add('app-android-25060rk16c');
+      }
+      if (vivoX200ProClient) {
+        document.documentElement.classList.add('app-android-vivo-x200pro');
+      }
+      if (cordovaVivoX200Pro) {
+        document.documentElement.classList.add('app-cordova-vivo-x200pro');
       }
       if (iosClient) {
         document.documentElement.classList.add('app-ios-client');
@@ -803,6 +825,15 @@
           'html.app-huawei-pura70.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
           /* 华为 Pura 70 Cordova：壳已避开状态栏，顶栏贴 WebView 顶；高度由首页 JS 写入 --shouye-fixed-top-h */
           'html.app-cordova-huawei-pura70.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:0px !important;}' +
+          /* vivo X200 Pro Cordova：壳已避开状态栏，筛选页顶栏/内容勿再叠 56px 占位 */
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:0px !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming > .header{padding-top:14px !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming > .content{padding-top:46px !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,52px) !important;padding:8px 16px !important;box-sizing:border-box !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:auto !important;height:auto !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:var(--header-height,52px) !important;}' +
+          'html.app-cordova-vivo-x200pro.app-top-safe-shell body.page-shuiming-result .list{margin-top:var(--header-height,52px) !important;}' +
           'html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:6px !important;padding-bottom:6px !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
           'html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
           /* 华为 Pura 70 非 Cordova（浏览器调试） */
@@ -1673,7 +1704,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260707-activate-btn-fix';
+    s.src = '/js/conversion-guide.js?v=20260713-shuiming-hint-top';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

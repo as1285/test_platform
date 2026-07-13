@@ -298,6 +298,7 @@
       'body.cg-has-value-bar .list{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       'body.cg-has-value-bar .preview-page{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
+      'body.page-shuiming > .content > #cg-shuiming-hint{margin:10px 16px 0;}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
       '.cg-about-nudge a{color:#1e6fff;font-weight:600}' +
       'html.' +
@@ -1128,15 +1129,15 @@
     if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
     if (document.getElementById('cg-shuiming-hint')) return;
     ensureGateStyles();
-    var header = document.querySelector('.header');
-    if (!header || !header.parentNode) return;
+    var content = document.querySelector('body.page-shuiming > .content');
+    if (!content) return;
     var hint = document.createElement('div');
     hint.id = 'cg-shuiming-hint';
     hint.className = 'cg-inline-hint';
     hint.innerHTML =
       '暂无个税演示数据。建议先在 <strong>我要咨询 → 示例填写</strong> 一键生成，再查询本页明细。' +
       '<div style="margin-top:8px;"><button type="button" class="cg-btn cg-btn-primary" id="cgShuimingGoTax" style="padding:8px 14px;font-size:13px;">去添加税务记录</button></div>';
-    header.parentNode.insertBefore(hint, header.nextSibling);
+    content.insertBefore(hint, content.firstChild);
     var btn = document.getElementById('cgShuimingGoTax');
     if (btn) {
       btn.onclick = function () {
