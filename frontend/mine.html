@@ -999,7 +999,7 @@
     </div>
 
     <div class="content-wrapper">
-        <div class="user-card">
+        <div class="user-card" id="mineUserCardEditHit">
             <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
             <div class="user-info user-info-text user-info-text--editable" id="mineProfileEditHit">
@@ -1247,11 +1247,17 @@
                 var touchMoved = false;
                 var touchStartX = 0;
                 var touchStartY = 0;
+                function isExcludedTarget(target) {
+                    if (!target || typeof target.closest !== 'function') return false;
+                    return !!target.closest('.personal-info-btn, .tax-eye-btn, .mine-avatar-edit-hit');
+                }
                 function fire(e) {
                     if (!isMineDataEditEnabled()) return;
+                    if (e && isExcludedTarget(e.target)) return;
                     var now = Date.now();
                     if (now - lastFire < 320) return;
                     lastFire = now;
+                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
                     openMineProfileEditModal();
                 }
                 el.addEventListener(
@@ -1770,6 +1776,7 @@
             }
 
             bindMineProfileEditTap(document.getElementById('mineProfileEditHit'));
+            bindMineProfileEditTap(document.getElementById('mineUserCardEditHit'));
             var profileEditOk = document.getElementById('btnMineProfileEditOk');
             var profileEditCancel = document.getElementById('btnMineProfileEditCancel');
             var profileEditMask = document.getElementById('mineProfileEditModalMask');
