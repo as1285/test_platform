@@ -1359,6 +1359,12 @@ function rowUserTypeIsTest(row) {
 }
 
 function getClientIp(req) {
+  // Cloudflare：优先 CF-Connecting-IP（Nginx 亦会改写 X-Real-IP）
+  var cf = req.headers['cf-connecting-ip'];
+  if (cf) {
+    var cfIp = String(cf).split(',')[0].trim();
+    if (cfIp) return cfIp.replace(/^::ffff:/, '');
+  }
   var xf = req.headers['x-forwarded-for'];
   if (xf) {
     var first = String(xf).split(',')[0].trim();

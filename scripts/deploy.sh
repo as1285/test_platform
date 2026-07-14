@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # 本地 / 服务器一键部署：重建镜像并启动 compose 服务
+# Cloudflare Flexible：源站仅 HTTP:80，跳过本机 SSL / Let's Encrypt
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# iOS 描述文件 WebClip 指向对外域名（浏览器侧 HTTPS 由 Cloudflare 提供）
+export APP_URL="${APP_URL:-https://geshui.vip}"
+export HTTPS_APP_URL="${HTTPS_APP_URL:-$APP_URL}"
 bash "$ROOT/scripts/regenerate-ios-mobileconfig.sh"
-bash "$ROOT/scripts/generate-selfsigned-https-cert.sh"
-cp -f "$ROOT/certs/selfsigned-ip.crt" "$ROOT/certs/active-fullchain.crt"
-cp -f "$ROOT/certs/selfsigned-ip.key" "$ROOT/certs/active-privkey.key"
 
 # 仅部署部分服务时：DEPLOY_SERVICES="frontend api" ./scripts/deploy.sh
 if [[ -n "${DEPLOY_SERVICES:-}" ]]; then
@@ -17,34 +18,19 @@ else
   docker compose up -d --build
 fi
 
-bash "$ROOT/scripts/obtain-letsencrypt-sslip-cert.sh"
-docker compose restart frontend 2>/dev/null || true
-
 echo "[deploy] OK $(date -Iseconds 2>/dev/null || date)"
 echo "[deploy] compose ps:"
 docker compose ps
 
-# 本机探活：若此处失败，外网同样无法访问（应先修容器/端口）；若此处成功而外网失败，多为云安全组/本机防火墙未放行 TCP 80
+# 本机探活：Flexible 模式只验 HTTP:80
 if command -v curl >/dev/null 2>&1; then
   if curl -sfS --max-time 5 -o /dev/null "http://127.0.0.1/"; then
     echo "[deploy] probe OK: http://127.0.0.1/ responded"
   else
     echo "[deploy] WARN: http://127.0.0.1/ did not return HTTP 2xx — check: docker compose logs frontend"
   fi
-  if curl -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
-    echo "[deploy] probe OK: https://127.0.0.1/ responded"
-  else
-    echo "[deploy] WARN: https://127.0.0.1/ failed — check certs mount and docker compose logs frontend"
-  fi
-  SSLIP_HOST="${HTTPS_SSLIP_HOST:-85-137-247-81.sslip.io}"
-  if curl -fsS --max-time 8 -o /dev/null "https://${SSLIP_HOST}/"; then
-    echo "[deploy] probe OK: https://${SSLIP_HOST}/ (trusted LE cert)"
-  elif curl -kfsS --max-time 8 -o /dev/null "https://${SSLIP_HOST}/"; then
-    echo "[deploy] probe OK: https://${SSLIP_HOST}/ (self-signed fallback)"
-  else
-    echo "[deploy] WARN: https://${SSLIP_HOST}/ failed"
-  fi
 else
   echo "[deploy] (skip curl probe: curl not installed)"
 fi
-echo "[deploy] If browsers show ERR_CONNECTION_REFUSED to the public IP: open inbound TCP 80 (and 443 if using HTTPS) on the cloud security group / ufw, and ensure no other process bound port 80."
+echo "[deploy] Cloudflare Flexible: origin is HTTP:80 only; public HTTPS is terminated at CF (geshui.vip)."
+echo "[deploy] If CF shows 521/522: open inbound TCP 80 on cloud security group / ufw."
