@@ -1493,8 +1493,11 @@ async function initDatabase() {
       password: DB_PASSWORD,
       database: DB_DATABASE,
       waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
+      // 业务页常并发 auth+user+tax+埋点；原 10 易排队，弱网下表现为接口集体变慢
+      connectionLimit: parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000
     });
     
     await createTables();
@@ -3402,6 +3405,57 @@ function userSessionRevFromRow(rec) {
   return Number(rec.session_rev) || 0;
 }
 
+/** 短缓存鉴权行，减轻每个业务接口都打一次 users 表的压力 */
+var USER_AUTH_CACHE_TTL_MS = parseInt(process.env.USER_AUTH_CACHE_TTL_MS || '15000', 10) || 15000;
+var _userAuthCache = new Map();
+var _userAuthCacheLastPrune = 0;
+
+function invalidateUserAuthCache(username) {
+  if (username == null || username === '') return;
+  _userAuthCache.delete(String(username).trim());
+}
+
+function pruneUserAuthCache(now) {
+  if (now - _userAuthCacheLastPrune < 60000) return;
+  _userAuthCacheLastPrune = now;
+  _userAuthCache.forEach(function (entry, key) {
+    if (!entry || entry.expiresAt <= now) {
+      _userAuthCache.delete(key);
+    }
+  });
+}
+
+async function loadUserAuthState(username) {
+  var u = String(username || '').trim();
+  if (!u) return null;
+  var now = Date.now();
+  pruneUserAuthCache(now);
+  var hit = _userAuthCache.get(u);
+  if (hit && hit.expiresAt > now) {
+    return hit.row;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      'SELECT banned, session_rev, account_active FROM users WHERE username = ? LIMIT 1',
+      [u]
+    );
+    if (!rows.length) {
+      _userAuthCache.set(u, { expiresAt: now + Math.min(3000, USER_AUTH_CACHE_TTL_MS), row: null });
+      return null;
+    }
+    var row = {
+      banned: rows[0].banned === 1 || rows[0].banned === true,
+      session_rev: userSessionRevFromRow(rows[0]),
+      account_active: rows[0].account_active === 1 || rows[0].account_active === true
+    };
+    _userAuthCache.set(u, { expiresAt: now + USER_AUTH_CACHE_TTL_MS, row: row });
+    return row;
+  } finally {
+    conn.release();
+  }
+}
+
 function signAccessToken(userPayload) {
   var uid = userPayload.user_id != null ? String(userPayload.user_id) : String(userPayload.username || '');
   var act =
@@ -3493,6 +3547,7 @@ async function applyActivationCode(username, rawCode) {
       await conn.execute('UPDATE users SET account_active = 1 WHERE username = ?', [username]);
     }
     await conn.commit();
+    invalidateUserAuthCache(username);
   } catch (e) {
     try {
       await conn.rollback();
@@ -3505,16 +3560,15 @@ async function applyActivationCode(username, rawCode) {
 
 async function requireActivated(req, res, next) {
   try {
-    const conn = await pool.getConnection();
-    const [rows] = await conn.execute(
-      'SELECT account_active FROM users WHERE username = ? LIMIT 1',
-      [req.authUserId]
-    );
-    conn.release();
-    if (rows.length === 0) {
+    var row = req.authUserRow;
+    if (!row) {
+      row = await loadUserAuthState(req.authUserId);
+      req.authUserRow = row;
+    }
+    if (!row) {
       return res.status(403).json({ code: 403, msg: '账号异常', need_activation: true });
     }
-    var a = rows[0].account_active;
+    var a = row.account_active;
     if (a === 1 || a === true) {
       return next();
     }
@@ -3722,26 +3776,22 @@ async function requireAuth(req, res, next) {
       return res.status(403).json({ code: 403, msg: '无效的用户令牌' });
     }
     req.authUserId = payload.sub;
-    const conn = await pool.getConnection();
-    try {
-      const [rows] = await conn.execute('SELECT banned, session_rev FROM users WHERE username = ?', [req.authUserId]);
-      if (!rows.length) {
-        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
-      }
-      if (rows[0].banned === 1 || rows[0].banned === true) {
-        return res.status(403).json({ code: 403, msg: '账号已被封禁', banned: true });
-      }
-      var dbSrv = userSessionRevFromRow(rows[0]);
-      var tokSrv = payload.srv != null && payload.srv !== '' ? Number(payload.srv) : null;
-      if (tokSrv !== null && !isNaN(tokSrv) && tokSrv !== dbSrv) {
-        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
-      }
-      if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
-        return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
-      }
-    } finally {
-      conn.release();
+    var row = await loadUserAuthState(req.authUserId);
+    if (!row) {
+      return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
+    if (row.banned === 1 || row.banned === true) {
+      return res.status(403).json({ code: 403, msg: '账号已被封禁', banned: true });
+    }
+    var dbSrv = userSessionRevFromRow(row);
+    var tokSrv = payload.srv != null && payload.srv !== '' ? Number(payload.srv) : null;
+    if (tokSrv !== null && !isNaN(tokSrv) && tokSrv !== dbSrv) {
+      return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
+    }
+    if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
+      return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
+    }
+    req.authUserRow = row;
     touchUserDailyActivity(req.authUserId);
     syncUserDeviceFromClientJson(req, req.authUserId);
     next();
@@ -5272,12 +5322,26 @@ function inferPagePathFromRequest(req) {
   return '';
 }
 
+var PAGE_EVENT_DEBOUNCE_MS = parseInt(process.env.PAGE_EVENT_DEBOUNCE_MS || '3000', 10) || 3000;
+var _pageEventDebounce = new Map();
+var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '60000', 10) || 60000;
+var _deviceSyncThrottle = new Map();
+
 function recordUserPageEvent(req, routeKey) {
   if (!pool || !req || !req.authUserId) return;
   var username = String(req.authUserId).trim().substring(0, 255);
   if (!username) return;
   var pagePath = inferPagePathFromRequest(req);
   if (!pagePath) return;
+  // 同页短时间多次接口只记一次，避免每个 authFetch 都 INSERT 抢连接
+  var debounceKey = username + '\0' + pagePath;
+  var now = Date.now();
+  var last = _pageEventDebounce.get(debounceKey) || 0;
+  if (now - last < PAGE_EVENT_DEBOUNCE_MS) return;
+  _pageEventDebounce.set(debounceKey, now);
+  if (_pageEventDebounce.size > 8000) {
+    _pageEventDebounce.clear();
+  }
   var cid = '';
   try {
     if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
@@ -5621,6 +5685,16 @@ function syncUserDeviceFromClientJson(req, username) {
     return Promise.resolve();
   }
   var fp = fingerprintFromExplicitDevice(ex);
+  var throttleKey = String(username).trim() + '\0' + fp;
+  var now = Date.now();
+  var last = _deviceSyncThrottle.get(throttleKey) || 0;
+  if (now - last < DEVICE_SYNC_THROTTLE_MS) {
+    return Promise.resolve();
+  }
+  _deviceSyncThrottle.set(throttleKey, now);
+  if (_deviceSyncThrottle.size > 8000) {
+    _deviceSyncThrottle.clear();
+  }
   var detailJson = JSON.stringify(ex);
   var clientId = ex.client_id ? String(ex.client_id).substring(0, 128) : null;
   var ip = getClientIp(req);
@@ -10859,6 +10933,7 @@ async function handleAdminUserPassword(req, res) {
         'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
         [saltHex, hashHex, plainVal, target]
       );
+      invalidateUserAuthCache(target);
       return res.json({ code: 200, data: { username: target }, msg: '密码已修改' });
     } finally {
       conn.release();
@@ -10900,6 +10975,7 @@ async function handleAdminBan(req, res) {
       await conn.execute('UPDATE users SET banned = 0 WHERE username = ?', [target]);
     }
     conn.release();
+    invalidateUserAuthCache(target);
     return res.json({ code: 200, data: { username: target, banned: ban, session_revoked: !!ban } });
   } catch (e) {
     console.error(e);
@@ -12431,6 +12507,7 @@ async function handleAdminUserRefund(req, res) {
     );
     await conn.commit();
     conn.release();
+    invalidateUserAuthCache(target);
     return res.json({
       code: 200,
       data: {
@@ -12632,6 +12709,7 @@ async function handleAdminUserRestore(req, res) {
       );
     }
     conn.release();
+    invalidateUserAuthCache(target);
     return res.json({
       code: 200,
       data: { username: target, restored: true, was_refunded: wasRefunded }

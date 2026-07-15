@@ -227,7 +227,11 @@
   document.documentElement.style.setProperty('--app-accent-mid', '#008afd');
   document.documentElement.style.setProperty('--app-accent-soft', '#5aa3ff');
   document.documentElement.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
-  applyCached();
+  // 有缓存时立刻放行加载转圈，后台静默刷新主题，避免每个 TAB 都卡在 mine-ui 请求上
+  var hadThemeCache = applyCached();
+  if (hadThemeCache) {
+    finishPageLoadingAfterTheme();
+  }
 
   fetch('/api/public/mine-ui', { credentials: 'same-origin' })
     .then(function (r) {
@@ -240,6 +244,8 @@
     })
     .catch(function () {})
     .finally(function () {
-      finishPageLoadingAfterTheme();
+      if (!hadThemeCache) {
+        finishPageLoadingAfterTheme();
+      }
     });
 })();

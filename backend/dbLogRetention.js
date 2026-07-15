@@ -38,27 +38,36 @@ function normalizeBatchSize(size) {
  */
 async function purgeTableBatch(conn, target, retainDays, batchSize) {
   var total = 0;
-  var sql;
+  // mysql2 prepared statement 对 INTERVAL ? / LIMIT ? 会报 ER_WRONG_ARGUMENTS；数值已归一化，直接拼入 SQL
+  var days = Number(retainDays);
+  var lim = Number(batchSize);
+  var runnable;
   if (target.dateColumn === 'stat_date') {
-    sql =
+    runnable =
       'DELETE FROM `' +
       target.table +
       '` WHERE `' +
       target.dateColumn +
-      '` < DATE_SUB(CURDATE(), INTERVAL ? DAY) LIMIT ?';
+      '` < DATE_SUB(CURDATE(), INTERVAL ' +
+      days +
+      ' DAY) LIMIT ' +
+      lim;
   } else {
-    sql =
+    runnable =
       'DELETE FROM `' +
       target.table +
       '` WHERE `' +
       target.dateColumn +
-      '` < DATE_SUB(NOW(), INTERVAL ? DAY) LIMIT ?';
+      '` < DATE_SUB(NOW(), INTERVAL ' +
+      days +
+      ' DAY) LIMIT ' +
+      lim;
   }
   while (true) {
-    var result = await conn.execute(sql, [retainDays, batchSize]);
+    var result = await conn.query(runnable);
     var affected = result[0].affectedRows || 0;
     total += affected;
-    if (affected < batchSize) {
+    if (affected < lim) {
       break;
     }
   }
