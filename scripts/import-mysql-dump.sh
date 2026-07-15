@@ -73,7 +73,8 @@ docker exec "$DB_CONTAINER" mysql -uroot -p"$DB_ROOT_PASSWORD" -e \
 
 echo "[import] 导入中（大文件可能需要几分钟）..."
 # 单库 mysqldump 常无 CREATE DATABASE / USE，需指定目标库名
-docker exec -i "$DB_CONTAINER" mysql -uroot -p"$DB_ROOT_PASSWORD" --force "$DB_NAME" < "$TMP_DUMP"
+# 必须指定 utf8mb4，否则中文会被二次编码成乱码（å·¥èµ„…）
+docker exec -i "$DB_CONTAINER" mysql -uroot -p"$DB_ROOT_PASSWORD" --default-character-set=utf8mb4 --force "$DB_NAME" < "$TMP_DUMP"
 
 USER_COUNT="$(docker exec "$DB_CONTAINER" mysql -uroot -p"$DB_ROOT_PASSWORD" -Nse \
   "SELECT COUNT(*) FROM \`$DB_NAME\`.users;" 2>/dev/null || echo '?')"

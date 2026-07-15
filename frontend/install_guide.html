@@ -18,7 +18,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             background: #f5f6fa;
             min-height: 100vh;
-            padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
         }
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
@@ -307,6 +307,37 @@
             box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28);
             -webkit-tap-highlight-color: transparent;
         }
+        .sticky-download-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(30, 111, 255, 0.28);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sticky-download-btn.is-visible {
+            display: flex;
+        }
+        .sticky-register-bar.is-download-first .sticky-register-hint {
+            color: #334155;
+        }
+        .install-top-download .install-actions .btn {
+            min-height: 48px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .install-top-download.is-priority {
+            border: 1px solid #bfdbfe;
+            box-shadow: 0 4px 18px rgba(30, 111, 255, 0.12);
+        }
         .is-hidden {
             display: none !important;
         }
@@ -436,7 +467,7 @@
             </div>
 
             <div class="in-app-banner" id="inAppBanner">
-                您已在 App 内打开，可跳过下载，直接完成注册并在 App 内输入激活码。
+                服务器已迁移或需更新时，请先点击下方<strong>下载最新安装包</strong>；安装新版 App 后再注册/登录。切勿只点注册而跳过下载。
             </div>
 
             <div class="step-block" id="stepDownloadBlock">
@@ -456,8 +487,8 @@
                 <div id="iosInstallSection">
                     <p class="hint ios-cert-hint" id="iosCertHint" style="margin-bottom:10px;line-height:1.55;">
                         若打开 App 时提示「<strong>此连接非私人连接</strong>」，请点页面底部「<strong>访问此网站</strong>」继续；或删除桌面图标后，用
-                        <a href="http://85.137.247.81/install_guide.html">http://85.137.247.81/install_guide.html</a>
-                        重新下载描述文件（请勿使用 https 地址）。
+                        <a href="https://geshui.vip/install_guide.html">https://geshui.vip/install_guide.html</a>
+                        重新下载描述文件。
                     </p>
                     <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
                     <div id="iosInstallVideoContainer"></div>
@@ -481,9 +512,10 @@
         </section>
     </div>
 
-    <div class="sticky-register-bar">
+    <div class="sticky-register-bar" id="stickyInstallBar">
         <div class="sticky-register-inner">
-            <p class="sticky-register-hint">第 3 步：注册后需在 App 内输入激活码才能使用</p>
+            <p class="sticky-register-hint" id="stickyInstallHint">第 1 步：先下载安装包；装好后再注册并输入激活码</p>
+            <a href="#" class="sticky-download-btn" id="stickyDownloadBtn" hidden>下载最新安装包</a>
             <a href="register.html?from=install_guide" class="sticky-register-btn install-register-link" id="installRegisterLink">立即注册账号</a>
         </div>
     </div>
@@ -492,14 +524,11 @@
         function installPageOrigin() {
             try {
                 var origin = window.location.origin || '';
-                // iPhone 用 IP 的 HTTPS 会命中自签证书拦截；安装页与描述文件统一走 HTTP
-                if (/^https:\/\/139\.199\.191\.204(?::\d+)?$/i.test(origin)) {
-                    return 'http://85.137.247.81';
+                if (origin) {
+                    return origin;
                 }
-                return origin;
-            } catch (e) {
-                return 'http://85.137.247.81';
-            }
+            } catch (e) {}
+            return 'https://geshui.vip';
         }
 
         function toAbsoluteDownloadUrl(u) {
@@ -508,9 +537,6 @@
             }
             var s = String(u).trim();
             if (/^https?:\/\//i.test(s)) {
-                if (/^https:\/\/139\.199\.191\.204(?::\d+)?/i.test(s)) {
-                    return s.replace(/^https:/i, 'http:');
-                }
                 return s;
             }
             if (s.charAt(0) === '/') {
@@ -585,6 +611,75 @@
             });
         }
 
+        function openDownloadExternally(url) {
+            if (!url) {
+                return false;
+            }
+            try {
+                if (window.cordova && window.cordova.InAppBrowser && typeof window.cordova.InAppBrowser.open === 'function') {
+                    window.cordova.InAppBrowser.open(url, '_system');
+                    return true;
+                }
+            } catch (e0) {}
+            try {
+                var opened = window.open(url, '_system');
+                if (opened) {
+                    return true;
+                }
+            } catch (e1) {}
+            try {
+                window.location.href = url;
+                return true;
+            } catch (e2) {}
+            return false;
+        }
+
+        function bindDownloadClick(el, url, trackFn) {
+            if (!el) {
+                return;
+            }
+            el.addEventListener('click', function (ev) {
+                if (typeof trackFn === 'function') {
+                    trackFn();
+                }
+                // App/WebView 内须用系统浏览器下载，否则按钮点了无文件
+                if (isInAppShell()) {
+                    ev.preventDefault();
+                    openDownloadExternally(url || el.href);
+                }
+            });
+        }
+
+        function syncStickyDownload(primaryBtn, label) {
+            var sticky = document.getElementById('stickyDownloadBtn');
+            var bar = document.getElementById('stickyInstallBar');
+            var hint = document.getElementById('stickyInstallHint');
+            if (!sticky || !primaryBtn) {
+                return;
+            }
+            sticky.href = primaryBtn.getAttribute('href') || '#';
+            sticky.textContent = label || primaryBtn.textContent || '下载最新安装包';
+            sticky.removeAttribute('hidden');
+            sticky.classList.add('is-visible');
+            if (bar) {
+                bar.classList.add('is-download-first');
+            }
+            if (hint) {
+                hint.textContent = '请先下载并安装最新 App，完成后再注册 / 激活';
+            }
+            sticky.onclick = function (ev) {
+                if (typeof primaryBtn.onclick === 'function') {
+                    /* noop */
+                }
+                if (isInAppShell()) {
+                    ev.preventDefault();
+                    openDownloadExternally(sticky.href);
+                    return;
+                }
+                // 非 App 内让浏览器自然处理 sticky 自己的 href，避免重复触发埋点
+            };
+        }
+
         function applyInstallPageLayout() {
             var inApp = isInAppShell();
             var ios = isLikelyIOSClient();
@@ -601,37 +696,61 @@
             var pill3 = document.getElementById('stepPill3');
             var desktopQr = document.getElementById('desktopQrBlock');
 
+            // 迁移/更新场景：即使已在旧 App 内打开，也必须显示下载按钮
             if (inApp) {
                 if (inAppBanner) {
                     inAppBanner.classList.add('is-visible');
                 }
                 if (topDownload) {
-                    topDownload.classList.add('is-hidden');
+                    topDownload.classList.remove('is-hidden');
+                    topDownload.classList.add('is-priority');
                 }
                 if (downloadBlock) {
-                    downloadBlock.classList.add('is-hidden');
+                    downloadBlock.classList.remove('is-hidden');
                 }
                 if (pill1) {
-                    pill1.textContent = '① 已安装';
-                    pill1.classList.remove('is-active');
+                    pill1.textContent = '① 下载更新';
+                    pill1.classList.add('is-active');
                 }
                 if (pill2) {
                     pill2.classList.remove('is-active');
                 }
                 if (pill3) {
-                    pill3.classList.add('is-active');
+                    pill3.classList.remove('is-active');
                 }
-                if (iosSection) {
-                    iosSection.hidden = true;
-                }
-                if (androidTips) {
-                    androidTips.classList.add('is-hidden');
+                if (android) {
+                    if (androidTips) {
+                        androidTips.classList.remove('is-hidden');
+                    }
+                    if (iosSection) {
+                        iosSection.hidden = true;
+                    }
+                } else if (ios) {
+                    if (androidTips) {
+                        androidTips.classList.add('is-hidden');
+                    }
+                    if (iosSection) {
+                        iosSection.hidden = false;
+                    }
+                } else {
+                    // 未知 WebView：两个入口都给，避免漏掉对应系统
+                    if (androidTips) {
+                        androidTips.classList.remove('is-hidden');
+                    }
+                    if (iosSection) {
+                        iosSection.hidden = false;
+                    }
                 }
                 if (usageBlock) {
                     usageBlock.hidden = false;
-                    usageBlock.open = true;
                 }
-                return { platform: 'in_app', showApk: false, showIos: false, desktop: false };
+                return {
+                    platform: 'in_app',
+                    inApp: true,
+                    showApk: !ios || android || (!ios && !android),
+                    showIos: !android || ios || (!ios && !android),
+                    desktop: false
+                };
             }
 
             if (ios) {
@@ -678,8 +797,9 @@
 
             return {
                 platform: ios ? 'ios' : android ? 'android' : desktop ? 'desktop' : 'other',
-                showApk: android || desktop || (!ios && !android && !inApp),
-                showIos: ios || desktop || (!ios && !android && !inApp),
+                inApp: false,
+                showApk: android || desktop || (!ios && !android),
+                showIos: ios || desktop || (!ios && !android),
                 desktop: desktop
             };
         }
@@ -691,13 +811,6 @@
                 return;
             }
             var layout = applyInstallPageLayout();
-            if (layout.platform === 'in_app') {
-                row.innerHTML = '';
-                if (empty) {
-                    empty.style.display = 'none';
-                }
-                return;
-            }
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (body) {
@@ -709,14 +822,19 @@
                         return;
                     }
                     var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
-                    var ios = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
+                    var iosUrl = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
                     row.innerHTML = '';
                     var showApk = layout.showApk && apk;
-                    var showIos = layout.showIos && ios;
+                    var showIos = layout.showIos && iosUrl;
+                    // App 内若平台判断失败，兜底：有配置就都显示
+                    if (layout.inApp && !showApk && !showIos) {
+                        showApk = !!apk;
+                        showIos = !!iosUrl;
+                    }
                     if (!showApk && !showIos) {
                         if (empty) {
                             empty.style.display = 'block';
-                            if (layout.desktop && (apk || ios)) {
+                            if (layout.desktop && (apk || iosUrl)) {
                                 empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
                             }
                         }
@@ -725,18 +843,25 @@
                     if (empty) {
                         empty.style.display = 'none';
                     }
+                    var primaryForSticky = null;
+                    var primaryLabel = '';
                     if (showApk) {
                         var a = document.createElement('a');
                         a.className = 'btn btn-primary';
-                        a.href = /^https?:\/\//i.test(apk)
+                        var apkHref = /^https?:\/\//i.test(apk)
                             ? apk
                             : toAbsoluteDownloadUrl(apk.charAt(0) === '/' ? apk : '/' + apk.replace(/^\.\//, ''));
-                        if (/^https?:\/\//i.test(apk)) {
+                        a.href = apkHref;
+                        if (/^https?:\/\//i.test(apkHref)) {
                             a.target = '_blank';
                             a.rel = 'noopener noreferrer';
                         }
-                        a.textContent = layout.desktop ? '下载 Android 安装包（请在手机打开）' : '下载 Android 安装包';
-                        a.addEventListener('click', function () {
+                        a.textContent = layout.inApp
+                            ? '下载最新 Android 安装包'
+                            : layout.desktop
+                              ? '下载 Android 安装包（请在手机打开）'
+                              : '下载 Android 安装包';
+                        bindDownloadClick(a, apkHref, function () {
                             if (typeof window.trackPublicAction === 'function') {
                                 var apkMeta = { page: 'install_guide' };
                                 if (typeof window.getSalesChannel === 'function') {
@@ -752,19 +877,34 @@
                             }
                         });
                         row.appendChild(a);
+                        if (!primaryForSticky || isLikelyAndroidClient() || layout.inApp) {
+                            primaryForSticky = a;
+                            primaryLabel = a.textContent;
+                        }
                     }
                     if (showIos) {
-                        var href = toAbsoluteDownloadUrl(ios);
+                        var href = toAbsoluteDownloadUrl(iosUrl);
                         var ia = document.createElement('a');
                         ia.className = 'btn btn-primary';
-                        ia.href = href || ios;
-                        ia.textContent = layout.desktop ? '下载 iOS 描述文件（请在 iPhone 打开）' : '下载 iOS 描述文件';
-                        ia.addEventListener('click', function () {
+                        ia.href = href || iosUrl;
+                        ia.textContent = layout.inApp
+                            ? '下载最新 iOS 描述文件'
+                            : layout.desktop
+                              ? '下载 iOS 描述文件（请在 iPhone 打开）'
+                              : '下载 iOS 描述文件';
+                        bindDownloadClick(ia, ia.href, function () {
                             if (typeof window.trackPublicAction === 'function') {
                                 window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
                             }
                         });
                         row.appendChild(ia);
+                        if (!primaryForSticky || isLikelyIOSClient()) {
+                            primaryForSticky = ia;
+                            primaryLabel = ia.textContent;
+                        }
+                    }
+                    if (primaryForSticky) {
+                        syncStickyDownload(primaryForSticky, primaryLabel);
                     }
                 })
                 .catch(function () {

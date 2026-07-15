@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # 从已签名的 个人.mobileconfig 解出 plist，更新 WebClip URL 后写出未签名 XML（供 Nginx 分发）。
-# 用法：APP_URL=http://85.137.247.81 ./scripts/regenerate-ios-mobileconfig.sh
-# iOS WebClip 须用 HTTP：IP 直连 HTTPS 为自签证书，Safari 会提示「此连接非私人连接」。
+# 用法：APP_URL=https://geshui.vip ./scripts/regenerate-ios-mobileconfig.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="${ROOT}/个人.mobileconfig"
 OUT_FRONTEND="${ROOT}/frontend/个人.mobileconfig"
 OUT_ROOT="${ROOT}/个人.mobileconfig"
-APP_URL="${APP_URL:-${HTTPS_APP_URL:-http://85.137.247.81}}"
+APP_URL="${APP_URL:-${HTTPS_APP_URL:-https://geshui.vip}}"
 TMP_PLIST="$(mktemp)"
 
 cleanup() { rm -f "$TMP_PLIST"; }
