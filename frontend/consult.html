@@ -1128,11 +1128,21 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>所得项目</label>
-                            <input type="text" name="income_type" id="f_income_type" value="工资薪金" readonly tabindex="-1" aria-readonly="true">
+                            <label for="f_income_type">所得项目</label>
+                            <select name="income_type" id="f_income_type" required>
+                                <option value="工资薪金" selected>工资薪金</option>
+                                <option value="劳务报酬">劳务报酬</option>
+                                <option value="稿酬">稿酬</option>
+                                <option value="特许权使用费">特许权使用费</option>
+                                <option value="经营所得">经营所得</option>
+                                <option value="利息、股息、红利">利息、股息、红利</option>
+                                <option value="财产租赁">财产租赁</option>
+                                <option value="财产转让">财产转让</option>
+                                <option value="偶然所得">偶然所得</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>所得子项目</label>
+                            <label for="f_income_subtype">所得子项目</label>
                             <input type="text" name="income_subtype" id="f_income_subtype" value="正常工资薪金">
                         </div>
                     </div>
@@ -1865,12 +1875,66 @@
             return parts.join('') + (parts.length ? '。' : '');
         }
 
+        var INCOME_TYPE_DEFAULT_SUBTYPES = {
+            '工资薪金': '正常工资薪金',
+            '劳务报酬': '一般劳务报酬',
+            '稿酬': '稿酬所得',
+            '特许权使用费': '特许权使用费所得',
+            '经营所得': '经营所得',
+            '利息、股息、红利': '利息股息红利所得',
+            '财产租赁': '财产租赁所得',
+            '财产转让': '财产转让所得',
+            '偶然所得': '偶然所得'
+        };
+
+        function defaultIncomeSubtype(incomeType) {
+            var key = String(incomeType || '').trim();
+            return INCOME_TYPE_DEFAULT_SUBTYPES[key] || '';
+        }
+
+        function setIncomeTypeSelectValue(incomeType) {
+            var sel = document.getElementById('f_income_type');
+            if (!sel) return;
+            var v = String(incomeType || '').trim() || '工资薪金';
+            var found = false;
+            for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === v) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                var opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+            }
+            sel.value = v;
+        }
+
+        function syncIncomeSubtypeForTypeChange() {
+            var typeEl = document.getElementById('f_income_type');
+            var subEl = document.getElementById('f_income_subtype');
+            if (!typeEl || !subEl) return;
+            var next = defaultIncomeSubtype(typeEl.value);
+            if (next) {
+                subEl.value = next;
+            }
+        }
+
+        function initIncomeTypeSelect() {
+            var typeEl = document.getElementById('f_income_type');
+            if (!typeEl || typeEl.getAttribute('data-income-type-bound') === '1') return;
+            typeEl.setAttribute('data-income-type-bound', '1');
+            typeEl.addEventListener('change', syncIncomeSubtypeForTypeChange);
+        }
+
         function formObjectFromInputs() {
             return {
                 id: document.getElementById('editing_id').value || ('tr_' + Date.now()),
                 year: parseInt(document.getElementById('f_year').value, 10),
                 month: parseInt(document.getElementById('f_month').value, 10),
-                income_type: '工资薪金',
+                income_type: document.getElementById('f_income_type').value || '工资薪金',
                 income_subtype: document.getElementById('f_income_subtype').value,
                 company_name: document.getElementById('f_company_name').value,
                 company_tax_id: document.getElementById('f_company_tax_id').value,
@@ -1944,8 +2008,8 @@
             document.getElementById('recordSubmitBtn').textContent = r.id ? '更新记录' : '添加记录';
             document.getElementById('f_year').value = r.year;
             document.getElementById('f_month').value = r.month;
-            document.getElementById('f_income_type').value = '工资薪金';
-            document.getElementById('f_income_subtype').value = r.income_subtype || '';
+            setIncomeTypeSelectValue(r.income_type || '工资薪金');
+            document.getElementById('f_income_subtype').value = r.income_subtype || defaultIncomeSubtype(r.income_type || '工资薪金');
             document.getElementById('f_company_name').value = r.company_name || '';
             document.getElementById('f_company_tax_id').value = r.company_tax_id || '';
             document.getElementById('f_tax_authority').value = r.tax_authority || '';
@@ -5858,6 +5922,7 @@
                 employerCancel.addEventListener('click', resetEmployerFormMode);
             }
             initHeader();
+            initIncomeTypeSelect();
             initBatchEmploymentRows();
             initBatchTaxDraftAutosave();
             restoreSingleTaxDraftIfAny();
