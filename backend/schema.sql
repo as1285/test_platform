@@ -228,6 +228,8 @@ CREATE TABLE IF NOT EXISTS analytics_api_daily (
     route_key VARCHAR(240) NOT NULL,
     biz_category VARCHAR(64) NOT NULL,
     cnt BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    sum_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    max_ms INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (stat_date, route_key),
     INDEX idx_cat_date (biz_category, stat_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

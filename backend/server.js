@@ -2014,10 +2014,30 @@ async function createTables() {
       route_key VARCHAR(240) NOT NULL,
       biz_category VARCHAR(64) NOT NULL,
       cnt BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      sum_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      max_ms INT UNSIGNED NOT NULL DEFAULT 0,
       PRIMARY KEY (stat_date, route_key),
       INDEX idx_cat_date (biz_category, stat_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  try {
+    await conn.execute(`
+      ALTER TABLE analytics_api_daily ADD COLUMN sum_ms BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '响应耗时合计(ms)'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE analytics_api_daily ADD COLUMN max_ms INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '单日最大响应(ms)'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_daily_activity (
@@ -5260,18 +5280,25 @@ function classifyAnalyticsRoute(req) {
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
 }
 
-function incrementApiDailyCounter(routeKey, bizCategory) {
+function incrementApiDailyCounter(routeKey, bizCategory, latencyMs) {
   if (!pool || !routeKey || !bizCategory) {
     return;
   }
   var rk = String(routeKey).substring(0, 240);
   var cat = String(bizCategory).substring(0, 64);
+  var ms =
+    latencyMs != null && !isNaN(Number(latencyMs))
+      ? Math.max(0, Math.min(Math.round(Number(latencyMs)), 600000))
+      : 0;
   pool
     .execute(
-      `INSERT INTO analytics_api_daily (stat_date, route_key, biz_category, cnt)
-       VALUES (CURDATE(), ?, ?, 1)
-       ON DUPLICATE KEY UPDATE cnt = cnt + 1`,
-      [rk, cat]
+      `INSERT INTO analytics_api_daily (stat_date, route_key, biz_category, cnt, sum_ms, max_ms)
+       VALUES (CURDATE(), ?, ?, 1, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         cnt = cnt + 1,
+         sum_ms = sum_ms + VALUES(sum_ms),
+         max_ms = GREATEST(max_ms, VALUES(max_ms))`,
+      [rk, cat, ms, ms]
     )
     .catch(function (e) {
       console.error('incrementApiDailyCounter', e);
@@ -5279,13 +5306,15 @@ function incrementApiDailyCounter(routeKey, bizCategory) {
 }
 
 function analyticsFinishMiddleware(req, res, next) {
+  var startedAt = Date.now();
   res.on('finish', function () {
     try {
       var info = classifyAnalyticsRoute(req);
       if (!info) {
         return;
       }
-      incrementApiDailyCounter(info.route_key, info.biz_category);
+      var latencyMs = Math.max(0, Date.now() - startedAt);
+      incrementApiDailyCounter(info.route_key, info.biz_category, latencyMs);
       recordUserPageEvent(req, info.route_key);
     } catch (e) {
       console.error('analyticsFinishMiddleware', e);
@@ -13358,13 +13387,20 @@ async function handleAdminAnalyticsApi(req, res) {
     const conn = await pool.getConnection();
     try {
       const [byCat] = await conn.execute(
-        `SELECT biz_category AS cat, SUM(cnt) AS total FROM analytics_api_daily
+        `SELECT biz_category AS cat,
+                SUM(cnt) AS total,
+                SUM(sum_ms) AS total_ms,
+                MAX(max_ms) AS max_ms
+         FROM analytics_api_daily
          WHERE ${pf.sql}
          GROUP BY biz_category ORDER BY total DESC`,
         pf.params
       );
       const [topRoutes] = await conn.execute(
-        `SELECT MAX(biz_category) AS cat, route_key AS route, SUM(cnt) AS total
+        `SELECT MAX(biz_category) AS cat, route_key AS route,
+                SUM(cnt) AS total,
+                SUM(sum_ms) AS total_ms,
+                MAX(max_ms) AS max_ms
          FROM analytics_api_daily
          WHERE ${pf.sql}
            AND biz_category <> '管理后台'
@@ -13377,13 +13413,24 @@ async function handleAdminAnalyticsApi(req, res) {
         data: Object.assign(
           {
             by_category: byCat.map(function (r) {
-              return { category: String(r.cat), calls: Number(r.total) };
+              var calls = Number(r.total) || 0;
+              var totalMs = Number(r.total_ms) || 0;
+              return {
+                category: String(r.cat),
+                calls: calls,
+                avg_ms: calls > 0 ? Math.round(totalMs / calls) : null,
+                max_ms: Number(r.max_ms) || 0
+              };
             }),
             top_routes: topRoutes.map(function (r) {
+              var calls = Number(r.total) || 0;
+              var totalMs = Number(r.total_ms) || 0;
               return {
                 category: String(r.cat),
                 route_key: String(r.route),
-                cnt: Number(r.total)
+                cnt: calls,
+                avg_ms: calls > 0 ? Math.round(totalMs / calls) : null,
+                max_ms: Number(r.max_ms) || 0
               };
             })
           },

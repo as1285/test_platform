@@ -1647,7 +1647,7 @@
                 <div id="page-api-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>接口调用（按业务分类）</h2>
-            <p class="hint" style="margin:0 0 12px;">按自然日聚合各 API 与业务分类；下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP 列表<strong>不含</strong>管理后台类接口。</p>
+            <p class="hint" style="margin:0 0 12px;">按自然日聚合各 API 与业务分类，含<strong>平均/最大响应时间</strong>（后端处理耗时，自部署起累计）；下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP 列表<strong>不含</strong>管理后台类接口。</p>
             <div class="form-row" style="align-items: center;">
                 <div>
                     <label for="apiAnalyticsDays">统计区间</label>
@@ -1657,16 +1657,16 @@
             </div>
             <div class="scroll-x" style="margin-top: 12px;">
                 <table>
-                    <thead><tr><th>业务分类</th><th>调用次数（合计）</th></tr></thead>
-                    <tbody id="apiAnalyticsCatTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
+                    <thead><tr><th>业务分类</th><th>调用次数（合计）</th><th>平均响应</th><th>最大响应</th></tr></thead>
+                    <tbody id="apiAnalyticsCatTbody"><tr><td colspan="4">进入本页后加载…</td></tr></tbody>
                 </table>
             </div>
             <h3 style="font-size:14px;margin:16px 0 8px;color:#444;">高频接口 TOP 10（当前区间内）</h3>
             <p class="hint" style="margin:0 0 8px;">仅显示调用量前 10 名；不含「管理后台」类接口；上方「按业务分类」合计仍含管理后台。</p>
             <div class="scroll-x">
                 <table>
-                    <thead><tr><th>分类</th><th>接口标识</th><th>次数</th></tr></thead>
-                    <tbody id="apiAnalyticsRoutesTbody"><tr><td colspan="3">—</td></tr></tbody>
+                    <thead><tr><th>分类</th><th>接口标识</th><th>次数</th><th>平均响应</th><th>最大响应</th></tr></thead>
+                    <tbody id="apiAnalyticsRoutesTbody"><tr><td colspan="5">—</td></tr></tbody>
                 </table>
             </div>
         </section>

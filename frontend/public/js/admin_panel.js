@@ -2288,12 +2288,26 @@
                 });
         }
 
+        function formatApiLatencyMs(ms) {
+            if (ms == null || ms === '' || isNaN(Number(ms))) {
+                return '—';
+            }
+            var n = Math.round(Number(ms));
+            if (n <= 0) {
+                return '—';
+            }
+            if (n >= 1000) {
+                return (n / 1000).toFixed(n >= 10000 ? 1 : 2) + ' s';
+            }
+            return String(n) + ' ms';
+        }
+
         function loadApiAnalyticsPanel() {
             var daysA = analyticsPeriodVal(document.getElementById('apiAnalyticsDays'));
             document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                '<tr><td colspan="2">加载中…</td></tr>';
+                '<tr><td colspan="4">加载中…</td></tr>';
             document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                '<tr><td colspan="3">加载中…</td></tr>';
+                '<tr><td colspan="5">加载中…</td></tr>';
             adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
                 .then(function (r) {
                     return r.json();
@@ -2307,10 +2321,14 @@
                                 esc(row.category) +
                                 '</td><td>' +
                                 esc(String(row.calls)) +
+                                '</td><td>' +
+                                esc(formatApiLatencyMs(row.avg_ms)) +
+                                '</td><td>' +
+                                esc(formatApiLatencyMs(row.max_ms)) +
                                 '</td></tr>';
                         });
                         document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                            ch || '<tr><td colspan="2">暂无数据</td></tr>';
+                            ch || '<tr><td colspan="4">暂无数据</td></tr>';
                         var rh = '';
                         (api.data.top_routes || []).slice(0, 10).forEach(function (row) {
                             rh +=
@@ -2320,22 +2338,26 @@
                                 esc(row.route_key) +
                                 '</code></td><td>' +
                                 esc(String(row.cnt)) +
+                                '</td><td>' +
+                                esc(formatApiLatencyMs(row.avg_ms)) +
+                                '</td><td>' +
+                                esc(formatApiLatencyMs(row.max_ms)) +
                                 '</td></tr>';
                         });
                         document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                            rh || '<tr><td colspan="3">暂无数据</td></tr>';
+                            rh || '<tr><td colspan="5">暂无数据</td></tr>';
                     } else {
                         document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                            '<tr><td colspan="2">' + esc(api.msg || '加载失败') + '</td></tr>';
+                            '<tr><td colspan="4">' + esc(api.msg || '加载失败') + '</td></tr>';
                         document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                            '<tr><td colspan="3">—</td></tr>';
+                            '<tr><td colspan="5">—</td></tr>';
                     }
                 })
                 .catch(function () {
                     document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                        '<tr><td colspan="2">网络错误</td></tr>';
+                        '<tr><td colspan="4">网络错误</td></tr>';
                     document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                        '<tr><td colspan="3">网络错误</td></tr>';
+                        '<tr><td colspan="5">网络错误</td></tr>';
                 });
         }
 
