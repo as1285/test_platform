@@ -505,6 +505,29 @@
     } catch (e) {}
   }
 
+  /** iOS 首页：状态栏与搜索顶栏同蓝（15/16 Pro Max 等易露白底） */
+  function applyShouyePageChrome() {
+    try {
+      if (!document.body || !document.body.classList.contains('page-shouye')) {
+        return;
+      }
+      if (!isLikelyIOSViewportClient()) {
+        return;
+      }
+      upsertMeta('theme-color', '#2c80f4');
+      upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      try {
+        var sbHome = window.top && window.top.StatusBar;
+        if (sbHome) {
+          sbHome.overlaysWebView(true);
+          sbHome.styleLightContent();
+          sbHome.backgroundColorByHexString('#2c80f4');
+        }
+      } catch (eHomeSb) {}
+    } catch (e) {}
+  }
+
   /** iPhone 14 / 16·17 Pro / Pro Max：白顶栏页状态栏与导航栏同色（覆盖全局蓝 theme-color） */
   function applyIPhone16ProPageChrome() {
     try {
@@ -680,12 +703,17 @@
       }
       if (iosIPhone16ProMax) {
         document.documentElement.classList.add('app-ios-iphone16promax');
+        upsertMeta('theme-color', '#2c80f4');
+        upsertMeta('msapplication-navbutton-color', '#2c80f4');
       }
       if (iosIPhone14) {
         document.documentElement.classList.add('app-ios-iphone14');
       }
       if (iosIPhone15ProMax) {
         document.documentElement.classList.add('app-ios-iphone15promax');
+        /* 15 Pro Max 首页：状态栏须与搜索顶栏同蓝，避免白条接缝 */
+        upsertMeta('theme-color', '#2c80f4');
+        upsertMeta('msapplication-navbutton-color', '#2c80f4');
       }
       if (iosIPhone12ProMax) {
         document.documentElement.classList.add('app-ios-iphone12promax');
@@ -843,6 +871,12 @@
           /* iPhone 16 Pro：首页固定搜索条上方安全区铺蓝，消除状态栏下白边 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          /* iPhone 15/16 Pro Max 首页：状态栏区强制铺蓝，避免白底接缝 */
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye::before,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell:has(body.page-shouye),html.app-ios-iphone16promax.app-top-safe-shell:has(body.page-shouye){background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;}' +
           /* iPhone 16 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -916,9 +950,11 @@
 
   setupMobileStatusBar();
   applyMinePageChrome();
+  applyShouyePageChrome();
   applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyMinePageChrome);
+    document.addEventListener('DOMContentLoaded', applyShouyePageChrome);
     document.addEventListener('DOMContentLoaded', applyIPhone16ProPageChrome);
   }
 
