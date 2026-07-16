@@ -490,9 +490,18 @@
       if (!isLikelyIOSViewportClient()) {
         return;
       }
-      upsertMeta('theme-color', '#2c80f4');
-      upsertMeta('msapplication-navbutton-color', '#2c80f4');
+      /* 与 mine 顶图（grdb/nx）顶缘取样一致，避免状态栏浅蓝与头像区深蓝断层 */
+      upsertMeta('theme-color', '#2188f4');
+      upsertMeta('msapplication-navbutton-color', '#2188f4');
       upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      try {
+        var sbMine = window.top && window.top.StatusBar;
+        if (sbMine) {
+          sbMine.overlaysWebView(true);
+          sbMine.styleLightContent();
+          sbMine.backgroundColorByHexString('#2188f4');
+        }
+      } catch (eMineSb) {}
     } catch (e) {}
   }
 
@@ -763,12 +772,12 @@
           'html.app-android-client.app-top-safe-shell body:not(.page-shuiming) > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
+          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:linear-gradient(180deg,#2188f4 0%,#1e81fb 45%,#2c80f4 100%) !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
-          /* iOS 我的：顶图再上移，安全区用 env 与蓝底补条填满 */
-          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,48px) !important;--mine-ios-header-lift:12px;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 100%);z-index:8;pointer-events:none;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#5eb3ff 0%,#3d94f7 55%,#2d7ae8 100%) !important;}' +
+          /* iOS 我的：顶图再上移，安全区用 env 与顶图同色蓝底补条填满（避免浅蓝/深蓝接缝） */
+          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,48px) !important;--mine-ios-header-lift:12px;--mine-header-blue-top:#2188f4;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background:#2188f4;z-index:8;pointer-events:none;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#2188f4 0%,#1e81fb 45%,#2c80f4 100%) !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-header-lift,12px)) !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;}' +
           /* iPhone 12 Pro Max：待办/办查/消息/我的 刘海区白边（仅 12PM，其它机型不改） */

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260708-xiaomi13-usercard"></script>
+    <script src="/js/auth.js?v=20260716-mine-statusbar-blue"></script>
     <script src="/js/browser-install-prompt.js?v=20260525-activated" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -26,7 +26,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（不露白条） */
+        /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
         .header-bg {
             position: relative;
             width: 100%;
@@ -34,7 +34,15 @@
             --mine-safe-top: env(safe-area-inset-top, 0px);
             /* 激活按钮：相对顶栏下移，与头像中下缘齐平 */
             --mine-activate-btn-top-offset: 66px;
-            background: linear-gradient(180deg, #6fc0ff 0%, #4da8f8 55%, #3d96ef 100%);
+            --mine-header-blue-top: #2188f4;
+            --mine-header-blue-mid: #1e81fb;
+            --mine-header-blue-bot: #2c80f4;
+            background: linear-gradient(
+                180deg,
+                var(--mine-header-blue-top) 0%,
+                var(--mine-header-blue-mid) 45%,
+                var(--mine-header-blue-bot) 100%
+            );
         }
 
         html.app-top-safe-shell body.page-mine .header-bg {
@@ -57,7 +65,8 @@
             right: 0;
             top: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            background: linear-gradient(180deg, #6fc0ff 0%, #4da8f8 100%);
+            /* 与 grdb/nx 顶缘同色，iPhone 15 Pro Max 状态栏不再偏浅蓝 */
+            background: var(--mine-header-blue-top, #2188f4);
             z-index: 8;
             pointer-events: none;
         }
