@@ -1070,33 +1070,40 @@
     ctx.restore();
   }
 
-  /** 右上角二维码：轻微柔化，避免过于清晰可扫 */
-  function drawBlurredQr(ctx, x, y, size, qrImg, seed) {
-    var blurPx = 2;
-    var pad = blurPx * 2;
-    var tmp = document.createElement('canvas');
-    tmp.width = size + pad * 2;
-    tmp.height = size + pad * 2;
-    var tctx = tmp.getContext('2d');
-    tctx.fillStyle = '#fff';
-    tctx.fillRect(0, 0, tmp.width, tmp.height);
-    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
-      tctx.drawImage(qrImg, pad, pad, size, size);
-    } else {
-      drawQr(tctx, pad, pad, size, seed);
-    }
+  /** 右上角二维码：清晰绘制，保证手机可扫 */
+  function drawSharpQr(ctx, x, y, size, qrImg, seed) {
     ctx.save();
     ctx.fillStyle = '#fff';
     ctx.fillRect(x, y, size, size);
-    ctx.filter = 'blur(' + blurPx + 'px)';
-    ctx.drawImage(tmp, x - pad, y - pad);
+    ctx.imageSmoothingEnabled = false;
+    if (qrImg && qrImg.complete && qrImg.naturalWidth) {
+      ctx.drawImage(qrImg, x, y, size, size);
+    } else {
+      drawQr(ctx, x, y, size, seed);
+    }
     ctx.restore();
+  }
+
+  function certificatePublicOrigin() {
+    try {
+      var origin = String(window.location.origin || '');
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+        return 'https://geshui.vip';
+      }
+      if (/^https?:\/\/\d{1,3}(\.\d{1,3}){3}(:\d+)?$/i.test(origin)) {
+        return 'https://geshui.vip';
+      }
+      if (origin) {
+        return origin;
+      }
+    } catch (e0) {}
+    return 'https://geshui.vip';
   }
 
   function buildCertificateVerifyUrl(app) {
     var code = queryCode(app);
     try {
-      var u = new URL('najilu.html', window.location.href);
+      var u = new URL('najilu.html', certificatePublicOrigin() + '/');
       u.searchParams.set('view', 'verify');
       u.searchParams.set('code', code);
       if (app && app.id) {
@@ -1108,7 +1115,8 @@
       return u.href;
     } catch (e1) {
       return (
-        'najilu.html?view=verify&code=' +
+        certificatePublicOrigin() +
+        '/najilu.html?view=verify&code=' +
         encodeURIComponent(code) +
         (app && app.id ? '&id=' + encodeURIComponent(String(app.id)) : '') +
         (app && app.record_no ? '&record=' + encodeURIComponent(String(app.record_no)) : '')
@@ -1255,7 +1263,7 @@
       if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
         drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
       }
-      drawBlurredQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
+      drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
       drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
       drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
         size: 26,
@@ -1416,8 +1424,8 @@
           {
             width: 185 * CERT_RENDER_SCALE,
             margin: 1,
-            errorCorrectionLevel: 'M',
-            color: { dark: '#111111', light: '#ffffff' }
+            errorCorrectionLevel: 'H',
+            color: { dark: '#000000', light: '#ffffff' }
           },
           function (err, dataUrl) {
             if (err || !dataUrl) {
