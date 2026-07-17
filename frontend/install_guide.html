@@ -5,7 +5,10 @@
     <script src="/js/auth.js?v=20260608-app-shell-register"></script>
     <script src="/js/wechat-open-browser-prompt.js?v=20260608"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>安装包和使用方法</title>
+    <title>个人所得税 · 先体验再下载</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
@@ -15,124 +18,313 @@
         }
         html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f5f6fa;
+            font-family: "Sora", "PingFang SC", "Noto Sans SC", sans-serif;
+            background: #f0f4fa;
             min-height: 100vh;
             padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+            color: #1e293b;
         }
-        .header {
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
-            color: #fff;
-            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 16px;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-        .header-inner {
-            position: relative;
-            text-align: center;
-            padding-top: 4px;
-        }
-        .back-btn {
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #fff;
-            font-size: 15px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            opacity: 0.95;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .header-title {
-            font-size: 17px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-        .wrap {
-            padding: 16px;
+        .lp-wrap {
             max-width: 520px;
             margin: 0 auto;
         }
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 14px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-        }
-        .card > h2 {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 14px;
-        }
-        .steps-bar {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .step-pill {
-            flex: 1;
-            text-align: center;
-            font-size: 12px;
-            line-height: 1.35;
-            padding: 8px 6px;
-            border-radius: 999px;
-            background: #eef2f7;
-            color: #64748b;
-            font-weight: 500;
-        }
-        .step-pill.is-active {
-            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+
+        /* ── Hero ── */
+        .lp-hero {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(165deg, #0b4db8 0%, #1e6fff 55%, #4d9aff 100%);
             color: #fff;
+            padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 0;
+            animation: heroFadeIn 0.7s ease-out both;
         }
-        .step-block {
-            margin-bottom: 18px;
-            padding-bottom: 18px;
-            border-bottom: 1px solid #f0f0f0;
+        @keyframes heroFadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .step-block:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-        .step-block h3 {
-            font-size: 15px;
-            color: #1e293b;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .step-num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: #1e6fff;
-            color: #fff;
-            font-size: 12px;
+        .lp-hero-brand {
+            font-size: 30px;
             font-weight: 700;
-            flex-shrink: 0;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+            margin-bottom: 12px;
         }
-        .step-block p, .step-block li {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.65;
+        .lp-hero-headline {
+            font-size: 17px;
+            font-weight: 500;
+            line-height: 1.45;
+            letter-spacing: 0;
+            opacity: 0.95;
             margin-bottom: 8px;
         }
-        .step-block ol {
-            padding-left: 1.25em;
-            margin: 8px 0 0;
+        .lp-hero-support {
+            font-size: 13px;
+            line-height: 1.55;
+            opacity: 0.88;
+            margin-bottom: 22px;
+        }
+        .lp-hero-ctas {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .lp-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .lp-btn:active {
+            transform: scale(0.97);
+        }
+        .lp-btn-primary {
+            background: #fff;
+            color: #0b4db8;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+        .lp-btn-outline {
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+            border: 1.5px solid rgba(255, 255, 255, 0.55);
+        }
+        .lp-hero-visual {
+            position: relative;
+            margin: 0 -20px;
+            min-height: 200px;
+            max-height: 280px;
+            overflow: hidden;
+        }
+        .lp-hero-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(11, 77, 184, 0.35) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .lp-hero-visual img {
+            display: block;
+            width: 100%;
+            max-height: 280px;
+            object-fit: cover;
+            object-position: top center;
+        }
+        .lp-hero-visual.has-img .lp-hero-gradient {
+            background: linear-gradient(180deg, transparent 30%, rgba(11, 77, 184, 0.5) 100%);
+        }
+
+        /* ── Sections ── */
+        .lp-section {
+            padding: 28px 16px;
+        }
+        .lp-section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+        .lp-section-lead {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .lp-disclaimer {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.55;
+            margin-top: 16px;
+        }
+
+        /* ── Preview / Showcase ── */
+        .showcase-card {
+            background: #fff;
+            border-radius: 0;
+            padding: 0;
+        }
+        .showcase-card[hidden] {
+            display: none !important;
+        }
+        .showcase-gif-wrap {
+            margin-bottom: 14px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0f172a;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.1);
+        }
+        .showcase-gif-wrap img {
+            display: block;
+            width: 100%;
+            max-height: min(420px, 62vh);
+            object-fit: contain;
+            margin: 0 auto;
+        }
+        .showcase-carousel-wrap {
+            margin-bottom: 8px;
+        }
+        .showcase-carousel {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 2px 2px 6px;
+        }
+        .showcase-carousel::-webkit-scrollbar { display: none; }
+        .showcase-slide {
+            flex: 0 0 78%;
+            max-width: 300px;
+            scroll-snap-align: center;
+        }
+        .showcase-slide img {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            background: #fff;
+        }
+        .showcase-slide figcaption {
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .showcase-swipe-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        /* ── Capabilities ── */
+        .lp-caps {
+            background: #fff;
+            border-top: 1px solid #e8edf4;
+            border-bottom: 1px solid #e8edf4;
+        }
+        .lp-cap-item {
+            padding: 16px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .lp-cap-item:last-child {
+            border-bottom: none;
+        }
+        .lp-cap-item h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .lp-cap-item p {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.55;
+        }
+
+        /* ── Demo panel ── */
+        .lp-demo {
+            background: #fff;
+        }
+        .lp-demo-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            animation: demoSlideIn 0.55s ease-out both;
+        }
+        @keyframes demoSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .lp-demo-header {
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
+            color: #fff;
+            padding: 14px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .lp-demo-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #eef2f7;
+            font-size: 14px;
+        }
+        .lp-demo-row:last-child {
+            border-bottom: none;
+        }
+        .lp-demo-label {
+            color: #64748b;
+        }
+        .lp-demo-value {
+            color: #0f172a;
+            font-weight: 500;
+            text-align: right;
+        }
+        .lp-demo-value.is-amount {
+            color: #1e6fff;
+            font-weight: 600;
+        }
+        .lp-demo-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .lp-demo-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease;
+        }
+        .lp-demo-btn:active {
+            transform: scale(0.97);
+        }
+        .lp-demo-btn-primary {
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
+            color: #fff;
+        }
+        .lp-demo-btn-secondary {
+            background: #fff;
+            color: #1e6fff;
+            border: 1.5px solid #1e6fff;
+        }
+
+        /* ── Download section ── */
+        .lp-download {
+            background: #f0f4fa;
         }
         .install-top-download {
-            padding-top: 14px;
-            padding-bottom: 14px;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .install-top-download.is-priority {
+            border: 1px solid #bfdbfe;
+            box-shadow: 0 4px 18px rgba(30, 111, 255, 0.12);
         }
         .install-actions {
             display: flex;
@@ -159,7 +351,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
             color: #fff;
         }
         .desktop-qr {
@@ -192,6 +384,79 @@
         }
         .in-app-banner.is-visible {
             display: block;
+        }
+        .lp-steps-bar {
+            display: flex;
+            gap: 6px;
+            margin: 14px 0;
+        }
+        .step-pill {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.35;
+            padding: 7px 4px;
+            border-radius: 999px;
+            background: #eef2f7;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .step-pill.is-active {
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
+            color: #fff;
+        }
+        .step-block {
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .step-block:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .step-block h3 {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .step-block p, .step-block li {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.65;
+            margin-bottom: 6px;
+        }
+        .step-block ol {
+            padding-left: 1.25em;
+            margin: 6px 0 0;
+        }
+        .lp-collapse {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fafbfc;
+            margin-bottom: 10px;
+        }
+        .lp-collapse summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .lp-collapse summary::-webkit-details-marker { display: none; }
+        .lp-collapse summary::after {
+            content: '展开';
+            float: right;
+            font-size: 12px;
+            color: #1e6fff;
+            font-weight: 600;
+        }
+        .lp-collapse[open] summary::after { content: '收起'; }
+        .lp-collapse-body {
+            padding: 0 14px 14px;
         }
         .video-label {
             font-size: 13px;
@@ -231,43 +496,20 @@
             color: #888;
             line-height: 1.5;
         }
-        .usage-collapse {
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #fafbfc;
-        }
-        .usage-collapse summary {
-            list-style: none;
-            cursor: pointer;
-            padding: 12px 14px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .usage-collapse summary::-webkit-details-marker {
-            display: none;
-        }
-        .usage-collapse summary::after {
-            content: '展开';
-            float: right;
-            font-size: 12px;
-            color: #1e6fff;
-            font-weight: 600;
-        }
-        .usage-collapse[open] summary::after {
-            content: '收起';
-        }
-        .usage-collapse-body {
-            padding: 0 14px 14px;
-        }
         .hint {
             font-size: 12px;
             color: #888;
             margin-top: 10px;
             line-height: 1.5;
         }
+        .is-hidden {
+            display: none !important;
+        }
+        .step-block.is-hidden {
+            display: none;
+        }
+
+        /* ── Sticky bar ── */
         .sticky-register-bar {
             position: fixed;
             left: 0;
@@ -284,169 +526,171 @@
         .sticky-register-inner {
             max-width: 520px;
             margin: 0 auto;
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
         }
         .sticky-register-hint {
-            font-size: 12px;
-            color: #888;
+            font-size: 11px;
+            color: #64748b;
             text-align: center;
             margin-bottom: 8px;
             line-height: 1.45;
-        }
-        .sticky-register-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
             width: 100%;
-            min-height: 48px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-            color: #fff;
-            font-size: 16px;
-            font-weight: 600;
-            text-decoration: none;
-            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28);
-            -webkit-tap-highlight-color: transparent;
+        }
+        .sticky-register-inner .sticky-row {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        .sticky-btn-row {
+            display: flex;
+            gap: 10px;
         }
         .sticky-download-btn {
             display: none;
             align-items: center;
             justify-content: center;
-            width: 100%;
+            flex: 1;
             min-height: 48px;
-            margin-bottom: 8px;
             border-radius: 10px;
-            background: linear-gradient(135deg, #1e6fff 0%, #008afd 100%);
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
             color: #fff;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             text-decoration: none;
             box-shadow: 0 4px 14px rgba(30, 111, 255, 0.28);
             -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease;
+        }
+        .sticky-download-btn:active {
+            transform: scale(0.97);
         }
         .sticky-download-btn.is-visible {
             display: flex;
         }
-        .sticky-register-bar.is-download-first .sticky-register-hint {
-            color: #334155;
-        }
-        .install-top-download .install-actions .btn {
-            min-height: 48px;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        .install-top-download.is-priority {
-            border: 1px solid #bfdbfe;
-            box-shadow: 0 4px 18px rgba(30, 111, 255, 0.12);
-        }
-        .is-hidden {
-            display: none !important;
-        }
-        .step-block.is-hidden {
-            display: none;
-        }
-        .showcase-card h2 {
-            font-size: 17px;
-            color: #1e293b;
-            margin-bottom: 8px;
-            line-height: 1.4;
-        }
-        .showcase-lead {
-            font-size: 14px;
-            color: #64748b;
-            line-height: 1.55;
-            margin-bottom: 14px;
-        }
-        .showcase-gif-wrap {
-            margin-bottom: 14px;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #0f172a;
-            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
-        }
-        .showcase-gif-wrap img {
-            display: block;
-            width: 100%;
-            max-height: min(420px, 62vh);
-            object-fit: contain;
-            margin: 0 auto;
-        }
-        .showcase-carousel-wrap {
-            margin-bottom: 14px;
-        }
-        .showcase-carousel {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            padding: 2px 2px 6px;
-        }
-        .showcase-carousel::-webkit-scrollbar {
-            display: none;
-        }
-        .showcase-slide {
-            flex: 0 0 78%;
-            max-width: 300px;
-            scroll-snap-align: center;
-        }
-        .showcase-slide img {
-            display: block;
-            width: 100%;
-            border-radius: 10px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            background: #fff;
-        }
-        .showcase-slide figcaption {
-            text-align: center;
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 6px;
-            line-height: 1.4;
-        }
-        .showcase-swipe-hint {
-            font-size: 12px;
-            color: #94a3b8;
-            text-align: center;
-            margin-top: 6px;
-        }
-        .showcase-register-btn {
+        .sticky-register-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
+            flex: 1;
             min-height: 48px;
-            margin-top: 4px;
+            border-radius: 10px;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 15px;
+            font-weight: 600;
             text-decoration: none;
-            box-shadow: 0 4px 14px rgba(30, 111, 255, 0.22);
+            border: 1.5px solid #1e6fff;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease;
         }
-        .showcase-disclaimer {
-            margin-top: 10px;
+        .sticky-register-btn:active {
+            transform: scale(0.97);
+        }
+        .sticky-register-bar.is-download-first .sticky-register-hint {
+            color: #334155;
+        }
+
+        /* ── Gate modal ── */
+        .lp-gate-mask {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.45);
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+        }
+        .lp-gate-mask.is-open {
+            display: flex;
+        }
+        .lp-gate-panel {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+            animation: gateSlideUp 0.3s ease-out both;
+        }
+        @keyframes gateSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .lp-gate-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .lp-gate-desc {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.55;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .lp-gate-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .lp-gate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease;
+        }
+        .lp-gate-btn:active {
+            transform: scale(0.97);
+        }
+        .lp-gate-btn-download {
+            background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
+            color: #fff;
+        }
+        .lp-gate-btn-register {
+            background: #fff;
+            color: #1e6fff;
+            border: 1.5px solid #1e6fff;
+        }
+        .lp-gate-btn-cancel {
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 500;
         }
     </style>
 </head>
-<body class="page-install-guide">
-    <header class="header">
-        <div class="header-inner">
-            <a href="about_update.html" class="back-btn"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
-            <h1 class="header-title">安装包和使用方法</h1>
-        </div>
-    </header>
-
-    <div class="wrap">
-        <section class="card install-top-download" id="installTopDownload">
-            <div class="install-actions" id="installButtonsRow"></div>
-            <div class="desktop-qr" id="desktopQrBlock" hidden>
-                <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
-                <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
+<body class="page-install-guide page-landing-b">
+    <div class="lp-wrap">
+        <!-- 1. Hero -->
+        <section class="lp-hero" id="lpHero">
+            <h1 class="lp-hero-brand">个人所得税</h1>
+            <p class="lp-hero-headline">先看效果，再装到手机</p>
+            <p class="lp-hero-support">网页体验示例明细，满意后再下载 App</p>
+            <div class="lp-hero-ctas">
+                <a href="#demo" class="lp-btn lp-btn-primary">查看示例明细</a>
+                <a href="#download" class="lp-btn lp-btn-outline">下载到手机</a>
             </div>
-            <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+            <div class="lp-hero-visual" id="lpHeroVisual">
+                <div class="lp-hero-gradient"></div>
+                <img id="lpHeroShowcaseImg" alt="" hidden decoding="async">
+            </div>
         </section>
 
-        <section class="card showcase-card" id="installShowcaseCard" hidden>
-            <h2>安装后能生成这样的个税明细</h2>
-            <p class="showcase-lead">注册并填写演示数据，即可查看收入纳税明细、申报记录与税务记录样式。</p>
+        <!-- 2. Preview -->
+        <section class="lp-section showcase-card" id="installShowcaseCard" hidden>
+            <h2 class="lp-section-title">效果预览</h2>
+            <p class="lp-section-lead">左右滑动查看明细、申报与税务记录样式</p>
             <div class="showcase-gif-wrap" id="installShowcaseGifWrap" hidden>
                 <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="eager" decoding="async">
             </div>
@@ -454,48 +698,114 @@
                 <div class="showcase-carousel" id="installShowcaseCarousel" role="list"></div>
                 <p class="showcase-swipe-hint">左右滑动查看：明细 · 申报 · 税记录</p>
             </div>
-            <a href="register.html?from=install_guide" class="btn btn-primary install-register-link install-register-showcase showcase-register-btn">立即注册，体验效果</a>
-            <p class="hint showcase-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
         </section>
 
-        <section class="card">
-            <h2>三步完成安装与注册</h2>
-            <div class="steps-bar" aria-hidden="true">
-                <div class="step-pill is-active" id="stepPill1">① 下载安装</div>
-                <div class="step-pill" id="stepPill2">② 完成安装</div>
-                <div class="step-pill" id="stepPill3">③ 注册激活</div>
+        <!-- 3. Capabilities -->
+        <section class="lp-section lp-caps">
+            <h2 class="lp-section-title">主要功能</h2>
+            <div class="lp-cap-item">
+                <h3>收入纳税明细样式</h3>
+                <p>按年度与所得项目展示工资薪金等明细，含收入、已申报税额等字段。</p>
             </div>
+            <div class="lp-cap-item">
+                <h3>申报与完税记录</h3>
+                <p>查看申报记录、完税证明样式，便于了解 App 内完整界面效果。</p>
+            </div>
+        </section>
+
+        <!-- 4. Demo -->
+        <section class="lp-section lp-demo" id="demo">
+            <h2 class="lp-section-title">示例明细</h2>
+            <p class="lp-section-lead">以下为演示数据，完整功能需下载 App 或注册后使用</p>
+            <div class="lp-demo-panel">
+                <div class="lp-demo-header">2024 年度 · 收入纳税明细</div>
+                <div class="lp-demo-row">
+                    <span class="lp-demo-label">所得项目</span>
+                    <span class="lp-demo-value">工资薪金</span>
+                </div>
+                <div class="lp-demo-row">
+                    <span class="lp-demo-label">收入</span>
+                    <span class="lp-demo-value is-amount">¥ 186,400.00</span>
+                </div>
+                <div class="lp-demo-row">
+                    <span class="lp-demo-label">已申报税额</span>
+                    <span class="lp-demo-value is-amount">¥ 8,920.00</span>
+                </div>
+                <div class="lp-demo-row">
+                    <span class="lp-demo-label">扣缴义务人</span>
+                    <span class="lp-demo-value">示例科技有限公司</span>
+                </div>
+            </div>
+            <div class="lp-demo-actions">
+                <button type="button" class="lp-demo-btn lp-demo-btn-primary" id="demoFullDetailBtn">查看完整明细</button>
+                <button type="button" class="lp-demo-btn lp-demo-btn-secondary" id="demoCertBtn">生成完税证明</button>
+            </div>
+            <p class="lp-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
+        </section>
+
+        <!-- 5. Download / Install -->
+        <section class="lp-section lp-download" id="download">
+            <h2 class="lp-section-title">下载到手机</h2>
+            <p class="lp-section-lead">安装 App 后可填写演示数据，体验完整功能</p>
 
             <div class="in-app-banner" id="inAppBanner">
                 服务器已迁移或需更新时，请先点击下方<strong>下载最新安装包</strong>；安装新版 App 后再注册/登录。切勿只点注册而跳过下载。
             </div>
 
+            <section class="install-top-download" id="installTopDownload">
+                <div class="install-actions" id="installButtonsRow"></div>
+                <div class="desktop-qr" id="desktopQrBlock" hidden>
+                    <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
+                    <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
+                </div>
+                <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+            </section>
+
+            <div class="lp-steps-bar" aria-hidden="true">
+                <div class="step-pill is-active" id="stepPill1">① 下载安装</div>
+                <div class="step-pill" id="stepPill2">② 完成安装</div>
+                <div class="step-pill" id="stepPill3">③ 注册激活</div>
+            </div>
+
             <div class="step-block" id="stepDownloadBlock">
-                <h3><span class="step-num">1</span>下载安装包</h3>
-                <p class="hint">点击页面顶部按钮下载安装包；下载完成后继续第 2 步。</p>
+                <h3>第 1 步：下载安装包</h3>
+                <p class="hint">点击上方按钮下载；下载完成后继续安装。</p>
             </div>
 
             <div class="step-block" id="stepInstallBlock">
-                <h3><span class="step-num">2</span>按指引完成安装</h3>
-                <div id="androidInstallTips" class="is-hidden">
-                    <ol>
-                        <li>点击页面顶部按钮下载 APK 安装包</li>
-                        <li>若提示「未知来源」或「禁止安装」，请在系统设置中允许本浏览器安装应用</li>
-                        <li>安装完成后打开 App，再点击下方「立即注册账号」</li>
-                    </ol>
-                </div>
-                <div id="iosInstallSection">
-                    <p class="hint ios-cert-hint" id="iosCertHint" style="margin-bottom:10px;line-height:1.55;">
-                        若打开 App 时提示「<strong>此连接非私人连接</strong>」，请点页面底部「<strong>访问此网站</strong>」继续；或删除桌面图标后，用
-                        <a href="https://geshui.vip/install_guide.html">https://geshui.vip/install_guide.html</a>
-                        重新下载描述文件。
-                    </p>
-                    <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
-                    <div id="iosInstallVideoContainer"></div>
-                </div>
-                <details id="usageVideoBlock" class="usage-collapse" hidden>
+                <h3>第 2 步：完成安装</h3>
+
+                <details class="lp-collapse" id="androidInstallDetails">
+                    <summary>Android 安装说明</summary>
+                    <div class="lp-collapse-body">
+                        <div id="androidInstallTips" class="is-hidden">
+                            <ol>
+                                <li>点击上方按钮下载 APK 安装包</li>
+                                <li>若提示「未知来源」或「禁止安装」，请在系统设置中允许本浏览器安装应用</li>
+                                <li>安装完成后打开 App，再注册并输入激活码</li>
+                            </ol>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="lp-collapse" id="iosInstallDetails">
+                    <summary>iPhone / iPad 安装步骤</summary>
+                    <div class="lp-collapse-body">
+                        <div id="iosInstallSection">
+                            <p class="hint ios-cert-hint" id="iosCertHint" style="margin-bottom:10px;line-height:1.55;">
+                                若打开 App 时提示「<strong>此连接非私人连接</strong>」，请点页面底部「<strong>访问此网站</strong>」继续；或删除桌面图标后，用
+                                <a href="https://geshui.vip/install_guide.html">https://geshui.vip/install_guide.html</a>
+                                重新下载描述文件。
+                            </p>
+                            <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
+                            <div id="iosInstallVideoContainer"></div>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="usageVideoBlock" class="lp-collapse" hidden>
                     <summary>安装后如何使用（操作演示，可选）</summary>
-                    <div class="usage-collapse-body">
+                    <div class="lp-collapse-body">
                         <p class="video-label" style="margin-bottom:10px;">演示注册、填写个税与查看明细，约 1–2 分钟即可上手</p>
                         <div id="usageVideoContainer"></div>
                     </div>
@@ -503,20 +813,36 @@
             </div>
 
             <div class="step-block" id="stepRegisterBlock">
-                <h3><span class="step-num">3</span>注册并激活</h3>
+                <h3>第 3 步：注册并激活</h3>
                 <p>注册成功后，请在 App 内输入激活码完成激活，即可填写个税演示数据。</p>
                 <a href="register.html?from=install_guide" class="btn btn-primary install-register-link" style="display:flex;margin-top:12px;text-decoration:none;">立即注册账号</a>
             </div>
-
-            <p class="hint" style="margin-top:14px;">本应用为界面演示与学习参考，非官方申报渠道。</p>
         </section>
     </div>
 
+    <!-- 6. Sticky bar -->
     <div class="sticky-register-bar" id="stickyInstallBar">
         <div class="sticky-register-inner">
-            <p class="sticky-register-hint" id="stickyInstallHint">第 1 步：先下载安装包；装好后再注册并输入激活码</p>
-            <a href="#" class="sticky-download-btn" id="stickyDownloadBtn" hidden>下载最新安装包</a>
-            <a href="register.html?from=install_guide" class="sticky-register-btn install-register-link" id="installRegisterLink">立即注册账号</a>
+            <div class="sticky-row">
+                <p class="sticky-register-hint" id="stickyInstallHint">下载 App 或注册账号，解锁完整明细与完税证明</p>
+                <div class="sticky-btn-row">
+                    <a href="#" class="sticky-download-btn" id="stickyDownloadBtn" hidden>下载 App</a>
+                    <a href="register.html?from=install_guide" class="sticky-register-btn install-register-link" id="installRegisterLink">注册账号</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Gate modal -->
+    <div class="lp-gate-mask" id="lpGateMask" role="dialog" aria-modal="true" aria-labelledby="lpGateTitle">
+        <div class="lp-gate-panel">
+            <h2 class="lp-gate-title" id="lpGateTitle">继续体验需要注册或下载 App</h2>
+            <p class="lp-gate-desc">完整明细与完税证明功能需在 App 内使用，请先下载或注册账号</p>
+            <div class="lp-gate-actions">
+                <a href="#download" class="lp-gate-btn lp-gate-btn-download" id="lpGateDownloadBtn">下载到手机</a>
+                <a href="register.html?from=install_guide" class="lp-gate-btn lp-gate-btn-register install-register-link" id="lpGateRegisterBtn">立即注册</a>
+                <button type="button" class="lp-gate-btn lp-gate-btn-cancel" id="lpGateCancelBtn">取消</button>
+            </div>
         </div>
     </div>
 
@@ -642,7 +968,6 @@
                 if (typeof trackFn === 'function') {
                     trackFn();
                 }
-                // App/WebView 内须用系统浏览器下载，否则按钮点了无文件
                 if (isInAppShell()) {
                     ev.preventDefault();
                     openDownloadExternally(url || el.href);
@@ -658,25 +983,20 @@
                 return;
             }
             sticky.href = primaryBtn.getAttribute('href') || '#';
-            sticky.textContent = label || primaryBtn.textContent || '下载最新安装包';
+            sticky.textContent = label || '下载 App';
             sticky.removeAttribute('hidden');
             sticky.classList.add('is-visible');
             if (bar) {
                 bar.classList.add('is-download-first');
             }
             if (hint) {
-                hint.textContent = '请先下载并安装最新 App，完成后再注册 / 激活';
+                hint.textContent = '下载 App 或注册账号，解锁完整明细与完税证明';
             }
             sticky.onclick = function (ev) {
-                if (typeof primaryBtn.onclick === 'function') {
-                    /* noop */
-                }
                 if (isInAppShell()) {
                     ev.preventDefault();
                     openDownloadExternally(sticky.href);
-                    return;
                 }
-                // 非 App 内让浏览器自然处理 sticky 自己的 href，避免重复触发埋点
             };
         }
 
@@ -689,14 +1009,15 @@
             var downloadBlock = document.getElementById('stepDownloadBlock');
             var inAppBanner = document.getElementById('inAppBanner');
             var androidTips = document.getElementById('androidInstallTips');
+            var androidDetails = document.getElementById('androidInstallDetails');
             var iosSection = document.getElementById('iosInstallSection');
+            var iosDetails = document.getElementById('iosInstallDetails');
             var usageBlock = document.getElementById('usageVideoBlock');
             var pill1 = document.getElementById('stepPill1');
             var pill2 = document.getElementById('stepPill2');
             var pill3 = document.getElementById('stepPill3');
             var desktopQr = document.getElementById('desktopQrBlock');
 
-            // 迁移/更新场景：即使已在旧 App 内打开，也必须显示下载按钮
             if (inApp) {
                 if (inAppBanner) {
                     inAppBanner.classList.add('is-visible');
@@ -722,6 +1043,12 @@
                     if (androidTips) {
                         androidTips.classList.remove('is-hidden');
                     }
+                    if (androidDetails) {
+                        androidDetails.hidden = false;
+                    }
+                    if (iosDetails) {
+                        iosDetails.hidden = true;
+                    }
                     if (iosSection) {
                         iosSection.hidden = true;
                     }
@@ -729,13 +1056,24 @@
                     if (androidTips) {
                         androidTips.classList.add('is-hidden');
                     }
+                    if (androidDetails) {
+                        androidDetails.hidden = true;
+                    }
+                    if (iosDetails) {
+                        iosDetails.hidden = false;
+                    }
                     if (iosSection) {
                         iosSection.hidden = false;
                     }
                 } else {
-                    // 未知 WebView：两个入口都给，避免漏掉对应系统
                     if (androidTips) {
                         androidTips.classList.remove('is-hidden');
+                    }
+                    if (androidDetails) {
+                        androidDetails.hidden = false;
+                    }
+                    if (iosDetails) {
+                        iosDetails.hidden = false;
                     }
                     if (iosSection) {
                         iosSection.hidden = false;
@@ -757,6 +1095,12 @@
                 if (androidTips) {
                     androidTips.classList.add('is-hidden');
                 }
+                if (androidDetails) {
+                    androidDetails.hidden = true;
+                }
+                if (iosDetails) {
+                    iosDetails.hidden = false;
+                }
                 if (iosSection) {
                     iosSection.hidden = false;
                 }
@@ -767,6 +1111,12 @@
                 if (androidTips) {
                     androidTips.classList.remove('is-hidden');
                 }
+                if (androidDetails) {
+                    androidDetails.hidden = false;
+                }
+                if (iosDetails) {
+                    iosDetails.hidden = true;
+                }
                 if (iosSection) {
                     iosSection.hidden = true;
                 }
@@ -776,6 +1126,12 @@
             } else if (desktop) {
                 if (androidTips) {
                     androidTips.classList.add('is-hidden');
+                }
+                if (androidDetails) {
+                    androidDetails.hidden = true;
+                }
+                if (iosDetails) {
+                    iosDetails.hidden = false;
                 }
                 if (iosSection) {
                     iosSection.hidden = false;
@@ -826,7 +1182,6 @@
                     row.innerHTML = '';
                     var showApk = layout.showApk && apk;
                     var showIos = layout.showIos && iosUrl;
-                    // App 内若平台判断失败，兜底：有配置就都显示
                     if (layout.inApp && !showApk && !showIos) {
                         showApk = !!apk;
                         showIos = !!iosUrl;
@@ -879,7 +1234,7 @@
                         row.appendChild(a);
                         if (!primaryForSticky || isLikelyAndroidClient() || layout.inApp) {
                             primaryForSticky = a;
-                            primaryLabel = a.textContent;
+                            primaryLabel = '下载 App';
                         }
                     }
                     if (showIos) {
@@ -900,7 +1255,7 @@
                         row.appendChild(ia);
                         if (!primaryForSticky || isLikelyIOSClient()) {
                             primaryForSticky = ia;
-                            primaryLabel = ia.textContent;
+                            primaryLabel = '下载 App';
                         }
                     }
                     if (primaryForSticky) {
@@ -925,6 +1280,17 @@
             return '/' + path;
         }
 
+        function setHeroVisualFromGif(gifUrl) {
+            var heroVisual = document.getElementById('lpHeroVisual');
+            var heroImg = document.getElementById('lpHeroShowcaseImg');
+            if (!heroVisual || !heroImg || !gifUrl) {
+                return;
+            }
+            heroImg.src = gifUrl;
+            heroImg.removeAttribute('hidden');
+            heroVisual.classList.add('has-img');
+        }
+
         function renderInstallShowcase(data) {
             var card = document.getElementById('installShowcaseCard');
             if (!card || !data) {
@@ -947,6 +1313,7 @@
                 if (hasGif) {
                     gifImg.src = gifUrl;
                     gifWrap.hidden = false;
+                    setHeroVisualFromGif(gifUrl);
                 } else {
                     gifWrap.hidden = true;
                     gifImg.removeAttribute('src');
@@ -1011,6 +1378,10 @@
             }
         }
 
+        var mineUiCache = null;
+        var iosVideoLoaded = false;
+        var usageVideoLoaded = false;
+
         function renderVideo(containerId, url, emptyText) {
             var box = document.getElementById(containerId);
             if (!box) return;
@@ -1044,17 +1415,75 @@
             }
         }
 
-        (function initVideos() {
-            renderVideo('iosInstallVideoContainer', '', '暂未配置苹果安装视频');
-            renderVideo('usageVideoContainer', '', '暂未配置操作视频');
+        function ensureMineUiData(cb) {
+            if (mineUiCache) {
+                cb(mineUiCache);
+                return;
+            }
+            fetch('/api/public/mine-ui', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (body) {
+                    if (body && body.code === 200 && body.data) {
+                        mineUiCache = body.data;
+                    }
+                    cb(mineUiCache);
+                })
+                .catch(function () {
+                    cb(null);
+                });
+        }
+
+        function loadIosVideoIfNeeded() {
+            if (iosVideoLoaded) {
+                return;
+            }
+            iosVideoLoaded = true;
+            ensureMineUiData(function (data) {
+                renderVideo('iosInstallVideoContainer', data ? data.install_ios_video || '' : '', '暂未配置苹果安装视频');
+            });
+        }
+
+        function loadUsageVideoIfNeeded() {
+            if (usageVideoLoaded) {
+                return;
+            }
+            usageVideoLoaded = true;
+            ensureMineUiData(function (data) {
+                renderVideo('usageVideoContainer', data ? data.install_usage_video || '' : '', '暂未配置操作视频');
+                var usageBlock = document.getElementById('usageVideoBlock');
+                if (usageBlock && data && data.install_usage_video) {
+                    usageBlock.hidden = false;
+                }
+            });
+        }
+
+        function bindLazyVideoDetails() {
+            var iosDetails = document.getElementById('iosInstallDetails');
+            var usageBlock = document.getElementById('usageVideoBlock');
+            if (iosDetails) {
+                iosDetails.addEventListener('toggle', function () {
+                    if (iosDetails.open) {
+                        loadIosVideoIfNeeded();
+                    }
+                });
+            }
+            if (usageBlock) {
+                usageBlock.addEventListener('toggle', function () {
+                    if (usageBlock.open) {
+                        loadUsageVideoIfNeeded();
+                    }
+                });
+            }
+        }
+
+        (function initShowcase() {
             fetch('/api/public/mine-ui', { credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (body) {
                     if (!body || body.code !== 200 || !body.data) {
                         return;
                     }
-                    renderVideo('iosInstallVideoContainer', body.data.install_ios_video || '', '暂未配置苹果安装视频');
-                    renderVideo('usageVideoContainer', body.data.install_usage_video || '', '暂未配置操作视频');
+                    mineUiCache = body.data;
                     renderInstallShowcase(body.data);
                     var usageBlock = document.getElementById('usageVideoBlock');
                     if (usageBlock && body.data.install_usage_video) {
@@ -1062,6 +1491,84 @@
                     }
                 })
                 .catch(function () {});
+            bindLazyVideoDetails();
+        })();
+
+        /* ── Gate modal ── */
+        (function initGateModal() {
+            var mask = document.getElementById('lpGateMask');
+            var cancelBtn = document.getElementById('lpGateCancelBtn');
+            var downloadBtn = document.getElementById('lpGateDownloadBtn');
+            var fullBtn = document.getElementById('demoFullDetailBtn');
+            var certBtn = document.getElementById('demoCertBtn');
+            var gateSource = '';
+
+            function trackGate(eventName, extra) {
+                if (typeof window.trackPublicAction !== 'function') {
+                    return;
+                }
+                var meta = { page: 'install_guide' };
+                if (gateSource) {
+                    meta.source = gateSource;
+                }
+                if (extra) {
+                    for (var k in extra) {
+                        if (Object.prototype.hasOwnProperty.call(extra, k)) {
+                            meta[k] = extra[k];
+                        }
+                    }
+                }
+                if (typeof window.getSalesChannel === 'function') {
+                    var salesCh = window.getSalesChannel();
+                    if (salesCh) {
+                        meta.sales_ch = salesCh;
+                    }
+                }
+                window.trackPublicAction(eventName, meta);
+            }
+
+            function openGate(source) {
+                gateSource = source || 'demo';
+                if (mask) {
+                    mask.classList.add('is-open');
+                }
+                trackGate('track_landing_gate_open');
+            }
+
+            function closeGate() {
+                if (mask) {
+                    mask.classList.remove('is-open');
+                }
+            }
+
+            if (fullBtn) {
+                fullBtn.addEventListener('click', function () {
+                    trackGate('track_landing_demo_click', { action: 'full_detail' });
+                    openGate('full_detail');
+                });
+            }
+            if (certBtn) {
+                certBtn.addEventListener('click', function () {
+                    trackGate('track_landing_demo_click', { action: 'certificate' });
+                    openGate('certificate');
+                });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeGate);
+            }
+            if (mask) {
+                mask.addEventListener('click', function (ev) {
+                    if (ev.target === mask) {
+                        closeGate();
+                    }
+                });
+            }
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function () {
+                    trackGate('track_landing_gate_download');
+                    closeGate();
+                });
+            }
         })();
 
         (function installGuidePageAnalytics() {
