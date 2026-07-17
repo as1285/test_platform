@@ -152,7 +152,7 @@
                 });
         })();
     </script>
-    <script src="/js/wechat-open-browser-prompt.js?v=20260608"></script>
+    <script src="/js/wechat-open-browser-prompt.js?v=20260608" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 先体验再下载</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -833,7 +833,7 @@
             </div>
             <div class="lp-hero-visual" id="lpHeroVisual">
                 <div class="lp-hero-gradient"></div>
-                <img id="lpHeroShowcaseImg" alt="" hidden decoding="async">
+                <img id="lpHeroShowcaseImg" alt="" hidden decoding="async" loading="lazy" fetchpriority="low">
             </div>
         </section>
 
@@ -842,7 +842,7 @@
             <h2 class="lp-section-title">效果预览</h2>
             <p class="lp-section-lead">左右滑动查看明细、申报与税务记录样式</p>
             <div class="showcase-gif-wrap" id="installShowcaseGifWrap" hidden>
-                <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="eager" decoding="async">
+                <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="lazy" decoding="async" fetchpriority="low">
             </div>
             <div class="showcase-carousel-wrap" id="installShowcaseCarouselWrap" hidden>
                 <div class="showcase-carousel" id="installShowcaseCarousel" role="list"></div>
@@ -1291,13 +1291,20 @@
                 }
                 if (desktopQr) {
                     desktopQr.hidden = false;
-                    var img = document.getElementById('desktopQrImg');
-                    if (img) {
+                    /* 二维码延后加载，避免首屏抢带宽 */
+                    scheduleInstallIdle(function () {
+                        var img = document.getElementById('desktopQrImg');
+                        if (!img || img.getAttribute('data-src-set') === '1') {
+                            return;
+                        }
+                        img.setAttribute('data-src-set', '1');
                         var pageUrl = window.location.href.split('#')[0];
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
                         img.src =
                             'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=' +
                             encodeURIComponent(pageUrl);
-                    }
+                    }, 1200);
                 }
             }
 
@@ -1308,6 +1315,97 @@
                 showIos: ios || desktop || (!ios && !android),
                 desktop: desktop
             };
+        }
+
+        function scheduleInstallIdle(fn, timeoutMs) {
+            var ran = false;
+            function run() {
+                if (ran) return;
+                ran = true;
+                try {
+                    fn();
+                } catch (eIdle) {}
+            }
+            var delay = timeoutMs != null ? timeoutMs : 1800;
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(run, { timeout: delay });
+            } else {
+                setTimeout(run, Math.min(delay, 600));
+            }
+        }
+
+        function runAfterFirstPaint(fn) {
+            function afterDom() {
+                if (typeof window.requestAnimationFrame === 'function') {
+                    window.requestAnimationFrame(function () {
+                        window.requestAnimationFrame(function () {
+                            scheduleInstallIdle(fn, 1200);
+                        });
+                    });
+                } else {
+                    scheduleInstallIdle(fn, 400);
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', afterDom, { once: true });
+            } else {
+                afterDom();
+            }
+        }
+
+        function whenElementNearViewport(el, fn, rootMargin) {
+            if (!el || typeof fn !== 'function') {
+                return;
+            }
+            if (typeof IntersectionObserver === 'undefined') {
+                scheduleInstallIdle(fn, 800);
+                return;
+            }
+            var done = false;
+            var obs = new IntersectionObserver(
+                function (entries) {
+                    entries.forEach(function (entry) {
+                        if (done || !entry.isIntersecting) {
+                            return;
+                        }
+                        done = true;
+                        try {
+                            obs.disconnect();
+                        } catch (eObs) {}
+                        fn();
+                    });
+                },
+                { root: null, rootMargin: rootMargin || '240px 0px', threshold: 0.01 }
+            );
+            obs.observe(el);
+        }
+
+        var INSTALL_PACKAGES_CACHE_KEY = 'install_packages_cache_v1';
+        var INSTALL_PACKAGES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+        function readInstallPackagesCache() {
+            try {
+                var raw = sessionStorage.getItem(INSTALL_PACKAGES_CACHE_KEY);
+                if (!raw) return null;
+                var o = JSON.parse(raw);
+                if (!o || !o.at || !o.data) return null;
+                if (Date.now() - Number(o.at) > INSTALL_PACKAGES_CACHE_TTL_MS) {
+                    sessionStorage.removeItem(INSTALL_PACKAGES_CACHE_KEY);
+                    return null;
+                }
+                return o.data;
+            } catch (eCacheR) {
+                return null;
+            }
+        }
+
+        function writeInstallPackagesCache(data) {
+            try {
+                sessionStorage.setItem(
+                    INSTALL_PACKAGES_CACHE_KEY,
+                    JSON.stringify({ at: Date.now(), data: data })
+                );
+            } catch (eCacheW) {}
         }
 
         function measureInstallDomReadyMs() {
@@ -1370,151 +1468,181 @@
                 return;
             }
             var layout = applyInstallPageLayout();
-            var reqStart =
-                typeof performance !== 'undefined' && typeof performance.now === 'function'
-                    ? performance.now()
-                    : Date.now();
-            fetch('/api/public/install-packages', { credentials: 'same-origin' })
-                .then(function (r) {
-                    var reqEnd =
+            var packagesStarted = false;
+
+            function applyPackagesBody(body, netMs) {
+                var renderStart =
+                    typeof performance !== 'undefined' && typeof performance.now === 'function'
+                        ? performance.now()
+                        : Date.now();
+                function finishPerf() {
+                    var renderEnd =
                         typeof performance !== 'undefined' && typeof performance.now === 'function'
                             ? performance.now()
                             : Date.now();
-                    var netMs = Math.max(0, Math.round(reqEnd - reqStart));
-                    return r.json().then(function (body) {
-                        return { body: body, netMs: netMs };
+                    var renderMs = Math.max(0, Math.round(renderEnd - renderStart));
+                    reportInstallPagePerf({
+                        packages_net_ms: netMs != null ? netMs : 0,
+                        packages_render_ms: renderMs,
+                        packages_total_ms: (netMs != null ? netMs : 0) + renderMs
                     });
-                })
-                .then(function (pack) {
-                    var body = pack.body;
-                    var netMs = pack.netMs;
-                    var renderStart =
-                        typeof performance !== 'undefined' && typeof performance.now === 'function'
-                            ? performance.now()
-                            : Date.now();
-                    function finishPerf() {
-                        var renderEnd =
-                            typeof performance !== 'undefined' && typeof performance.now === 'function'
-                                ? performance.now()
-                                : Date.now();
-                        var renderMs = Math.max(0, Math.round(renderEnd - renderStart));
-                        reportInstallPagePerf({
-                            packages_net_ms: netMs,
-                            packages_render_ms: renderMs,
-                            packages_total_ms: netMs + renderMs
-                        });
-                    }
-                    if (!body || body.code !== 200 || !body.data) {
-                        if (empty) {
-                            empty.style.display = 'block';
-                            empty.textContent = '无法加载下载配置，请稍后再试。';
-                        }
-                        finishPerf();
-                        return;
-                    }
-                    var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
-                    var iosUrl = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
-                    row.innerHTML = '';
-                    var showApk = layout.showApk && apk;
-                    var showIos = layout.showIos && iosUrl;
-                    if (layout.inApp && !showApk && !showIos) {
-                        showApk = !!apk;
-                        showIos = !!iosUrl;
-                    }
-                    if (!showApk && !showIos) {
-                        if (empty) {
-                            empty.style.display = 'block';
-                            if (layout.desktop && (apk || iosUrl)) {
-                                empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
-                            }
-                        }
-                        finishPerf();
-                        return;
-                    }
-                    if (empty) {
-                        empty.style.display = 'none';
-                    }
-                    var primaryForSticky = null;
-                    var primaryLabel = '';
-                    if (showApk) {
-                        var a = document.createElement('a');
-                        a.className = 'btn btn-primary';
-                        var apkHref = /^https?:\/\//i.test(apk)
-                            ? apk
-                            : toAbsoluteDownloadUrl(apk.charAt(0) === '/' ? apk : '/' + apk.replace(/^\.\//, ''));
-                        a.href = apkHref;
-                        if (/^https?:\/\//i.test(apkHref)) {
-                            a.target = '_blank';
-                            a.rel = 'noopener noreferrer';
-                        }
-                        a.textContent = layout.inApp
-                            ? '下载最新 Android 安装包'
-                            : layout.desktop
-                              ? '下载 Android 安装包（请在手机打开）'
-                              : '下载 Android 安装包';
-                        bindDownloadClick(a, apkHref, function () {
-                            if (typeof window.trackPublicAction === 'function') {
-                                var apkMeta = { page: 'install_guide' };
-                                if (typeof window.getSalesChannel === 'function') {
-                                    var salesCh = window.getSalesChannel();
-                                    if (salesCh) {
-                                        apkMeta.sales_ch = salesCh;
-                                    }
-                                }
-                                window.trackPublicAction('track_install_apk_click', apkMeta);
-                            }
-                            if (typeof window.persistSalesChannelAttribution === 'function') {
-                                window.persistSalesChannelAttribution('install_guide_apk_click');
-                            }
-                        });
-                        row.appendChild(a);
-                        if (!primaryForSticky || isLikelyAndroidClient() || layout.inApp) {
-                            primaryForSticky = a;
-                            primaryLabel = '下载 App';
-                        }
-                    }
-                    if (showIos) {
-                        var href = toAbsoluteDownloadUrl(iosUrl);
-                        var ia = document.createElement('a');
-                        ia.className = 'btn btn-primary';
-                        ia.href = href || iosUrl;
-                        ia.textContent = layout.inApp
-                            ? '下载最新 iOS 描述文件'
-                            : layout.desktop
-                              ? '下载 iOS 描述文件（请在 iPhone 打开）'
-                              : '下载 iOS 描述文件';
-                        bindDownloadClick(ia, ia.href, function () {
-                            if (typeof window.trackPublicAction === 'function') {
-                                window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
-                            }
-                        });
-                        row.appendChild(ia);
-                        if (!primaryForSticky || isLikelyIOSClient()) {
-                            primaryForSticky = ia;
-                            primaryLabel = '下载 App';
-                        }
-                    }
-                    if (primaryForSticky) {
-                        syncStickyDownload(primaryForSticky, primaryLabel);
-                    }
-                    finishPerf();
-                })
-                .catch(function () {
+                }
+                if (!body || body.code !== 200 || !body.data) {
                     if (empty) {
                         empty.style.display = 'block';
                         empty.textContent = '无法加载下载配置，请稍后再试。';
                     }
-                    var failEnd =
-                        typeof performance !== 'undefined' && typeof performance.now === 'function'
-                            ? performance.now()
-                            : Date.now();
-                    var failNet = Math.max(0, Math.round(failEnd - reqStart));
-                    reportInstallPagePerf({
-                        packages_net_ms: failNet,
-                        packages_render_ms: 0,
-                        packages_total_ms: failNet
+                    finishPerf();
+                    return;
+                }
+                writeInstallPackagesCache(body.data);
+                var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
+                var iosUrl = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
+                row.innerHTML = '';
+                var showApk = layout.showApk && apk;
+                var showIos = layout.showIos && iosUrl;
+                if (layout.inApp && !showApk && !showIos) {
+                    showApk = !!apk;
+                    showIos = !!iosUrl;
+                }
+                if (!showApk && !showIos) {
+                    if (empty) {
+                        empty.style.display = 'block';
+                        if (layout.desktop && (apk || iosUrl)) {
+                            empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
+                        }
+                    }
+                    finishPerf();
+                    return;
+                }
+                if (empty) {
+                    empty.style.display = 'none';
+                }
+                var primaryForSticky = null;
+                var primaryLabel = '';
+                if (showApk) {
+                    var a = document.createElement('a');
+                    a.className = 'btn btn-primary';
+                    var apkHref = /^https?:\/\//i.test(apk)
+                        ? apk
+                        : toAbsoluteDownloadUrl(apk.charAt(0) === '/' ? apk : '/' + apk.replace(/^\.\//, ''));
+                    a.href = apkHref;
+                    if (/^https?:\/\//i.test(apkHref)) {
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                    }
+                    a.textContent = layout.inApp
+                        ? '下载最新 Android 安装包'
+                        : layout.desktop
+                          ? '下载 Android 安装包（请在手机打开）'
+                          : '下载 Android 安装包';
+                    bindDownloadClick(a, apkHref, function () {
+                        if (typeof window.trackPublicAction === 'function') {
+                            var apkMeta = { page: 'install_guide' };
+                            if (typeof window.getSalesChannel === 'function') {
+                                var salesCh = window.getSalesChannel();
+                                if (salesCh) {
+                                    apkMeta.sales_ch = salesCh;
+                                }
+                            }
+                            window.trackPublicAction('track_install_apk_click', apkMeta);
+                        }
+                        if (typeof window.persistSalesChannelAttribution === 'function') {
+                            window.persistSalesChannelAttribution('install_guide_apk_click');
+                        }
                     });
+                    row.appendChild(a);
+                    if (!primaryForSticky || isLikelyAndroidClient() || layout.inApp) {
+                        primaryForSticky = a;
+                        primaryLabel = '下载 App';
+                    }
+                }
+                if (showIos) {
+                    var href = toAbsoluteDownloadUrl(iosUrl);
+                    var ia = document.createElement('a');
+                    ia.className = 'btn btn-primary';
+                    ia.href = href || iosUrl;
+                    ia.textContent = layout.inApp
+                        ? '下载最新 iOS 描述文件'
+                        : layout.desktop
+                          ? '下载 iOS 描述文件（请在 iPhone 打开）'
+                          : '下载 iOS 描述文件';
+                    bindDownloadClick(ia, ia.href, function () {
+                        if (typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
+                        }
+                    });
+                    row.appendChild(ia);
+                    if (!primaryForSticky || isLikelyIOSClient()) {
+                        primaryForSticky = ia;
+                        primaryLabel = '下载 App';
+                    }
+                }
+                if (primaryForSticky) {
+                    syncStickyDownload(primaryForSticky, primaryLabel);
+                }
+                finishPerf();
+            }
+
+            function fetchInstallPackages() {
+                if (packagesStarted) {
+                    return;
+                }
+                packagesStarted = true;
+                var cached = readInstallPackagesCache();
+                if (cached) {
+                    applyPackagesBody({ code: 200, data: cached }, 0);
+                    return;
+                }
+                var reqStart =
+                    typeof performance !== 'undefined' && typeof performance.now === 'function'
+                        ? performance.now()
+                        : Date.now();
+                fetch('/api/public/install-packages', { credentials: 'same-origin' })
+                    .then(function (r) {
+                        var reqEnd =
+                            typeof performance !== 'undefined' && typeof performance.now === 'function'
+                                ? performance.now()
+                                : Date.now();
+                        var netMs = Math.max(0, Math.round(reqEnd - reqStart));
+                        return r.json().then(function (body) {
+                            return { body: body, netMs: netMs };
+                        });
+                    })
+                    .then(function (pack) {
+                        applyPackagesBody(pack.body, pack.netMs);
+                    })
+                    .catch(function () {
+                        if (empty) {
+                            empty.style.display = 'block';
+                            empty.textContent = '无法加载下载配置，请稍后再试。';
+                        }
+                        var failEnd =
+                            typeof performance !== 'undefined' && typeof performance.now === 'function'
+                                ? performance.now()
+                                : Date.now();
+                        var failNet = Math.max(0, Math.round(failEnd - reqStart));
+                        reportInstallPagePerf({
+                            packages_net_ms: failNet,
+                            packages_render_ms: 0,
+                            packages_total_ms: failNet
+                        });
+                    });
+            }
+
+            /* 直达下载锚点时尽快拉配置；否则等首屏绘制后再请求，避免抢 DOM 带宽 */
+            var downloadOnly =
+                /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || '')) ||
+                String(window.location.hash || '') === '#download';
+            if (downloadOnly || readInstallPackagesCache()) {
+                runAfterFirstPaint(fetchInstallPackages);
+            } else {
+                var downloadSec = document.getElementById('download');
+                whenElementNearViewport(downloadSec, fetchInstallPackages, '320px 0px');
+                runAfterFirstPaint(function () {
+                    setTimeout(fetchInstallPackages, 2500);
                 });
+            }
         })();
 
         bindInstallRegisterLinks();
@@ -1527,13 +1655,19 @@
             return '/' + path;
         }
 
-        function setHeroVisualFromGif(gifUrl) {
+        function setHeroVisualFromStill(imgUrl) {
             var heroVisual = document.getElementById('lpHeroVisual');
             var heroImg = document.getElementById('lpHeroShowcaseImg');
-            if (!heroVisual || !heroImg || !gifUrl) {
+            if (!heroVisual || !heroImg || !imgUrl) {
                 return;
             }
-            heroImg.src = gifUrl;
+            /* 静图替代 GIF；showcase 本身已延后，加载时再标 eager */
+            heroImg.loading = 'eager';
+            heroImg.decoding = 'async';
+            try {
+                heroImg.fetchPriority = 'low';
+            } catch (eFp) {}
+            heroImg.src = imgUrl;
             heroImg.removeAttribute('hidden');
             heroVisual.classList.add('has-img');
         }
@@ -1555,12 +1689,18 @@
             ];
             var hasGif = !!gifUrl;
             var hasSlides = false;
+            var firstStill = toAssetUrl(data.install_showcase_img_1 || '');
+
+            if (firstStill) {
+                setHeroVisualFromStill(firstStill);
+            }
 
             if (gifWrap && gifImg) {
                 if (hasGif) {
+                    gifImg.loading = 'lazy';
+                    gifImg.decoding = 'async';
                     gifImg.src = gifUrl;
                     gifWrap.hidden = false;
-                    setHeroVisualFromGif(gifUrl);
                 } else {
                     gifWrap.hidden = true;
                     gifImg.removeAttribute('src');
@@ -1569,7 +1709,7 @@
 
             if (carousel) {
                 carousel.innerHTML = '';
-                slides.forEach(function (slide) {
+                slides.forEach(function (slide, idx) {
                     var src = toAssetUrl(data[slide.key] || '');
                     if (!src) {
                         return;
@@ -1583,6 +1723,9 @@
                     img.alt = slide.label + '效果预览';
                     img.loading = 'lazy';
                     img.decoding = 'async';
+                    if (idx === 0) {
+                        img.fetchPriority = 'low';
+                    }
                     var cap = document.createElement('figcaption');
                     cap.textContent = slide.label;
                     figure.appendChild(img);
@@ -1638,7 +1781,7 @@
                 var v = document.createElement('video');
                 v.setAttribute('controls', '');
                 v.setAttribute('playsinline', '');
-                v.setAttribute('preload', 'metadata');
+                v.setAttribute('preload', 'none');
                 v.className = 'guide-video';
                 var s = document.createElement('source');
                 s.src = src;
@@ -1724,21 +1867,30 @@
         }
 
         (function initShowcase() {
-            fetch('/api/public/mine-ui', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (body) {
-                    if (!body || body.code !== 200 || !body.data) {
+            var showcaseStarted = false;
+            function loadShowcase() {
+                if (showcaseStarted) {
+                    return;
+                }
+                showcaseStarted = true;
+                ensureMineUiData(function (data) {
+                    if (!data) {
                         return;
                     }
-                    mineUiCache = body.data;
-                    renderInstallShowcase(body.data);
+                    renderInstallShowcase(data);
                     var usageBlock = document.getElementById('usageVideoBlock');
-                    if (usageBlock && body.data.install_usage_video) {
+                    if (usageBlock && data.install_usage_video) {
                         usageBlock.hidden = false;
                     }
-                })
-                .catch(function () {});
+                });
+            }
             bindLazyVideoDetails();
+            var showcaseCard = document.getElementById('installShowcaseCard');
+            var previewAnchor = document.getElementById('demo') || showcaseCard;
+            whenElementNearViewport(previewAnchor, loadShowcase, '280px 0px');
+            runAfterFirstPaint(function () {
+                setTimeout(loadShowcase, 1800);
+            });
         })();
 
         /* ── Gate modal ── */
