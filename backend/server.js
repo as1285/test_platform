@@ -8346,6 +8346,26 @@ async function handleAdminInstallGuideStats(req, res) {
       var userPf = analyticsPeriodCnDateFilter(cnUserDay, period);
       var cnUserSince = userPf.sql;
       var userSinceParams = userPf.params.slice();
+      var cnHour = 'HOUR(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+      const [hourlyViewRows] = await conn.query(
+        `SELECT ${cnHour} AS h,
+                COUNT(*) AS pv,
+                COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_page_view' AND ${cnSince}
+         GROUP BY ${cnHour}
+         ORDER BY h ASC`,
+        sinceParams
+      );
+      const [hourlyRegRows] = await conn.query(
+        `SELECT HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR)) AS h,
+                COUNT(*) AS registered
+         FROM users u
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+         GROUP BY h
+         ORDER BY h ASC`,
+        userSinceParams
+      );
       const [regDailyRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
          FROM users u
@@ -8504,6 +8524,130 @@ async function handleAdminInstallGuideStats(req, res) {
 
       var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 20);
 
+      var hourPv = [];
+      var hourUv = [];
+      var hourReg = [];
+      var hi;
+      for (hi = 0; hi < 24; hi++) {
+        hourPv.push(0);
+        hourUv.push(0);
+        hourReg.push(0);
+      }
+      (hourlyViewRows || []).forEach(function (r) {
+        var h = Number(r.h);
+        if (h >= 0 && h < 24) {
+          hourPv[h] = Number(r.pv) || 0;
+          hourUv[h] = Number(r.uv) || 0;
+        }
+      });
+      (hourlyRegRows || []).forEach(function (r) {
+        var h = Number(r.h);
+        if (h >= 0 && h < 24) {
+          hourReg[h] = Number(r.registered) || 0;
+        }
+      });
+      function sumHourRange(arr, from, to) {
+        var s = 0;
+        for (var i = from; i <= to; i++) {
+          s += arr[i] || 0;
+        }
+        return s;
+      }
+      var totalHourPv = sumHourRange(hourPv, 0, 23);
+      function withHourPct(rows, totalBase) {
+        return rows.map(function (row) {
+          var cnt = Number(row.page_views) || 0;
+          var pct = totalBase > 0 ? Math.round((cnt / totalBase) * 1000) / 10 : 0;
+          return Object.assign({}, row, {
+            pct: pct,
+            pct_text: totalBase > 0 ? pct.toFixed(1) + '%' : '—'
+          });
+        });
+      }
+      var hourDetailBuckets = withHourPct(
+        [
+          {
+            key: 'late_night',
+            label: '凌晨',
+            range: '00:00-05:59',
+            page_views: sumHourRange(hourPv, 0, 5),
+            unique_visitors: sumHourRange(hourUv, 0, 5),
+            registered: sumHourRange(hourReg, 0, 5)
+          },
+          {
+            key: 'morning',
+            label: '上午',
+            range: '06:00-11:59',
+            page_views: sumHourRange(hourPv, 6, 11),
+            unique_visitors: sumHourRange(hourUv, 6, 11),
+            registered: sumHourRange(hourReg, 6, 11)
+          },
+          {
+            key: 'afternoon',
+            label: '下午',
+            range: '12:00-17:59',
+            page_views: sumHourRange(hourPv, 12, 17),
+            unique_visitors: sumHourRange(hourUv, 12, 17),
+            registered: sumHourRange(hourReg, 12, 17)
+          },
+          {
+            key: 'evening',
+            label: '晚上',
+            range: '18:00-23:59',
+            page_views: sumHourRange(hourPv, 18, 23),
+            unique_visitors: sumHourRange(hourUv, 18, 23),
+            registered: sumHourRange(hourReg, 18, 23)
+          }
+        ],
+        totalHourPv
+      );
+      var hourPeriods = withHourPct(
+        [
+          {
+            key: 'morning',
+            label: '上午',
+            range: '06:00-11:59',
+            page_views: hourDetailBuckets[1].page_views,
+            unique_visitors: hourDetailBuckets[1].unique_visitors,
+            registered: hourDetailBuckets[1].registered
+          },
+          {
+            key: 'afternoon',
+            label: '下午',
+            range: '12:00-17:59',
+            page_views: hourDetailBuckets[2].page_views,
+            unique_visitors: hourDetailBuckets[2].unique_visitors,
+            registered: hourDetailBuckets[2].registered
+          },
+          {
+            key: 'evening',
+            label: '晚上',
+            range: '18:00-次日05:59',
+            page_views: hourDetailBuckets[3].page_views + hourDetailBuckets[0].page_views,
+            unique_visitors: hourDetailBuckets[3].unique_visitors + hourDetailBuckets[0].unique_visitors,
+            registered: hourDetailBuckets[3].registered + hourDetailBuckets[0].registered
+          }
+        ],
+        totalHourPv
+      );
+      var peakHourPeriod = null;
+      hourPeriods.forEach(function (p) {
+        if (!peakHourPeriod || p.page_views > peakHourPeriod.page_views) {
+          peakHourPeriod = p;
+        }
+      });
+      var byHour = [];
+      for (hi = 0; hi < 24; hi++) {
+        byHour.push({
+          hour: hi,
+          label: (hi < 10 ? '0' : '') + hi + ':00',
+          page_views: hourPv[hi],
+          unique_visitors: hourUv[hi],
+          registered: hourReg[hi],
+          pct: totalHourPv > 0 ? Math.round((hourPv[hi] / totalHourPv) * 1000) / 10 : 0
+        });
+      }
+
       res.json({
         code: 200,
         data: Object.assign(
@@ -8526,6 +8670,23 @@ async function handleAdminInstallGuideStats(req, res) {
             },
             actions: actions,
             daily: daily,
+            hourly: {
+              timezone: 'Asia/Shanghai (UTC+8)',
+              total_page_views: totalHourPv,
+              periods: hourPeriods,
+              detail_buckets: hourDetailBuckets,
+              peak_period: peakHourPeriod
+                ? {
+                    key: peakHourPeriod.key,
+                    label: peakHourPeriod.label,
+                    page_views: peakHourPeriod.page_views,
+                    unique_visitors: peakHourPeriod.unique_visitors,
+                    registered: peakHourPeriod.registered,
+                    pct_text: peakHourPeriod.pct_text
+                  }
+                : null,
+              by_hour: byHour
+            },
             recent_visitors: recentVisitors
           },
           conversionAnalyticsPeriodMeta(period)

@@ -3824,6 +3824,77 @@
             html +=
                 '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideVisitRegChart" aria-label="安装页每日访问与注册折线图"></canvas></div></div>';
 
+            var hourly = data.hourly || null;
+            var hourBuckets = hourly && Array.isArray(hourly.detail_buckets) ? hourly.detail_buckets : [];
+            var hourPeriods = hourly && Array.isArray(hourly.periods) ? hourly.periods : [];
+            var byHour = hourly && Array.isArray(hourly.by_hour) ? hourly.by_hour : [];
+            var peakHour = hourly && hourly.peak_period ? hourly.peak_period : null;
+            html += '<p class="stat" style="margin:0 0 8px;">访客时段分布（北京时间）</p>';
+            if (peakHour && peakHour.label) {
+                html +=
+                    '<p class="hint" style="margin:0 0 10px;">当前区间浏览量最集中在「' +
+                    esc(peakHour.label) +
+                    '」（' +
+                    esc(peakHour.pct_text || '—') +
+                    '，PV ' +
+                    esc(String(peakHour.page_views != null ? peakHour.page_views : 0)) +
+                    '）。同一访客跨小时会分别计入各小时 UV。</p>';
+            } else {
+                html +=
+                    '<p class="hint" style="margin:0 0 10px;">按北京时间统计安装页浏览；同一访客跨小时会分别计入各小时 UV。</p>';
+            }
+            html += '<div class="register-time-period-cards" style="margin-bottom:12px;">';
+            if (!hourPeriods.length) {
+                html += '<div class="hint">暂无时段数据</div>';
+            } else {
+                hourPeriods.forEach(function (p) {
+                    var isPeak = peakHour && peakHour.key === p.key;
+                    html +=
+                        '<div class="register-time-period-card' +
+                        (isPeak ? ' is-peak' : '') +
+                        '">' +
+                        '<div class="rtp-label">' +
+                        esc(p.label) +
+                        (isPeak ? '<span class="rtp-badge">高峰</span>' : '') +
+                        '</div>' +
+                        '<div class="rtp-range">' +
+                        esc(p.range || '') +
+                        '</div>' +
+                        '<div class="rtp-count">PV ' +
+                        esc(String(p.page_views != null ? p.page_views : 0)) +
+                        '</div>' +
+                        '<div class="rtp-pct">' +
+                        esc(p.pct_text || '—') +
+                        ' · UV ' +
+                        esc(String(p.unique_visitors != null ? p.unique_visitors : 0)) +
+                        ' · 注册 ' +
+                        esc(String(p.registered != null ? p.registered : 0)) +
+                        '</div></div>';
+                });
+            }
+            html += '</div>';
+            html +=
+                '<div class="device-stats-charts-wrap" style="margin-bottom:12px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideHourlyChart" aria-label="安装页24小时访客分布"></canvas></div></div>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>时段</th><th>时间范围</th><th>浏览量</th><th>独立访客</th><th>总注册</th><th>占比</th></tr></thead><tbody>';
+            if (!hourBuckets.length) {
+                html += '<tr><td colspan="6">暂无</td></tr>';
+            } else {
+                hourBuckets.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.label || '—') + '</td>';
+                    html += '<td>' + esc(row.range || '—') + '</td>';
+                    html += '<td>' + esc(String(row.page_views != null ? row.page_views : 0)) + '</td>';
+                    html +=
+                        '<td>' + esc(String(row.unique_visitors != null ? row.unique_visitors : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.registered != null ? row.registered : 0)) + '</td>';
+                    html += '<td>' + esc(row.pct_text || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
             var actions = Array.isArray(data.actions) ? data.actions : [];
             html += '<p class="stat" style="margin:0 0 8px;">用户行为（点击 / 播放等）</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr><th>行为</th><th>次数</th></tr></thead><tbody>';
@@ -4020,6 +4091,75 @@
                                                 return v + '%';
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
+
+            if (typeof Chart !== 'undefined' && byHour.length) {
+                var hourCanvas = document.getElementById('installGuideHourlyChart');
+                if (hourCanvas) {
+                    _installGuideChartInstances.push(
+                        new Chart(hourCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: byHour.map(function (row) {
+                                    return row.label || '';
+                                }),
+                                datasets: [
+                                    {
+                                        label: '浏览量 (PV)',
+                                        data: byHour.map(function (row) {
+                                            return Number(row.page_views) || 0;
+                                        }),
+                                        backgroundColor: 'rgba(30, 111, 255, 0.75)',
+                                        borderColor: '#1e6fff',
+                                        borderWidth: 0,
+                                        borderRadius: 3,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: '独立访客 (UV)',
+                                        data: byHour.map(function (row) {
+                                            return Number(row.unique_visitors) || 0;
+                                        }),
+                                        backgroundColor: 'rgba(34, 160, 107, 0.65)',
+                                        borderColor: '#22a06b',
+                                        borderWidth: 0,
+                                        borderRadius: 3,
+                                        yAxisID: 'y'
+                                    },
+                                    {
+                                        label: '总注册',
+                                        data: byHour.map(function (row) {
+                                            return Number(row.registered) || 0;
+                                        }),
+                                        type: 'line',
+                                        borderColor: '#ef6c00',
+                                        backgroundColor: '#ef6c00',
+                                        tension: 0.25,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 2,
+                                        yAxisID: 'y'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { position: 'bottom' }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: { display: true, text: '次数 / 人数' },
+                                        ticks: { precision: 0 }
                                     }
                                 }
                             }
