@@ -1021,6 +1021,38 @@
             return s;
         }
 
+        /** 本站安装包用相对路径，避免 http 页跳到 https 外链导致整页导航 / 连接重置 */
+        function toSameOriginDownloadUrl(u) {
+            if (!u || !String(u).trim()) {
+                return '';
+            }
+            var s = String(u).trim();
+            try {
+                if (/^https?:\/\//i.test(s)) {
+                    var parsed = new URL(s, window.location.href);
+                    var host = String(window.location.hostname || '').toLowerCase();
+                    var ph = String(parsed.hostname || '').toLowerCase();
+                    if (
+                        ph === host ||
+                        ph === 'geshui.vip' ||
+                        ph === 'www.geshui.vip' ||
+                        ph === 'localhost' ||
+                        ph === '127.0.0.1'
+                    ) {
+                        return parsed.pathname + (parsed.search || '');
+                    }
+                    return s;
+                }
+            } catch (eAbs) {}
+            if (s.charAt(0) === '/') {
+                return s;
+            }
+            if (/^uploads\//i.test(s)) {
+                return '/' + s.replace(/^\.\//, '');
+            }
+            return toAbsoluteDownloadUrl(s);
+        }
+
         function isLikelyIOSClient() {
             var ua = navigator.userAgent || '';
             if (/iPhone|iPad|iPod/i.test(ua)) {
@@ -1136,6 +1168,19 @@
             sticky.textContent = label || '下载 App';
             sticky.removeAttribute('hidden');
             sticky.classList.add('is-visible');
+            var dlName = primaryBtn.getAttribute('download');
+            if (dlName) {
+                sticky.setAttribute('download', dlName);
+            } else {
+                sticky.removeAttribute('download');
+            }
+            if (primaryBtn.getAttribute('target') === '_blank') {
+                sticky.setAttribute('target', '_blank');
+                sticky.setAttribute('rel', 'noopener noreferrer');
+            } else {
+                sticky.removeAttribute('target');
+                sticky.removeAttribute('rel');
+            }
             if (bar) {
                 bar.classList.add('is-download-first');
             }
@@ -1523,13 +1568,17 @@
                 if (showApk) {
                     var a = document.createElement('a');
                     a.className = 'btn btn-primary';
-                    var apkHref = /^https?:\/\//i.test(apk)
-                        ? apk
-                        : toAbsoluteDownloadUrl(apk.charAt(0) === '/' ? apk : '/' + apk.replace(/^\.\//, ''));
+                    var apkHref = toSameOriginDownloadUrl(
+                        /^https?:\/\//i.test(apk) || apk.charAt(0) === '/'
+                            ? apk
+                            : '/' + apk.replace(/^\.\//, '')
+                    );
                     a.href = apkHref;
                     if (/^https?:\/\//i.test(apkHref)) {
                         a.target = '_blank';
                         a.rel = 'noopener noreferrer';
+                    } else {
+                        a.setAttribute('download', 'geshui.apk');
                     }
                     a.textContent = layout.inApp
                         ? '下载最新 Android 安装包'
@@ -1558,10 +1607,13 @@
                     }
                 }
                 if (showIos) {
-                    var href = toAbsoluteDownloadUrl(iosUrl);
+                    var href = toSameOriginDownloadUrl(iosUrl);
                     var ia = document.createElement('a');
                     ia.className = 'btn btn-primary';
                     ia.href = href || iosUrl;
+                    if (!/^https?:\/\//i.test(ia.href)) {
+                        ia.setAttribute('download', 'personal.mobileconfig');
+                    }
                     ia.textContent = layout.inApp
                         ? '下载最新 iOS 描述文件'
                         : layout.desktop

@@ -488,6 +488,28 @@ function sanitizeInstallDownloadUrl(raw) {
   return '';
 }
 
+/** 公开安装包链接：本站绝对地址改成相对路径，避免 http/https 混用导致下载失败 */
+function toPublicInstallDownloadUrl(raw) {
+  var s = sanitizeInstallDownloadUrl(raw);
+  if (!s) {
+    return '';
+  }
+  try {
+    if (/^https?:\/\//i.test(s)) {
+      var u = new URL(s);
+      var host = String(u.hostname || '').toLowerCase();
+      if (host === 'geshui.vip' || host === 'www.geshui.vip') {
+        return u.pathname + (u.search || '');
+      }
+      return s;
+    }
+  } catch (e0) {}
+  if (/^uploads\//i.test(s)) {
+    return '/' + s;
+  }
+  return s;
+}
+
 /** 闲鱼购买文案：任意文本（复制到剪贴板），仅做长度与空白修剪 */
 function sanitizeXianyuPurchaseText(raw) {
   if (raw == null) {
@@ -13040,17 +13062,17 @@ async function handlePublicResolveSalesChannel(req, res) {
 async function handlePublicInstallPackages(req, res) {
   try {
     var raw = await getInstallPackageSettingsFromDb();
-    var android = sanitizeInstallDownloadUrl(raw.android);
-    var ios = sanitizeInstallDownloadUrl(raw.ios);
+    var android = toPublicInstallDownloadUrl(raw.android);
+    var ios = toPublicInstallDownloadUrl(raw.ios);
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
-    var qq = sanitizeInstallDownloadUrl(raw.qq);
-    var qqGroup = sanitizeInstallDownloadUrl(raw.qq_group);
+    var qq = toPublicInstallDownloadUrl(raw.qq);
+    var qqGroup = toPublicInstallDownloadUrl(raw.qq_group);
     var salesCh = await resolveEffectiveSalesChannel(req);
     // 已登录用户仅以账号 sales_promo_channel 判断是否隐藏闲鱼，避免 IP 归因误判普通注册用户
     var hideXianyu = await shouldHideXianyuForRequest(req);
     if (hideXianyu) {
       xianyu = '';
-      var agentApk = sanitizeInstallDownloadUrl(raw.agent_android);
+      var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
       if (agentApk) {
         android = agentApk;
       }
