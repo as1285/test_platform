@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260612-register-ch"></script>
+    <script src="/js/auth.js?v=20260717-landing-ab"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -301,6 +301,10 @@
                     register_source_channel: sourceChannel,
                     register_source_channel_other: sourceChannelOther,
                     from_install_guide: fromInstallGuide ? 1 : 0,
+                    landing_variant:
+                        typeof window.getLandingAbVariant === 'function'
+                            ? window.getLandingAbVariant() || undefined
+                            : undefined,
                     sales_ch: regSalesCh || undefined,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns
@@ -313,7 +317,11 @@
                         if (typeof window.trackPublicAction === 'function') {
                             window.trackPublicAction('track_register_success', {
                                 page: 'register',
-                                from_install_guide: fromInstallGuide
+                                from_install_guide: fromInstallGuide,
+                                landing_variant:
+                                    typeof window.getLandingAbVariant === 'function'
+                                        ? window.getLandingAbVariant() || undefined
+                                        : undefined
                             });
                         }
                         if (typeof window.clearInstallGuideReferral === 'function') {

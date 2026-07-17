@@ -225,6 +225,7 @@ const SETTING_KEY_QQ_ADD_URL = 'qq_add_url';
 const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
+const SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
 const DEFAULT_CONVERSION_AB = {
   enabled: true,
@@ -233,6 +234,11 @@ const DEFAULT_CONVERSION_AB = {
   activate_title_b: '输入激活码，解锁完整功能',
   activate_subtitle_b: '永久使用，不限制设备',
   batch_example_prominent: false
+};
+
+const DEFAULT_LANDING_AB = {
+  enabled: true,
+  c_percent: 50
 };
 
 const ADMIN_MENU_KEYS = [
@@ -2006,6 +2012,10 @@ async function createTables() {
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_CONVERSION_AB,
     JSON.stringify(DEFAULT_CONVERSION_AB)
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_LANDING_AB,
+    JSON.stringify(DEFAULT_LANDING_AB)
   ]);
 
   await conn.execute(`
@@ -5559,7 +5569,11 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_app_shell_register_prompt_later: 'App 内弹窗-稍后再说',
   track_landing_gate_open: '落地关键门禁打开',
   track_landing_demo_click: '落地示例关键点击',
-  track_landing_gate_download: '落地门禁点下载'
+  track_landing_gate_download: '落地门禁点下载',
+  track_landing_ab_assignment: 'B/C 分流分配',
+  track_landing_ab_view: 'B/C 方案访问',
+  track_landing_ab_guest_gate: 'C 游客关键门禁',
+  track_landing_ab_guest_download_entry: 'C 游客进入下载'
 };
 
 function isInstallGuideTrackContext(req, meta) {
@@ -5585,7 +5599,11 @@ function recordInstallGuideTrackEvent(req, action, meta) {
   if (!/^track_[a-z0-9_]{1,80}$/i.test(act)) {
     return;
   }
-  if (!isInstallGuideTrackContext(req, meta) && !/^track_install_/i.test(act)) {
+  if (
+    !isInstallGuideTrackContext(req, meta) &&
+    !/^track_install_/i.test(act) &&
+    !/^track_landing_/i.test(act)
+  ) {
     return;
   }
   var cid = '';
@@ -7579,10 +7597,15 @@ async function handleAuthPost(req, res) {
         }
         await recordUserRegistrationAttempt(out.username, true, req, 'register_ok');
         if (parseFromInstallGuideFlag(body)) {
+          var landingVariant = String(body.landing_variant || '').toLowerCase();
+          if (landingVariant !== 'b' && landingVariant !== 'c') {
+            landingVariant = '';
+          }
           recordInstallGuideTrackEvent(req, 'track_install_register_success', {
             page: 'register',
             username: out.username,
-            reported: true
+            reported: true,
+            landing_variant: landingVariant || undefined
           });
         }
         out.token = signAccessToken(out);
@@ -8348,6 +8371,49 @@ async function loadConversionAbParsed() {
   }
 }
 
+async function loadLandingAbParsed() {
+  if (!pool) {
+    return Object.assign({}, DEFAULT_LANDING_AB);
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1', [
+      SETTING_KEY_LANDING_AB
+    ]);
+    var parsed = null;
+    if (rows.length && rows[0].setting_value != null && String(rows[0].setting_value).trim() !== '') {
+      parsed = JSON.parse(String(rows[0].setting_value));
+    }
+    var merged = Object.assign({}, DEFAULT_LANDING_AB, parsed && typeof parsed === 'object' ? parsed : {});
+    var pct = parseInt(merged.c_percent, 10);
+    merged.c_percent = isFinite(pct) ? Math.max(0, Math.min(100, pct)) : DEFAULT_LANDING_AB.c_percent;
+    merged.enabled = merged.enabled !== false;
+    return merged;
+  } catch (e) {
+    return Object.assign({}, DEFAULT_LANDING_AB);
+  } finally {
+    conn.release();
+  }
+}
+
+async function handlePublicLandingAbConfig(req, res) {
+  try {
+    var cfg = await loadLandingAbParsed();
+    return res.json({
+      code: 200,
+      data: {
+        enabled: cfg.enabled !== false,
+        b_percent: cfg.enabled !== false ? 100 - cfg.c_percent : 100,
+        c_percent: cfg.enabled !== false ? cfg.c_percent : 0,
+        experiment: 'landing_bc_v1'
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handlePublicConversionConfig(req, res) {
   try {
     var cfg = await loadConversionAbParsed();
@@ -8606,6 +8672,14 @@ async function handleAdminInstallGuideStats(req, res) {
            AND ${cnSince}`,
         sinceParams
       );
+      const [landingAbRows] = await conn.query(
+        `SELECT client_id, device_fp, event_key, dwell_seconds, meta_json, ${cnDay} AS d
+         FROM install_guide_track_events
+         WHERE meta_json IS NOT NULL
+           AND JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.landing_variant')) IN ('b', 'c')
+           AND ${cnSince}`,
+        sinceParams
+      );
       const [dailyRows] = await conn.query(
         `SELECT ${cnDay} AS d,
                 SUM(CASE WHEN event_key = 'track_install_page_view' THEN 1 ELSE 0 END) AS page_views,
@@ -8748,6 +8822,98 @@ async function handleAdminInstallGuideStats(req, res) {
       var packagesTotalStats = aggregateMsStats(packagesTotalVals);
       var packagesNetStats = aggregateMsStats(packagesNetVals);
       var packagesRenderStats = aggregateMsStats(packagesRenderVals);
+
+      function newLandingVariantStats() {
+        return {
+          page_views: 0,
+          visitors: {},
+          download_visitors: {},
+          register_visitors: {},
+          gate_visitors: {},
+          visit_days: {},
+          dwell_values: []
+        };
+      }
+      var landingAbRaw = {
+        b: newLandingVariantStats(),
+        c: newLandingVariantStats()
+      };
+      (landingAbRows || []).forEach(function (row) {
+        var meta = null;
+        try {
+          meta = JSON.parse(String(row.meta_json || '{}'));
+        } catch (eAbMeta) {
+          return;
+        }
+        var variant = String(meta.landing_variant || '').toLowerCase();
+        if (variant !== 'b' && variant !== 'c') {
+          return;
+        }
+        var stat = landingAbRaw[variant];
+        var visitor = String(row.client_id || row.device_fp || '').trim();
+        var eventKey = String(row.event_key || '');
+        var dayKey = formatDateKey(row.d);
+        if (eventKey === 'track_landing_ab_view') {
+          stat.page_views += 1;
+          if (visitor) {
+            stat.visitors[visitor] = true;
+            if (!stat.visit_days[visitor]) stat.visit_days[visitor] = {};
+            if (dayKey) stat.visit_days[visitor][dayKey] = true;
+          }
+        }
+        if (
+          visitor &&
+          (eventKey === 'track_install_apk_click' || eventKey === 'track_install_ios_click')
+        ) {
+          stat.download_visitors[visitor] = true;
+        }
+        if (visitor && eventKey === 'track_install_register_success') {
+          stat.register_visitors[visitor] = true;
+        }
+        if (
+          visitor &&
+          (eventKey === 'track_landing_gate_open' || eventKey === 'track_landing_ab_guest_gate')
+        ) {
+          stat.gate_visitors[visitor] = true;
+        }
+        if (eventKey === 'track_install_page_leave' && row.dwell_seconds != null) {
+          var dwell = Number(row.dwell_seconds);
+          if (isFinite(dwell) && dwell >= 0 && dwell <= 86400) {
+            stat.dwell_values.push(dwell);
+          }
+        }
+      });
+
+      function finishLandingVariantStats(variant, raw) {
+        var uv = Object.keys(raw.visitors).length;
+        var downloads = Object.keys(raw.download_visitors).length;
+        var registers = Object.keys(raw.register_visitors).length;
+        var gates = Object.keys(raw.gate_visitors).length;
+        var returning = 0;
+        Object.keys(raw.visit_days).forEach(function (visitor) {
+          if (Object.keys(raw.visit_days[visitor]).length >= 2) {
+            returning += 1;
+          }
+        });
+        var dwell = raw.dwell_values.length
+          ? raw.dwell_values.reduce(function (sum, n) { return sum + n; }, 0) / raw.dwell_values.length
+          : null;
+        return {
+          variant: variant,
+          label: variant === 'c' ? 'C · 轻量游客首页' : 'B · 迷你产品首页',
+          page_views: raw.page_views,
+          unique_visitors: uv,
+          returning_visitors: returning,
+          return_rate_pct: pctText(returning, uv),
+          gate_visitors: gates,
+          download_visitors: downloads,
+          download_rate_pct: pctText(downloads, uv),
+          registered_visitors: registers,
+          register_rate_pct: pctText(registers, uv),
+          avg_dwell_seconds: isFinite(dwell) ? Math.round(dwell) : null,
+          avg_dwell_label: isFinite(dwell) ? formatStaySecondsLabel(dwell) : '—'
+        };
+      }
 
       var actions = (actionRows || []).map(function (r) {
         var ek = String(r.event_key || '');
@@ -9012,6 +9178,13 @@ async function handleAdminInstallGuideStats(req, res) {
               register_rate_all_pct: pctText(totalRegistered, uv)
             },
             actions: actions,
+            landing_ab: {
+              definition: '回访用户 = 统计区间内同一访客至少在 2 个不同自然日访问对应方案',
+              variants: [
+                finishLandingVariantStats('b', landingAbRaw.b),
+                finishLandingVariantStats('c', landingAbRaw.c)
+              ]
+            },
             daily: daily,
             hourly: {
               timezone: 'Asia/Shanghai (UTC+8)',
@@ -11532,6 +11705,7 @@ async function handleAdminSettingsGet(req, res) {
     var installRaw = await getInstallPackageSettingsFromDb();
     var qrRef = await getWechatPayQrcodeUrl();
     var conversionAb = await loadConversionAbParsed();
+    var landingAb = await loadLandingAbParsed();
     return res.json({
       code: 200,
       data: {
@@ -11545,7 +11719,8 @@ async function handleAdminSettingsGet(req, res) {
         qq_group_url: sanitizeInstallDownloadUrl(installRaw.qq_group),
         wechat_pay_qrcode_url: qrRef,
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
-        conversion_ab: conversionAb
+        conversion_ab: conversionAb,
+        landing_ab: landingAb
       }
     });
   } catch (e) {
@@ -11566,6 +11741,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasQqGroup = Object.prototype.hasOwnProperty.call(body, 'qq_group_url');
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
   var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
+  var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
   if (
     !hasMineUi &&
     !hasAndroid &&
@@ -11576,11 +11752,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasQqAdd &&
     !hasQqGroup &&
     !hasWechatPayQr &&
-    !hasConversionAb
+    !hasConversionAb &&
+    !hasLandingAb
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -11813,6 +11990,23 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasLandingAb) {
+      var incLandingAb = body.landing_ab;
+      var landingPct = parseInt(incLandingAb.c_percent, 10);
+      if (!isFinite(landingPct) || landingPct < 0 || landingPct > 100) {
+        return res.status(400).json({ code: 400, msg: 'C 方案流量占比必须是 0–100 的整数' });
+      }
+      var mergedLandingAb = {
+        enabled: incLandingAb.enabled !== false,
+        c_percent: Math.round(landingPct)
+      };
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_LANDING_AB, JSON.stringify(mergedLandingAb)]
+      );
+    }
+
     var outData = { success: true };
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
@@ -11827,6 +12021,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_url = qrAfter;
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
+    outData.landing_ab = await loadLandingAbParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -14824,6 +15019,7 @@ app.get('/api/public/install-packages', handlePublicInstallPackages);
 app.get('/api/public/resolve-sales-channel', handlePublicResolveSalesChannel);
 app.post('/api/public/sales-channel-attribution', handlePublicSalesChannelAttribution);
 app.get('/api/public/conversion-config', handlePublicConversionConfig);
+app.get('/api/public/landing-ab-config', handlePublicLandingAbConfig);
 app.get('/api/admin/users/deleted', requireAdminAuth, requireAdminMenu('users'), handleAdminDeletedUsers);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
 app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);

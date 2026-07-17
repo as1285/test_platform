@@ -9,6 +9,7 @@
   var ACTIVATE_PAGE = 'index.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
+  var LANDING_AB_ASSIGNMENT_KEY = 'landing_bc_assignment_v1';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
@@ -991,6 +992,14 @@
   }
 
   function isPublicPage() {
+    if (currentPageName() === 'shouye.html') {
+      try {
+        var guestQuery = new URLSearchParams(window.location.search);
+        if (guestQuery.get('guest') === '1' && guestQuery.get('landing_ab') === 'c') {
+          return true;
+        }
+      } catch (e0) {}
+    }
     return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
   }
 
@@ -1357,6 +1366,44 @@
     } catch (e) {
       return 'web_sess_' + String(Date.now());
     }
+  }
+
+  function getLandingAbAssignment() {
+    try {
+      var raw = localStorage.getItem(LANDING_AB_ASSIGNMENT_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || (parsed.variant !== 'b' && parsed.variant !== 'c')) {
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getLandingAbVariant() {
+    var assignment = getLandingAbAssignment();
+    return assignment ? assignment.variant : '';
+  }
+
+  function setLandingAbAssignment(variant, source) {
+    var v = String(variant || '').toLowerCase();
+    if (v !== 'b' && v !== 'c') return null;
+    var existing = getLandingAbAssignment();
+    if (existing && existing.variant === v) {
+      return existing;
+    }
+    var next = {
+      experiment: 'landing_bc_v1',
+      variant: v,
+      assigned_at: Date.now(),
+      source: String(source || 'allocation').substring(0, 32)
+    };
+    try {
+      localStorage.setItem(LANDING_AB_ASSIGNMENT_KEY, JSON.stringify(next));
+    } catch (e) {}
+    return next;
   }
 
   function buildClientDevicePayload() {
@@ -1761,7 +1808,12 @@
     var act = sanitizeTrackKey(action);
     if (!/^track_[a-z0-9_]{1,80}$/.test(act)) return;
     var payload = { action: act };
-    if (meta && typeof meta === 'object') payload.meta = meta;
+    var publicMeta = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+    var landingVariant = getLandingAbVariant();
+    if (landingVariant && !publicMeta.landing_variant) {
+      publicMeta.landing_variant = landingVariant;
+    }
+    if (Object.keys(publicMeta).length) payload.meta = publicMeta;
     var headers = { 'Content-Type': 'application/json' };
     if (typeof getClientDeviceHeaders === 'function') {
       headers = Object.assign(headers, getClientDeviceHeaders());
@@ -1839,6 +1891,9 @@
   window.measureFetchAndRender = measureFetchAndRender;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
   window.buildClientDevicePayload = buildClientDevicePayload;
+  window.getLandingAbAssignment = getLandingAbAssignment;
+  window.getLandingAbVariant = getLandingAbVariant;
+  window.setLandingAbAssignment = setLandingAbAssignment;
   window.markInstallGuideReferral = markInstallGuideReferral;
   window.hasInstallGuideReferral = hasInstallGuideReferral;
   window.clearInstallGuideReferral = clearInstallGuideReferral;

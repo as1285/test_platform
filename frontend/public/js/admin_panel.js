@@ -3916,6 +3916,41 @@
                 '</div></div>';
             html += '</div>';
 
+            var landingAb = data.landing_ab || null;
+            var landingVariants =
+                landingAb && Array.isArray(landingAb.variants) ? landingAb.variants : [];
+            html += '<p class="stat" style="margin:0 0 8px;">B/C 落地页 A/B Test</p>';
+            html +=
+                '<p class="hint" style="margin:0 0 10px;">' +
+                esc(
+                    (landingAb && landingAb.definition) ||
+                        '回访用户 = 统计区间内至少在 2 个不同自然日访问同一方案'
+                ) +
+                '</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>方案</th><th>PV</th><th>UV</th><th>平均停留</th><th>回访用户</th><th>回访率</th><th>关键门禁</th><th>下载用户</th><th>下载率</th><th>注册用户</th><th>注册率</th></tr></thead><tbody>';
+            if (!landingVariants.length) {
+                html += '<tr><td colspan="11">暂无 A/B 数据；新访客进入后开始累计</td></tr>';
+            } else {
+                landingVariants.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td><strong>' + esc(row.label || row.variant || '—') + '</strong></td>';
+                    html += '<td>' + esc(String(row.page_views || 0)) + '</td>';
+                    html += '<td>' + esc(String(row.unique_visitors || 0)) + '</td>';
+                    html += '<td>' + esc(row.avg_dwell_label || '—') + '</td>';
+                    html += '<td>' + esc(String(row.returning_visitors || 0)) + '</td>';
+                    html += '<td>' + esc(row.return_rate_pct || '—') + '</td>';
+                    html += '<td>' + esc(String(row.gate_visitors || 0)) + '</td>';
+                    html += '<td>' + esc(String(row.download_visitors || 0)) + '</td>';
+                    html += '<td>' + esc(row.download_rate_pct || '—') + '</td>';
+                    html += '<td>' + esc(String(row.registered_visitors || 0)) + '</td>';
+                    html += '<td>' + esc(row.register_rate_pct || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
             var daily = Array.isArray(data.daily) ? data.daily : [];
             html += '<p class="stat" style="margin:0 0 8px;">每日访问与注册趋势</p>';
             html +=
@@ -7467,6 +7502,16 @@
                             var bp = document.getElementById('convAbBatchProminent');
                             if (bp) bp.checked = ab.batch_example_prominent === true;
                         }
+                        var landingAb = data.data.landing_ab;
+                        if (landingAb) {
+                            var landingEnabled = document.getElementById('landingAbEnabled');
+                            var landingPct = document.getElementById('landingAbCPercent');
+                            if (landingEnabled) landingEnabled.checked = landingAb.enabled !== false;
+                            if (landingPct) landingPct.value = String(
+                                landingAb.c_percent != null ? landingAb.c_percent : 50
+                            );
+                            updateLandingAbSplitHint();
+                        }
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
@@ -7607,6 +7652,54 @@
                     })
                     .finally(function () {
                         btn.disabled = false;
+                    });
+            });
+        }
+
+        function updateLandingAbSplitHint() {
+            var input = document.getElementById('landingAbCPercent');
+            var hint = document.getElementById('landingAbSplitHint');
+            if (!input || !hint) return;
+            var c = Math.max(0, Math.min(100, parseInt(input.value, 10) || 0));
+            hint.textContent = 'B 方案 ' + (100 - c) + '% · C 方案 ' + c + '%';
+        }
+
+        var landingAbCPercent = document.getElementById('landingAbCPercent');
+        if (landingAbCPercent) {
+            landingAbCPercent.addEventListener('input', updateLandingAbSplitHint);
+        }
+        var btnSaveLandingAb = document.getElementById('btnSaveLandingAb');
+        if (btnSaveLandingAb) {
+            btnSaveLandingAb.addEventListener('click', function () {
+                var pct = parseInt(document.getElementById('landingAbCPercent').value, 10);
+                if (!isFinite(pct) || pct < 0 || pct > 100) {
+                    alert('C 方案流量占比请输入 0–100 的整数');
+                    return;
+                }
+                btnSaveLandingAb.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        landing_ab: {
+                            enabled: !!document.getElementById('landingAbEnabled').checked,
+                            c_percent: Math.round(pct)
+                        }
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('落地页分流配置已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnSaveLandingAb.disabled = false;
                     });
             });
         }

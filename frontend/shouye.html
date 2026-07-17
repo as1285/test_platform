@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260716-shouye-15pm-blue"></script>
+    <script src="/js/auth.js?v=20260717-landing-ab"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>首页</title>
     <style>
@@ -412,6 +412,69 @@
             background: transparent;
         }
 
+        .guest-experience-bar {
+            display: none;
+            margin: 10px 12px 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #eaf3ff, #f7fbff);
+            border: 1px solid #cfe2ff;
+            color: #174a8b;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        body.is-landing-guest .guest-experience-bar { display: flex; }
+        .guest-experience-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
+        .guest-experience-copy span { display: block; font-size: 12px; line-height: 1.45; color: #52749f; }
+        .guest-experience-action {
+            flex-shrink: 0;
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 12px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .guest-gate-mask {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, .5);
+        }
+        .guest-gate-mask.is-open { display: flex; }
+        .guest-gate-panel {
+            width: 100%;
+            max-width: 340px;
+            padding: 22px 18px 16px;
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, .25);
+        }
+        .guest-gate-panel h2 { margin: 0 0 8px; font-size: 19px; color: #172033; }
+        .guest-gate-panel p { margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #65758b; }
+        .guest-gate-actions { display: grid; gap: 10px; }
+        .guest-gate-actions a,
+        .guest-gate-actions button {
+            display: flex;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            border: 0;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .guest-gate-download { color: #fff; background: #1e6fff; }
+        .guest-gate-register { color: #1e6fff; background: #edf4ff; }
+        .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
+
         </style>
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js" defer></script>
@@ -537,7 +600,7 @@
                 </div>
             </div>
             <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=8" alt="重点服务推荐">
+                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=8" alt="重点服务推荐" loading="lazy" decoding="async">
                 <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
                 <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
                 <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
@@ -547,13 +610,32 @@
                 <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
             </div>
         </div>
+        <div class="guest-experience-bar" id="guestExperienceBar">
+            <div class="guest-experience-copy">
+                <strong>游客体验模式</strong>
+                <span>先浏览产品首页，完整明细与证明需下载或注册</span>
+            </div>
+            <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+        </div>
         <div class="shouye-content">
             <div class="shouye-lb-wrap">
-                <img id="assetShouyeLb" src="lb.jpg?v=2" alt="轮播">
+                <img id="assetShouyeLb" src="lb.jpg?v=2" alt="轮播" loading="lazy" decoding="async">
                 <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">
                     查看更多
                     <span class="shouye-news-more-chevron" aria-hidden="true">&gt;</span>
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="guest-gate-mask" id="guestGateMask" role="dialog" aria-modal="true" aria-labelledby="guestGateTitle">
+        <div class="guest-gate-panel">
+            <h2 id="guestGateTitle">继续使用完整功能</h2>
+            <p id="guestGateDesc">安装 App 或注册账号后，可查看完整收入明细并生成完税证明。</p>
+            <div class="guest-gate-actions">
+                <a class="guest-gate-download" href="install_guide.html?download=1#download" id="guestGateDownload">下载 App</a>
+                <a class="guest-gate-register" href="register.html?from=install_guide&landing_ab=c" id="guestGateRegister">立即注册</a>
+                <button type="button" class="guest-gate-cancel" id="guestGateCancel">继续浏览</button>
             </div>
         </div>
     </div>
@@ -736,6 +818,122 @@
                     bottomNav.classList.add('ios-device');
                 }
             }
+        })();
+
+        (function initLandingGuestMode() {
+            var query = null;
+            try {
+                query = new URLSearchParams(window.location.search);
+            } catch (e0) {}
+            if (!query || query.get('guest') !== '1' || query.get('landing_ab') !== 'c') {
+                return;
+            }
+            document.body.classList.add('is-landing-guest');
+            if (typeof window.setLandingAbAssignment === 'function') {
+                window.setLandingAbAssignment('c', 'guest_home');
+            }
+            if (typeof window.markInstallGuideReferral === 'function') {
+                window.markInstallGuideReferral('landing_ab_c_guest');
+            }
+
+            var mask = document.getElementById('guestGateMask');
+            var desc = document.getElementById('guestGateDesc');
+            var cancel = document.getElementById('guestGateCancel');
+            var download = document.getElementById('guestGateDownload');
+            var register = document.getElementById('guestGateRegister');
+            var topDownload = document.getElementById('guestExperienceDownload');
+            var startMs = Date.now();
+            var leaveSent = false;
+
+            function track(action, meta) {
+                if (typeof window.trackPublicAction !== 'function') return;
+                window.trackPublicAction(
+                    action,
+                    Object.assign(
+                        { page: 'shouye_guest', landing_variant: 'c' },
+                        meta || {}
+                    )
+                );
+            }
+
+            function sourceMeta() {
+                var out = {};
+                try {
+                    var raw = sessionStorage.getItem('landing_bc_entry_v1');
+                    var entry = raw ? JSON.parse(raw) : null;
+                    if (entry) {
+                        out.referrer = entry.referrer || '';
+                        out.utm_source = entry.utm_source || '';
+                        out.sales_ch = entry.sales_ch || '';
+                    }
+                } catch (e1) {}
+                return out;
+            }
+
+            function openGate(source, label) {
+                if (desc && label) {
+                    desc.textContent = '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                }
+                if (mask) mask.classList.add('is-open');
+                track('track_landing_ab_guest_gate', { source: source || 'feature' });
+            }
+
+            function closeGate() {
+                if (mask) mask.classList.remove('is-open');
+            }
+
+            document.querySelectorAll('a[href]').forEach(function (link) {
+                if (link.closest('#guestGateMask')) return;
+                if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
+                link.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    openGate(
+                        link.getAttribute('href') || 'feature',
+                        link.getAttribute('aria-label') || link.textContent.trim() || '此功能'
+                    );
+                });
+            });
+
+            if (topDownload) {
+                topDownload.addEventListener('click', function () {
+                    track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
+                    window.location.href = 'install_guide.html?download=1#download';
+                });
+            }
+            if (download) {
+                download.addEventListener('click', function () {
+                    track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
+                });
+            }
+            if (register) {
+                register.addEventListener('click', function () {
+                    if (typeof window.markInstallGuideReferral === 'function') {
+                        window.markInstallGuideReferral('landing_ab_c_register');
+                    }
+                    track('track_install_register_click', { source: 'guest_gate' });
+                });
+            }
+            if (cancel) cancel.addEventListener('click', closeGate);
+            if (mask) {
+                mask.addEventListener('click', function (ev) {
+                    if (ev.target === mask) closeGate();
+                });
+            }
+
+            track('track_install_page_view', sourceMeta());
+            track('track_landing_ab_view', sourceMeta());
+
+            function sendLeave() {
+                if (leaveSent) return;
+                leaveSent = true;
+                var sec = Math.max(0, Math.min(86400, Math.round((Date.now() - startMs) / 1000)));
+                track('track_install_page_leave', { dwell_seconds: sec });
+            }
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') sendLeave();
+            });
+            window.addEventListener('pagehide', sendLeave);
+            window.addEventListener('beforeunload', sendLeave);
         })();
     </script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>

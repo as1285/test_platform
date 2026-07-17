@@ -2,7 +2,111 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260608-app-shell-register"></script>
+    <script src="/js/auth.js?v=20260717-landing-ab"></script>
+    <script>
+        (function landingAbBootstrap() {
+            document.documentElement.classList.add('landing-ab-pending');
+            var query = null;
+            try {
+                query = new URLSearchParams(window.location.search);
+            } catch (e0) {}
+            var downloadOnly = query && query.get('download') === '1';
+            var entry = {
+                referrer: String(document.referrer || '').substring(0, 500),
+                utm_source: query ? String(query.get('utm_source') || '').substring(0, 80) : '',
+                sales_ch: query ? String(query.get('ch') || '').substring(0, 64) : ''
+            };
+            try {
+                var previousEntry = sessionStorage.getItem('landing_bc_entry_v1');
+                if (!entry.referrer && previousEntry) {
+                    entry = JSON.parse(previousEntry) || entry;
+                } else {
+                    sessionStorage.setItem('landing_bc_entry_v1', JSON.stringify(entry));
+                }
+            } catch (e1) {}
+
+            function reveal(variant) {
+                document.documentElement.classList.remove('landing-ab-pending');
+                document.documentElement.setAttribute('data-landing-variant', variant || 'b');
+                return variant || 'b';
+            }
+
+            function hashBucket(seed) {
+                var h = 2166136261;
+                var s = String(seed || 'guest');
+                for (var i = 0; i < s.length; i++) {
+                    h ^= s.charCodeAt(i);
+                    h = Math.imul(h, 16777619);
+                }
+                return (h >>> 0) % 100;
+            }
+
+            window.__landingAbReady = fetch('/api/public/landing-ab-config', {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: typeof window.getClientDeviceHeaders === 'function'
+                    ? window.getClientDeviceHeaders()
+                    : {}
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (body) {
+                    var cfg = body && body.code === 200 && body.data ? body.data : null;
+                    if (!cfg || cfg.enabled === false) {
+                        if (typeof window.setLandingAbAssignment === 'function') {
+                            window.setLandingAbAssignment('b', 'disabled');
+                        }
+                        return reveal('b');
+                    }
+                    var existing =
+                        typeof window.getLandingAbAssignment === 'function'
+                            ? window.getLandingAbAssignment()
+                            : null;
+                    var variant = existing && (existing.variant === 'b' || existing.variant === 'c')
+                        ? existing.variant
+                        : '';
+                    var isNew = !variant;
+                    if (!variant) {
+                        var payload =
+                            typeof window.buildClientDevicePayload === 'function'
+                                ? window.buildClientDevicePayload()
+                                : {};
+                        var cPercent = Math.max(0, Math.min(100, parseInt(cfg.c_percent, 10) || 0));
+                        variant = hashBucket(payload.client_id || '') < cPercent ? 'c' : 'b';
+                        if (typeof window.setLandingAbAssignment === 'function') {
+                            window.setLandingAbAssignment(variant, 'allocation');
+                        }
+                    }
+                    if (isNew && typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_landing_ab_assignment', {
+                            page: 'install_guide',
+                            landing_variant: variant,
+                            referrer: entry.referrer,
+                            utm_source: entry.utm_source,
+                            sales_ch: entry.sales_ch
+                        });
+                    }
+                    if (variant === 'c' && !downloadOnly) {
+                        if (typeof window.markInstallGuideReferral === 'function') {
+                            window.markInstallGuideReferral('landing_ab_c');
+                        }
+                        var target = new URL('/shouye.html', window.location.origin);
+                        target.searchParams.set('guest', '1');
+                        target.searchParams.set('landing_ab', 'c');
+                        if (entry.utm_source) target.searchParams.set('utm_source', entry.utm_source);
+                        if (entry.sales_ch) target.searchParams.set('ch', entry.sales_ch);
+                        window.location.replace(target.pathname + target.search);
+                        return 'c';
+                    }
+                    return reveal(variant);
+                })
+                .catch(function () {
+                    if (typeof window.setLandingAbAssignment === 'function') {
+                        window.setLandingAbAssignment('b', 'config_error');
+                    }
+                    return reveal('b');
+                });
+        })();
+    </script>
     <script src="/js/wechat-open-browser-prompt.js?v=20260608"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 先体验再下载</title>
@@ -11,6 +115,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html.landing-ab-pending body { visibility: hidden; }
         html, body {
             overflow-x: hidden;
             scrollbar-width: none;
@@ -1668,7 +1773,7 @@
             }
         })();
 
-        (function installGuidePageAnalytics() {
+        function installGuidePageAnalytics() {
             if (typeof window.trackPublicAction !== 'function') {
                 return;
             }
@@ -1698,6 +1803,23 @@
                 }
                 return meta;
             })());
+            var landingViewMeta = {
+                page: 'install_guide',
+                landing_variant:
+                    typeof window.getLandingAbVariant === 'function'
+                        ? window.getLandingAbVariant() || 'b'
+                        : 'b'
+            };
+            try {
+                var entryRaw = sessionStorage.getItem('landing_bc_entry_v1');
+                var entry = entryRaw ? JSON.parse(entryRaw) : null;
+                if (entry) {
+                    landingViewMeta.referrer = entry.referrer || '';
+                    landingViewMeta.utm_source = entry.utm_source || '';
+                    landingViewMeta.sales_ch = entry.sales_ch || '';
+                }
+            } catch (eLandingView) {}
+            window.trackPublicAction('track_landing_ab_view', landingViewMeta);
             if (typeof window.persistSalesChannelAttribution === 'function') {
                 window.persistSalesChannelAttribution('install_guide_page_view');
             }
@@ -1711,7 +1833,16 @@
             });
             window.addEventListener('pagehide', sendPageLeave);
             window.addEventListener('beforeunload', sendPageLeave);
-        })();
+        }
+        if (window.__landingAbReady && typeof window.__landingAbReady.then === 'function') {
+            window.__landingAbReady.then(function (variant) {
+                if (variant !== 'c' || new URLSearchParams(window.location.search).get('download') === '1') {
+                    installGuidePageAnalytics();
+                }
+            });
+        } else {
+            installGuidePageAnalytics();
+        }
     </script>
 </body>
 </html>
