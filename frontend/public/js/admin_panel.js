@@ -3894,6 +3894,26 @@
                 '<div class="user-data-stat-card"><div class="ud-label">中位停留</div><div class="ud-val">' +
                 esc(s.median_dwell_label || '—') +
                 '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">平均 DOM 就绪</div><div class="ud-val">' +
+                esc(s.avg_dom_ready_label || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">中位 ' +
+                esc(s.median_dom_ready_label || '—') +
+                ' · 样本 ' +
+                esc(String(s.load_samples != null ? s.load_samples : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">平均安装包接口</div><div class="ud-val">' +
+                esc(s.avg_packages_total_label || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">中位 ' +
+                esc(s.median_packages_total_label || '—') +
+                (s.avg_packages_net_label && s.avg_packages_net_label !== '—'
+                    ? ' · 网 ' +
+                      esc(s.avg_packages_net_label) +
+                      ' + 渲 ' +
+                      esc(s.avg_packages_render_label || '—')
+                    : '') +
+                '</div></div>';
             html += '</div>';
 
             var daily = Array.isArray(data.daily) ? data.daily : [];
@@ -3987,9 +4007,9 @@
             html += '<p class="stat" style="margin:0 0 8px;">按日明细</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
             html +=
-                '<th>日期</th><th>浏览量</th><th>独立访客</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th></tr></thead><tbody>';
+                '<th>日期</th><th>浏览量</th><th>独立访客</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th><th>平均DOM就绪</th><th>平均包接口</th></tr></thead><tbody>';
             if (!daily.length) {
-                html += '<tr><td colspan="7">暂无</td></tr>';
+                html += '<tr><td colspan="9">暂无</td></tr>';
             } else {
                 daily.slice().reverse().forEach(function (row) {
                     html += '<tr>';
@@ -4000,6 +4020,8 @@
                     html += '<td>' + esc(row.registered != null ? row.registered : 0) + '</td>';
                     html += '<td>' + esc(row.register_rate_pct || (row.unique_visitors > 0 ? '0.0%' : '—')) + '</td>';
                     html += '<td>' + esc(row.avg_dwell_label || '—') + '</td>';
+                    html += '<td>' + esc(row.avg_dom_ready_label || '—') + '</td>';
+                    html += '<td>' + esc(row.avg_packages_total_label || '—') + '</td>';
                     html += '</tr>';
                 });
             }
@@ -4008,7 +4030,7 @@
             var recentVisitors = Array.isArray(data.recent_visitors) ? data.recent_visitors : [];
             html += '<p class="stat" style="margin:0 0 8px;">最近访客行为（最多 20 位访客，同一访客合并展示）</p>';
             html += '<div class="scroll-x"><table><thead><tr>';
-            html += '<th>访客</th><th>IP</th><th>设备</th><th>时间</th><th>行为</th><th>停留</th></tr></thead><tbody>';
+            html += '<th>访客</th><th>IP</th><th>设备</th><th>时间</th><th>行为</th><th>停留/加载</th></tr></thead><tbody>';
             if (!recentVisitors.length) {
                 html += '<tr><td colspan="6">暂无</td></tr>';
             } else {
@@ -4041,10 +4063,13 @@
                         }
                         html += '<td>' + esc(formatIsoToCnShort(row.at)) + '</td>';
                         html += '<td>' + esc(row.label || row.event_key) + '</td>';
-                        html +=
-                            '<td>' +
-                            esc(row.event_key === 'track_install_page_leave' ? row.dwell_label || '—' : '—') +
-                            '</td>';
+                        var detailCell = '—';
+                        if (row.event_key === 'track_install_page_leave') {
+                            detailCell = row.dwell_label || '—';
+                        } else if (row.event_key === 'track_install_page_perf') {
+                            detailCell = row.load_label || '—';
+                        }
+                        html += '<td>' + esc(detailCell) + '</td>';
                         html += '</tr>';
                     });
                 });

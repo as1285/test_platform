@@ -1160,6 +1160,59 @@
             };
         }
 
+        function measureInstallDomReadyMs() {
+            try {
+                if (typeof performance !== 'undefined' && performance.getEntriesByType) {
+                    var nav = performance.getEntriesByType('navigation')[0];
+                    if (nav && nav.domContentLoadedEventEnd > 0) {
+                        return Math.max(0, Math.round(nav.domContentLoadedEventEnd));
+                    }
+                }
+                if (typeof performance !== 'undefined' && performance.timing) {
+                    var t = performance.timing;
+                    if (t.navigationStart && t.domContentLoadedEventEnd) {
+                        return Math.max(0, Math.round(t.domContentLoadedEventEnd - t.navigationStart));
+                    }
+                }
+            } catch (eDom) {}
+            return null;
+        }
+
+        function reportInstallPagePerf(extra) {
+            if (window.__installPagePerfSent) {
+                return;
+            }
+            if (typeof window.trackPublicAction !== 'function') {
+                return;
+            }
+            function send() {
+                if (window.__installPagePerfSent) {
+                    return;
+                }
+                window.__installPagePerfSent = true;
+                var meta = { page: 'install_guide' };
+                var domMs = measureInstallDomReadyMs();
+                if (domMs != null && isFinite(domMs) && domMs <= 120000) {
+                    meta.dom_ready_ms = Math.round(domMs);
+                }
+                if (extra && typeof extra === 'object') {
+                    ['packages_net_ms', 'packages_render_ms', 'packages_total_ms'].forEach(function (k) {
+                        var n = parseInt(extra[k], 10);
+                        if (isFinite(n) && n >= 0 && n <= 120000) {
+                            meta[k] = n;
+                        }
+                    });
+                }
+                window.trackPublicAction('track_install_page_perf', meta);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', send, { once: true });
+                setTimeout(send, 8000);
+            } else {
+                send();
+            }
+        }
+
         (function initInstallButtons() {
             var row = document.getElementById('installButtonsRow');
             var empty = document.getElementById('installEmptyHint');
@@ -1167,14 +1220,46 @@
                 return;
             }
             var layout = applyInstallPageLayout();
+            var reqStart =
+                typeof performance !== 'undefined' && typeof performance.now === 'function'
+                    ? performance.now()
+                    : Date.now();
             fetch('/api/public/install-packages', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (body) {
+                .then(function (r) {
+                    var reqEnd =
+                        typeof performance !== 'undefined' && typeof performance.now === 'function'
+                            ? performance.now()
+                            : Date.now();
+                    var netMs = Math.max(0, Math.round(reqEnd - reqStart));
+                    return r.json().then(function (body) {
+                        return { body: body, netMs: netMs };
+                    });
+                })
+                .then(function (pack) {
+                    var body = pack.body;
+                    var netMs = pack.netMs;
+                    var renderStart =
+                        typeof performance !== 'undefined' && typeof performance.now === 'function'
+                            ? performance.now()
+                            : Date.now();
+                    function finishPerf() {
+                        var renderEnd =
+                            typeof performance !== 'undefined' && typeof performance.now === 'function'
+                                ? performance.now()
+                                : Date.now();
+                        var renderMs = Math.max(0, Math.round(renderEnd - renderStart));
+                        reportInstallPagePerf({
+                            packages_net_ms: netMs,
+                            packages_render_ms: renderMs,
+                            packages_total_ms: netMs + renderMs
+                        });
+                    }
                     if (!body || body.code !== 200 || !body.data) {
                         if (empty) {
                             empty.style.display = 'block';
                             empty.textContent = '无法加载下载配置，请稍后再试。';
                         }
+                        finishPerf();
                         return;
                     }
                     var apk = body.data.android_apk_download_url != null ? String(body.data.android_apk_download_url).trim() : '';
@@ -1193,6 +1278,7 @@
                                 empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
                             }
                         }
+                        finishPerf();
                         return;
                     }
                     if (empty) {
@@ -1261,12 +1347,23 @@
                     if (primaryForSticky) {
                         syncStickyDownload(primaryForSticky, primaryLabel);
                     }
+                    finishPerf();
                 })
                 .catch(function () {
                     if (empty) {
                         empty.style.display = 'block';
                         empty.textContent = '无法加载下载配置，请稍后再试。';
                     }
+                    var failEnd =
+                        typeof performance !== 'undefined' && typeof performance.now === 'function'
+                            ? performance.now()
+                            : Date.now();
+                    var failNet = Math.max(0, Math.round(failEnd - reqStart));
+                    reportInstallPagePerf({
+                        packages_net_ms: failNet,
+                        packages_render_ms: 0,
+                        packages_total_ms: failNet
+                    });
                 });
         })();
 

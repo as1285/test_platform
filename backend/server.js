@@ -5545,6 +5545,7 @@ function recordUserPageEvent(req, routeKey) {
 var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_page_view: '页面浏览',
   track_install_page_leave: '离开页面',
+  track_install_page_perf: '页面加载耗时',
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
   track_install_register_click: '注册入口点击',
@@ -5555,7 +5556,10 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_usage_video_play: '操作视频播放',
   track_install_app_shell_register_prompt_show: 'App 内安装成功弹窗展示',
   track_install_app_shell_register_prompt_ok: 'App 内弹窗-立即注册',
-  track_install_app_shell_register_prompt_later: 'App 内弹窗-稍后再说'
+  track_install_app_shell_register_prompt_later: 'App 内弹窗-稍后再说',
+  track_landing_gate_open: '落地关键门禁打开',
+  track_landing_demo_click: '落地示例关键点击',
+  track_landing_gate_download: '落地门禁点下载'
 };
 
 function isInstallGuideTrackContext(req, meta) {
@@ -5696,12 +5700,14 @@ function buildInstallGuideRecentVisitors(rows, maxVisitors) {
     }
     var ek = String(r.event_key || '');
     var ds = r.dwell_seconds != null ? Number(r.dwell_seconds) : null;
+    var perf = ek === 'track_install_page_perf' ? parseInstallGuidePerfMeta(r.meta_json) : null;
     g.events.push({
       at: at,
       event_key: ek,
       label: installGuideEventLabel(ek),
       dwell_seconds: isFinite(ds) ? ds : null,
-      dwell_label: isFinite(ds) ? formatStaySecondsLabel(ds) : '—'
+      dwell_label: isFinite(ds) ? formatStaySecondsLabel(ds) : '—',
+      load_label: perf ? installGuidePerfLoadLabel(perf) : null
     });
   });
   var list = Object.keys(groups).map(function (k) {
@@ -5726,6 +5732,113 @@ function medianFromSortedNumbers(arr) {
     return arr[mid];
   }
   return Math.round((arr[mid - 1] + arr[mid]) / 2);
+}
+
+function formatLatencyMsLabel(ms) {
+  var n = Math.round(Number(ms));
+  if (!isFinite(n) || n < 0) {
+    return '—';
+  }
+  if (n >= 1000) {
+    return (n / 1000).toFixed(n >= 10000 ? 1 : 2) + ' s';
+  }
+  return String(n) + ' ms';
+}
+
+function parseInstallGuidePerfMeta(metaJson) {
+  var m = null;
+  try {
+    if (metaJson == null) {
+      return null;
+    }
+    if (typeof metaJson === 'object' && !Array.isArray(metaJson)) {
+      m = metaJson;
+    } else {
+      m = JSON.parse(String(metaJson));
+    }
+  } catch (e0) {
+    return null;
+  }
+  if (!m || typeof m !== 'object') {
+    return null;
+  }
+  function num(key) {
+    var n = parseInt(m[key], 10);
+    if (!isFinite(n) || n < 0 || n > 120000) {
+      return null;
+    }
+    return n;
+  }
+  var out = {
+    dom_ready_ms: num('dom_ready_ms'),
+    packages_net_ms: num('packages_net_ms'),
+    packages_render_ms: num('packages_render_ms'),
+    packages_total_ms: num('packages_total_ms')
+  };
+  if (
+    out.dom_ready_ms == null &&
+    out.packages_net_ms == null &&
+    out.packages_render_ms == null &&
+    out.packages_total_ms == null
+  ) {
+    return null;
+  }
+  return out;
+}
+
+function aggregateMsStats(values) {
+  var vals = (values || [])
+    .map(function (n) {
+      return Number(n);
+    })
+    .filter(function (n) {
+      return isFinite(n) && n >= 0 && n <= 120000;
+    })
+    .sort(function (a, b) {
+      return a - b;
+    });
+  if (!vals.length) {
+    return {
+      count: 0,
+      avg_ms: null,
+      median_ms: null,
+      avg_label: '—',
+      median_label: '—'
+    };
+  }
+  var sum = 0;
+  vals.forEach(function (n) {
+    sum += n;
+  });
+  var avg = Math.round(sum / vals.length);
+  var med = medianFromSortedNumbers(vals);
+  return {
+    count: vals.length,
+    avg_ms: avg,
+    median_ms: med,
+    avg_label: formatLatencyMsLabel(avg),
+    median_label: med != null ? formatLatencyMsLabel(med) : '—'
+  };
+}
+
+function installGuidePerfLoadLabel(perf) {
+  if (!perf) {
+    return '—';
+  }
+  var parts = [];
+  if (perf.dom_ready_ms != null) {
+    parts.push('DOM ' + formatLatencyMsLabel(perf.dom_ready_ms));
+  }
+  if (perf.packages_total_ms != null) {
+    parts.push('包接口 ' + formatLatencyMsLabel(perf.packages_total_ms));
+  } else if (perf.packages_net_ms != null) {
+    parts.push(
+      '包接口 ' +
+        formatLatencyMsLabel(perf.packages_net_ms) +
+        (perf.packages_render_ms != null ? '+' + formatLatencyMsLabel(perf.packages_render_ms) : '')
+    );
+  }
+  return parts.length ? parts.join(' · ') : '—';
 }
 
 function touchUserDailyActivity(username) {
@@ -8476,10 +8589,21 @@ async function handleAdminInstallGuideStats(req, res) {
       const [actionRows] = await conn.query(
         `SELECT event_key, COUNT(*) AS total
          FROM install_guide_track_events
-         WHERE event_key NOT IN ('track_install_page_view', 'track_install_page_leave')
+         WHERE event_key NOT IN (
+           'track_install_page_view',
+           'track_install_page_leave',
+           'track_install_page_perf'
+         )
            AND ${cnSince}
          GROUP BY event_key
          ORDER BY total DESC`,
+        sinceParams
+      );
+      const [perfRows] = await conn.query(
+        `SELECT meta_json, ${cnDay} AS d
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_page_perf'
+           AND ${cnSince}`,
         sinceParams
       );
       const [dailyRows] = await conn.query(
@@ -8563,7 +8687,7 @@ async function handleAdminInstallGuideStats(req, res) {
         userSinceParams
       );
       const [recentRows] = await conn.query(
-        `SELECT id, client_id, device_fp, event_key, dwell_seconds, created_at, ip, user_agent
+        `SELECT id, client_id, device_fp, event_key, dwell_seconds, meta_json, created_at, ip, user_agent
          FROM install_guide_track_events
          WHERE ${cnSince}
          ORDER BY created_at DESC
@@ -8583,6 +8707,47 @@ async function handleAdminInstallGuideStats(req, res) {
           return isFinite(n);
         });
       var medianDwell = medianFromSortedNumbers(dwellVals);
+
+      var domReadyVals = [];
+      var packagesTotalVals = [];
+      var packagesNetVals = [];
+      var packagesRenderVals = [];
+      var dailyPerfMap = {};
+      (perfRows || []).forEach(function (row) {
+        var perf = parseInstallGuidePerfMeta(row.meta_json);
+        if (!perf) {
+          return;
+        }
+        if (perf.dom_ready_ms != null) {
+          domReadyVals.push(perf.dom_ready_ms);
+        }
+        if (perf.packages_total_ms != null) {
+          packagesTotalVals.push(perf.packages_total_ms);
+        }
+        if (perf.packages_net_ms != null) {
+          packagesNetVals.push(perf.packages_net_ms);
+        }
+        if (perf.packages_render_ms != null) {
+          packagesRenderVals.push(perf.packages_render_ms);
+        }
+        var dk = formatDateKey(row.d);
+        if (!dk) {
+          return;
+        }
+        if (!dailyPerfMap[dk]) {
+          dailyPerfMap[dk] = { dom: [], pkg: [] };
+        }
+        if (perf.dom_ready_ms != null) {
+          dailyPerfMap[dk].dom.push(perf.dom_ready_ms);
+        }
+        if (perf.packages_total_ms != null) {
+          dailyPerfMap[dk].pkg.push(perf.packages_total_ms);
+        }
+      });
+      var domReadyStats = aggregateMsStats(domReadyVals);
+      var packagesTotalStats = aggregateMsStats(packagesTotalVals);
+      var packagesNetStats = aggregateMsStats(packagesNetVals);
+      var packagesRenderStats = aggregateMsStats(packagesRenderVals);
 
       var actions = (actionRows || []).map(function (r) {
         var ek = String(r.event_key || '');
@@ -8633,8 +8798,19 @@ async function handleAdminInstallGuideStats(req, res) {
           register_rate: uv > 0 ? regInstall / uv : null,
           register_rate_pct: pctText(regInstall, uv),
           register_rate_all: uv > 0 ? regAll / uv : null,
-          register_rate_all_pct: pctText(regAll, uv)
+          register_rate_all_pct: pctText(regAll, uv),
+          avg_dom_ready_label: '—',
+          avg_packages_total_label: '—'
         };
+        var dayPerf = dailyPerfMap[dk];
+        if (dayPerf) {
+          var dayDom = aggregateMsStats(dayPerf.dom);
+          var dayPkg = aggregateMsStats(dayPerf.pkg);
+          dailyMap[dk].avg_dom_ready_ms = dayDom.avg_ms;
+          dailyMap[dk].avg_dom_ready_label = dayDom.avg_label;
+          dailyMap[dk].avg_packages_total_ms = dayPkg.avg_ms;
+          dailyMap[dk].avg_packages_total_label = dayPkg.avg_label;
+        }
       });
 
       var todayKey = chinaDateKeyNow();
@@ -8814,6 +8990,19 @@ async function handleAdminInstallGuideStats(req, res) {
               avg_dwell_label: isFinite(avgDwell) ? formatStaySecondsLabel(avgDwell) : '—',
               median_dwell_seconds: medianDwell != null ? medianDwell : null,
               median_dwell_label: medianDwell != null ? formatStaySecondsLabel(medianDwell) : '—',
+              load_samples: domReadyStats.count || packagesTotalStats.count || 0,
+              avg_dom_ready_ms: domReadyStats.avg_ms,
+              avg_dom_ready_label: domReadyStats.avg_label,
+              median_dom_ready_ms: domReadyStats.median_ms,
+              median_dom_ready_label: domReadyStats.median_label,
+              avg_packages_total_ms: packagesTotalStats.avg_ms,
+              avg_packages_total_label: packagesTotalStats.avg_label,
+              median_packages_total_ms: packagesTotalStats.median_ms,
+              median_packages_total_label: packagesTotalStats.median_label,
+              avg_packages_net_ms: packagesNetStats.avg_ms,
+              avg_packages_net_label: packagesNetStats.avg_label,
+              avg_packages_render_ms: packagesRenderStats.avg_ms,
+              avg_packages_render_label: packagesRenderStats.avg_label,
               registered: totalRegistered,
               registered_from_install: totalRegisteredFromInstall,
               registered_from_install_reported: totalRegisteredFromInstallReported,
