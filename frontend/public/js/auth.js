@@ -1436,10 +1436,36 @@
     } catch (e) {}
   }
 
+  var API_PERF_SLOW_MS = 3000;
+  var _apiPerfLastReportAt = 0;
+
   function authFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+    var reqStart =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+    var routeHint = String(url || '').split('?')[0];
     return fetch(url, opts).then(function (r) {
+      var reqEnd =
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+      var netMs = Math.max(0, Math.round(reqEnd - reqStart));
+      try {
+        r.__perfNetMs = netMs;
+        r.__perfRoute = routeHint;
+      } catch (ePerf) {}
+      if (netMs >= API_PERF_SLOW_MS) {
+        reportApiPerf({
+          route_key: routeHint,
+          net_ms: netMs,
+          render_ms: 0,
+          total_ms: netMs,
+          http_status: r.status
+        });
+      }
       if (r.status === 401) {
         return r.text().then(function (text) {
           clearSession();
@@ -1486,6 +1512,116 @@
         });
       }
       return r;
+    });
+  }
+
+  function detectNetType() {
+    try {
+      var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (c && c.effectiveType) return String(c.effectiveType).substring(0, 32);
+      if (c && c.type) return String(c.type).substring(0, 32);
+    } catch (e) {}
+    return '';
+  }
+
+  function detectViewport() {
+    try {
+      var w = window.innerWidth || 0;
+      var h = window.innerHeight || 0;
+      return String(w) + 'x' + String(h);
+    } catch (e2) {
+      return '';
+    }
+  }
+
+  /**
+   * 上报接口/渲染耗时（仅总耗时或网络耗时 ≥ 3s 写入异常明细）。
+   * meta: { route_key, net_ms, render_ms, total_ms, item_count, page_path, http_status }
+   */
+  function reportApiPerf(meta) {
+    try {
+      var m = meta && typeof meta === 'object' ? meta : {};
+      var netMs = Math.max(0, Math.round(Number(m.net_ms) || 0));
+      var renderMs = Math.max(0, Math.round(Number(m.render_ms) || 0));
+      var totalMs = Math.max(0, Math.round(Number(m.total_ms) || netMs + renderMs));
+      if (totalMs < API_PERF_SLOW_MS && netMs < API_PERF_SLOW_MS) return;
+      var now = Date.now();
+      if (now - _apiPerfLastReportAt < 800) return;
+      _apiPerfLastReportAt = now;
+      var payload = {
+        route_key: String(m.route_key || m.route || m.url || '').substring(0, 240),
+        net_ms: netMs,
+        render_ms: renderMs,
+        total_ms: totalMs,
+        item_count: m.item_count != null ? m.item_count : m.comment_count,
+        page_path: m.page_path || (window.location && window.location.pathname) || '',
+        viewport: m.viewport || detectViewport(),
+        net_type: m.net_type || detectNetType(),
+        http_status: m.http_status,
+        client_id: typeof getOrCreateClientDeviceId === 'function' ? getOrCreateClientDeviceId() : ''
+      };
+      if (!payload.route_key) return;
+      if (typeof fireTrack === 'function' && hasUserToken()) {
+        fireTrack('track_api_perf', '/event/api_perf', payload);
+      } else if (typeof firePublicTrack === 'function') {
+        firePublicTrack('track_api_perf', '/event/api_perf', payload);
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * 测量：网络耗时 + 渲染耗时（适配列表/评论类页面）。
+   * fetchPromise: Promise<Response> 或已带 __perfNetMs 的 Response
+   * renderFn: 同步渲染函数，返回条数（可选）
+   */
+  function measureFetchAndRender(fetchPromise, renderFn, meta) {
+    var base = meta && typeof meta === 'object' ? meta : {};
+    var t0 =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+    return Promise.resolve(fetchPromise).then(function (resOrData) {
+      var netMs =
+        resOrData && resOrData.__perfNetMs != null
+          ? Number(resOrData.__perfNetMs)
+          : Math.max(
+              0,
+              Math.round(
+                ((typeof performance !== 'undefined' && performance.now
+                  ? performance.now()
+                  : Date.now()) -
+                  t0)
+              )
+            );
+      var renderStart =
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+      var itemCount = 0;
+      if (typeof renderFn === 'function') {
+        var out = renderFn(resOrData);
+        if (typeof out === 'number' && isFinite(out)) itemCount = out;
+      }
+      var renderEnd =
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+      var renderMs = Math.max(0, Math.round(renderEnd - renderStart));
+      var total = netMs + renderMs;
+      reportApiPerf(
+        Object.assign({}, base, {
+          net_ms: netMs,
+          render_ms: renderMs,
+          total_ms: total,
+          item_count: base.item_count != null ? base.item_count : itemCount
+        })
+      );
+      return {
+        result: resOrData,
+        net_ms: netMs,
+        render_ms: renderMs,
+        total_ms: total
+      };
     });
   }
 
@@ -1699,6 +1835,8 @@
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
   window.authClearSession = clearSession;
+  window.reportApiPerf = reportApiPerf;
+  window.measureFetchAndRender = measureFetchAndRender;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
   window.buildClientDevicePayload = buildClientDevicePayload;
   window.markInstallGuideReferral = markInstallGuideReferral;

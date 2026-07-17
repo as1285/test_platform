@@ -80,10 +80,11 @@ purge_table admin_operation_logs created_at "管理操作日志"
 purge_table admin_login_events created_at "管理登录流水"
 purge_table user_login_events created_at "用户登录流水"
 purge_table analytics_api_daily stat_date "接口日聚合"
+purge_table api_slow_events created_at "慢接口异常明细"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
   echo "[purge-db-logs] OPTIMIZE TABLE (lightweight, may take a minute)..."
-  mysql_exec "OPTIMIZE TABLE user_page_events, tax_record_change_logs, install_guide_track_events, admin_operation_logs, admin_login_events, user_login_events, analytics_api_daily;" >/dev/null || true
+  mysql_exec "OPTIMIZE TABLE user_page_events, tax_record_change_logs, install_guide_track_events, admin_operation_logs, admin_login_events, user_login_events, analytics_api_daily, api_slow_events;" >/dev/null || true
 fi
 
 echo "[purge-db-logs] done"

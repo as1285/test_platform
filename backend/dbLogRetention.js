@@ -13,7 +13,8 @@ const PURGE_TARGETS = [
   { table: 'admin_operation_logs', dateColumn: 'created_at', label: '管理操作日志' },
   { table: 'admin_login_events', dateColumn: 'created_at', label: '管理登录流水' },
   { table: 'user_login_events', dateColumn: 'created_at', label: '用户登录流水' },
-  { table: 'analytics_api_daily', dateColumn: 'stat_date', label: '接口日聚合' }
+  { table: 'analytics_api_daily', dateColumn: 'stat_date', label: '接口日聚合' },
+  { table: 'api_slow_events', dateColumn: 'created_at', label: '慢接口异常明细' }
 ];
 
 function normalizeRetainDays(days) {

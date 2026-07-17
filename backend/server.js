@@ -2040,6 +2040,32 @@ async function createTables() {
   }
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS api_slow_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      source VARCHAR(16) NOT NULL DEFAULT 'server' COMMENT 'server|client',
+      route_key VARCHAR(240) NOT NULL,
+      biz_category VARCHAR(64) NULL,
+      net_ms INT UNSIGNED NOT NULL DEFAULT 0,
+      render_ms INT UNSIGNED NOT NULL DEFAULT 0,
+      total_ms INT UNSIGNED NOT NULL DEFAULT 0,
+      item_count INT UNSIGNED NULL,
+      username VARCHAR(255) NULL,
+      client_id VARCHAR(128) NULL,
+      page_path VARCHAR(255) NULL,
+      viewport VARCHAR(64) NULL,
+      net_type VARCHAR(32) NULL,
+      http_status SMALLINT UNSIGNED NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_slow_created (created_at),
+      INDEX idx_slow_route_created (route_key, created_at),
+      INDEX idx_slow_total (total_ms),
+      INDEX idx_slow_client (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_daily_activity (
       activity_date DATE NOT NULL,
       username VARCHAR(255) NOT NULL,
@@ -4512,6 +4538,7 @@ async function handleUserPost(req, res) {
   
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      maybeRecordClientApiPerfTrack(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
 
@@ -5305,6 +5332,110 @@ function incrementApiDailyCounter(routeKey, bizCategory, latencyMs) {
     });
 }
 
+var API_SLOW_THRESHOLD_MS = parseInt(process.env.API_SLOW_THRESHOLD_MS || '3000', 10) || 3000;
+
+function clampPerfMs(v) {
+  var n = Number(v);
+  if (!isFinite(n) || n < 0) return 0;
+  return Math.min(Math.round(n), 600000);
+}
+
+function sanitizeSlowRouteKey(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (s.length > 240) s = s.substring(0, 240);
+  return s;
+}
+
+function recordApiSlowEvent(payload) {
+  if (!pool || !payload) return;
+  var totalMs = clampPerfMs(payload.total_ms);
+  var netMs = clampPerfMs(payload.net_ms);
+  var renderMs = clampPerfMs(payload.render_ms);
+  if (totalMs <= 0) {
+    totalMs = netMs + renderMs;
+  }
+  if (totalMs < API_SLOW_THRESHOLD_MS && netMs < API_SLOW_THRESHOLD_MS) {
+    return;
+  }
+  var routeKey = sanitizeSlowRouteKey(payload.route_key);
+  if (!routeKey) return;
+  var itemCount =
+    payload.item_count != null && isFinite(Number(payload.item_count))
+      ? Math.max(0, Math.min(Math.round(Number(payload.item_count)), 1000000))
+      : null;
+  var httpStatus =
+    payload.http_status != null && isFinite(Number(payload.http_status))
+      ? Math.max(0, Math.min(Math.round(Number(payload.http_status)), 999))
+      : null;
+  pool
+    .execute(
+      `INSERT INTO api_slow_events
+       (source, route_key, biz_category, net_ms, render_ms, total_ms, item_count,
+        username, client_id, page_path, viewport, net_type, http_status, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        String(payload.source || 'server').substring(0, 16),
+        routeKey,
+        payload.biz_category != null ? String(payload.biz_category).substring(0, 64) : null,
+        netMs,
+        renderMs,
+        totalMs,
+        itemCount,
+        payload.username != null ? String(payload.username).substring(0, 255) : null,
+        payload.client_id != null ? String(payload.client_id).substring(0, 128) : null,
+        payload.page_path != null ? String(payload.page_path).substring(0, 255) : null,
+        payload.viewport != null ? String(payload.viewport).substring(0, 64) : null,
+        payload.net_type != null ? String(payload.net_type).substring(0, 32) : null,
+        httpStatus,
+        payload.ip != null ? String(payload.ip).substring(0, 128) : null,
+        payload.user_agent != null ? String(payload.user_agent).substring(0, 512) : null
+      ]
+    )
+    .catch(function (e) {
+      console.error('recordApiSlowEvent', e);
+    });
+}
+
+function maybeRecordClientApiPerfTrack(req, action, meta) {
+  var act = String(action || '').toLowerCase();
+  if (act !== 'track_api_perf' && act !== 'track_api_slow') {
+    return false;
+  }
+  var m = meta && typeof meta === 'object' ? meta : {};
+  var routeKey = sanitizeSlowRouteKey(m.route_key || m.route || m.url || '');
+  if (!routeKey) {
+    return true;
+  }
+  var clientId = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      clientId = String(req.clientDevicePayload.client_id).trim();
+    }
+  } catch (e) {}
+  if (!clientId && m.client_id) {
+    clientId = String(m.client_id).trim().substring(0, 128);
+  }
+  recordApiSlowEvent({
+    source: 'client',
+    route_key: routeKey,
+    biz_category: m.biz_category != null ? String(m.biz_category) : '客户端性能',
+    net_ms: m.net_ms != null ? m.net_ms : m.network_ms,
+    render_ms: m.render_ms != null ? m.render_ms : m.dom_ms,
+    total_ms: m.total_ms != null ? m.total_ms : m.cost_ms,
+    item_count: m.item_count != null ? m.item_count : m.comment_count,
+    username: req.authUserId || m.username || null,
+    client_id: clientId || null,
+    page_path: m.page_path || m.page || inferPagePathFromRequest(req) || null,
+    viewport: m.viewport || null,
+    net_type: m.net_type || null,
+    http_status: m.http_status,
+    ip: getClientIp(req),
+    user_agent: req.headers && req.headers['user-agent'] ? String(req.headers['user-agent']) : ''
+  });
+  return true;
+}
+
 function analyticsFinishMiddleware(req, res, next) {
   var startedAt = Date.now();
   res.on('finish', function () {
@@ -5316,6 +5447,28 @@ function analyticsFinishMiddleware(req, res, next) {
       var latencyMs = Math.max(0, Date.now() - startedAt);
       incrementApiDailyCounter(info.route_key, info.biz_category, latencyMs);
       recordUserPageEvent(req, info.route_key);
+      if (latencyMs >= API_SLOW_THRESHOLD_MS && info.biz_category !== '管理后台') {
+        var cid = '';
+        try {
+          if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+            cid = String(req.clientDevicePayload.client_id).trim();
+          }
+        } catch (e2) {}
+        recordApiSlowEvent({
+          source: 'server',
+          route_key: info.route_key,
+          biz_category: info.biz_category,
+          net_ms: latencyMs,
+          render_ms: 0,
+          total_ms: latencyMs,
+          username: req.authUserId || null,
+          client_id: cid || null,
+          page_path: inferPagePathFromRequest(req) || null,
+          http_status: res.statusCode,
+          ip: getClientIp(req),
+          user_agent: req.headers && req.headers['user-agent'] ? String(req.headers['user-agent']) : ''
+        });
+      }
     } catch (e) {
       console.error('analyticsFinishMiddleware', e);
     }
@@ -7229,6 +7382,7 @@ async function handleAuthPost(req, res) {
   var action = body.action;
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
+      maybeRecordClientApiPerfTrack(req, action, body.meta);
       recordInstallGuideTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
@@ -13555,6 +13709,8 @@ async function handleAdminAnalyticsApi(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
     var pf = analyticsPeriodStatDateFilter(period);
+    var slowDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var slowPf = analyticsPeriodCnDateFilter(slowDay, period);
     const conn = await pool.getConnection();
     try {
       const [byCat] = await conn.execute(
@@ -13579,6 +13735,83 @@ async function handleAdminAnalyticsApi(req, res) {
          ORDER BY total DESC LIMIT 10`,
         pf.params
       );
+      var slowSummary = {
+        threshold_ms: API_SLOW_THRESHOLD_MS,
+        total: 0,
+        server_cnt: 0,
+        client_cnt: 0,
+        avg_total_ms: null,
+        max_total_ms: 0
+      };
+      var slowTopRoutes = [];
+      var slowRecent = [];
+      try {
+        const [slowAgg] = await conn.query(
+          `SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN source = 'server' THEN 1 ELSE 0 END) AS server_cnt,
+                  SUM(CASE WHEN source = 'client' THEN 1 ELSE 0 END) AS client_cnt,
+                  AVG(total_ms) AS avg_total_ms,
+                  MAX(total_ms) AS max_total_ms
+           FROM api_slow_events
+           WHERE ${slowPf.sql}`,
+          slowPf.params
+        );
+        var sa = (slowAgg && slowAgg[0]) || {};
+        slowSummary.total = Number(sa.total) || 0;
+        slowSummary.server_cnt = Number(sa.server_cnt) || 0;
+        slowSummary.client_cnt = Number(sa.client_cnt) || 0;
+        slowSummary.avg_total_ms =
+          sa.avg_total_ms != null && isFinite(Number(sa.avg_total_ms))
+            ? Math.round(Number(sa.avg_total_ms))
+            : null;
+        slowSummary.max_total_ms = Number(sa.max_total_ms) || 0;
+        const [slowTop] = await conn.query(
+          `SELECT route_key, COUNT(*) AS cnt, ROUND(AVG(total_ms)) AS avg_ms, MAX(total_ms) AS max_ms
+           FROM api_slow_events
+           WHERE ${slowPf.sql}
+           GROUP BY route_key
+           ORDER BY cnt DESC
+           LIMIT 10`,
+          slowPf.params
+        );
+        slowTopRoutes = (slowTop || []).map(function (r) {
+          return {
+            route_key: String(r.route_key || ''),
+            cnt: Number(r.cnt) || 0,
+            avg_ms: Number(r.avg_ms) || 0,
+            max_ms: Number(r.max_ms) || 0
+          };
+        });
+        const [slowRows] = await conn.query(
+          `SELECT source, route_key, net_ms, render_ms, total_ms, item_count, username, client_id,
+                  page_path, viewport, net_type, http_status, ip, created_at
+           FROM api_slow_events
+           WHERE ${slowPf.sql}
+           ORDER BY id DESC
+           LIMIT 30`,
+          slowPf.params
+        );
+        slowRecent = (slowRows || []).map(function (r) {
+          return {
+            source: String(r.source || ''),
+            route_key: String(r.route_key || ''),
+            net_ms: Number(r.net_ms) || 0,
+            render_ms: Number(r.render_ms) || 0,
+            total_ms: Number(r.total_ms) || 0,
+            item_count: r.item_count != null ? Number(r.item_count) : null,
+            username: r.username != null ? String(r.username) : '',
+            client_id: r.client_id != null ? String(r.client_id) : '',
+            page_path: r.page_path != null ? String(r.page_path) : '',
+            viewport: r.viewport != null ? String(r.viewport) : '',
+            net_type: r.net_type != null ? String(r.net_type) : '',
+            http_status: r.http_status != null ? Number(r.http_status) : null,
+            ip: r.ip != null ? String(r.ip) : '',
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
+      } catch (slowErr) {
+        console.error('handleAdminAnalyticsApi slow', slowErr);
+      }
       return res.json({
         code: 200,
         data: Object.assign(
@@ -13603,7 +13836,12 @@ async function handleAdminAnalyticsApi(req, res) {
                 avg_ms: calls > 0 ? Math.round(totalMs / calls) : null,
                 max_ms: Number(r.max_ms) || 0
               };
-            })
+            }),
+            slow: {
+              summary: slowSummary,
+              top_routes: slowTopRoutes,
+              recent: slowRecent
+            }
           },
           conversionAnalyticsPeriodMeta(period)
         )

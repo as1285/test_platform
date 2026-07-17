@@ -2308,6 +2308,11 @@
                 '<tr><td colspan="4">加载中…</td></tr>';
             document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                 '<tr><td colspan="5">加载中…</td></tr>';
+            var slowTopEl = document.getElementById('apiSlowTopTbody');
+            var slowRecentEl = document.getElementById('apiSlowRecentTbody');
+            var slowHintEl = document.getElementById('apiSlowSummaryHint');
+            if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
+            if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
             adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
                 .then(function (r) {
                     return r.json();
@@ -2346,11 +2351,81 @@
                         });
                         document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                             rh || '<tr><td colspan="5">暂无数据</td></tr>';
+
+                        var slow = api.data.slow || {};
+                        var ss = slow.summary || {};
+                        if (slowHintEl) {
+                            slowHintEl.textContent =
+                                '阈值 ≥ ' +
+                                (ss.threshold_ms != null ? ss.threshold_ms : 3000) +
+                                ' ms；本区间异常 ' +
+                                (ss.total != null ? ss.total : 0) +
+                                ' 次（服务端 ' +
+                                (ss.server_cnt != null ? ss.server_cnt : 0) +
+                                ' · 客户端 ' +
+                                (ss.client_cnt != null ? ss.client_cnt : 0) +
+                                '）' +
+                                (ss.avg_total_ms != null
+                                    ? '；平均 ' + formatApiLatencyMs(ss.avg_total_ms)
+                                    : '') +
+                                (ss.max_total_ms
+                                    ? '；最大 ' + formatApiLatencyMs(ss.max_total_ms)
+                                    : '') +
+                                '。';
+                        }
+                        if (slowTopEl) {
+                            var sth = '';
+                            (slow.top_routes || []).forEach(function (row) {
+                                sth +=
+                                    '<tr><td class="cell-break"><code>' +
+                                    esc(row.route_key) +
+                                    '</code></td><td>' +
+                                    esc(String(row.cnt)) +
+                                    '</td><td>' +
+                                    esc(formatApiLatencyMs(row.avg_ms)) +
+                                    '</td><td>' +
+                                    esc(formatApiLatencyMs(row.max_ms)) +
+                                    '</td></tr>';
+                            });
+                            slowTopEl.innerHTML = sth || '<tr><td colspan="4">暂无慢请求</td></tr>';
+                        }
+                        if (slowRecentEl) {
+                            var srh = '';
+                            (slow.recent || []).forEach(function (row) {
+                                srh +=
+                                    '<tr><td>' +
+                                    esc(row.created_at ? formatDt(row.created_at) : '—') +
+                                    '</td><td>' +
+                                    esc(row.source === 'client' ? '客户端' : '服务端') +
+                                    '</td><td class="cell-break"><code>' +
+                                    esc(row.route_key) +
+                                    '</code></td><td>' +
+                                    esc(formatApiLatencyMs(row.net_ms)) +
+                                    '</td><td>' +
+                                    esc(formatApiLatencyMs(row.render_ms)) +
+                                    '</td><td>' +
+                                    esc(formatApiLatencyMs(row.total_ms)) +
+                                    '</td><td>' +
+                                    esc(row.item_count != null ? String(row.item_count) : '—') +
+                                    '</td><td class="cell-break"><code>' +
+                                    esc(row.username || '—') +
+                                    '</code></td><td class="cell-break"><code>' +
+                                    esc(row.client_id || '—') +
+                                    '</code></td><td class="cell-break">' +
+                                    esc(row.page_path || '—') +
+                                    '</td><td>' +
+                                    esc(row.net_type || '—') +
+                                    '</td></tr>';
+                            });
+                            slowRecentEl.innerHTML = srh || '<tr><td colspan="11">暂无明细</td></tr>';
+                        }
                     } else {
                         document.getElementById('apiAnalyticsCatTbody').innerHTML =
                             '<tr><td colspan="4">' + esc(api.msg || '加载失败') + '</td></tr>';
                         document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                             '<tr><td colspan="5">—</td></tr>';
+                        if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
+                        if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">—</td></tr>';
                     }
                 })
                 .catch(function () {
@@ -2358,6 +2433,8 @@
                         '<tr><td colspan="4">网络错误</td></tr>';
                     document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                         '<tr><td colspan="5">网络错误</td></tr>';
+                    if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                    if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
                 });
         }
 
