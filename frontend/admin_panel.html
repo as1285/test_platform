@@ -1308,7 +1308,7 @@
                 <div id="page-analytics-register" class="page-panel" role="tabpanel">
         <section>
             <h2>注册时段分析</h2>
-            <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
+            <p class="hint" style="margin-top:0;">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。另按注册用户最早设备 UA 统计<strong>每日安卓 / 苹果手机占比</strong>。</p>
             <div class="form-row" style="align-items: center; margin-top: 8px;">
                 <div>
                     <label for="analyticsRegisterTimeDays">统计区间</label>
@@ -1344,6 +1344,25 @@
                             <div class="chart-canvas-wrap"><canvas id="registerTimeChartHourly"></canvas></div>
                         </div>
                     </div>
+                </div>
+                <p class="stat" style="margin:18px 0 8px;">每日注册 · 安卓 / 苹果占比</p>
+                <p id="registerPlatformSummary" class="hint" style="margin:0 0 10px;">加载中…</p>
+                <div id="registerPlatformCards" class="user-data-stats" style="margin-bottom:12px;"></div>
+                <div class="scroll-x">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>注册人数</th>
+                                <th>安卓</th>
+                                <th>安卓率</th>
+                                <th>苹果</th>
+                                <th>苹果率</th>
+                                <th>其他/未知</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registerPlatformDailyTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -1880,7 +1899,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260717-dl-funnel"></script>
+    <script src="/js/admin_panel.js?v=20260717-reg-platform"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260716-qr-sharp"></script>
 </body>

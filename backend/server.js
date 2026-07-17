@@ -10035,6 +10035,86 @@ async function handleAdminRegisterTimeDistribution(req, res) {
         });
       }
 
+      const [platformRows] = await conn.query(
+        'SELECT DATE(' +
+          cnCreated +
+          ') AS d, users.username,' +
+          ' (SELECT ud.user_agent_short FROM user_devices ud' +
+          '  WHERE ud.username = users.username' +
+          '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS ua,' +
+          ' (SELECT ud.device_detail_json FROM user_devices ud' +
+          '  WHERE ud.username = users.username' +
+          '  ORDER BY ud.first_seen ASC, ud.last_seen ASC LIMIT 1) AS detail_json' +
+          ' FROM users WHERE ' +
+          where +
+          ' ORDER BY d ASC',
+        params
+      );
+
+      var platformDailyMap = {};
+      var platformTotals = { android: 0, ios: 0, other: 0, unknown: 0, total: 0 };
+      (platformRows || []).forEach(function (row) {
+        var dk = formatDateKey(row.d);
+        if (!dk) return;
+        if (!platformDailyMap[dk]) {
+          platformDailyMap[dk] = { android: 0, ios: 0, other: 0, unknown: 0, total: 0 };
+        }
+        var cls = classifyUserDeviceRow(row.ua, row.detail_json);
+        var os = cls && cls.os_key ? String(cls.os_key) : 'other';
+        var bucket = 'other';
+        if (os === 'android') bucket = 'android';
+        else if (os === 'ios') bucket = 'ios';
+        else if (!row.ua) bucket = 'unknown';
+        platformDailyMap[dk][bucket] += 1;
+        platformDailyMap[dk].total += 1;
+        platformTotals[bucket] += 1;
+        platformTotals.total += 1;
+      });
+
+      function platformPct(n, den) {
+        return den > 0 ? Math.round((n / den) * 1000) / 10 : 0;
+      }
+      function platformPctText(n, den) {
+        return den > 0 ? platformPct(n, den).toFixed(1) + '%' : '—';
+      }
+
+      var platformDaily = Object.keys(platformDailyMap)
+        .sort()
+        .map(function (dk) {
+          var row = platformDailyMap[dk];
+          var t = row.total || 0;
+          return {
+            date: dk,
+            total: t,
+            android: row.android || 0,
+            ios: row.ios || 0,
+            other: (row.other || 0) + (row.unknown || 0),
+            android_pct: platformPct(row.android || 0, t),
+            ios_pct: platformPct(row.ios || 0, t),
+            android_pct_text: platformPctText(row.android || 0, t),
+            ios_pct_text: platformPctText(row.ios || 0, t),
+            other_pct_text: platformPctText((row.other || 0) + (row.unknown || 0), t)
+          };
+        });
+
+      var pt = platformTotals.total || 0;
+      var platformSummary = {
+        total: pt,
+        android: platformTotals.android || 0,
+        ios: platformTotals.ios || 0,
+        other: (platformTotals.other || 0) + (platformTotals.unknown || 0),
+        android_pct: platformPct(platformTotals.android || 0, pt),
+        ios_pct: platformPct(platformTotals.ios || 0, pt),
+        android_pct_text: platformPctText(platformTotals.android || 0, pt),
+        ios_pct_text: platformPctText(platformTotals.ios || 0, pt),
+        other_pct_text: platformPctText(
+          (platformTotals.other || 0) + (platformTotals.unknown || 0),
+          pt
+        ),
+        definition:
+          '按注册日（北京时间）统计；手机系统取该用户最早一条 user_devices 的 UA。安卓率=Android÷当日注册，苹果率=iOS÷当日注册；其他含 PC/未知设备。'
+      };
+
       res.json({
         code: 200,
         data: Object.assign(
@@ -10051,7 +10131,9 @@ async function handleAdminRegisterTimeDistribution(req, res) {
                   pct_text: peakPeriod.pct_text
                 }
               : null,
-            by_hour: byHour
+            by_hour: byHour,
+            platform_summary: platformSummary,
+            platform_daily: platformDaily
           },
           conversionAnalyticsPeriodMeta(period)
         )
