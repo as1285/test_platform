@@ -6318,6 +6318,9 @@
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
             var loginInactiveEl = document.getElementById('filterLoginInactive');
             var loginInactiveDays = loginInactiveEl ? loginInactiveEl.value : '';
+            var userModeEl = document.getElementById('filterUserMode');
+            var userMode = userModeEl ? userModeEl.value : '';
+            var guestMode = userMode === 'guest';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -6334,14 +6337,25 @@
             if (loginInactiveDays !== '') {
                 url += '&login_inactive_days=' + encodeURIComponent(loginInactiveDays);
             }
+            if (guestMode) {
+                url += '&guest=1';
+            }
 
             adminFetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
+                    if (data.code === 403) {
+                        document.getElementById('userStat').textContent = data.msg || '无权查看游客模式';
+                        document.getElementById('userTbody').innerHTML =
+                            '<tr><td colspan="13">' + esc(data.msg || '仅超级管理员可查看游客模式') + '</td></tr>';
+                        return;
+                    }
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
-                    document.getElementById('userStat').textContent = '共 ' + total + ' 个账号';
+                    var scopeLabel = data.data.scope_label || (guestMode ? '游客模式' : '注册用户');
+                    document.getElementById('userStat').textContent =
+                        '共 ' + total + ' 个' + (guestMode || data.data.guest_mode ? '游客' : '') + '账号（' + scopeLabel + '）';
                     
                     var totalPages = Math.ceil(total / userLimit) || 1;
                     document.getElementById('userPageInfo').textContent =
@@ -6351,7 +6365,12 @@
 
                     var html = '';
                     list.forEach(function (u) {
-                        var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
+                        var isGuest = !!(u.is_guest || guestMode);
+                        var act = isGuest
+                            ? '<span class="badge badge-guest">游客</span>'
+                            : u.account_active
+                              ? '<span class="badge badge-yes">已激活</span>'
+                              : '<span class="badge badge-no">未激活</span>';
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var riskCell = '<span class="risk-hint-line">—</span>';
                         if (u.risk && u.risk_messages && u.risk_messages.length) {
@@ -6373,7 +6392,7 @@
                         }
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = '';
-                        if (!u.account_active) {
+                        if (!isGuest && !u.account_active) {
                             ops +=
                                 '<button type="button" class="btn-sm btn-activate btn-user-activate" data-u="' +
                                 esc(u.username) +
@@ -6384,24 +6403,35 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
-                        if (u.account_active) {
+                        if (!isGuest && u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
                         }
                         
                         var detailKey = keyForUser(u.username);
+                        var accountCell = esc(u.username);
+                        if (isGuest) {
+                            accountCell =
+                                '<span class="badge badge-guest">游客</span><div class="risk-hint-line" title="' +
+                                esc(u.username) +
+                                '">' +
+                                esc(u.username) +
+                                '</div>';
+                        }
                         html += '<tr>';
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
                         html += '<td>' + esc(u.id) + '</td>';
-                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
+                        html += '<td class="cell-break">' + accountCell + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
                         html +=
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
-                        html += '<td class="cell-break"><button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button></td>';
+                        html += '<td class="cell-break">' + (isGuest
+                            ? '<span style="color:#999;">—</span>'
+                            : '<button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button>') + '</td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
@@ -7250,8 +7280,16 @@
             if (taxModReset) taxModReset.value = '';
             var loginInactiveReset = document.getElementById('filterLoginInactive');
             if (loginInactiveReset) loginInactiveReset.value = '';
+            var userModeReset = document.getElementById('filterUserMode');
+            if (userModeReset) userModeReset.value = '';
             loadUsers(1);
         };
+        var filterUserModeEl = document.getElementById('filterUserMode');
+        if (filterUserModeEl) {
+            filterUserModeEl.onchange = function () {
+                loadUsers(1);
+            };
+        }
 
         function purgeBotsPayload(dryRun) {
             return {

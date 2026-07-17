@@ -173,6 +173,9 @@ function registerSourceChannelLabel(channel) {
   if (!c) {
     return '—';
   }
+  if (c === 'landing_c_guest') {
+    return '落地页C·游客';
+  }
   if (c.indexOf('other:') === 0) {
     var custom = c.slice(6).trim();
     return custom ? '其他：' + custom : REGISTER_SOURCE_CHANNELS.other;
@@ -4088,7 +4091,25 @@ function guestUsernameForClientId(clientId) {
 }
 
 function nonGuestUsernameSql(userCol) {
-  return 'LEFT(' + userCol + ', ' + GUEST_USERNAME_PREFIX.length + ") <> '" + GUEST_USERNAME_PREFIX + "'";
+  var col = String(userCol || 'users.username');
+  var tableRef = col.indexOf('.') >= 0 ? col.split('.')[0] : 'users';
+  return (
+    'LEFT(' +
+    col +
+    ', ' +
+    GUEST_USERNAME_PREFIX.length +
+    ") <> '" +
+    GUEST_USERNAME_PREFIX +
+    "' AND COALESCE(" +
+    tableRef +
+    '.user_type, 0) <> ' +
+    USER_TYPE_GUEST
+  );
+}
+
+function guestOnlyUserSql(tableAlias) {
+  var t = tableAlias || 'users';
+  return 'COALESCE(' + t + '.user_type, 0) = ' + USER_TYPE_GUEST;
 }
 
 async function handlePublicGuestSession(req, res) {
@@ -10805,17 +10826,26 @@ async function handleAdminUsers(req, res) {
     var qSalaryMax = parseSalaryRangeFilterParam(req.query.salary_max);
     var qTaxModifiedToday = req.query.tax_modified_today; // '1' 当日有改动, '0' 当日无改动
     var qLoginInactiveDays = parseInt(req.query.login_inactive_days, 10);
+    var qGuest =
+      req.query.guest === '1' ||
+      req.query.guest === 'true' ||
+      String(req.query.user_mode || '').trim() === 'guest';
     var hasSalaryFilter = qSalaryMin != null || qSalaryMax != null;
     var todayKey = chinaDateKeyNow();
     if (qSalaryMin != null && qSalaryMax != null && qSalaryMin > qSalaryMax) {
       return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
     }
+    if (qGuest && (!req.admin || !req.admin.is_super)) {
+      return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客模式账号' });
+    }
 
-    let whereClauses = [
-      'users.list_hidden_at IS NULL',
-      nonGuestUsernameSql('users.username')
-    ];
+    let whereClauses = ['users.list_hidden_at IS NULL'];
     let params = [];
+    if (qGuest) {
+      whereClauses.push(guestOnlyUserSql());
+    } else {
+      whereClauses.push(nonGuestUsernameSql('users.username'));
+    }
 
     if (qUsername) {
       if (qExact) {
@@ -10862,7 +10892,7 @@ async function handleAdminUsers(req, res) {
     if (isFinite(qLoginInactiveDays) && qLoginInactiveDays > 0) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
-    if (!req.admin || !req.admin.is_super) {
+    if (!qGuest && (!req.admin || !req.admin.is_super)) {
       whereClauses.push(
         'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
       );
@@ -10906,7 +10936,7 @@ async function handleAdminUsers(req, res) {
         const [pageRows] = await conn.query(
           `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
-                  activation_source_channel,
+                  activation_source_channel, user_type, sales_promo_channel,
                   (SELECT ac.owner_admin_username
                    FROM activation_codes ac
                    WHERE ac.used_by_username = users.username
@@ -10929,7 +10959,7 @@ async function handleAdminUsers(req, res) {
         `
       SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
-             activation_source_channel,
+             activation_source_channel, user_type, sales_promo_channel,
              (SELECT ac.owner_admin_username
               FROM activation_codes ac
               WHERE ac.used_by_username = users.username
@@ -10967,6 +10997,11 @@ async function handleAdminUsers(req, res) {
         avg_salary_6m_label: '未填写',
         salary_month_count: 0
       };
+      var ut = r.user_type != null ? Number(r.user_type) : USER_TYPE_NORMAL;
+      var salesCh =
+        r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
+          ? String(r.sales_promo_channel).trim()
+          : '';
       return {
         id: r.id,
         username: r.username,
@@ -10974,6 +11009,8 @@ async function handleAdminUsers(req, res) {
         tax_id: r.tax_id,
         account_active: r.account_active === 1 || r.account_active === true,
         banned: r.banned === 1 || r.banned === true,
+        user_type: ut,
+        is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         upline_admin:
           r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
@@ -11000,10 +11037,17 @@ async function handleAdminUsers(req, res) {
         activation_source_channel:
           r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '',
         activation_source_channel_label: activationSourceChannelLabel(r.activation_source_channel),
-        channel_analysis_label: userChannelAnalysisLabel(
-          r.register_source_channel,
-          r.activation_source_channel
-        )
+        sales_promo_channel: salesCh,
+        channel_analysis_label: (function () {
+          var base = userChannelAnalysisLabel(
+            r.register_source_channel,
+            r.activation_source_channel
+          );
+          if (ut === USER_TYPE_GUEST && salesCh) {
+            return (base && base !== '—' ? base + '；' : '') + '推广：' + salesCh;
+          }
+          return base;
+        })()
       };
     });
     res.json({
@@ -11013,7 +11057,9 @@ async function handleAdminUsers(req, res) {
         total: total,
         page: page,
         limit: limit,
-        tax_modified_date: todayKey
+        tax_modified_date: todayKey,
+        guest_mode: !!qGuest,
+        scope_label: qGuest ? '游客模式' : '注册用户'
       }
     });
   } catch (e) {

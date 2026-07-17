@@ -195,6 +195,7 @@
         .badge-yes { background: #e8f5e9; color: #2e7d32; }
         .badge-no { background: #fce4ec; color: #c62828; }
         .badge-risk { background: #fff3e0; color: #e65100; font-weight: 600; }
+        .badge-guest { background: #e3f2fd; color: #1565c0; font-weight: 600; }
         .risk-hint-line { font-size: 12px; color: #888; margin-top: 4px; }
         .scroll-x { overflow-x: auto; }
         .users-registry-table {
