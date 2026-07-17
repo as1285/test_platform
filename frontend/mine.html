@@ -468,11 +468,12 @@
         }
 
         .user-name.user-name--editable {
-            display: block;
+            display: inline-block;
+            max-width: 100%;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            padding: 4px 0;
+            padding: 4px 2px;
             min-height: 28px;
         }
 
@@ -1011,7 +1012,7 @@
         <div class="user-card" id="mineUserCardEditHit">
             <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
-            <div class="user-info user-info-text user-info-text--editable" id="mineProfileEditHit">
+            <div class="user-info user-info-text" id="mineProfileEditHit">
                 <div
                     class="user-name user-name--editable"
                     id="mineDisplayName"
@@ -1230,7 +1231,7 @@
                 var nameEl = document.getElementById('mineDisplayName');
                 var on = isMineDataEditEnabled();
                 if (hit) {
-                    hit.classList.toggle('user-info-text--editable', on);
+                    hit.classList.remove('user-info-text--editable');
                 }
                 if (nameEl) {
                     nameEl.classList.toggle('user-name--editable', on);
@@ -1256,13 +1257,8 @@
                 var touchMoved = false;
                 var touchStartX = 0;
                 var touchStartY = 0;
-                function isExcludedTarget(target) {
-                    if (!target || typeof target.closest !== 'function') return false;
-                    return !!target.closest('.personal-info-btn, .tax-eye-btn, .mine-avatar-edit-hit');
-                }
                 function fire(e) {
                     if (!isMineDataEditEnabled()) return;
-                    if (e && isExcludedTarget(e.target)) return;
                     var now = Date.now();
                     if (now - lastFire < 320) return;
                     lastFire = now;
@@ -1297,7 +1293,6 @@
                     'touchend',
                     function (e) {
                         if (touchMoved) return;
-                        if (isExcludedTarget(e.target)) return;
                         e.preventDefault();
                         fire(e);
                     },
@@ -1803,8 +1798,7 @@
                 }
             }
 
-            bindMineProfileEditTap(document.getElementById('mineProfileEditHit'));
-            bindMineProfileEditTap(document.getElementById('mineUserCardEditHit'));
+            bindMineProfileEditTap(document.getElementById('mineDisplayName'));
             var profileEditOk = document.getElementById('btnMineProfileEditOk');
             var profileEditCancel = document.getElementById('btnMineProfileEditCancel');
             var profileEditMask = document.getElementById('mineProfileEditModalMask');
