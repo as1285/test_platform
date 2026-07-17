@@ -4348,7 +4348,11 @@ function guestUsernameForClientId(clientId) {
 }
 
 function nonGuestUsernameSql(userCol) {
-  var col = String(userCol || 'users.username');
+  var col = String(userCol || 'users.username').trim();
+  /* 兼容误传表别名（如 'u'）时补全为 u.username，避免 LEFT(u, n) 语法错误 */
+  if (col && col.indexOf('.') < 0 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(col)) {
+    col = col + '.username';
+  }
   var tableRef = col.indexOf('.') >= 0 ? col.split('.')[0] : 'users';
   return (
     'LEFT(' +
@@ -13865,7 +13869,7 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
     var actSpan = Math.max(0, activityDays - 1);
     const conn = await pool.getConnection();
     try {
-      var scope = activatedUserScopeSql(req, 'u');
+      var scope = activatedUserScopeSql(req, 'u.username');
       var scopeJoin = scope.sql ? scope.sql.replace(/^ WHERE /, ' AND ') : '';
 
       const [[countRow]] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scope.sql, scope.params);
@@ -16281,7 +16285,7 @@ app.get(
   requireAdminMenu('activated-user-analysis'),
   handleAdminActivatedUserAnalysisBehaviorPath
 );
-app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminMenu('users'), handleAdminUserTaxRecords);
+app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminAnyMenu(['users', 'guest-users']), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
 app.post(
   '/api/admin/issue-code-batch',

@@ -6531,7 +6531,7 @@
                                         box.innerHTML = '加载失败';
                                         return;
                                     }
-                                    box.innerHTML = renderUserDetailPanel(d.data);
+                                    box.innerHTML = buildTaxRecordsHtml(name, d.data || {});
                                 })
                                 .catch(function () {
                                     box.innerHTML = '网络错误';
