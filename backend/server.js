@@ -3875,10 +3875,11 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
     req.authUserRow = row;
+    /* 游客不计入日活；仍同步设备，便于管理后台「游客模式」查看机型 */
     if (!rowUserTypeIsGuest(row)) {
       touchUserDailyActivity(req.authUserId);
-      syncUserDeviceFromClientJson(req, req.authUserId);
     }
+    syncUserDeviceFromClientJson(req, req.authUserId);
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -4186,6 +4187,9 @@ async function handlePublicGuestSession(req, res) {
       page: 'install_guide',
       landing_variant: 'c'
     });
+    try {
+      syncUserDeviceFromClientJson(req, row.username);
+    } catch (eDev) {}
     return res.json({ code: 200, data: out });
   } catch (e) {
     console.error(e);
@@ -5667,7 +5671,7 @@ var _deviceSyncThrottle = new Map();
 
 function recordUserPageEvent(req, routeKey) {
   if (!pool || !req || !req.authUserId) return;
-  if (rowUserTypeIsGuest(req.authUserRow)) return;
+  /* 游客沙盒也记页面点击，便于后台详情查看；注册/转化统计仍按 user_type 排除游客 */
   var username = String(req.authUserId).trim().substring(0, 255);
   if (!username) return;
   var pagePath = inferPagePathFromRequest(req);
