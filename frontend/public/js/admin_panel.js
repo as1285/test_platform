@@ -739,9 +739,6 @@
             var tbody = document.getElementById('registerTimeDetailTbody');
             var chartsWrap = document.getElementById('registerTimeChartsWrap');
             var chartsEmpty = document.getElementById('registerTimeChartsEmpty');
-            var platformSummaryEl = document.getElementById('registerPlatformSummary');
-            var platformCardsEl = document.getElementById('registerPlatformCards');
-            var platformTbody = document.getElementById('registerPlatformDailyTbody');
             if (!summaryEl || !cardsEl || !tbody) return;
 
             destroyRegisterTimeCharts();
@@ -768,9 +765,6 @@
                 summaryEl.textContent = daysHint + '内暂无注册用户。';
                 cardsEl.innerHTML = '';
                 tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
-                if (platformSummaryEl) platformSummaryEl.textContent = '暂无平台占比数据。';
-                if (platformCardsEl) platformCardsEl.innerHTML = '';
-                if (platformTbody) platformTbody.innerHTML = '<tr><td colspan="7">暂无数据</td></tr>';
                 if (chartsWrap) {
                     chartsWrap.style.display = 'block';
                     if (chartsEmpty) {
@@ -837,74 +831,6 @@
                 })
                 .join('');
 
-            var platformSummary = (data && data.platform_summary) || {};
-            var platformDaily = Array.isArray(data && data.platform_daily) ? data.platform_daily : [];
-            if (platformSummaryEl) {
-                platformSummaryEl.textContent =
-                    (platformSummary.definition ||
-                        '按注册用户最早设备 UA 统计安卓/苹果占比。') +
-                    ' 区间合计：安卓 ' +
-                    (platformSummary.android_pct_text || '—') +
-                    '（' +
-                    (platformSummary.android != null ? platformSummary.android : 0) +
-                    '）· 苹果 ' +
-                    (platformSummary.ios_pct_text || '—') +
-                    '（' +
-                    (platformSummary.ios != null ? platformSummary.ios : 0) +
-                    '）· 其他 ' +
-                    (platformSummary.other_pct_text || '—') +
-                    '。';
-            }
-            if (platformCardsEl) {
-                platformCardsEl.innerHTML =
-                    '<div class="user-data-stat-card"><div class="ud-label">安卓率</div><div class="ud-val">' +
-                    esc(platformSummary.android_pct_text || '—') +
-                    '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                    esc(String(platformSummary.android != null ? platformSummary.android : 0)) +
-                    ' / ' +
-                    esc(String(platformSummary.total != null ? platformSummary.total : 0)) +
-                    '</div></div>' +
-                    '<div class="user-data-stat-card"><div class="ud-label">苹果率</div><div class="ud-val">' +
-                    esc(platformSummary.ios_pct_text || '—') +
-                    '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                    esc(String(platformSummary.ios != null ? platformSummary.ios : 0)) +
-                    ' / ' +
-                    esc(String(platformSummary.total != null ? platformSummary.total : 0)) +
-                    '</div></div>' +
-                    '<div class="user-data-stat-card"><div class="ud-label">其他/未知</div><div class="ud-val">' +
-                    esc(platformSummary.other_pct_text || '—') +
-                    '</div><div class="hint" style="margin-top:4px;font-size:12px;">含 PC 等</div></div>';
-            }
-            if (platformTbody) {
-                if (!platformDaily.length) {
-                    platformTbody.innerHTML = '<tr><td colspan="7">暂无</td></tr>';
-                } else {
-                    platformTbody.innerHTML = platformDaily
-                        .slice()
-                        .reverse()
-                        .map(function (row) {
-                            return (
-                                '<tr><td>' +
-                                esc(row.date || '—') +
-                                '</td><td>' +
-                                esc(String(row.total != null ? row.total : 0)) +
-                                '</td><td>' +
-                                esc(String(row.android != null ? row.android : 0)) +
-                                '</td><td>' +
-                                esc(row.android_pct_text || '—') +
-                                '</td><td>' +
-                                esc(String(row.ios != null ? row.ios : 0)) +
-                                '</td><td>' +
-                                esc(row.ios_pct_text || '—') +
-                                '</td><td>' +
-                                esc(String(row.other != null ? row.other : 0)) +
-                                '</td></tr>'
-                            );
-                        })
-                        .join('');
-                }
-            }
-
             if (typeof Chart === 'undefined') {
                 if (chartsWrap) {
                     chartsWrap.style.display = 'block';
@@ -958,6 +884,7 @@
                             }
                         },
                         scales: {
+                            x: { ticks: { maxRotation: 0 } },
                             y: { beginAtZero: true, ticks: { precision: 0 } }
                         }
                     }
@@ -1008,6 +935,113 @@
             );
         }
 
+        function renderRegisterPlatformAnalysis(data) {
+            var summaryEl = document.getElementById('registerPlatformSummary');
+            var cardsEl = document.getElementById('registerPlatformCards');
+            var tbody = document.getElementById('registerPlatformDailyTbody');
+            if (!summaryEl || !cardsEl || !tbody) return;
+
+            var platformSummary = (data && data.platform_summary) || {};
+            var platformDaily = Array.isArray(data && data.platform_daily) ? data.platform_daily : [];
+            var periodLabel =
+                (data && data.period_label) ||
+                (data && data.days != null && String(data.days).match(/^month_/)
+                    ? String(data.days)
+                    : null);
+            var daysHint = periodLabel
+                ? periodLabel +
+                  (data.period_start && data.period_end
+                      ? '（' + data.period_start + ' ~ ' + data.period_end + '）'
+                      : '')
+                : '最近 ' + (Number(data && data.days) || 7) + ' 天';
+
+            if (!(platformSummary.total > 0) && !platformDaily.length) {
+                summaryEl.textContent = daysHint + '内暂无注册用户。';
+                cardsEl.innerHTML = '';
+                tbody.innerHTML = '<tr><td colspan="7">暂无数据</td></tr>';
+                return;
+            }
+
+            summaryEl.textContent =
+                daysHint +
+                '注册中，安卓约占 ' +
+                (platformSummary.android_pct_text || '—') +
+                '、苹果约占 ' +
+                (platformSummary.ios_pct_text || '—') +
+                '（其余为 PC 或未知）。口径：按注册日（北京时间）；系统取该用户最早一条设备 UA。';
+
+            cardsEl.innerHTML =
+                '<div class="user-data-stat-card"><div class="ud-label">安卓率</div><div class="ud-val">' +
+                esc(platformSummary.android_pct_text || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(String(platformSummary.android != null ? platformSummary.android : 0)) +
+                ' / ' +
+                esc(String(platformSummary.total != null ? platformSummary.total : 0)) +
+                '</div></div>' +
+                '<div class="user-data-stat-card"><div class="ud-label">苹果率</div><div class="ud-val">' +
+                esc(platformSummary.ios_pct_text || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(String(platformSummary.ios != null ? platformSummary.ios : 0)) +
+                ' / ' +
+                esc(String(platformSummary.total != null ? platformSummary.total : 0)) +
+                '</div></div>' +
+                '<div class="user-data-stat-card"><div class="ud-label">其他/未知</div><div class="ud-val">' +
+                esc(platformSummary.other_pct_text || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">含 PC 等</div></div>';
+
+            tbody.innerHTML = platformDaily
+                .slice()
+                .reverse()
+                .map(function (row) {
+                    var dateLabel = row.date ? String(row.date).slice(5) : '—';
+                    return (
+                        '<tr><td>' +
+                        esc(dateLabel) +
+                        '</td><td>' +
+                        esc(String(row.total != null ? row.total : 0)) +
+                        '</td><td>' +
+                        esc(row.android_pct_text || '—') +
+                        '</td><td>' +
+                        esc(row.ios_pct_text || '—') +
+                        '</td><td>' +
+                        esc(String(row.android != null ? row.android : 0)) +
+                        '</td><td>' +
+                        esc(String(row.ios != null ? row.ios : 0)) +
+                        '</td><td>' +
+                        esc(String(row.other != null ? row.other : 0)) +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+        }
+
+        function loadAnalyticsRegisterPlatform() {
+            var summaryEl = document.getElementById('registerPlatformSummary');
+            var cardsEl = document.getElementById('registerPlatformCards');
+            var tbody = document.getElementById('registerPlatformDailyTbody');
+            var daysEl = document.getElementById('analyticsRegisterPlatformDays');
+            var days = analyticsPeriodVal(daysEl);
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (cardsEl) cardsEl.innerHTML = '';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
+                        return;
+                    }
+                    renderRegisterPlatformAnalysis(j.data);
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
+                });
+        }
+
         function loadAnalyticsRegisterTime() {
             var summaryEl = document.getElementById('registerTimeSummary');
             var tbody = document.getElementById('registerTimeDetailTbody');
@@ -1017,12 +1051,6 @@
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
-            var platformSummaryEl0 = document.getElementById('registerPlatformSummary');
-            var platformCardsEl0 = document.getElementById('registerPlatformCards');
-            var platformTbody0 = document.getElementById('registerPlatformDailyTbody');
-            if (platformSummaryEl0) platformSummaryEl0.textContent = '加载中…';
-            if (platformCardsEl0) platformCardsEl0.innerHTML = '';
-            if (platformTbody0) platformTbody0.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             destroyRegisterTimeCharts();
             adminFetch('api/admin/analytics/register-time?days=' + encodeURIComponent(days))
                 .then(function (r) {
@@ -1032,8 +1060,6 @@
                     if (j.code !== 200 || !j.data) {
                         if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
                         if (tbody) tbody.innerHTML = '<tr><td colspan="4">加载失败</td></tr>';
-                        if (platformSummaryEl0) platformSummaryEl0.textContent = j.msg || '加载失败';
-                        if (platformTbody0) platformTbody0.innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
                         return;
                     }
                     renderRegisterTimeAnalysis(j.data);
@@ -1041,8 +1067,6 @@
                 .catch(function () {
                     if (summaryEl) summaryEl.textContent = '网络错误';
                     if (tbody) tbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
-                    if (platformSummaryEl0) platformSummaryEl0.textContent = '网络错误';
-                    if (platformTbody0) platformTbody0.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
                 });
         }
 
@@ -2819,6 +2843,7 @@
         }
 
         function loadAnalyticsRegisterPage() {
+            loadAnalyticsRegisterPlatform();
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
         }
@@ -8282,6 +8307,18 @@
         if (analyticsRegisterTimeDays) {
             analyticsRegisterTimeDays.addEventListener('change', function () {
                 loadAnalyticsRegisterTime();
+            });
+        }
+        var btnRefreshRegisterPlatform = document.getElementById('btnRefreshRegisterPlatform');
+        if (btnRefreshRegisterPlatform) {
+            btnRefreshRegisterPlatform.addEventListener('click', function () {
+                loadAnalyticsRegisterPlatform();
+            });
+        }
+        var analyticsRegisterPlatformDays = document.getElementById('analyticsRegisterPlatformDays');
+        if (analyticsRegisterPlatformDays) {
+            analyticsRegisterPlatformDays.addEventListener('change', function () {
+                loadAnalyticsRegisterPlatform();
             });
         }
         var btnRefreshRegisterGender = document.getElementById('btnRefreshRegisterGender');
