@@ -73,6 +73,8 @@ const MINE_UI_VIDEO_KEYS = ['install_ios_video', 'install_usage_video'];
 /** 0=普通账号 1=测试账号 */
 const USER_TYPE_NORMAL = 0;
 const USER_TYPE_TEST = 1;
+const USER_TYPE_GUEST = 2;
+const GUEST_USERNAME_PREFIX = '__guest_';
 
 /** 注册来源渠道（C 端下拉 value → 展示名） */
 const REGISTER_SOURCE_CHANNELS = {
@@ -720,6 +722,7 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
       segU.sql;
     actParams = [period.span].concat(segU.params);
   }
+  regWhere = nonGuestUsernameSql('users.username') + ' AND ' + regWhere;
 
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
   if (ownerAdmin) {
@@ -829,6 +832,7 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
     params.push(period.span);
   }
   where.push(seg.sql);
+  where.push(nonGuestUsernameSql('u.username'));
   params = params.concat(seg.params);
   appendConversionAnalyticsRegistrationScope(where, params, admin, 'u.username');
   var whereSql = ' WHERE ' + where.join(' AND ');
@@ -1364,6 +1368,12 @@ function rowUserTypeIsTest(row) {
   return t === USER_TYPE_TEST;
 }
 
+function rowUserTypeIsGuest(row) {
+  if (!row) return false;
+  var t = row.user_type != null ? Number(row.user_type) : 0;
+  return t === USER_TYPE_GUEST;
+}
+
 function getClientIp(req) {
   // Cloudflare：优先 CF-Connecting-IP（Nginx 亦会改写 X-Real-IP）
   var cf = req.headers['cf-connecting-ip'];
@@ -1722,7 +1732,6 @@ async function createTables() {
       throw e;
     }
   }
-
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN banned TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=封禁'
@@ -1732,7 +1741,6 @@ async function createTables() {
       throw e;
     }
   }
-
   try {
     await conn.execute(`
       ALTER TABLE users ADD COLUMN session_rev INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '登录会话版本，封禁递增使旧令牌失效'
@@ -1745,12 +1753,19 @@ async function createTables() {
 
   try {
     await conn.execute(`
-      ALTER TABLE users ADD COLUMN user_type TINYINT(1) NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试'
+      ALTER TABLE users ADD COLUMN user_type TINYINT NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试 2=游客沙盒'
     `);
   } catch (e) {
     if (e.errno !== 1060) {
       throw e;
     }
+  }
+  try {
+    await conn.execute(`
+      ALTER TABLE users MODIFY COLUMN user_type TINYINT NOT NULL DEFAULT 0 COMMENT '0=普通 1=测试 2=游客沙盒'
+    `);
+  } catch (e) {
+    /* 已是目标类型或数据库不支持修改注释时忽略 */
   }
 
   try {
@@ -3493,7 +3508,7 @@ async function loadUserAuthState(username) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT banned, session_rev, account_active FROM users WHERE username = ? LIMIT 1',
+      'SELECT banned, session_rev, account_active, user_type FROM users WHERE username = ? LIMIT 1',
       [u]
     );
     if (!rows.length) {
@@ -3503,7 +3518,8 @@ async function loadUserAuthState(username) {
     var row = {
       banned: rows[0].banned === 1 || rows[0].banned === true,
       session_rev: userSessionRevFromRow(rows[0]),
-      account_active: rows[0].account_active === 1 || rows[0].account_active === true
+      account_active: rows[0].account_active === 1 || rows[0].account_active === true,
+      user_type: rows[0].user_type != null ? Number(rows[0].user_type) : USER_TYPE_NORMAL
     };
     _userAuthCache.set(u, { expiresAt: now + USER_AUTH_CACHE_TTL_MS, row: row });
     return row;
@@ -3623,6 +3639,9 @@ async function requireActivated(req, res, next) {
     }
     if (!row) {
       return res.status(403).json({ code: 403, msg: '账号异常', need_activation: true });
+    }
+    if (rowUserTypeIsGuest(row)) {
+      return next();
     }
     var a = row.account_active;
     if (a === 1 || a === true) {
@@ -3848,8 +3867,10 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
     }
     req.authUserRow = row;
-    touchUserDailyActivity(req.authUserId);
-    syncUserDeviceFromClientJson(req, req.authUserId);
+    if (!rowUserTypeIsGuest(row)) {
+      touchUserDailyActivity(req.authUserId);
+      syncUserDeviceFromClientJson(req, req.authUserId);
+    }
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -4052,6 +4073,102 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
   };
 }
 
+function guestUsernameForClientId(clientId) {
+  var digest = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update('landing-guest:' + String(clientId || ''))
+    .digest('hex')
+    .substring(0, 32);
+  return GUEST_USERNAME_PREFIX + digest;
+}
+
+function nonGuestUsernameSql(userCol) {
+  return 'LEFT(' + userCol + ', ' + GUEST_USERNAME_PREFIX.length + ") <> '" + GUEST_USERNAME_PREFIX + "'";
+}
+
+async function handlePublicGuestSession(req, res) {
+  var clientId = readClientIdFromRequest(req);
+  if (!clientId || clientId.length < 8) {
+    return res.status(400).json({ code: 400, msg: '缺少有效的游客设备标识' });
+  }
+  var rate = consumeMemoryRateLimit(
+    'guest-session-ip',
+    getClientIp(req) || 'unknown',
+    30,
+    60 * 1000
+  );
+  if (!rate.ok) {
+    return sendRateLimited(res, rate, '游客体验请求过于频繁，请稍后再试');
+  }
+  var username = guestUsernameForClientId(clientId);
+  var saltHex = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update('guest-salt:' + clientId)
+    .digest('hex')
+    .substring(0, 32);
+  var hash = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update('guest-no-login:' + clientId)
+    .digest('hex');
+  var salesCh = '';
+  try {
+    salesCh = await resolveEffectiveSalesChannel(req);
+  } catch (eSales) {}
+  const conn = await pool.getConnection();
+  try {
+    await conn.execute(
+      `INSERT INTO users
+       (username, salt, hash, real_name, account_active, user_type, plain_password,
+        register_source_channel, registered_from_install_guide, sales_promo_channel)
+       VALUES (?, ?, ?, ?, 0, ?, NULL, ?, 1, ?)
+       ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
+      [
+        username,
+        saltHex,
+        hash,
+        '游客用户',
+        USER_TYPE_GUEST,
+        'landing_c_guest',
+        salesCh || null
+      ]
+    );
+    const [rows] = await conn.execute(
+      `SELECT username, real_name, tax_id, gender, account_active, user_type, session_rev
+       FROM users WHERE username = ? LIMIT 1`,
+      [username]
+    );
+    var row = rows[0];
+    if (!row || !rowUserTypeIsGuest(row)) {
+      return res.status(409).json({ code: 409, msg: '游客账号初始化失败' });
+    }
+    var out = {
+      user_id: row.username,
+      username: row.username,
+      real_name: row.real_name || '游客用户',
+      tax_id: row.tax_id || '',
+      gender: row.gender != null ? Number(row.gender) : 1,
+      account_active: false,
+      is_guest: true,
+      token: signAccessToken({
+        user_id: row.username,
+        username: row.username,
+        account_active: false,
+        session_rev: userSessionRevFromRow(row)
+      })
+    };
+    recordInstallGuideTrackEvent(req, 'track_landing_guest_session', {
+      page: 'install_guide',
+      landing_variant: 'c'
+    });
+    return res.json({ code: 200, data: out });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: '游客体验初始化失败' });
+  } finally {
+    conn.release();
+  }
+}
+
 async function loginUser(username, password) {
   if (username != null && typeof username !== 'string') username = String(username);
   if (password != null && typeof password !== 'string') password = String(password);
@@ -4105,6 +4222,7 @@ async function loginUser(username, password) {
     account_active: accountActive,
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
+    is_guest: ut === USER_TYPE_GUEST,
     session_rev: userSessionRevFromRow(rec)
   };
 }
@@ -4144,6 +4262,7 @@ async function getUserInfoForApi(userId) {
     watermark_enabled: false,
     user_type: USER_TYPE_NORMAL,
     is_test_account: false,
+    is_guest: false,
     test_company_locked_name: '',
     id_type: '居民身份证',
     birth_date: '',
@@ -4191,6 +4310,7 @@ async function getUserInfoForApi(userId) {
     watermark_enabled: wmFlag,
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
+    is_guest: ut === USER_TYPE_GUEST,
     test_company_locked_name: ut === USER_TYPE_TEST ? lockedCompany : '',
     id_type: profileStr('id_type', '居民身份证'),
     birth_date: profileStr('birth_date', ''),
@@ -5521,6 +5641,7 @@ var _deviceSyncThrottle = new Map();
 
 function recordUserPageEvent(req, routeKey) {
   if (!pool || !req || !req.authUserId) return;
+  if (rowUserTypeIsGuest(req.authUserRow)) return;
   var username = String(req.authUserId).trim().substring(0, 255);
   if (!username) return;
   var pagePath = inferPagePathFromRequest(req);
@@ -5573,7 +5694,9 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_landing_ab_assignment: 'B/C 分流分配',
   track_landing_ab_view: 'B/C 方案访问',
   track_landing_ab_guest_gate: 'C 游客关键门禁',
-  track_landing_ab_guest_download_entry: 'C 游客进入下载'
+  track_landing_ab_guest_download_entry: 'C 游客进入下载',
+  track_landing_guest_session: 'C 游客沙盒会话',
+  track_landing_guest_activate_download: 'C 游客点激活进入下载'
 };
 
 function isInstallGuideTrackContext(req, meta) {
@@ -7445,12 +7568,19 @@ async function handleAuthGet(req, res) {
     var payload = jwt.verify(token, JWT_SECRET);
     var uid = payload.sub;
     const conn = await pool.getConnection();
-    const [rows] = await conn.execute('SELECT account_active FROM users WHERE username = ?', [uid]);
+    const [rows] = await conn.execute(
+      'SELECT account_active, user_type FROM users WHERE username = ?',
+      [uid]
+    );
     conn.release();
     var active = rows.length && (rows[0].account_active === 1 || rows[0].account_active === true);
     return res.json({
       code: 200,
-      data: { account_active: !!active, username: uid }
+      data: {
+        account_active: !!active,
+        username: uid,
+        is_guest: !!(rows.length && rowUserTypeIsGuest(rows[0]))
+      }
     });
   } catch (e) {
     if (e.name === 'JsonWebTokenError' || e.name === 'TokenExpiredError') {
@@ -7466,6 +7596,13 @@ async function handleActivatePost(req, res) {
     var rec = await getUserRowByUsername(uid);
     if (!rec) {
       return res.status(400).json({ code: 400, msg: '用户不存在' });
+    }
+    if (rowUserTypeIsGuest(rec)) {
+      return res.status(403).json({
+        code: 403,
+        msg: '游客体验请先下载 App，再注册正式账号完成激活',
+        guest_download_required: true
+      });
     }
     var already =
       rec.account_active === 1 ||
@@ -8269,7 +8406,15 @@ function userLoginRiskMatchSql(usernameExpr) {
 /** 激活类统计：排除已退款、已从注册用户列表软删除的账号 */
 function userActivationStatsEligibleSql(userCol) {
   var alias = userTableAliasFromCol(userCol || 'users.username');
-  return alias + '.activation_refunded_at IS NULL AND ' + alias + '.list_hidden_at IS NULL';
+  return (
+    alias +
+    '.activation_refunded_at IS NULL AND ' +
+    alias +
+    '.list_hidden_at IS NULL AND COALESCE(' +
+    alias +
+    '.user_type, 0) <> ' +
+    USER_TYPE_GUEST
+  );
 }
 
 async function handleAdminUsersDailyConversion(req, res) {
@@ -8714,6 +8859,7 @@ async function handleAdminInstallGuideStats(req, res) {
                 COUNT(*) AS registered
          FROM users u
          WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
          GROUP BY h
          ORDER BY h ASC`,
         userSinceParams
@@ -8722,6 +8868,7 @@ async function handleAdminInstallGuideStats(req, res) {
         `SELECT ${cnUserDay} AS d, COUNT(*) AS registered
          FROM users u
          WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
         userSinceParams
@@ -8730,6 +8877,7 @@ async function handleAdminInstallGuideStats(req, res) {
         `SELECT ${cnUserDay} AS d, COUNT(DISTINCT u.username) AS registered_from_install
          FROM users u
          WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
            AND (
              u.registered_from_install_guide = 1
              OR EXISTS (
@@ -8755,7 +8903,9 @@ async function handleAdminInstallGuideStats(req, res) {
       const [regFromInstallReportedRows] = await conn.query(
         `SELECT ${cnUserDay} AS d, COUNT(*) AS registered_from_install_reported
          FROM users u
-         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL AND u.registered_from_install_guide = 1
+         WHERE ${cnUserSince} AND u.activation_refunded_at IS NULL
+           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}
+           AND u.registered_from_install_guide = 1
          GROUP BY ${cnUserDay}
          ORDER BY d ASC`,
         userSinceParams
@@ -8900,7 +9050,7 @@ async function handleAdminInstallGuideStats(req, res) {
           : null;
         return {
           variant: variant,
-          label: variant === 'c' ? 'C · 轻量游客首页' : 'B · 迷你产品首页',
+          label: variant === 'c' ? 'C · 全站游客模式' : 'B · 迷你产品首页',
           page_views: raw.page_views,
           unique_visitors: uv,
           returning_visitors: returning,
@@ -9554,7 +9704,7 @@ async function handleAdminRegisterTimeDistribution(req, res) {
     var period = parseAnalyticsPeriod(req.query.days, 365);
     var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
     var pf = analyticsPeriodCnDateFilter('DATE(' + cnCreated + ')', period);
-    var where = pf.sql;
+    var where = pf.sql + ' AND ' + nonGuestUsernameSql('users.username');
     var params = pf.params.slice();
 
     if (!req.admin || !req.admin.is_super) {
@@ -9767,7 +9917,7 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
     daysRaw === '' ||
     daysRaw == null ||
     daysRaw === undefined;
-  var where = '1=1';
+  var where = nonGuestUsernameSql('users.username');
   var params = [];
   var period = null;
   if (!allTime) {
@@ -10355,7 +10505,10 @@ async function handleAdminUsers(req, res) {
       return res.status(400).json({ code: 400, msg: '工资收入下限不能大于上限' });
     }
 
-    let whereClauses = ['users.list_hidden_at IS NULL'];
+    let whereClauses = [
+      'users.list_hidden_at IS NULL',
+      nonGuestUsernameSql('users.username')
+    ];
     let params = [];
 
     if (qUsername) {
@@ -10608,6 +10761,7 @@ function summarizeTextList(items, maxItems, maxChars) {
 }
 
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
+  whereClauses.push(nonGuestUsernameSql(userCol));
   if (!admin || admin.is_super) return;
   whereClauses.push(
     'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
@@ -10629,6 +10783,7 @@ function conversionAnalyticsOwnerAdmin(admin) {
 }
 
 function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCol) {
+  whereClauses.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
     return;
@@ -10643,6 +10798,7 @@ function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCo
 
 /** 注册转化率：注册数按注册日统计；超级管理员排除已归属其他子管理员的用户，含未激活 */
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
+  whereParts.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
     return;
@@ -15020,6 +15176,7 @@ app.get('/api/public/resolve-sales-channel', handlePublicResolveSalesChannel);
 app.post('/api/public/sales-channel-attribution', handlePublicSalesChannelAttribution);
 app.get('/api/public/conversion-config', handlePublicConversionConfig);
 app.get('/api/public/landing-ab-config', handlePublicLandingAbConfig);
+app.post('/api/public/guest-session', handlePublicGuestSession);
 app.get('/api/admin/users/deleted', requireAdminAuth, requireAdminMenu('users'), handleAdminDeletedUsers);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
 app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);

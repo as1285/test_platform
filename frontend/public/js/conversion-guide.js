@@ -192,6 +192,22 @@
   }
 
   function goActivate() {
+    try {
+      if (localStorage.getItem('landing_guest_v1') === '1') {
+        track('track_landing_guest_activate_download', {
+          page: currentPage(),
+          landing_variant: 'c'
+        });
+        if (typeof window.trackPublicAction === 'function') {
+          window.trackPublicAction('track_landing_guest_activate_download', {
+            page: currentPage(),
+            landing_variant: 'c'
+          });
+        }
+        window.location.href = 'install_guide.html?download=1#download';
+        return;
+      }
+    } catch (e) {}
     window.location.href = 'mine.html?onboarding=' + ONBOARD_ACTIVATE;
   }
 

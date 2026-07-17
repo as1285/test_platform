@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260717-landing-ab"></script>
+    <script src="/js/auth.js?v=20260717-guest-sandbox"></script>
     <script>
         (function landingAbBootstrap() {
             document.documentElement.classList.add('landing-ab-pending');
@@ -86,16 +86,61 @@
                         });
                     }
                     if (variant === 'c' && !downloadOnly) {
+                        try {
+                            var existingToken = localStorage.getItem('token') || '';
+                            var existingUserId = localStorage.getItem('user_id') || '';
+                            var alreadyGuest = localStorage.getItem('landing_guest_v1') === '1';
+                            if (
+                                existingToken &&
+                                existingUserId &&
+                                existingUserId.indexOf('__guest_') !== 0 &&
+                                !alreadyGuest
+                            ) {
+                                window.location.replace('/mine.html');
+                                return 'c';
+                            }
+                        } catch (eExistingSession) {}
                         if (typeof window.markInstallGuideReferral === 'function') {
                             window.markInstallGuideReferral('landing_ab_c');
                         }
-                        var target = new URL('/shouye.html', window.location.origin);
-                        target.searchParams.set('guest', '1');
-                        target.searchParams.set('landing_ab', 'c');
-                        if (entry.utm_source) target.searchParams.set('utm_source', entry.utm_source);
-                        if (entry.sales_ch) target.searchParams.set('ch', entry.sales_ch);
-                        window.location.replace(target.pathname + target.search);
-                        return 'c';
+                        return fetch('/api/public/guest-session', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            cache: 'no-store',
+                            headers: Object.assign(
+                                { 'Content-Type': 'application/json' },
+                                typeof window.getClientDeviceHeaders === 'function'
+                                    ? window.getClientDeviceHeaders()
+                                    : {}
+                            ),
+                            body: JSON.stringify({
+                                landing_variant: 'c',
+                                utm_source: entry.utm_source,
+                                sales_ch: entry.sales_ch
+                            })
+                        })
+                            .then(function (r) { return r.json(); })
+                            .then(function (guestBody) {
+                                var guest =
+                                    guestBody && guestBody.code === 200 && guestBody.data
+                                        ? guestBody.data
+                                        : null;
+                                if (!guest || !guest.token) {
+                                    throw new Error((guestBody && guestBody.msg) || '游客体验初始化失败');
+                                }
+                                try {
+                                    localStorage.setItem('token', guest.token);
+                                    localStorage.setItem('userName', guest.username || '');
+                                    localStorage.setItem('user_id', guest.user_id || guest.username || '');
+                                    localStorage.setItem('real_name', guest.real_name || '游客用户');
+                                    localStorage.setItem('tax_id', guest.tax_id || '');
+                                    localStorage.setItem('account_active', '0');
+                                    localStorage.setItem('is_test_account', '0');
+                                    localStorage.setItem('landing_guest_v1', '1');
+                                } catch (eGuestStore) {}
+                                window.location.replace('/mine.html');
+                                return 'c';
+                            });
                     }
                     return reveal(variant);
                 })

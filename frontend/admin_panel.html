@@ -150,7 +150,7 @@
         </section>
         <section>
             <h2>落地页 B/C A/B Test</h2>
-            <p class="hint">B 为当前迷你产品首页；C 为轻量游客产品首页。按设备 <code>client_id</code> 稳定分流，同一访客会持续看到同一版本。调整比例只影响尚未分配的新访客，避免同一用户跨版本污染数据；效果可在侧栏「安装页统计」查看。</p>
+            <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。按设备 <code>client_id</code> 稳定分流，同一访客会持续看到同一版本。调整比例只影响尚未分配的新访客；效果可在侧栏「安装页统计」查看。</p>
             <div class="form-row form-stack">
                 <div class="form-field">
                     <label><input type="checkbox" id="landingAbEnabled" checked> 启用 B/C A/B Test</label>

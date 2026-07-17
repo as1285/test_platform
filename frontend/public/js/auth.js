@@ -1478,6 +1478,7 @@
       localStorage.removeItem('gender');
       localStorage.removeItem('account_active');
       localStorage.removeItem('is_test_account');
+      localStorage.removeItem('landing_guest_v1');
       localStorage.removeItem('wm_cache');
       localStorage.removeItem('wm_cache_time');
     } catch (e) {}
@@ -1933,7 +1934,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260713-shuiming-hint-top';
+    s.src = '/js/conversion-guide.js?v=20260717-guest-download';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

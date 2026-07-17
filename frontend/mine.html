@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260716-mine-statusbar-blue"></script>
+    <script src="/js/auth.js?v=20260717-guest-sandbox"></script>
     <script src="/js/browser-install-prompt.js?v=20260525-activated" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1505,6 +1505,14 @@
                 return localStorage.getItem('account_active') === '0';
             }
 
+            function isLandingGuestMode() {
+                try {
+                    return localStorage.getItem('landing_guest_v1') === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+
             function hasTaxRecords() {
                 var n = Number(localStorage.getItem('tax_record_count') || '0');
                 return !isNaN(n) && n > 0;
@@ -1658,6 +1666,16 @@
             }
 
             function openMineActivateModal() {
+                if (isLandingGuestMode()) {
+                    if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_landing_guest_activate_download', {
+                            page: 'mine',
+                            landing_variant: 'c'
+                        });
+                    }
+                    window.location.href = 'install_guide.html?download=1#download';
+                    return;
+                }
                 var root = document.getElementById('mineActivateModal');
                 var inp = document.getElementById('mineActivateCodeInput');
                 if (!root || !inp) return;
@@ -1921,9 +1939,48 @@
                     localStorage.removeItem('username');
                     localStorage.removeItem('real_name');
                     localStorage.removeItem('tax_id');
+                    localStorage.removeItem('landing_guest_v1');
                 } catch (e) {}
                 window.location.href = 'login.html';
             });
+
+            if (isLandingGuestMode() && typeof window.trackPublicAction === 'function') {
+                var guestVisitMeta = {
+                    page: 'mine_guest',
+                    landing_variant: 'c'
+                };
+                try {
+                    var guestEntryRaw = sessionStorage.getItem('landing_bc_entry_v1');
+                    var guestEntry = guestEntryRaw ? JSON.parse(guestEntryRaw) : null;
+                    if (guestEntry) {
+                        guestVisitMeta.referrer = guestEntry.referrer || '';
+                        guestVisitMeta.utm_source = guestEntry.utm_source || '';
+                        guestVisitMeta.sales_ch = guestEntry.sales_ch || '';
+                    }
+                } catch (eGuestEntry) {}
+                window.trackPublicAction('track_install_page_view', guestVisitMeta);
+                window.trackPublicAction('track_landing_ab_view', guestVisitMeta);
+                var guestVisitStart = Date.now();
+                var guestLeaveSent = false;
+                function sendGuestMineLeave() {
+                    if (guestLeaveSent) return;
+                    guestLeaveSent = true;
+                    var sec = Math.max(
+                        0,
+                        Math.min(86400, Math.round((Date.now() - guestVisitStart) / 1000))
+                    );
+                    window.trackPublicAction('track_install_page_leave', {
+                        page: 'mine_guest',
+                        landing_variant: 'c',
+                        dwell_seconds: sec
+                    });
+                }
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'hidden') sendGuestMineLeave();
+                });
+                window.addEventListener('pagehide', sendGuestMineLeave);
+                window.addEventListener('beforeunload', sendGuestMineLeave);
+            }
         })();
     </script>
 </body>
