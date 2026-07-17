@@ -1261,9 +1261,61 @@
       : fetch(url, opts);
   }
 
-  function refreshPublicInstallPackagesUi() {
+  var INSTALL_PACKAGES_CACHE_KEY = 'public_install_packages_v1';
+  var INSTALL_PACKAGES_CACHE_TTL_MS = 5 * 60 * 1000;
+  var _installPackagesMemory = null;
+  var _installPackagesInFlight = null;
+
+  function readInstallPackagesCache() {
+    if (
+      _installPackagesMemory &&
+      _installPackagesMemory.t &&
+      Date.now() - _installPackagesMemory.t < INSTALL_PACKAGES_CACHE_TTL_MS &&
+      _installPackagesMemory.data
+    ) {
+      return _installPackagesMemory.data;
+    }
+    try {
+      var raw = sessionStorage.getItem(INSTALL_PACKAGES_CACHE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.t || !o.data || Date.now() - Number(o.t) > INSTALL_PACKAGES_CACHE_TTL_MS) {
+        return null;
+      }
+      _installPackagesMemory = { t: Number(o.t), data: o.data };
+      return o.data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeInstallPackagesCache(data) {
+    if (!data || typeof data !== 'object') return;
+    var packed = { t: Date.now(), data: data };
+    _installPackagesMemory = packed;
+    try {
+      sessionStorage.setItem(INSTALL_PACKAGES_CACHE_KEY, JSON.stringify(packed));
+    } catch (e) {}
+  }
+
+  function getCachedPublicInstallPackages() {
+    return readInstallPackagesCache();
+  }
+
+  function refreshPublicInstallPackagesUi(opts) {
+    opts = opts || {};
+    if (!opts.force) {
+      var cached = readInstallPackagesCache();
+      if (cached) {
+        applyXianyuPurchaseVisibility(cached);
+        return Promise.resolve(cached);
+      }
+    }
+    if (_installPackagesInFlight && !opts.force) {
+      return _installPackagesInFlight;
+    }
     var req = fetchPublicInstallPackages();
-    return req
+    _installPackagesInFlight = req
       .then(function (r) {
         return r.json();
       })
@@ -1281,13 +1333,21 @@
             );
           } catch (e) {}
         }
+        if (data) {
+          writeInstallPackagesCache(data);
+        }
         applyXianyuPurchaseVisibility(data);
         return data;
       })
       .catch(function () {
         applyXianyuPurchaseVisibility(null);
         return null;
+      })
+      .then(function (data) {
+        _installPackagesInFlight = null;
+        return data;
       });
+    return _installPackagesInFlight;
   }
 
   initSalesChannelFromUrl();
@@ -1909,6 +1969,7 @@
   window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
   window.refreshPublicInstallPackagesUi = refreshPublicInstallPackagesUi;
+  window.getCachedPublicInstallPackages = getCachedPublicInstallPackages;
   window.fetchPublicInstallPackages = fetchPublicInstallPackages;
   window.trackUserAction = function (action, meta) {
     fireTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});

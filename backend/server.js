@@ -322,6 +322,8 @@ function normalizeAdminMenuList(rawMenus, isSuper) {
 
 var _wechatPayQrcodeCache = null;
 var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
+var _installPackageSettingsCache = null;
+var INSTALL_PACKAGE_SETTINGS_CACHE_MS = 30000;
 
 async function getWechatPayQrcodeUrl() {
   var now = Date.now();
@@ -348,6 +350,10 @@ async function getWechatPayQrcodeUrl() {
 
 function invalidateWechatPayQrcodeCache() {
   _wechatPayQrcodeCache = null;
+}
+
+function invalidateInstallPackageSettingsCache() {
+  _installPackageSettingsCache = null;
 }
 
 /** 用户端展示用：uploads/… 或相对路径补全为站内 URL */
@@ -1172,6 +1178,13 @@ async function resolveSalesChannelForRequest(req) {
 }
 
 async function getInstallPackageSettingsFromDb() {
+  var now = Date.now();
+  if (
+    _installPackageSettingsCache &&
+    now - _installPackageSettingsCache.t < INSTALL_PACKAGE_SETTINGS_CACHE_MS
+  ) {
+    return _installPackageSettingsCache.v;
+  }
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
@@ -1200,7 +1213,7 @@ async function getInstallPackageSettingsFromDb() {
     var qqGroup =
       map[SETTING_KEY_QQ_GROUP_URL] != null ? String(map[SETTING_KEY_QQ_GROUP_URL]).trim() : '';
     var hideChannels = parseXianyuHideSalesChannels(map[SETTING_KEY_XIANYU_HIDE_CHANNELS]);
-    return {
+    var out = {
       android: android,
       agent_android: agentAndroid,
       ios: ios,
@@ -1209,6 +1222,8 @@ async function getInstallPackageSettingsFromDb() {
       qq_group: qqGroup,
       xianyu_hide_channels: hideChannels
     };
+    _installPackageSettingsCache = { v: out, t: now };
+    return out;
   } finally {
     conn.release();
   }
@@ -2348,6 +2363,13 @@ async function createTables() {
   } catch (e) {
     /* 已存在或非致命 */
   }
+  try {
+    await conn.execute(
+      'CREATE INDEX idx_tax_user_deleted_year_month ON tax_records (user_id, deleted_at, year, month)'
+    );
+  } catch (e) {
+    /* 已存在或非致命 */
+  }
 
   var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
@@ -2451,33 +2473,60 @@ function recordMatchesIncomeTypes(record, incomeTypes) {
 
 async function getRecords(userId, year, incomeTypes) {
   const conn = await pool.getConnection();
-  let query = 'SELECT * FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
+  /* 列表场景不需要 SELECT *，减少传输与解析开销 */
+  var listCols =
+    'id, year, month, income_type, income_subtype, company_name, company_tax_id, tax_authority, ' +
+    'report_channel, report_date, tax_period, income, tax_reported, income_this_period, tax_free_income, ' +
+    'deduction_fee, special_deduction, other_deduction, donation_deduction, ' +
+    'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, created_at, updated_at';
+  let query =
+    'SELECT ' + listCols + ' FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL;
   const params = [userId];
-  
+
   if (year != null && year !== '') {
     query += ' AND year = ?';
     params.push(parseInt(year, 10));
   }
-  
-  query += ' ORDER BY year DESC, month DESC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
-  
+
+  if (incomeTypes && incomeTypes.length) {
+    var normalized = [];
+    var seenType = {};
+    incomeTypes.forEach(function (t) {
+      var n = normalizeIncomeTypeLabel(t);
+      if (!n || seenType[n]) return;
+      seenType[n] = true;
+      normalized.push(n);
+    });
+    if (normalized.length) {
+      var ph = normalized
+        .map(function () {
+          return '?';
+        })
+        .join(',');
+      /* 兼容「工资薪金」与「工资薪金所得」两种存法 */
+      query +=
+        ' AND REPLACE(TRIM(IFNULL(income_type,\'\')), \'所得\', \'\') IN (' + ph + ')';
+      for (var ti = 0; ti < normalized.length; ti++) {
+        params.push(normalized[ti]);
+      }
+    }
+  }
+
+  query +=
+    ' ORDER BY year DESC, month DESC, (CASE WHEN TRIM(IFNULL(income_subtype,\'\')) = \'全年一次性奖金收入\' THEN 1 ELSE 0 END) ASC, id ASC';
+
   const [rows] = await conn.execute(query, params);
   conn.release();
 
   var filtered = rows;
-  if (incomeTypes && incomeTypes.length) {
-    filtered = rows.filter(function (r) {
-      return recordMatchesIncomeTypes(r, incomeTypes);
-    });
-  }
-  
+
   let income = 0;
   let tax = 0;
   filtered.forEach(function (r) {
     income += parseFloat(r.income) || 0;
     tax += parseFloat(r.tax_reported) || 0;
   });
-  
+
   return {
     income_total: income.toFixed(2),
     tax_total: tax.toFixed(2),
@@ -3056,10 +3105,23 @@ async function dedupeTaxRecords(userId) {
     if (!idsToDelete.length) {
       return { deleted: 0 };
     }
+    /* 批量软删除，避免逐条 SELECT+UPDATE+日志拖慢保存 */
     await conn.beginTransaction();
     try {
-      for (var j = 0; j < idsToDelete.length; j++) {
-        await deleteRecordInConn(conn, userId, idsToDelete[j]);
+      var chunk = 80;
+      for (var j = 0; j < idsToDelete.length; j += chunk) {
+        var part = idsToDelete.slice(j, j + chunk);
+        var ph = part
+          .map(function () {
+            return '?';
+          })
+          .join(',');
+        await conn.execute(
+          'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND deleted_at IS NULL AND id IN (' +
+            ph +
+            ')',
+          [userId].concat(part)
+        );
       }
       await conn.commit();
       return { deleted: idsToDelete.length };
@@ -4494,6 +4556,7 @@ async function getUserSummaryForApi(userId) {
       bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
       user_type: ut,
+      is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST
     };
   } finally {
@@ -7634,12 +7697,10 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: 'record required' });
       }
       var out = await saveRecord(userId, record);
-      var saveDedupeOut = await dedupeTaxRecords(userId);
+      /* 单条保存不再同步全量去重（可走明确的 dedupe_records）；批量写入仍会去重 */
       return res.json({
         code: 200,
-        data: Object.assign({}, out, {
-          auto_deduped: saveDedupeOut.deleted != null ? saveDedupeOut.deleted : 0
-        })
+        data: Object.assign({}, out, { auto_deduped: 0 })
       });
     }
     if (action === 'batch_save_records') {
@@ -13056,6 +13117,18 @@ async function handleAdminSettingsPost(req, res) {
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
         [SETTING_KEY_LANDING_AB, JSON.stringify(mergedLandingAb)]
       );
+    }
+
+    if (
+      hasAndroid ||
+      hasAgentAndroid ||
+      hasIos ||
+      hasXianyu ||
+      hasXianyuHideChannels ||
+      hasQqAdd ||
+      hasQqGroup
+    ) {
+      invalidateInstallPackageSettingsCache();
     }
 
     var outData = { success: true };

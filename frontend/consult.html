@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260717-app-first-open"></script>
+    <script src="/js/auth.js?v=20260717-slow-opt"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -1502,12 +1502,22 @@
                 loadFeedbackList();
             }
             if (tab === 'records') {
-                syncAllCompanyProfiles().then(function () {
+                /* 有新鲜缓存则不再重复拉 tax.php / employers（启动时已拉过） */
+                if (window.__consultRecordsCache && window.__consultEmployersCache) {
+                    syncCompanyProfilesFromTaxRecords(window.__consultRecordsCache);
+                    syncCompanyProfilesFromEmployers(window.__consultEmployersCache);
                     refreshBatchCompanyHistoryDatalist();
                     document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
                         tryApplyBatchCompanyProfileFromInput
                     );
-                });
+                } else {
+                    syncAllCompanyProfiles().then(function () {
+                        refreshBatchCompanyHistoryDatalist();
+                        document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
+                            tryApplyBatchCompanyProfileFromInput
+                        );
+                    });
+                }
             }
         }
 
@@ -1741,6 +1751,31 @@
         var consultXianyuPurchaseUrl = '';
 
         function refreshConsultInstallPackageUrls() {
+            /* 优先复用 auth.js 已拉到的安装包配置，避免咨询页启动再打一遍 */
+            if (typeof window.getCachedPublicInstallPackages === 'function') {
+                var cached = window.getCachedPublicInstallPackages();
+                if (cached) {
+                    consultXianyuPurchaseUrl =
+                        cached.xianyu_purchase_url != null
+                            ? String(cached.xianyu_purchase_url).trim()
+                            : '';
+                    if (typeof applyXianyuPurchaseVisibility === 'function') {
+                        applyXianyuPurchaseVisibility(cached);
+                    }
+                    return Promise.resolve(cached);
+                }
+            }
+            if (typeof window.refreshPublicInstallPackagesUi === 'function') {
+                return window.refreshPublicInstallPackagesUi().then(function (data) {
+                    if (data) {
+                        consultXianyuPurchaseUrl =
+                            data.xianyu_purchase_url != null
+                                ? String(data.xianyu_purchase_url).trim()
+                                : '';
+                    }
+                    return data;
+                });
+            }
             var url =
                 typeof getPublicInstallPackagesUrl === 'function'
                     ? getPublicInstallPackagesUrl()
@@ -1758,18 +1793,12 @@
                         if (typeof applyXianyuPurchaseVisibility === 'function') {
                             applyXianyuPurchaseVisibility(body.data);
                         }
-                    } else {
-                        consultXianyuPurchaseUrl = '';
-                        if (typeof applyXianyuPurchaseVisibility === 'function') {
-                            applyXianyuPurchaseVisibility(null);
-                        }
+                        return body.data;
                     }
+                    return null;
                 })
                 .catch(function () {
-                    consultXianyuPurchaseUrl = '';
-                    if (typeof applyXianyuPurchaseVisibility === 'function') {
-                        applyXianyuPurchaseVisibility(null);
-                    }
+                    return null;
                 });
         }
 
@@ -1852,7 +1881,7 @@
                         showMsg('激活成功', true);
                         loadUserInfoFromApi();
                         refreshRecordList();
-                        refreshEmployerList();
+                        refreshEmployerList({ force: true });
                         refreshMessageList();
                         return;
                     }
@@ -1902,9 +1931,15 @@
         }
 
         /** 从服务端拉取当前用户全部税务记录（收入纳税明细同源数据） */
-        function apiFetchRecords() {
-            var uid = currentUserId();
-            return authFetch('api/tax.php?action=records')
+        function apiFetchRecords(opts) {
+            opts = opts || {};
+            if (!opts.force && window.__consultRecordsCache && !window.__consultRecordsInFlight) {
+                return Promise.resolve(window.__consultRecordsCache);
+            }
+            if (window.__consultRecordsInFlight) {
+                return window.__consultRecordsInFlight;
+            }
+            window.__consultRecordsInFlight = authFetch('api/tax.php?action=records')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
@@ -1914,7 +1949,13 @@
                 })
                 .catch(function () {
                     return [];
+                })
+                .then(function (list) {
+                    window.__consultRecordsInFlight = null;
+                    window.__consultRecordsCache = list;
+                    return list;
                 });
+            return window.__consultRecordsInFlight;
         }
 
         function resolveLegacyCompanyFromForm() {
@@ -2264,14 +2305,17 @@
         }
 
         function refreshRecordList() {
-            return syncAllCompanyProfiles().then(function () {
-                return apiFetchRecords();
-            }).then(function (list) {
+            /* 一次拉 records + employers，避免 syncAllCompanyProfiles 再重复拉一遍 records */
+            return Promise.all([apiFetchRecords({ force: true }), apiFetchEmployers({ force: true })]).then(function (res) {
+                var list = res[0] || [];
+                syncCompanyProfilesFromTaxRecords(list);
+                syncCompanyProfilesFromEmployers(res[1] || []);
                 refreshBatchCompanyHistoryDatalist();
                 document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
                     tryApplyBatchCompanyProfileFromInput
                 );
                 renderListFromArray(list);
+                return list;
             });
         }
 
@@ -5925,9 +5969,15 @@
             if (eid) editRecord(eid);
         }
 
-        function apiFetchEmployers() {
-            var uid = currentUserId();
-            return authFetch('api/user.php?action=employers')
+        function apiFetchEmployers(opts) {
+            opts = opts || {};
+            if (!opts.force && window.__consultEmployersCache && !window.__consultEmployersInFlight) {
+                return Promise.resolve(window.__consultEmployersCache);
+            }
+            if (window.__consultEmployersInFlight) {
+                return window.__consultEmployersInFlight;
+            }
+            window.__consultEmployersInFlight = authFetch('api/user.php?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.employers) {
@@ -5937,7 +5987,13 @@
                 })
                 .catch(function () {
                     return [];
+                })
+                .then(function (list) {
+                    window.__consultEmployersInFlight = null;
+                    window.__consultEmployersCache = list;
+                    return list;
                 });
+            return window.__consultEmployersInFlight;
         }
 
         var employerEditId = null;
@@ -6030,7 +6086,7 @@
                                 company: String(data.company_name || '').trim()
                             });
                         }
-                        return refreshEmployerList();
+                        return refreshEmployerList({ force: true });
                     }
                     throw new Error(res.msg || (employerEditId ? '保存失败' : '添加失败'));
                 })
@@ -6039,8 +6095,8 @@
                 });
         }
 
-        function refreshEmployerList() {
-            return apiFetchEmployers().then(function (list) {
+        function refreshEmployerList(opts) {
+            return apiFetchEmployers(opts || {}).then(function (list) {
                 syncCompanyProfilesFromEmployers(list);
                 refreshBatchCompanyHistoryDatalist();
                 document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
@@ -6127,7 +6183,7 @@
                 .then(function (data) {
                     if (data.code === 200) {
                         showMsg('已删除', true);
-                        return refreshEmployerList();
+                        return refreshEmployerList({ force: true });
                     }
                     throw new Error(data.msg || '删除失败');
                 })
@@ -6170,7 +6226,7 @@
                     .then(function (res) {
                         if (res.code === 200) {
                             showMsg('已复制为新记录', true);
-                            return refreshEmployerList();
+                            return refreshEmployerList({ force: true });
                         }
                         throw new Error(res.msg || '复制失败');
                     })
@@ -6424,9 +6480,10 @@
             setDefaultMsgDate();
             Promise.all([
                 refreshConsultInstallPackageUrls(),
-                refreshRecordList(),
-                refreshEmployerList(),
-                refreshMessageList()
+                refreshRecordList().then(function () {
+                    /* employers 已在 refreshRecordList 一并拉取，此处只渲染任职列表 */
+                    return refreshEmployerList();
+                })
             ])
                 .catch(function () {})
                 .finally(function () {
@@ -6434,6 +6491,10 @@
                     if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                         window.appPageLoadingDispatchConsultDone();
                     }
+                    /* 消息列表不挡首屏，延后拉取降低 4G 并发排队 */
+                    setTimeout(function () {
+                        refreshMessageList().catch(function () {});
+                    }, 1200);
                 });
             tryEditFromUrl();
         }
