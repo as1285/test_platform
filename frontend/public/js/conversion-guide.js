@@ -19,8 +19,17 @@
   var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
   var TAX_EDIT_MODE_KEY = 'cg_tax_edit_mode';
   var TAX_EDIT_OFF_CLASS = 'cg-tax-edit-off';
+  var PROFILE_CACHE_KEY = 'cg_profile_summary_v1';
+  var PROFILE_CACHE_TTL_MS = 3 * 60 * 1000;
+  /** 纯展示 Tab：不阻塞首屏，延后拉用户摘要 */
+  var LIGHT_SHELL_PAGES = {
+    'daiban.html': true,
+    'bancha.html': true,
+    'message.html': true
+  };
   var captureHideTimer = null;
   var conversionCfg = null;
+  var profileFetchInFlight = null;
 
   function normalizeTaxYearLocal(raw) {
     var minY = 2019;
@@ -242,33 +251,88 @@
     }
   }
 
-  function fetchProfileCounts() {
+  function isLightShellPage() {
+    return !!LIGHT_SHELL_PAGES[currentPage()];
+  }
+
+  function applyProfileSummary(u) {
+    if (!u || typeof u !== 'object') return;
+    if (u.account_active !== undefined && u.account_active !== null) {
+      var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
+      try {
+        localStorage.setItem('account_active', active ? '1' : '0');
+      } catch (e0) {}
+      if (active) {
+        removeActivationPromoUi();
+      }
+    }
+    if (u.tax_record_count != null) {
+      try {
+        localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
+      } catch (e1) {}
+    }
+    if (u.employer_count != null) {
+      try {
+        localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
+      } catch (e2) {}
+    }
+    removeMineConversionUi();
+  }
+
+  function readProfileCache() {
+    try {
+      var raw = sessionStorage.getItem(PROFILE_CACHE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.t || Date.now() - o.t > PROFILE_CACHE_TTL_MS) return null;
+      return o;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeProfileCache(u) {
+    if (!u || typeof u !== 'object') return;
+    try {
+      sessionStorage.setItem(
+        PROFILE_CACHE_KEY,
+        JSON.stringify({
+          t: Date.now(),
+          account_active: u.account_active,
+          tax_record_count: u.tax_record_count,
+          employer_count: u.employer_count
+        })
+      );
+    } catch (e) {}
+  }
+
+  function fetchProfileCounts(opts) {
+    opts = opts || {};
     if (!isLoggedIn() || typeof authFetch !== 'function') {
       return Promise.resolve();
     }
-    return authFetch('api/user.php?action=info')
+    var cached = readProfileCache();
+    if (cached && !opts.force) {
+      applyProfileSummary(cached);
+      return Promise.resolve();
+    }
+    if (profileFetchInFlight && !opts.force) {
+      return profileFetchInFlight;
+    }
+    profileFetchInFlight = authFetch('api/user.php?action=summary')
       .then(function (r) {
         return r.json();
       })
       .then(function (data) {
         if (data.code !== 200 || !data.data) return;
-        var u = data.data;
-        if (u.account_active !== undefined && u.account_active !== null) {
-          var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
-          localStorage.setItem('account_active', active ? '1' : '0');
-          if (active) {
-            removeActivationPromoUi();
-          }
-        }
-        if (u.tax_record_count != null) {
-          localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
-        }
-        if (u.employer_count != null) {
-          localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
-        }
-        removeMineConversionUi();
+        applyProfileSummary(data.data);
+        writeProfileCache(data.data);
       })
-      .catch(function () {});
+      .catch(function () {})
+      .then(function () {
+        profileFetchInFlight = null;
+      });
+    return profileFetchInFlight;
   }
 
   function ensureGateStyles() {
@@ -1195,34 +1259,49 @@
     } catch (e) {}
     if (!isLoggedIn()) return;
     ensureGateStyles();
-    loadConversionConfig()
-      .then(function () {
+
+    function afterProfileReady() {
+      if (skipConversionPromo()) {
+        removeActivationPromoUi();
+      }
+      runMineOnboarding();
+      runConsultOnboarding();
+      patchShuimingResultEmpty();
+      removeShuimingResultValueBar();
+      renderShouyeTaxManageEntry();
+      renderShouyeRetentionCard();
+      if (!skipConversionPromo()) {
+        bumpIncomeBrowseVisit();
+        renderShuimingHint();
+        renderAboutUpdateNudge();
+        renderCareVersionHint();
+      } else {
+        renderAboutUpdateNudge();
+      }
+      maybeShowPostTaxSaveBanner();
+    }
+
+    function runBoot() {
+      return Promise.all([loadConversionConfig(), fetchProfileCounts()]).then(function () {
         applyActivateModalCopy();
         applyConsultBatchUi();
-      })
-      .then(function () {
-        return fetchProfileCounts();
-      })
-      .then(function () {
-        if (skipConversionPromo()) {
-          removeActivationPromoUi();
-        }
-        runMineOnboarding();
-        runConsultOnboarding();
-        patchShuimingResultEmpty();
-        removeShuimingResultValueBar();
-        renderShouyeTaxManageEntry();
-        renderShouyeRetentionCard();
-        if (!skipConversionPromo()) {
-          bumpIncomeBrowseVisit();
-          renderShuimingHint();
-          renderAboutUpdateNudge();
-          renderCareVersionHint();
-        } else {
-          renderAboutUpdateNudge();
-        }
-        maybeShowPostTaxSaveBanner();
+        afterProfileReady();
       });
+    }
+
+    /* 待办/办查/消息等静态 Tab：不抢首屏带宽，延后刷新摘要 */
+    if (isLightShellPage()) {
+      var cached = readProfileCache();
+      if (cached) {
+        applyProfileSummary(cached);
+      }
+      setTimeout(function () {
+        runBoot();
+      }, 2800);
+      return;
+    }
+
+    runBoot();
   }
 
   function renderAboutUpdateNudge() {

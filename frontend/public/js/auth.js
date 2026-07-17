@@ -1934,7 +1934,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260717-guest-download';
+    s.src = '/js/conversion-guide.js?v=20260717-user-summary';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

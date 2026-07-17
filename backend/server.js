@@ -4451,18 +4451,61 @@ async function loginUser(username, password) {
   };
 }
 
+/** 轻量摘要：转化引导 / Tab 页刷新用，避免拉全量任职与资料 */
+async function getUserSummaryForApi(userId) {
+  if (userId == null || String(userId).trim() === '') {
+    return null;
+  }
+  const uid = String(userId).trim();
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT account_active, employer_count, family_count, bank_card_count, user_type
+       FROM users WHERE username = ? LIMIT 1`,
+      [uid]
+    );
+    if (!rows.length) {
+      return {
+        username: uid,
+        account_active: false,
+        employer_count: 0,
+        family_count: 0,
+        bank_card_count: 0,
+        tax_record_count: 0,
+        user_type: USER_TYPE_NORMAL,
+        is_guest: false
+      };
+    }
+    const rec = rows[0];
+    const [taxCountRows] = await conn.execute(
+      'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+      [uid]
+    );
+    var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
+    var accountActive =
+      rec.account_active === 1 ||
+      rec.account_active === true ||
+      Number(rec.account_active) === 1;
+    return {
+      username: uid,
+      account_active: accountActive,
+      employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
+      family_count: rec.family_count != null ? Number(rec.family_count) : 0,
+      bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
+      tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
+      user_type: ut,
+      is_guest: ut === USER_TYPE_GUEST
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 async function getUserInfoForApi(userId) {
   if (userId == null || String(userId).trim() === '') {
     return null;
   }
   const uid = String(userId).trim();
-
-  var lockedCompany = TEST_ACCOUNT_COMPANY_NAME_DEFAULT;
-  try {
-    lockedCompany = await getTestAccountCompanyName();
-  } catch (e) {
-    console.error('getTestAccountCompanyName', e);
-  }
 
   const conn = await pool.getConnection();
   const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [uid]);
@@ -4514,6 +4557,15 @@ async function getUserInfoForApi(userId) {
     rec.account_active === true ||
     Number(rec.account_active) === 1;
   var wmFlag = !accountActive;
+  var lockedCompany = '';
+  if (ut === USER_TYPE_TEST) {
+    try {
+      lockedCompany = await getTestAccountCompanyName();
+    } catch (e) {
+      console.error('getTestAccountCompanyName', e);
+      lockedCompany = TEST_ACCOUNT_COMPANY_NAME_DEFAULT;
+    }
+  }
   function profileStr(field, fallback) {
     var v = rec[field];
     if (v == null || String(v).trim() === '') {
@@ -4832,6 +4884,7 @@ async function handleUserGet(req, res) {
   var action = req.query.action;
   if (
     action !== 'info' &&
+    action !== 'summary' &&
     action !== 'employers' &&
     action !== 'family_members' &&
     action !== 'family_member' &&
@@ -4845,6 +4898,13 @@ async function handleUserGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'user_id required' });
   }
   try {
+    if (action === 'summary') {
+      var summary = await getUserSummaryForApi(userId);
+      if (!summary) {
+        return res.status(400).json({ code: 400, msg: 'user_id required' });
+      }
+      return res.json({ code: 200, data: summary });
+    }
     if (action === 'family_members') {
       var members = await listFamilyMembersForUser(userId);
       return res.json({ code: 200, data: { members: members } });
