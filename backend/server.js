@@ -5814,10 +5814,19 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
 function normalizeUserLoginFailReason(rawMsg) {
   var msg = String(rawMsg || '').trim();
   if (!msg) return 'unknown_error';
+  /* 已是标准 reason key（含注册失败细分）则直接保留，避免落入 other_error */
+  if (Object.prototype.hasOwnProperty.call(USER_LOGIN_REASON_LABELS, msg) && msg !== 'ok') {
+    return msg;
+  }
+  if (msg.indexOf('register_fail:') === 0) {
+    return msg.substring(0, 120);
+  }
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
   if (msg.indexOf('密码错误') >= 0 && msg.indexOf('激活码') >= 0) return 'wrong_password';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
+  if (msg.indexOf('已注册') >= 0 || msg.indexOf('账号已存在') >= 0) return 'register_fail:duplicate';
+  if (msg.indexOf('请求过于频繁') >= 0 || msg.indexOf('rate_limited') >= 0) return 'rate_limited';
   if (
     msg.indexOf('账号仅支持') >= 0 ||
     msg.indexOf('账号长度') >= 0 ||
@@ -5903,6 +5912,7 @@ const USER_LOGIN_REASON_LABELS = {
   invalid_credentials: '账号或密码错误',
   wrong_password: '密码错误',
   invalid_username: '账号格式错误',
+  rate_limited: '登录过于频繁',
   other_error: '其他错误',
   unknown_error: '未知错误',
   register_ok: '注册成功',
