@@ -62,6 +62,9 @@ COPY zxkouchu.html /usr/share/nginx/html/
 COPY zxk_zhengce.html /usr/share/nginx/html/
 COPY zxk_zhengce.jpg /usr/share/nginx/html/
 COPY najilu.html /usr/share/nginx/html/
+# 微信公众号/业务域名校验文件（根路径可访问）
+COPY 2dd4cb5cb0fa1ede2240d147545250a1.txt /usr/share/nginx/html/
+COPY dc4f66bfde25a504178cc8101b1fa3d0.txt /usr/share/nginx/html/
 COPY gerenyanglao.html /usr/share/nginx/html/
 COPY gerenyanglao_banner.jpg /usr/share/nginx/html/
 COPY jingyingsuode.html /usr/share/nginx/html/
