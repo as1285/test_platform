@@ -12460,6 +12460,10 @@ async function handleAdminCodes(req, res) {
     }
     var scope = req.query.scope != null ? String(req.query.scope).trim() : '';
     if (scope === 'xianyu') {
+      if (!req.admin || !req.admin.is_super) {
+        conn.release();
+        return res.status(403).json({ code: 403, msg: '仅超级管理员可查看闲鱼激活码' });
+      }
       conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%闲鱼%')");
     } else if (scope === 'general') {
       conditions.push("(ac.note IS NULL OR ac.note NOT LIKE '%闲鱼%')");

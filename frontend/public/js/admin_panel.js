@@ -2140,6 +2140,18 @@
             if (batchWrap) {
                 batchWrap.style.display = currentAdminProfile && currentAdminProfile.is_super ? 'flex' : 'none';
             }
+            var xianyuSection = document.getElementById('xianyuCodesSection');
+            if (xianyuSection) {
+                xianyuSection.style.display =
+                    currentAdminProfile && currentAdminProfile.is_super ? '' : 'none';
+            }
+            var codesHint = document.getElementById('codesPageHint');
+            if (codesHint) {
+                codesHint.innerHTML =
+                    currentAdminProfile && currentAdminProfile.is_super
+                        ? '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。'
+                        : '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。下方列表仅展示本账号生成的<strong>非闲鱼</strong>激活码。';
+            }
         }
 
         function normalizeAdminPage(raw) {
@@ -2220,7 +2232,9 @@
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
                 loadCodes(1);
-                loadXianyuCodes(1);
+                if (currentAdminProfile && currentAdminProfile.is_super) {
+                    loadXianyuCodes(1);
+                }
             }
             if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
                 _adminAccountsLoaded = true;
