@@ -9143,6 +9143,38 @@ async function handleAdminInstallGuideStats(req, res) {
          ORDER BY d ASC`,
         userSinceParams
       );
+      const [guestDailyRows] = await conn.query(
+        `SELECT ${cnUserDay} AS d, COUNT(*) AS new_guests
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}
+           AND ${cnUserSince}
+         GROUP BY ${cnUserDay}
+         ORDER BY d ASC`,
+        userSinceParams
+      );
+      const cnGuestMergeDay = 'DATE(DATE_ADD(u.guest_merged_at, INTERVAL 8 HOUR))';
+      var guestMergePf = analyticsPeriodCnDateFilter(cnGuestMergeDay, period);
+      var cnGuestMergeSince = guestMergePf.sql;
+      var guestMergeSinceParams = guestMergePf.params.slice();
+      const [guestConvertedDailyRows] = await conn.query(
+        `SELECT ${cnGuestMergeDay} AS d, COUNT(*) AS guest_converted
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}
+           AND u.guest_merged_at IS NOT NULL
+           AND ${cnGuestMergeSince}
+         GROUP BY ${cnGuestMergeDay}
+         ORDER BY d ASC`,
+        guestMergeSinceParams
+      );
+      const [guestSumRows] = await conn.query(
+        `SELECT
+            COUNT(*) AS new_guests,
+            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS guest_converted
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}
+           AND ${cnUserSince}`,
+        userSinceParams
+      );
       const [recentRows] = await conn.query(
         `SELECT id, client_id, device_fp, event_key, dwell_seconds, meta_json, created_at, ip, user_agent
          FROM install_guide_track_events
@@ -9454,6 +9486,18 @@ async function handleAdminInstallGuideStats(req, res) {
         var k = formatDateKey(r.d);
         if (k) regInstallReportedMap[k] = Number(r.registered_from_install_reported) || 0;
       });
+      var guestDailyMap = {};
+      (guestDailyRows || []).forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) guestDailyMap[k] = Number(r.new_guests) || 0;
+      });
+      var guestConvertedDailyMap = {};
+      (guestConvertedDailyRows || []).forEach(function (r) {
+        var k = formatDateKey(r.d);
+        if (k) guestConvertedDailyMap[k] = Number(r.guest_converted) || 0;
+      });
+      var totalNewGuests = Number((guestSumRows[0] || {}).new_guests) || 0;
+      var totalGuestConverted = Number((guestSumRows[0] || {}).guest_converted) || 0;
 
       var dailyMap = {};
       (dailyRows || []).forEach(function (r) {
@@ -9463,6 +9507,8 @@ async function handleAdminInstallGuideStats(req, res) {
         var uv = Number(r.unique_visitors) || 0;
         var regAll = regMap[dk] || 0;
         var regInstall = regInstallMap[dk] || 0;
+        var newGuests = guestDailyMap[dk] || 0;
+        var guestConverted = guestConvertedDailyMap[dk] || 0;
         dailyMap[dk] = {
           date: dk,
           page_views: Number(r.page_views) || 0,
@@ -9475,6 +9521,9 @@ async function handleAdminInstallGuideStats(req, res) {
           register_rate_pct: pctText(regInstall, uv),
           register_rate_all: uv > 0 ? regAll / uv : null,
           register_rate_all_pct: pctText(regAll, uv),
+          new_guests: newGuests,
+          guest_converted: guestConverted,
+          guest_register_rate_pct: pctText(guestConverted, newGuests),
           avg_dom_ready_label: '—',
           avg_packages_total_label: '—'
         };
@@ -9501,6 +9550,8 @@ async function handleAdminInstallGuideStats(req, res) {
         } else {
           var regAll0 = regMap[key] || 0;
           var regInstall0 = regInstallMap[key] || 0;
+          var newGuests0 = guestDailyMap[key] || 0;
+          var guestConverted0 = guestConvertedDailyMap[key] || 0;
           daily.push({
             date: key,
             page_views: 0,
@@ -9512,7 +9563,10 @@ async function handleAdminInstallGuideStats(req, res) {
             register_rate: null,
             register_rate_pct: regAll0 > 0 ? '—' : null,
             register_rate_all: null,
-            register_rate_all_pct: regAll0 > 0 ? '—' : null
+            register_rate_all_pct: regAll0 > 0 ? '—' : null,
+            new_guests: newGuests0,
+            guest_converted: guestConverted0,
+            guest_register_rate_pct: pctText(guestConverted0, newGuests0)
           });
         }
       });
@@ -9763,7 +9817,10 @@ async function handleAdminInstallGuideStats(req, res) {
               register_rate: uv > 0 ? totalRegisteredFromInstall / uv : null,
               register_rate_pct: pctText(totalRegisteredFromInstall, uv),
               register_rate_all: uv > 0 ? totalRegistered / uv : null,
-              register_rate_all_pct: pctText(totalRegistered, uv)
+              register_rate_all_pct: pctText(totalRegistered, uv),
+              new_guests: totalNewGuests,
+              guest_converted: totalGuestConverted,
+              guest_register_rate_pct: pctText(totalGuestConverted, totalNewGuests)
             },
             actions: actions,
             landing_ab: {

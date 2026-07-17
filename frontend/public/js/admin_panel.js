@@ -4037,6 +4037,16 @@
                       esc(s.avg_packages_render_label || '—')
                     : '') +
                 '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">新增游客</div><div class="ud-val">' +
+                esc(String(s.new_guests != null ? s.new_guests : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">C 方案沙盒账号（按创建日）</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">游客→注册</div><div class="ud-val">' +
+                esc(String(s.guest_converted != null ? s.guest_converted : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">注册率 ' +
+                esc(s.guest_register_rate_pct || '—') +
+                '</div></div>';
             html += '</div>';
 
             var landingAb = data.landing_ab || null;
@@ -4072,8 +4082,6 @@
                     html += '</tr>';
                 });
             }
-            html += '</tbody></table></div>';
-
             html += '</tbody></table></div>';
 
             var dlFunnel = data.download_register_funnel || null;
@@ -4175,6 +4183,26 @@
             html += '</tbody></table></div>';
 
             var daily = Array.isArray(data.daily) ? data.daily : [];
+            html += '<p class="stat" style="margin:0 0 8px;">每日游客用户</p>';
+            html +=
+                '<p class="hint" style="margin:0 0 10px;">按<strong>北京时间</strong>统计 C 方案产生的沙盒游客账号（<code>users.created_at</code>）；「注册合并」按同设备注册后数据迁移日（<code>guest_merged_at</code>）统计。</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>日期</th><th>新增游客</th><th>注册合并</th><th>游客注册率</th></tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="4">暂无</td></tr>';
+            } else {
+                daily.slice().reverse().forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td>' + esc(row.date || '—') + '</td>';
+                    html += '<td>' + esc(String(row.new_guests != null ? row.new_guests : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.guest_converted != null ? row.guest_converted : 0)) + '</td>';
+                    html += '<td>' + esc(row.guest_register_rate_pct || (row.new_guests > 0 ? '0.0%' : '—')) + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
             html += '<p class="stat" style="margin:0 0 8px;">每日访问与注册趋势</p>';
             html +=
                 '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="installGuideVisitRegChart" aria-label="安装页每日访问与注册折线图"></canvas></div></div>';
@@ -4265,15 +4293,17 @@
             html += '<p class="stat" style="margin:0 0 8px;">按日明细</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
             html +=
-                '<th>日期</th><th>浏览量</th><th>独立访客</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th><th>平均DOM就绪</th><th>平均包接口</th></tr></thead><tbody>';
+                '<th>日期</th><th>浏览量</th><th>独立访客</th><th>新增游客</th><th>游客合并</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th><th>平均DOM就绪</th><th>平均包接口</th></tr></thead><tbody>';
             if (!daily.length) {
-                html += '<tr><td colspan="9">暂无</td></tr>';
+                html += '<tr><td colspan="11">暂无</td></tr>';
             } else {
                 daily.slice().reverse().forEach(function (row) {
                     html += '<tr>';
                     html += '<td>' + esc(row.date || '—') + '</td>';
                     html += '<td>' + esc(row.page_views) + '</td>';
                     html += '<td>' + esc(row.unique_visitors) + '</td>';
+                    html += '<td>' + esc(String(row.new_guests != null ? row.new_guests : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.guest_converted != null ? row.guest_converted : 0)) + '</td>';
                     html += '<td>' + esc(row.registered_from_install != null ? row.registered_from_install : 0) + '</td>';
                     html += '<td>' + esc(row.registered != null ? row.registered : 0) + '</td>';
                     html += '<td>' + esc(row.register_rate_pct || (row.unique_visitors > 0 ? '0.0%' : '—')) + '</td>';
@@ -4388,6 +4418,19 @@
                                         backgroundColor: '#94a3b8',
                                         yAxisID: 'yCount',
                                         borderDash: [6, 4],
+                                        tension: 0.3,
+                                        fill: false,
+                                        borderWidth: 2,
+                                        pointRadius: 2
+                                    },
+                                    {
+                                        label: '新增游客',
+                                        data: daily.map(function (row) {
+                                            return Number(row.new_guests) || 0;
+                                        }),
+                                        borderColor: '#9333ea',
+                                        backgroundColor: '#9333ea',
+                                        yAxisID: 'yCount',
                                         tension: 0.3,
                                         fill: false,
                                         borderWidth: 2,
