@@ -278,7 +278,14 @@
         .feedback-submit-head .card-title {
             margin-bottom: 0;
         }
-        #btnFeedbackXianyu {
+        .feedback-submit-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        #btnFeedbackXianyu,
+        #btnFeedbackQqGroup {
             flex-shrink: 0;
         }
         .feedback-wechat-pay img {
@@ -928,7 +935,10 @@
             <div class="card">
                 <div class="feedback-submit-head">
                     <div class="card-title">提交反馈</div>
-                    <button type="button" class="btn btn-secondary btn-sm" id="btnFeedbackXianyu" style="display:none;">闲鱼购买</button>
+                    <div class="feedback-submit-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnFeedbackQqGroup" style="display:none;">加入QQ群</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnFeedbackXianyu" style="display:none;">闲鱼购买</button>
+                    </div>
                 </div>
                 <p class="hint" style="margin-bottom:12px;line-height:1.5;">欢迎反馈 APP 使用中的 BUG 或功能优化建议，我们会在管理后台查看并尽快回复（回复内容将显示在下方列表）。</p>
                 <div class="form-group fb-type-options">
@@ -1476,6 +1486,7 @@
         }
 
         var feedbackXianyuPurchaseUrl = '';
+        var feedbackQqGroupUrl = '';
 
         function updateFeedbackXianyuButton(xianyuText, show) {
             var btn = document.getElementById('btnFeedbackXianyu');
@@ -1484,10 +1495,34 @@
             btn.style.display = show && feedbackXianyuPurchaseUrl ? '' : 'none';
         }
 
+        function updateFeedbackQqGroupButton(qqUrl, show) {
+            var btn = document.getElementById('btnFeedbackQqGroup');
+            if (!btn) return;
+            feedbackQqGroupUrl = qqUrl != null ? String(qqUrl).trim() : '';
+            btn.style.display = show && feedbackQqGroupUrl ? '' : 'none';
+        }
+
+        function openFeedbackQqGroupUrl(url) {
+            var u = url != null ? String(url).trim() : '';
+            if (!u) {
+                alert('暂未配置 QQ 群链接，请在管理后台填写「QQ 用户交流群链接」');
+                return;
+            }
+            try {
+                var opened = window.open(u, '_blank');
+                if (!opened) {
+                    window.location.href = u;
+                }
+            } catch (eOpen) {
+                window.location.href = u;
+            }
+        }
+
         function applyFeedbackConfigData(data) {
             if (!data) {
                 renderFeedbackWechatPayQr('', false);
                 updateFeedbackXianyuButton('', false);
+                updateFeedbackQqGroupButton('', false);
                 return;
             }
             var show = data.show_xianyu_purchase !== false;
@@ -1495,6 +1530,10 @@
             renderFeedbackWechatPayQr(qrUrl, show && !!qrUrl);
             var xy = data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
             updateFeedbackXianyuButton(xy, show && !!xy);
+            var qq =
+                data.qq_group_url != null ? String(data.qq_group_url).trim() : '';
+            var showQq = data.show_qq_group !== false;
+            updateFeedbackQqGroupButton(qq, showQq && !!qq);
         }
 
         function loadFeedbackWechatPayQr() {
@@ -1513,6 +1552,42 @@
                     applyFeedbackConfigData(null);
                 });
         }
+
+        (function bindFeedbackQqGroupButton() {
+            var btn = document.getElementById('btnFeedbackQqGroup');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                if (typeof window.trackUserAction === 'function') {
+                    window.trackUserAction('track_qq_group_click', {
+                        page: 'consult',
+                        source: 'feedback_tab'
+                    });
+                }
+                if (feedbackQqGroupUrl) {
+                    openFeedbackQqGroupUrl(feedbackQqGroupUrl);
+                    return;
+                }
+                authFetch('api/feedback.php?action=config')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (res) {
+                        if (res.code === 200 && res.data) {
+                            applyFeedbackConfigData(res.data);
+                            openFeedbackQqGroupUrl(
+                                res.data.qq_group_url != null
+                                    ? String(res.data.qq_group_url).trim()
+                                    : ''
+                            );
+                            return;
+                        }
+                        openFeedbackQqGroupUrl('');
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    });
+            });
+        })();
 
         (function bindFeedbackXianyuButton() {
             var btn = document.getElementById('btnFeedbackXianyu');

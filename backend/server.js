@@ -1006,13 +1006,16 @@ async function shouldHideXianyuForRequest(req) {
   return shouldHideXianyuForSalesChannel(ch, hideList);
 }
 
-function feedbackConfigPayload(qrRef, hideXianyu, xianyuText) {
+function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
+  var qq = sanitizeInstallDownloadUrl(qqGroupUrl);
   if (hideXianyu) {
     return {
       wechat_pay_qrcode_url: '',
       wechat_pay_qrcode_display_url: '',
       xianyu_purchase_url: '',
-      show_xianyu_purchase: false
+      show_xianyu_purchase: false,
+      qq_group_url: qq,
+      show_qq_group: !!qq
     };
   }
   var ref = qrRef != null ? String(qrRef).trim() : '';
@@ -1021,7 +1024,9 @@ function feedbackConfigPayload(qrRef, hideXianyu, xianyuText) {
     wechat_pay_qrcode_url: ref,
     wechat_pay_qrcode_display_url: resolvePublicAssetUrl(ref),
     xianyu_purchase_url: xy,
-    show_xianyu_purchase: !!(ref || xy)
+    show_xianyu_purchase: !!(ref || xy),
+    qq_group_url: qq,
+    show_qq_group: !!qq
   };
 }
 
@@ -6827,7 +6832,12 @@ async function handleFeedbackGet(req, res) {
       var hideXianyu = await shouldHideXianyuForRequest(req);
       return res.json({
         code: 200,
-        data: feedbackConfigPayload(qrRef, hideXianyu, hideXianyu ? '' : xianyuText)
+        data: feedbackConfigPayload(
+          qrRef,
+          hideXianyu,
+          hideXianyu ? '' : xianyuText,
+          installRaw.qq_group
+        )
       });
     } catch (e) {
       console.error(e);
@@ -6849,7 +6859,12 @@ async function handleFeedbackGet(req, res) {
     var installRaw = await getInstallPackageSettingsFromDb();
     var xianyuText = sanitizeXianyuPurchaseText(installRaw.xianyu);
     var hideXianyu = await shouldHideXianyuForRequest(req);
-    var fbCfg = feedbackConfigPayload(qrRef, hideXianyu, hideXianyu ? '' : xianyuText);
+    var fbCfg = feedbackConfigPayload(
+      qrRef,
+      hideXianyu,
+      hideXianyu ? '' : xianyuText,
+      installRaw.qq_group
+    );
     var out = rows.map(function (r) {
       return {
         id: r.id,
