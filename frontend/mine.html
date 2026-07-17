@@ -1226,10 +1226,26 @@
                 );
             }
 
+            function isLandingGuestMode() {
+                try {
+                    return localStorage.getItem('landing_guest_v1') === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function isMineAppShell() {
+                return (
+                    typeof window.isCordovaTaxAppShell === 'function' &&
+                    window.isCordovaTaxAppShell()
+                );
+            }
+
             function syncMineProfileEditGate() {
                 var hit = document.getElementById('mineProfileEditHit');
                 var nameEl = document.getElementById('mineDisplayName');
-                var on = isMineDataEditEnabled();
+                var guest = isLandingGuestMode();
+                var on = guest || isMineDataEditEnabled();
                 if (hit) {
                     hit.classList.remove('user-info-text--editable');
                 }
@@ -1238,7 +1254,14 @@
                     if (on) {
                         nameEl.setAttribute('role', 'button');
                         nameEl.setAttribute('tabindex', '0');
-                        nameEl.setAttribute('aria-label', '修改姓名、纳税人识别号与性别');
+                        nameEl.setAttribute(
+                            'aria-label',
+                            guest
+                                ? isMineAppShell()
+                                    ? '打开激活'
+                                    : '下载 App'
+                                : '修改姓名、纳税人识别号与性别'
+                        );
                     } else {
                         nameEl.removeAttribute('role');
                         nameEl.removeAttribute('tabindex');
@@ -1258,11 +1281,22 @@
                 var touchStartX = 0;
                 var touchStartY = 0;
                 function fire(e) {
-                    if (!isMineDataEditEnabled()) return;
+                    var guest = isLandingGuestMode();
+                    if (!guest && !isMineDataEditEnabled()) return;
                     var now = Date.now();
                     if (now - lastFire < 320) return;
                     lastFire = now;
                     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                    if (guest) {
+                        if (typeof window.trackUserAction === 'function') {
+                            window.trackUserAction('track_activate_prompt_open', {
+                                page: 'mine',
+                                source: 'guest_name'
+                            });
+                        }
+                        openMineActivateModal();
+                        return;
+                    }
                     openMineProfileEditModal();
                 }
                 el.addEventListener(
@@ -1500,14 +1534,6 @@
                 return localStorage.getItem('account_active') === '0';
             }
 
-            function isLandingGuestMode() {
-                try {
-                    return localStorage.getItem('landing_guest_v1') === '1';
-                } catch (e) {
-                    return false;
-                }
-            }
-
             function hasTaxRecords() {
                 var n = Number(localStorage.getItem('tax_record_count') || '0');
                 return !isNaN(n) && n > 0;
@@ -1661,7 +1687,7 @@
             }
 
             function openMineActivateModal() {
-                if (isLandingGuestMode()) {
+                if (isLandingGuestMode() && !isMineAppShell()) {
                     if (typeof window.trackPublicAction === 'function') {
                         window.trackPublicAction('track_landing_guest_activate_download', {
                             page: 'mine',
