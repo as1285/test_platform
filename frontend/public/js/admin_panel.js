@@ -2065,6 +2065,9 @@
 
         var _adminUsersLoaded = false;
         var _adminDeletedUsersLoaded = false;
+        var _adminGuestUsersLoaded = false;
+        var guestUsersPage = 1;
+        var guestUsersLimit = 20;
         var _adminUserDataLoaded = false;
         var _adminUserBehaviorLoaded = false;
         var _adminActivatedUserAnalysisLoaded = false;
@@ -2092,8 +2095,11 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'guest-users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
+                if (order[i] === 'guest-users' && !(currentAdminProfile && currentAdminProfile.is_super)) {
+                    continue;
+                }
                 if (adminHasMenu(order[i])) return order[i];
             }
             return 'settings';
@@ -2118,6 +2124,9 @@
             document.querySelectorAll('.nav-item').forEach(function (btn) {
                 var key = btn.getAttribute('data-page');
                 var on = adminHasMenu(key);
+                if (key === 'guest-users') {
+                    on = on && currentAdminProfile && currentAdminProfile.is_super;
+                }
                 btn.style.display = on ? '' : 'none';
             });
             document.querySelectorAll('.nav-group').forEach(function (group) {
@@ -2145,6 +2154,7 @@
                 codes: 1,
                 'admin-accounts': 1,
                 users: 1,
+                'guest-users': 1,
                 'users-deleted': 1,
                 'user-data': 1,
                 'user-behavior': 1,
@@ -2188,6 +2198,10 @@
             if (pageKey === 'users-deleted' && !_adminDeletedUsersLoaded) {
                 _adminDeletedUsersLoaded = true;
                 loadDeletedUsers(1);
+            }
+            if (pageKey === 'guest-users' && !_adminGuestUsersLoaded) {
+                _adminGuestUsersLoaded = true;
+                loadGuestUsers(1);
             }
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
@@ -6298,6 +6312,167 @@
                 });
         }
 
+        function renderGuestUsersStats(data) {
+            var mount = document.getElementById('guestUsersStatsMount');
+            if (!mount) return;
+            var s = (data && data.summary) || {};
+            var days = s.period_days != null ? Number(s.period_days) : 30;
+            var daysLabel = days > 0 ? '近 ' + days + ' 天' : '全部';
+            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">' +
+                esc(daysLabel) +
+                '游客</div><div class="ud-val">' +
+                esc(String(s.period_guests != null ? s.period_guests : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">' +
+                esc(daysLabel) +
+                '已注册合并</div><div class="ud-val">' +
+                esc(String(s.period_converted != null ? s.period_converted : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">仍游客 ' +
+                esc(String(s.period_active != null ? s.period_active : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">' +
+                esc(daysLabel) +
+                '注册率</div><div class="ud-val">' +
+                esc(s.period_register_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">已注册÷游客</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">累计注册率</div><div class="ud-val">' +
+                esc(s.all_time_register_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(String(s.all_time_converted != null ? s.all_time_converted : 0)) +
+                ' / ' +
+                esc(String(s.all_time_guests != null ? s.all_time_guests : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">带游客数据的正式账号</div><div class="ud-val">' +
+                esc(String(s.registered_with_guest_data != null ? s.registered_with_guest_data : 0)) +
+                '</div></div>';
+            html += '</div>';
+            mount.innerHTML = html;
+        }
+
+        function loadGuestUsers(p) {
+            ensureUserDetailPagesToggleDelegation();
+            if (p != null) guestUsersPage = p;
+            var daysEl = document.getElementById('guestUsersDays');
+            var statusEl = document.getElementById('guestUsersStatus');
+            var usernameEl = document.getElementById('guestUsersUsername');
+            var days = daysEl ? daysEl.value : '30';
+            var status = statusEl ? statusEl.value : '';
+            var username = usernameEl ? usernameEl.value.trim() : '';
+            var url =
+                'api/admin/guest-users?page=' +
+                guestUsersPage +
+                '&limit=' +
+                guestUsersLimit +
+                '&days=' +
+                encodeURIComponent(days);
+            if (status) url += '&status=' + encodeURIComponent(status);
+            if (username) url += '&username=' + encodeURIComponent(username);
+
+            adminFetch(url)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.code === 403) {
+                        var mount = document.getElementById('guestUsersStatsMount');
+                        if (mount) mount.textContent = data.msg || '仅超级管理员可查看';
+                        document.getElementById('guestUsersTbody').innerHTML =
+                            '<tr><td colspan="12">' + esc(data.msg || '无权查看') + '</td></tr>';
+                        return;
+                    }
+                    if (data.code !== 200 || !data.data) return;
+                    renderGuestUsersStats(data.data);
+                    var list = data.data.users || [];
+                    var total = data.data.total || 0;
+                    var statEl = document.getElementById('guestUsersListStat');
+                    if (statEl) {
+                        statEl.textContent = '共 ' + total + ' 个游客账号';
+                    }
+                    var totalPages = Math.ceil(total / guestUsersLimit) || 1;
+                    document.getElementById('guestUsersPageInfo').textContent =
+                        '第 ' + guestUsersPage + ' 页 / 共 ' + totalPages + ' 页';
+                    document.getElementById('guestUsersPrev').disabled = guestUsersPage <= 1;
+                    document.getElementById('guestUsersNext').disabled = guestUsersPage >= totalPages;
+
+                    var html = '';
+                    list.forEach(function (u) {
+                        var statusBadge = u.is_converted
+                            ? '<span class="badge badge-yes">已注册</span>'
+                            : '<span class="badge badge-guest">游客中</span>';
+                        var mergedCell = u.guest_merged_to
+                            ? '<span class="cell-break">' + esc(u.guest_merged_to) + '</span>'
+                            : '<span style="color:#bbb;">—</span>';
+                        var detailBtn =
+                            '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' +
+                            esc(u.username) +
+                            '" data-k="' +
+                            keyForUser(u.username) +
+                            '">详情</button>';
+                        var detailKey = keyForUser(u.username);
+                        html += '<tr>';
+                        html += '<td>' + esc(u.id) + '</td>';
+                        html +=
+                            '<td class="cell-break"><code title="' +
+                            esc(u.username) +
+                            '">' +
+                            esc(u.username.length > 18 ? u.username.slice(0, 16) + '…' : u.username) +
+                            '</code></td>';
+                        html += '<td class="cell-break">' + esc(u.real_name || '—') + '</td>';
+                        html += '<td class="cell-break">' + esc(u.register_source_channel_label || '—') + '</td>';
+                        html += '<td>' + statusBadge + '</td>';
+                        html += '<td class="cell-break">' + mergedCell + '</td>';
+                        html += '<td>' + esc(String(u.tax_count != null ? u.tax_count : 0)) + '</td>';
+                        html += '<td>' + esc(String(u.page_event_count != null ? u.page_event_count : 0)) + '</td>';
+                        html += '<td title="' + esc(u.device_label || '') + '">' + esc(String(u.device_count != null ? u.device_count : 0)) + '</td>';
+                        html += '<td>' + formatDt(u.created_at) + '</td>';
+                        html += '<td>' + (u.guest_merged_at ? formatDt(u.guest_merged_at) : '—') + '</td>';
+                        html += '<td class="col-ops">' + detailBtn + '</td>';
+                        html += '</tr>';
+                        html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
+                        html +=
+                            '<td colspan="12"><div id="user_detail_box_' +
+                            detailKey +
+                            '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '</tr>';
+                    });
+                    document.getElementById('guestUsersTbody').innerHTML =
+                        html || '<tr><td colspan="12">暂无游客账号</td></tr>';
+                    document.getElementById('guestUsersTbody').querySelectorAll('.btn-user-detail').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var key = btn.getAttribute('data-k');
+                            var row = document.getElementById('user_detail_row_' + key);
+                            var box = document.getElementById('user_detail_box_' + key);
+                            if (!row || !box) return;
+                            var opening = row.style.display === 'none';
+                            if (!opening) {
+                                row.style.display = 'none';
+                                return;
+                            }
+                            row.style.display = 'table-row';
+                            box.innerHTML = '加载中…';
+                            adminFetch('api/admin/user-tax-records?username=' + encodeURIComponent(name))
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200 || !d.data) {
+                                        box.innerHTML = '加载失败';
+                                        return;
+                                    }
+                                    box.innerHTML = renderUserDetailPanel(d.data);
+                                })
+                                .catch(function () {
+                                    box.innerHTML = '网络错误';
+                                });
+                        };
+                    });
+                })
+                .catch(function () {});
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -6318,9 +6493,6 @@
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
             var loginInactiveEl = document.getElementById('filterLoginInactive');
             var loginInactiveDays = loginInactiveEl ? loginInactiveEl.value : '';
-            var userModeEl = document.getElementById('filterUserMode');
-            var userMode = userModeEl ? userModeEl.value : '';
-            var guestMode = userMode === 'guest';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -6337,25 +6509,14 @@
             if (loginInactiveDays !== '') {
                 url += '&login_inactive_days=' + encodeURIComponent(loginInactiveDays);
             }
-            if (guestMode) {
-                url += '&guest=1';
-            }
 
             adminFetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.code === 403) {
-                        document.getElementById('userStat').textContent = data.msg || '无权查看游客模式';
-                        document.getElementById('userTbody').innerHTML =
-                            '<tr><td colspan="13">' + esc(data.msg || '仅超级管理员可查看游客模式') + '</td></tr>';
-                        return;
-                    }
                     if (data.code !== 200 || !data.data) return;
                     var list = data.data.users || [];
                     var total = data.data.total || 0;
-                    var scopeLabel = data.data.scope_label || (guestMode ? '游客模式' : '注册用户');
-                    document.getElementById('userStat').textContent =
-                        '共 ' + total + ' 个' + (guestMode || data.data.guest_mode ? '游客' : '') + '账号（' + scopeLabel + '）';
+                    document.getElementById('userStat').textContent = '共 ' + total + ' 个账号';
                     
                     var totalPages = Math.ceil(total / userLimit) || 1;
                     document.getElementById('userPageInfo').textContent =
@@ -6365,12 +6526,7 @@
 
                     var html = '';
                     list.forEach(function (u) {
-                        var isGuest = !!(u.is_guest || guestMode);
-                        var act = isGuest
-                            ? '<span class="badge badge-guest">游客</span>'
-                            : u.account_active
-                              ? '<span class="badge badge-yes">已激活</span>'
-                              : '<span class="badge badge-no">未激活</span>';
+                        var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var riskCell = '<span class="risk-hint-line">—</span>';
                         if (u.risk && u.risk_messages && u.risk_messages.length) {
@@ -6392,7 +6548,7 @@
                         }
                         var detailBtn = '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' + esc(u.username) + '" data-k="' + keyForUser(u.username) + '">详情</button>';
                         var ops = '';
-                        if (!isGuest && !u.account_active) {
+                        if (!u.account_active) {
                             ops +=
                                 '<button type="button" class="btn-sm btn-activate btn-user-activate" data-u="' +
                                 esc(u.username) +
@@ -6403,35 +6559,24 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
-                        if (!isGuest && u.account_active) {
+                        if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
                         }
                         
                         var detailKey = keyForUser(u.username);
-                        var accountCell = esc(u.username);
-                        if (isGuest) {
-                            accountCell =
-                                '<span class="badge badge-guest">游客</span><div class="risk-hint-line" title="' +
-                                esc(u.username) +
-                                '">' +
-                                esc(u.username) +
-                                '</div>';
-                        }
                         html += '<tr>';
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
                         html += '<td>' + esc(u.id) + '</td>';
-                        html += '<td class="cell-break">' + accountCell + '</td>';
+                        html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
                         html +=
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
-                        html += '<td class="cell-break">' + (isGuest
-                            ? '<span style="color:#999;">—</span>'
-                            : '<button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button>') + '</td>';
+                        html += '<td class="cell-break"><button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
@@ -6873,6 +7018,7 @@
             appearance: '用户端外观',
             codes: '激活码',
             users: '注册用户',
+            'guest-users': '游客用户',
             'user-data': '用户数据',
             'user-behavior': '用户行为',
             'activated-user-analysis': '激活用户分析',
@@ -7280,14 +7426,37 @@
             if (taxModReset) taxModReset.value = '';
             var loginInactiveReset = document.getElementById('filterLoginInactive');
             if (loginInactiveReset) loginInactiveReset.value = '';
-            var userModeReset = document.getElementById('filterUserMode');
-            if (userModeReset) userModeReset.value = '';
             loadUsers(1);
         };
-        var filterUserModeEl = document.getElementById('filterUserMode');
-        if (filterUserModeEl) {
-            filterUserModeEl.onchange = function () {
-                loadUsers(1);
+
+        var btnSearchGuestUsers = document.getElementById('btnSearchGuestUsers');
+        if (btnSearchGuestUsers) {
+            btnSearchGuestUsers.onclick = function () {
+                loadGuestUsers(1);
+            };
+        }
+        var btnResetGuestUsers = document.getElementById('btnResetGuestUsers');
+        if (btnResetGuestUsers) {
+            btnResetGuestUsers.onclick = function () {
+                var daysEl = document.getElementById('guestUsersDays');
+                var statusEl = document.getElementById('guestUsersStatus');
+                var usernameEl = document.getElementById('guestUsersUsername');
+                if (daysEl) daysEl.value = '30';
+                if (statusEl) statusEl.value = '';
+                if (usernameEl) usernameEl.value = '';
+                loadGuestUsers(1);
+            };
+        }
+        var guestUsersPrev = document.getElementById('guestUsersPrev');
+        if (guestUsersPrev) {
+            guestUsersPrev.onclick = function () {
+                if (guestUsersPage > 1) loadGuestUsers(guestUsersPage - 1);
+            };
+        }
+        var guestUsersNext = document.getElementById('guestUsersNext');
+        if (guestUsersNext) {
+            guestUsersNext.onclick = function () {
+                loadGuestUsers(guestUsersPage + 1);
             };
         }
 

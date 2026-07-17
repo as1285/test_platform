@@ -337,6 +337,41 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        if (d.guest_data_migrated) {
+                            try {
+                                var migSum = d.guest_migrate_summary || {};
+                                var migLabels = {
+                                    tax_records: '个税记录',
+                                    tax_record_change_logs: '个税变更',
+                                    tax_issue_applications: '税务申请',
+                                    messages: '消息',
+                                    employers: '任职单位',
+                                    family_members: '家庭成员',
+                                    bank_cards: '银行卡',
+                                    special_deduction_records: '专项扣除',
+                                    shenbao_jilu_records: '申报记录',
+                                    user_feedback: '反馈',
+                                    user_devices: '设备',
+                                    user_page_events: '页面记录'
+                                };
+                                var migParts = [];
+                                Object.keys(migLabels).forEach(function (k) {
+                                    var n = Number(migSum[k]) || 0;
+                                    if (n > 0) migParts.push(migLabels[k] + ' ' + n + ' 条');
+                                });
+                                if (Number(migSum.profile_fields) > 0) {
+                                    migParts.push('个人资料已同步');
+                                }
+                                sessionStorage.setItem(
+                                    'guest_data_migrated_notice',
+                                    JSON.stringify({
+                                        msg:
+                                            '您在游客模式下填写的资料已同步到新账号' +
+                                            (migParts.length ? '（' + migParts.join('、') + '）' : '')
+                                    })
+                                );
+                            } catch (eMigNotice) {}
+                        }
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}

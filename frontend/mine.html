@@ -2001,6 +2001,40 @@
                 window.addEventListener('pagehide', sendGuestMineLeave);
                 window.addEventListener('beforeunload', sendGuestMineLeave);
             }
+
+            (function showGuestDataMigratedNotice() {
+                try {
+                    var raw = sessionStorage.getItem('guest_data_migrated_notice');
+                    if (!raw) return;
+                    sessionStorage.removeItem('guest_data_migrated_notice');
+                    var parsed = JSON.parse(raw);
+                    var noticeMsg =
+                        (parsed && parsed.msg) || '您在游客模式下填写的资料已同步到新账号';
+                    var toastEl = document.getElementById('guest-migrate-toast');
+                    if (!toastEl) {
+                        toastEl = document.createElement('div');
+                        toastEl.id = 'guest-migrate-toast';
+                        toastEl.setAttribute('role', 'status');
+                        toastEl.style.cssText =
+                            'position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));' +
+                            'z-index:1000020;padding:12px 14px;border-radius:10px;background:#ecfdf3;' +
+                            'border:1px solid #86efac;color:#166534;font-size:13px;line-height:1.5;' +
+                            'box-shadow:0 4px 16px rgba(0,0,0,.12);opacity:0;transition:opacity .2s ease;';
+                        document.body.appendChild(toastEl);
+                    }
+                    toastEl.textContent = noticeMsg;
+                    requestAnimationFrame(function () {
+                        toastEl.style.opacity = '1';
+                    });
+                    var hideMs =
+                        typeof window.TOAST_DURATION_MS === 'number' && window.TOAST_DURATION_MS > 0
+                            ? window.TOAST_DURATION_MS + 2000
+                            : 5000;
+                    setTimeout(function () {
+                        toastEl.style.opacity = '0';
+                    }, hideMs);
+                } catch (eGuestMigToast) {}
+            })();
         })();
     </script>
 </body>

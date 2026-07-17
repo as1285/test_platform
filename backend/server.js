@@ -252,6 +252,7 @@ const ADMIN_MENU_KEYS = [
   'appearance',
   'codes',
   'users',
+  'guest-users',
   'user-data',
   'user-behavior',
   'activated-user-analysis',
@@ -1997,6 +1998,21 @@ async function createTables() {
     }
   }
 
+  var guestMergeUserCols = [
+    "ALTER TABLE users ADD COLUMN guest_merged_to VARCHAR(255) NULL COMMENT '游客账号合并到的正式账号'",
+    "ALTER TABLE users ADD COLUMN merged_from_guest VARCHAR(255) NULL COMMENT '正式账号来源的游客账号'",
+    'ALTER TABLE users ADD COLUMN guest_merged_at DATETIME(3) NULL COMMENT \'游客数据合并时间\''
+  ];
+  for (var gmi = 0; gmi < guestMergeUserCols.length; gmi++) {
+    try {
+      await conn.execute(guestMergeUserCols[gmi]);
+    } catch (eGuestCol) {
+      if (eGuestCol.errno !== 1060) {
+        throw eGuestCol;
+      }
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS app_settings (
       setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -2352,6 +2368,11 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'activated-user-analysis' FROM admin_account_menus WHERE menu_key = 'user-data'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'guest-users' FROM admin_account_menus WHERE menu_key = 'users'`
   );
 
   await conn.execute(
@@ -4082,6 +4103,152 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
   };
 }
 
+/** 游客沙盒填写的业务数据表（按 user_id / username 归属） */
+var GUEST_MIGRATE_USER_TABLES = [
+  ['tax_records', 'user_id'],
+  ['tax_record_change_logs', 'user_id'],
+  ['tax_issue_applications', 'user_id'],
+  ['messages', 'user_id'],
+  ['employers', 'user_id'],
+  ['family_members', 'user_id'],
+  ['bank_cards', 'user_id'],
+  ['special_deduction_records', 'user_id'],
+  ['shenbao_jilu_records', 'user_id'],
+  ['user_feedback', 'user_id'],
+  ['user_devices', 'username'],
+  ['user_page_events', 'username']
+];
+
+function guestProfileFieldHasValue(field, val) {
+  var s = val != null ? String(val).trim() : '';
+  if (!s) return false;
+  if (field === 'real_name') {
+    return s !== '游客用户';
+  }
+  if (field === 'tax_id') {
+    return !isPlaceholderTaxId(s);
+  }
+  return true;
+}
+
+/**
+ * 同设备注册成功后，将游客沙盒数据迁移至正式账号（按 client_id 对应 __guest_* 账号）。
+ */
+async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
+  var guestU = guestUsername != null ? String(guestUsername).trim() : '';
+  var newU = newUsername != null ? String(newUsername).trim() : '';
+  if (!guestU || !newU || guestU === newU) {
+    return { migrated: false, summary: {}, reason: 'invalid_username' };
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [guestRows] = await conn.execute(
+      `SELECT username, user_type, real_name, tax_id, gender, employer_count, family_count, bank_card_count,
+              id_type, birth_date, nationality, huji_area, huji_detail, living_area, living_detail,
+              contact_area, contact_detail, education, ethnicity, email, guest_merged_to
+       FROM users WHERE username = ? LIMIT 1`,
+      [guestU]
+    );
+    if (!guestRows.length || !rowUserTypeIsGuest(guestRows[0])) {
+      await conn.rollback();
+      return { migrated: false, summary: {}, reason: 'no_guest' };
+    }
+    if (guestRows[0].guest_merged_to != null && String(guestRows[0].guest_merged_to).trim() !== '') {
+      await conn.rollback();
+      return { migrated: false, summary: {}, reason: 'already_merged' };
+    }
+    const [newRows] = await conn.execute(
+      'SELECT username, merged_from_guest FROM users WHERE username = ? LIMIT 1',
+      [newU]
+    );
+    if (!newRows.length) {
+      await conn.rollback();
+      return { migrated: false, summary: {}, reason: 'new_user_missing' };
+    }
+
+    var summary = {};
+    var ti;
+    for (ti = 0; ti < GUEST_MIGRATE_USER_TABLES.length; ti++) {
+      var tbl = GUEST_MIGRATE_USER_TABLES[ti][0];
+      var col = GUEST_MIGRATE_USER_TABLES[ti][1];
+      const [upd] = await conn.execute(
+        'UPDATE `' + tbl + '` SET `' + col + '` = ? WHERE `' + col + '` = ?',
+        [newU, guestU]
+      );
+      summary[tbl] = upd.affectedRows != null ? Number(upd.affectedRows) : 0;
+    }
+
+    var g = guestRows[0];
+    var profileSets = [];
+    var profileParams = [];
+    var profileFields = [
+      'real_name',
+      'tax_id',
+      'gender',
+      'employer_count',
+      'family_count',
+      'bank_card_count',
+      'id_type',
+      'birth_date',
+      'nationality',
+      'huji_area',
+      'huji_detail',
+      'living_area',
+      'living_detail',
+      'contact_area',
+      'contact_detail',
+      'education',
+      'ethnicity',
+      'email'
+    ];
+    profileFields.forEach(function (field) {
+      if (field === 'gender' || field.indexOf('_count') >= 0) {
+        var numVal = g[field];
+        if (numVal != null && Number(numVal) > 0) {
+          profileSets.push(field + ' = ?');
+          profileParams.push(numVal);
+        }
+        return;
+      }
+      if (guestProfileFieldHasValue(field, g[field])) {
+        profileSets.push(field + ' = ?');
+        profileParams.push(String(g[field]).trim());
+      }
+    });
+    if (profileSets.length) {
+      profileParams.push(newU);
+      await conn.execute('UPDATE users SET ' + profileSets.join(', ') + ' WHERE username = ?', profileParams);
+    }
+
+    await conn.execute(
+      'UPDATE users SET guest_merged_to = ?, guest_merged_at = NOW(3) WHERE username = ?',
+      [newU, guestU]
+    );
+    await conn.execute('UPDATE users SET merged_from_guest = ? WHERE username = ?', [guestU, newU]);
+
+    await conn.commit();
+    var totalRows = 0;
+    Object.keys(summary).forEach(function (k) {
+      totalRows += Number(summary[k]) || 0;
+    });
+    return {
+      migrated: totalRows > 0 || profileSets.length > 0,
+      guest_username: guestU,
+      summary: summary,
+      profile_fields: profileSets.length
+    };
+  } catch (eMig) {
+    try {
+      await conn.rollback();
+    } catch (eRb) {}
+    console.error('migrateGuestDataToRegisteredUser', eMig);
+    return { migrated: false, summary: {}, reason: 'error', error: String(eMig.message || eMig) };
+  } finally {
+    conn.release();
+  }
+}
+
 function guestUsernameForClientId(clientId) {
   var digest = crypto
     .createHmac('sha256', JWT_SECRET)
@@ -5727,7 +5894,8 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_landing_ab_guest_gate: 'C 游客关键门禁',
   track_landing_ab_guest_download_entry: 'C 游客进入下载',
   track_landing_guest_session: 'C 游客沙盒会话',
-  track_landing_guest_activate_download: 'C 游客点激活进入下载'
+  track_landing_guest_activate_download: 'C 游客点激活进入下载',
+  track_guest_data_migrated: '游客数据合并至注册账号'
 };
 
 function isInstallGuideTrackContext(req, meta) {
@@ -7775,6 +7943,29 @@ async function handleAuthPost(req, res) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
         await recordUserRegistrationAttempt(out.username, true, req, 'register_ok');
+        var guestClientId = readClientIdFromRequest(req);
+        if (guestClientId) {
+          try {
+            var guestUname = guestUsernameForClientId(guestClientId);
+            var mig = await migrateGuestDataToRegisteredUser(guestUname, out.username);
+            if (mig && mig.migrated) {
+              out.guest_data_migrated = true;
+              out.guest_migrate_summary = mig.summary || {};
+              if (mig.profile_fields) {
+                out.guest_migrate_summary.profile_fields = mig.profile_fields;
+              }
+              out.merged_from_guest = mig.guest_username || guestUname;
+              recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
+                page: 'register',
+                guest_username: guestUname,
+                registered_username: out.username,
+                summary: mig.summary || {}
+              });
+            }
+          } catch (eGuestMig) {
+            console.error('register guest migrate', eGuestMig);
+          }
+        }
         if (parseFromInstallGuideFlag(body)) {
           var landingVariant = String(body.landing_variant || '').toLowerCase();
           if (landingVariant !== 'b' && landingVariant !== 'c') {
@@ -10808,6 +10999,206 @@ async function handleAdminRegisterGenderStats(req, res) {
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminGuestUsers(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客用户' });
+  }
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+    var days = parseInt(req.query.days, 10);
+    if (!isFinite(days) || days < 0) days = 30;
+    var qStatus = String(req.query.status || '').trim();
+    var qUsername = String(req.query.username || '').trim();
+
+    var cnDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+    var cnMergeDay = 'DATE(DATE_ADD(u.guest_merged_at, INTERVAL 8 HOUR))';
+    var periodSql = '';
+    var periodParams = [];
+    if (days > 0) {
+      periodSql = ' AND u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)';
+      periodParams.push(days);
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      const [sumRows] = await conn.query(
+        `SELECT
+            COUNT(*) AS total_guests,
+            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests,
+            SUM(CASE WHEN u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '' THEN 1 ELSE 0 END) AS active_guests
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}${periodSql}`,
+        periodParams
+      );
+      const [allTimeSumRows] = await conn.query(
+        `SELECT
+            COUNT(*) AS total_guests,
+            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}`
+      );
+      const [regFromGuestRows] = await conn.query(
+        `SELECT COUNT(*) AS cnt FROM users u
+         WHERE u.merged_from_guest IS NOT NULL AND TRIM(u.merged_from_guest) <> ''
+           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}`
+      );
+
+      var where = [guestOnlyUserSql('u')];
+      var params = [];
+      if (days > 0) {
+        where.push('u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)');
+        params.push(days);
+      }
+      if (qStatus === 'active') {
+        where.push('(u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = \'\')');
+      } else if (qStatus === 'converted') {
+        where.push('u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> \'\'');
+      }
+      if (qUsername) {
+        where.push('(u.username LIKE ? OR u.guest_merged_to LIKE ?)');
+        params.push('%' + qUsername + '%', '%' + qUsername + '%');
+      }
+      var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
+
+      const [totalRows] = await conn.query(
+        'SELECT COUNT(*) AS count FROM users u' + whereSql,
+        params
+      );
+      var total = Number((totalRows[0] || {}).count) || 0;
+
+      const [listRows] = await conn.query(
+        `SELECT u.id, u.username, u.real_name, u.created_at, u.guest_merged_to, u.guest_merged_at,
+                u.register_source_channel, u.sales_promo_channel,
+                (SELECT COUNT(*) FROM tax_records tr
+                 WHERE tr.user_id = u.username AND tr.deleted_at IS NULL) AS tax_count,
+                (SELECT COUNT(*) FROM user_page_events e WHERE e.username = u.username) AS page_event_count,
+                (SELECT COUNT(*) FROM user_devices d WHERE d.username = u.username) AS device_count,
+                (SELECT MAX(d.last_seen) FROM user_devices d WHERE d.username = u.username) AS last_device_seen,
+                (SELECT d.client_id FROM user_devices d WHERE d.username = u.username
+                 ORDER BY d.last_seen DESC LIMIT 1) AS client_id,
+                (SELECT d.device_detail_json FROM user_devices d WHERE d.username = u.username
+                 ORDER BY d.last_seen DESC LIMIT 1) AS device_detail_json
+         FROM users u
+         ${whereSql}
+         ORDER BY u.created_at DESC
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
+      );
+
+      var trendParams = days > 0 ? [days] : [];
+      var trendWhere = days > 0 ? ` AND u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)` : '';
+      const [guestDailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d, COUNT(*) AS new_guests
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}${trendWhere}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        trendParams
+      );
+      const [convDailyRows] = await conn.query(
+        `SELECT ${cnMergeDay} AS d, COUNT(*) AS converted
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}
+           AND u.guest_merged_at IS NOT NULL${days > 0 ? ' AND u.guest_merged_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)' : ''}
+         GROUP BY ${cnMergeDay}
+         ORDER BY d ASC`,
+        days > 0 ? [days] : []
+      );
+
+      conn.release();
+
+      var periodTotal = Number((sumRows[0] || {}).total_guests) || 0;
+      var periodConverted = Number((sumRows[0] || {}).converted_guests) || 0;
+      var allTotal = Number((allTimeSumRows[0] || {}).total_guests) || 0;
+      var allConverted = Number((allTimeSumRows[0] || {}).converted_guests) || 0;
+      var regFromGuest = Number((regFromGuestRows[0] || {}).cnt) || 0;
+      var registerRatePct =
+        periodTotal > 0 ? (Math.round((periodConverted / periodTotal) * 1000) / 10).toFixed(1) + '%' : '—';
+      var allRegisterRatePct =
+        allTotal > 0 ? (Math.round((allConverted / allTotal) * 1000) / 10).toFixed(1) + '%' : '—';
+
+      var users = (listRows || []).map(function (r) {
+        var deviceLabel = '';
+        try {
+          if (r.device_detail_json) {
+            var parsed = JSON.parse(String(r.device_detail_json));
+            if (parsed && typeof parsed === 'object') {
+              deviceLabel = [parsed.model, parsed.platform, parsed.os_version].filter(Boolean).join(' · ');
+            }
+          }
+        } catch (eDev) {}
+        var mergedTo =
+          r.guest_merged_to != null && String(r.guest_merged_to).trim() !== ''
+            ? String(r.guest_merged_to).trim()
+            : '';
+        return {
+          id: r.id,
+          username: r.username,
+          real_name: r.real_name,
+          created_at: r.created_at ? r.created_at.toISOString() : '',
+          guest_merged_to: mergedTo,
+          guest_merged_at: r.guest_merged_at ? r.guest_merged_at.toISOString() : '',
+          is_converted: !!mergedTo,
+          register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
+          sales_promo_channel: r.sales_promo_channel != null ? String(r.sales_promo_channel) : '',
+          tax_count: Number(r.tax_count) || 0,
+          page_event_count: Number(r.page_event_count) || 0,
+          device_count: Number(r.device_count) || 0,
+          client_id: r.client_id != null ? String(r.client_id) : '',
+          device_label: deviceLabel,
+          last_device_seen: r.last_device_seen ? r.last_device_seen.toISOString() : ''
+        };
+      });
+
+      return res.json({
+        code: 200,
+        data: {
+          summary: {
+            period_days: days,
+            period_guests: periodTotal,
+            period_converted: periodConverted,
+            period_active: Number((sumRows[0] || {}).active_guests) || 0,
+            period_register_rate_pct: registerRatePct,
+            all_time_guests: allTotal,
+            all_time_converted: allConverted,
+            all_time_register_rate_pct: allRegisterRatePct,
+            registered_with_guest_data: regFromGuest
+          },
+          daily: {
+            new_guests: (guestDailyRows || []).map(function (row) {
+              return {
+                date: formatDateKey(row.d),
+                new_guests: Number(row.new_guests) || 0
+              };
+            }),
+            converted: (convDailyRows || []).map(function (row) {
+              return {
+                date: formatDateKey(row.d),
+                converted: Number(row.converted) || 0
+              };
+            })
+          },
+          users: users,
+          total: total,
+          page: page,
+          limit: limit
+        }
+      });
+    } catch (eInner) {
+      conn.release();
+      throw eInner;
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
 
@@ -15534,6 +15925,7 @@ app.get('/api/public/conversion-config', handlePublicConversionConfig);
 app.get('/api/public/landing-ab-config', handlePublicLandingAbConfig);
 app.post('/api/public/guest-session', handlePublicGuestSession);
 app.get('/api/admin/users/deleted', requireAdminAuth, requireAdminMenu('users'), handleAdminDeletedUsers);
+app.get('/api/admin/guest-users', requireAdminAuth, requireAdminMenu('guest-users'), handleAdminGuestUsers);
 app.get('/api/admin/users', requireAdminAuth, requireAdminMenu('users'), handleAdminUsers);
 app.get('/api/admin/user-data', requireAdminAuth, requireAdminMenu('user-data'), handleAdminUserDataList);
 app.get(

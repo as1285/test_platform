@@ -26,6 +26,7 @@
                 <div class="nav-group" data-nav-group="users">
                     <div class="nav-group-label">用户管理</div>
                     <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
+                    <button type="button" class="nav-item" data-page="guest-users" data-title="游客用户">游客用户</button>
                     <button type="button" class="nav-item" data-page="users-deleted" data-title="已删除账号">已删除账号</button>
                     <button type="button" class="nav-item" data-page="user-data" data-title="用户数据">用户数据</button>
                     <button type="button" class="nav-item" data-page="user-behavior" data-title="用户行为">用户行为</button>
@@ -695,13 +696,6 @@
                     <input type="text" id="filterRealName" class="filter-text-wide" placeholder="搜索姓名">
                 </div>
                 <div>
-                    <label>账号类型</label>
-                    <select id="filterUserMode" class="filter-select">
-                        <option value="">正式用户</option>
-                        <option value="guest">游客模式</option>
-                    </select>
-                </div>
-                <div>
                     <label>风险账号</label>
                     <select id="filterRisk" class="filter-select">
                         <option value="">全部</option>
@@ -858,6 +852,70 @@
                     </select>
                     条
                 </label>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-guest-users" class="page-panel" role="tabpanel">
+        <section>
+            <h2>游客用户</h2>
+            <p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。仅超级管理员可见。</p>
+            <div class="user-filter-bar">
+                <div class="user-filter-fields">
+                <div>
+                    <label>统计区间</label>
+                    <select id="guestUsersDays" class="filter-select">
+                        <option value="7">近 7 天</option>
+                        <option value="30" selected>近 30 天</option>
+                        <option value="90">近 90 天</option>
+                        <option value="0">全部</option>
+                    </select>
+                </div>
+                <div>
+                    <label>状态</label>
+                    <select id="guestUsersStatus" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="active">未注册（仍游客）</option>
+                        <option value="converted">已注册合并</option>
+                    </select>
+                </div>
+                <div>
+                    <label>账号</label>
+                    <input type="text" id="guestUsersUsername" class="filter-text-wide" placeholder="游客账号或合并后账号">
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn-primary" id="btnSearchGuestUsers">查询</button>
+                    <button type="button" class="btn-page" id="btnResetGuestUsers">重置</button>
+                </div>
+                </div>
+            </div>
+            <div id="guestUsersStatsMount"><p class="stat">加载中…</p></div>
+            <p class="stat" id="guestUsersListStat"></p>
+            <div class="scroll-x">
+                <table class="users-registry-table">
+                    <thead>
+                        <tr>
+                            <th style="width:52px;">ID</th>
+                            <th style="width:140px;">游客账号</th>
+                            <th style="width:88px;">姓名</th>
+                            <th style="width:120px;">渠道</th>
+                            <th style="width:88px;">状态</th>
+                            <th style="width:120px;">合并至账号</th>
+                            <th style="width:72px;">个税</th>
+                            <th style="width:72px;">页面</th>
+                            <th style="width:72px;">设备</th>
+                            <th style="width:150px;">创建时间</th>
+                            <th style="width:150px;">合并时间</th>
+                            <th class="col-ops">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="guestUsersTbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="guestUsersPagination">
+                <button type="button" class="btn-page" id="guestUsersPrev">上一页</button>
+                <span id="guestUsersPageInfo">第 1 页</span>
+                <button type="button" class="btn-page" id="guestUsersNext">下一页</button>
             </div>
         </section>
                 </div>
@@ -1918,7 +1976,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260717-guest-mode"></script>
+    <script src="/js/admin_panel.js?v=20260717-guest-admin"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260716-qr-sharp"></script>
 </body>
