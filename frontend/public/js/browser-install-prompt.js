@@ -3,7 +3,7 @@
  * Cordova 壳内、iOS 设备、已激活且已登录账号上不展示。
  */
 (function () {
-  var INSTALL_PAGE = 'install_guide.html';
+  var INSTALL_PAGE = 'install_guide.html?download=1#download';
   var SESSION_DISMISS_KEY = 'browser_install_prompt_dismissed';
   var TARGET_PAGES = { 'index.html': true, 'mine.html': true };
 
