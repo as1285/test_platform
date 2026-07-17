@@ -15,6 +15,14 @@ const MONITOR_NET_RX_ALERT_BPS = parseInt(process.env.MONITOR_NET_RX_ALERT_BPS |
 const MONITOR_NET_TX_ALERT_BPS = parseInt(process.env.MONITOR_NET_TX_ALERT_BPS || String(80 * 1024 * 1024), 10);
 const MONITOR_LOAD_ALERT_PERCENT = parseFloat(process.env.MONITOR_LOAD_ALERT_PERCENT || '90');
 const MONITOR_MEMORY_ALERT_PERCENT = parseFloat(process.env.MONITOR_MEMORY_ALERT_PERCENT || '90');
+const MONITOR_DEPLOY_GRACE_MS = parseInt(process.env.MONITOR_DEPLOY_GRACE_MS || '180000', 10);
+const MONITOR_DEPLOY_MARKER =
+  process.env.MONITOR_DEPLOY_MARKER || '/data/uploads/.deployment-in-progress';
+const MONITOR_DEPLOY_MARKER_MAX_AGE_MS = parseInt(
+  process.env.MONITOR_DEPLOY_MARKER_MAX_AGE_MS || '1800000',
+  10
+);
+const MONITOR_STARTED_AT = Date.now();
 
 /** @type {import('mysql2/promise').Pool|null} */
 var _pool = null;
@@ -233,7 +241,33 @@ function canSendAlert(serviceId) {
   return Date.now() - last >= MONITOR_ALERT_COOLDOWN_MS;
 }
 
+function alertSuppressedReason() {
+  if (
+    MONITOR_DEPLOY_GRACE_MS > 0 &&
+    Date.now() - MONITOR_STARTED_AT < MONITOR_DEPLOY_GRACE_MS
+  ) {
+    return '服务启动宽限期';
+  }
+  try {
+    var st = fs.statSync(MONITOR_DEPLOY_MARKER);
+    if (
+      MONITOR_DEPLOY_MARKER_MAX_AGE_MS <= 0 ||
+      Date.now() - st.mtimeMs <= MONITOR_DEPLOY_MARKER_MAX_AGE_MS
+    ) {
+      return '正在部署';
+    }
+  } catch (e) {
+    /* marker 不存在 */
+  }
+  return '';
+}
+
 async function notifyServiceDown(svc, hostSnapshot) {
+  var suppressed = alertSuppressedReason();
+  if (suppressed) {
+    console.log('[monitor] alert suppressed (' + suppressed + '):', svc.id, svc.message);
+    return;
+  }
   if (!canSendAlert(svc.id)) {
     return;
   }
@@ -304,6 +338,11 @@ async function notifyServiceRecovered(svc) {
 }
 
 async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
+  var suppressed = alertSuppressedReason();
+  if (suppressed) {
+    console.log('[monitor] metric alert suppressed (' + suppressed + '):', metricId, message);
+    return;
+  }
   if (!canSendAlert(metricId)) {
     return;
   }
@@ -422,8 +461,12 @@ async function runMonitorTick() {
     if (!s.ok) {
       if (!_serviceDownSince[s.id]) {
         _serviceDownSince[s.id] = Date.now();
-        await notifyServiceDown(s, host);
       }
+      /*
+       * 部署静默期间不会占用 cooldown；每轮重试可确保部署结束后若服务仍未恢复，
+       * 会正常发送真实故障告警。
+       */
+      await notifyServiceDown(s, host);
     } else if (_serviceDownSince[s.id]) {
       await notifyServiceRecovered(s);
     }

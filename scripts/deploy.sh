@@ -10,6 +10,19 @@ export APP_URL="${APP_URL:-https://geshui.vip}"
 export HTTPS_APP_URL="${HTTPS_APP_URL:-$APP_URL}"
 bash "$ROOT/scripts/regenerate-ios-mobileconfig.sh"
 
+# 通知后端监控当前正在部署，避免容器重建的短暂不可用触发告警邮件。
+# 标记位于共享 uploads 卷；异常退出时 trap 也会尽量清理，后端另有过期保护。
+DEPLOY_MARKER="/data/uploads/.deployment-in-progress"
+mark_deploy_start() {
+  docker compose exec -T backend sh -c \
+    "date -u +%Y-%m-%dT%H:%M:%SZ > '$DEPLOY_MARKER'" >/dev/null 2>&1 || true
+}
+mark_deploy_end() {
+  docker compose exec -T backend rm -f "$DEPLOY_MARKER" >/dev/null 2>&1 || true
+}
+mark_deploy_start
+trap mark_deploy_end EXIT
+
 # 仅部署部分服务时：DEPLOY_SERVICES="frontend api" ./scripts/deploy.sh
 if [[ -n "${DEPLOY_SERVICES:-}" ]]; then
   # shellcheck disable=SC2086
