@@ -2147,10 +2147,22 @@
             }
             var codesHint = document.getElementById('codesPageHint');
             if (codesHint) {
-                codesHint.innerHTML =
-                    currentAdminProfile && currentAdminProfile.is_super
-                        ? '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。'
-                        : '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。下方列表仅展示本账号生成的<strong>非闲鱼</strong>激活码。';
+                if (currentAdminProfile && currentAdminProfile.is_super) {
+                    codesHint.style.display = '';
+                    codesHint.innerHTML =
+                        '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。';
+                } else {
+                    codesHint.style.display = 'none';
+                    codesHint.textContent = '';
+                }
+            }
+            var codeListStat = document.getElementById('codeListStat');
+            if (codeListStat) {
+                codeListStat.style.display =
+                    currentAdminProfile && currentAdminProfile.is_super ? '' : 'none';
+                if (!(currentAdminProfile && currentAdminProfile.is_super)) {
+                    codeListStat.textContent = '';
+                }
             }
         }
 
@@ -6932,7 +6944,7 @@
                     var list = data.data.codes || [];
                     var total = data.data.total || 0;
                     var statEl = document.getElementById('codeListStat');
-                    if (statEl) {
+                    if (statEl && isSuper) {
                         var filterParts = [];
                         if (ownerAdmin) filterParts.push('管理员「' + ownerAdmin + '」');
                         if (usedBy) {

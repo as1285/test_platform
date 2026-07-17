@@ -506,12 +506,7 @@
                 </div>
             </div>
             <div class="code-result" id="issueOut"></div>
-            <p class="hint" id="codesPageHint">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。</p>
-            <p class="stat" id="codeListStat" style="margin:0 0 10px;"></p>
-        </section>
-
-        <section>
-            <h2>激活码列表（非闲鱼）</h2>
+            <p class="hint" id="codesPageHint" style="display:none;">每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。</p>
             <div class="form-row" style="margin-bottom:12px;flex-wrap:wrap;">
                 <div>
                     <label for="codeCodeFilter">激活码</label>
@@ -1976,7 +1971,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260717-hide-xianyu-subadmin"></script>
+    <script src="/js/admin_panel.js?v=20260717-codes-hint-hide"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260716-qr-sharp"></script>
 </body>
