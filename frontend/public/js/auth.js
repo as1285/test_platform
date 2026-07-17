@@ -2016,6 +2016,40 @@
     }
   })();
 
+  /** App 壳首次打开：补齐下载→打开漏斗的 C 段（localStorage 去重，按 client_id 上报） */
+  (function appShellFirstOpenTrack() {
+    if (!isCordovaTaxAppShell()) {
+      return;
+    }
+    if (currentPageName() === 'admin_panel.html') {
+      return;
+    }
+    var KEY = 'app_shell_first_open_v1';
+    try {
+      if (localStorage.getItem(KEY) === '1') {
+        return;
+      }
+      localStorage.setItem(KEY, '1');
+    } catch (e0) {
+      return;
+    }
+    function fireFirstOpen() {
+      if (typeof trackPublicAction !== 'function') {
+        return;
+      }
+      trackPublicAction('track_app_first_open', {
+        page: currentPageName(),
+        logged_in: !!getToken(),
+        shell: 'cordova'
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fireFirstOpen);
+    } else {
+      fireFirstOpen();
+    }
+  })();
+
   (function appShellRegisterPrompt() {
     if (!isCordovaTaxAppShell()) {
       return;

@@ -3951,6 +3951,106 @@
             }
             html += '</tbody></table></div>';
 
+            html += '</tbody></table></div>';
+
+            var dlFunnel = data.download_register_funnel || null;
+            var dlStages = dlFunnel && Array.isArray(dlFunnel.stages) ? dlFunnel.stages : [];
+            var dlRates = (dlFunnel && dlFunnel.rates) || {};
+            var dlCohorts = (dlFunnel && dlFunnel.cohorts) || {};
+            var dlQueue =
+                dlFunnel && Array.isArray(dlFunnel.opened_unregistered_queue)
+                    ? dlFunnel.opened_unregistered_queue
+                    : [];
+            html += '<p class="stat" style="margin:0 0 8px;">下载 → 打开 → 注册漏斗</p>';
+            html +=
+                '<p class="hint" style="margin:0 0 10px;">' +
+                esc(
+                    (dlFunnel && dlFunnel.definition) ||
+                        '按 client_id 对齐（北京时间）。准口径「已打开未注册」最有用。'
+                ) +
+                (dlFunnel && dlFunnel.using_c_proxy
+                    ? ' 当前 C 段暂用「注册弹窗展示」代理（first_open 尚无样本）。'
+                    : '') +
+                '</p>';
+            html += '<div class="user-data-stats" style="margin-bottom:12px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">下载点击率</div><div class="ud-val">' +
+                esc(dlRates.download_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">B ÷ A</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">打开率</div><div class="ud-val">' +
+                esc(dlRates.open_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">C ÷ B</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">打开→注册</div><div class="ud-val">' +
+                esc(dlRates.register_from_open_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">F ÷ C</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">弹窗点稍后</div><div class="ud-val">' +
+                esc(dlRates.later_rate_pct || '—') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">稍后 ÷ 弹窗</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">已打开未注册</div><div class="ud-val">' +
+                esc(String(dlCohorts.opened_unregistered != null ? dlCohorts.opened_unregistered : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">准口径</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">点下载未打开</div><div class="ud-val">' +
+                esc(String(dlCohorts.downloaded_not_opened != null ? dlCohorts.downloaded_not_opened : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">宽口径 / 归因断链</div></div>';
+            html += '</div>';
+            html += '<div class="scroll-x" style="margin-bottom:12px;"><table><thead><tr>';
+            html +=
+                '<th>阶段</th><th>含义</th><th>独立访客</th><th>相对上一步</th><th>相对落地页</th></tr></thead><tbody>';
+            if (!dlStages.length) {
+                html += '<tr><td colspan="5">暂无漏斗数据</td></tr>';
+            } else {
+                dlStages.forEach(function (row) {
+                    html += '<tr>';
+                    html += '<td><strong>' + esc(row.key || '—') + '</strong></td>';
+                    html += '<td>' + esc(row.label || '—') + '</td>';
+                    html += '<td>' + esc(String(row.visitors != null ? row.visitors : 0)) + '</td>';
+                    html += '<td>' + esc(row.rate_from_prev_pct || '—') + '</td>';
+                    html += '<td>' + esc(row.rate_from_a_pct || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            html +=
+                '<p class="stat" style="margin:0 0 8px;">已打开 App 未注册（最多 100）</p>';
+            html +=
+                '<p class="hint" style="margin:0 0 10px;">同 client_id 有首次打开或注册弹窗、且无注册成功回传。可用于盯「稍后」与召回。</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>访客</th><th>设备</th><th>首次</th><th>最近</th><th>打开</th><th>弹窗</th><th>稍后</th><th>去注册</th><th>IP</th></tr></thead><tbody>';
+            if (!dlQueue.length) {
+                html += '<tr><td colspan="9">暂无；部署 first_open 后或有注册弹窗未转化时会出现</td></tr>';
+            } else {
+                dlQueue.forEach(function (row) {
+                    html += '<tr>';
+                    html +=
+                        '<td class="cell-break"><code title="' +
+                        esc(row.visitor_id || '') +
+                        '">' +
+                        esc(row.visitor_key || '—') +
+                        '</code></td>';
+                    html +=
+                        '<td class="cell-break" title="' +
+                        esc(row.user_agent || '') +
+                        '">' +
+                        esc(row.device_label || '—') +
+                        '</td>';
+                    html += '<td>' + esc(formatIsoToCnShort(row.first_at)) + '</td>';
+                    html += '<td>' + esc(formatIsoToCnShort(row.last_at)) + '</td>';
+                    html += '<td>' + esc(String(row.open_events != null ? row.open_events : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.prompt_shows != null ? row.prompt_shows : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.later_cnt != null ? row.later_cnt : 0)) + '</td>';
+                    html += '<td>' + esc(String(row.ok_cnt != null ? row.ok_cnt : 0)) + '</td>';
+                    html += '<td>' + esc(row.ip || '—') + '</td>';
+                    html += '</tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+
             var daily = Array.isArray(data.daily) ? data.daily : [];
             html += '<p class="stat" style="margin:0 0 8px;">每日访问与注册趋势</p>';
             html +=

@@ -5685,6 +5685,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_register_success: '安装页引流注册成功',
   track_install_ios_video_play: '苹果安装视频播放',
   track_install_usage_video_play: '操作视频播放',
+  track_app_first_open: 'App 首次打开',
   track_install_app_shell_register_prompt_show: 'App 内安装成功弹窗展示',
   track_install_app_shell_register_prompt_ok: 'App 内弹窗-立即注册',
   track_install_app_shell_register_prompt_later: 'App 内弹窗-稍后再说',
@@ -5725,7 +5726,8 @@ function recordInstallGuideTrackEvent(req, action, meta) {
   if (
     !isInstallGuideTrackContext(req, meta) &&
     !/^track_install_/i.test(act) &&
-    !/^track_landing_/i.test(act)
+    !/^track_landing_/i.test(act) &&
+    !/^track_app_/i.test(act)
   ) {
     return;
   }
@@ -8919,6 +8921,133 @@ async function handleAdminInstallGuideStats(req, res) {
         sinceParams
       );
 
+      var visitorExpr = `COALESCE(NULLIF(client_id, ''), device_fp)`;
+      const [funnelStageRows] = await conn.query(
+        `SELECT
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_page_view' THEN ${visitorExpr} END) AS stage_a,
+            COUNT(DISTINCT CASE WHEN event_key IN ('track_install_apk_click', 'track_install_ios_click') THEN ${visitorExpr} END) AS stage_b,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_app_first_open' THEN ${visitorExpr} END) AS stage_c,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_app_shell_register_prompt_show' THEN ${visitorExpr} END) AS stage_d,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_app_shell_register_prompt_later' THEN ${visitorExpr} END) AS stage_e_later,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_app_shell_register_prompt_ok' THEN ${visitorExpr} END) AS stage_e_ok,
+            COUNT(DISTINCT CASE WHEN event_key = 'track_install_register_success' THEN ${visitorExpr} END) AS stage_f,
+            COUNT(DISTINCT CASE
+              WHEN event_key IN ('track_app_first_open', 'track_install_app_shell_register_prompt_show')
+              THEN ${visitorExpr}
+            END) AS stage_c_proxy
+         FROM install_guide_track_events
+         WHERE ${cnSince}
+           AND ${visitorExpr} IS NOT NULL
+           AND ${visitorExpr} <> ''`,
+        sinceParams
+      );
+
+      /** 准口径：区间内有首次打开（无则回退弹窗展示），且同 client_id 无注册成功 */
+      const [openedUnregRows] = await conn.query(
+        `SELECT
+            base.visitor_id,
+            base.first_at,
+            base.last_at,
+            base.ip,
+            base.user_agent,
+            base.open_events,
+            base.prompt_shows,
+            COALESCE(later.later_cnt, 0) AS later_cnt,
+            COALESCE(ok_btn.ok_cnt, 0) AS ok_cnt
+         FROM (
+           SELECT
+             client_id AS visitor_id,
+             MIN(created_at) AS first_at,
+             MAX(created_at) AS last_at,
+             SUBSTRING_INDEX(GROUP_CONCAT(IFNULL(ip, '') ORDER BY created_at DESC SEPARATOR '|||'), '|||', 1) AS ip,
+             SUBSTRING_INDEX(GROUP_CONCAT(IFNULL(user_agent, '') ORDER BY created_at DESC SEPARATOR '|||'), '|||', 1) AS user_agent,
+             SUM(CASE WHEN event_key = 'track_app_first_open' THEN 1 ELSE 0 END) AS open_events,
+             SUM(CASE WHEN event_key = 'track_install_app_shell_register_prompt_show' THEN 1 ELSE 0 END) AS prompt_shows
+           FROM install_guide_track_events
+           WHERE ${cnSince}
+             AND client_id IS NOT NULL AND client_id <> ''
+             AND event_key IN (
+               'track_app_first_open',
+               'track_install_app_shell_register_prompt_show'
+             )
+           GROUP BY client_id
+         ) base
+         LEFT JOIN (
+           SELECT client_id, COUNT(*) AS later_cnt
+           FROM install_guide_track_events
+           WHERE ${cnSince}
+             AND client_id IS NOT NULL AND client_id <> ''
+             AND event_key = 'track_install_app_shell_register_prompt_later'
+           GROUP BY client_id
+         ) later ON later.client_id = base.visitor_id
+         LEFT JOIN (
+           SELECT client_id, COUNT(*) AS ok_cnt
+           FROM install_guide_track_events
+           WHERE ${cnSince}
+             AND client_id IS NOT NULL AND client_id <> ''
+             AND event_key = 'track_install_app_shell_register_prompt_ok'
+           GROUP BY client_id
+         ) ok_btn ON ok_btn.client_id = base.visitor_id
+         WHERE NOT EXISTS (
+           SELECT 1
+           FROM install_guide_track_events reg
+           WHERE reg.event_key = 'track_install_register_success'
+             AND reg.client_id = base.visitor_id
+             AND reg.client_id IS NOT NULL
+             AND reg.client_id <> ''
+         )
+         ORDER BY base.last_at DESC
+         LIMIT 100`,
+        sinceParams.concat(sinceParams).concat(sinceParams)
+      );
+
+      /** 窄/宽/准口径计数（仅 client_id；浏览器下载与 App 打开可能因存储隔离对不上） */
+      const [downloadedUnregRows] = await conn.query(
+        `SELECT COUNT(DISTINCT dl.client_id) AS cnt
+         FROM install_guide_track_events dl
+         WHERE ${cnSince}
+           AND dl.client_id IS NOT NULL AND dl.client_id <> ''
+           AND dl.event_key IN ('track_install_apk_click', 'track_install_ios_click')
+           AND NOT EXISTS (
+             SELECT 1 FROM install_guide_track_events reg
+             WHERE reg.event_key = 'track_install_register_success'
+               AND reg.client_id = dl.client_id
+           )`,
+        sinceParams
+      );
+      const [downloadedNotOpenedRows] = await conn.query(
+        `SELECT COUNT(DISTINCT dl.client_id) AS cnt
+         FROM install_guide_track_events dl
+         WHERE ${cnSince}
+           AND dl.client_id IS NOT NULL AND dl.client_id <> ''
+           AND dl.event_key IN ('track_install_apk_click', 'track_install_ios_click')
+           AND NOT EXISTS (
+             SELECT 1 FROM install_guide_track_events op
+             WHERE op.client_id = dl.client_id
+               AND op.event_key IN (
+                 'track_app_first_open',
+                 'track_install_app_shell_register_prompt_show'
+               )
+           )`,
+        sinceParams
+      );
+      const [openedUnregCountRows] = await conn.query(
+        `SELECT COUNT(DISTINCT op.client_id) AS cnt
+         FROM install_guide_track_events op
+         WHERE ${cnSince}
+           AND op.client_id IS NOT NULL AND op.client_id <> ''
+           AND op.event_key IN (
+             'track_app_first_open',
+             'track_install_app_shell_register_prompt_show'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM install_guide_track_events reg
+             WHERE reg.event_key = 'track_install_register_success'
+               AND reg.client_id = op.client_id
+           )`,
+        sinceParams
+      );
+
       var pv = Number((viewRows[0] || {}).pv) || 0;
       var uv = Number((viewRows[0] || {}).uv) || 0;
       var leaveCnt = Number((leaveRows[0] || {}).leave_cnt) || 0;
@@ -9170,6 +9299,84 @@ async function handleAdminInstallGuideStats(req, res) {
 
       var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 20);
 
+      var funnelRaw = funnelStageRows[0] || {};
+      var stageA = Number(funnelRaw.stage_a) || 0;
+      var stageB = Number(funnelRaw.stage_b) || 0;
+      var stageC = Number(funnelRaw.stage_c) || 0;
+      var stageCProxy = Number(funnelRaw.stage_c_proxy) || 0;
+      var stageD = Number(funnelRaw.stage_d) || 0;
+      var stageELater = Number(funnelRaw.stage_e_later) || 0;
+      var stageEOk = Number(funnelRaw.stage_e_ok) || 0;
+      var stageF = Number(funnelRaw.stage_f) || 0;
+      /** C 用 first_open ∪ 注册弹窗，避免上线初期 first_open 样本少导致后续转化率虚高 */
+      var stageCEffective = stageCProxy > 0 ? stageCProxy : stageC;
+      function funnelStep(key, label, count, prevCount) {
+        return {
+          key: key,
+          label: label,
+          visitors: count,
+          rate_from_prev: prevCount != null && prevCount > 0 ? count / prevCount : null,
+          rate_from_prev_pct: prevCount != null ? pctText(count, prevCount) : null,
+          rate_from_a: stageA > 0 ? count / stageA : null,
+          rate_from_a_pct: pctText(count, stageA)
+        };
+      }
+      var downloadRegisterFunnel = {
+        definition:
+          '按访客键对齐（优先 client_id，否则 device_fp），北京时间。C=App 首次打开 ∪ 注册弹窗展示（过渡期兼容）；纯 first_open 见 stage_c_raw。浏览器下载与 App 壳 localStorage 隔离时 B→C 可能对不上。',
+        stages: [
+          funnelStep('A', '到过落地页', stageA, null),
+          funnelStep('B', '点了下载', stageB, stageA),
+          funnelStep(
+            'C',
+            stageC > 0 && stageC < stageCProxy
+              ? '装上并打开（含弹窗代理）'
+              : '装上并打开',
+            stageCEffective,
+            stageB
+          ),
+          funnelStep('D', '弹了注册窗', stageD, stageCEffective),
+          funnelStep('E_later', '弹窗-稍后', stageELater, stageD),
+          funnelStep('E_ok', '弹窗-去注册', stageEOk, stageD),
+          funnelStep('F', '注册成功', stageF, stageCEffective)
+        ],
+        rates: {
+          download_rate_pct: pctText(stageB, stageA),
+          open_rate_pct: pctText(stageCEffective, stageB),
+          register_from_open_pct: pctText(stageF, stageCEffective),
+          later_rate_pct: pctText(stageELater, stageD),
+          ok_rate_pct: pctText(stageEOk, stageD)
+        },
+        cohorts: {
+          opened_unregistered: Number((openedUnregCountRows[0] || {}).cnt) || 0,
+          downloaded_unregistered: Number((downloadedUnregRows[0] || {}).cnt) || 0,
+          downloaded_not_opened: Number((downloadedNotOpenedRows[0] || {}).cnt) || 0,
+          definitions: {
+            opened_unregistered: '准口径：区间内有首次打开/注册弹窗，且同 client_id 从未 track_install_register_success',
+            downloaded_unregistered: '窄口径：区间内有下载点击，同 client_id 无注册成功（跨端可能漏计）',
+            downloaded_not_opened: '宽口径：区间内有下载点击，同 client_id 无打开/弹窗（多为未装成或归因断链）'
+          }
+        },
+        opened_unregistered_queue: (openedUnregRows || []).map(function (r) {
+          return {
+            visitor_id: String(r.visitor_id || ''),
+            visitor_key: truncateInstallGuideVisitorKey(r.visitor_id),
+            first_at: r.first_at ? r.first_at.toISOString() : '',
+            last_at: r.last_at ? r.last_at.toISOString() : '',
+            ip: r.ip ? String(r.ip) : '',
+            device_label: installGuideDeviceSummaryFromUa(r.user_agent),
+            user_agent: r.user_agent ? String(r.user_agent).substring(0, 400) : '',
+            open_events: Number(r.open_events) || 0,
+            prompt_shows: Number(r.prompt_shows) || 0,
+            later_cnt: Number(r.later_cnt) || 0,
+            ok_cnt: Number(r.ok_cnt) || 0
+          };
+        }),
+        stage_c_raw: stageC,
+        stage_c_proxy: stageCProxy,
+        using_c_proxy: stageC < stageCProxy
+      };
+
       var hourPv = [];
       var hourUv = [];
       var hourReg = [];
@@ -9353,7 +9560,8 @@ async function handleAdminInstallGuideStats(req, res) {
                 : null,
               by_hour: byHour
             },
-            recent_visitors: recentVisitors
+            recent_visitors: recentVisitors,
+            download_register_funnel: downloadRegisterFunnel
           },
           conversionAnalyticsPeriodMeta(period)
         )
@@ -9391,6 +9599,7 @@ async function handleAdminInstallTrackStats(req, res) {
         'POST auth.php#track_install_ios_click': 'iOS 描述文件点击',
         'POST auth.php#track_install_ios_video_play': '苹果安装视频播放',
         'POST auth.php#track_install_usage_video_play': '操作视频播放',
+        'POST auth.php#track_app_first_open': 'App 首次打开',
         'POST auth.php#track_tutorial_video_play': '操作教程视频播放',
         'POST auth.php#track_tutorial_prompt_show': '操作教程弹窗展示',
         'POST auth.php#track_tutorial_prompt_watch_click': '操作教程弹窗-观看',
