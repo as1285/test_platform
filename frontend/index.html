@@ -919,13 +919,21 @@
                 return;
             }
 
+            var loginClientId = '';
+            try {
+                if (typeof window.buildClientDevicePayload === 'function') {
+                    var _loginDev = window.buildClientDevicePayload();
+                    if (_loginDev && _loginDev.client_id) loginClientId = String(_loginDev.client_id);
+                }
+            } catch (eLoginCid) {}
             fetch('api/auth.php', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'login',
                     username: username,
-                    password: password
+                    password: password,
+                    client_id: loginClientId || undefined
                 })
             })
                 .then(function (r) { return r.json(); })
