@@ -4322,10 +4322,12 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
       totalRows += Number(summary[k]) || 0;
     });
     return {
-      migrated: totalRows > 0 || profileSets.length > 0,
+      // 只要完成合并打标即算成功（即使沙盒无业务数据）
+      migrated: true,
       guest_username: guestU,
       summary: summary,
-      profile_fields: profileSets.length
+      profile_fields: profileSets.length,
+      moved_rows: totalRows
     };
   } catch (eMig) {
     try {
@@ -4345,6 +4347,31 @@ function guestUsernameForClientId(clientId) {
     .digest('hex')
     .substring(0, 32);
   return GUEST_USERNAME_PREFIX + digest;
+}
+
+/** 注册/登录时：按 client_id 找到未合并游客并迁移沙盒数据 */
+async function maybeMigrateGuestSandboxForRequest(req, registeredUsername, bodyClientId) {
+  var newU = registeredUsername != null ? String(registeredUsername).trim() : '';
+  if (!newU || newU.indexOf(GUEST_USERNAME_PREFIX) === 0) {
+    return { migrated: false, reason: 'invalid_user' };
+  }
+  var guestClientId = readClientIdFromRequest(req);
+  if (!guestClientId && bodyClientId != null) {
+    guestClientId = String(bodyClientId).trim().substring(0, 128);
+  }
+  if (!guestClientId) {
+    return { migrated: false, reason: 'no_client_id' };
+  }
+  var guestUname = guestUsernameForClientId(guestClientId);
+  if (!guestUname || guestUname === newU) {
+    return { migrated: false, reason: 'no_guest' };
+  }
+  try {
+    return await migrateGuestDataToRegisteredUser(guestUname, newU);
+  } catch (eMaybe) {
+    console.error('maybeMigrateGuestSandboxForRequest', eMaybe);
+    return { migrated: false, reason: 'error', error: String(eMaybe.message || eMaybe) };
+  }
 }
 
 function nonGuestUsernameSql(userCol) {
@@ -8095,28 +8122,28 @@ async function handleAuthPost(req, res) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
         await recordUserRegistrationAttempt(out.username, true, req, 'register_ok');
-        var guestClientId = readClientIdFromRequest(req);
-        if (guestClientId) {
-          try {
-            var guestUname = guestUsernameForClientId(guestClientId);
-            var mig = await migrateGuestDataToRegisteredUser(guestUname, out.username);
-            if (mig && mig.migrated) {
-              out.guest_data_migrated = true;
-              out.guest_migrate_summary = mig.summary || {};
-              if (mig.profile_fields) {
-                out.guest_migrate_summary.profile_fields = mig.profile_fields;
-              }
-              out.merged_from_guest = mig.guest_username || guestUname;
-              recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
-                page: 'register',
-                guest_username: guestUname,
-                registered_username: out.username,
-                summary: mig.summary || {}
-              });
+        try {
+          var mig = await maybeMigrateGuestSandboxForRequest(
+            req,
+            out.username,
+            body.client_id || body.clientId
+          );
+          if (mig && mig.migrated) {
+            out.guest_data_migrated = true;
+            out.guest_migrate_summary = mig.summary || {};
+            if (mig.profile_fields) {
+              out.guest_migrate_summary.profile_fields = mig.profile_fields;
             }
-          } catch (eGuestMig) {
-            console.error('register guest migrate', eGuestMig);
+            out.merged_from_guest = mig.guest_username || '';
+            recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
+              page: 'register',
+              guest_username: mig.guest_username || '',
+              registered_username: out.username,
+              summary: mig.summary || {}
+            });
           }
+        } catch (eGuestMig) {
+          console.error('register guest migrate', eGuestMig);
         }
         if (parseFromInstallGuideFlag(body)) {
           var landingVariant = String(body.landing_variant || '').toLowerCase();
@@ -8163,6 +8190,26 @@ async function handleAuthPost(req, res) {
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);
       recordUserLoginAttempt(out2.username, true, req, 'ok').catch(function () {});
+      try {
+        var loginMig = await maybeMigrateGuestSandboxForRequest(
+          req,
+          out2.username,
+          body.client_id || body.clientId
+        );
+        if (loginMig && loginMig.migrated) {
+          out2.guest_data_migrated = true;
+          out2.guest_migrate_summary = loginMig.summary || {};
+          out2.merged_from_guest = loginMig.guest_username || '';
+          recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
+            page: 'login',
+            guest_username: loginMig.guest_username || '',
+            registered_username: out2.username,
+            summary: loginMig.summary || {}
+          });
+        }
+      } catch (eLoginMig) {
+        console.error('login guest migrate', eLoginMig);
+      }
       return res.json({ code: 200, data: out2 });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });

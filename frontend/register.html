@@ -291,6 +291,13 @@
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
 
+            var regClientId = '';
+            try {
+                if (typeof window.buildClientDevicePayload === 'function') {
+                    var _dev = window.buildClientDevicePayload();
+                    if (_dev && _dev.client_id) regClientId = String(_dev.client_id);
+                }
+            } catch (eCid) {}
             fetch('api/auth.php', {
                 method: 'POST',
                 headers: registerRequestHeaders(),
@@ -307,7 +314,8 @@
                             : undefined,
                     sales_ch: regSalesCh || undefined,
                     captcha_id: regCaptchaId,
-                    captcha_answer: captchaAns
+                    captcha_answer: captchaAns,
+                    client_id: regClientId || undefined
                 })
             })
                 .then(function (r) { return r.json(); })
