@@ -11260,6 +11260,31 @@ async function handleAdminGuestUsers(req, res) {
            AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}`
       );
 
+      // 区间内游客填写的个税：仍挂在游客账号上的 + 已合并且创建不晚于合并时间的（避免把注册后新增算进去）
+      const [taxSumRows] = await conn.query(
+        `SELECT
+            COUNT(*) AS tax_records,
+            COUNT(DISTINCT guest_username) AS guests_with_tax
+         FROM (
+           SELECT tr.id AS rid, u.username AS guest_username
+           FROM users u
+           INNER JOIN tax_records tr ON tr.user_id = u.username AND tr.deleted_at IS NULL
+           WHERE ${guestOnlyUserSql('u')}${periodSql}
+             AND (u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '')
+           UNION ALL
+           SELECT tr.id AS rid, u.username AS guest_username
+           FROM users u
+           INNER JOIN tax_records tr
+             ON tr.user_id = u.guest_merged_to
+            AND tr.deleted_at IS NULL
+            AND u.guest_merged_at IS NOT NULL
+            AND tr.created_at <= u.guest_merged_at
+           WHERE ${guestOnlyUserSql('u')}${periodSql}
+             AND u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
+         ) guest_tax`,
+        periodParams.concat(periodParams)
+      );
+
       var where = [guestOnlyUserSql('u')];
       var params = [];
       if (days > 0) {
@@ -11287,7 +11312,15 @@ async function handleAdminGuestUsers(req, res) {
         `SELECT u.id, u.username, u.real_name, u.created_at, u.guest_merged_to, u.guest_merged_at,
                 u.register_source_channel, u.sales_promo_channel,
                 (SELECT COUNT(*) FROM tax_records tr
-                 WHERE tr.user_id = u.username AND tr.deleted_at IS NULL) AS tax_count,
+                 WHERE tr.deleted_at IS NULL AND (
+                   tr.user_id = u.username
+                   OR (
+                     u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
+                     AND tr.user_id = u.guest_merged_to
+                     AND u.guest_merged_at IS NOT NULL
+                     AND tr.created_at <= u.guest_merged_at
+                   )
+                 )) AS tax_count,
                 (SELECT COUNT(*) FROM user_page_events e WHERE e.username = u.username) AS page_event_count,
                 (SELECT COUNT(*) FROM user_devices d WHERE d.username = u.username) AS device_count,
                 (SELECT MAX(d.last_seen) FROM user_devices d WHERE d.username = u.username) AS last_device_seen,
@@ -11340,6 +11373,12 @@ async function handleAdminGuestUsers(req, res) {
       var allTotal = Number((allTimeSumRows[0] || {}).total_guests) || 0;
       var allConverted = Number((allTimeSumRows[0] || {}).converted_guests) || 0;
       var regFromGuest = Number((regFromGuestRows[0] || {}).cnt) || 0;
+      var periodTaxRecords = Number((taxSumRows[0] || {}).tax_records) || 0;
+      var periodGuestsWithTax = Number((taxSumRows[0] || {}).guests_with_tax) || 0;
+      var taxFillRatePct =
+        periodTotal > 0
+          ? (Math.round((periodGuestsWithTax / periodTotal) * 1000) / 10).toFixed(1) + '%'
+          : '—';
       var registerRatePct =
         periodTotal > 0 ? (Math.round((periodConverted / periodTotal) * 1000) / 10).toFixed(1) + '%' : '—';
       var allRegisterRatePct =
@@ -11387,6 +11426,9 @@ async function handleAdminGuestUsers(req, res) {
             period_converted: periodConverted,
             period_active: Number((sumRows[0] || {}).active_guests) || 0,
             period_register_rate_pct: registerRatePct,
+            period_tax_records: periodTaxRecords,
+            period_guests_with_tax: periodGuestsWithTax,
+            period_tax_fill_rate_pct: taxFillRatePct,
             all_time_guests: allTotal,
             all_time_converted: allConverted,
             all_time_register_rate_pct: allRegisterRatePct,

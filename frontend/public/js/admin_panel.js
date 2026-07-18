@@ -6433,6 +6433,16 @@
                 esc(s.period_register_rate_pct || '—') +
                 '</div><div class="hint" style="margin-top:4px;font-size:12px;">已注册÷游客</div></div>';
             html +=
+                '<div class="user-data-stat-card"><div class="ud-label">' +
+                esc(daysLabel) +
+                '个税记录</div><div class="ud-val">' +
+                esc(String(s.period_tax_records != null ? s.period_tax_records : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
+                esc(String(s.period_guests_with_tax != null ? s.period_guests_with_tax : 0)) +
+                ' 人填写 · 填写率 ' +
+                esc(s.period_tax_fill_rate_pct || '—') +
+                '</div></div>';
+            html +=
                 '<div class="user-data-stat-card"><div class="ud-label">累计注册率</div><div class="ud-val">' +
                 esc(s.all_time_register_rate_pct || '—') +
                 '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
