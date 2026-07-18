@@ -6396,7 +6396,7 @@
             if (!mount) return;
             destroyGuestUsersCharts();
             var s = (data && data.summary) || {};
-            var days = s.period_days != null ? Number(s.period_days) : 30;
+            var days = s.period_days != null ? Number(s.period_days) : 1;
             var daysLabel = days > 0 ? '近 ' + days + ' 天' : '全部';
             var byHour = Array.isArray(data && data.by_hour) ? data.by_hour : [];
             var hourTotal = byHour.reduce(function (sum, row) {
@@ -6518,7 +6518,7 @@
             var daysEl = document.getElementById('guestUsersDays');
             var statusEl = document.getElementById('guestUsersStatus');
             var usernameEl = document.getElementById('guestUsersUsername');
-            var days = daysEl ? daysEl.value : '30';
+            var days = daysEl ? daysEl.value : '1';
             var status = statusEl ? statusEl.value : '';
             var username = usernameEl ? usernameEl.value.trim() : '';
             var url =
@@ -7598,7 +7598,7 @@
                 var daysEl = document.getElementById('guestUsersDays');
                 var statusEl = document.getElementById('guestUsersStatus');
                 var usernameEl = document.getElementById('guestUsersUsername');
-                if (daysEl) daysEl.value = '30';
+                if (daysEl) daysEl.value = '1';
                 if (statusEl) statusEl.value = '';
                 if (usernameEl) usernameEl.value = '';
                 loadGuestUsers(1);

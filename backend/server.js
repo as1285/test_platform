@@ -11223,7 +11223,7 @@ async function handleAdminGuestUsers(req, res) {
     if (limit > 100) limit = 100;
     var offset = (page - 1) * limit;
     var days = parseInt(req.query.days, 10);
-    if (!isFinite(days) || days < 0) days = 30;
+    if (!isFinite(days) || days < 0) days = 1;
     var qStatus = String(req.query.status || '').trim();
     var qUsername = String(req.query.username || '').trim();
 
