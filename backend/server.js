@@ -6122,6 +6122,9 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_landing_ab_guest_download_entry: 'C 游客进入下载',
   track_landing_guest_session: 'C 游客沙盒会话',
   track_landing_guest_activate_download: 'C 游客点激活进入下载',
+  track_landing_guest_download_modal_show: 'C 游客下载引导弹窗展示',
+  track_landing_guest_download_modal_ok: 'C 游客下载引导-立即下载',
+  track_landing_guest_download_modal_later: 'C 游客下载引导-继续体验',
   track_guest_data_migrated: '游客数据合并至注册账号'
 };
 

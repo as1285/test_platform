@@ -203,15 +203,25 @@
   function goActivate() {
     try {
       if (localStorage.getItem('landing_guest_v1') === '1') {
+        var taxN = taxRecordCount();
         track('track_landing_guest_activate_download', {
           page: currentPage(),
-          landing_variant: 'c'
+          landing_variant: 'c',
+          source: 'conversion_guide',
+          tax_count: taxN
         });
         if (typeof window.trackPublicAction === 'function') {
           window.trackPublicAction('track_landing_guest_activate_download', {
             page: currentPage(),
-            landing_variant: 'c'
+            landing_variant: 'c',
+            source: 'conversion_guide',
+            tax_count: taxN
           });
+        }
+        // 有填写记录时回「我的」弹价值引导；否则直达下载页
+        if (taxN > 0 && currentPage() !== 'mine.html') {
+          window.location.href = 'mine.html?guest_dl=1';
+          return;
         }
         window.location.href = 'install_guide.html?download=1#download';
         return;

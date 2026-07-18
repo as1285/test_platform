@@ -2164,11 +2164,23 @@
       root.className = 'app-shell-register-root';
       root.setAttribute('role', 'dialog');
       root.setAttribute('aria-modal', 'true');
+      var hadGuestHint = false;
+      try {
+        hadGuestHint =
+          localStorage.getItem('landing_guest_v1') === '1' ||
+          sessionStorage.getItem('landing_bc_entry_v1') != null;
+      } catch (eHint) {}
       root.innerHTML =
         '<div class="app-shell-register-mask" data-action="later"></div>' +
         '<div class="app-shell-register-panel">' +
-        '<p class="app-shell-register-title">安装成功，去注册</p>' +
-        '<p class="app-shell-register-msg">请先注册账号，再在 App 内输入激活码完成激活，即可填写个税演示数据。</p>' +
+        '<p class="app-shell-register-title">' +
+        (hadGuestHint ? '注册并同步游客资料' : '安装成功，先注册账号') +
+        '</p>' +
+        '<p class="app-shell-register-msg">' +
+        (hadGuestHint
+          ? '注册后可将网页游客体验中填写的个税与资料同步到本账号，再输入激活码即可正式使用。'
+          : '注册账号后，输入激活码即可保存个税演示数据；同一设备上的游客体验资料也会自动合并。') +
+        '</p>' +
         '<div class="app-shell-register-actions">' +
         '<button type="button" class="app-shell-register-btn app-shell-register-btn-primary" data-action="register">立即注册</button>' +
         '<button type="button" class="app-shell-register-btn app-shell-register-btn-secondary" data-action="later">稍后再说</button>' +

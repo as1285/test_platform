@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260717-slow-opt"></script>
+    <script src="/js/auth.js?v=20260719-guest-cv"></script>
     <script>
         (function landingAbBootstrap() {
             document.documentElement.classList.add('landing-ab-pending');
@@ -1185,7 +1185,22 @@
                 bar.classList.add('is-download-first');
             }
             if (hint) {
-                hint.textContent = '下载 App 或注册账号，解锁完整明细与完税证明';
+                var fromGuestDl =
+                    /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || ''));
+                var isGuest =
+                    false;
+                try {
+                    isGuest = localStorage.getItem('landing_guest_v1') === '1';
+                } catch (eG) {}
+                if (fromGuestDl || isGuest) {
+                    hint.textContent = '先下载 App，注册后可同步游客资料并继续使用';
+                    var regLink = document.getElementById('installRegisterLink');
+                    if (regLink) {
+                        regLink.textContent = '已下载？去注册';
+                    }
+                } else {
+                    hint.textContent = '下载 App 或注册账号，解锁完整明细与完税证明';
+                }
             }
             sticky.onclick = function (ev) {
                 if (isInAppShell()) {

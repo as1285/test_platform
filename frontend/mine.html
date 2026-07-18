@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260717-slow-opt"></script>
+    <script src="/js/auth.js?v=20260719-guest-cv"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1000,6 +1000,57 @@
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
         }
+
+        /* 游客沙盒：底部下载引导条（压在底栏之上） */
+        .guest-download-bar {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+            z-index: 50;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, #1e6fff 0%, #1760e0 100%);
+            color: #fff;
+            box-shadow: 0 -4px 16px rgba(30, 111, 255, 0.28);
+        }
+        body.guest-download-bar-on .guest-download-bar {
+            display: flex;
+        }
+        body.guest-download-bar-on .content-wrapper {
+            padding-bottom: 72px;
+        }
+        .guest-download-bar-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .guest-download-bar-text strong {
+            font-weight: 600;
+        }
+        .guest-download-bar-btn {
+            flex-shrink: 0;
+            min-height: 36px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mineGuestDownloadModal .activate-modal-input {
+            display: none;
+        }
+        #mineGuestDownloadModal .activate-modal-actions .activate-modal-btn.xianyu {
+            display: none;
+        }
     </style>
 </head>
 <body class="page-mine">
@@ -1090,6 +1141,27 @@
                 <button type="button" class="activate-modal-btn primary" id="btnMineActivateOk">确定</button>
             </div>
         </div>
+    </div>
+
+    <div id="mineGuestDownloadModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineGuestDownloadTitle">
+        <div class="activate-modal-mask" id="mineGuestDownloadMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="mineGuestDownloadTitle">下载 App，带走当前资料</p>
+            <p class="activate-modal-hint" id="mineGuestDownloadMsg" style="display:block;margin:0 0 16px;font-size:13px;color:#666;line-height:1.5;">
+                当前为游客体验。下载并注册后，可将已填写内容同步到正式账号。
+            </p>
+            <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn" id="btnMineGuestDownloadLater">继续体验</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineGuestDownloadOk">立即下载</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="guest-download-bar" id="guestDownloadBar" hidden>
+        <div class="guest-download-bar-text" id="guestDownloadBarText">
+            <strong>游客体验中</strong> · 下载 App 可保存资料并继续使用
+        </div>
+        <button type="button" class="guest-download-bar-btn" id="guestDownloadBarBtn">下载</button>
     </div>
 
     <div id="mineProfileEditModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineProfileEditModalTitle">
@@ -1687,15 +1759,154 @@
                     .catch(function () {});
             }
 
+            function guestTaxRecordCountHint() {
+                try {
+                    return Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
+                } catch (e0) {
+                    return 0;
+                }
+            }
+
+            function goGuestDownload(source) {
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction('track_landing_guest_activate_download', {
+                        page: 'mine',
+                        landing_variant: 'c',
+                        source: source || 'cta',
+                        tax_count: guestTaxRecordCountHint()
+                    });
+                }
+                window.location.href = 'install_guide.html?download=1#download';
+            }
+
+            function closeGuestDownloadModal() {
+                var root = document.getElementById('mineGuestDownloadModal');
+                if (root) root.classList.remove('is-open');
+            }
+
+            function openGuestDownloadModal(source) {
+                var root = document.getElementById('mineGuestDownloadModal');
+                var msg = document.getElementById('mineGuestDownloadMsg');
+                if (!root) {
+                    goGuestDownload(source || 'fallback');
+                    return;
+                }
+                var taxN = guestTaxRecordCountHint();
+                if (msg) {
+                    msg.style.display = 'block';
+                    msg.textContent = taxN > 0
+                        ? ('你已填写 ' + taxN + ' 条个税记录。下载 App 并注册后，可将这些资料同步到正式账号继续使用。')
+                        : '当前为游客体验，可先随便看看。下载 App 并注册后，填写内容可同步保存，不会因清缓存丢失。';
+                }
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction('track_landing_guest_download_modal_show', {
+                        page: 'mine',
+                        landing_variant: 'c',
+                        source: source || 'cta',
+                        tax_count: taxN
+                    });
+                }
+                root.classList.add('is-open');
+            }
+
+            function setupGuestDownloadUi() {
+                if (!isLandingGuestMode() || isMineAppShell()) return;
+                document.body.classList.add('guest-download-bar-on');
+                var bar = document.getElementById('guestDownloadBar');
+                var barText = document.getElementById('guestDownloadBarText');
+                var barBtn = document.getElementById('guestDownloadBarBtn');
+                if (bar) bar.hidden = false;
+                var taxN = guestTaxRecordCountHint();
+                if (barText) {
+                    barText.innerHTML = taxN > 0
+                        ? ('<strong>已填 ' + taxN + ' 条个税</strong> · 下载 App 同步保存')
+                        : '<strong>游客体验中</strong> · 下载 App 可保存资料并继续使用';
+                }
+                if (barBtn) {
+                    barBtn.onclick = function () {
+                        openGuestDownloadModal('sticky_bar');
+                    };
+                }
+                var okBtn = document.getElementById('btnMineGuestDownloadOk');
+                var laterBtn = document.getElementById('btnMineGuestDownloadLater');
+                var mask = document.getElementById('mineGuestDownloadMask');
+                if (okBtn) {
+                    okBtn.onclick = function () {
+                        if (typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_landing_guest_download_modal_ok', {
+                                page: 'mine',
+                                landing_variant: 'c',
+                                tax_count: guestTaxRecordCountHint()
+                            });
+                        }
+                        closeGuestDownloadModal();
+                        goGuestDownload('modal_ok');
+                    };
+                }
+                if (laterBtn) {
+                    laterBtn.onclick = function () {
+                        if (typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_landing_guest_download_modal_later', {
+                                page: 'mine',
+                                landing_variant: 'c'
+                            });
+                        }
+                        closeGuestDownloadModal();
+                    };
+                }
+                if (mask) {
+                    mask.onclick = function () {
+                        closeGuestDownloadModal();
+                    };
+                }
+                // 从转化引导带回：?guest_dl=1 立即弹下载说明
+                try {
+                    var q = new URLSearchParams(window.location.search || '');
+                    if (q.get('guest_dl') === '1') {
+                        if (window.history && window.history.replaceState) {
+                            q.delete('guest_dl');
+                            var next =
+                                window.location.pathname +
+                                (q.toString() ? '?' + q.toString() : '') +
+                                (window.location.hash || '');
+                            window.history.replaceState({}, '', next);
+                        }
+                        setTimeout(function () {
+                            openGuestDownloadModal('from_guide');
+                        }, 200);
+                        return;
+                    }
+                } catch (eQ) {}
+
+                // 停留约 22 秒后轻提醒一次（每日最多一次）
+                var nudgeKey = 'guest_dl_nudge_day_v1';
+                var todayKey = '';
+                try {
+                    var d = new Date();
+                    todayKey =
+                        d.getFullYear() +
+                        '-' +
+                        String(d.getMonth() + 1).padStart(2, '0') +
+                        '-' +
+                        String(d.getDate()).padStart(2, '0');
+                    if (localStorage.getItem(nudgeKey) === todayKey) return;
+                } catch (eN) {
+                    return;
+                }
+                setTimeout(function () {
+                    if (!isLandingGuestMode() || isMineAppShell()) return;
+                    var openModal = document.getElementById('mineGuestDownloadModal');
+                    if (openModal && openModal.classList.contains('is-open')) return;
+                    try {
+                        localStorage.setItem(nudgeKey, todayKey);
+                    } catch (e2) {}
+                    openGuestDownloadModal('timed_nudge');
+                }, 22000);
+            }
+
             function openMineActivateModal() {
                 if (isLandingGuestMode() && !isMineAppShell()) {
-                    if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_landing_guest_activate_download', {
-                            page: 'mine',
-                            landing_variant: 'c'
-                        });
-                    }
-                    window.location.href = 'install_guide.html?download=1#download';
+                    openGuestDownloadModal('activate_btn');
                     return;
                 }
                 var root = document.getElementById('mineActivateModal');
@@ -1965,6 +2176,9 @@
                 window.location.href = 'login.html';
             });
 
+            if (isLandingGuestMode()) {
+                setupGuestDownloadUi();
+            }
             if (isLandingGuestMode() && typeof window.trackPublicAction === 'function') {
                 var guestVisitMeta = {
                     page: 'mine_guest',
