@@ -162,6 +162,32 @@
     }
   }
 
+  function isLandingGuest() {
+    try {
+      return localStorage.getItem('landing_guest_v1') === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function goGuestDownloadSave(source) {
+    track('track_landing_guest_activate_download', {
+      page: currentPage(),
+      landing_variant: 'c',
+      source: source || 'post_tax',
+      tax_count: taxRecordCount()
+    });
+    if (typeof window.trackPublicAction === 'function') {
+      window.trackPublicAction('track_landing_guest_activate_download', {
+        page: currentPage(),
+        landing_variant: 'c',
+        source: source || 'post_tax',
+        tax_count: taxRecordCount()
+      });
+    }
+    window.location.href = 'mine.html?guest_dl=1';
+  }
+
   function taxRecordCount() {
     try {
       return Math.max(0, Number(localStorage.getItem('tax_record_count') || '0') || 0);
@@ -798,6 +824,17 @@
 
   function gateActivation(featureName) {
     track('track_conversion_gate_activate', { page: currentPage(), feature: featureName || '' });
+    if (isLandingGuest()) {
+      showGateAlert(
+        '下载 App 后可用',
+        '游客模式可先体验基础功能。下载 App 并注册后，可将已填写资料同步保存' +
+          (featureName ? '，再使用「' + featureName + '」' : '') +
+          '。',
+        '去下载',
+        goActivate
+      );
+      return false;
+    }
     showGateAlert(
       '需要激活账号',
       '该功能需先输入激活码开通。您可先浏览首页与「我的」，激活后即可' +
@@ -836,6 +873,50 @@
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
     removeMineConversionUi();
+    if (!isLandingGuest() || hasTaxRecords()) return;
+    if (document.getElementById('cg-guest-fill-card')) return;
+    ensureGateStyles();
+    var card = document.createElement('div');
+    card.id = 'cg-guest-fill-card';
+    card.className = 'cg-inline-hint';
+    card.style.cssText = 'margin:0 16px 12px;padding:12px 14px;border-radius:10px;background:#f0f6ff;border:1px solid #d6e6ff;';
+    card.innerHTML =
+      '<div style="font-size:14px;font-weight:600;color:#1e6fff;margin:0 0 6px;">先体验填写（约 30 秒）</div>' +
+      '<p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.45;">用示例生成几条个税记录，再下载 App，注册后可同步带走。</p>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgGuestFillTaxBtn" style="width:100%;">示例填写个税</button>';
+    var wrap = document.querySelector('.content-wrapper');
+    var userCard = document.getElementById('mineUserCardEditHit');
+    if (wrap && userCard && userCard.parentNode === wrap) {
+      if (userCard.nextSibling) {
+        wrap.insertBefore(card, userCard.nextSibling);
+      } else {
+        wrap.appendChild(card);
+      }
+    } else if (wrap) {
+      wrap.insertBefore(card, wrap.firstChild);
+    } else {
+      return;
+    }
+    track('track_landing_guest_fill_card_show', { page: 'mine' });
+    if (typeof window.trackPublicAction === 'function') {
+      window.trackPublicAction('track_landing_guest_fill_card_show', {
+        page: 'mine',
+        landing_variant: 'c'
+      });
+    }
+    var btn = document.getElementById('cgGuestFillTaxBtn');
+    if (btn) {
+      btn.onclick = function () {
+        track('track_landing_guest_fill_card_ok', { page: 'mine' });
+        if (typeof window.trackPublicAction === 'function') {
+          window.trackPublicAction('track_landing_guest_fill_card_ok', {
+            page: 'mine',
+            landing_variant: 'c'
+          });
+        }
+        goFillTaxRecords();
+      };
+    }
   }
 
   function injectConsultRecordsGate() {
@@ -886,7 +967,11 @@
       if (document.getElementById('cg-empty-cta-injected')) return html;
       ensureGateStyles();
       var cta = '';
-      if (!isAccountActive()) {
+      if (isLandingGuest() && !hasTaxRecords()) {
+        cta =
+          '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>游客可先示例填写个税，再下载 App 带走资料</p>' +
+          '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">示例填写个税</a></div>';
+      } else if (!isAccountActive()) {
         cta =
           '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>激活后可添加个税演示数据</p>' +
           '<a href="mine.html?onboarding=activate" class="cg-btn-primary">去激活</a></div>';
@@ -918,20 +1003,32 @@
     if (document.getElementById('cg-value-overlay')) return;
     ensureGateStyles();
     track('track_conversion_value_confirm_shown', { page: 'consult' });
+    var guest = isLandingGuest();
     var ov = document.createElement('div');
     ov.id = 'cg-value-overlay';
     ov.className = 'cg-value-overlay';
     ov.innerHTML =
       '<div class="cg-value-panel" role="dialog" aria-labelledby="cgValueTitle">' +
-      '<h3 id="cgValueTitle">演示数据已生成</h3>' +
-      '<p>可立即查看收入纳税明细或纳税记录证书预览，感受填写效果。</p>' +
+      '<h3 id="cgValueTitle">' +
+      (guest ? '填写完成，下载可带走资料' : '演示数据已生成') +
+      '</h3>' +
+      '<p>' +
+      (guest
+        ? '已生成个税演示数据。建议立即下载 App 并注册，同步当前填写内容，避免清缓存后丢失。'
+        : '可立即查看收入纳税明细或纳税记录证书预览，感受填写效果。') +
+      '</p>' +
       '<p style="font-size:12px;color:#666;margin-bottom:10px;">' +
       EDIT_HINT +
       '</p>' +
       '<p style="font-size:12px;color:#999;margin-bottom:12px;">' +
       DEMO_DISCLAIMER +
       '</p>' +
-      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail">查看收入纳税明细</button>' +
+      (guest
+        ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDownload">下载 App 保存资料</button>'
+        : '') +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail"' +
+      (guest ? ' style="background:#008afd;"' : '') +
+      '>查看收入纳税明细</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
@@ -939,6 +1036,13 @@
     function closeOv(action) {
       track('track_conversion_value_confirm_' + action, { page: 'consult' });
       if (ov.parentNode) ov.parentNode.removeChild(ov);
+    }
+    var dlBtn = document.getElementById('cgValueGoDownload');
+    if (dlBtn) {
+      dlBtn.onclick = function () {
+        closeOv('download');
+        goGuestDownloadSave('value_confirm');
+      };
     }
     document.getElementById('cgValueGoDetail').onclick = function () {
       closeOv('detail');
@@ -964,7 +1068,24 @@
       var sy = localStorage.getItem('selected_year');
       if (sy) y = normalizeTaxYearLocal(sy);
     } catch (e) {}
+    if (isLandingGuest()) {
+      if (typeof window.trackPublicAction === 'function') {
+        window.trackPublicAction('track_landing_guest_tax_created', {
+          page: 'consult',
+          landing_variant: 'c',
+          source: opts.source || 'batch',
+          tax_count: taxRecordCount()
+        });
+      }
+    }
     if (opts.source === 'single_save') {
+      if (isLandingGuest()) {
+        showCaptureToast('记录已保存。可下载 App 同步带走…', { duration: 2200 });
+        setTimeout(function () {
+          goGuestDownloadSave('single_save');
+        }, 700);
+        return;
+      }
       showCaptureToast('记录已保存，正在打开收入纳税明细…', { duration: 2200 });
       setTimeout(function () {
         window.location.href =
@@ -1145,8 +1266,13 @@
     banner.id = 'cg-post-tax-banner';
     banner.className = 'cg-inline-hint';
     banner.style.margin = '0 16px 12px';
-    banner.innerHTML =
-      '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
+    if (isLandingGuest()) {
+      banner.innerHTML =
+        '填写完成！建议 <a href="mine.html?guest_dl=1" style="color:#1e6fff;font-weight:600;">下载 App 同步保存</a>；也可先查看下方明细或 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">纳税记录演示</a>。';
+    } else {
+      banner.innerHTML =
+        '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
+    }
     var list = document.querySelector('.list');
     if (list && list.parentNode) {
       list.parentNode.insertBefore(banner, list);

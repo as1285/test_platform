@@ -6125,6 +6125,9 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_landing_guest_download_modal_show: 'C 游客下载引导弹窗展示',
   track_landing_guest_download_modal_ok: 'C 游客下载引导-立即下载',
   track_landing_guest_download_modal_later: 'C 游客下载引导-继续体验',
+  track_landing_guest_fill_card_show: 'C 游客填税引导卡片展示',
+  track_landing_guest_fill_card_ok: 'C 游客填税引导-去填写',
+  track_landing_guest_tax_created: 'C 游客完成个税填写',
   track_guest_data_migrated: '游客数据合并至注册账号'
 };
 
