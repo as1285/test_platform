@@ -96,6 +96,7 @@
         var _udFemaleAgeChartInstances = [];
         var _auaDauChartInstances = [];
         var _installGuideChartInstances = [];
+        var _guestUsersChartInstances = [];
         var FEMALE_AGE_CHART_COLORS = {
             u18: '#c4b5fd',
             '18_22': '#f9a8d4',
@@ -177,6 +178,15 @@
                 } catch (e0) {}
             });
             _installGuideChartInstances = [];
+        }
+
+        function destroyGuestUsersCharts() {
+            _guestUsersChartInstances.forEach(function (c) {
+                try {
+                    c.destroy();
+                } catch (e0) {}
+            });
+            _guestUsersChartInstances = [];
         }
 
         function renderRegisterGenderAnalysis(data) {
@@ -6384,9 +6394,23 @@
         function renderGuestUsersStats(data) {
             var mount = document.getElementById('guestUsersStatsMount');
             if (!mount) return;
+            destroyGuestUsersCharts();
             var s = (data && data.summary) || {};
             var days = s.period_days != null ? Number(s.period_days) : 30;
             var daysLabel = days > 0 ? '近 ' + days + ' 天' : '全部';
+            var byHour = Array.isArray(data && data.by_hour) ? data.by_hour : [];
+            var hourTotal = byHour.reduce(function (sum, row) {
+                return sum + (Number(row.count) || 0);
+            }, 0);
+            var peakHour = null;
+            byHour.forEach(function (row) {
+                var c = Number(row.count) || 0;
+                if (!peakHour || c > peakHour.count) {
+                    peakHour = { label: row.label || '', count: c };
+                }
+            });
+            if (peakHour && peakHour.count <= 0) peakHour = null;
+
             var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">' +
@@ -6421,7 +6445,71 @@
                 esc(String(s.registered_with_guest_data != null ? s.registered_with_guest_data : 0)) +
                 '</div></div>';
             html += '</div>';
+
+            html += '<p class="stat" style="margin:0 0 8px;">游客创建时段（北京时间，24 小时）</p>';
+            if (peakHour) {
+                html +=
+                    '<p class="hint" style="margin:0 0 10px;">统计区间内按创建小时汇总；当前高峰在「' +
+                    esc(peakHour.label) +
+                    '」（' +
+                    esc(String(peakHour.count)) +
+                    ' 人）。选「近 1 天」可看最近 24 小时分布。</p>';
+            } else {
+                html +=
+                    '<p class="hint" style="margin:0 0 10px;">按北京时间统计游客账号创建小时（0–23 时）。选「近 1 天」可看最近 24 小时分布。</p>';
+            }
+            html +=
+                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="guestUsersHourlyChart" aria-label="游客用户24小时分布"></canvas></div></div>';
+
             mount.innerHTML = html;
+
+            if (typeof Chart !== 'undefined' && byHour.length) {
+                var hourCanvas = document.getElementById('guestUsersHourlyChart');
+                if (hourCanvas) {
+                    _guestUsersChartInstances.push(
+                        new Chart(hourCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: byHour.map(function (row) {
+                                    return row.label || '';
+                                }),
+                                datasets: [
+                                    {
+                                        label: '游客数',
+                                        data: byHour.map(function (row) {
+                                            return Number(row.count) || 0;
+                                        }),
+                                        backgroundColor: 'rgba(30, 111, 255, 0.7)',
+                                        borderColor: '#1e6fff',
+                                        borderWidth: 0,
+                                        borderRadius: 3
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function (ctx) {
+                                                var v = ctx.parsed.y || 0;
+                                                var pct = hourTotal ? ((v / hourTotal) * 100).toFixed(1) : '0';
+                                                return ' ' + v + ' 人 (' + pct + '%)';
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                                }
+                            }
+                        })
+                    );
+                }
+            }
         }
 
         function loadGuestUsers(p) {

@@ -11322,6 +11322,17 @@ async function handleAdminGuestUsers(req, res) {
         days > 0 ? [days] : []
       );
 
+      // 北京时间按小时（0–23）统计区间内新增游客
+      var cnHour = 'HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
+      const [guestHourlyRows] = await conn.query(
+        `SELECT ${cnHour} AS h, COUNT(*) AS new_guests
+         FROM users u
+         WHERE ${guestOnlyUserSql('u')}${trendWhere}
+         GROUP BY ${cnHour}
+         ORDER BY h ASC`,
+        trendParams
+      );
+
       conn.release();
 
       var periodTotal = Number((sumRows[0] || {}).total_guests) || 0;
@@ -11395,6 +11406,23 @@ async function handleAdminGuestUsers(req, res) {
               };
             })
           },
+          by_hour: (function () {
+            var hourMap = Object.create(null);
+            (guestHourlyRows || []).forEach(function (row) {
+              var h = Number(row.h);
+              if (!isFinite(h) || h < 0 || h > 23) return;
+              hourMap[h] = Number(row.new_guests) || 0;
+            });
+            var out = [];
+            for (var hi = 0; hi < 24; hi++) {
+              out.push({
+                hour: hi,
+                label: hi + '时',
+                count: hourMap[hi] != null ? hourMap[hi] : 0
+              });
+            }
+            return out;
+          })(),
           users: users,
           total: total,
           page: page,
