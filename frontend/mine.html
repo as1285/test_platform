@@ -1607,6 +1607,7 @@
                 }
                 if (btn) {
                     btn.style.display = active ? 'none' : 'inline-flex';
+                    btn.textContent = isLandingGuestMode() ? '下载' : '激活';
                 }
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
