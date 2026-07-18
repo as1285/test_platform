@@ -4261,6 +4261,52 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
     for (ti = 0; ti < GUEST_MIGRATE_USER_TABLES.length; ti++) {
       var tbl = GUEST_MIGRATE_USER_TABLES[ti][0];
       var col = GUEST_MIGRATE_USER_TABLES[ti][1];
+      if (tbl === 'user_devices') {
+        // PRIMARY KEY (username, device_fp)：同设备注册后正式账号往往已有同 fp，直接 UPDATE 会冲突回滚
+        const [guestDevs] = await conn.execute(
+          'SELECT device_fp, login_count, first_seen, last_seen, api_sync_count FROM user_devices WHERE username = ?',
+          [guestU]
+        );
+        var movedDev = 0;
+        var di;
+        for (di = 0; di < (guestDevs || []).length; di++) {
+          var gd = guestDevs[di];
+          const [existDev] = await conn.execute(
+            'SELECT username FROM user_devices WHERE username = ? AND device_fp = ? LIMIT 1',
+            [newU, gd.device_fp]
+          );
+          if (existDev && existDev.length) {
+            await conn.execute(
+              `UPDATE user_devices SET
+                 login_count = login_count + ?,
+                 api_sync_count = api_sync_count + ?,
+                 first_seen = LEAST(first_seen, ?),
+                 last_seen = GREATEST(last_seen, ?)
+               WHERE username = ? AND device_fp = ?`,
+              [
+                Number(gd.login_count) || 0,
+                Number(gd.api_sync_count) || 0,
+                gd.first_seen,
+                gd.last_seen,
+                newU,
+                gd.device_fp
+              ]
+            );
+            await conn.execute('DELETE FROM user_devices WHERE username = ? AND device_fp = ?', [
+              guestU,
+              gd.device_fp
+            ]);
+          } else {
+            await conn.execute(
+              'UPDATE user_devices SET username = ? WHERE username = ? AND device_fp = ?',
+              [newU, guestU, gd.device_fp]
+            );
+          }
+          movedDev += 1;
+        }
+        summary[tbl] = movedDev;
+        continue;
+      }
       const [upd] = await conn.execute(
         'UPDATE `' + tbl + '` SET `' + col + '` = ? WHERE `' + col + '` = ?',
         [newU, guestU]
