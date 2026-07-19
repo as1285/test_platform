@@ -257,6 +257,7 @@ const ADMIN_MENU_KEYS = [
   'user-behavior',
   'activated-user-analysis',
   'feedback',
+  'chat',
   'login-log',
   'analytics-conversion',
   'analytics-activity',
@@ -2263,6 +2264,37 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS chat_conversations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+      real_name_snapshot VARCHAR(255) NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'open' COMMENT 'open | closed',
+      last_message_at DATETIME NULL,
+      last_message_preview VARCHAR(255) NULL,
+      last_sender_role VARCHAR(16) NULL COMMENT 'user | admin | system',
+      user_unread INT NOT NULL DEFAULT 0,
+      admin_unread INT NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_chat_user_id (user_id),
+      INDEX idx_chat_last_message_at (last_message_at),
+      INDEX idx_chat_admin_unread (admin_unread)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      conversation_id INT NOT NULL,
+      sender_role VARCHAR(16) NOT NULL COMMENT 'user | admin | system',
+      sender_id VARCHAR(255) NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_chat_msg_conv (conversation_id, id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS user_devices (
       username VARCHAR(255) NOT NULL,
       device_fp CHAR(64) NOT NULL,
@@ -2427,6 +2459,11 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'install-guide-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'chat' FROM admin_account_menus WHERE menu_key = 'feedback'`
   );
 
   var analyticsSplitMenus = [
@@ -3780,10 +3817,13 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、message.php 全部读写 */
+/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、在线客服 chat.php、message.php 全部读写 */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
+    return true;
+  }
+  if (path.endsWith('/chat.php')) {
     return true;
   }
   if (path.endsWith('/user.php')) {
@@ -5849,6 +5889,9 @@ function classifyAnalyticsRoute(req) {
   if (path.endsWith('/feedback.php') || path === '/feedback.php') {
     return { route_key: method + ' feedback.php' + actionSuffix, biz_category: '用户反馈' };
   }
+  if (path.endsWith('/chat.php') || path === '/chat.php') {
+    return { route_key: method + ' chat.php' + actionSuffix, biz_category: '在线客服' };
+  }
   if (path.endsWith('/auth.php') || path === '/auth.php') {
     return { route_key: method + ' auth.php' + actionSuffix, biz_category: '认证注册' };
   }
@@ -7354,6 +7397,221 @@ async function handleFeedbackPost(req, res) {
   }
 }
 
+var CHAT_MSG_MAX_LEN = 2000;
+var CHAT_THREAD_LIMIT = 200;
+
+function chatPreviewText(content) {
+  var s = content != null ? String(content).replace(/\s+/g, ' ').trim() : '';
+  if (s.length > 80) {
+    return s.substring(0, 80) + '…';
+  }
+  return s;
+}
+
+function mapChatMessageRow(r) {
+  return {
+    id: Number(r.id),
+    conversation_id: Number(r.conversation_id),
+    sender_role: r.sender_role,
+    sender_id: r.sender_id != null ? String(r.sender_id) : '',
+    content: r.content != null ? String(r.content) : '',
+    created_at: r.created_at ? r.created_at.toISOString() : ''
+  };
+}
+
+function mapChatConversationRow(r) {
+  return {
+    id: Number(r.id),
+    user_id: r.user_id != null ? String(r.user_id) : '',
+    real_name_snapshot: r.real_name_snapshot != null ? String(r.real_name_snapshot) : '',
+    status: r.status != null ? String(r.status) : 'open',
+    last_message_at: r.last_message_at ? r.last_message_at.toISOString() : null,
+    last_message_preview: r.last_message_preview != null ? String(r.last_message_preview) : '',
+    last_sender_role: r.last_sender_role != null ? String(r.last_sender_role) : '',
+    user_unread: Number(r.user_unread) || 0,
+    admin_unread: Number(r.admin_unread) || 0,
+    created_at: r.created_at ? r.created_at.toISOString() : ''
+  };
+}
+
+async function ensureUserChatConversation(conn, userId) {
+  var uid = String(userId);
+  const [rows] = await conn.execute(
+    'SELECT * FROM chat_conversations WHERE user_id = ? LIMIT 1',
+    [uid]
+  );
+  if (rows.length) {
+    return rows[0];
+  }
+  var snap = '';
+  try {
+    var urow = await getUserRowByUsername(uid);
+    snap = urow && urow.real_name != null ? String(urow.real_name).substring(0, 255) : '';
+  } catch (e1) {
+    console.error('ensureUserChatConversation snapshot', e1);
+  }
+  const [ins] = await conn.execute(
+    `INSERT INTO chat_conversations (user_id, real_name_snapshot, status) VALUES (?, ?, 'open')`,
+    [uid, snap || null]
+  );
+  const [created] = await conn.execute(
+    'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+    [ins.insertId]
+  );
+  return created[0];
+}
+
+async function insertChatMessage(conn, conversationId, senderRole, senderId, content) {
+  var preview = chatPreviewText(content);
+  const [ins] = await conn.execute(
+    `INSERT INTO chat_messages (conversation_id, sender_role, sender_id, content) VALUES (?, ?, ?, ?)`,
+    [conversationId, senderRole, senderId != null ? String(senderId) : null, content]
+  );
+  if (senderRole === 'user') {
+    await conn.execute(
+      `UPDATE chat_conversations
+       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?,
+           admin_unread = admin_unread + 1, status = 'open', updated_at = NOW()
+       WHERE id = ?`,
+      [preview, senderRole, conversationId]
+    );
+  } else if (senderRole === 'admin') {
+    await conn.execute(
+      `UPDATE chat_conversations
+       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?,
+           user_unread = user_unread + 1, status = 'open', updated_at = NOW()
+       WHERE id = ?`,
+      [preview, senderRole, conversationId]
+    );
+  } else {
+    await conn.execute(
+      `UPDATE chat_conversations
+       SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [preview, senderRole, conversationId]
+    );
+  }
+  const [msgRows] = await conn.execute(
+    'SELECT * FROM chat_messages WHERE id = ? LIMIT 1',
+    [ins.insertId]
+  );
+  return msgRows[0];
+}
+
+async function handleChatGet(req, res) {
+  var action = req.query.action;
+  var userId = req.authUserId;
+  if (userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: '需已登录' });
+  }
+  if (action !== 'thread' && action !== 'poll') {
+    return res.status(400).json({ code: 400, msg: 'action=thread 或 poll' });
+  }
+  var afterId = parseInt(req.query.after_id, 10) || 0;
+  if (afterId < 0) afterId = 0;
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var conv = await ensureUserChatConversation(conn, userId);
+      var convId = Number(conv.id);
+      var msgs;
+      if (afterId > 0) {
+        const [rows] = await conn.query(
+          `SELECT * FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id ASC LIMIT ${CHAT_THREAD_LIMIT}`,
+          [convId, afterId]
+        );
+        msgs = rows;
+      } else {
+        const [rows] = await conn.query(
+          `SELECT * FROM (
+             SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ${CHAT_THREAD_LIMIT}
+           ) t ORDER BY id ASC`,
+          [convId]
+        );
+        msgs = rows;
+      }
+      if (action === 'thread' || Number(conv.user_unread) > 0) {
+        await conn.execute(
+          `UPDATE chat_conversations SET user_unread = 0, updated_at = NOW() WHERE id = ? AND user_unread > 0`,
+          [convId]
+        );
+        conv.user_unread = 0;
+      }
+      return res.json({
+        code: 200,
+        data: {
+          conversation: mapChatConversationRow(conv),
+          messages: msgs.map(mapChatMessageRow)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleChatPost(req, res) {
+  var body = req.body || {};
+  var action = body.action != null ? String(body.action).trim() : 'send';
+  var userId = req.authUserId;
+  if (userId == null || userId === '') {
+    return res.status(400).json({ code: 400, msg: '需已登录' });
+  }
+  if (action === 'mark_read') {
+    try {
+      const conn = await pool.getConnection();
+      try {
+        await conn.execute(
+          `UPDATE chat_conversations SET user_unread = 0, updated_at = NOW() WHERE user_id = ?`,
+          [String(userId)]
+        );
+        return res.json({ code: 200, data: { success: true } });
+      } finally {
+        conn.release();
+      }
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ code: 500, msg: String(e.message) });
+    }
+  }
+  if (action !== 'send') {
+    return res.status(400).json({ code: 400, msg: 'action=send 或 mark_read' });
+  }
+  var content = body.content != null ? String(body.content).trim() : '';
+  if (!content || content.length > CHAT_MSG_MAX_LEN) {
+    return res.status(400).json({
+      code: 400,
+      msg: '内容不能为空且不超过 ' + CHAT_MSG_MAX_LEN + ' 字'
+    });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      var conv = await ensureUserChatConversation(conn, userId);
+      var msg = await insertChatMessage(conn, Number(conv.id), 'user', String(userId), content);
+      const [fresh] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [Number(conv.id)]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          conversation: mapChatConversationRow(fresh[0] || conv),
+          message: mapChatMessageRow(msg)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 var SHENBAO_DEFAULT_RECORDS = [
   {
     id: '1',
@@ -7987,6 +8245,10 @@ app.get('/api/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbac
 app.post('/api/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackPost);
 app.get('/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackGet);
 app.post('/feedback.php', requireAuthAndActivatedUnlessAllowed, handleFeedbackPost);
+app.get('/api/chat.php', requireAuthAndActivatedUnlessAllowed, handleChatGet);
+app.post('/api/chat.php', requireAuthAndActivatedUnlessAllowed, handleChatPost);
+app.get('/chat.php', requireAuthAndActivatedUnlessAllowed, handleChatGet);
+app.post('/chat.php', requireAuthAndActivatedUnlessAllowed, handleChatPost);
 app.get('/api/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluGet);
 app.post('/api/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluPost);
 app.get('/shenbao_jilu.php', requireAuth, requireActivated, handleShenbaoJiluGet);
@@ -16288,6 +16550,176 @@ async function handleAdminFeedbackReply(req, res) {
   }
 }
 
+async function handleAdminChatConversations(req, res) {
+  try {
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var offset = (page - 1) * limit;
+    var unreadOnly = String(req.query.unread || '').trim() === '1';
+    var q = req.query.q != null ? String(req.query.q).trim() : '';
+    var conditions = [];
+    var params = [];
+    if (unreadOnly) {
+      conditions.push('c.admin_unread > 0');
+    }
+    if (q) {
+      conditions.push('(c.user_id LIKE ? OR IFNULL(c.real_name_snapshot, \'\') LIKE ?)');
+      var like = '%' + q.replace(/[%_\\]/g, '') + '%';
+      params.push(like, like);
+    }
+    var where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    var join = ' FROM chat_conversations c LEFT JOIN users u ON u.username = c.user_id ';
+    const conn = await pool.getConnection();
+    try {
+      const [cntRows] = await conn.execute('SELECT COUNT(*) AS c' + join + where, params);
+      var total = cntRows.length ? Number(cntRows[0].c) : 0;
+      var totalPages = Math.ceil(total / limit) || 1;
+      const [rows] = await conn.query(
+        `SELECT c.*, u.account_active, u.real_name AS user_real_name
+         ${join} ${where}
+         ORDER BY (c.admin_unread > 0) DESC, IFNULL(c.last_message_at, c.created_at) DESC, c.id DESC
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
+      );
+      return res.json({
+        code: 200,
+        data: {
+          items: rows.map(function (r) {
+            var mapped = mapChatConversationRow(r);
+            mapped.account_active = r.account_active === 1 || r.account_active === true;
+            if (!mapped.real_name_snapshot && r.user_real_name) {
+              mapped.real_name_snapshot = String(r.user_real_name);
+            }
+            return mapped;
+          }),
+          total: total,
+          page: page,
+          limit: limit,
+          total_pages: totalPages
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminChatMessages(req, res) {
+  try {
+    var conversationId = parseInt(req.query.conversation_id, 10) || 0;
+    if (!conversationId) {
+      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
+    }
+    var afterId = parseInt(req.query.after_id, 10) || 0;
+    if (afterId < 0) afterId = 0;
+    const conn = await pool.getConnection();
+    try {
+      const [convRows] = await conn.execute(
+        `SELECT c.*, u.account_active, u.real_name AS user_real_name
+         FROM chat_conversations c LEFT JOIN users u ON u.username = c.user_id
+         WHERE c.id = ? LIMIT 1`,
+        [conversationId]
+      );
+      if (!convRows.length) {
+        return res.status(404).json({ code: 404, msg: '会话不存在' });
+      }
+      var conv = convRows[0];
+      var msgs;
+      if (afterId > 0) {
+        const [rows] = await conn.query(
+          `SELECT * FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id ASC LIMIT ${CHAT_THREAD_LIMIT}`,
+          [conversationId, afterId]
+        );
+        msgs = rows;
+      } else {
+        const [rows] = await conn.query(
+          `SELECT * FROM (
+             SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ${CHAT_THREAD_LIMIT}
+           ) t ORDER BY id ASC`,
+          [conversationId]
+        );
+        msgs = rows;
+      }
+      if (Number(conv.admin_unread) > 0) {
+        await conn.execute(
+          `UPDATE chat_conversations SET admin_unread = 0, updated_at = NOW() WHERE id = ? AND admin_unread > 0`,
+          [conversationId]
+        );
+        conv.admin_unread = 0;
+      }
+      var mapped = mapChatConversationRow(conv);
+      mapped.account_active = conv.account_active === 1 || conv.account_active === true;
+      if (!mapped.real_name_snapshot && conv.user_real_name) {
+        mapped.real_name_snapshot = String(conv.user_real_name);
+      }
+      return res.json({
+        code: 200,
+        data: {
+          conversation: mapped,
+          messages: msgs.map(mapChatMessageRow)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminChatSend(req, res) {
+  try {
+    var body = req.body || {};
+    var conversationId = parseInt(body.conversation_id, 10) || 0;
+    var content = body.content != null ? String(body.content).trim() : '';
+    if (!conversationId) {
+      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
+    }
+    if (!content || content.length > CHAT_MSG_MAX_LEN) {
+      return res.status(400).json({
+        code: 400,
+        msg: '内容不能为空且不超过 ' + CHAT_MSG_MAX_LEN + ' 字'
+      });
+    }
+    var adminName =
+      req.admin && req.admin.username ? String(req.admin.username) : String(ADMIN_PANEL_USER);
+    const conn = await pool.getConnection();
+    try {
+      const [convRows] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [conversationId]
+      );
+      if (!convRows.length) {
+        return res.status(404).json({ code: 404, msg: '会话不存在' });
+      }
+      var msg = await insertChatMessage(conn, conversationId, 'admin', adminName, content);
+      const [fresh] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [conversationId]
+      );
+      return res.json({
+        code: 200,
+        data: {
+          conversation: mapChatConversationRow(fresh[0] || convRows[0]),
+          message: mapChatMessageRow(msg)
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 app.use('/api/admin/analytics', heavyAdminApiRateLimit);
 app.use('/api/admin/user-data', heavyAdminApiRateLimit);
 app.use('/api/admin/activated-user-analysis', heavyAdminApiRateLimit);
@@ -16524,6 +16956,9 @@ app.get('/api/admin/admin-login-logs', requireAdminAuth, requireAdminMenu('login
 app.get('/api/admin/admin-operation-logs', requireAdminAuth, requireAdminMenu('login-log'), handleAdminOperationLogs);
 app.get('/api/admin/feedback', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackList);
 app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedback'), handleAdminFeedbackReply);
+app.get('/api/admin/chat/conversations', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatConversations);
+app.get('/api/admin/chat/messages', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatMessages);
+app.post('/api/admin/chat/send', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatSend);
 app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);
 app.get('/api/admin/accounts/activated-users', requireAdminAuth, handleAdminAccountActivatedUsers);
 app.post('/api/admin/accounts/create', requireAdminAuth, handleAdminAccountsCreate);

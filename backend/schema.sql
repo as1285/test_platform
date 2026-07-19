@@ -158,6 +158,34 @@ CREATE TABLE IF NOT EXISTS user_feedback (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 在线客服：每用户一条会话
+CREATE TABLE IF NOT EXISTS chat_conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL COMMENT '账号 username',
+    real_name_snapshot VARCHAR(255) NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'open' COMMENT 'open | closed',
+    last_message_at DATETIME NULL,
+    last_message_preview VARCHAR(255) NULL,
+    last_sender_role VARCHAR(16) NULL COMMENT 'user | admin | system',
+    user_unread INT NOT NULL DEFAULT 0,
+    admin_unread INT NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_chat_user_id (user_id),
+    INDEX idx_chat_last_message_at (last_message_at),
+    INDEX idx_chat_admin_unread (admin_unread)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender_role VARCHAR(16) NOT NULL COMMENT 'user | admin | system',
+    sender_id VARCHAR(255) NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_chat_msg_conv (conversation_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 全局配置（如测试账号固定公司名称、安装包下载 URL、mine_ui JSON；管理后台可改）
 -- setting_key 示例：test_account_company_name、mine_ui_json、android_apk_download_url、ios_mobileconfig_download_url
 CREATE TABLE IF NOT EXISTS app_settings (

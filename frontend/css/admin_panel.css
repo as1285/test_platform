@@ -1484,3 +1484,100 @@ tr.ud-salary-bucket-high td {
     }
 }
 
+
+/* 在线客服 */
+.admin-chat-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 34%) 1fr;
+    gap: 12px;
+    min-height: 520px;
+    align-items: stretch;
+}
+.admin-chat-list-pane,
+.admin-chat-thread-pane {
+    background: #fff;
+    border: 1px solid #e8ecf1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 480px;
+    overflow: hidden;
+}
+.admin-chat-list-pane .scroll-x {
+    flex: 1;
+    overflow: auto;
+}
+.admin-chat-list-pane table tbody tr {
+    cursor: pointer;
+}
+.admin-chat-list-pane table tbody tr.is-active {
+    background: #eef5ff;
+}
+.admin-chat-unread {
+    display: inline-block;
+    min-width: 18px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+}
+.admin-chat-thread-head {
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef0f3;
+    font-size: 14px;
+    font-weight: 500;
+    background: #fafbfc;
+}
+.admin-chat-thread-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    background: #f5f7fa;
+}
+.admin-chat-bubble-row {
+    display: flex;
+    margin-bottom: 10px;
+}
+.admin-chat-bubble-row.me { justify-content: flex-end; }
+.admin-chat-bubble-row.them { justify-content: flex-start; }
+.admin-chat-bubble {
+    max-width: 78%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.admin-chat-bubble-row.me .admin-chat-bubble {
+    background: #1e6fff;
+    color: #fff;
+}
+.admin-chat-bubble-row.them .admin-chat-bubble {
+    background: #fff;
+    border: 1px solid #e8ecf1;
+}
+.admin-chat-bubble-meta {
+    font-size: 11px;
+    color: #999;
+    margin-top: 3px;
+}
+.admin-chat-bubble-row.me .admin-chat-bubble-meta { text-align: right; }
+.admin-chat-composer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid #eef0f3;
+    align-items: flex-end;
+}
+.admin-chat-composer textarea {
+    flex: 1;
+    margin: 0;
+}
+@media (max-width: 960px) {
+    .admin-chat-layout {
+        grid-template-columns: 1fr;
+    }
+}

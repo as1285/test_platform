@@ -2105,7 +2105,7 @@
         }
 
         function firstAllowedAdminPage() {
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'guest-users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
+            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'guest-users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'chat', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
             for (var i = 0; i < order.length; i++) {
                 if (order[i] === 'guest-users' && !(currentAdminProfile && currentAdminProfile.is_super)) {
                     continue;
@@ -2194,6 +2194,7 @@
                 'user-behavior': 1,
                 'activated-user-analysis': 1,
                 feedback: 1,
+                chat: 1,
                 'analytics-conversion': 1,
                 'analytics-activity': 1,
                 'analytics-register': 1,
@@ -2317,12 +2318,276 @@
                 feedbackAdminPage = 1;
                 loadAdminFeedbackPage(1);
             }
+            if (pageKey === 'chat') {
+                chatAdminPage = 1;
+                loadAdminChatConversations(1);
+                startAdminChatPoll();
+            } else {
+                stopAdminChatPoll();
+            }
         }
 
         var feedbackAdminPage = 1;
         var feedbackAdminLimit = 15;
         var feedbackAdminLastItems = [];
         var feedbackReplyEditingId = null;
+
+        var chatAdminPage = 1;
+        var chatAdminLimit = 20;
+        var chatAdminActiveId = 0;
+        var chatAdminLastMsgId = 0;
+        var chatAdminKnownIds = {};
+        var chatAdminPollTimer = null;
+        var chatAdminSending = false;
+
+        function escapeChatHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatChatTime(iso) {
+            if (!iso) return '';
+            try {
+                var d = new Date(iso);
+                if (isNaN(d.getTime())) return '';
+                var pad = function (n) {
+                    return n < 10 ? '0' + n : String(n);
+                };
+                return (
+                    pad(d.getMonth() + 1) +
+                    '-' +
+                    pad(d.getDate()) +
+                    ' ' +
+                    pad(d.getHours()) +
+                    ':' +
+                    pad(d.getMinutes())
+                );
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function stopAdminChatPoll() {
+            if (chatAdminPollTimer) {
+                clearInterval(chatAdminPollTimer);
+                chatAdminPollTimer = null;
+            }
+        }
+
+        function startAdminChatPoll() {
+            stopAdminChatPoll();
+            chatAdminPollTimer = setInterval(function () {
+                if (normalizeAdminPage(location.hash) !== 'chat') {
+                    stopAdminChatPoll();
+                    return;
+                }
+                loadAdminChatConversations(chatAdminPage, true);
+                if (chatAdminActiveId) {
+                    loadAdminChatThread(chatAdminActiveId, true);
+                }
+            }, 4000);
+        }
+
+        function loadAdminChatConversations(page, quiet) {
+            if (page != null) {
+                chatAdminPage = Math.max(1, parseInt(page, 10) || 1);
+            }
+            var unreadEl = document.getElementById('chatAdminFilterUnread');
+            var qEl = document.getElementById('chatAdminSearchQ');
+            var unread = unreadEl ? unreadEl.value : '';
+            var q = qEl ? String(qEl.value || '').trim() : '';
+            var url =
+                'api/admin/chat/conversations?page=' +
+                encodeURIComponent(chatAdminPage) +
+                '&limit=' +
+                encodeURIComponent(chatAdminLimit);
+            if (unread === '1') url += '&unread=1';
+            if (q) url += '&q=' + encodeURIComponent(q);
+            if (!quiet) {
+                document.getElementById('chatAdminConvTbody').innerHTML =
+                    '<tr><td colspan="3">加载中…</td></tr>';
+            }
+            adminFetch(url)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200) {
+                        throw new Error((body && body.msg) || '加载失败');
+                    }
+                    var data = body.data || {};
+                    var items = Array.isArray(data.items) ? data.items : [];
+                    var total = Number(data.total) || 0;
+                    var tp = Number(data.total_pages) || 1;
+                    document.getElementById('chatAdminPageInfo').textContent =
+                        '第 ' + chatAdminPage + ' / ' + tp + ' 页 · 共 ' + total + ' 条';
+                    var prev = document.getElementById('chatAdminPrev');
+                    var next = document.getElementById('chatAdminNext');
+                    if (prev) prev.disabled = chatAdminPage <= 1;
+                    if (next) next.disabled = chatAdminPage >= tp;
+                    if (!items.length) {
+                        document.getElementById('chatAdminConvTbody').innerHTML =
+                            '<tr><td colspan="3">暂无会话</td></tr>';
+                        return;
+                    }
+                    var html = items
+                        .map(function (r) {
+                            var unreadN = Number(r.admin_unread) || 0;
+                            var activeCls = Number(r.id) === chatAdminActiveId ? ' is-active' : '';
+                            var preview = escapeChatHtml(r.last_message_preview || '（暂无消息）');
+                            var name = escapeChatHtml(r.real_name_snapshot || '—');
+                            return (
+                                '<tr class="chat-conv-row' +
+                                activeCls +
+                                '" data-conv-id="' +
+                                Number(r.id) +
+                                '">' +
+                                '<td><div>' +
+                                escapeChatHtml(r.user_id || '') +
+                                '</div><div style="color:#888;font-size:12px;">' +
+                                name +
+                                (r.account_active ? '' : ' · 未激活') +
+                                '</div></td>' +
+                                '<td>' +
+                                (unreadN > 0
+                                    ? '<span class="admin-chat-unread">' + unreadN + '</span>'
+                                    : '—') +
+                                '</td>' +
+                                '<td><div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                                preview +
+                                '</div><div style="color:#999;font-size:11px;">' +
+                                escapeChatHtml(formatChatTime(r.last_message_at)) +
+                                '</div></td></tr>'
+                            );
+                        })
+                        .join('');
+                    document.getElementById('chatAdminConvTbody').innerHTML = html;
+                })
+                .catch(function (e) {
+                    if (!quiet) {
+                        document.getElementById('chatAdminConvTbody').innerHTML =
+                            '<tr><td colspan="3">' +
+                            escapeChatHtml(String(e && e.message ? e.message : e)) +
+                            '</td></tr>';
+                    }
+                });
+        }
+
+        function appendAdminChatMessages(messages, forceScroll) {
+            var bodyEl = document.getElementById('chatAdminThreadBody');
+            if (!bodyEl || !messages || !messages.length) return;
+            var nearBottom =
+                bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight < 90;
+            messages.forEach(function (m) {
+                var id = Number(m.id);
+                if (!id || chatAdminKnownIds[id]) return;
+                chatAdminKnownIds[id] = 1;
+                if (id > chatAdminLastMsgId) chatAdminLastMsgId = id;
+                var isAdmin = m.sender_role === 'admin';
+                var row = document.createElement('div');
+                row.className = 'admin-chat-bubble-row ' + (isAdmin ? 'me' : 'them');
+                row.innerHTML =
+                    '<div><div class="admin-chat-bubble">' +
+                    escapeChatHtml(m.content) +
+                    '</div><div class="admin-chat-bubble-meta">' +
+                    escapeChatHtml(formatChatTime(m.created_at)) +
+                    (isAdmin ? ' · 客服' : ' · 用户') +
+                    '</div></div>';
+                bodyEl.appendChild(row);
+            });
+            if (forceScroll || nearBottom) {
+                bodyEl.scrollTop = bodyEl.scrollHeight;
+            }
+        }
+
+        function loadAdminChatThread(conversationId, isPoll) {
+            var cid = Number(conversationId) || 0;
+            if (!cid) return;
+            var url =
+                'api/admin/chat/messages?conversation_id=' +
+                encodeURIComponent(cid) +
+                (isPoll && chatAdminLastMsgId > 0
+                    ? '&after_id=' + encodeURIComponent(chatAdminLastMsgId)
+                    : '');
+            adminFetch(url)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200) {
+                        throw new Error((body && body.msg) || '加载失败');
+                    }
+                    var data = body.data || {};
+                    var conv = data.conversation || {};
+                    chatAdminActiveId = Number(conv.id) || cid;
+                    var head = document.getElementById('chatAdminThreadHead');
+                    if (head) {
+                        head.textContent =
+                            (conv.user_id || '') +
+                            ' · ' +
+                            (conv.real_name_snapshot || '—') +
+                            (conv.account_active ? ' · 已激活' : ' · 未激活');
+                    }
+                    var input = document.getElementById('chatAdminInput');
+                    var sendBtn = document.getElementById('chatAdminSendBtn');
+                    if (input) input.disabled = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                    if (!isPoll) {
+                        chatAdminKnownIds = {};
+                        chatAdminLastMsgId = 0;
+                        var bodyEl = document.getElementById('chatAdminThreadBody');
+                        if (bodyEl) bodyEl.innerHTML = '';
+                    }
+                    appendAdminChatMessages(data.messages || [], !isPoll);
+                })
+                .catch(function (e) {
+                    if (!isPoll) {
+                        alert(String(e && e.message ? e.message : e) || '加载会话失败');
+                    }
+                });
+        }
+
+        function sendAdminChatMessage() {
+            if (chatAdminSending || !chatAdminActiveId) return;
+            var input = document.getElementById('chatAdminInput');
+            var content = input ? String(input.value || '').trim() : '';
+            if (!content) return;
+            chatAdminSending = true;
+            var sendBtn = document.getElementById('chatAdminSendBtn');
+            if (sendBtn) sendBtn.disabled = true;
+            adminFetch('api/admin/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    conversation_id: chatAdminActiveId,
+                    content: content
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200) {
+                        throw new Error((body && body.msg) || '发送失败');
+                    }
+                    if (input) input.value = '';
+                    if (body.data && body.data.message) {
+                        appendAdminChatMessages([body.data.message], true);
+                    }
+                    loadAdminChatConversations(chatAdminPage, true);
+                })
+                .catch(function (e) {
+                    alert(String(e && e.message ? e.message : e) || '发送失败');
+                })
+                .then(function () {
+                    chatAdminSending = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                    if (input) input.focus();
+                });
+        }
 
         function closeFeedbackReplyModal() {
             var bd = document.getElementById('feedbackReplyBackdrop');
@@ -7190,6 +7455,7 @@
             'user-behavior': '用户行为',
             'activated-user-analysis': '激活用户分析',
             feedback: '用户反馈',
+            chat: '在线客服',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计（旧）',
@@ -9000,6 +9266,44 @@
         });
         document.getElementById('feedbackAdminNext').addEventListener('click', function () {
             loadAdminFeedbackPage(feedbackAdminPage + 1);
+        });
+
+        document.getElementById('btnRefreshChatAdmin').addEventListener('click', function () {
+            loadAdminChatConversations(chatAdminPage);
+            if (chatAdminActiveId) loadAdminChatThread(chatAdminActiveId, false);
+        });
+        document.getElementById('chatAdminFilterUnread').addEventListener('change', function () {
+            loadAdminChatConversations(1);
+        });
+        document.getElementById('chatAdminSearchQ').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadAdminChatConversations(1);
+            }
+        });
+        document.getElementById('chatAdminPrev').addEventListener('click', function () {
+            if (chatAdminPage > 1) loadAdminChatConversations(chatAdminPage - 1);
+        });
+        document.getElementById('chatAdminNext').addEventListener('click', function () {
+            loadAdminChatConversations(chatAdminPage + 1);
+        });
+        document.getElementById('chatAdminConvTbody').addEventListener('click', function (e) {
+            var tr = e.target.closest('tr[data-conv-id]');
+            if (!tr) return;
+            var id = parseInt(tr.getAttribute('data-conv-id'), 10);
+            if (!id) return;
+            document.querySelectorAll('#chatAdminConvTbody tr.is-active').forEach(function (el) {
+                el.classList.remove('is-active');
+            });
+            tr.classList.add('is-active');
+            loadAdminChatThread(id, false);
+        });
+        document.getElementById('chatAdminSendBtn').addEventListener('click', sendAdminChatMessage);
+        document.getElementById('chatAdminInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAdminChatMessage();
+            }
         });
 
         document.getElementById('analyticsOverviewDays').addEventListener('change', function () {

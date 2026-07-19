@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260718-layout">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260719-chat">
 </head>
 <body>
     <div class="layout">
@@ -32,6 +32,7 @@
                     <button type="button" class="nav-item" data-page="user-behavior" data-title="用户行为">用户行为</button>
                     <button type="button" class="nav-item" data-page="activated-user-analysis" data-title="激活用户分析">激活用户分析</button>
                     <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
+                    <button type="button" class="nav-item" data-page="chat" data-title="在线客服">在线客服</button>
                 </div>
                 <div class="nav-group" data-nav-group="logs">
                     <div class="nav-group-label">日志审计</div>
@@ -1306,6 +1307,56 @@
         </section>
                 </div>
 
+                <div id="page-chat" class="page-panel" role="tabpanel">
+        <section>
+            <h2>在线客服</h2>
+            <p class="hint">用户在「我的 → 在线客服」发起的会话；左侧选会话，右侧回复。页面会自动刷新未读消息。</p>
+            <div class="form-row flex-align-end">
+                <div>
+                    <label for="chatAdminFilterUnread">未读</label>
+                    <select class="filter-select" id="chatAdminFilterUnread">
+                        <option value="">全部</option>
+                        <option value="1">仅未读</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="chatAdminSearchQ">搜索账号/姓名</label>
+                    <input type="text" id="chatAdminSearchQ" class="input-block" maxlength="64" placeholder="账号或姓名">
+                </div>
+                <button type="button" class="btn-primary" id="btnRefreshChatAdmin">刷新</button>
+            </div>
+            <div class="admin-chat-layout mt-12">
+                <div class="admin-chat-list-pane">
+                    <div class="scroll-x">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>账号</th>
+                                    <th>未读</th>
+                                    <th>最近消息</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chatAdminConvTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="chatAdminPagination">
+                        <button type="button" class="btn-page" id="chatAdminPrev">上一页</button>
+                        <span id="chatAdminPageInfo">第 1 页</span>
+                        <button type="button" class="btn-page" id="chatAdminNext">下一页</button>
+                    </div>
+                </div>
+                <div class="admin-chat-thread-pane">
+                    <div class="admin-chat-thread-head" id="chatAdminThreadHead">请选择左侧会话</div>
+                    <div class="admin-chat-thread-body" id="chatAdminThreadBody"></div>
+                    <div class="admin-chat-composer">
+                        <textarea id="chatAdminInput" class="textarea-block" rows="3" maxlength="2000" placeholder="输入回复内容…" disabled></textarea>
+                        <button type="button" class="btn-primary" id="chatAdminSendBtn" disabled>发送</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+                </div>
+
                 <div id="page-install-guide-stats" class="page-panel" role="tabpanel">
         <section>
             <h2>安装页访问统计</h2>
@@ -1972,7 +2023,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260717-guest-detail"></script>
+    <script src="/js/admin_panel.js?v=20260719-chat"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260719-tax-year-open"></script>
 </body>

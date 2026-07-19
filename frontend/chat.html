@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260719-chat"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>在线客服</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+        .header {
+            background: #fff;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #ebebeb;
+            flex-shrink: 0;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn .arrow {
+            font-size: 22px;
+            line-height: 1;
+            margin-right: 2px;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+        .chat-status {
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            padding: 6px 12px 0;
+            flex-shrink: 0;
+        }
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 12px 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .chat-empty {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            padding: 48px 24px;
+            line-height: 1.6;
+        }
+        .msg-row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+        .msg-row.me {
+            justify-content: flex-end;
+        }
+        .msg-row.them {
+            justify-content: flex-start;
+        }
+        .msg-bubble {
+            max-width: 78%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.45;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        .msg-row.me .msg-bubble {
+            background: #1e6fff;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .msg-row.them .msg-bubble {
+            background: #fff;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .msg-meta {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+        .msg-row.me .msg-meta {
+            text-align: right;
+        }
+        .composer {
+            flex-shrink: 0;
+            background: #fff;
+            border-top: 1px solid #ebebeb;
+            padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .composer textarea {
+            flex: 1;
+            min-height: 40px;
+            max-height: 120px;
+            resize: none;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-family: inherit;
+            line-height: 1.4;
+            outline: none;
+            background: #f7f8fa;
+        }
+        .composer textarea:focus {
+            border-color: #1e6fff;
+            background: #fff;
+        }
+        .composer button {
+            flex-shrink: 0;
+            height: 40px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .composer button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="mine.html"><span class="arrow">‹</span>返回</a>
+        <div class="header-title">在线客服</div>
+    </div>
+    <div class="chat-status" id="chatStatus">连接中…</div>
+    <div class="chat-list" id="chatList">
+        <div class="chat-empty" id="chatEmpty">有问题可以直接发消息，客服看到后会回复。</div>
+    </div>
+    <div class="composer">
+        <textarea id="chatInput" rows="1" maxlength="2000" placeholder="输入消息…" enterkeyhint="send"></textarea>
+        <button type="button" id="chatSendBtn">发送</button>
+    </div>
+    <script>
+(function () {
+    var listEl = document.getElementById('chatList');
+    var emptyEl = document.getElementById('chatEmpty');
+    var statusEl = document.getElementById('chatStatus');
+    var inputEl = document.getElementById('chatInput');
+    var sendBtn = document.getElementById('chatSendBtn');
+    var lastMsgId = 0;
+    var pollTimer = null;
+    var sending = false;
+    var knownIds = {};
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatTime(iso) {
+        if (!iso) return '';
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+            return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function appendMessages(messages, scrollToEnd) {
+        if (!messages || !messages.length) return;
+        var nearBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 80;
+        messages.forEach(function (m) {
+            var id = Number(m.id);
+            if (!id || knownIds[id]) return;
+            knownIds[id] = 1;
+            if (id > lastMsgId) lastMsgId = id;
+            if (emptyEl && emptyEl.parentNode) {
+                emptyEl.parentNode.removeChild(emptyEl);
+                emptyEl = null;
+            }
+            var isMe = m.sender_role === 'user';
+            var row = document.createElement('div');
+            row.className = 'msg-row ' + (isMe ? 'me' : 'them');
+            row.setAttribute('data-msg-id', String(id));
+            row.innerHTML =
+                '<div><div class="msg-bubble">' +
+                escapeHtml(m.content) +
+                '</div><div class="msg-meta">' +
+                escapeHtml(formatTime(m.created_at)) +
+                (isMe ? '' : ' · 客服') +
+                '</div></div>';
+            listEl.appendChild(row);
+        });
+        if (scrollToEnd || nearBottom) {
+            listEl.scrollTop = listEl.scrollHeight;
+        }
+    }
+
+    function setStatus(text) {
+        if (statusEl) statusEl.textContent = text || '';
+    }
+
+    function loadThread(isPoll) {
+        var url =
+            'api/chat.php?action=' +
+            (isPoll && lastMsgId > 0 ? 'poll' : 'thread') +
+            (lastMsgId > 0 ? '&after_id=' + encodeURIComponent(lastMsgId) : '');
+        return authFetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (body) {
+                if (!body || body.code !== 200) {
+                    throw new Error((body && body.msg) || '加载失败');
+                }
+                var data = body.data || {};
+                appendMessages(data.messages || [], !isPoll);
+                setStatus('客服在线 · 消息实时刷新');
+            })
+            .catch(function (e) {
+                setStatus(String(e && e.message ? e.message : e) || '网络异常');
+            });
+    }
+
+    function autoGrow() {
+        inputEl.style.height = 'auto';
+        inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    }
+
+    function sendMessage() {
+        if (sending) return;
+        var content = String(inputEl.value || '').trim();
+        if (!content) return;
+        sending = true;
+        sendBtn.disabled = true;
+        authFetch('api/chat.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'send', content: content })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (body) {
+                if (!body || body.code !== 200) {
+                    throw new Error((body && body.msg) || '发送失败');
+                }
+                inputEl.value = '';
+                autoGrow();
+                if (body.data && body.data.message) {
+                    appendMessages([body.data.message], true);
+                } else {
+                    return loadThread(true);
+                }
+            })
+            .catch(function (e) {
+                alert(String(e && e.message ? e.message : e) || '发送失败');
+            })
+            .then(function () {
+                sending = false;
+                sendBtn.disabled = false;
+                inputEl.focus();
+            });
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('input', autoGrow);
+    inputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    loadThread(false).then(function () {
+        pollTimer = setInterval(function () {
+            loadThread(true);
+        }, 3000);
+    });
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            loadThread(true);
+        }
+    });
+
+    window.addEventListener('beforeunload', function () {
+        if (pollTimer) clearInterval(pollTimer);
+    });
+})();
+    </script>
+</body>
+</html>
