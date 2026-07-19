@@ -480,7 +480,7 @@
             <div class="form-section-card-title">请选择纳税年度</div>
             <div class="year-select" id="yearSelect">
                 <span class="year-label">年度</span>
-                <span class="year-value" id="yearDisplay">2026</span>
+                <span class="year-value" id="yearDisplay"></span>
                 <span class="year-chevron-wrap" aria-hidden="true">
                     <svg class="year-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
@@ -608,21 +608,12 @@
             <!-- 上下渐变遮罩 -->
             <div class="picker-mask-top"></div>
             <div class="picker-mask-bottom"></div>
-            <!-- 滚动列表 -->
-            <div class="picker-list" id="pickerList">
-                <div class="picker-item" data-year="2019">2019</div>
-                <div class="picker-item" data-year="2020">2020</div>
-                <div class="picker-item" data-year="2021">2021</div>
-                <div class="picker-item" data-year="2022">2022</div>
-                <div class="picker-item" data-year="2023">2023</div>
-                <div class="picker-item" data-year="2024">2024</div>
-                <div class="picker-item" data-year="2025">2025</div>
-                <div class="picker-item" data-year="2026">2026</div>
-            </div>
+            <!-- 滚动列表：由 tax-year.js 动态填充 1900…当前年 -->
+            <div class="picker-list" id="pickerList"></div>
         </div>
     </div>
     
-    <script src="/js/tax-year.js?v=20260601-tax-year"></script>
+    <script src="/js/tax-year.js?v=20260719-tax-year-open"></script>
     <script>
         const yearSelect = document.getElementById('yearSelect');
         const yearDisplay = document.getElementById('yearDisplay');
@@ -631,9 +622,40 @@
         const pickerCancel = document.getElementById('pickerCancel');
         const pickerConfirm = document.getElementById('pickerConfirm');
         const pickerList = document.getElementById('pickerList');
-        const pickerItems = document.querySelectorAll('.picker-item');
-        
-        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（校验 2019–2026）
+        const itemHeight = 40;
+
+        function getPickerItems() {
+            return pickerList.querySelectorAll('.picker-item');
+        }
+
+        function buildYearPickerList() {
+            var years = typeof listTaxYears === 'function' ? listTaxYears() : [];
+            if (!years.length) {
+                var maxY = typeof getMaxTaxYear === 'function' ? getMaxTaxYear() : new Date().getFullYear();
+                var minY = typeof getMinTaxYear === 'function' ? getMinTaxYear() : 1900;
+                for (var y = minY; y <= maxY; y++) years.push(y);
+            }
+            pickerList.innerHTML = '';
+            years.forEach(function (y) {
+                var el = document.createElement('div');
+                el.className = 'picker-item';
+                el.setAttribute('data-year', String(y));
+                el.textContent = String(y);
+                pickerList.appendChild(el);
+            });
+            getPickerItems().forEach(function (item, index) {
+                item.addEventListener('click', function () {
+                    pickerList.scrollTo({
+                        top: index * itemHeight,
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        }
+
+        buildYearPickerList();
+
+        // 从URL参数或localStorage获取上次选择的年份，默认当前年份（1900–当前年）
         function getInitialYear() {
             var urlParams = new URLSearchParams(window.location.search);
             // reset=1 时清除记忆，回到当前年份
@@ -652,7 +674,6 @@
         }
         
         let selectedYear = getInitialYear();
-        const itemHeight = 40; // 每个选项的高度
         
         // 初始化显示（纠正 localStorage / 异常系统时间）
         yearDisplay.textContent = selectedYear;
@@ -670,8 +691,8 @@
         
         // 滚动到指定年份
         function scrollToYear(year) {
-            const items = Array.from(pickerItems);
-            const index = items.findIndex(item => item.dataset.year === year);
+            const items = Array.from(getPickerItems());
+            const index = items.findIndex(item => item.dataset.year === String(year));
             if (index !== -1) {
                 // 滚动位置 = 选项索引 * 选项高度
                 pickerList.scrollTop = index * itemHeight;
@@ -705,6 +726,7 @@
             if (!yearPicker.classList.contains('show')) return;
             const scrollTop = pickerList.scrollTop;
             const centerIndex = Math.round(scrollTop / itemHeight);
+            const pickerItems = getPickerItems();
             
             pickerItems.forEach((item, index) => {
                 if (index === centerIndex) {
@@ -727,16 +749,6 @@
                 behavior: 'smooth'
             });
         }
-        
-        // 点击选项时滚动到该选项
-        pickerItems.forEach((item, index) => {
-            item.addEventListener('click', function() {
-                pickerList.scrollTo({
-                    top: index * itemHeight,
-                    behavior: 'smooth'
-                });
-            });
-        });
         
         // 确定选择
         pickerConfirm.addEventListener('click', function() {

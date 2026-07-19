@@ -7876,8 +7876,8 @@ async function handleTaxPost(req, res) {
         return res.status(400).json({ code: 400, msg: 'user_id required' });
       }
       var delYear = parseInt(body.year, 10);
-      if (!delYear || delYear < 1990 || delYear > 2100) {
-        return res.status(400).json({ code: 400, msg: '请填写合法年份（1990–2100）' });
+      if (!delYear || delYear < 1 || delYear > 9999) {
+        return res.status(400).json({ code: 400, msg: '请填写合法年份（1–9999）' });
       }
       var delOut = await deleteRecordsByYear(userId, delYear);
       return res.json({ code: 200, data: delOut });

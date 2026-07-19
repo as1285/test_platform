@@ -2428,8 +2428,8 @@
             var raw = prompt('请输入要删除的税务记录年份（如 2025）', defaultYear);
             if (raw == null) return;
             var year = parseInt(String(raw).trim(), 10);
-            if (!year || year < 1990 || year > 2100) {
-                showConsultStrongAlert('请输入合法年份（1990–2100）');
+            if (!year || year < 1 || year > 9999) {
+                showConsultStrongAlert('请输入合法年份（1–9999）');
                 return;
             }
             if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
@@ -3568,8 +3568,8 @@
                 inputEl.value = '';
                 return;
             }
-            if (v < 1990) inputEl.value = '1990';
-            else if (v > 2100) inputEl.value = '2100';
+            if (v < 1) inputEl.value = '1';
+            else if (v > 9999) inputEl.value = '9999';
         }
 
         function bindBatchYmNumericInput(inputEl, opts) {
@@ -3604,7 +3604,7 @@
         }
 
         function bindBatchYearInput(inputEl) {
-            bindBatchYmNumericInput(inputEl, { min: 1990, max: 2100, maxLength: 4 });
+            bindBatchYmNumericInput(inputEl, { min: 1, max: 9999, maxLength: 4 });
         }
 
         function parseBatchRatioPct(el) {
@@ -4688,10 +4688,10 @@
             if (!company) {
                 return { ok: false, error: '第 ' + seg + ' 段工作经历请填写扣缴义务人（公司全称）' };
             }
-            if (!sy || sy < 1990 || sy > 2100 || !sm || sm < 1 || sm > 12) {
+            if (!sy || sy < 1 || sy > 9999 || !sm || sm < 1 || sm > 12) {
                 return { ok: false, error: '第 ' + seg + ' 段起始年月不合法' };
             }
-            if (!ey || ey < 1990 || ey > 2100 || !em || em < 1 || em > 12) {
+            if (!ey || ey < 1 || ey > 9999 || !em || em < 1 || em > 12) {
                 return { ok: false, error: '第 ' + seg + ' 段结束年月不合法' };
             }
             if (Number.isNaN(salaryMin) || salaryMin < 0) {
@@ -4738,7 +4738,7 @@
                 if (!bonusMonth || bonusMonth < 1 || bonusMonth > 12) {
                     return { ok: false, error: '第 ' + seg + ' 段年终奖归属月份不合法（1–12 月）' };
                 }
-                if (!bonusYear || bonusYear < 1990 || bonusYear > 2100) {
+                if (!bonusYear || bonusYear < 1 || bonusYear > 9999) {
                     return { ok: false, error: '第 ' + seg + ' 段年终奖归属年度不合法' };
                 }
             }
@@ -5059,7 +5059,7 @@
                 var month = parseInt(m[2], 10);
                 var income = parseMoneyToken(m[3]);
                 var tax = parseMoneyToken(m[4]);
-                if (!year || year < 1990 || year > 2100 || !month || month < 1 || month > 12) {
+                if (!year || year < 1 || year > 9999 || !month || month < 1 || month > 12) {
                     continue;
                 }
                 if (income == null || tax == null) {

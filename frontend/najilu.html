@@ -638,7 +638,7 @@
 
         <div class="tips-box">
             <div class="tips-title">温馨提示：</div>
-            <div class="tips-item">1.根据《国家税务局公告2018年第55号》的规定，您可申请开具2019年1月及以后的纳税记录；</div>
+            <div class="tips-item">1.可申请开具今年及以前任意年份的纳税记录（演示数据不限起始年）；</div>
             <div class="tips-item">2.每人每天最多可开具三次纳税记录；</div>
             <div class="tips-item">3.您可以选择注册时所使用的证件或已添加的其他身份证件来开具纳税记录。<a href="#">去添加其他身份证件</a></div>
             <div class="tips-item">4.若您对纳税记录的内容有疑问，请<a href="#">点此帮助</a>。</div>
@@ -662,7 +662,7 @@
                     <span class="info-arrow" aria-hidden="true">›</span>
                 </label>
                 <button type="button" class="help-icon mp-help-btn" title="说明" aria-label="开具年月起说明">?</button>
-                <input type="month" id="rangeStartInput" class="month-picker-native" min="2019-01" aria-label="开具年月起">
+                <input type="month" id="rangeStartInput" class="month-picker-native" min="1900-01" aria-label="开具年月起">
             </div>
             <div class="info-row info-row-month-picker">
                 <label class="month-picker-hit" for="rangeEndInput" tabindex="0">
@@ -673,7 +673,7 @@
                     <span class="info-arrow" aria-hidden="true">›</span>
                 </label>
                 <button type="button" class="help-icon mp-help-btn" title="说明" aria-label="开具年月止说明">?</button>
-                <input type="month" id="rangeEndInput" class="month-picker-native" min="2019-01" aria-label="开具年月止">
+                <input type="month" id="rangeEndInput" class="month-picker-native" min="1900-01" aria-label="开具年月止">
             </div>
         </div>
 
@@ -710,7 +710,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260716-qr-sharp"></script>
+    <script src="/js/najilu.js?v=20260719-tax-year-open"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>

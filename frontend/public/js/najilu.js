@@ -61,7 +61,7 @@
 
   function ymParts(ym) {
     var p = String(ym || '').split('-');
-    return { y: parseInt(p[0], 10) || 2019, m: parseInt(p[1], 10) || 1 };
+    return { y: parseInt(p[0], 10) || 1900, m: parseInt(p[1], 10) || 1 };
   }
 
   function buildYm(y, m) {
@@ -128,7 +128,7 @@
   }
 
   function fillMonthPickerSelects(inp) {
-    var minP = ymParts(inp.min || '2019-01');
+    var minP = ymParts(inp.min || '1900-01');
     var maxP = ymParts(inp.max || todayYm());
     var cur = ymParts(inp.value || todayYm());
     var y;
@@ -856,7 +856,7 @@
           rangeEndInput.value = rangeStartInput.value;
           rangeEndLabel.textContent = rangeEndInput.value;
         }
-        rangeEndInput.min = rangeStartInput.value || '2019-01';
+        rangeEndInput.min = rangeStartInput.value || '1900-01';
         rangeStartInput.max = rangeEndInput.value || ymMax;
         if (rangeStartInput.max > ymMax) rangeStartInput.max = ymMax;
         if (rangeEndInput.max !== ymMax) rangeEndInput.max = ymMax;
@@ -877,7 +877,7 @@
         el.addEventListener('click', function (e) {
           e.stopPropagation();
           e.preventDefault();
-          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 2019 年 1 月，最晚不超过当前月。');
+          alert('请选择申请开具纳税记录的起止年月（含起止月）。最早可选 1900 年 1 月，最晚不超过当前月。');
         });
       });
       clampOrder();

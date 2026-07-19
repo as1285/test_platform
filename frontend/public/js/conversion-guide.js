@@ -32,12 +32,13 @@
   var profileFetchInFlight = null;
 
   function normalizeTaxYearLocal(raw) {
-    var minY = 2019;
-    var maxY = 2026;
-    var defY = (function () {
-      var now = new Date().getFullYear();
-      return now >= minY && now <= maxY ? now : maxY;
-    })();
+    if (typeof globalThis !== 'undefined' && typeof globalThis.normalizeTaxYear === 'function') {
+      return globalThis.normalizeTaxYear(raw);
+    }
+    var minY = 1900;
+    var now = new Date().getFullYear();
+    var maxY = now && !isNaN(now) && now >= minY ? now : minY;
+    var defY = maxY;
     var y = parseInt(String(raw == null ? '' : raw).trim(), 10);
     if (!y || isNaN(y) || y < minY || y > maxY) return defY;
     return y;
