@@ -1910,17 +1910,10 @@
                     openGuestDownloadModal('activate_btn');
                     return;
                 }
-                var root = document.getElementById('mineActivateModal');
-                var inp = document.getElementById('mineActivateCodeInput');
-                if (!root || !inp) return;
-                if (typeof refreshPublicInstallPackagesUi === 'function') {
-                    refreshPublicInstallPackagesUi();
-                } else {
-                    fetchMineXianyuUrl();
+                if (typeof window.trackUserAction === 'function') {
+                    window.trackUserAction('track_activate_prompt_open', { page: 'mine' });
                 }
-                root.classList.add('is-open');
-                inp.value = '';
-                setTimeout(function () { inp.focus(); }, 0);
+                window.location.href = 'purchase.html';
             }
 
             function closeMineActivateModal() {
@@ -2107,9 +2100,6 @@
                 });
                 mineActivateBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_activate_prompt_open', { page: 'mine' });
-                    }
                     openMineActivateModal();
                 });
             }

@@ -93,7 +93,7 @@
                     </section>
                     <section>
                         <h2>微信收款码（用户反馈页）</h2>
-                        <p class="hint">上传后将在用户端「我要咨询 → 我要反馈」页面展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不在用户端显示。</p>
+                        <p class="hint">上传后将在用户端「购买激活」页与「我要咨询 → 我要反馈」展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不显示。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <div id="wechatPayQrPreviewWrap" class="img-preview-wrap" hidden>
@@ -197,9 +197,9 @@
                     </div>
                 </div>
                 <div class="form-field mt-12">
-                    <label for="xianyuPurchaseUrl">闲鱼购买文案（用户端激活弹窗）</label>
-                    <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则激活页不显示该按钮">
-                    <p class="hint mt-6">用户在个人中心点「激活」时的弹窗中点击「闲鱼购买」会复制此处全文到剪贴板。</p>
+                    <label for="xianyuPurchaseUrl">闲鱼购买文案（用户端购买页）</label>
+                    <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则购买页不显示该按钮">
+                    <p class="hint mt-6">用户在「我的」点「激活」进入购买页后，点击「闲鱼购买」会复制此处全文到剪贴板。</p>
                 </div>
                 <div class="form-field mt-12">
                     <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>

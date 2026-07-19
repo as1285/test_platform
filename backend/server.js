@@ -13650,6 +13650,7 @@ async function handlePublicInstallPackages(req, res) {
         android = agentApk;
       }
     }
+    var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
     return res.json({
       code: 200,
       data: {
@@ -13657,9 +13658,14 @@ async function handlePublicInstallPackages(req, res) {
         ios_mobileconfig_download_url: ios,
         xianyu_purchase_url: xianyu,
         show_xianyu_purchase: !hideXianyu && !!xianyu,
+        wechat_pay_qrcode_url: qrRef || '',
+        wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
+        show_wechat_pay_qrcode: !hideXianyu && !!qrRef,
         sales_channel: salesCh || null,
         qq_add_url: qq,
-        qq_group_url: qqGroup
+        qq_group_url: qqGroup,
+        show_qq_group: !!qqGroup,
+        show_qq_add: !!qq
       }
     });
   } catch (e) {

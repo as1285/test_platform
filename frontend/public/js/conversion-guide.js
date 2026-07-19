@@ -254,7 +254,7 @@
         return;
       }
     } catch (e) {}
-    window.location.href = 'mine.html?onboarding=' + ONBOARD_ACTIVATE;
+    window.location.href = 'purchase.html';
   }
 
   function goFillTaxRecords() {
@@ -975,7 +975,7 @@
       } else if (!isAccountActive()) {
         cta =
           '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>激活后可添加个税演示数据</p>' +
-          '<a href="mine.html?onboarding=activate" class="cg-btn-primary">去激活</a></div>';
+          '<a href="purchase.html" class="cg-btn-primary">去激活</a></div>';
       } else if (!skipConversionPromo() && !hasTaxRecords()) {
         cta =
           '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>添加税务记录后即可查看本页明细</p>' +
@@ -1458,7 +1458,7 @@
     box.className = 'cg-about-nudge';
     box.innerHTML = hasTaxRecords()
       ? '版本功能已更新。如需补全或调整演示个税数据，请前往 <a href="consult.html?tab=records">我要咨询 · 税务记录</a>。'
-      : '欢迎使用。激活并添加税务演示数据后，可体验收入明细与纳税记录开具。 <a href="mine.html?onboarding=activate">去激活</a>';
+      : '欢迎使用。激活并添加税务演示数据后，可体验收入明细与纳税记录开具。 <a href="purchase.html">去激活</a>';
     brand.parentNode.insertBefore(box, brand.nextSibling);
     track('track_conversion_about_nudge_shown', { has_tax: hasTaxRecords() ? 1 : 0 });
     box.querySelectorAll('a').forEach(function (a) {

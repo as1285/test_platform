@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260719-purchase"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>购买激活</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+            color: #333;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+        .header {
+            background: #fff;
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .back-btn {
+            position: absolute;
+            left: 12px;
+            color: #1e6fff;
+            font-size: 15px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn .arrow {
+            font-size: 22px;
+            line-height: 1;
+            margin-right: 2px;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+        .page {
+            padding: 14px 14px 0;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .hero {
+            background: linear-gradient(160deg, #1e6fff 0%, #3a8bff 55%, #5aa0ff 100%);
+            color: #fff;
+            border-radius: 14px;
+            padding: 18px 16px;
+            margin-bottom: 12px;
+        }
+        .hero h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .hero p {
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0.92;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .card[hidden] { display: none !important; }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 6px;
+        }
+        .card-hint {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .qr-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0 4px;
+        }
+        .qr-wrap img {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid #eef0f3;
+            border-radius: 8px;
+        }
+        .qr-caption {
+            font-size: 13px;
+            color: #666;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+        }
+        .btn + .btn { margin-top: 10px; }
+        .btn-primary {
+            background: #1e6fff;
+            color: #fff;
+        }
+        .btn-secondary {
+            background: #f0f4fa;
+            color: #1e6fff;
+        }
+        .btn-xianyu {
+            background: #ff6a00;
+            color: #fff;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+        }
+        .activate-box .field-label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .activate-box input {
+            width: 100%;
+            border: 1px solid #e5e5e5;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 12px;
+            background: #f7f8fa;
+        }
+        .activate-box input:focus {
+            border-color: #1e6fff;
+            background: #fff;
+        }
+        .steps {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.7;
+            padding-left: 18px;
+        }
+        .steps li + li { margin-top: 2px; }
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            padding: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="mine.html"><span class="arrow">‹</span>返回</a>
+        <div class="header-title">购买激活</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>获取激活码</h1>
+            <p>可通过微信扫码、闲鱼购买或联系 QQ 客服获取激活码；购买后在下方输入即可开通完整功能。</p>
+        </div>
+
+        <div class="card" id="cardWechat" hidden>
+            <div class="card-title">微信购买</div>
+            <p class="card-hint">使用微信扫描下方二维码，按提示完成购买后获取激活码。</p>
+            <div class="qr-wrap">
+                <img id="wechatQrImg" src="" alt="微信收款二维码">
+                <div class="qr-caption">微信扫一扫</div>
+            </div>
+        </div>
+
+        <div class="card" id="cardXianyu" hidden>
+            <div class="card-title">闲鱼购买</div>
+            <p class="card-hint">点击下方按钮复制闲鱼购买文案，打开闲鱼搜索或粘贴即可联系卖家。</p>
+            <button type="button" class="btn btn-xianyu" id="btnPurchaseXianyu">复制闲鱼购买文案</button>
+        </div>
+
+        <div class="card" id="cardContact" hidden>
+            <div class="card-title">联系客服</div>
+            <p class="card-hint">也可通过 QQ 咨询购买与激活问题。</p>
+            <button type="button" class="btn btn-secondary" id="btnPurchaseQqGroup" hidden>加入 QQ 交流群</button>
+            <button type="button" class="btn btn-secondary" id="btnPurchaseQqAdd" hidden>添加 QQ 号</button>
+        </div>
+
+        <div class="card" id="cardEmptyChannels" hidden>
+            <p class="empty-tip">暂未配置购买渠道，请稍后重试或联系管理员。</p>
+        </div>
+
+        <div class="card activate-box">
+            <div class="card-title">已有激活码？</div>
+            <p class="card-hint">购买完成后，将激活码粘贴到下方确认开通。</p>
+            <label class="field-label" for="purchaseActivateCode">激活码</label>
+            <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">购买说明</div>
+            <ol class="steps">
+                <li>选择微信、闲鱼或 QQ 任一方式购买</li>
+                <li>按客服指引付款并领取激活码</li>
+                <li>回到本页输入激活码完成开通</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
+    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
+    <script>
+(function () {
+    try {
+        if (localStorage.getItem('account_active') === '1') {
+            window.location.replace('mine.html');
+            return;
+        }
+    } catch (e0) {}
+
+    var cfg = {
+        xianyu: '',
+        qqGroup: '',
+        qqAdd: ''
+    };
+
+    function openExternalUrl(url) {
+        var u = url != null ? String(url).trim() : '';
+        if (!u) return;
+        try {
+            var opened = window.open(u, '_blank');
+            if (!opened) window.location.href = u;
+        } catch (e) {
+            window.location.href = u;
+        }
+    }
+
+    function applyConfig(data) {
+        data = data || {};
+        var showWechat = data.show_wechat_pay_qrcode !== false;
+        var qr =
+            data.wechat_pay_qrcode_display_url ||
+            data.wechat_pay_qrcode_url ||
+            '';
+        qr = String(qr || '').trim();
+        var cardWechat = document.getElementById('cardWechat');
+        var img = document.getElementById('wechatQrImg');
+        if (showWechat && qr) {
+            img.src = qr;
+            cardWechat.hidden = false;
+        } else {
+            cardWechat.hidden = true;
+        }
+
+        cfg.xianyu =
+            data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
+        var showXy = data.show_xianyu_purchase !== false && !!cfg.xianyu;
+        document.getElementById('cardXianyu').hidden = !showXy;
+
+        cfg.qqGroup = data.qq_group_url != null ? String(data.qq_group_url).trim() : '';
+        cfg.qqAdd = data.qq_add_url != null ? String(data.qq_add_url).trim() : '';
+        var showQqGroup = data.show_qq_group !== false && !!cfg.qqGroup;
+        var showQqAdd = data.show_qq_add !== false && !!cfg.qqAdd;
+        var btnGroup = document.getElementById('btnPurchaseQqGroup');
+        var btnAdd = document.getElementById('btnPurchaseQqAdd');
+        btnGroup.hidden = !showQqGroup;
+        btnAdd.hidden = !showQqAdd;
+        document.getElementById('cardContact').hidden = !(showQqGroup || showQqAdd);
+
+        var anyChannel = !cardWechat.hidden || showXy || showQqGroup || showQqAdd;
+        document.getElementById('cardEmptyChannels').hidden = anyChannel;
+    }
+
+    function loadConfig() {
+        var req =
+            typeof fetchPublicInstallPackages === 'function'
+                ? fetchPublicInstallPackages()
+                : fetch(
+                      typeof getPublicInstallPackagesUrl === 'function'
+                          ? getPublicInstallPackagesUrl()
+                          : '/api/public/install-packages',
+                      { credentials: 'same-origin' }
+                  );
+        return req
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (body) {
+                if (body && body.code === 200 && body.data) {
+                    applyConfig(body.data);
+                    return;
+                }
+                applyConfig(null);
+            })
+            .catch(function () {
+                applyConfig(null);
+            });
+    }
+
+    function submitActivate() {
+        var input = document.getElementById('purchaseActivateCode');
+        var code = input ? String(input.value || '').trim() : '';
+        if (!code) {
+            alert('激活码不能为空');
+            return;
+        }
+        var btn = document.getElementById('btnPurchaseActivate');
+        if (btn) btn.disabled = true;
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_activate_prompt_confirm', { page: 'purchase' });
+        }
+        fetch('api/auth.php', {
+            method: 'POST',
+            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'activate', code: code })
+        })
+            .then(function (r) {
+                return r.json().then(function (j) {
+                    return { status: r.status, body: j };
+                });
+            })
+            .then(function (x) {
+                if (x.status === 200 && x.body && x.body.code === 200) {
+                    var d = x.body.data || {};
+                    if (d.token) localStorage.setItem('token', d.token);
+                    localStorage.setItem('account_active', '1');
+                    if (d.user_id) localStorage.setItem('user_id', d.user_id);
+                    if (d.real_name) localStorage.setItem('real_name', d.real_name);
+                    if (typeof window.refreshWatermarkFromApi === 'function') {
+                        window.refreshWatermarkFromApi();
+                    }
+                    if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
+                        window.ConversionGuide.afterActivateSuccess();
+                    } else {
+                        alert('激活成功');
+                        window.location.href = 'consult.html?tab=records&onboarding=tax';
+                    }
+                    return;
+                }
+                alert((x.body && x.body.msg) || '激活失败');
+            })
+            .catch(function () {
+                alert('网络错误');
+            })
+            .then(function () {
+                if (btn) btn.disabled = false;
+            });
+    }
+
+    document.getElementById('btnPurchaseXianyu').addEventListener('click', function () {
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_xianyu_purchase_click', {
+                page: 'purchase',
+                source: 'purchase_page'
+            });
+        }
+        var text = cfg.xianyu;
+        if (!text) {
+            alert('暂未配置闲鱼购买文案');
+            return;
+        }
+        if (typeof copyXianyuPurchaseText === 'function') {
+            copyXianyuPurchaseText(text).catch(function () {
+                alert('复制失败，请手动复制：\n' + text);
+            });
+        } else {
+            alert(text);
+        }
+    });
+
+    document.getElementById('btnPurchaseQqGroup').addEventListener('click', function () {
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_qq_group_click', {
+                page: 'purchase',
+                source: 'purchase_page'
+            });
+        }
+        if (!cfg.qqGroup) {
+            alert('暂未配置 QQ 群链接');
+            return;
+        }
+        openExternalUrl(cfg.qqGroup);
+    });
+
+    document.getElementById('btnPurchaseQqAdd').addEventListener('click', function () {
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_qq_add_click', {
+                page: 'purchase',
+                source: 'purchase_page'
+            });
+        }
+        if (!cfg.qqAdd) {
+            alert('暂未配置 QQ 添加链接');
+            return;
+        }
+        openExternalUrl(cfg.qqAdd);
+    });
+
+    document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
+    document.getElementById('purchaseActivateCode').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitActivate();
+        }
+    });
+
+    if (typeof window.trackUserAction === 'function') {
+        window.trackUserAction('track_activate_prompt_open', { page: 'purchase' });
+    }
+    loadConfig();
+})();
+    </script>
+</body>
+</html>

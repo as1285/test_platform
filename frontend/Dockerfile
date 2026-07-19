@@ -32,6 +32,7 @@ COPY 个人.mobileconfig /usr/share/nginx/html/personal.mobileconfig
 COPY consult.html /usr/share/nginx/html/
 COPY help_center.html /usr/share/nginx/html/
 COPY chat.html /usr/share/nginx/html/
+COPY purchase.html /usr/share/nginx/html/
 COPY care_version.html /usr/share/nginx/html/
 COPY guanhuai.jpg /usr/share/nginx/html/
 COPY shouye.html /usr/share/nginx/html/
