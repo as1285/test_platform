@@ -156,7 +156,7 @@
 </head>
 <body>
     <div class="header">
-        <a class="back-btn" href="purchase.html"><span class="arrow">‹</span>返回</a>
+        <a class="back-btn" id="chatBackBtn" href="consult.html"><span class="arrow">‹</span>返回</a>
         <div class="header-title">在线客服</div>
     </div>
     <div class="chat-status" id="chatStatus">连接中…</div>
@@ -169,6 +169,28 @@
     </div>
     <script>
 (function () {
+    var backBtn = document.getElementById('chatBackBtn');
+    if (backBtn) {
+        try {
+            var from = new URLSearchParams(window.location.search).get('from');
+            if (from === 'purchase') {
+                backBtn.href = 'purchase.html';
+            } else if (from === 'mine') {
+                backBtn.href = 'mine.html';
+            } else {
+                backBtn.href = 'consult.html';
+            }
+        } catch (eBack) {
+            backBtn.href = 'consult.html';
+        }
+    }
+
+    try {
+        if (localStorage.getItem('account_active') === '1') {
+            /* keep page usable for activated users */
+        }
+    } catch (e0) {}
+
     var listEl = document.getElementById('chatList');
     var emptyEl = document.getElementById('chatEmpty');
     var statusEl = document.getElementById('chatStatus');

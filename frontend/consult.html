@@ -890,7 +890,7 @@
         <a href="#" class="tab" data-tab="employers">任职受雇</a>
         <a href="#" class="tab" data-tab="messages">消息管理</a>
         <a href="#" class="tab active" data-tab="records">税务记录</a>
-        <a href="#" class="tab" data-tab="feedback">我要反馈</a>
+        <a href="chat.html?from=consult" class="tab" data-tab="feedback">在线客服</a>
     </div>
 
     <div class="container">
@@ -1482,6 +1482,10 @@
             if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();
             }
+            if (tab === 'feedback' || tab === 'chat') {
+                window.location.href = 'chat.html?from=consult';
+                return;
+            }
             document.querySelectorAll('.tabs .tab').forEach(function(a) {
                 a.classList.toggle('active', a.getAttribute('data-tab') === tab);
             });
@@ -1496,10 +1500,6 @@
                 u.searchParams.set('user_id', currentUserId());
                 u.searchParams.set('tab', tab);
                 history.replaceState({}, '', u);
-            }
-            if (tab === 'feedback') {
-                loadFeedbackWechatPayQr();
-                loadFeedbackList();
             }
             if (tab === 'records') {
                 /* 有新鲜缓存则不再重复拉 tax.php / employers（启动时已拉过） */
@@ -1695,7 +1695,12 @@
 
         function initTabs() {
             document.querySelectorAll('.tabs .tab').forEach(function(a) {
-                a.href = tabHref(a.getAttribute('data-tab'));
+                var tabKey = a.getAttribute('data-tab');
+                if (tabKey === 'feedback') {
+                    a.href = 'chat.html?from=consult';
+                } else {
+                    a.href = tabHref(tabKey);
+                }
                 a.addEventListener('click', function(e) {
                     e.preventDefault();
                     switchTab(a.getAttribute('data-tab'), true);
@@ -1703,7 +1708,11 @@
             });
             var tab = getUrlParam('tab') || 'records';
             if (tab === 'batch' || tab === 'batch_records') tab = 'records';
-            var valid = ['employers', 'messages', 'records', 'feedback'];
+            if (tab === 'feedback' || tab === 'chat') {
+                window.location.replace('chat.html?from=consult');
+                return;
+            }
+            var valid = ['employers', 'messages', 'records'];
             if (tab === 'profile') tab = 'records';
             if (valid.indexOf(tab) < 0) tab = 'records';
             switchTab(tab, false);
