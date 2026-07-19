@@ -178,7 +178,7 @@
     <div class="page">
         <div class="hero">
             <h1>获取激活码</h1>
-            <p>可通过微信扫码、闲鱼购买或联系 QQ 客服获取激活码；购买后在下方输入即可开通完整功能。</p>
+            <p>可通过微信扫码、闲鱼购买、在线客服或 QQ 获取激活码；购买后在下方输入即可开通完整功能。</p>
         </div>
 
         <div class="card" id="cardWechat" hidden>
@@ -196,9 +196,10 @@
             <button type="button" class="btn btn-xianyu" id="btnPurchaseXianyu">复制闲鱼购买文案</button>
         </div>
 
-        <div class="card" id="cardContact" hidden>
+        <div class="card" id="cardContact">
             <div class="card-title">联系客服</div>
-            <p class="card-hint">也可通过 QQ 咨询购买与激活问题。</p>
+            <p class="card-hint">购买、激活遇到问题可先咨询在线客服，也可通过 QQ 联系。</p>
+            <a class="btn btn-secondary" id="btnPurchaseOnlineChat" href="chat.html">在线客服</a>
             <button type="button" class="btn btn-secondary" id="btnPurchaseQqGroup" hidden>加入 QQ 交流群</button>
             <button type="button" class="btn btn-secondary" id="btnPurchaseQqAdd" hidden>添加 QQ 号</button>
         </div>
@@ -283,10 +284,9 @@
         var btnAdd = document.getElementById('btnPurchaseQqAdd');
         btnGroup.hidden = !showQqGroup;
         btnAdd.hidden = !showQqAdd;
-        document.getElementById('cardContact').hidden = !(showQqGroup || showQqAdd);
-
-        var anyChannel = !cardWechat.hidden || showXy || showQqGroup || showQqAdd;
-        document.getElementById('cardEmptyChannels').hidden = anyChannel;
+        document.getElementById('cardContact').hidden = false;
+        /* 在线客服始终可用，不再展示「暂未配置购买渠道」 */
+        document.getElementById('cardEmptyChannels').hidden = true;
     }
 
     function loadConfig() {
@@ -383,6 +383,15 @@
             });
         } else {
             alert(text);
+        }
+    });
+
+    document.getElementById('btnPurchaseOnlineChat').addEventListener('click', function () {
+        if (typeof window.trackUserAction === 'function') {
+            window.trackUserAction('track_online_chat_click', {
+                page: 'purchase',
+                source: 'purchase_page'
+            });
         }
     });
 
