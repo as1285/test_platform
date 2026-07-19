@@ -1310,8 +1310,22 @@
                 <div id="page-chat" class="page-panel" role="tabpanel">
         <section>
             <h2>在线客服</h2>
-            <p class="hint">用户在「购买激活 → 在线客服」发起的会话；左侧选会话，右侧回复。页面会自动刷新未读消息。</p>
-            <div class="form-row flex-align-end">
+            <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起的会话；左侧选会话，右侧回复。页面会自动刷新未读消息。</p>
+            <div class="form-row form-stack mt-8">
+                <div class="form-field">
+                    <label for="chatAutoReplyWelcome">开场自动回复（首次进入空会话时发送）</label>
+                    <textarea id="chatAutoReplyWelcome" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送开场话术"></textarea>
+                </div>
+                <div class="form-field">
+                    <label for="chatAutoReplyReply">用户发消息后的自动回复</label>
+                    <textarea id="chatAutoReplyReply" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不自动回复"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary" id="btnSaveChatAutoReply">保存自动回复话术</button>
+                    <button type="button" class="btn-page" id="btnResetChatAutoReply">恢复默认</button>
+                </div>
+            </div>
+            <div class="form-row flex-align-end mt-12">
                 <div>
                     <label for="chatAdminFilterUnread">未读</label>
                     <select class="filter-select" id="chatAdminFilterUnread">
@@ -2023,7 +2037,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260719-chat"></script>
+    <script src="/js/admin_panel.js?v=20260720-chat-auto-reply"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260719-tax-year-open"></script>
 </body>

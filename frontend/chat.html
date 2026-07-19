@@ -231,12 +231,17 @@
             var row = document.createElement('div');
             row.className = 'msg-row ' + (isMe ? 'me' : 'them');
             row.setAttribute('data-msg-id', String(id));
+            var whoLabel = isMe
+                ? ''
+                : m.sender_role === 'system' || m.sender_id === 'auto_reply'
+                  ? ' · 自动回复'
+                  : ' · 客服';
             row.innerHTML =
                 '<div><div class="msg-bubble">' +
                 escapeHtml(m.content) +
                 '</div><div class="msg-meta">' +
                 escapeHtml(formatTime(m.created_at)) +
-                (isMe ? '' : ' · 客服') +
+                whoLabel +
                 '</div></div>';
             listEl.appendChild(row);
         });
@@ -294,6 +299,9 @@
                 autoGrow();
                 if (body.data && body.data.message) {
                     appendMessages([body.data.message], true);
+                    if (body.data.auto_reply) {
+                        appendMessages([body.data.auto_reply], true);
+                    }
                 } else {
                     return loadThread(true);
                 }

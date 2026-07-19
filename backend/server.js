@@ -231,6 +231,13 @@ const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 const SETTING_KEY_LANDING_AB = 'landing_ab_json';
+const SETTING_KEY_CHAT_AUTO_REPLY_WELCOME = 'chat_auto_reply_welcome';
+const SETTING_KEY_CHAT_AUTO_REPLY_REPLY = 'chat_auto_reply_reply';
+
+const DEFAULT_CHAT_AUTO_REPLY_WELCOME =
+  '您好，欢迎咨询在线客服。如需购买激活码，请到「我的」点击「激活」打开购买页（微信/闲鱼/QQ）；也可直接在此留言，客服看到后会尽快回复。';
+const DEFAULT_CHAT_AUTO_REPLY_REPLY =
+  '已收到您的消息，客服稍候会人工回复。紧急购买请到「我的 → 激活」查看微信收款码、闲鱼与 QQ 联系方式。';
 
 const DEFAULT_CONVERSION_AB = {
   enabled: true,
@@ -2098,6 +2105,14 @@ async function createTables() {
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_LANDING_AB,
     JSON.stringify(DEFAULT_LANDING_AB)
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_CHAT_AUTO_REPLY_WELCOME,
+    DEFAULT_CHAT_AUTO_REPLY_WELCOME
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_CHAT_AUTO_REPLY_REPLY,
+    DEFAULT_CHAT_AUTO_REPLY_REPLY
   ]);
 
   await conn.execute(`
@@ -7399,6 +7414,9 @@ async function handleFeedbackPost(req, res) {
 
 var CHAT_MSG_MAX_LEN = 2000;
 var CHAT_THREAD_LIMIT = 200;
+var CHAT_AUTO_SENDER_ID = 'auto_reply';
+var _chatAutoReplyCache = null;
+var CHAT_AUTO_REPLY_CACHE_MS = 10000;
 
 function chatPreviewText(content) {
   var s = content != null ? String(content).replace(/\s+/g, ' ').trim() : '';
@@ -7406,6 +7424,56 @@ function chatPreviewText(content) {
     return s.substring(0, 80) + '…';
   }
   return s;
+}
+
+function sanitizeChatAutoReplyText(raw, maxLen) {
+  var s = raw != null ? String(raw).trim() : '';
+  var lim = maxLen != null ? maxLen : CHAT_MSG_MAX_LEN;
+  if (s.length > lim) {
+    s = s.substring(0, lim);
+  }
+  return s;
+}
+
+async function loadChatAutoReplySettingsFromConn(conn) {
+  const [rows] = await conn.execute(
+    'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?)',
+    [SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, SETTING_KEY_CHAT_AUTO_REPLY_REPLY]
+  );
+  var map = {};
+  rows.forEach(function (r) {
+    map[r.setting_key] = r.setting_value;
+  });
+  var welcome = sanitizeChatAutoReplyText(
+    map[SETTING_KEY_CHAT_AUTO_REPLY_WELCOME] != null
+      ? map[SETTING_KEY_CHAT_AUTO_REPLY_WELCOME]
+      : DEFAULT_CHAT_AUTO_REPLY_WELCOME
+  );
+  var reply = sanitizeChatAutoReplyText(
+    map[SETTING_KEY_CHAT_AUTO_REPLY_REPLY] != null
+      ? map[SETTING_KEY_CHAT_AUTO_REPLY_REPLY]
+      : DEFAULT_CHAT_AUTO_REPLY_REPLY
+  );
+  return { welcome: welcome, reply: reply };
+}
+
+async function getChatAutoReplySettings() {
+  var now = Date.now();
+  if (_chatAutoReplyCache && now - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS) {
+    return _chatAutoReplyCache.v;
+  }
+  const conn = await pool.getConnection();
+  try {
+    var out = await loadChatAutoReplySettingsFromConn(conn);
+    _chatAutoReplyCache = { v: out, t: now };
+    return out;
+  } finally {
+    conn.release();
+  }
+}
+
+function invalidateChatAutoReplyCache() {
+  _chatAutoReplyCache = null;
 }
 
 function mapChatMessageRow(r) {
@@ -7475,7 +7543,7 @@ async function insertChatMessage(conn, conversationId, senderRole, senderId, con
        WHERE id = ?`,
       [preview, senderRole, conversationId]
     );
-  } else if (senderRole === 'admin') {
+  } else if (senderRole === 'admin' || senderRole === 'system') {
     await conn.execute(
       `UPDATE chat_conversations
        SET last_message_at = NOW(), last_message_preview = ?, last_sender_role = ?,
@@ -7498,6 +7566,42 @@ async function insertChatMessage(conn, conversationId, senderRole, senderId, con
   return msgRows[0];
 }
 
+async function maybeInsertChatWelcome(conn, conversationId) {
+  const [cntRows] = await conn.execute(
+    'SELECT COUNT(*) AS c FROM chat_messages WHERE conversation_id = ?',
+    [conversationId]
+  );
+  var count = cntRows.length ? Number(cntRows[0].c) : 0;
+  if (count > 0) {
+    return null;
+  }
+  var cfg =
+    (_chatAutoReplyCache && Date.now() - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS
+      ? _chatAutoReplyCache.v
+      : null) || (await loadChatAutoReplySettingsFromConn(conn));
+  if (!_chatAutoReplyCache || Date.now() - _chatAutoReplyCache.t >= CHAT_AUTO_REPLY_CACHE_MS) {
+    _chatAutoReplyCache = { v: cfg, t: Date.now() };
+  }
+  if (!cfg.welcome) {
+    return null;
+  }
+  return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.welcome);
+}
+
+async function maybeInsertChatAutoReply(conn, conversationId) {
+  var cfg =
+    (_chatAutoReplyCache && Date.now() - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS
+      ? _chatAutoReplyCache.v
+      : null) || (await loadChatAutoReplySettingsFromConn(conn));
+  if (!_chatAutoReplyCache || Date.now() - _chatAutoReplyCache.t >= CHAT_AUTO_REPLY_CACHE_MS) {
+    _chatAutoReplyCache = { v: cfg, t: Date.now() };
+  }
+  if (!cfg.reply) {
+    return null;
+  }
+  return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.reply);
+}
+
 async function handleChatGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -7514,6 +7618,9 @@ async function handleChatGet(req, res) {
     try {
       var conv = await ensureUserChatConversation(conn, userId);
       var convId = Number(conv.id);
+      if (action === 'thread' && afterId <= 0) {
+        await maybeInsertChatWelcome(conn, convId);
+      }
       var msgs;
       if (afterId > 0) {
         const [rows] = await conn.query(
@@ -7537,10 +7644,14 @@ async function handleChatGet(req, res) {
         );
         conv.user_unread = 0;
       }
+      const [fresh] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [convId]
+      );
       return res.json({
         code: 200,
         data: {
-          conversation: mapChatConversationRow(conv),
+          conversation: mapChatConversationRow(fresh[0] || conv),
           messages: msgs.map(mapChatMessageRow)
         }
       });
@@ -7591,16 +7702,20 @@ async function handleChatPost(req, res) {
     const conn = await pool.getConnection();
     try {
       var conv = await ensureUserChatConversation(conn, userId);
-      var msg = await insertChatMessage(conn, Number(conv.id), 'user', String(userId), content);
+      var convId = Number(conv.id);
+      await maybeInsertChatWelcome(conn, convId);
+      var msg = await insertChatMessage(conn, convId, 'user', String(userId), content);
+      var autoMsg = await maybeInsertChatAutoReply(conn, convId);
       const [fresh] = await conn.execute(
         'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
-        [Number(conv.id)]
+        [convId]
       );
       return res.json({
         code: 200,
         data: {
           conversation: mapChatConversationRow(fresh[0] || conv),
-          message: mapChatMessageRow(msg)
+          message: mapChatMessageRow(msg),
+          auto_reply: autoMsg ? mapChatMessageRow(autoMsg) : null
         }
       });
     } finally {
@@ -16726,6 +16841,69 @@ async function handleAdminChatSend(req, res) {
   }
 }
 
+async function handleAdminChatAutoReplyGet(req, res) {
+  try {
+    var cfg = await getChatAutoReplySettings();
+    return res.json({
+      code: 200,
+      data: {
+        welcome: cfg.welcome,
+        reply: cfg.reply,
+        defaults: {
+          welcome: DEFAULT_CHAT_AUTO_REPLY_WELCOME,
+          reply: DEFAULT_CHAT_AUTO_REPLY_REPLY
+        }
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+async function handleAdminChatAutoReplySave(req, res) {
+  try {
+    var body = req.body || {};
+    var hasWelcome = Object.prototype.hasOwnProperty.call(body, 'welcome');
+    var hasReply = Object.prototype.hasOwnProperty.call(body, 'reply');
+    if (!hasWelcome && !hasReply) {
+      return res.status(400).json({ code: 400, msg: '请提供 welcome 或 reply' });
+    }
+    var welcome = hasWelcome
+      ? sanitizeChatAutoReplyText(body.welcome)
+      : null;
+    var reply = hasReply ? sanitizeChatAutoReplyText(body.reply) : null;
+    const conn = await pool.getConnection();
+    try {
+      if (hasWelcome) {
+        await conn.execute(
+          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
+          [SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, welcome]
+        );
+      }
+      if (hasReply) {
+        await conn.execute(
+          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
+          [SETTING_KEY_CHAT_AUTO_REPLY_REPLY, reply]
+        );
+      }
+    } finally {
+      conn.release();
+    }
+    invalidateChatAutoReplyCache();
+    var cfg = await getChatAutoReplySettings();
+    return res.json({
+      code: 200,
+      data: { welcome: cfg.welcome, reply: cfg.reply }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 app.use('/api/admin/analytics', heavyAdminApiRateLimit);
 app.use('/api/admin/user-data', heavyAdminApiRateLimit);
 app.use('/api/admin/activated-user-analysis', heavyAdminApiRateLimit);
@@ -16965,6 +17143,8 @@ app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedba
 app.get('/api/admin/chat/conversations', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatConversations);
 app.get('/api/admin/chat/messages', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatMessages);
 app.post('/api/admin/chat/send', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatSend);
+app.get('/api/admin/chat/auto-reply', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatAutoReplyGet);
+app.post('/api/admin/chat/auto-reply', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatAutoReplySave);
 app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);
 app.get('/api/admin/accounts/activated-users', requireAdminAuth, handleAdminAccountActivatedUsers);
 app.post('/api/admin/accounts/create', requireAdminAuth, handleAdminAccountsCreate);

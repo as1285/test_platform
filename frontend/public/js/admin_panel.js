@@ -2320,6 +2320,7 @@
             }
             if (pageKey === 'chat') {
                 chatAdminPage = 1;
+                loadAdminChatAutoReply();
                 loadAdminChatConversations(1);
                 startAdminChatPoll();
             } else {
@@ -2339,6 +2340,7 @@
         var chatAdminKnownIds = {};
         var chatAdminPollTimer = null;
         var chatAdminSending = false;
+        var chatAutoReplyDefaults = { welcome: '', reply: '' };
 
         function escapeChatHtml(s) {
             return String(s == null ? '' : s)
@@ -2389,6 +2391,62 @@
                     loadAdminChatThread(chatAdminActiveId, true);
                 }
             }, 4000);
+        }
+
+        function loadAdminChatAutoReply() {
+            adminFetch('api/admin/chat/auto-reply')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200 || !body.data) return;
+                    var d = body.data;
+                    if (d.defaults) {
+                        chatAutoReplyDefaults = {
+                            welcome: d.defaults.welcome || '',
+                            reply: d.defaults.reply || ''
+                        };
+                    }
+                    var w = document.getElementById('chatAutoReplyWelcome');
+                    var rp = document.getElementById('chatAutoReplyReply');
+                    if (w) w.value = d.welcome != null ? String(d.welcome) : '';
+                    if (rp) rp.value = d.reply != null ? String(d.reply) : '';
+                })
+                .catch(function () {});
+        }
+
+        function saveAdminChatAutoReply() {
+            var w = document.getElementById('chatAutoReplyWelcome');
+            var rp = document.getElementById('chatAutoReplyReply');
+            var btn = document.getElementById('btnSaveChatAutoReply');
+            if (btn) btn.disabled = true;
+            adminFetch('api/admin/chat/auto-reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    welcome: w ? w.value : '',
+                    reply: rp ? rp.value : ''
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200) {
+                        throw new Error((body && body.msg) || '保存失败');
+                    }
+                    alert('自动回复话术已保存');
+                    if (body.data) {
+                        if (w && body.data.welcome != null) w.value = String(body.data.welcome);
+                        if (rp && body.data.reply != null) rp.value = String(body.data.reply);
+                    }
+                })
+                .catch(function (e) {
+                    alert(String(e && e.message ? e.message : e) || '保存失败');
+                })
+                .then(function () {
+                    if (btn) btn.disabled = false;
+                });
         }
 
         function loadAdminChatConversations(page, quiet) {
@@ -2486,15 +2544,22 @@
                 if (!id || chatAdminKnownIds[id]) return;
                 chatAdminKnownIds[id] = 1;
                 if (id > chatAdminLastMsgId) chatAdminLastMsgId = id;
-                var isAdmin = m.sender_role === 'admin';
+                var isAdmin = m.sender_role === 'admin' || m.sender_role === 'system';
                 var row = document.createElement('div');
                 row.className = 'admin-chat-bubble-row ' + (isAdmin ? 'me' : 'them');
+                var who =
+                    m.sender_role === 'system' || m.sender_id === 'auto_reply'
+                        ? '自动回复'
+                        : isAdmin
+                          ? '客服'
+                          : '用户';
                 row.innerHTML =
                     '<div><div class="admin-chat-bubble">' +
                     escapeChatHtml(m.content) +
                     '</div><div class="admin-chat-bubble-meta">' +
                     escapeChatHtml(formatChatTime(m.created_at)) +
-                    (isAdmin ? ' · 客服' : ' · 用户') +
+                    ' · ' +
+                    who +
                     '</div></div>';
                 bodyEl.appendChild(row);
             });
@@ -9272,6 +9337,19 @@
             loadAdminChatConversations(chatAdminPage);
             if (chatAdminActiveId) loadAdminChatThread(chatAdminActiveId, false);
         });
+        var btnSaveChatAutoReply = document.getElementById('btnSaveChatAutoReply');
+        if (btnSaveChatAutoReply) {
+            btnSaveChatAutoReply.addEventListener('click', saveAdminChatAutoReply);
+        }
+        var btnResetChatAutoReply = document.getElementById('btnResetChatAutoReply');
+        if (btnResetChatAutoReply) {
+            btnResetChatAutoReply.addEventListener('click', function () {
+                var w = document.getElementById('chatAutoReplyWelcome');
+                var rp = document.getElementById('chatAutoReplyReply');
+                if (w) w.value = chatAutoReplyDefaults.welcome || '';
+                if (rp) rp.value = chatAutoReplyDefaults.reply || '';
+            });
+        }
         document.getElementById('chatAdminFilterUnread').addEventListener('change', function () {
             loadAdminChatConversations(1);
         });
