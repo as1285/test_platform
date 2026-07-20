@@ -1331,7 +1331,7 @@
                             'aria-label',
                             guest
                                 ? isMineAppShell()
-                                    ? '打开激活'
+                                    ? '打开购买页'
                                     : '下载 App'
                                 : '修改姓名、纳税人识别号与性别'
                         );
@@ -1367,7 +1367,12 @@
                                 source: 'guest_name'
                             });
                         }
-                        openMineActivateModal();
+                        /* App 内 → 购买页；Web 端 → 下载引导 */
+                        if (isMineAppShell()) {
+                            window.location.href = 'purchase.html';
+                        } else {
+                            goGuestDownload('guest_name');
+                        }
                         return;
                     }
                     openMineProfileEditModal();
