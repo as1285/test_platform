@@ -12050,11 +12050,8 @@ async function handleAdminUsers(req, res) {
     if (isFinite(qLoginInactiveDays) && qLoginInactiveDays > 0) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
-    if (!qGuest && (!req.admin || !req.admin.is_super)) {
-      whereClauses.push(
-        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = users.username AND ac.owner_admin_username = ?)'
-      );
-      params.push(req.admin.username);
+    if (!qGuest) {
+      appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
     }
 
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
@@ -12273,6 +12270,30 @@ function summarizeTextList(items, maxItems, maxChars) {
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
   if (!admin || admin.is_super) return;
+  whereClauses.push(
+    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      userCol +
+      ' AND ac.owner_admin_username = ?)'
+  );
+  params.push(admin.username);
+}
+
+/** 注册用户列表：子管理员仅看本账号激活码用户；超级管理员排除已归属子管理员的已激活用户 */
+function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
+  if (!admin || !admin.username) return;
+  var owner = conversionAnalyticsOwnerAdmin(admin);
+  if (!owner) return;
+  if (admin.is_super) {
+    whereClauses.push(
+      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        userCol +
+        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
+        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
+        ' AND ac.owner_admin_username <> ?)'
+    );
+    params.push(owner);
+    return;
+  }
   whereClauses.push(
     'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       userCol +
