@@ -498,11 +498,19 @@
             <h2>生成激活码</h2>
             <div class="form-row flex-row-end gap-10">
                 <button type="button" class="btn-primary" id="btnIssue">生成 1 个</button>
-                <div class="flex-row-end" id="batchIssueWrap" style="display:none;">
+                <div class="flex-row-end gap-10" id="batchIssueWrap" style="display:none;">
                     <div>
-                        <label for="batchIssueCount">批量数量（闲鱼）</label>
-                        <input class="filter-select input-w-100 mt-6" type="number" id="batchIssueCount" min="1" value="100" inputmode="numeric">
+                        <label for="batchIssueChannel">批量渠道</label>
+                        <select class="filter-select input-w-120 mt-6" id="batchIssueChannel">
+                            <option value="闲鱼">闲鱼</option>
+                            <option value="酷发卡">酷发卡</option>
+                        </select>
                     </div>
+                    <div>
+                        <label for="batchIssueCount">批量数量</label>
+                        <input class="filter-select input-w-100 mt-6" type="number" id="batchIssueCount" min="1" max="5000" value="100" inputmode="numeric">
+                    </div>
+                    <button type="button" class="btn-page mb-1" id="btnAddBatchChannel" title="添加自定义渠道">添加渠道</button>
                     <button type="button" class="btn-primary mb-1" id="btnIssueBatch">批量生成</button>
                 </div>
             </div>
@@ -566,9 +574,17 @@
         </section>
 
         <section class="mt-28" id="xianyuCodesSection">
-            <h2>闲鱼激活码列表</h2>
-            <p class="hint">仅展示备注含「闲鱼」的批量码。已使用的行会显示该用户的<strong>渠道分析</strong>（含闲鱼激活来源）。</p>
+            <h2>渠道批量激活码</h2>
+            <p class="hint">展示各销售渠道批量生成的激活码（备注含「××批量」）。可按渠道筛选；已使用的行会显示该用户的<strong>渠道分析</strong>（注册来源 + 激活来源）。</p>
             <div class="form-row mb-12 flex-wrap">
+                <div>
+                    <label for="xianyuCodeChannelFilter">渠道</label>
+                    <select id="xianyuCodeChannelFilter" class="filter-select">
+                        <option value="">全部渠道</option>
+                        <option value="闲鱼">闲鱼</option>
+                        <option value="酷发卡">酷发卡</option>
+                    </select>
+                </div>
                 <div>
                     <label for="xianyuCodeCodeFilter">激活码</label>
                     <input type="text" id="xianyuCodeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
@@ -2037,8 +2053,8 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260720-guest-funnel"></script>
+    <script src="/js/admin_panel.js?v=20260720-batch-channel"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260719-tax-year-open"></script>
+    <script src="/js/najilu.js?v=20260720-save-back"></script>
 </body>
 </html>

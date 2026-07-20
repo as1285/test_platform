@@ -1757,17 +1757,119 @@
       });
   }
 
-  function downloadUrl(url, app, pageInfo) {
-    var a = document.createElement('a');
-    a.href = url;
+  function dataUrlToBlob(dataUrl) {
+    return fetch(dataUrl).then(function (r) {
+      return r.blob();
+    });
+  }
+
+  function certificateFileName(app, pageInfo) {
     var suffix = '';
     if (pageInfo && pageInfo.total > 1) {
       suffix = '_第' + pageInfo.index + '页共' + pageInfo.total + '页';
     }
-    a.download = '纳税记录_' + app.period_start + '_' + app.period_end + suffix + '.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    return '纳税记录_' + app.period_start + '_' + app.period_end + suffix + '.png';
+  }
+
+  /** iOS / App 内 WebView：&lt;a download&gt; 常会整页跳到系统 PNG 预览且无返回 */
+  function needsInAppSaveViewer() {
+    try {
+      if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+        return true;
+      }
+    } catch (e0) {}
+    var ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod/i.test(ua);
+  }
+
+  function downloadUrl(url, app, pageInfo) {
+    var filename = certificateFileName(app, pageInfo);
+    function triggerBlobDownload(blob) {
+      var objUrl = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = objUrl;
+      a.download = filename;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () {
+        try {
+          URL.revokeObjectURL(objUrl);
+        } catch (e1) {}
+      }, 2500);
+    }
+    if (String(url).indexOf('data:') === 0) {
+      dataUrlToBlob(url)
+        .then(triggerBlobDownload)
+        .catch(function () {
+          /* 兜底：仍可能在部分浏览器跳转，优先走应用内保存页 */
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
+      return;
+    }
+    triggerBlobDownload(url);
+  }
+
+  function shareCertificateImages(urls, app) {
+    if (!urls || !urls.length) {
+      alert('暂无可保存的图片');
+      return Promise.resolve();
+    }
+    if (!navigator.share) {
+      alert('请长按上方图片，选择「存储到相册」或「存储图像」。');
+      return Promise.resolve();
+    }
+    return Promise.all(
+      urls.map(function (u, i) {
+        return dataUrlToBlob(u).then(function (blob) {
+          return new File([blob], certificateFileName(app, { index: i + 1, total: urls.length }), {
+            type: 'image/png'
+          });
+        });
+      })
+    )
+      .then(function (files) {
+        if (navigator.canShare && !navigator.canShare({ files: files })) {
+          throw new Error('share_unsupported');
+        }
+        return navigator.share({
+          files: files,
+          title: '纳税记录'
+        });
+      })
+      .catch(function (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+          return;
+        }
+        alert('请长按上方图片，选择「存储到相册」或「存储图像」。');
+      });
+  }
+
+  function renderSaveResultPage(urls, app) {
+    document.title = '保存纳税记录';
+    document.body.innerHTML =
+      '<div class="save-result-page">' +
+      renderHeader('保存纳税记录', 'najilu.html?view=records') +
+      '<div class="preview-wrap">' +
+      certificateImageHtml(urls, 'preview-img', '纳税记录') +
+      '</div>' +
+      '<div class="save-result-actions">' +
+      '<p class="save-result-tip">可点击下方按钮分享并存储到相册；也可长按图片保存。点左上角「返回」回到申请记录。</p>' +
+      '<button type="button" class="save-result-btn" id="btnShareCertificate">分享 / 存储到相册</button>' +
+      '</div></div>';
+    var btn = document.getElementById('btnShareCertificate');
+    if (btn) {
+      btn.onclick = function () {
+        shareCertificateImages(urls, app);
+      };
+    }
   }
 
   function saveCertificate(app) {
@@ -1775,6 +1877,11 @@
       .then(function (freshApp) {
         return renderCertificateDataUrl(freshApp).then(function (urlOrUrls) {
           var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
+          /* App / iOS：不走 data: 链接触发整页跳转，改为应用内保存页（带返回） */
+          if (needsInAppSaveViewer()) {
+            renderSaveResultPage(urls, freshApp);
+            return;
+          }
           urls.forEach(function (u, i) {
             downloadUrl(u, freshApp, { index: i + 1, total: urls.length });
           });

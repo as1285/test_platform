@@ -559,6 +559,41 @@
             image-rendering: crisp-edges;
         }
 
+        .save-result-page {
+            min-height: 100vh;
+            background: #f5f6fa;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .save-result-actions {
+            padding: 8px 16px 0;
+        }
+
+        .save-result-tip {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .save-result-btn {
+            display: block;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            background: #1677ff;
+            color: #fff;
+            font-size: 16px;
+            font-family: inherit;
+            padding: 14px 16px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .save-result-btn:active {
+            opacity: 0.88;
+        }
+
         .verify-page {
             min-height: 100vh;
             background: #f5f6fa;
@@ -710,7 +745,7 @@
     </div>
 
     <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260719-tax-year-open"></script>
+    <script src="/js/najilu.js?v=20260720-save-back"></script>
     <script src="/js/watermark.js?v=20260511-mine-wm"></script>
 </body>
 </html>
