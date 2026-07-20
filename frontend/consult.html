@@ -418,6 +418,209 @@
             color: #94a3b8;
         }
 
+        /* 任职受雇 / 消息管理：紧凑表单 + 列表优先 */
+        #panel-employers .card,
+        #panel-messages .card {
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        #panel-employers .card-title,
+        #panel-messages .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+            color: #1e293b;
+        }
+        #panel-employers .card-title-row,
+        #panel-messages .card-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        #panel-employers .form-group,
+        #panel-messages .form-group {
+            margin-bottom: 10px;
+        }
+        #panel-employers .form-group label,
+        #panel-messages .form-group label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        #panel-employers .form-group input,
+        #panel-employers .form-group select,
+        #panel-employers .form-group textarea,
+        #panel-messages .form-group input,
+        #panel-messages .form-group select,
+        #panel-messages .form-group textarea {
+            padding: 10px 12px;
+            font-size: 14px;
+            border-radius: 10px;
+            border-color: #e2e8f0;
+            background: #f8fafc;
+            min-height: 42px;
+            line-height: 1.25;
+        }
+        #panel-employers .form-group input[type="date"],
+        #panel-messages .form-group input[type="date"] {
+            -webkit-appearance: none;
+            appearance: none;
+            color: #334155;
+            background: #f8fafc;
+            position: relative;
+        }
+        #panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator,
+        #panel-messages .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0.55;
+            cursor: pointer;
+        }
+        #panel-employers .form-row,
+        #panel-messages .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        #panel-employers .form-row .form-group,
+        #panel-messages .form-row .form-group {
+            min-width: 0;
+        }
+        #panel-employers .btn-block,
+        #panel-messages .btn-block {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        #panel-employers .consult-form-card,
+        #panel-messages .consult-form-card {
+            overflow: hidden;
+            transition: box-shadow 0.2s ease;
+        }
+        #panel-employers .consult-form-card.is-collapsed .consult-form-body,
+        #panel-messages .consult-form-card.is-collapsed .consult-form-body {
+            display: none;
+        }
+        #panel-employers .consult-form-toggle,
+        #panel-messages .consult-form-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: none;
+            background: transparent;
+            padding: 0;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            text-align: left;
+        }
+        #panel-employers .consult-form-toggle-title,
+        #panel-messages .consult-form-toggle-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        #panel-employers .consult-form-toggle-hint,
+        #panel-messages .consult-form-toggle-hint {
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e6fff;
+            background: #eef5ff;
+            border-radius: 999px;
+            padding: 5px 10px;
+        }
+        #panel-employers .consult-form-card:not(.is-collapsed) .consult-form-toggle {
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        #panel-employers .consult-form-body,
+        #panel-messages .consult-form-body {
+            padding-top: 2px;
+        }
+        #panel-employers .status-pill,
+        #panel-messages .status-pill {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            line-height: 1.4;
+        }
+        #panel-employers .status-pill.is-on {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        #panel-employers .status-pill.is-off {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        #panel-employers .record-card {
+            background: #f8fafc;
+            border: 1px solid #eef2f7;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        #panel-employers .record-card:last-child {
+            margin-bottom: 0;
+        }
+        #panel-employers .record-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        #panel-employers .record-card-info {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.55;
+            margin-top: 2px;
+        }
+        #panel-employers .record-card .list-item-actions {
+            margin-top: 10px;
+            gap: 6px;
+        }
+        #panel-employers .record-card .btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        #panel-messages .list-item {
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 0;
+        }
+        #panel-messages .list-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        #panel-messages .list-item-desc {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.45;
+            margin-top: 3px;
+        }
+        #panel-employers #employerListMount .empty,
+        #panel-messages #messageListMount .empty {
+            padding: 28px 12px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        #employerFormCard,
+        #messageFormCard {
+            scroll-margin-top: 56px;
+        }
+
         #panel-records .batch-hint {
             font-size: 12px;
             color: #94a3b8;
@@ -1127,77 +1330,94 @@
         <div id="msgBar"></div>
 
         <div id="panel-employers" class="tab-panel">
-            <div class="card" id="employerFormCard">
-                <div class="card-title" id="employerFormCardTitle">添加任职受雇</div>
-                <form id="employerForm" onsubmit="onSubmitEmployer(event)">
-                    <div class="form-group">
-                        <label>公司名称</label>
-                        <input type="text" name="company_name" id="ef_company_name" required>
-                        <p id="ef_test_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号公司名称固定，不可修改。</p>
-                    </div>
-                    <div class="form-group">
-                        <label>统一社会信用代码</label>
-                        <input type="text" name="credit_code" id="ef_credit_code">
-                    </div>
-                    <div class="form-group">
-                        <label>职务</label>
-                        <input type="text" name="position" id="ef_position">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>入职日期</label>
-                            <input type="date" name="hire_date" id="ef_hire_date">
-                        </div>
-                        <div class="form-group">
-                            <label>离职日期（留空表示在职）</label>
-                            <input type="date" name="leave_date" id="ef_leave_date">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>状态</label>
-                        <select name="status" id="ef_status">
-                            <option value="1">在职</option>
-                            <option value="0">离职</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block" id="employerFormSubmitBtn">添加任职受雇</button>
-                    <button type="button" class="btn btn-secondary btn-block" id="employerFormCancelEditBtn" style="display:none;margin-top:8px;">取消编辑</button>
-                </form>
-            </div>
             <div class="card">
-                <div class="card-title">任职受雇列表</div>
-                <div id="employerListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+                <div class="card-title-row">
+                    <div class="card-title">任职受雇列表</div>
+                    <button type="button" class="btn btn-sm btn-primary" id="employerOpenFormBtn">添加</button>
+                </div>
+                <div id="employerListMount"><div class="empty">加载中…</div></div>
+            </div>
+            <div class="card consult-form-card is-collapsed" id="employerFormCard">
+                <button type="button" class="consult-form-toggle" id="employerFormToggle" aria-expanded="false">
+                    <span class="consult-form-toggle-title" id="employerFormCardTitle">添加任职受雇</span>
+                    <span class="consult-form-toggle-hint" id="employerFormToggleHint">展开填写</span>
+                </button>
+                <div class="consult-form-body">
+                    <form id="employerForm" onsubmit="onSubmitEmployer(event)">
+                        <div class="form-group">
+                            <label for="ef_company_name">公司名称</label>
+                            <input type="text" name="company_name" id="ef_company_name" required placeholder="请输入公司全称">
+                            <p id="ef_test_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号公司名称固定，不可修改。</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="ef_credit_code">统一社会信用代码</label>
+                            <input type="text" name="credit_code" id="ef_credit_code" placeholder="选填">
+                        </div>
+                        <div class="form-group">
+                            <label for="ef_position">职务</label>
+                            <input type="text" name="position" id="ef_position" placeholder="选填">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ef_hire_date">入职日期</label>
+                                <input type="date" name="hire_date" id="ef_hire_date">
+                            </div>
+                            <div class="form-group">
+                                <label for="ef_leave_date">离职日期</label>
+                                <input type="date" name="leave_date" id="ef_leave_date">
+                            </div>
+                        </div>
+                        <p class="hint" style="margin:-2px 0 10px;font-size:12px;color:#94a3b8;">离职日期留空表示在职</p>
+                        <div class="form-group">
+                            <label for="ef_status">状态</label>
+                            <select name="status" id="ef_status">
+                                <option value="1">在职</option>
+                                <option value="0">离职</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block" id="employerFormSubmitBtn">添加任职受雇</button>
+                        <button type="button" class="btn btn-secondary btn-block" id="employerFormCancelEditBtn" style="display:none;margin-top:8px;">取消编辑</button>
+                    </form>
+                </div>
             </div>
         </div>
 
         <div id="panel-messages" class="tab-panel">
             <div class="card">
-                <div class="card-title">添加消息</div>
-                <form id="msgForm" onsubmit="onSubmitMessage(event)">
-                    <div class="form-group">
-                        <label for="mf_title">消息标题</label>
-                        <input type="text" id="mf_title" name="title" value="扣缴申报温馨提示" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="mf_content">消息内容</label>
-                        <input type="text" id="mf_content" name="content" placeholder="来自XXX公司扣缴申报...">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="mf_company_name">公司名称</label>
-                            <input type="text" id="mf_company_name" name="company_name">
-                        </div>
-                        <div class="form-group">
-                            <label for="mf_msg_date">消息日期</label>
-                            <input type="date" id="mf_msg_date" name="msg_date" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">添加消息</button>
-                </form>
+                <div class="card-title-row">
+                    <div class="card-title">消息列表</div>
+                    <button type="button" class="btn btn-sm btn-primary" id="messageOpenFormBtn">添加</button>
+                </div>
+                <div id="messageListMount"><div class="empty">加载中…</div></div>
             </div>
-            <div class="card">
-                <div class="card-title">消息列表</div>
-                <div id="messageListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+            <div class="card consult-form-card is-collapsed" id="messageFormCard">
+                <button type="button" class="consult-form-toggle" id="messageFormToggle" aria-expanded="false">
+                    <span class="consult-form-toggle-title">添加消息</span>
+                    <span class="consult-form-toggle-hint" id="messageFormToggleHint">展开填写</span>
+                </button>
+                <div class="consult-form-body">
+                    <form id="msgForm" onsubmit="onSubmitMessage(event)">
+                        <div class="form-group">
+                            <label for="mf_title">消息标题</label>
+                            <input type="text" id="mf_title" name="title" value="扣缴申报温馨提示" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="mf_content">消息内容</label>
+                            <input type="text" id="mf_content" name="content" placeholder="来自XXX公司扣缴申报…">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mf_company_name">公司名称</label>
+                                <input type="text" id="mf_company_name" name="company_name" placeholder="选填">
+                            </div>
+                            <div class="form-group">
+                                <label for="mf_msg_date">消息日期</label>
+                                <input type="date" id="mf_msg_date" name="msg_date" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">添加消息</button>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -6404,7 +6624,28 @@
             applyConsultTestRestrictions(window.consultUserFlags || {});
         }
 
+        function setConsultFormCardExpanded(cardId, expanded) {
+            var card = document.getElementById(cardId);
+            if (!card) return;
+            var hintId =
+                cardId === 'employerFormCard' ? 'employerFormToggleHint' : 'messageFormToggleHint';
+            var toggleId =
+                cardId === 'employerFormCard' ? 'employerFormToggle' : 'messageFormToggle';
+            var hint = document.getElementById(hintId);
+            var toggle = document.getElementById(toggleId);
+            if (expanded) {
+                card.classList.remove('is-collapsed');
+                if (hint) hint.textContent = '收起';
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+            } else {
+                card.classList.add('is-collapsed');
+                if (hint) hint.textContent = '展开填写';
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            }
+        }
+
         function scrollToEmployerForm() {
+            setConsultFormCardExpanded('employerFormCard', true);
             var el = document.getElementById('employerFormCard');
             if (!el) {
                 return;
@@ -6414,6 +6655,44 @@
             } catch (e0) {
                 el.scrollIntoView(true);
             }
+        }
+
+        function scrollToMessageForm() {
+            setConsultFormCardExpanded('messageFormCard', true);
+            var el = document.getElementById('messageFormCard');
+            if (!el) return;
+            try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (e1) {
+                el.scrollIntoView(true);
+            }
+        }
+
+        function bindConsultCompactFormToggles() {
+            function bind(toggleId, cardId, openBtnId) {
+                var toggle = document.getElementById(toggleId);
+                var openBtn = document.getElementById(openBtnId);
+                if (toggle && !toggle.__consultToggleBound) {
+                    toggle.__consultToggleBound = true;
+                    toggle.addEventListener('click', function () {
+                        var card = document.getElementById(cardId);
+                        var open = !(card && card.classList.contains('is-collapsed'));
+                        setConsultFormCardExpanded(cardId, !open);
+                    });
+                }
+                if (openBtn && !openBtn.__consultOpenBound) {
+                    openBtn.__consultOpenBound = true;
+                    openBtn.addEventListener('click', function () {
+                        if (cardId === 'employerFormCard') {
+                            scrollToEmployerForm();
+                        } else {
+                            scrollToMessageForm();
+                        }
+                    });
+                }
+            }
+            bind('employerFormToggle', 'employerFormCard', 'employerOpenFormBtn');
+            bind('messageFormToggle', 'messageFormCard', 'messageOpenFormBtn');
         }
 
         function fillEmployerForm(item) {
@@ -6499,27 +6778,39 @@
             var mount = document.getElementById('employerListMount');
             if (!mount) return;
             if (!list.length) {
-                mount.innerHTML = '<div class="empty">暂无任职受雇信息</div>';
+                mount.innerHTML = '<div class="empty">暂无任职受雇信息<br><span style="font-size:12px;">点击右上角「添加」开始填写</span></div>';
                 return;
             }
             var html = '';
             list.forEach(function(e) {
                 var id = escAttr(e.id);
+                var onJob = e.status == '1' || e.status === '在职';
                 html += '<div class="record-card">';
                 html += '<div class="record-card-header">';
-                html += '<div class="record-card-title">' + (e.company_name || '') + '</div>';
-                html += '<div class="record-card-date">' + (e.status == '1' || e.status === '在职' ? '在职' : '离职') + '</div>';
+                html += '<div class="record-card-title">' + escapeHtml(e.company_name || '') + '</div>';
+                html +=
+                    '<span class="status-pill ' +
+                    (onJob ? 'is-on' : 'is-off') +
+                    '">' +
+                    (onJob ? '在职' : '离职') +
+                    '</span>';
                 html += '</div>';
                 html += '<div class="record-card-info">';
-                html += '统一社会信用代码：' + (e.credit_code || '') + '<br>';
-                html += '职务：' + (e.position || '') + '<br>';
-                html += '入职日期：' + (e.hire_date || '') + ' | 离职日期：' + (e.leave_date || '在职');
+                if (e.credit_code) {
+                    html += '信用代码：' + escapeHtml(e.credit_code) + '<br>';
+                }
+                html += '职务：' + escapeHtml(e.position || '—') + '<br>';
+                html +=
+                    '入职：' +
+                    escapeHtml(e.hire_date || '—') +
+                    ' · 离职：' +
+                    escapeHtml(e.leave_date || '在职');
                 html += '</div>';
                 html += '<div class="list-item-actions">';
                 html += '<button type="button" class="btn btn-sm btn-primary" onclick="editEmployer(\'' + id + '\')">编辑</button>';
-                html += '<button type="button" class="btn btn-sm btn-danger" onclick="deleteEmployer(\'' + id + '\')">删除</button>';
                 html += '<button type="button" class="btn btn-sm btn-default" onclick="viewEmployerDetail(\'' + id + '\')">详情</button>';
                 html += '<button type="button" class="btn btn-sm btn-secondary" onclick="copyEmployer(\'' + id + '\')">复制</button>';
+                html += '<button type="button" class="btn btn-sm btn-danger" onclick="deleteEmployer(\'' + id + '\')">删除</button>';
                 html += '</div></div>';
             });
             mount.innerHTML = html;
@@ -6646,7 +6937,7 @@
             var mount = document.getElementById('messageListMount');
             if (!mount) return;
             if (!list.length) {
-                mount.innerHTML = '<div class="empty">暂无消息</div>';
+                mount.innerHTML = '<div class="empty">暂无消息<br><span style="font-size:12px;">点击右上角「添加」开始填写</span></div>';
                 return;
             }
             var html = '';
@@ -6852,8 +7143,12 @@
             }
             var employerCancel = document.getElementById('employerFormCancelEditBtn');
             if (employerCancel) {
-                employerCancel.addEventListener('click', resetEmployerFormMode);
+                employerCancel.addEventListener('click', function () {
+                    resetEmployerFormMode();
+                    setConsultFormCardExpanded('employerFormCard', false);
+                });
             }
+            bindConsultCompactFormToggles();
             initHeader();
             initIncomeTypeSelect();
             initBatchEmploymentRows();
