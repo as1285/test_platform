@@ -6740,6 +6740,7 @@
                             tax_authority: ''
                         });
                         resetEmployerFormMode();
+                        setConsultFormCardExpanded('employerFormCard', false);
                         showMsg(wasEdit ? '已保存修改' : '添加成功', true);
                         if (
                             !wasEdit &&
@@ -6985,6 +6986,7 @@
                     if (res.code === 200) {
                         document.getElementById('mf_content').value = '';
                         document.getElementById('mf_company_name').value = '';
+                        setConsultFormCardExpanded('messageFormCard', false);
                         showMsg('添加成功', true);
                         return refreshMessageList();
                     }
