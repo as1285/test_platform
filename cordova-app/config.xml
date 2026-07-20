@@ -5,10 +5,11 @@
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
 
-    <access origin="*" />
-    <!-- 允许 WebView 在 iframe 或跳转中加载远程 http(s)，与壳内白名单一致 -->
-    <allow-navigation href="http://*/*" />
-    <allow-navigation href="https://*/*" />
+    <access origin="https://geshui.vip" />
+    <access origin="http://geshui.vip" />
+    <!-- WebView 仅允许本站；外链用 allow-intent / _system，避免被劫持跳到第三方色情站 -->
+    <allow-navigation href="https://geshui.vip/*" />
+    <allow-navigation href="http://geshui.vip/*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
