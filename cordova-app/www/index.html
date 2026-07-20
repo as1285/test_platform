@@ -121,9 +121,31 @@
                 return APP_ORIGIN;
             }
 
-            function mountApp() {
+            var lastGoodAppUrl = buildAppStartUrl();
+            var recoverTimer = null;
+
+            function appOriginPrefix() {
+                return String(APP_ORIGIN || '').replace(/\/?$/, '/');
+            }
+
+            function isOurAppUrl(href) {
+                if (!href) return false;
+                var h = String(href);
+                if (h === 'about:blank' || h === 'about:srcdoc') return false;
+                try {
+                    var origin = new URL(appOriginPrefix()).origin;
+                    return new URL(h).origin === origin;
+                } catch (e) {
+                    return h.indexOf(String(APP_ORIGIN).replace(/\/?$/, '')) === 0;
+                }
+            }
+
+            function mountApp(startUrl) {
                 var main = document.getElementById('main');
-                if (!main || document.getElementById('app-frame')) {
+                if (!main) return;
+                var existing = document.getElementById('app-frame');
+                if (existing) {
+                    if (startUrl) existing.src = startUrl;
                     return;
                 }
                 var f = document.createElement('iframe');
@@ -131,29 +153,128 @@
                 f.setAttribute('title', '应用');
                 f.setAttribute('importance', 'high');
                 f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
-                f.src = buildAppStartUrl();
+                f.src = startUrl || buildAppStartUrl();
+                f.addEventListener('load', function () {
+                    try {
+                        var href =
+                            f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
+                        if (isOurAppUrl(href)) {
+                            lastGoodAppUrl = href;
+                        }
+                    } catch (eLoad) {}
+                });
                 main.appendChild(f);
             }
 
-            /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复购买页，避免白屏 */
+            function openTaxPlatformExternal(url) {
+                var u = url != null ? String(url).trim() : '';
+                if (!u) return false;
+                var candidates = [u];
+                if (/^https?:\/\//i.test(u) && /Android/i.test(navigator.userAgent || '')) {
+                    try {
+                        var parsed = new URL(u);
+                        candidates.push(
+                            'intent://' +
+                                parsed.host +
+                                parsed.pathname +
+                                parsed.search +
+                                parsed.hash +
+                                '#Intent;scheme=' +
+                                parsed.protocol.replace(':', '') +
+                                ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end'
+                        );
+                    } catch (eIntent) {}
+                }
+                for (var i = 0; i < candidates.length; i++) {
+                    var target = candidates[i];
+                    try {
+                        if (
+                            window.cordova &&
+                            window.cordova.InAppBrowser &&
+                            typeof window.cordova.InAppBrowser.open === 'function'
+                        ) {
+                            window.cordova.InAppBrowser.open(target, '_system');
+                            return true;
+                        }
+                    } catch (e0) {}
+                    try {
+                        var opened = window.open(target, '_system');
+                        if (opened) return true;
+                    } catch (e1) {}
+                    try {
+                        var opened2 = window.open(target, '_blank');
+                        if (opened2) return true;
+                    } catch (e2) {}
+                }
+                return false;
+            }
+            window.openTaxPlatformExternal = openTaxPlatformExternal;
+
+            window.addEventListener('message', function (ev) {
+                var data = ev && ev.data;
+                if (!data || data.type !== 'open-external') return;
+                if (data.source && data.source !== 'tax-platform-h5') return;
+                openTaxPlatformExternal(data.url);
+            });
+
+            /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复，避免白屏 */
             function recoverAppFrameIfHijacked() {
                 var f = document.getElementById('app-frame');
-                if (!f) return;
-                var purchaseUrl = APP_ORIGIN.replace(/\/?$/, '/') + 'purchase.html';
+                var fallback =
+                    lastGoodAppUrl && isOurAppUrl(lastGoodAppUrl)
+                        ? lastGoodAppUrl
+                        : appOriginPrefix() + 'purchase.html';
+                if (!f) {
+                    mountApp(fallback);
+                    return;
+                }
+                var hijacked = false;
                 try {
                     var href = f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
-                    if (href && /alipay\.com/i.test(String(href))) {
-                        f.src = purchaseUrl;
+                    if (!href || href === 'about:blank' || href === 'about:srcdoc') {
+                        hijacked = true;
+                    } else if (/alipay\.com|alipays:|alipay\.cn/i.test(String(href))) {
+                        hijacked = true;
+                    } else if (!isOurAppUrl(href)) {
+                        hijacked = true;
+                    } else {
+                        lastGoodAppUrl = href;
                     }
                 } catch (crossOriginErr) {
-                    f.src = purchaseUrl;
+                    hijacked = true;
+                }
+                if (hijacked) {
+                    f.src = fallback;
                 }
             }
 
+            function scheduleRecover() {
+                if (recoverTimer) clearTimeout(recoverTimer);
+                recoverTimer = setTimeout(function () {
+                    recoverTimer = null;
+                    recoverAppFrameIfHijacked();
+                }, 80);
+            }
+
             document.addEventListener('visibilitychange', function () {
-                if (!document.hidden) recoverAppFrameIfHijacked();
+                if (!document.hidden) scheduleRecover();
             });
-            document.addEventListener('resume', recoverAppFrameIfHijacked, false);
+            document.addEventListener('resume', scheduleRecover, false);
+            document.addEventListener(
+                'pause',
+                function () {
+                    try {
+                        var f = document.getElementById('app-frame');
+                        var href =
+                            f &&
+                            f.contentWindow &&
+                            f.contentWindow.location &&
+                            f.contentWindow.location.href;
+                        if (isOurAppUrl(href)) lastGoodAppUrl = href;
+                    } catch (ePause) {}
+                },
+                false
+            );
 
             mountApp();
             hideNativeSplash();

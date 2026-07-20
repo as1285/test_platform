@@ -244,6 +244,7 @@
   var hadThemeCache = applyCached();
   if (hadThemeCache) {
     finishPageLoadingAfterTheme();
+    setTimeout(prefetchBottomNavPages, 0);
   }
 
   fetch('/api/public/mine-ui', { credentials: 'same-origin' })
@@ -260,14 +261,14 @@
       if (!hadThemeCache) {
         finishPageLoadingAfterTheme();
       }
-      /* 空闲时预取底栏页面，减轻切 TAB 等待 */
+      /* 尽快预取底栏页面，配合 HTML 短缓存加快切 TAB */
       var runPrefetch = function () {
         prefetchBottomNavPages();
       };
       if (typeof window.requestIdleCallback === 'function') {
-        window.requestIdleCallback(runPrefetch, { timeout: 2500 });
+        window.requestIdleCallback(runPrefetch, { timeout: 900 });
       } else {
-        setTimeout(runPrefetch, 600);
+        setTimeout(runPrefetch, 80);
       }
     });
 })();

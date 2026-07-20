@@ -15,6 +15,9 @@
     <allow-intent href="sms:*" />
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
+    <allow-intent href="alipays://*" />
+    <allow-intent href="alipay://*" />
+    <allow-intent href="intent://*" />
     <preference name="AndroidInsecureFileModeEnabled" value="true" />
     <preference name="loadUrlTimeoutValue" value="120000" />
     <!-- 不显示 Cordova 原生标题栏，避免顶部多出一条类似浏览器标题的区域 -->
@@ -48,6 +51,21 @@
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
+        <!-- Android 11+ / 华为：声明可查询支付宝，否则系统认为未安装并提示下载 -->
+        <config-file target="AndroidManifest.xml" parent="/*">
+            <queries>
+                <package android:name="com.eg.android.AlipayGphone" />
+                <package android:name="com.alipay.mobile.client" />
+                <intent>
+                    <action android:name="android.intent.action.VIEW" />
+                    <data android:scheme="alipays" />
+                </intent>
+                <intent>
+                    <action android:name="android.intent.action.VIEW" />
+                    <data android:scheme="alipay" />
+                </intent>
+            </queries>
+        </config-file>
         <!-- Android 12+ 冷启动：全屏 launch_splash（与 www/start.png 一致），中间图标透明占位 -->
         <resource-file src="res/android/launch_bg.png" target="app/src/main/res/drawable-nodpi/launch_bg.png" />
         <resource-file src="res/android/launch_splash.xml" target="app/src/main/res/drawable/launch_splash.xml" />

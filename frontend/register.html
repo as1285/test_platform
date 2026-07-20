@@ -425,11 +425,12 @@
 
         function formatRegisterFailMsg(data) {
             var msg = (data && data.msg) || '注册失败';
-            if (!data) return msg;
-            if (Number(data.code) === 429 || /秒后再试|冷却|今日注册次数已达上限|过于频繁/.test(String(msg))) {
-                return msg;
+            var s = String(msg).trim();
+            /* 兼容旧后端短文案：仅「请 N 秒后再试」时补上原因说明 */
+            if (/^请\s*\d+\s*秒后再试$/.test(s)) {
+                return '因上次注册失败（如验证码错误、账号已存在）触发冷却。\n' + s;
             }
-            return msg;
+            return s;
         }
 
         (function bindErrModal() {
@@ -766,7 +767,7 @@
                         }, 350);
                         return;
                     }
-                    showErr(data.msg || '注册失败');
+                    showErr(formatRegisterFailMsg(data));
                     loadRegisterCaptcha().catch(function () {});
                 })
                 .catch(function () {

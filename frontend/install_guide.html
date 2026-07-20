@@ -2129,8 +2129,12 @@
             var showcaseCard = document.getElementById('installShowcaseCard');
             var previewAnchor = showcaseCard || document.getElementById('lpHero') || document.getElementById('download');
             whenElementNearViewport(previewAnchor, loadShowcase, '280px 0px');
-            /* 首屏即拉效果图（Hero 依赖 img_1），不再额外等 1.8s */
-            runAfterFirstPaint(loadShowcase);
+            /* Hero 效果图立即拉，不走 idle 延迟 */
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadShowcase, { once: true });
+            } else {
+                loadShowcase();
+            }
         })();
 
         /* ── Gate modal ── */
