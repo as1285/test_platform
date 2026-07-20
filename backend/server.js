@@ -981,13 +981,27 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
 }
 
 async function queryDailyXianyuActivationSegment(conn, period, admin) {
+  return queryDailyActivationChannelSegment(conn, period, admin, 'xianyu');
+}
+
+async function queryDailyActivationChannelSegment(conn, period, admin, channelKey) {
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
   var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-  var xyFilter = xianyuActivationFilterSql('u', 'ac');
+  var chFilter = activationChannelFilterSql('u', 'ac', channelKey);
+  var chParams = activationChannelFilterParams(channelKey);
+  if (!chParams.length) {
+    var empty =
+      period.mode === 'range'
+        ? buildDailyConversionSeriesForRange(period.start, period.end, {}, {})
+        : buildDailyConversionSeries(period.days, {}, {});
+    empty.activation_only = true;
+    empty.activation_channel = String(channelKey || '');
+    return empty;
+  }
 
-  var actWhere = 'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' + xyFilter;
-  var actParams = ['xianyu', '%闲鱼%'];
+  var actWhere = 'ac.last_used_at IS NOT NULL AND ac.used_count > 0 AND ' + chFilter;
+  var actParams = chParams.slice();
   if (ownerAdmin) {
     actWhere += ' AND ac.owner_admin_username = ?';
     actParams.push(ownerAdmin);
@@ -1026,6 +1040,7 @@ async function queryDailyXianyuActivationSegment(conn, period, admin) {
     result = buildDailyConversionSeries(period.days, regMap, actMap);
   }
   result.activation_only = true;
+  result.activation_channel = String(channelKey || '');
   return result;
 }
 
@@ -2175,6 +2190,31 @@ async function createTables() {
     if (e.errno !== 1060) {
       throw e;
     }
+  }
+
+  /* 历史：支付宝自动发卡、酷发卡批量码未写归属时，归到超级管理员 admin */
+  try {
+    await conn.execute(
+      `UPDATE activation_codes
+       SET owner_admin_username = ?
+       WHERE (owner_admin_username IS NULL OR TRIM(owner_admin_username) = '')
+         AND (
+           note LIKE '%支付宝%'
+           OR note LIKE '%酷发卡%'
+           OR note LIKE '%kufaka%'
+         )`,
+      [ADMIN_PANEL_USER]
+    );
+    await conn.execute(
+      `UPDATE activation_codes ac
+       INNER JOIN users u ON u.username = ac.used_by_username
+       SET ac.owner_admin_username = ?
+       WHERE (ac.owner_admin_username IS NULL OR TRIM(ac.owner_admin_username) = '')
+         AND u.activation_source_channel IN ('alipay', 'kufaka')`,
+      [ADMIN_PANEL_USER]
+    );
+  } catch (eBackfill) {
+    console.warn('activation_codes owner backfill', eBackfill && eBackfill.message);
   }
 
   await conn.execute(`
@@ -4109,6 +4149,15 @@ async function applyActivationCode(username, rawCode) {
       'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
       [username, r.id]
     );
+    /* 支付宝 / 酷发卡激活码归属超级管理员，便于「上线」与转化统计 */
+    if (actChannel === 'alipay' || actChannel === 'kufaka') {
+      await conn.execute(
+        `UPDATE activation_codes
+         SET owner_admin_username = COALESCE(NULLIF(TRIM(owner_admin_username), ''), ?)
+         WHERE id = ?`,
+        [ADMIN_PANEL_USER, r.id]
+      );
+    }
     if (actChannel) {
       await conn.execute(
         'UPDATE users SET account_active = 1, activation_source_channel = ? WHERE username = ?',
@@ -4368,9 +4417,9 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     var activationCode = randomActivationCodePlain();
     const [codeResult] = await conn.execute(
       `INSERT INTO activation_codes
-       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username)
-       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?)`,
-      [activationCode, locked.username]
+       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username, owner_admin_username)
+       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?, ?)`,
+      [activationCode, locked.username, ADMIN_PANEL_USER]
     );
     await conn.execute(
       `UPDATE users
@@ -10352,7 +10401,9 @@ async function handleAdminUsersDailyConversion(req, res) {
     try {
       var ownSeg = await queryDailyConversionSegment(conn, period, req.admin, 'own', agentChannels);
       var agentSeg = await queryDailyConversionSegment(conn, period, req.admin, 'agent', agentChannels);
-      var xianyuSeg = await queryDailyXianyuActivationSegment(conn, period, req.admin);
+      var xianyuSeg = await queryDailyActivationChannelSegment(conn, period, req.admin, 'xianyu');
+      var alipaySeg = await queryDailyActivationChannelSegment(conn, period, req.admin, 'alipay');
+      var kufakaSeg = await queryDailyActivationChannelSegment(conn, period, req.admin, 'kufaka');
 
       res.json({
         code: 200,
@@ -10362,7 +10413,9 @@ async function handleAdminUsersDailyConversion(req, res) {
           segments: {
             own: ownSeg,
             agent: agentSeg,
-            xianyu: xianyuSeg
+            xianyu: xianyuSeg,
+            alipay: alipaySeg,
+            kufaka: kufakaSeg
           }
         })
       });
@@ -13231,6 +13284,17 @@ async function handleAdminUsers(req, res) {
         r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
           ? String(r.sales_promo_channel).trim()
           : '';
+      var upline =
+        r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
+          ? String(r.upline_admin_username).trim()
+          : '';
+      if (!upline) {
+        var actSrc =
+          r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '';
+        if (actSrc === 'alipay' || actSrc === 'kufaka') {
+          upline = ADMIN_PANEL_USER;
+        }
+      }
       return {
         id: r.id,
         username: r.username,
@@ -13241,10 +13305,7 @@ async function handleAdminUsers(req, res) {
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
-        upline_admin:
-          r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
-            ? String(r.upline_admin_username).trim()
-            : '',
+        upline_admin: upline,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password:
           r.plain_password != null && String(r.plain_password).trim() !== ''
@@ -13428,6 +13489,21 @@ function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, u
 }
 
 function xianyuActivationFilterSql(userAlias, codeAlias) {
+  return activationChannelFilterSql(userAlias, codeAlias, 'xianyu');
+}
+
+/** 按激活渠道统计：用户 activation_source_channel 或激活码备注匹配 */
+function activationChannelFilterSql(userAlias, codeAlias, channelKey) {
+  var key = String(channelKey || '').trim().toLowerCase();
+  var labelMap = {
+    xianyu: '闲鱼',
+    alipay: '支付宝',
+    kufaka: '酷发卡'
+  };
+  var label = labelMap[key] || '';
+  if (!key || !label) {
+    return '1=0';
+  }
   return (
     '(' +
     userAlias +
@@ -13437,6 +13513,18 @@ function xianyuActivationFilterSql(userAlias, codeAlias) {
     codeAlias +
     '.note LIKE ?))'
   );
+}
+
+function activationChannelFilterParams(channelKey) {
+  var key = String(channelKey || '').trim().toLowerCase();
+  var labelMap = {
+    xianyu: '闲鱼',
+    alipay: '支付宝',
+    kufaka: '酷发卡'
+  };
+  var label = labelMap[key];
+  if (!label) return [];
+  return [key, '%' + label + '%'];
 }
 
 function userTableAliasFromCol(userCol) {

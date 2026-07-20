@@ -4343,6 +4343,7 @@
         function renderDailyConversionSegmentBlock(title, segmentData, pageData, options) {
             options = options || {};
             var activationOnly = !!options.activationOnly;
+            var channelLabel = String(options.channelLabel || '').trim() || '渠道';
             var collapsed = !!options.collapsed;
             var wrapStart = collapsed
                 ? '<details class="analytics-segment-block analytics-segment-collapsible">'
@@ -4364,7 +4365,7 @@
                     '）</div>';
                 if (activationOnly) {
                     html += '<div class="conv-today">' + esc(String(pt.activated != null ? pt.activated : 0)) + '</div>';
-                    html += '<div class="conv-sub">闲鱼激活</div>';
+                    html += '<div class="conv-sub">' + esc(channelLabel) + '激活</div>';
                 } else {
                     var periodRate =
                         pt.rate_pct != null ? pt.rate_pct : pt.registered > 0 ? '0.0%' : '—';
@@ -4383,9 +4384,18 @@
             var summaryTitle = segmentData.today_is_current === false ? '末日' : '今日';
             html += '<div class="analytics-conv-summary">';
             if (activationOnly) {
-                html += '<div class="conv-label">' + summaryTitle + '闲鱼激活（' + esc(todayKey) + '）</div>';
+                html +=
+                    '<div class="conv-label">' +
+                    summaryTitle +
+                    esc(channelLabel) +
+                    '激活（' +
+                    esc(todayKey) +
+                    '）</div>';
                 html += '<div class="conv-today">' + esc(String(today.activated != null ? today.activated : 0)) + '</div>';
-                html += '<div class="conv-sub">仅统计 admin 名下通过闲鱼码/渠道激活的用户</div>';
+                html +=
+                    '<div class="conv-sub">仅统计 admin 名下通过' +
+                    esc(channelLabel) +
+                    '码/渠道激活的用户</div>';
             } else {
                 var rateText = today.rate_pct != null ? today.rate_pct : today.registered > 0 ? '0.0%' : '—';
                 html += '<div class="conv-label">' + summaryTitle + '转化率（' + esc(todayKey) + '）</div>';
@@ -4448,9 +4458,17 @@
             }
             html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
-            if (data.segments.xianyu) {
-                html += renderDailyConversionSegmentBlock('闲鱼激活', data.segments.xianyu, data, { activationOnly: true });
-            }
+            [
+                { key: 'xianyu', title: '闲鱼激活', label: '闲鱼' },
+                { key: 'alipay', title: '支付宝激活', label: '支付宝' },
+                { key: 'kufaka', title: '酷发卡激活', label: '酷发卡' }
+            ].forEach(function (ch) {
+                if (!data.segments[ch.key]) return;
+                html += renderDailyConversionSegmentBlock(ch.title, data.segments[ch.key], data, {
+                    activationOnly: true,
+                    channelLabel: ch.label
+                });
+            });
             el.innerHTML = html;
         }
 
