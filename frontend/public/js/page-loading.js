@@ -5,10 +5,10 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260720-fast-nav';
-  var MIN_DISPLAY_MS = 80;
-  var ABSOLUTE_MAX_MS = 8000;
-  var THEME_WAIT_MS = 4000;
+  var CSS_HREF = '/css/page-loading.css?v=20260720-nav-speed';
+  var MIN_DISPLAY_MS = 40;
+  var ABSOLUTE_MAX_MS = 6000;
+  var THEME_WAIT_MS = 2500;
   var count = 0;
   var queue = [];
 
@@ -257,6 +257,10 @@
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;
           }
+          /* 底栏 TAB 切换不盖转圈，减少「假卡顿」感知；页面仍会完整加载 */
+          if (el.closest('.bottom-nav')) {
+            return;
+          }
           var href = el.getAttribute('href');
           if (!isInternalNavHref(href)) {
             return;
@@ -330,6 +334,9 @@
     }
     if (document.body && document.body.classList.contains('page-shuiming-result')) {
       waits.push(waitForEvent('appPageLoadingDataDone', 12000, '__appPageLoadingDataDone'));
+    }
+    if (document.body && document.body.classList.contains('page-xiangqing')) {
+      waits.push(waitForEvent('appPageLoadingDataDone', 5000, '__appPageLoadingDataDone'));
     }
 
     if (!waits.length) {

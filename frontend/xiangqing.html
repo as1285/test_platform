@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-fast-nav"></script>
+    <script src="/js/auth.js?v=20260720-detail-speed"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope="body.page-xiangqing"></script>
@@ -605,9 +605,19 @@
         function loadData() {
             var id = getUrlParam('id');
             var errEl = document.getElementById('loadErr');
+            function doneLoading() {
+                if (typeof window.appPageLoadingDispatchDataDone === 'function') {
+                    window.appPageLoadingDispatchDataDone();
+                } else if (typeof window.notifyPageLoadingDone === 'function') {
+                    window.notifyPageLoadingDone();
+                } else if (typeof window.forceHidePageLoading === 'function') {
+                    window.forceHidePageLoading();
+                }
+            }
             if (!id) {
                 errEl.style.display = 'block';
                 errEl.textContent = '缺少记录 id';
+                doneLoading();
                 return;
             }
             authFetch('api/tax.php?action=detail&id=' + encodeURIComponent(id))
@@ -655,14 +665,17 @@
                             setYuan('bonusTaxPaid', bt.tax_paid);
                             setYuan('bonusTaxDeclared', bt.tax_declared);
                         }
+                        doneLoading();
                         return;
                     }
                     errEl.style.display = 'block';
                     errEl.textContent = data.msg || '加载失败';
+                    doneLoading();
                 })
                 .catch(function () {
                     errEl.style.display = 'block';
                     errEl.textContent = '网络错误';
+                    doneLoading();
                 });
         }
 

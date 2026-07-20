@@ -2006,19 +2006,28 @@
     var s = document.createElement('script');
     s.src = '/js/toast-duration.js?v=20260529-toast-3s';
     s.setAttribute('data-toast-duration', '1');
-    s.async = false;
+    s.async = true;
     document.head.appendChild(s);
   })();
 
   (function injectConversionGuide() {
     if (isPublicPage()) return;
     if (currentPageName() === 'admin_panel.html') return;
+    /* 明细/计算等只读页不注入转化引导，减少约 60KB JS 解析与执行 */
+    var skipCg = {
+      'xiangqing.html': true,
+      'shuikuanjisuan.html': true,
+      'shenbao_jilu_detail.html': true,
+      'shenbao_income_detail.html': true
+    };
+    if (skipCg[currentPageName()]) return;
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
     s.src = '/js/conversion-guide.js?v=20260720-guest-funnel';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
+    s.defer = true;
     document.head.appendChild(s);
   })();
 
@@ -2045,11 +2054,22 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260720-fast-nav';
+      s.src = '/js/page-loading.js?v=20260720-detail-speed';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);
     }
+  })();
+
+  (function injectFastNav() {
+    if (isPublicPage()) return;
+    if (currentPageName() === 'admin_panel.html') return;
+    if (document.querySelector('script[data-fast-nav-js]')) return;
+    var s = document.createElement('script');
+    s.src = '/js/fast-nav.js?v=20260720-nav-speed';
+    s.setAttribute('data-fast-nav-js', '1');
+    s.async = true;
+    document.head.appendChild(s);
   })();
 
   if (!isPublicPage()) {

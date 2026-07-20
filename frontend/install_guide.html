@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-nav-speed"></script>
+    <script src="/js/auth.js?v=20260720-detail-speed"></script>
     <script>
         (function landingAbBootstrap() {
             document.documentElement.classList.add('landing-ab-pending');
@@ -162,16 +162,20 @@
                     }
                     return reveal('b');
                 });
+            /* A/B 配置过慢时先露出页面，避免长时间白屏 */
+            setTimeout(function () {
+                if (document.documentElement.classList.contains('landing-ab-pending')) {
+                    reveal('b');
+                }
+            }, 700);
         })();
     </script>
     <script src="/js/wechat-open-browser-prompt.js?v=20260720-guest-funnel" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 先体验再下载</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* 仅短暂遮挡，避免 A/B 接口慢时整页长时间白屏；超时由脚本强制 reveal */
         html.landing-ab-pending body { visibility: hidden; }
         html, body {
             overflow-x: hidden;
@@ -180,7 +184,7 @@
         }
         html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
-            font-family: "Sora", "PingFang SC", "Noto Sans SC", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
             background: #f0f4fa;
             min-height: 100vh;
             padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
@@ -1214,9 +1218,7 @@
             window.__installPrimaryDownloadEl = primaryBtn;
             window.__installPrimaryDownloadHref = primaryBtn.getAttribute('href') || '';
             window.__installPrimaryDownloadName = primaryBtn.getAttribute('download') || '';
-            if (!sticky) {
-                return;
-            }
+            if (sticky) {
             sticky.href = primaryBtn.getAttribute('href') || '#';
             sticky.textContent = label || '下载 App';
             sticky.removeAttribute('hidden');
@@ -1274,6 +1276,7 @@
                     openDownloadExternally(sticky.href);
                 }
             };
+            }
             wireHeroAndGateDownloadButtons();
             if (window.__pendingHeroInstallDownload) {
                 window.__pendingHeroInstallDownload = false;
@@ -1870,11 +1873,11 @@
             if (!heroVisual || !heroImg || !imgUrl) {
                 return;
             }
-            /* 静图替代 GIF；showcase 本身已延后，加载时再标 eager */
+            /* 静图替代 GIF；Hero 首图优先加载 */
             heroImg.loading = 'eager';
             heroImg.decoding = 'async';
             try {
-                heroImg.fetchPriority = 'low';
+                heroImg.fetchPriority = 'high';
             } catch (eFp) {}
             heroImg.src = imgUrl;
             heroImg.removeAttribute('hidden');
@@ -1906,10 +1909,23 @@
 
             if (gifWrap && gifImg) {
                 if (hasGif) {
+                    /* GIF 较重：进入「更多界面」视口后再加载 */
                     gifImg.loading = 'lazy';
                     gifImg.decoding = 'async';
-                    gifImg.src = gifUrl;
+                    try {
+                        gifImg.fetchPriority = 'low';
+                    } catch (eGifFp) {}
+                    gifImg.removeAttribute('src');
                     gifWrap.hidden = false;
+                    whenElementNearViewport(
+                        gifWrap,
+                        function () {
+                            if (!gifImg.getAttribute('src')) {
+                                gifImg.src = gifUrl;
+                            }
+                        },
+                        '120px 0px'
+                    );
                 } else {
                     gifWrap.hidden = true;
                     gifImg.removeAttribute('src');
@@ -1982,8 +1998,38 @@
         }
 
         var mineUiCache = null;
+        var mineUiInflight = null;
         var iosVideoLoaded = false;
         var usageVideoLoaded = false;
+
+        function ensureMineUiData(cb) {
+            if (mineUiCache) {
+                cb(mineUiCache);
+                return;
+            }
+            if (!mineUiInflight) {
+                mineUiInflight = fetch('/api/public/mine-ui', { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (body) {
+                        if (body && body.code === 200 && body.data) {
+                            mineUiCache = body.data;
+                        }
+                        return mineUiCache;
+                    })
+                    .catch(function () {
+                        return null;
+                    })
+                    .finally(function () {
+                        mineUiInflight = null;
+                    });
+            }
+            mineUiInflight.then(function (data) {
+                cb(data || null);
+            });
+        }
+
+        /* 尽早预热 mine-ui，首屏 Hero 效果图不必等 1.8s */
+        ensureMineUiData(function () {});
 
         function renderVideo(containerId, url, emptyText) {
             var box = document.getElementById(containerId);
@@ -2016,24 +2062,6 @@
             } else {
                 box.innerHTML = '<div class="video-placeholder">' + emptyText + '<br>请在管理后台「引导安装」上传或填写视频地址</div>';
             }
-        }
-
-        function ensureMineUiData(cb) {
-            if (mineUiCache) {
-                cb(mineUiCache);
-                return;
-            }
-            fetch('/api/public/mine-ui', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (body) {
-                    if (body && body.code === 200 && body.data) {
-                        mineUiCache = body.data;
-                    }
-                    cb(mineUiCache);
-                })
-                .catch(function () {
-                    cb(null);
-                });
         }
 
         function loadIosVideoIfNeeded() {
@@ -2101,9 +2129,8 @@
             var showcaseCard = document.getElementById('installShowcaseCard');
             var previewAnchor = showcaseCard || document.getElementById('lpHero') || document.getElementById('download');
             whenElementNearViewport(previewAnchor, loadShowcase, '280px 0px');
-            runAfterFirstPaint(function () {
-                setTimeout(loadShowcase, 1800);
-            });
+            /* 首屏即拉效果图（Hero 依赖 img_1），不再额外等 1.8s */
+            runAfterFirstPaint(loadShowcase);
         })();
 
         /* ── Gate modal ── */
