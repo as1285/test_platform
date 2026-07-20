@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-fast-nav"></script>
+    <script src="/js/auth.js?v=20260720-nav-speed"></script>
     <script>
         (function landingAbBootstrap() {
             document.documentElement.classList.add('landing-ab-pending');
@@ -1208,7 +1208,13 @@
             var sticky = document.getElementById('stickyDownloadBtn');
             var bar = document.getElementById('stickyInstallBar');
             var hint = document.getElementById('stickyInstallHint');
-            if (!sticky || !primaryBtn) {
+            if (!primaryBtn) {
+                return;
+            }
+            window.__installPrimaryDownloadEl = primaryBtn;
+            window.__installPrimaryDownloadHref = primaryBtn.getAttribute('href') || '';
+            window.__installPrimaryDownloadName = primaryBtn.getAttribute('download') || '';
+            if (!sticky) {
                 return;
             }
             sticky.href = primaryBtn.getAttribute('href') || '#';
@@ -1268,6 +1274,81 @@
                     openDownloadExternally(sticky.href);
                 }
             };
+            wireHeroAndGateDownloadButtons();
+            if (window.__pendingHeroInstallDownload) {
+                window.__pendingHeroInstallDownload = false;
+                setTimeout(function () {
+                    triggerPrimaryInstallDownload('hero_pending');
+                }, 60);
+            }
+        }
+
+        /** Hero / 弹窗「下载到手机」：直接触发当前设备对应安装包下载 */
+        function triggerPrimaryInstallDownload(via) {
+            var el = window.__installPrimaryDownloadEl;
+            var href = window.__installPrimaryDownloadHref || (el && el.getAttribute('href')) || '';
+            if (el && href && href !== '#') {
+                try {
+                    el.click();
+                    return true;
+                } catch (e0) {}
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction(
+                        isLikelyIOSClient() ? 'track_install_ios_click' : 'track_install_apk_click',
+                        { page: 'install_guide', via: via || 'hero' }
+                    );
+                }
+                if (isInAppShell()) {
+                    openDownloadExternally(href);
+                } else {
+                    try {
+                        var a = document.createElement('a');
+                        a.href = href;
+                        var dl = window.__installPrimaryDownloadName || el.getAttribute('download');
+                        if (dl) a.setAttribute('download', dl);
+                        if (el.getAttribute('target') === '_blank') {
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
+                        }
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(function () {
+                            try {
+                                a.parentNode && a.parentNode.removeChild(a);
+                            } catch (e1) {}
+                        }, 500);
+                    } catch (e2) {
+                        window.location.href = href;
+                    }
+                }
+                advanceInstallStepsAfterDownload();
+                return true;
+            }
+            /* 安装包尚未就绪：先滚到下载区并尽快拉配置，就绪后自动开始下载 */
+            window.__pendingHeroInstallDownload = true;
+            var sec = document.getElementById('download');
+            if (sec) {
+                try {
+                    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e3) {
+                    sec.scrollIntoView(true);
+                }
+            }
+            if (typeof window.__fetchInstallPackagesNow === 'function') {
+                window.__fetchInstallPackagesNow();
+            }
+            return false;
+        }
+
+        function wireHeroAndGateDownloadButtons() {
+            var btn = document.getElementById('lpHeroDownloadBtn');
+            if (!btn || btn.__directDlBound) return;
+            btn.__directDlBound = true;
+            btn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                triggerPrimaryInstallDownload('hero');
+            });
         }
 
         function applyInstallPageLayout() {
@@ -1757,18 +1838,19 @@
                     });
             }
 
-            /* 直达下载锚点时尽快拉配置；否则等首屏绘制后再请求，避免抢 DOM 带宽 */
+            window.__fetchInstallPackagesNow = fetchInstallPackages;
+            wireHeroAndGateDownloadButtons();
+
+            /* Hero「下载到手机」需尽快就绪：首屏即拉安装包配置 */
             var downloadOnly =
                 /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || '')) ||
                 String(window.location.hash || '') === '#download';
             if (downloadOnly || readInstallPackagesCache()) {
                 runAfterFirstPaint(fetchInstallPackages);
             } else {
+                runAfterFirstPaint(fetchInstallPackages);
                 var downloadSec = document.getElementById('download');
                 whenElementNearViewport(downloadSec, fetchInstallPackages, '320px 0px');
-                runAfterFirstPaint(function () {
-                    setTimeout(fetchInstallPackages, 2500);
-                });
             }
         })();
 
@@ -2094,9 +2176,11 @@
                 });
             }
             if (downloadBtn) {
-                downloadBtn.addEventListener('click', function () {
+                downloadBtn.addEventListener('click', function (ev) {
                     trackGate('track_landing_gate_download');
                     closeGate();
+                    ev.preventDefault();
+                    triggerPrimaryInstallDownload('gate');
                 });
             }
         })();
