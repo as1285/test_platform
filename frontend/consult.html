@@ -1345,6 +1345,24 @@
         </div>
     </div>
 
+    <div id="profilePasteImportModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="profilePasteImportTitle">
+        <div class="batch-ms-modal-mask" id="profilePasteImportMask"></div>
+        <div class="batch-ms-modal-panel" style="max-width:560px;">
+            <div class="batch-ms-modal-head">
+                <span id="profilePasteImportTitle">粘贴填入个人信息</span>
+                <button type="button" id="profilePasteImportCloseX" aria-label="关闭">&times;</button>
+            </div>
+            <p class="batch-ms-modal-hint">粘贴聊天记录中的姓名、手机号、身份证号、地址、银行卡号；确认后写入个人资料，有卡号时同步添加银行卡。</p>
+            <textarea id="profilePasteImportText" class="tax-paste-import-textarea" rows="10" placeholder="姓名：韩明&#10;手机号：18605232526&#10;身份证号：320382198602168217&#10;地址：江苏省邳州市土山镇吕台村花庄83号&#10;中国建设银行卡号：&#10;6217 0015 4002 4858 472"></textarea>
+            <div id="profilePasteImportPreview" class="tax-paste-import-preview" hidden></div>
+            <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
+                <button type="button" class="btn btn-default btn-sm" id="profilePasteImportCancel">取消</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="profilePasteImportParseBtn">解析预览</button>
+                <button type="button" class="btn btn-primary btn-sm" id="profilePasteImportApplyBtn">确认写入</button>
+            </div>
+        </div>
+    </div>
+
     <div id="consultStrongAlertModal" class="consult-strong-alert-root" role="alertdialog" aria-modal="true" aria-labelledby="consultStrongAlertTitle" aria-describedby="consultStrongAlertText">
         <div class="consult-strong-alert-mask" id="consultStrongAlertMask"></div>
         <div class="consult-strong-alert-panel">
@@ -1365,6 +1383,14 @@
 
     <div class="container">
         <div id="msgBar"></div>
+
+        <div class="card" id="profilePasteCard" style="padding:12px 16px;">
+            <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">个人信息快捷填入</div>
+                <button type="button" class="btn btn-primary btn-sm" id="btnProfilePasteImport" onclick="openProfilePasteImportModal()">粘贴填入</button>
+            </div>
+            <p class="hint" style="margin:0;font-size:12px;color:#94a3b8;line-height:1.45;">复制姓名、手机、身份证、地址、银行卡等信息粘贴后，一键写入个人资料与银行卡。</p>
+        </div>
 
         <div id="panel-employers" class="tab-panel">
             <div class="card">
@@ -1918,6 +1944,7 @@
         </a>
     </div>
 
+    <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
     <script src="/js/watermark.js?v=20260529-no-consult-wm"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
@@ -6516,6 +6543,449 @@
             }
             if (genBtn) {
                 genBtn.addEventListener('click', generateTaxPasteImportDirect);
+            }
+        })();
+
+        var _profilePasteImportLastParsed = null;
+
+        function digitsOnlyProfile(raw) {
+            return String(raw || '').replace(/\D/g, '');
+        }
+
+        function birthFromId18Consult(idStr) {
+            var s = String(idStr || '').trim().toUpperCase();
+            if (s.length !== 18 || !/^\d{17}[\dX]$/.test(s)) {
+                return '';
+            }
+            var d = s.substring(6, 14);
+            if (!/^\d{8}$/.test(d)) {
+                return '';
+            }
+            return d.substring(0, 4) + '-' + d.substring(4, 6) + '-' + d.substring(6, 8);
+        }
+
+        function genderFromId18Consult(idStr) {
+            var s = String(idStr || '').trim().toUpperCase();
+            if (s.length !== 18 || !/^\d{17}[\dX]$/.test(s)) {
+                return null;
+            }
+            var c = parseInt(s.charAt(16), 10);
+            if (isNaN(c)) {
+                return null;
+            }
+            return c % 2 === 1 ? 1 : 2;
+        }
+
+        function splitCnAddressConsult(full) {
+            var s = String(full || '').replace(/\s+/g, '').trim();
+            if (!s) {
+                return { area: '', detail: '' };
+            }
+            var m = s.match(
+                /^(.+?(?:省|自治区|特别行政区)|(?:北京|天津|上海|重庆)市?)(.+?市|.+?(?:地区|盟|自治州)|.+?州)?(.*)$/
+            );
+            if (!m) {
+                return { area: '', detail: s };
+            }
+            var province = String(m[1] || '').trim();
+            var rest = String(m[3] || '').trim();
+            var city = String(m[2] || '').trim();
+            var district = '';
+            if (rest) {
+                var dm = rest.match(/^(.+?(?:区|县|市|旗))(.*)$/);
+                if (dm && dm[1] && dm[1].length <= 12) {
+                    district = String(dm[1] || '').trim();
+                    rest = String(dm[2] || '').trim();
+                }
+            }
+            var parts = [];
+            if (province) parts.push(province);
+            if (city && city !== '市辖区' && city !== '县') parts.push(city);
+            if (district) parts.push(district);
+            return { area: parts.join(' '), detail: rest || s };
+        }
+
+        function inferBankNameFromPasteText(text, cardNo) {
+            var t = String(text || '');
+            var named = t.match(
+                /(?:中国)?(工商银行|建设银行|农业银行|中国银行|交通银行|邮储银行|邮政储蓄银行|招商银行|浦发银行|中信银行|光大银行|华夏银行|民生银行|平安银行|兴业银行|广发银行)/
+            );
+            if (named) {
+                var n = named[1];
+                if (n === '邮政储蓄银行') {
+                    return '邮储银行';
+                }
+                return n;
+            }
+            if (window.BankCardBins && typeof window.BankCardBins.inferBankNameFromCardNo === 'function') {
+                var bn = window.BankCardBins.inferBankNameFromCardNo(cardNo);
+                if (bn && bn !== '银行卡') {
+                    return bn;
+                }
+            }
+            return '银行卡';
+        }
+
+        function parseProfilePasteText(rawText) {
+            var text = String(rawText || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n');
+            if (!String(text).trim()) {
+                return { ok: false, error: '请先粘贴个人信息文本' };
+            }
+            var realName = '';
+            var phone = '';
+            var taxId = '';
+            var address = '';
+            var cardNo = '';
+            var bankName = '';
+
+            var nameM =
+                text.match(/(?:真实)?姓名\s*[：:]\s*([^\n\r]{1,32})/) ||
+                text.match(/^\s*([^\n\r]{2,8})\s*$/m);
+            if (nameM) {
+                realName = String(nameM[1] || '')
+                    .replace(/[，,。.\s]+$/g, '')
+                    .trim();
+                if (/手机|身份证|地址|银行|卡号|江苏|北京|上海/.test(realName)) {
+                    realName = '';
+                }
+            }
+            if (!realName) {
+                var nameM2 = text.match(/姓名\s*[：:]\s*(\S{2,20})/);
+                if (nameM2) {
+                    realName = String(nameM2[1] || '').trim();
+                }
+            }
+
+            var phoneM =
+                text.match(/(?:手机号|手机|联系电话|电话|预留手机)\s*[：:]\s*([0-9\s\-]{11,20})/) ||
+                text.match(/(?:^|[^\d])(1[3-9]\d{9})(?:[^\d]|$)/);
+            if (phoneM) {
+                phone = digitsOnlyProfile(phoneM[1]);
+            }
+
+            var idM =
+                text.match(/(?:身份证号|身份证号码|证件号码|纳税人识别号|身份证)\s*[：:]\s*([0-9Xx\s]{15,22})/) ||
+                text.match(/(?:^|[^\dA-Za-z])(\d{17}[\dXx])(?:[^\dA-Za-z]|$)/) ||
+                text.match(/(?:^|[^\d])(\d{15})(?:[^\d]|$)/);
+            if (idM) {
+                taxId = String(idM[1] || '')
+                    .replace(/\s+/g, '')
+                    .toUpperCase();
+            }
+
+            var addrM = text.match(/(?:详细)?地址\s*[：:]\s*([^\n\r]{4,120})/);
+            if (addrM) {
+                address = String(addrM[1] || '')
+                    .replace(/[，,。.\s]+$/g, '')
+                    .trim();
+            }
+            if (!address) {
+                var addrM2 = text.match(
+                    /((?:北京|天津|上海|重庆|河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾|内蒙古|广西|西藏|宁夏|新疆|香港|澳门)[\u4e00-\u9fff0-9\-号弄巷村组楼栋单元室室房]{6,80})/
+                );
+                if (addrM2) {
+                    address = String(addrM2[1] || '').trim();
+                }
+            }
+
+            var bankLine = text.match(
+                /((?:中国)?(?:工商|建设|农业|中国|交通|邮储|邮政储蓄|招商|浦发|中信|光大|华夏|民生|平安|兴业|广发)?银行)?\s*卡号\s*[：:]?\s*([0-9\s]{16,30})/
+            );
+            if (bankLine) {
+                if (bankLine[1]) {
+                    bankName = inferBankNameFromPasteText(bankLine[1], '');
+                }
+                cardNo = digitsOnlyProfile(bankLine[2]);
+            }
+            if (!cardNo) {
+                var cardM = text.match(/(?:银行卡号|卡号|借记卡号)\s*[：:]\s*([0-9\s]{16,30})/);
+                if (cardM) {
+                    cardNo = digitsOnlyProfile(cardM[1]);
+                }
+            }
+            if (!cardNo) {
+                var loose = text.match(/(?:^|\n)\s*([0-9][0-9\s]{15,28}[0-9])\s*(?:\n|$)/);
+                if (loose) {
+                    var cand = digitsOnlyProfile(loose[1]);
+                    if (cand.length >= 16 && cand.length <= 19 && cand !== phone && cand !== taxId) {
+                        cardNo = cand;
+                    }
+                }
+            }
+            if (!bankName && cardNo) {
+                bankName = inferBankNameFromPasteText(text, cardNo);
+            }
+
+            if (!realName && !taxId && !phone && !address && !cardNo) {
+                return { ok: false, error: '未识别到姓名、身份证、手机、地址或银行卡，请检查粘贴内容' };
+            }
+
+            var addrParts = splitCnAddressConsult(address);
+            var birth = birthFromId18Consult(taxId);
+            var gender = genderFromId18Consult(taxId);
+            var errors = [];
+            if (phone && phone.length !== 11) {
+                errors.push('手机号应为 11 位');
+            }
+            if (taxId && !(taxId.length === 18 || taxId.length === 15)) {
+                errors.push('身份证号格式异常');
+            }
+            if (cardNo && cardNo.length < 16) {
+                errors.push('银行卡号过短');
+            }
+            if (cardNo && !phone) {
+                errors.push('有银行卡时需同时提供手机号（银行预留）');
+            }
+
+            return {
+                ok: true,
+                real_name: realName,
+                phone: phone,
+                tax_id: taxId,
+                address: address,
+                address_area: addrParts.area,
+                address_detail: addrParts.detail || address,
+                card_no: cardNo,
+                bank_name: bankName,
+                birth_date: birth,
+                gender: gender,
+                warnings: errors
+            };
+        }
+
+        function formatProfilePastePreview(parsed) {
+            if (!parsed || !parsed.ok) {
+                return parsed && parsed.error ? parsed.error : '解析失败';
+            }
+            var lines = [];
+            if (parsed.real_name) lines.push('姓名：' + parsed.real_name);
+            if (parsed.phone) lines.push('手机：' + parsed.phone);
+            if (parsed.tax_id) lines.push('身份证：' + parsed.tax_id);
+            if (parsed.birth_date) {
+                lines.push(
+                    '出生日期：' +
+                        parsed.birth_date +
+                        (parsed.gender === 1 ? '（男）' : parsed.gender === 2 ? '（女）' : '')
+                );
+            }
+            if (parsed.address_area) lines.push('地区：' + parsed.address_area);
+            if (parsed.address_detail) lines.push('详细地址：' + parsed.address_detail);
+            if (parsed.card_no) {
+                lines.push('银行卡：' + (parsed.bank_name || '银行卡') + ' ' + parsed.card_no);
+            }
+            if (!lines.length) {
+                lines.push('未识别到有效字段');
+            }
+            if (parsed.warnings && parsed.warnings.length) {
+                lines.push('注意：' + parsed.warnings.join('；'));
+            }
+            return lines.join('\n');
+        }
+
+        function openProfilePasteImportModal() {
+            var root = document.getElementById('profilePasteImportModal');
+            var ta = document.getElementById('profilePasteImportText');
+            var preview = document.getElementById('profilePasteImportPreview');
+            if (!root) return;
+            _profilePasteImportLastParsed = null;
+            if (preview) {
+                preview.hidden = true;
+                preview.textContent = '';
+            }
+            root.classList.add('is-open');
+            if (ta) {
+                setTimeout(function () {
+                    try {
+                        ta.focus();
+                    } catch (e0) {}
+                }, 50);
+            }
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_profile_paste_import_open', { page: 'consult' });
+            }
+        }
+
+        function closeProfilePasteImportModal() {
+            var root = document.getElementById('profilePasteImportModal');
+            if (root) {
+                root.classList.remove('is-open');
+            }
+        }
+
+        function previewProfilePasteImport() {
+            var ta = document.getElementById('profilePasteImportText');
+            var preview = document.getElementById('profilePasteImportPreview');
+            var parsed = parseProfilePasteText(ta ? ta.value : '');
+            _profilePasteImportLastParsed = parsed.ok ? parsed : null;
+            if (preview) {
+                preview.hidden = false;
+                preview.textContent = formatProfilePastePreview(parsed);
+            }
+            if (!parsed.ok) {
+                showConsultStrongAlert(parsed.error || '解析失败');
+            }
+            return parsed;
+        }
+
+        function applyProfilePasteImport() {
+            var parsed = previewProfilePasteImport();
+            if (!parsed.ok) {
+                return;
+            }
+            if (parsed.warnings && parsed.warnings.length) {
+                if (!confirm('解析有提示：\n' + parsed.warnings.join('\n') + '\n\n仍要继续写入可写入的字段吗？')) {
+                    return;
+                }
+            }
+            var profilePayload = { action: 'save_profile' };
+            var hasProfile = false;
+            if (parsed.real_name) {
+                profilePayload.real_name = parsed.real_name;
+                hasProfile = true;
+            }
+            if (parsed.tax_id) {
+                profilePayload.tax_id = parsed.tax_id;
+                hasProfile = true;
+            }
+            if (parsed.gender === 1 || parsed.gender === 2) {
+                profilePayload.gender = parsed.gender;
+                hasProfile = true;
+            }
+            if (parsed.birth_date) {
+                profilePayload.birth_date = parsed.birth_date;
+                hasProfile = true;
+            }
+            if (parsed.address) {
+                var area = parsed.address_area || '';
+                var detail = parsed.address_detail || parsed.address;
+                profilePayload.huji_area = area;
+                profilePayload.huji_detail = detail;
+                profilePayload.living_area = area;
+                profilePayload.living_detail = detail;
+                profilePayload.contact_area = area;
+                profilePayload.contact_detail = detail;
+                hasProfile = true;
+            }
+
+            var btn = document.getElementById('profilePasteImportApplyBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '写入中…';
+            }
+
+            var chain = Promise.resolve();
+            if (hasProfile) {
+                chain = chain.then(function () {
+                    return authFetch('api/user.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(profilePayload)
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (!data || data.code !== 200) {
+                                throw new Error((data && data.msg) || '保存个人资料失败');
+                            }
+                            try {
+                                if (parsed.real_name) localStorage.setItem('real_name', parsed.real_name);
+                                if (parsed.tax_id) localStorage.setItem('tax_id', parsed.tax_id);
+                                if (parsed.gender === 1 || parsed.gender === 2) {
+                                    localStorage.setItem('gender', String(parsed.gender));
+                                }
+                            } catch (eLs) {}
+                            if (parsed.real_name) {
+                                document.title = '个人中心 - ' + parsed.real_name;
+                            }
+                        });
+                });
+            }
+
+            if (parsed.card_no && parsed.phone && parsed.phone.length === 11 && parsed.card_no.length >= 16) {
+                chain = chain.then(function () {
+                    return authFetch('api/user.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'add_bank_card',
+                            card_no: parsed.card_no,
+                            phone: parsed.phone,
+                            bank_name: parsed.bank_name || '银行卡',
+                            province: parsed.address_area || ''
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (!data || data.code !== 200) {
+                                throw new Error((data && data.msg) || '添加银行卡失败');
+                            }
+                            try {
+                                if (data.data && data.data.bank_card_count != null) {
+                                    localStorage.setItem('bank_card_count', String(data.data.bank_card_count));
+                                }
+                            } catch (eBc) {}
+                        });
+                });
+            }
+
+            chain
+                .then(function () {
+                    closeProfilePasteImportModal();
+                    var bits = [];
+                    if (parsed.real_name) bits.push('姓名');
+                    if (parsed.tax_id) bits.push('身份证');
+                    if (parsed.address) bits.push('地址');
+                    if (parsed.card_no && parsed.phone) bits.push('银行卡');
+                    showMsg('已写入：' + (bits.join('、') || '个人资料'), true);
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_profile_paste_import_apply', {
+                            page: 'consult',
+                            has_bank: !!(parsed.card_no && parsed.phone)
+                        });
+                    }
+                    try {
+                        loadUserInfoFromApi();
+                    } catch (eLoad) {}
+                })
+                .catch(function (err) {
+                    showConsultStrongAlert((err && err.message) || '写入失败');
+                })
+                .then(function () {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '确认写入';
+                    }
+                });
+        }
+
+        (function bindProfilePasteImportModalUi() {
+            var mask = document.getElementById('profilePasteImportMask');
+            var cx = document.getElementById('profilePasteImportCloseX');
+            var cancel = document.getElementById('profilePasteImportCancel');
+            var parseBtn = document.getElementById('profilePasteImportParseBtn');
+            var applyBtn = document.getElementById('profilePasteImportApplyBtn');
+            if (mask) {
+                mask.addEventListener('click', closeProfilePasteImportModal);
+            }
+            if (cx) {
+                cx.addEventListener('click', closeProfilePasteImportModal);
+            }
+            if (cancel) {
+                cancel.addEventListener('click', closeProfilePasteImportModal);
+            }
+            if (parseBtn) {
+                parseBtn.addEventListener('click', function () {
+                    previewProfilePasteImport();
+                });
+            }
+            if (applyBtn) {
+                applyBtn.addEventListener('click', applyProfilePasteImport);
             }
         })();
 
