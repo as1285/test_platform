@@ -283,13 +283,52 @@
 
     function openExternalUrl(url) {
         var u = url != null ? String(url).trim() : '';
-        if (!u) return;
+        if (!u) return false;
+        /* 禁止用 location.href 跳走：App iframe / WebView 会被支付宝页替换，支付后回来白屏 */
+        try {
+            if (window.cordova && window.cordova.InAppBrowser && typeof window.cordova.InAppBrowser.open === 'function') {
+                window.cordova.InAppBrowser.open(u, '_system');
+                return true;
+            }
+        } catch (e0) {}
+        try {
+            if (window.top && window.top !== window) {
+                var topOpened = window.top.open(u, '_blank');
+                if (topOpened) return true;
+            }
+        } catch (e1) {}
         try {
             var opened = window.open(u, '_blank');
-            if (!opened) window.location.href = u;
-        } catch (e) {
-            window.location.href = u;
-        }
+            if (opened) return true;
+        } catch (e2) {}
+        try {
+            var a = document.createElement('a');
+            a.href = u;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+                try {
+                    a.parentNode && a.parentNode.removeChild(a);
+                } catch (e3) {}
+            }, 800);
+            return true;
+        } catch (e4) {}
+        return false;
+    }
+
+    /** 唤起支付宝 App 付款，不离开当前购买页 */
+    function openAlipayPay(qrCode) {
+        var code = qrCode != null ? String(qrCode).trim() : '';
+        if (!code) return;
+        var scheme =
+            'alipays://platformapi/startapp?saId=10000007&qrcode=' + encodeURIComponent(code);
+        openExternalUrl(scheme);
+        setTimeout(function () {
+            openExternalUrl(code);
+        }, 600);
     }
 
     function paymentFetch(url, options) {
@@ -347,12 +386,16 @@
             'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' +
             encodeURIComponent(code);
         wrap.hidden = false;
-        /* 手机端可直接打开 qr.alipay.com 链接唤起 App */
+        /* 手机端可直接打开支付宝 App 付款（不离开本页，避免回跳白屏） */
         if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
             openBtn.hidden = false;
             openBtn.onclick = function () {
-                openExternalUrl(code);
+                openAlipayPay(code);
             };
+            /* 生成二维码后自动尝试唤起支付宝，购买页保留轮询 */
+            setTimeout(function () {
+                openAlipayPay(code);
+            }, 300);
         } else {
             openBtn.hidden = true;
         }

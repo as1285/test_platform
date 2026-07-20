@@ -4210,12 +4210,48 @@ async function handleAlipayLatestOrder(req, res) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      `SELECT out_trade_no, subject, amount, status, paid_at
+      `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no
        FROM payment_orders WHERE username = ?
        ORDER BY id DESC LIMIT 1`,
       [req.authUserId]
     );
-    return res.json({ code: 200, data: { order: rows.length ? plainPaymentOrder(rows[0]) : null } });
+    var order = rows.length ? rows[0] : null;
+    if (
+      order &&
+      String(order.status) === 'pending' &&
+      alipay.isConfigured()
+    ) {
+      try {
+        var trade = await alipay.queryTrade(String(order.out_trade_no));
+        if (
+          trade &&
+          (trade.tradeStatus === 'TRADE_SUCCESS' || trade.tradeStatus === 'TRADE_FINISHED') &&
+          trade.tradeNo
+        ) {
+          var expectedAmount = alipay.normalizeAmount(order.amount);
+          if (expectedAmount && trade.totalAmount && expectedAmount === trade.totalAmount) {
+            await fulfillAlipayPaidOrder(conn, order, {
+              tradeNo: trade.tradeNo,
+              buyerLogonId: trade.buyerLogonId,
+              tradeStatus: trade.tradeStatus,
+              source: 'query_sync'
+            });
+            const [fresh] = await conn.execute(
+              `SELECT out_trade_no, subject, amount, status, paid_at
+               FROM payment_orders WHERE id = ? LIMIT 1`,
+              [order.id]
+            );
+            if (fresh.length) order = fresh[0];
+          }
+        }
+      } catch (syncErr) {
+        console.warn('alipay trade query sync', syncErr && syncErr.message);
+      }
+    }
+    return res.json({
+      code: 200,
+      data: { order: order ? plainPaymentOrder(order) : null }
+    });
   } catch (e) {
     console.error('get alipay latest order', e);
     return res.status(500).json({ code: 500, msg: '查询订单失败' });
@@ -4234,10 +4270,98 @@ function alipayNotifyPayloadHash(body) {
   return crypto.createHash('sha256').update(pairs, 'utf8').digest('hex');
 }
 
+/**
+ * 将 pending 订单标记为已支付并开通账号（回调与主动查单共用）。
+ * 调用方需已持有连接；本函数自行开事务。
+ */
+async function fulfillAlipayPaidOrder(conn, order, info) {
+  if (!order || !info || !info.tradeNo) return false;
+  await conn.beginTransaction();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT id, username, amount, status, alipay_trade_no
+       FROM payment_orders WHERE id = ? FOR UPDATE`,
+      [order.id]
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return false;
+    }
+    var locked = rows[0];
+    if (String(locked.status) === 'paid') {
+      await conn.commit();
+      return true;
+    }
+    if (String(locked.status) !== 'pending') {
+      await conn.rollback();
+      return false;
+    }
+    if (locked.alipay_trade_no && String(locked.alipay_trade_no) !== String(info.tradeNo)) {
+      await conn.rollback();
+      return false;
+    }
+    var payloadHash = alipayNotifyPayloadHash({
+      out_trade_no: locked.out_trade_no || order.out_trade_no,
+      trade_no: info.tradeNo,
+      trade_status: info.tradeStatus || 'TRADE_SUCCESS',
+      source: info.source || 'notify'
+    });
+    await conn.execute(
+      `INSERT IGNORE INTO payment_notify_logs
+       (out_trade_no, alipay_trade_no, payload_hash, trade_status)
+       VALUES (?, ?, ?, ?)`,
+      [
+        String(locked.out_trade_no || order.out_trade_no),
+        String(info.tradeNo),
+        payloadHash,
+        info.tradeStatus || 'TRADE_SUCCESS'
+      ]
+    );
+    var activationCode = randomActivationCodePlain();
+    const [codeResult] = await conn.execute(
+      `INSERT INTO activation_codes
+       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username)
+       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?)`,
+      [activationCode, locked.username]
+    );
+    await conn.execute(
+      `UPDATE users
+       SET account_active = 1,
+           activation_source_channel = CASE WHEN account_active = 0 THEN 'alipay' ELSE activation_source_channel END
+       WHERE username = ?`,
+      [locked.username]
+    );
+    await conn.execute(
+      `UPDATE payment_orders
+       SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP,
+           activation_code_id = ?
+       WHERE id = ?`,
+      [
+        String(info.tradeNo),
+        info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null,
+        codeResult.insertId,
+        locked.id
+      ]
+    );
+    await conn.commit();
+    invalidateUserAuthCache(locked.username);
+    return true;
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    throw e;
+  }
+}
+
 async function handleAlipayNotify(req, res) {
   var body = req.body && typeof req.body === 'object' ? req.body : {};
   if (!alipay.verifyNotify(body)) {
-    console.warn('alipay notify signature verification failed');
+    console.warn(
+      'alipay notify signature verification failed',
+      'keys=',
+      Object.keys(body || {}).join(',')
+    );
     return res.status(400).type('text/plain').send('failure');
   }
   var outTradeNo = String(body.out_trade_no || '').trim();
@@ -4248,89 +4372,59 @@ async function handleAlipayNotify(req, res) {
   }
   const conn = await pool.getConnection();
   try {
-    await conn.beginTransaction();
     const [rows] = await conn.execute(
-      `SELECT id, username, amount, status, alipay_trade_no
-       FROM payment_orders WHERE out_trade_no = ? FOR UPDATE`,
+      `SELECT id, username, amount, status, alipay_trade_no, out_trade_no
+       FROM payment_orders WHERE out_trade_no = ? LIMIT 1`,
       [outTradeNo]
     );
     if (!rows.length) {
-      await conn.rollback();
       return res.status(404).type('text/plain').send('failure');
     }
     var order = rows[0];
     var expectedAmount = alipay.normalizeAmount(order.amount);
     var notifiedAmount = alipay.normalizeAmount(body.total_amount);
     if (!expectedAmount || expectedAmount !== notifiedAmount) {
-      await conn.rollback();
       console.error('alipay notify amount mismatch', outTradeNo, expectedAmount, notifiedAmount);
       return res.status(400).type('text/plain').send('failure');
     }
     if (order.alipay_trade_no && String(order.alipay_trade_no) !== tradeNo) {
-      await conn.rollback();
       console.error('alipay notify trade number mismatch', outTradeNo);
       return res.status(400).type('text/plain').send('failure');
     }
 
-    var payloadHash = alipayNotifyPayloadHash(body);
-    await conn.execute(
-      `INSERT IGNORE INTO payment_notify_logs
-       (out_trade_no, alipay_trade_no, payload_hash, trade_status)
-       VALUES (?, ?, ?, ?)`,
-      [outTradeNo, tradeNo, payloadHash, tradeStatus || null]
-    );
-
     if (tradeStatus === 'TRADE_CLOSED') {
-      if (String(order.status) === 'pending') {
-        await conn.execute(
-          `UPDATE payment_orders SET status = 'closed', alipay_trade_no = ? WHERE id = ?`,
-          [tradeNo, order.id]
+      await conn.beginTransaction();
+      try {
+        const [lockedRows] = await conn.execute(
+          `SELECT id, status FROM payment_orders WHERE id = ? FOR UPDATE`,
+          [order.id]
         );
+        if (lockedRows.length && String(lockedRows[0].status) === 'pending') {
+          await conn.execute(
+            `UPDATE payment_orders SET status = 'closed', alipay_trade_no = ? WHERE id = ?`,
+            [tradeNo, order.id]
+          );
+        }
+        await conn.commit();
+      } catch (closeErr) {
+        try {
+          await conn.rollback();
+        } catch (rollbackError) {}
+        throw closeErr;
       }
-      await conn.commit();
       return res.type('text/plain').send('success');
     }
     if (tradeStatus !== 'TRADE_SUCCESS' && tradeStatus !== 'TRADE_FINISHED') {
-      await conn.commit();
       return res.type('text/plain').send('success');
     }
-    if (String(order.status) === 'paid') {
-      await conn.commit();
-      return res.type('text/plain').send('success');
-    }
-    if (String(order.status) !== 'pending') {
-      await conn.rollback();
-      return res.status(409).type('text/plain').send('failure');
-    }
-
-    var activationCode = randomActivationCodePlain();
-    const [codeResult] = await conn.execute(
-      `INSERT INTO activation_codes
-       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username)
-       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?)`,
-      [activationCode, order.username]
-    );
-    await conn.execute(
-      `UPDATE users
-       SET account_active = 1,
-           activation_source_channel = CASE WHEN account_active = 0 THEN 'alipay' ELSE activation_source_channel END
-       WHERE username = ?`,
-      [order.username]
-    );
-    await conn.execute(
-      `UPDATE payment_orders
-       SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP,
-           activation_code_id = ?
-       WHERE id = ?`,
-      [tradeNo, body.buyer_logon_id ? String(body.buyer_logon_id).slice(0, 128) : null, codeResult.insertId, order.id]
-    );
-    await conn.commit();
-    invalidateUserAuthCache(order.username);
+    await fulfillAlipayPaidOrder(conn, order, {
+      tradeNo: tradeNo,
+      buyerLogonId: body.buyer_logon_id ? String(body.buyer_logon_id) : '',
+      tradeStatus: tradeStatus,
+      source: 'notify'
+    });
     return res.type('text/plain').send('success');
   } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (rollbackError) {}
     console.error('handle alipay notify', e);
     return res.status(500).type('text/plain').send('failure');
   } finally {

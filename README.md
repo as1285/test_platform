@@ -204,7 +204,7 @@ ALIPAY_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
 ALIPAY_NOTIFY_URL=https://www.geshui.vip/api/payments/alipay/notify
 ALIPAY_RETURN_URL=https://www.geshui.vip/purchase.html
 ALIPAY_PRODUCT_TITLE=个税记录平台激活码
-ALIPAY_PRODUCT_AMOUNT=9.90
+ALIPAY_PRODUCT_AMOUNT=199
 ```
 
 - 服务器收到 `TRADE_SUCCESS`/`TRADE_FINISHED` 回调并完成 RSA2 验签、订单金额校验后，自动激活下单账号。

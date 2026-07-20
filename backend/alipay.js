@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const { AlipaySdk } = require('alipay-sdk');
 
 function envText(name) {
@@ -76,6 +77,12 @@ function getSdk() {
   return cachedSdk;
 }
 
+function pickTradePayload(result) {
+  var data = result && result.data != null ? result.data : result;
+  if (!data || typeof data !== 'object') return {};
+  return data;
+}
+
 /**
  * 当面付预下单：返回可生成二维码的 qr_code 串。
  * @returns {Promise<{ qrCode: string, outTradeNo: string }>}
@@ -97,16 +104,16 @@ async function createFaceToFaceQr(order) {
       timeout_express: '30m'
     }
   });
-  var data = result && result.data != null ? result.data : result;
+  var data = pickTradePayload(result);
   var httpStatus = result && result.responseHttpStatus != null ? Number(result.responseHttpStatus) : 0;
-  var qrCode =
-    (data && (data.qr_code || data.qrCode)) ||
-    (result && (result.qr_code || result.qrCode)) ||
-    '';
-  qrCode = String(qrCode || '').trim();
+  var qrCode = String(data.qr_code || data.qrCode || '').trim();
   if (!qrCode) {
     var errMsg =
-      (data && (data.message || data.msg || data.sub_msg || data.subMsg || data.code)) ||
+      data.message ||
+      data.msg ||
+      data.sub_msg ||
+      data.subMsg ||
+      data.code ||
       (result && result.message) ||
       (httpStatus && httpStatus !== 200 ? '支付宝预下单失败 HTTP ' + httpStatus : '') ||
       '支付宝预下单未返回二维码';
@@ -117,19 +124,73 @@ async function createFaceToFaceQr(order) {
   return { qrCode: qrCode, outTradeNo: String(order.outTradeNo) };
 }
 
+/**
+ * 主动查单（回调丢失或验签失败时补开通）。
+ * @returns {Promise<{ tradeStatus: string, tradeNo: string, totalAmount: string, buyerLogonId: string }|null>}
+ */
+async function queryTrade(outTradeNo) {
+  var sdk = getSdk();
+  var result = await sdk.curl('POST', '/v3/alipay/trade/query', {
+    body: { out_trade_no: String(outTradeNo || '').trim() }
+  });
+  var data = pickTradePayload(result);
+  var tradeStatus = String(data.trade_status || data.tradeStatus || '').trim();
+  if (!tradeStatus) return null;
+  return {
+    tradeStatus: tradeStatus,
+    tradeNo: String(data.trade_no || data.tradeNo || '').trim(),
+    totalAmount: normalizeAmount(data.total_amount || data.totalAmount),
+    buyerLogonId: String(data.buyer_logon_id || data.buyerLogonId || '').trim()
+  };
+}
+
+function canonicalizeNotify(params, includeSignType) {
+  return Object.keys(params || {})
+    .filter(function (key) {
+      if (key === 'sign') return false;
+      if (!includeSignType && key === 'sign_type') return false;
+      return params[key] != null && params[key] !== '';
+    })
+    .sort()
+    .map(function (key) {
+      return key + '=' + params[key];
+    })
+    .join('&');
+}
+
+function verifyWithPublicKey(params, publicKeyPem) {
+  if (!params || !params.sign || !publicKeyPem) return false;
+  var sign = String(params.sign);
+  var variants = [true, false];
+  for (var i = 0; i < variants.length; i++) {
+    try {
+      var content = canonicalizeNotify(params, variants[i]);
+      var verifier = crypto.createVerify('RSA-SHA256');
+      verifier.update(content, 'utf8');
+      verifier.end();
+      if (verifier.verify(publicKeyPem, sign, 'base64')) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+
 function verifyNotify(params) {
   if (!isConfigured() || !params || !params.sign) return false;
   var cfg = getConfig();
   if (String(params.app_id || '') !== cfg.appId) return false;
   try {
     var sdk = getSdk();
-    if (typeof sdk.checkNotifySignV2 === 'function') {
-      return !!sdk.checkNotifySignV2(params);
+    if (typeof sdk.checkNotifySignV2 === 'function' && sdk.checkNotifySignV2(params)) {
+      return true;
     }
-    return !!sdk.checkNotifySign(params);
+    if (typeof sdk.checkNotifySign === 'function' && sdk.checkNotifySign(params)) {
+      return true;
+    }
   } catch (e) {
-    return false;
+    console.warn('alipay sdk notify verify error', e && e.message);
   }
+  /* SDK 验签失败时再用原生 RSA2 兜底（含/不含 sign_type） */
+  return verifyWithPublicKey(params, cfg.publicKey);
 }
 
 module.exports = {
@@ -137,5 +198,6 @@ module.exports = {
   isConfigured: isConfigured,
   normalizeAmount: normalizeAmount,
   createFaceToFaceQr: createFaceToFaceQr,
+  queryTrade: queryTrade,
   verifyNotify: verifyNotify
 };

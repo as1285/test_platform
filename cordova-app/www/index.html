@@ -135,6 +135,26 @@
                 main.appendChild(f);
             }
 
+            /** 支付等外链若误把 iframe 跳走，从支付宝回到 App 时恢复购买页，避免白屏 */
+            function recoverAppFrameIfHijacked() {
+                var f = document.getElementById('app-frame');
+                if (!f) return;
+                var purchaseUrl = APP_ORIGIN.replace(/\/?$/, '/') + 'purchase.html';
+                try {
+                    var href = f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
+                    if (href && /alipay\.com/i.test(String(href))) {
+                        f.src = purchaseUrl;
+                    }
+                } catch (crossOriginErr) {
+                    f.src = purchaseUrl;
+                }
+            }
+
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) recoverAppFrameIfHijacked();
+            });
+            document.addEventListener('resume', recoverAppFrameIfHijacked, false);
+
             mountApp();
             hideNativeSplash();
             setTimeout(function () {
