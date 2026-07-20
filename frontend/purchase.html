@@ -136,6 +136,10 @@
             background: #0f766e;
             color: #fff;
         }
+        .btn-alipay {
+            background: #1677ff;
+            color: #fff;
+        }
         .btn:disabled {
             opacity: 0.5;
         }
@@ -182,7 +186,13 @@
     <div class="page">
         <div class="hero">
             <h1>获取激活码</h1>
-            <p>可通过微信扫码、闲鱼、酷发卡、在线客服或 QQ 获取激活码；购买后在下方输入即可开通完整功能。</p>
+            <p>可通过支付宝、微信扫码、闲鱼、酷发卡、在线客服或 QQ 获取激活码；购买后即可开通完整功能。</p>
+        </div>
+
+        <div class="card" id="cardAlipay" hidden>
+            <div class="card-title">支付宝购买</div>
+            <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">前往支付宝支付</button>
         </div>
 
         <div class="card" id="cardWechat" hidden>
@@ -256,6 +266,7 @@
         kufaka: KUFAKA_PURCHASE_URL
     };
     var purchasePageViewTracked = false;
+    var alipayOrderPolling = null;
 
     function trackPurchase(action, meta) {
         if (typeof window.trackUserAction !== 'function') return;
@@ -274,6 +285,66 @@
         } catch (e) {
             window.location.href = u;
         }
+    }
+
+    function paymentFetch(url, options) {
+        var opts = options || {};
+        opts.headers = Object.assign(
+            { 'Content-Type': 'application/json' },
+            typeof authHeaders === 'function' ? authHeaders() : {}
+        );
+        return fetch(url, opts).then(function (r) {
+            return r.json().then(function (body) {
+                return { status: r.status, body: body };
+            });
+        });
+    }
+
+    function activateAfterAlipayPaid() {
+        try {
+            localStorage.setItem('account_active', '1');
+        } catch (e) {}
+        trackPurchase('track_alipay_payment_success');
+        alert('支付宝付款成功，账号已自动开通。');
+        window.location.replace('consult.html?tab=records&onboarding=tax');
+    }
+
+    function checkAlipayLatestOrder() {
+        return paymentFetch('/api/payments/alipay/latest')
+            .then(function (x) {
+                var order = x.body && x.body.data && x.body.data.order;
+                if (!order) return;
+                if (order.status === 'paid') {
+                    if (alipayOrderPolling) {
+                        clearInterval(alipayOrderPolling);
+                        alipayOrderPolling = null;
+                    }
+                    activateAfterAlipayPaid();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function loadAlipayPurchase() {
+        return paymentFetch('/api/payments/alipay/config')
+            .then(function (x) {
+                var data = x.body && x.body.data ? x.body.data : {};
+                var enabled = x.status === 200 && data.enabled === true;
+                var card = document.getElementById('cardAlipay');
+                card.hidden = !enabled;
+                if (enabled) {
+                    var hint = document.getElementById('alipayPurchaseHint');
+                    hint.textContent =
+                        (data.subject || '个税记录平台激活码') +
+                        '，支付 ' +
+                        (data.amount || '') +
+                        ' 元后自动开通当前登录账号。';
+                }
+                return checkAlipayLatestOrder();
+            })
+            .catch(function () {
+                document.getElementById('cardAlipay').hidden = true;
+            });
     }
 
     function applyConfig(data) {
@@ -464,6 +535,25 @@
     });
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
+    document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        trackPurchase('track_alipay_payment_start');
+        paymentFetch('/api/payments/alipay/create', {
+            method: 'POST',
+            body: JSON.stringify({})
+        })
+            .then(function (x) {
+                if (x.status !== 200 || !x.body || !x.body.data || !x.body.data.payment_url) {
+                    throw new Error((x.body && x.body.msg) || '创建支付订单失败');
+                }
+                window.location.href = x.body.data.payment_url;
+            })
+            .catch(function (e) {
+                alert(e && e.message ? e.message : '创建支付订单失败，请稍后重试');
+                btn.disabled = false;
+            });
+    });
     document.getElementById('purchaseActivateCode').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -476,6 +566,10 @@
     });
 
     loadConfig();
+    loadAlipayPurchase();
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) checkAlipayLatestOrder();
+    });
 })();
     </script>
 </body>

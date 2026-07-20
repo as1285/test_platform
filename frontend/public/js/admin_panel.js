@@ -1839,6 +1839,12 @@
             if (k === 'track_purchase_back_click') {
                 return { button: '购买页返回', page: '购买页（purchase.html）' };
             }
+            if (k === 'track_alipay_payment_start') {
+                return { button: '支付宝发起支付', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_alipay_payment_success') {
+                return { button: '支付宝自动开通成功', page: '购买页（purchase.html）' };
+            }
             if (k.indexOf('track_jump_') === 0) {
                 var raw = k.substring('track_jump_'.length);
                 if (raw === '_history_back__' || raw === '__history_back__') {
@@ -3083,7 +3089,9 @@
             'track_purchase_wechat_view',
             'track_purchase_activate_success',
             'track_purchase_activate_fail',
-            'track_purchase_back_click'
+            'track_purchase_back_click',
+            'track_alipay_payment_start',
+            'track_alipay_payment_success'
         ];
         var ACTIVATE_EVENT_SHORT_LABELS = {
             track_activate_prompt_open: '打开',
@@ -3098,7 +3106,9 @@
             track_purchase_wechat_view: '微信',
             track_purchase_activate_success: '激活成',
             track_purchase_activate_fail: '激活败',
-            track_purchase_back_click: '返回'
+            track_purchase_back_click: '返回',
+            track_alipay_payment_start: '支付宝付',
+            track_alipay_payment_success: '支付成'
         };
         var ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
 

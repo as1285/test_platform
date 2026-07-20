@@ -193,6 +193,24 @@ https://www.installguide1.top/
 
 环境变量与数据库初始化见 `docker-compose.yml` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
+### 支付宝自动开通
+
+支付功能默认关闭。启用时仅在服务器未提交的 `.env` 或部署平台 Secret 中配置以下变量，然后重新部署后端：
+
+```dotenv
+ALIPAY_APP_ID=你的支付宝应用AppID
+ALIPAY_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+ALIPAY_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+ALIPAY_NOTIFY_URL=https://www.geshui.vip/api/payments/alipay/notify
+ALIPAY_RETURN_URL=https://www.geshui.vip/purchase.html
+ALIPAY_PRODUCT_TITLE=个税记录平台激活码
+ALIPAY_PRODUCT_AMOUNT=9.90
+```
+
+- 服务器收到 `TRADE_SUCCESS`/`TRADE_FINISHED` 回调并完成 RSA2 验签、订单金额校验后，自动激活下单账号。
+- 回调地址必须可由支付宝公网访问；不要将支付宝私钥、平台公钥或 `.env` 提交到 Git、后台设置或前端代码。
+- 初次上线请使用支付宝沙箱先验证支付、异步回调和自动开通流程。
+
 ## 免责声明
 
 本软件仅供演示与交流，与任何政府机关、官方 APP 无关联。使用者须自行遵守法律法规，并对使用行为负责。

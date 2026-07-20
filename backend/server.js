@@ -13,6 +13,7 @@ const mysql = require('mysql2/promise');
 const registerGuard = require('./register-guard');
 const serverMonitor = require('./serverMonitor');
 const dbLogRetention = require('./dbLogRetention');
+const alipay = require('./alipay');
 const { inferBankNameFromCardNo } = require('./bank_card_bins');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
@@ -92,7 +93,8 @@ const REGISTER_SOURCE_CHANNELS = {
 /** 批量激活码内置渠道（key → 展示名）；备注格式为「{展示名}批量」 */
 const ACTIVATION_BATCH_BUILTIN_CHANNELS = {
   xianyu: '闲鱼',
-  kufaka: '酷发卡'
+  kufaka: '酷发卡',
+  alipay: '支付宝'
 };
 
 const SETTING_KEY_ACTIVATION_BATCH_CHANNELS = 'activation_batch_channels_json';
@@ -2103,6 +2105,38 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS payment_orders (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      out_trade_no VARCHAR(64) NOT NULL,
+      username VARCHAR(255) NOT NULL,
+      subject VARCHAR(128) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      alipay_trade_no VARCHAR(128) NULL,
+      buyer_logon_id VARCHAR(128) NULL,
+      activation_code_id INT NULL,
+      paid_at DATETIME NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_payment_orders_out_trade_no (out_trade_no),
+      UNIQUE KEY uk_payment_orders_alipay_trade_no (alipay_trade_no),
+      INDEX idx_payment_orders_username_status (username, status, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS payment_notify_logs (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      out_trade_no VARCHAR(64) NOT NULL,
+      alipay_trade_no VARCHAR(128) NULL,
+      payload_hash CHAR(64) NOT NULL,
+      trade_status VARCHAR(32) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_payment_notify_payload_hash (payload_hash),
+      INDEX idx_payment_notify_out_trade_no (out_trade_no)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   try {
     await conn.execute(`
       ALTER TABLE activation_codes ADD COLUMN last_used_at DATETIME NULL COMMENT '最近一次使用时间'
@@ -4042,6 +4076,242 @@ async function applyActivationCode(username, rawCode) {
       await conn.rollback();
     } catch (e2) {}
     throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+function createAlipayOutTradeNo() {
+  var now = new Date();
+  var stamp =
+    now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0') +
+    String(now.getSeconds()).padStart(2, '0');
+  return 'AP' + stamp + crypto.randomBytes(8).toString('hex').toUpperCase();
+}
+
+function getAlipayProductConfig() {
+  var cfg = alipay.getConfig();
+  var amount = alipay.normalizeAmount(cfg.productAmount);
+  return {
+    subject: String(cfg.productTitle || '个税记录平台激活码').slice(0, 128),
+    amount: amount
+  };
+}
+
+function plainPaymentOrder(row) {
+  if (!row) return null;
+  var paidAt = '';
+  if (row.paid_at instanceof Date) {
+    paidAt = row.paid_at.toISOString();
+  } else if (row.paid_at) {
+    paidAt = String(row.paid_at);
+  }
+  return {
+    out_trade_no: String(row.out_trade_no || ''),
+    subject: String(row.subject || ''),
+    amount: row.amount != null ? String(row.amount) : '',
+    status: String(row.status || ''),
+    paid_at: paidAt
+  };
+}
+
+async function handleAlipayConfig(req, res) {
+  var product = getAlipayProductConfig();
+  return res.json({
+    code: 200,
+    data: {
+      enabled: alipay.isConfigured() && !!product.amount,
+      subject: product.subject,
+      amount: product.amount
+    }
+  });
+}
+
+async function handleAlipayCreateOrder(req, res) {
+  if (!alipay.isConfigured()) {
+    return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
+  }
+  if (req.authUserRow && (req.authUserRow.account_active === 1 || req.authUserRow.account_active === true)) {
+    return res.status(409).json({ code: 409, msg: '当前账号已激活，无需重复购买' });
+  }
+  var product = getAlipayProductConfig();
+  if (!product.amount) {
+    return res.status(503).json({ code: 503, msg: '支付宝商品金额配置无效' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [existingRows] = await conn.execute(
+      `SELECT out_trade_no, subject, amount, status, paid_at
+       FROM payment_orders
+       WHERE username = ? AND status = 'pending'
+         AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      [req.authUserId]
+    );
+    var order = existingRows.length ? existingRows[0] : null;
+    if (!order) {
+      order = {
+        out_trade_no: createAlipayOutTradeNo(),
+        subject: product.subject,
+        amount: product.amount,
+        status: 'pending'
+      };
+      await conn.execute(
+        `INSERT INTO payment_orders (out_trade_no, username, subject, amount, status)
+         VALUES (?, ?, ?, ?, 'pending')`,
+        [order.out_trade_no, req.authUserId, order.subject, order.amount]
+      );
+    }
+    await conn.commit();
+    var paymentUrl = alipay.buildPagePayUrl({
+      outTradeNo: String(order.out_trade_no),
+      subject: String(order.subject),
+      amount: alipay.normalizeAmount(order.amount)
+    });
+    return res.json({ code: 200, data: { order: plainPaymentOrder(order), payment_url: paymentUrl } });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    console.error('create alipay order', e);
+    return res.status(500).json({ code: 500, msg: '创建支付宝订单失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+async function handleAlipayLatestOrder(req, res) {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT out_trade_no, subject, amount, status, paid_at
+       FROM payment_orders WHERE username = ?
+       ORDER BY id DESC LIMIT 1`,
+      [req.authUserId]
+    );
+    return res.json({ code: 200, data: { order: rows.length ? plainPaymentOrder(rows[0]) : null } });
+  } catch (e) {
+    console.error('get alipay latest order', e);
+    return res.status(500).json({ code: 500, msg: '查询订单失败' });
+  } finally {
+    conn.release();
+  }
+}
+
+function alipayNotifyPayloadHash(body) {
+  var pairs = Object.keys(body || {})
+    .sort()
+    .map(function (key) {
+      return key + '=' + String(body[key] == null ? '' : body[key]);
+    })
+    .join('&');
+  return crypto.createHash('sha256').update(pairs, 'utf8').digest('hex');
+}
+
+async function handleAlipayNotify(req, res) {
+  var body = req.body && typeof req.body === 'object' ? req.body : {};
+  if (!alipay.verifyNotify(body)) {
+    console.warn('alipay notify signature verification failed');
+    return res.status(400).type('text/plain').send('failure');
+  }
+  var outTradeNo = String(body.out_trade_no || '').trim();
+  var tradeNo = String(body.trade_no || '').trim();
+  var tradeStatus = String(body.trade_status || '').trim();
+  if (!outTradeNo || !tradeNo) {
+    return res.status(400).type('text/plain').send('failure');
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.execute(
+      `SELECT id, username, amount, status, alipay_trade_no
+       FROM payment_orders WHERE out_trade_no = ? FOR UPDATE`,
+      [outTradeNo]
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return res.status(404).type('text/plain').send('failure');
+    }
+    var order = rows[0];
+    var expectedAmount = alipay.normalizeAmount(order.amount);
+    var notifiedAmount = alipay.normalizeAmount(body.total_amount);
+    if (!expectedAmount || expectedAmount !== notifiedAmount) {
+      await conn.rollback();
+      console.error('alipay notify amount mismatch', outTradeNo, expectedAmount, notifiedAmount);
+      return res.status(400).type('text/plain').send('failure');
+    }
+    if (order.alipay_trade_no && String(order.alipay_trade_no) !== tradeNo) {
+      await conn.rollback();
+      console.error('alipay notify trade number mismatch', outTradeNo);
+      return res.status(400).type('text/plain').send('failure');
+    }
+
+    var payloadHash = alipayNotifyPayloadHash(body);
+    await conn.execute(
+      `INSERT IGNORE INTO payment_notify_logs
+       (out_trade_no, alipay_trade_no, payload_hash, trade_status)
+       VALUES (?, ?, ?, ?)`,
+      [outTradeNo, tradeNo, payloadHash, tradeStatus || null]
+    );
+
+    if (tradeStatus === 'TRADE_CLOSED') {
+      if (String(order.status) === 'pending') {
+        await conn.execute(
+          `UPDATE payment_orders SET status = 'closed', alipay_trade_no = ? WHERE id = ?`,
+          [tradeNo, order.id]
+        );
+      }
+      await conn.commit();
+      return res.type('text/plain').send('success');
+    }
+    if (tradeStatus !== 'TRADE_SUCCESS' && tradeStatus !== 'TRADE_FINISHED') {
+      await conn.commit();
+      return res.type('text/plain').send('success');
+    }
+    if (String(order.status) === 'paid') {
+      await conn.commit();
+      return res.type('text/plain').send('success');
+    }
+    if (String(order.status) !== 'pending') {
+      await conn.rollback();
+      return res.status(409).type('text/plain').send('failure');
+    }
+
+    var activationCode = randomActivationCodePlain();
+    const [codeResult] = await conn.execute(
+      `INSERT INTO activation_codes
+       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username)
+       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?)`,
+      [activationCode, order.username]
+    );
+    await conn.execute(
+      `UPDATE users
+       SET account_active = 1,
+           activation_source_channel = CASE WHEN account_active = 0 THEN 'alipay' ELSE activation_source_channel END
+       WHERE username = ?`,
+      [order.username]
+    );
+    await conn.execute(
+      `UPDATE payment_orders
+       SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP,
+           activation_code_id = ?
+       WHERE id = ?`,
+      [tradeNo, body.buyer_logon_id ? String(body.buyer_logon_id).slice(0, 128) : null, codeResult.insertId, order.id]
+    );
+    await conn.commit();
+    invalidateUserAuthCache(order.username);
+    return res.type('text/plain').send('success');
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    console.error('handle alipay notify', e);
+    return res.status(500).type('text/plain').send('failure');
   } finally {
     conn.release();
   }
@@ -16559,7 +16829,9 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_wechat_view',
   'track_purchase_activate_success',
   'track_purchase_activate_fail',
-  'track_purchase_back_click'
+  'track_purchase_back_click',
+  'track_alipay_payment_start',
+  'track_alipay_payment_success'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -16592,7 +16864,9 @@ function activateTrackEventLabel(eventKey) {
     track_purchase_wechat_view: '微信购买展示',
     track_purchase_activate_success: '购买页激活成功',
     track_purchase_activate_fail: '购买页激活失败',
-    track_purchase_back_click: '购买页返回'
+    track_purchase_back_click: '购买页返回',
+    track_alipay_payment_start: '支付宝发起支付',
+    track_alipay_payment_success: '支付宝自动开通成功'
   };
   return labels[eventKey] || eventKey;
 }
@@ -17710,6 +17984,11 @@ app.get(
   requireAdminMenu('activated-user-analysis'),
   handleAdminActivatedUserAnalysisBehaviorPath
 );
+app.get('/api/payments/alipay/config', requireAuth, handleAlipayConfig);
+app.post('/api/payments/alipay/create', requireAuth, handleAlipayCreateOrder);
+app.get('/api/payments/alipay/latest', requireAuth, handleAlipayLatestOrder);
+app.post('/api/payments/alipay/notify', handleAlipayNotify);
+
 app.get('/api/admin/user-tax-records', requireAdminAuth, requireAdminAnyMenu(['users', 'guest-users']), handleAdminUserTaxRecords);
 app.post('/api/admin/issue-code', requireAdminAuth, requireAdminMenu('codes'), handleAdminIssueCode);
 app.post(

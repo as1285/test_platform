@@ -66,6 +66,15 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # 支付宝应用凭据只从未提交的 .env / 部署 Secret 读取，禁止写入后台设置或前端代码
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
+      ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-}
+      ALIPAY_PRODUCT_TITLE: ${ALIPAY_PRODUCT_TITLE:-个税记录平台激活码}
+      ALIPAY_PRODUCT_AMOUNT: ${ALIPAY_PRODUCT_AMOUNT:-}
+      ALIPAY_GATEWAY: ${ALIPAY_GATEWAY:-https://openapi.alipay.com/gateway.do}
     ports:
       # 后端仅由前端 Nginx 通过 Docker 内网访问；宿主本机保留调试入口
       - "127.0.0.1:3000:3000"
