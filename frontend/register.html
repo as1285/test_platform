@@ -263,9 +263,11 @@
         .err-modal-msg {
             font-size: 15px;
             color: #cf1322;
-            line-height: 1.5;
+            line-height: 1.55;
             margin: 0 0 18px;
             word-break: break-word;
+            white-space: pre-line;
+            text-align: left;
         }
         .err-modal-btn {
             width: 100%;
@@ -411,7 +413,7 @@
                 hideErrModal();
                 return;
             }
-            msgEl.textContent = msg;
+            msgEl.textContent = String(msg);
             modal.hidden = false;
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
@@ -419,6 +421,15 @@
             if (okBtn) {
                 try { okBtn.focus(); } catch (eF) {}
             }
+        }
+
+        function formatRegisterFailMsg(data) {
+            var msg = (data && data.msg) || '注册失败';
+            if (!data) return msg;
+            if (Number(data.code) === 429 || /秒后再试|冷却|今日注册次数已达上限|过于频繁/.test(String(msg))) {
+                return msg;
+            }
+            return msg;
         }
 
         (function bindErrModal() {

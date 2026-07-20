@@ -9627,7 +9627,7 @@ async function handleAuthPost(req, res) {
         }
         if (!registerGuard.verifyRegisterCaptcha(body.captcha_id, body.captcha_answer)) {
           if (rateChk.keys) {
-            await registerGuard.markRegisterAttemptFail(rateChk.keys);
+            await registerGuard.markRegisterAttemptFail(rateChk.keys, 'register_fail:captcha');
           }
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:captcha');
           return res.status(400).json({ code: 400, msg: '验证码错误或已过期，请刷新后重试' });
@@ -9646,7 +9646,7 @@ async function handleAuthPost(req, res) {
         );
         if (regSourceNorm.err) {
           if (regGuardKeys) {
-            await registerGuard.markRegisterAttemptFail(regGuardKeys);
+            await registerGuard.markRegisterAttemptFail(regGuardKeys, 'register_fail:validation');
           }
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:validation');
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
@@ -9703,7 +9703,10 @@ async function handleAuthPost(req, res) {
         return res.json({ code: 200, data: out });
       } catch (regErr) {
         if (regGuardKeys) {
-          await registerGuard.markRegisterAttemptFail(regGuardKeys);
+          var rMsgEarly = regErr && regErr.message ? String(regErr.message) : '';
+          var failReasonEarly =
+            rMsgEarly.indexOf('已注册') >= 0 ? 'register_fail:duplicate' : 'register_fail:validation';
+          await registerGuard.markRegisterAttemptFail(regGuardKeys, failReasonEarly);
         }
         var rMsg = regErr && regErr.message ? String(regErr.message) : '';
         var rReason =

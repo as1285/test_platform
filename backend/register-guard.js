@@ -167,10 +167,20 @@ function guardKeys(req, getClientIp, computeDeviceFingerprint) {
   };
 }
 
-async function incrementGuardCounter(key, field) {
+async function incrementGuardCounter(key, field, failReason) {
   if (!_pool) return;
   var day = chinaDateKeyCol();
   var col = field === 'fail' ? 'fail_cnt' : 'success_cnt';
+  var reason = field === 'fail' && failReason ? String(failReason).trim().slice(0, 64) : '';
+  if (field === 'fail' && reason) {
+    await _pool.execute(
+      `INSERT INTO register_guard_counters (guard_key, stat_date, success_cnt, fail_cnt, last_attempt_at, last_fail_reason)
+       VALUES (?, ?, ?, ?, NOW(), ?)
+       ON DUPLICATE KEY UPDATE ${col} = ${col} + 1, last_attempt_at = NOW(), last_fail_reason = VALUES(last_fail_reason)`,
+      [key, day, field === 'success' ? 1 : 0, field === 'fail' ? 1 : 0, reason]
+    );
+    return;
+  }
   await _pool.execute(
     `INSERT INTO register_guard_counters (guard_key, stat_date, success_cnt, fail_cnt, last_attempt_at)
      VALUES (?, ?, ?, ?, NOW())
@@ -191,7 +201,7 @@ async function getGuardCounts(keys) {
   });
   var params = keys.concat([day]);
   var [rows] = await _pool.execute(
-    'SELECT guard_key, success_cnt, fail_cnt FROM register_guard_counters WHERE guard_key IN (' +
+    'SELECT guard_key, success_cnt, fail_cnt, last_fail_reason FROM register_guard_counters WHERE guard_key IN (' +
       ph.join(',') +
       ') AND stat_date = ?',
     params
@@ -200,7 +210,8 @@ async function getGuardCounts(keys) {
   rows.forEach(function (r) {
     map[r.guard_key] = {
       success: Number(r.success_cnt) || 0,
-      fail: Number(r.fail_cnt) || 0
+      fail: Number(r.fail_cnt) || 0,
+      last_fail_reason: r.last_fail_reason != null ? String(r.last_fail_reason).trim() : ''
     };
   });
   return map;
@@ -232,18 +243,38 @@ function computeFailBackoffMs(failCount) {
   return Math.min(base * Math.pow(2, n), 60000);
 }
 
+function failReasonLabel(reason) {
+  var r = String(reason || '').trim();
+  var map = {
+    'register_fail:captcha': '验证码错误或已过期',
+    'register_fail:duplicate': '账号已存在',
+    'register_fail:validation': '填写信息有误',
+    'register_fail:rate_burst': '提交过于频繁',
+    'register_fail:rate_ip_day': '本 IP 今日注册已达上限',
+    'register_fail:rate_fp_day': '本设备今日注册已达上限',
+    'register_fail:backoff': '失败冷却中',
+    'register_fail:invalid_client': '非官方客户端',
+    'register_fail:distributor_app': '代理版 App 不支持自助注册'
+  };
+  return map[r] || '';
+}
+
+function pickLastFailReason(ipC, fpC) {
+  return (ipC && ipC.last_fail_reason) || (fpC && fpC.last_fail_reason) || '';
+}
+
 async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint) {
   var keys = guardKeys(req, getClientIp, computeDeviceFingerprint);
   var counts = await getGuardCounts([keys.ipKey, keys.fpKey]);
-  var ipC = counts[keys.ipKey] || { success: 0, fail: 0 };
-  var fpC = counts[keys.fpKey] || { success: 0, fail: 0 };
+  var ipC = counts[keys.ipKey] || { success: 0, fail: 0, last_fail_reason: '' };
+  var fpC = counts[keys.fpKey] || { success: 0, fail: 0, last_fail_reason: '' };
   var burst = await getMinuteBurst(keys.ipKey);
 
   if (burst >= burstPerMinute()) {
     return {
       ok: false,
       reason: 'register_fail:rate_burst',
-      msg: '注册过于频繁，请稍后再试',
+      msg: '注册过于频繁（短时间内提交次数过多），请稍后再试',
       backoff_ms: 60000
     };
   }
@@ -252,7 +283,7 @@ async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprin
     return {
       ok: false,
       reason: 'register_fail:rate_ip_day',
-      msg: '本 IP 今日注册次数已达上限',
+      msg: '本 IP 今日注册次数已达上限，请明天再试或更换网络',
       backoff_ms: 0
     };
   }
@@ -261,7 +292,7 @@ async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprin
     return {
       ok: false,
       reason: 'register_fail:rate_fp_day',
-      msg: '本设备今日注册次数已达上限',
+      msg: '本设备今日注册次数已达上限，请明天再试',
       backoff_ms: 0
     };
   }
@@ -271,11 +302,17 @@ async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprin
     var backoff = computeFailBackoffMs(failN);
     var last = await getLastAttemptMs(keys.ipKey);
     if (last && Date.now() - last < backoff) {
+      var waitSec = Math.ceil((backoff - (Date.now() - last)) / 1000);
+      var lastLabel = failReasonLabel(pickLastFailReason(ipC, fpC));
+      var cause = lastLabel
+        ? '因上次注册失败（' + lastLabel + '）触发冷却'
+        : '因上次注册失败（如验证码错误、账号已存在）触发冷却';
       return {
         ok: false,
         reason: 'register_fail:backoff',
-        msg: '请 ' + Math.ceil((backoff - (Date.now() - last)) / 1000) + ' 秒后再试',
-        backoff_ms: backoff - (Date.now() - last)
+        msg: cause + '，请 ' + waitSec + ' 秒后再试',
+        backoff_ms: backoff - (Date.now() - last),
+        last_fail_reason: pickLastFailReason(ipC, fpC) || ''
       };
     }
   }
@@ -298,9 +335,9 @@ async function markRegisterAttemptSuccess(keys) {
   await bumpMinuteBurst(keys.ipKey);
 }
 
-async function markRegisterAttemptFail(keys) {
-  await incrementGuardCounter(keys.ipKey, 'fail');
-  await incrementGuardCounter(keys.fpKey, 'fail');
+async function markRegisterAttemptFail(keys, reason) {
+  await incrementGuardCounter(keys.ipKey, 'fail', reason);
+  await incrementGuardCounter(keys.fpKey, 'fail', reason);
   await bumpMinuteBurst(keys.ipKey);
 }
 
@@ -312,10 +349,18 @@ async function ensureRegisterGuardTables(conn) {
       success_cnt INT UNSIGNED NOT NULL DEFAULT 0,
       fail_cnt INT UNSIGNED NOT NULL DEFAULT 0,
       last_attempt_at DATETIME NULL,
+      last_fail_reason VARCHAR(64) NULL,
       PRIMARY KEY (guard_key, stat_date),
       INDEX idx_stat_date (stat_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  try {
+    await conn.execute(
+      `ALTER TABLE register_guard_counters ADD COLUMN last_fail_reason VARCHAR(64) NULL`
+    );
+  } catch (eCol) {
+    /* already exists */
+  }
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS register_guard_minute (
       guard_key VARCHAR(128) NOT NULL,
