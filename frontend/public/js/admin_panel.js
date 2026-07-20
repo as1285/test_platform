@@ -6727,7 +6727,8 @@
             destroyGuestUsersCharts();
             var s = (data && data.summary) || {};
             var days = s.period_days != null ? Number(s.period_days) : 1;
-            var daysLabel = days > 0 ? '近 ' + days + ' 天' : '全部';
+            var daysLabel =
+                days <= 0 ? '全部' : days === 1 ? '当天' : '近 ' + days + ' 天';
             var byHour = Array.isArray(data && data.by_hour) ? data.by_hour : [];
             var hourTotal = byHour.reduce(function (sum, row) {
                 return sum + (Number(row.count) || 0);
@@ -6786,17 +6787,17 @@
                 '</div></div>';
             html += '</div>';
 
-            html += '<p class="stat" style="margin:0 0 8px;">游客创建时段（北京时间，24 小时）</p>';
+            html += '<p class="stat" style="margin:0 0 8px;">游客创建时段（北京时间）</p>';
             if (peakHour) {
                 html +=
                     '<p class="hint" style="margin:0 0 10px;">统计区间内按创建小时汇总；当前高峰在「' +
                     esc(peakHour.label) +
                     '」（' +
                     esc(String(peakHour.count)) +
-                    ' 人）。选「近 1 天」可看最近 24 小时分布。</p>';
+                    ' 人）。「近 1 天」为当天 0 点起（北京时间）。</p>';
             } else {
                 html +=
-                    '<p class="hint" style="margin:0 0 10px;">按北京时间统计游客账号创建小时（0–23 时）。选「近 1 天」可看最近 24 小时分布。</p>';
+                    '<p class="hint" style="margin:0 0 10px;">按北京时间统计游客账号创建小时（0–23 时）。「近 1 天」为当天 0 点起，非整日滚动 24 小时。</p>';
             }
             html +=
                 '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="guestUsersHourlyChart" aria-label="游客用户24小时分布"></canvas></div></div>';

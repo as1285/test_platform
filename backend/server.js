@@ -11705,11 +11705,14 @@ async function handleAdminGuestUsers(req, res) {
 
     var cnDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
     var cnMergeDay = 'DATE(DATE_ADD(u.guest_merged_at, INTERVAL 8 HOUR))';
+    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
+    /* 近 N 天按北京时间自然日：近 1 天 = 当天 0 点起（span=0），非滚动 24 小时 */
+    var periodSpan = days > 0 ? days - 1 : 0;
     var periodSql = '';
     var periodParams = [];
     if (days > 0) {
-      periodSql = ' AND u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)';
-      periodParams.push(days);
+      periodSql = ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
+      periodParams.push(periodSpan);
     }
 
     const conn = await pool.getConnection();
@@ -11764,8 +11767,8 @@ async function handleAdminGuestUsers(req, res) {
       var where = [guestOnlyUserSql('u')];
       var params = [];
       if (days > 0) {
-        where.push('u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)');
-        params.push(days);
+        where.push(cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
+        params.push(periodSpan);
       }
       if (qStatus === 'active') {
         where.push('(u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = \'\')');
@@ -11811,8 +11814,13 @@ async function handleAdminGuestUsers(req, res) {
         params
       );
 
-      var trendParams = days > 0 ? [days] : [];
-      var trendWhere = days > 0 ? ` AND u.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)` : '';
+      var trendParams = days > 0 ? [periodSpan] : [];
+      var trendWhere =
+        days > 0 ? ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)' : '';
+      var mergeTrendWhere =
+        days > 0
+          ? ' AND ' + cnMergeDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)'
+          : '';
       const [guestDailyRows] = await conn.query(
         `SELECT ${cnDay} AS d, COUNT(*) AS new_guests
          FROM users u
@@ -11825,10 +11833,10 @@ async function handleAdminGuestUsers(req, res) {
         `SELECT ${cnMergeDay} AS d, COUNT(*) AS converted
          FROM users u
          WHERE ${guestOnlyUserSql('u')}
-           AND u.guest_merged_at IS NOT NULL${days > 0 ? ' AND u.guest_merged_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)' : ''}
+           AND u.guest_merged_at IS NOT NULL${mergeTrendWhere}
          GROUP BY ${cnMergeDay}
          ORDER BY d ASC`,
-        days > 0 ? [days] : []
+        days > 0 ? [periodSpan] : []
       );
 
       // 北京时间按小时（0–23）统计区间内新增游客

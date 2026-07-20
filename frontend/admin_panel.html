@@ -855,13 +855,13 @@
                 <div id="page-guest-users" class="page-panel" role="tabpanel">
         <section>
             <h2>游客用户</h2>
-            <p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。仅超级管理员可见。</p>
+            <p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。统计区间按<strong>北京时间自然日</strong>：「近 1 天」= 当天 0 点起。仅超级管理员可见。</p>
             <div class="user-filter-bar">
                 <div class="user-filter-fields">
                 <div>
                     <label>统计区间</label>
                     <select id="guestUsersDays" class="filter-select">
-                        <option value="1" selected>近 1 天</option>
+                        <option value="1" selected>近 1 天（当天 0 点起）</option>
                         <option value="7">近 7 天</option>
                         <option value="30">近 30 天</option>
                         <option value="90">近 90 天</option>
