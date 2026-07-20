@@ -16,12 +16,12 @@
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 10px;
+            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px;
             text-align: center;
             position: relative;
         }
-        .header h1 { font-size: 14px; font-weight: 500; line-height: 1.25; }
-        .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 6px; line-height: 1.25; }
+        .header h1 { font-size: 15px; font-weight: 600; line-height: 1.3; }
+        .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 4px; line-height: 1.25; }
 
         .tabs {
             display: flex;
@@ -37,9 +37,9 @@
         .tab {
             flex: 1;
             min-width: 72px;
-            padding: 14px 8px;
+            padding: 11px 6px;
             text-align: center;
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
             text-decoration: none;
             border-bottom: 2px solid transparent;
@@ -49,7 +49,7 @@
             color: #1e6fff;
             border-bottom-color: #1e6fff;
         }
-        .container { padding: 16px; padding-bottom: var(--bottom-nav-clearance); }
+        .container { padding: 12px 12px 16px; padding-bottom: var(--bottom-nav-clearance); }
 
         .card {
             background: #fff;
@@ -179,7 +179,7 @@
             font-size: 12px;
             position: absolute;
             left: 12px;
-            top: calc(20px + env(safe-area-inset-top, 0px));
+            top: calc(10px + env(safe-area-inset-top, 0px));
             max-width: 46%;
             line-height: 1.2;
         }
@@ -322,24 +322,29 @@
         .record-card-date { font-size: 12px; color: #999; }
         .record-card-info { font-size: 12px; color: #666; line-height: 1.8; }
 
-        /* 税务记录 tab：整体紧凑 */
+        /* 税务记录 tab：整体紧凑 + 清晰主次 */
         #panel-records .card {
-            padding: 10px 12px;
-            margin-bottom: 10px;
+            padding: 14px 14px 16px;
+            margin-bottom: 12px;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
         }
         #panel-records .card-title {
-            font-size: 14px;
-            margin-bottom: 8px;
-            padding-bottom: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            padding-bottom: 0;
+            border-bottom: none;
+            color: #1e293b;
         }
         #batchTaxCard .card-title {
-            font-size: 12px;
-            margin-bottom: 6px;
-            padding-bottom: 6px;
+            font-size: 15px;
+            margin-bottom: 4px;
+            padding-bottom: 0;
         }
         #batchTaxCard > .btn.btn-sm {
-            font-size: 11px;
-            padding: 6px 12px;
+            font-size: 12px;
+            padding: 8px 12px;
         }
         #panel-records .card-title-row {
             display: flex;
@@ -347,6 +352,7 @@
             justify-content: space-between;
             gap: 8px;
             flex-wrap: wrap;
+            margin-bottom: 8px;
         }
         #panel-records .card-title-actions {
             display: flex;
@@ -355,77 +361,137 @@
             align-items: center;
         }
         #panel-records .card-title-actions .btn {
-            padding: 4px 10px;
-            font-size: 11px;
+            padding: 5px 10px;
+            font-size: 12px;
             border-radius: 6px;
         }
-        #panel-records .form-group { margin-bottom: 8px; }
+        #panel-records .form-group { margin-bottom: 10px; }
         #panel-records .form-group label {
             font-size: 12px;
-            margin-bottom: 4px;
+            color: #64748b;
+            margin-bottom: 5px;
+            font-weight: 500;
         }
         #panel-records .form-group input,
         #panel-records .form-group select,
         #panel-records .form-group textarea {
-            padding: 7px 10px;
-            font-size: 12px;
-            border-radius: 6px;
-        }
-        #panel-records .form-row { gap: 8px; }
-        #panel-records .btn-block {
-            padding: 10px;
+            padding: 10px 12px;
             font-size: 14px;
+            border-radius: 8px;
+            border-color: #e2e8f0;
+            background: #fff;
+        }
+        #panel-records .form-row {
+            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+        }
+        #panel-records .btn-block {
+            padding: 12px;
+            font-size: 15px;
             margin-top: 4px;
+            border-radius: 10px;
+            font-weight: 600;
         }
         #panel-records .record-card {
-            padding: 8px 10px;
+            padding: 10px 12px;
             margin-bottom: 8px;
-            border-radius: 6px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
         }
         #panel-records .record-card-header { margin-bottom: 4px; }
-        #panel-records .record-card-title { font-size: 12px; }
+        #panel-records .record-card-title { font-size: 13px; }
         #panel-records .record-card-date { font-size: 11px; }
         #panel-records .record-card-info {
-            font-size: 11px;
-            line-height: 1.45;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #64748b;
         }
-        #panel-records .record-card .list-item-actions { margin-top: 6px; }
+        #panel-records .record-card .list-item-actions { margin-top: 8px; }
         #panel-records .record-card .btn-sm {
-            padding: 4px 10px;
-            font-size: 11px;
+            padding: 5px 10px;
+            font-size: 12px;
         }
         #panel-records #recordListMount .empty {
-            padding: 20px;
-            font-size: 12px;
+            padding: 28px 16px;
+            font-size: 13px;
+            color: #94a3b8;
         }
 
         #panel-records .batch-hint {
-            font-size: 11px;
-            color: #888;
-            line-height: 1.5;
-            margin: -4px 0 10px;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.45;
+            margin: 0 0 12px;
         }
         #panel-records .batch-tax-toolbar {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
+            align-items: stretch;
         }
         #panel-records .batch-tax-toolbar .btn {
-            flex: 1;
-            min-width: 120px;
-            font-size: 11px;
-            padding: 6px 10px;
+            flex: 1 1 calc(33.33% - 6px);
+            min-width: 0;
+            font-size: 12px;
+            padding: 8px 6px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        #panel-records .batch-tax-toolbar .btn-default {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #475569;
+        }
+        #panel-records .batch-tax-actions {
+            margin-top: 4px;
+            padding-top: 12px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        #panel-records .batch-tax-actions .btn-primary {
+            box-shadow: 0 4px 12px rgba(30, 111, 255, 0.28);
+        }
+        #panel-records .batch-bonus-only-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px;
+            order: 2;
+        }
+        #panel-records .batch-tax-actions #batch_submit_employments_btn,
+        #panel-records .batch-tax-actions #batch_update_employments_btn {
+            order: 1;
+        }
+        #panel-records .batch-bonus-only-btn:active {
+            color: #1e6fff;
+        }
+        #panel-records .batch-add-emp-btn {
+            margin: 0 0 12px;
+            background: transparent;
+            border: 1px dashed #cbd5e1;
+            color: #1e6fff;
+            font-weight: 500;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        #panel-records .batch-add-emp-btn:active {
+            background: #f8fafc;
         }
         #panel-records .batch-edit-banner {
-            font-size: 11px;
+            font-size: 12px;
             line-height: 1.5;
             color: #b45309;
             background: #fff7ed;
             border: 1px solid #fed7aa;
-            border-radius: 8px;
-            padding: 8px 10px;
-            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
         }
         #batchTaxCard.is-edit-mode {
             border: 1px solid #93c5fd;
@@ -433,26 +499,41 @@
         }
 
         #panel-records .batch-emp-row {
-            border: 1px solid #ececf0;
-            border-radius: 10px;
-            padding: 12px;
+            border: 1px solid #e8eef7;
+            border-radius: 12px;
+            padding: 14px;
             margin-bottom: 12px;
-            background: #fafbff;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
         #panel-records .batch-emp-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
         }
         #panel-records .batch-emp-title {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
-            color: #555;
+            color: #334155;
+        }
+        #panel-records .batch-emp-remove-btn {
+            background: transparent !important;
+            color: #ef4444 !important;
+            border: none !important;
+            padding: 4px 8px !important;
+            font-size: 13px !important;
+            font-weight: 500;
+            box-shadow: none !important;
+        }
+        #panel-records .batch-emp-remove-btn:active {
+            opacity: 0.7;
         }
         #panel-records .batch-emp-optional-meta,
         #panel-records .batch-emp-deduct-meta {
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         #panel-records .batch-emp-optional-toggle,
         #panel-records .batch-emp-deduct-toggle {
@@ -460,15 +541,16 @@
             align-items: center;
             justify-content: space-between;
             width: 100%;
-            margin: 0 0 6px;
-            padding: 8px 10px;
+            margin: 0 0 8px;
+            padding: 9px 12px;
             font-size: 12px;
-            color: #1e6fff;
-            background: #f5f8ff;
-            border: 1px solid #d6e4ff;
+            color: #475569;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            font-weight: 500;
         }
         #panel-records .batch-emp-optional-toggle:active,
         #panel-records .batch-emp-deduct-toggle:active {
@@ -477,7 +559,7 @@
         #panel-records .batch-emp-optional-toggle-icon,
         #panel-records .batch-emp-deduct-toggle-icon {
             font-size: 10px;
-            color: #888;
+            color: #94a3b8;
             transition: transform 0.2s ease;
         }
         #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
@@ -500,20 +582,20 @@
         #panel-records .batch-ym-inline input.batch-ym-field {
             flex: 1 1 0;
             min-width: 0;
-            min-height: 44px;
-            font-size: 16px;
+            min-height: 42px;
+            font-size: 15px;
             padding: 10px 12px;
             touch-action: manipulation;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            background: #fafafa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
             -webkit-appearance: none;
             appearance: none;
         }
         #panel-records .batch-ym-inline input.batch-emp-sm,
         #panel-records .batch-ym-inline input.batch-emp-em {
-            flex: 0 0 88px;
-            width: 88px;
+            flex: 0 0 72px;
+            width: 72px;
             text-align: center;
         }
         #panel-records .batch-ym-inline input.batch-ym-field:focus {
@@ -1004,32 +1086,31 @@
 
         <div id="panel-records" class="tab-panel active">
             <div class="card" id="batchTaxCard">
-                <div class="card-title" id="batchTaxCardTitle">批量添加（累计预扣计税）</div>
-                <p class="batch-hint" id="batchTaxCardHint">按工作经历生成多月工资薪金；可用「粘贴导入」从个税 APP 文本一键识别公司与各月收入/税额。添加后也可用「从已有记录回填」载入并批量修改。</p>
+                <div class="card-title" id="batchTaxCardTitle">批量添加</div>
+                <p class="batch-hint" id="batchTaxCardHint">填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。</p>
                 <div class="batch-tax-toolbar">
-                    <button type="button" class="btn btn-default btn-sm" onclick="loadBatchEmploymentsFromExistingRecords()">从已有记录回填</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="loadBatchEmploymentsFromExistingRecords()">从已有回填</button>
                     <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport" onclick="openTaxPasteImportModal()">粘贴导入</button>
                     <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample" onclick="fillBatchTaxExample()">示例填写</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
-                    <button type="button" class="btn-page btn-sm" id="btnBatchTaxQuickStart" style="display:none;" onclick="fillBatchTaxExample()">30秒体验完整明细</button>
-                    <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;" onclick="exitBatchTaxEditMode()">退出修改模式</button>
+                    <button type="button" class="btn-page btn-sm" id="btnBatchTaxQuickStart" style="display:none;" onclick="fillBatchTaxExample()">30秒体验</button>
+                    <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;" onclick="exitBatchTaxEditMode()">退出修改</button>
                 </div>
                 <div id="batchEditModeBanner" class="batch-edit-banner" hidden></div>
                 <div id="batch_employment_list"></div>
-                <button type="button" class="btn btn-default btn-block btn-sm" style="margin-bottom:12px;" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
+                <button type="button" class="btn btn-block batch-add-emp-btn" onclick="addBatchEmpRow()">＋ 添加一段工作经历</button>
                 <template id="batchEmpRowTpl">
                     <div class="batch-emp-row">
                         <div class="batch-emp-head">
                             <span class="batch-emp-title">工作经历</span>
-                            <button type="button" class="btn btn-danger btn-sm batch-emp-remove-btn">删除</button>
+                            <button type="button" class="btn btn-sm batch-emp-remove-btn">删除</button>
                         </div>
-                        <div class="form-group">
-                            <label>扣缴义务人（公司全称）</label>
-                            <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="请填写该公司全称（可点选历史）">
-                        </div>
+                            <div class="form-group">
+                                <label>扣缴义务人（公司全称）</label>
+                                <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="公司全称（可点选历史）">
+                            </div>
                         <div class="batch-emp-optional-meta">
                             <button type="button" class="batch-emp-optional-toggle" aria-expanded="false">
-                                <span>选填：纳税人识别号、主管税务机关</span>
+                                <span>选填信息（税号 / 税务机关）</span>
                                 <span class="batch-emp-optional-toggle-icon" aria-hidden="true">▼</span>
                             </button>
                             <div class="batch-emp-optional-body">
@@ -1062,11 +1143,11 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>月薪下限（元）</label>
-                                <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="固定月薪或浮动下限，如 15000">
+                                <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="如 15000">
                             </div>
                             <div class="form-group">
                                 <label>月薪上限（可选）</label>
-                                <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空=每月固定为下限；填则区间内随机，如 16000">
+                                <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空则每月固定">
                             </div>
                         </div>
                         <div class="form-group">
@@ -1160,13 +1241,15 @@
                     </div>
                 </template>
                 <datalist id="batchCompanyHistoryDatalist"></datalist>
-                <button type="button" class="btn btn-default btn-block" style="margin-bottom:10px;" onclick="batchAddYearEndBonusOnly()">仅添加年终奖</button>
-                <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="batchAddEmploymentTaxRecords()">一键生成税务记录</button>
-                <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">批量修改并覆盖</button>
+                <div class="batch-tax-actions">
+                    <button type="button" class="btn btn-block batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">仅添加年终奖</button>
+                    <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn" onclick="oneClickGenerateBatchTaxRecords()">一键生成税务记录</button>
+                    <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">批量修改并覆盖</button>
+                </div>
             </div>
 
             <div class="card" id="singleTaxRecordCard">
-                <div class="card-title">添加税务记录</div>
+                <div class="card-title">单条添加</div>
                 <form id="recordForm" onsubmit="onSubmitRecord(event)">
                     <input type="hidden" name="editing_id" id="editing_id" value="">
 
@@ -4310,14 +4393,14 @@
                 card.classList.toggle('is-edit-mode', inEdit);
             }
             if (title) {
-                title.textContent = inEdit ? '批量修改（累计预扣计税）' : '批量添加（累计预扣计税）';
+                title.textContent = inEdit ? '批量修改' : '批量添加';
             }
             if (hint) {
                 hint.textContent = inEdit
                     ? '已载入 ' +
                       batchTaxEditMode.scopeIds.length +
-                      ' 条月薪相关记录。修改表单后点击「批量修改并覆盖」将删除原月薪记录并重新生成（同事务）；各段工作经历中的年终奖默认保留，仅当您修改对应年终奖字段时才会更新。'
-                    : '按工作经历生成多月工资薪金；添加后可用「从已有记录回填」载入并批量修改。';
+                      ' 条月薪记录。修改后点「批量修改并覆盖」将替换原记录；未改动的年终奖默认保留。'
+                    : '填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。';
             }
             if (banner) {
                 if (inEdit) {
