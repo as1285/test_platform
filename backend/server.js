@@ -13630,6 +13630,20 @@ async function handleAdminActivationBatchChannels(req, res) {
     try {
       var custom = await loadActivationBatchCustomChannels(conn);
       if (action === 'remove' || action === 'delete') {
+        var builtinRemove = false;
+        var brKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+        for (var bri = 0; bri < brKeys.length; bri++) {
+          if (
+            ACTIVATION_BATCH_BUILTIN_CHANNELS[brKeys[bri]] === label ||
+            brKeys[bri] === label
+          ) {
+            builtinRemove = true;
+            break;
+          }
+        }
+        if (builtinRemove) {
+          return res.status(400).json({ code: 400, msg: '内置渠道不可删除' });
+        }
         custom = custom.filter(function (x) {
           return x !== label;
         });

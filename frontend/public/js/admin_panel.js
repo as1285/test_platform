@@ -1440,6 +1440,9 @@
                     var opt = document.createElement('option');
                     opt.value = lab;
                     opt.textContent = lab;
+                    if (ch.builtin) {
+                        opt.setAttribute('data-builtin', '1');
+                    }
                     sel.appendChild(opt);
                 });
                 if (prev) {
@@ -1462,6 +1465,32 @@
                     sel.selectedIndex = 0;
                 }
             });
+            updateBatchChannelRemoveButton();
+        }
+
+        function isBuiltinBatchChannelLabel(label) {
+            var lab = String(label || '').trim();
+            if (!lab) return false;
+            var list = _activationBatchChannelsCache || [];
+            for (var i = 0; i < list.length; i++) {
+                var ch = list[i];
+                if (!ch || !ch.builtin) continue;
+                if (String(ch.label || '').trim() === lab || String(ch.key || '').trim() === lab) {
+                    return true;
+                }
+            }
+            return lab === '闲鱼' || lab === '酷发卡' || lab === 'xianyu' || lab === 'kufaka';
+        }
+
+        function updateBatchChannelRemoveButton() {
+            var btn = document.getElementById('btnRemoveBatchChannel');
+            if (!btn) return;
+            var label = getSelectedBatchChannelLabel();
+            var builtin = !label || isBuiltinBatchChannelLabel(label);
+            btn.disabled = builtin;
+            btn.title = builtin
+                ? '内置渠道（闲鱼 / 酷发卡）不可删除'
+                : '删除当前选中的自定义渠道「' + label + '」';
         }
 
         function getSelectedBatchChannelLabel() {
@@ -8338,6 +8367,54 @@
                     })
                     .finally(function () {
                         btnAddBatchChannel.disabled = false;
+                    });
+            });
+        }
+
+        var batchIssueChannelSel = document.getElementById('batchIssueChannel');
+        if (batchIssueChannelSel) {
+            batchIssueChannelSel.addEventListener('change', updateBatchChannelRemoveButton);
+        }
+        updateBatchChannelRemoveButton();
+
+        var btnRemoveBatchChannel = document.getElementById('btnRemoveBatchChannel');
+        if (btnRemoveBatchChannel) {
+            btnRemoveBatchChannel.addEventListener('click', function () {
+                var name = getSelectedBatchChannelLabel();
+                if (!name) {
+                    alert('请先选择要删除的渠道');
+                    return;
+                }
+                if (isBuiltinBatchChannelLabel(name)) {
+                    alert('内置渠道「' + name + '」不可删除');
+                    return;
+                }
+                if (!confirm('确定删除自定义渠道「' + name + '」？已生成的激活码不受影响。')) {
+                    return;
+                }
+                btnRemoveBatchChannel.disabled = true;
+                adminFetch('api/admin/activation-batch-channels', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'remove', label: name })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.channels) {
+                            fillBatchChannelSelects(data.data.channels, '闲鱼');
+                            alert('已删除渠道「' + name + '」');
+                        } else {
+                            alert(data.msg || '删除失败');
+                            updateBatchChannelRemoveButton();
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                        updateBatchChannelRemoveButton();
+                    })
+                    .finally(function () {
+                        updateBatchChannelRemoveButton();
                     });
             });
         }
