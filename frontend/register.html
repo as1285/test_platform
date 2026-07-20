@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>注册账号</title>
     <style>
-        * { margin: 0; padding: 0; box-boxing: border-box; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
             background: linear-gradient(180deg, #e8f2ff 0%, #f5f6fa 38%, #f5f6fa 100%);
@@ -223,18 +223,64 @@
             text-decoration: none;
             font-weight: 500;
         }
-        .err {
+        .err-modal {
             display: none;
-            padding: 11px 12px;
-            background: #fff2f0;
-            border: 1px solid #ffccc7;
-            border-radius: 10px;
-            color: #cf1322;
-            font-size: 14px;
-            margin-bottom: 14px;
-            line-height: 1.45;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
         }
-        .err.show { display: block; }
+        .err-modal.show { display: flex; }
+        .err-modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.48);
+        }
+        .err-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 22px 20px 16px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+            text-align: center;
+            animation: errModalIn 0.2s ease;
+        }
+        @keyframes errModalIn {
+            from { opacity: 0; transform: scale(0.94) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .err-modal-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 10px;
+        }
+        .err-modal-msg {
+            font-size: 15px;
+            color: #cf1322;
+            line-height: 1.5;
+            margin: 0 0 18px;
+            word-break: break-word;
+        }
+        .err-modal-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: #1e6fff;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .err-modal-btn:active { opacity: 0.9; }
         .ok-toast {
             position: fixed;
             left: 50%;
@@ -265,7 +311,6 @@
     </div>
 
     <div class="card">
-        <div id="errBox" class="err" role="alert"></div>
         <form id="regForm" autocomplete="on">
             <div class="field">
                 <label for="username">账号 <span class="req">*</span></label>
@@ -325,6 +370,14 @@
         <p class="footer-link">已有账号？<a href="login.html">去登录</a></p>
     </div>
     <div class="ok-toast" id="regToast" role="status"></div>
+    <div class="err-modal" id="errModal" role="dialog" aria-modal="true" aria-labelledby="errModalTitle" hidden>
+        <div class="err-modal-mask" id="errModalMask"></div>
+        <div class="err-modal-panel">
+            <h2 class="err-modal-title" id="errModalTitle">注册失败</h2>
+            <p class="err-modal-msg" id="errModalMsg"></p>
+            <button type="button" class="err-modal-btn" id="errModalOk">知道了</button>
+        </div>
+    </div>
 
     <script>
         var regCaptchaId = '';
@@ -342,19 +395,43 @@
             } catch (e) {}
         })();
 
+        function hideErrModal() {
+            var modal = document.getElementById('errModal');
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.hidden = true;
+            document.body.style.overflow = '';
+        }
+
         function showErr(msg) {
-            var el = document.getElementById('errBox');
+            var modal = document.getElementById('errModal');
+            var msgEl = document.getElementById('errModalMsg');
+            if (!modal || !msgEl) return;
             if (!msg) {
-                el.classList.remove('show');
-                el.textContent = '';
+                hideErrModal();
                 return;
             }
-            el.textContent = msg;
-            el.classList.add('show');
-            try {
-                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            } catch (e0) {}
+            msgEl.textContent = msg;
+            modal.hidden = false;
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            var okBtn = document.getElementById('errModalOk');
+            if (okBtn) {
+                try { okBtn.focus(); } catch (eF) {}
+            }
         }
+
+        (function bindErrModal() {
+            var okBtn = document.getElementById('errModalOk');
+            var mask = document.getElementById('errModalMask');
+            if (okBtn) okBtn.addEventListener('click', hideErrModal);
+            if (mask) mask.addEventListener('click', hideErrModal);
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                var modal = document.getElementById('errModal');
+                if (modal && modal.classList.contains('show')) hideErrModal();
+            });
+        })();
 
         function showToast(msg) {
             var el = document.getElementById('regToast');
