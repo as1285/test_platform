@@ -1372,8 +1372,12 @@
                 alert('没有可导出的激活码');
                 return;
             }
+            var channelLabel = meta.channel_label || meta.channel || '渠道';
+            var note = meta.note || channelLabel + '批量';
             var lines = [
-                '# 闲鱼激活码批量导出',
+                '# ' + channelLabel + '激活码批量导出',
+                '# 渠道：' + channelLabel,
+                '# 备注：' + note,
                 '# 生成时间：' + (meta.generated_at || formatLocalDateTimeForExport(new Date())),
                 '# 数量：' + list.length,
                 '# 归属管理员：' + (meta.owner_admin || '—'),
@@ -1389,9 +1393,15 @@
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
+            var safeName = String(channelLabel)
+                .replace(/[\\/:*?"<>|\s]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            if (!safeName) safeName = 'batch';
             a.download =
                 meta.filename ||
-                'xianyu-activation-codes-' +
+                safeName +
+                    '-activation-codes-' +
                     formatLocalDateTimeForExport(new Date()).replace(/[:\s]/g, '-') +
                     '.txt';
             document.body.appendChild(a);
@@ -1399,6 +1409,87 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        var _activationBatchChannelsCache = [
+            { key: 'xianyu', label: '闲鱼', builtin: true },
+            { key: 'kufaka', label: '酷发卡', builtin: true }
+        ];
+
+        function fillBatchChannelSelects(channels, preferredLabel) {
+            var list =
+                Array.isArray(channels) && channels.length
+                    ? channels
+                    : _activationBatchChannelsCache;
+            _activationBatchChannelsCache = list;
+            var prefer = preferredLabel != null ? String(preferredLabel).trim() : '';
+            ['batchIssueChannel', 'xianyuCodeChannelFilter'].forEach(function (id) {
+                var sel = document.getElementById(id);
+                if (!sel) return;
+                var prev = prefer || String(sel.value || '').trim();
+                var keepAll = id === 'xianyuCodeChannelFilter';
+                sel.innerHTML = '';
+                if (keepAll) {
+                    var optAll = document.createElement('option');
+                    optAll.value = '';
+                    optAll.textContent = '全部渠道';
+                    sel.appendChild(optAll);
+                }
+                list.forEach(function (ch) {
+                    var lab = ch && ch.label != null ? String(ch.label).trim() : '';
+                    if (!lab) return;
+                    var opt = document.createElement('option');
+                    opt.value = lab;
+                    opt.textContent = lab;
+                    sel.appendChild(opt);
+                });
+                if (prev) {
+                    var found = false;
+                    for (var i = 0; i < sel.options.length; i++) {
+                        if (sel.options[i].value === prev) {
+                            sel.value = prev;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found && !keepAll) {
+                        var optExtra = document.createElement('option');
+                        optExtra.value = prev;
+                        optExtra.textContent = prev;
+                        sel.appendChild(optExtra);
+                        sel.value = prev;
+                    }
+                } else if (!keepAll && sel.options.length) {
+                    sel.selectedIndex = 0;
+                }
+            });
+        }
+
+        function getSelectedBatchChannelLabel() {
+            var sel = document.getElementById('batchIssueChannel');
+            return sel ? String(sel.value || '').trim() : '';
+        }
+
+        function loadActivationBatchChannels() {
+            if (!(currentAdminProfile && currentAdminProfile.is_super)) {
+                fillBatchChannelSelects(_activationBatchChannelsCache);
+                return;
+            }
+            adminFetch('api/admin/activation-batch-channels')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code === 200 && data.data && data.data.channels) {
+                        fillBatchChannelSelects(data.data.channels);
+                    } else {
+                        fillBatchChannelSelects(_activationBatchChannelsCache);
+                    }
+                })
+                .catch(function () {
+                    fillBatchChannelSelects(_activationBatchChannelsCache);
+                });
+        }
+
         function copyFallback(t) {
             var ta = document.createElement('textarea');
             ta.value = t;
@@ -2160,7 +2251,8 @@
                 if (currentAdminProfile && currentAdminProfile.is_super) {
                     codesHint.style.display = '';
                     codesHint.innerHTML =
-                        '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可自定义数量，一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「闲鱼批量」）。下方<strong>闲鱼激活码</strong>单独列表展示；用户用闲鱼码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。';
+                        '每个激活码仅可成功激活 1 个账号，用过后即失效，<strong>永不过期</strong>。批量生成可选择渠道（闲鱼 / 酷发卡，也可手动添加），自定义数量后一次性写入并<strong>自动下载 TXT</strong>（每行一个激活码，备注为「渠道名+批量」）。下方<strong>渠道批量激活码</strong>可按渠道筛选；用户用渠道码激活后，在「注册用户 / 用户数据」中可查看<strong>渠道分析</strong>（注册来源 + 激活来源）。';
+                    loadActivationBatchChannels();
                 } else {
                     codesHint.style.display = 'none';
                     codesHint.textContent = '';
@@ -4688,7 +4780,7 @@
             html += '</tbody></table></div>';
 
             var recentVisitors = Array.isArray(data.recent_visitors) ? data.recent_visitors : [];
-            html += '<p class="stat" style="margin:0 0 8px;">最近访客行为（最多 20 位访客，同一访客合并展示）</p>';
+            html += '<p class="stat" style="margin:0 0 8px;">最近访客行为（最多 3 位访客，同一访客合并展示）</p>';
             html += '<div class="scroll-x"><table><thead><tr>';
             html += '<th>访客</th><th>IP</th><th>设备</th><th>时间</th><th>行为</th><th>停留/加载</th></tr></thead><tbody>';
             if (!recentVisitors.length) {
@@ -7422,6 +7514,9 @@
             if (p != null) {
                 xianyuCodePage = p;
             }
+            var channelFilter = '';
+            var channelSel = document.getElementById('xianyuCodeChannelFilter');
+            if (channelSel) channelFilter = String(channelSel.value || '').trim();
             var ownerAdmin = '';
             var ownerInput = document.getElementById('xianyuCodeOwnerAdminFilter');
             if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
@@ -7438,9 +7533,16 @@
             var codeExactEl = document.getElementById('xianyuCodeCodeExact');
             var codeExact = !!(codeExactEl && codeExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
+            var hasFilter = !!(channelFilter || ownerAdmin || usedBy || usageStatus || codeQ);
             var limit = isSuper && !hasFilter ? 20 : xianyuCodeLimit;
-            var q = 'api/admin/codes?page=' + xianyuCodePage + '&limit=' + limit + '&scope=xianyu';
+            var q =
+                'api/admin/codes?page=' +
+                xianyuCodePage +
+                '&limit=' +
+                limit +
+                (channelFilter
+                    ? '&note_channel=' + encodeURIComponent(channelFilter)
+                    : '&scope=batch');
             if (ownerAdmin) {
                 q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
             }
@@ -7468,6 +7570,7 @@
                     var statEl = document.getElementById('xianyuCodeListStat');
                     if (statEl) {
                         var filterParts = [];
+                        if (channelFilter) filterParts.push('渠道「' + channelFilter + '」');
                         if (ownerAdmin) filterParts.push('管理员「' + ownerAdmin + '」');
                         if (usedBy) {
                             filterParts.push(
@@ -7485,12 +7588,12 @@
                             filterParts.push('已使用');
                         }
                         if (isSuper && !hasFilter) {
-                            statEl.textContent = '共 ' + total + ' 条闲鱼激活码（全部管理员）';
+                            statEl.textContent = '共 ' + total + ' 条渠道批量激活码（全部管理员）';
                         } else if (filterParts.length) {
                             statEl.textContent =
-                                '共 ' + total + ' 条闲鱼激活码（筛选：' + filterParts.join('，') + '）';
+                                '共 ' + total + ' 条渠道批量激活码（筛选：' + filterParts.join('，') + '）';
                         } else {
-                            statEl.textContent = '共 ' + total + ' 条闲鱼激活码（本账号生成）';
+                            statEl.textContent = '共 ' + total + ' 条渠道批量激活码（本账号生成）';
                         }
                     }
                     var totalPages = Math.ceil(total / limit) || 1;
@@ -7510,7 +7613,7 @@
                     if (tbody) {
                         var html = renderCodeTableRows(list, { showChannel: true });
                         tbody.innerHTML =
-                            html || '<tr><td colspan="7">暂无闲鱼激活码</td></tr>';
+                            html || '<tr><td colspan="7">暂无渠道批量激活码</td></tr>';
                     }
                 })
                 .catch(function () {});
@@ -8121,11 +8224,26 @@
                     if (countEl) countEl.focus();
                     return;
                 }
+                if (count > 5000) {
+                    alert('单次批量数量不能超过 5000');
+                    if (countEl) countEl.focus();
+                    return;
+                }
+                var channelLabel = getSelectedBatchChannelLabel();
+                if (!channelLabel) {
+                    alert('请选择批量渠道');
+                    return;
+                }
+                var note = channelLabel + '批量';
                 if (
                     !confirm(
                         '将一次性生成 ' +
                             count +
-                            ' 个激活码（备注：闲鱼批量），写入数据库并下载 TXT 文件。是否继续？'
+                            ' 个激活码（渠道：' +
+                            channelLabel +
+                            '，备注：' +
+                            note +
+                            '），写入数据库并下载 TXT 文件。是否继续？'
                     )
                 ) {
                     return;
@@ -8133,22 +8251,32 @@
                 btnIssueBatch.disabled = true;
                 adminFetch('api/admin/issue-code-batch', {
                     method: 'POST',
-                    body: JSON.stringify({ count: count, note: '闲鱼批量' })
+                    body: JSON.stringify({ count: count, channel: channelLabel, note: note })
                 })
                     .then(function (r) {
                         return r.json();
                     })
                     .then(function (data) {
                         if (data.code === 200 && data.data && data.data.codes && data.data.codes.length) {
+                            var outLabel =
+                                (data.data.channel_label && String(data.data.channel_label).trim()) ||
+                                channelLabel;
                             var el = document.getElementById('issueOut');
                             if (el) {
                                 el.textContent =
                                     '已批量生成 ' +
                                     data.data.count +
-                                    ' 个激活码（闲鱼批量），正在下载 TXT…';
+                                    ' 个激活码（' +
+                                    outLabel +
+                                    '），正在下载 TXT…';
                                 el.classList.add('show');
                             }
+                            if (data.data.channels) {
+                                fillBatchChannelSelects(data.data.channels, outLabel);
+                            }
                             downloadActivationCodesTxt(data.data.codes, {
+                                channel_label: outLabel,
+                                note: data.data.note || note,
                                 generated_at: formatLocalDateTimeForExport(
                                     data.data.generated_at
                                         ? new Date(data.data.generated_at)
@@ -8161,7 +8289,7 @@
                             });
                             loadCodes(1);
                             loadXianyuCodes(1);
-                            alert('已生成 ' + data.data.count + ' 个激活码，TXT 已下载');
+                            alert('已生成 ' + data.data.count + ' 个「' + outLabel + '」激活码，TXT 已下载');
                         } else {
                             alert(data.msg || '批量生成失败');
                         }
@@ -8171,6 +8299,45 @@
                     })
                     .finally(function () {
                         btnIssueBatch.disabled = false;
+                    });
+            });
+        }
+
+        var btnAddBatchChannel = document.getElementById('btnAddBatchChannel');
+        if (btnAddBatchChannel) {
+            btnAddBatchChannel.addEventListener('click', function () {
+                var name = window.prompt('请输入新渠道名称（如：淘宝、拼多多）', '');
+                if (name == null) return;
+                name = String(name).trim().replace(/\s+/g, '').replace(/批量$/g, '');
+                if (!name) {
+                    alert('渠道名称不能为空');
+                    return;
+                }
+                if (name.length > 32) {
+                    alert('渠道名称不能超过 32 字');
+                    return;
+                }
+                btnAddBatchChannel.disabled = true;
+                adminFetch('api/admin/activation-batch-channels', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'add', label: name })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.channels) {
+                            fillBatchChannelSelects(data.data.channels, name);
+                            alert('已添加渠道「' + name + '」');
+                        } else {
+                            alert(data.msg || '添加失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnAddBatchChannel.disabled = false;
                     });
             });
         }
@@ -8221,6 +8388,8 @@
                 if (xyCode) xyCode.value = '';
                 var xyCodeExact = document.getElementById('xianyuCodeCodeExact');
                 if (xyCodeExact) xyCodeExact.checked = false;
+                var xyChannel = document.getElementById('xianyuCodeChannelFilter');
+                if (xyChannel) xyChannel.value = '';
                 loadXianyuCodes(1);
             });
         }

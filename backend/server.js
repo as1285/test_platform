@@ -85,19 +85,87 @@ const REGISTER_SOURCE_CHANNELS = {
   friend: '朋友介绍',
   github: 'GitHub',
   other: '其他',
-  xianyu: '闲鱼'
+  xianyu: '闲鱼',
+  kufaka: '酷发卡'
 };
 
-/** 激活码 note 含「闲鱼」视为闲鱼渠道批量码 */
+/** 批量激活码内置渠道（key → 展示名）；备注格式为「{展示名}批量」 */
+const ACTIVATION_BATCH_BUILTIN_CHANNELS = {
+  xianyu: '闲鱼',
+  kufaka: '酷发卡'
+};
+
+const SETTING_KEY_ACTIVATION_BATCH_CHANNELS = 'activation_batch_channels_json';
+
+/** 激活码 note 含「闲鱼」视为闲鱼渠道批量码（兼容旧逻辑） */
 function isXianyuActivationNote(note) {
   return String(note || '').indexOf('闲鱼') >= 0;
 }
 
-function activationSourceFromCodeNote(note) {
-  if (isXianyuActivationNote(note)) {
-    return 'xianyu';
+/** 是否为渠道批量备注（以「批量」结尾，或历史闲鱼备注） */
+function isBatchActivationNote(note) {
+  var n = String(note || '').trim();
+  if (!n) return false;
+  if (/批量$/.test(n)) return true;
+  return isXianyuActivationNote(n);
+}
+
+function sanitizeActivationBatchChannelLabel(raw) {
+  var s = String(raw != null ? raw : '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/批量$/g, '');
+  if (!s) return '';
+  if (s.length > 32) s = s.slice(0, 32);
+  return s;
+}
+
+/** 从备注解析渠道展示名，如「闲鱼批量」→「闲鱼」 */
+function activationChannelLabelFromNote(note) {
+  var n = String(note || '').trim();
+  if (!n) return '';
+  if (/批量$/.test(n)) {
+    var fromSuffix = sanitizeActivationBatchChannelLabel(n.replace(/批量$/, ''));
+    if (fromSuffix) return fromSuffix;
+  }
+  var keys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+  for (var i = 0; i < keys.length; i++) {
+    var label = ACTIVATION_BATCH_BUILTIN_CHANNELS[keys[i]];
+    if (n.indexOf(label) >= 0) return label;
   }
   return '';
+}
+
+/** 展示名 / key → 写入 users.activation_source_channel 的值 */
+function activationSourceKeyFromLabel(label) {
+  var lab = sanitizeActivationBatchChannelLabel(label);
+  if (!lab) return '';
+  var keys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+  for (var i = 0; i < keys.length; i++) {
+    if (ACTIVATION_BATCH_BUILTIN_CHANNELS[keys[i]] === lab || keys[i] === lab) {
+      return keys[i];
+    }
+  }
+  return lab;
+}
+
+function activationSourceFromCodeNote(note) {
+  var label = activationChannelLabelFromNote(note);
+  if (!label) return '';
+  return activationSourceKeyFromLabel(label);
+}
+
+function activationBatchNoteFromChannel(channelInput) {
+  var lab = sanitizeActivationBatchChannelLabel(channelInput);
+  if (!lab) lab = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
+  var keys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i] === lab) {
+      lab = ACTIVATION_BATCH_BUILTIN_CHANNELS[keys[i]];
+      break;
+    }
+  }
+  return lab + '批量';
 }
 
 function activationSourceChannelLabel(channel) {
@@ -108,7 +176,85 @@ function activationSourceChannelLabel(channel) {
   if (REGISTER_SOURCE_CHANNELS[c]) {
     return REGISTER_SOURCE_CHANNELS[c];
   }
+  if (ACTIVATION_BATCH_BUILTIN_CHANNELS[c]) {
+    return ACTIVATION_BATCH_BUILTIN_CHANNELS[c];
+  }
   return c;
+}
+
+function parseActivationBatchCustomChannels(raw) {
+  var list = [];
+  var seen = Object.create(null);
+  function push(lab) {
+    var s = sanitizeActivationBatchChannelLabel(lab);
+    if (!s || seen[s]) return;
+    var builtins = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+    for (var i = 0; i < builtins.length; i++) {
+      if (ACTIVATION_BATCH_BUILTIN_CHANNELS[builtins[i]] === s || builtins[i] === s) {
+        return;
+      }
+    }
+    seen[s] = 1;
+    list.push(s);
+  }
+  if (Array.isArray(raw)) {
+    raw.forEach(push);
+  } else if (raw != null && String(raw).trim()) {
+    try {
+      var parsed = JSON.parse(String(raw));
+      if (Array.isArray(parsed)) {
+        parsed.forEach(push);
+      } else {
+        String(raw)
+          .split(/[\n,，;；]+/)
+          .forEach(push);
+      }
+    } catch (e) {
+      String(raw)
+        .split(/[\n,，;；]+/)
+        .forEach(push);
+    }
+  }
+  return list.slice(0, 40);
+}
+
+async function loadActivationBatchCustomChannels(conn) {
+  var ownConn = !conn;
+  var c = conn;
+  try {
+    if (ownConn) c = await pool.getConnection();
+    const [rows] = await c.execute(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [SETTING_KEY_ACTIVATION_BATCH_CHANNELS]
+    );
+    if (!rows.length) return [];
+    return parseActivationBatchCustomChannels(rows[0].setting_value);
+  } catch (e) {
+    return [];
+  } finally {
+    if (ownConn && c) c.release();
+  }
+}
+
+async function saveActivationBatchCustomChannels(conn, labels) {
+  var list = parseActivationBatchCustomChannels(labels);
+  var json = JSON.stringify(list);
+  await conn.execute(
+    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+    [SETTING_KEY_ACTIVATION_BATCH_CHANNELS, json]
+  );
+  return list;
+}
+
+function buildActivationBatchChannelsPayload(customLabels) {
+  var builtins = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS).map(function (k) {
+    return { key: k, label: ACTIVATION_BATCH_BUILTIN_CHANNELS[k], builtin: true };
+  });
+  var customs = (customLabels || []).map(function (lab) {
+    return { key: lab, label: lab, builtin: false };
+  });
+  return builtins.concat(customs);
 }
 
 /** 注册来源 + 激活来源（闲鱼码等）综合展示 */
@@ -6561,7 +6707,7 @@ function installGuideDeviceSummaryFromUa(uaRaw) {
 }
 
 function buildInstallGuideRecentVisitors(rows, maxVisitors) {
-  maxVisitors = maxVisitors || 20;
+  maxVisitors = maxVisitors || 3;
   var groups = {};
   (rows || []).forEach(function (r) {
     var cid = r.client_id ? String(r.client_id).trim() : '';
@@ -10503,7 +10649,7 @@ async function handleAdminInstallGuideStats(req, res) {
         totalRegisteredFromInstallReported += regInstallReportedMap[k] || 0;
       });
 
-      var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 20);
+      var recentVisitors = buildInstallGuideRecentVisitors(recentRows, 3);
 
       var funnelRaw = funnelStageRows[0] || {};
       var stageA = Number(funnelRaw.stage_a) || 0;
@@ -13369,20 +13515,35 @@ async function handleAdminIssueCode(req, res) {
   }
 }
 
-/** 批量生成激活码（闲鱼等），数量可自定义，写入库并返回列表供前端导出 TXT */
+/** 批量生成激活码（闲鱼 / 酷发卡 / 自定义渠道），数量可自定义，写入库并返回列表供前端导出 TXT */
 async function handleAdminIssueCodeBatch(req, res) {
   if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成闲鱼激活码' });
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成激活码' });
   }
   var body = req.body || {};
   var count = parseInt(body.count, 10);
   if (!count || count < 1) {
     return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
   }
-  var noteRaw = body.note != null ? String(body.note).trim() : '闲鱼批量';
-  var note = noteRaw || '闲鱼批量';
+  if (count > 5000) {
+    return res.status(400).json({ code: 400, msg: '单次批量数量不能超过 5000' });
+  }
+  var channelInput =
+    body.channel != null
+      ? String(body.channel).trim()
+      : body.channel_label != null
+        ? String(body.channel_label).trim()
+        : '';
+  var noteRaw = body.note != null ? String(body.note).trim() : '';
+  var note = noteRaw
+    ? noteRaw
+    : activationBatchNoteFromChannel(channelInput || ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu);
   if (note.length > 255) {
     note = note.slice(0, 255);
+  }
+  var channelLabel = activationChannelLabelFromNote(note) || sanitizeActivationBatchChannelLabel(channelInput);
+  if (!channelLabel) {
+    channelLabel = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
   }
   var maxUses = 1;
   var owner = req.admin && req.admin.username ? req.admin.username : null;
@@ -13406,6 +13567,22 @@ async function handleAdminIssueCodeBatch(req, res) {
         [codes[i], maxUses, null, note, owner]
       );
     }
+    var customList = await loadActivationBatchCustomChannels(conn);
+    var isBuiltin = false;
+    var builtinKeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+    for (var bi = 0; bi < builtinKeys.length; bi++) {
+      if (
+        ACTIVATION_BATCH_BUILTIN_CHANNELS[builtinKeys[bi]] === channelLabel ||
+        builtinKeys[bi] === channelLabel
+      ) {
+        isBuiltin = true;
+        break;
+      }
+    }
+    if (!isBuiltin && channelLabel) {
+      customList = parseActivationBatchCustomChannels(customList.concat([channelLabel]));
+      await saveActivationBatchCustomChannels(conn, customList);
+    }
     await conn.commit();
     return res.json({
       code: 200,
@@ -13414,6 +13591,9 @@ async function handleAdminIssueCodeBatch(req, res) {
         count: codes.length,
         max_uses: maxUses,
         note: note,
+        channel: activationSourceKeyFromLabel(channelLabel),
+        channel_label: channelLabel,
+        channels: buildActivationBatchChannelsPayload(customList),
         generated_at: new Date().toISOString()
       }
     });
@@ -13425,6 +13605,65 @@ async function handleAdminIssueCodeBatch(req, res) {
     return res.status(500).json({ code: 500, msg: String(e.message) });
   } finally {
     conn.release();
+  }
+}
+
+async function handleAdminActivationBatchChannels(req, res) {
+  if (!req.admin || !req.admin.is_super) {
+    return res.status(403).json({ code: 403, msg: '仅超级管理员可管理批量渠道' });
+  }
+  try {
+    if (req.method === 'GET') {
+      var list = await loadActivationBatchCustomChannels();
+      return res.json({
+        code: 200,
+        data: { channels: buildActivationBatchChannelsPayload(list) }
+      });
+    }
+    var body = req.body || {};
+    var action = body.action != null ? String(body.action).trim() : 'add';
+    var label = sanitizeActivationBatchChannelLabel(body.label != null ? body.label : body.channel);
+    if (!label) {
+      return res.status(400).json({ code: 400, msg: '请输入渠道名称' });
+    }
+    const conn = await pool.getConnection();
+    try {
+      var custom = await loadActivationBatchCustomChannels(conn);
+      if (action === 'remove' || action === 'delete') {
+        custom = custom.filter(function (x) {
+          return x !== label;
+        });
+      } else {
+        var builtinHit = false;
+        var bkeys = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+        for (var i = 0; i < bkeys.length; i++) {
+          if (
+            ACTIVATION_BATCH_BUILTIN_CHANNELS[bkeys[i]] === label ||
+            bkeys[i] === label
+          ) {
+            builtinHit = true;
+            break;
+          }
+        }
+        if (builtinHit) {
+          return res.json({
+            code: 200,
+            data: { channels: buildActivationBatchChannelsPayload(custom), msg: '内置渠道无需添加' }
+          });
+        }
+        custom = parseActivationBatchCustomChannels(custom.concat([label]));
+      }
+      custom = await saveActivationBatchCustomChannels(conn, custom);
+      return res.json({
+        code: 200,
+        data: { channels: buildActivationBatchChannelsPayload(custom) }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
 
@@ -13482,14 +13721,37 @@ async function handleAdminCodes(req, res) {
       }
     }
     var scope = req.query.scope != null ? String(req.query.scope).trim() : '';
-    if (scope === 'xianyu') {
+    var noteChannel =
+      req.query.note_channel != null
+        ? sanitizeActivationBatchChannelLabel(req.query.note_channel)
+        : req.query.channel != null
+          ? sanitizeActivationBatchChannelLabel(req.query.channel)
+          : '';
+    if (noteChannel) {
+      var noteLabel = noteChannel;
+      var nk = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS);
+      for (var ni = 0; ni < nk.length; ni++) {
+        if (nk[ni] === noteChannel) {
+          noteLabel = ACTIVATION_BATCH_BUILTIN_CHANNELS[nk[ni]];
+          break;
+        }
+      }
+      conditions.push('(ac.note IS NOT NULL AND ac.note LIKE ?)');
+      params.push('%' + noteLabel + '%');
+    } else if (scope === 'xianyu') {
       if (!req.admin || !req.admin.is_super) {
         conn.release();
         return res.status(403).json({ code: 403, msg: '仅超级管理员可查看闲鱼激活码' });
       }
       conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%闲鱼%')");
+    } else if (scope === 'batch') {
+      if (!req.admin || !req.admin.is_super) {
+        conn.release();
+        return res.status(403).json({ code: 403, msg: '仅超级管理员可查看渠道批量激活码' });
+      }
+      conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%批量%')");
     } else if (scope === 'general') {
-      conditions.push("(ac.note IS NULL OR ac.note NOT LIKE '%闲鱼%')");
+      conditions.push("(ac.note IS NULL OR ac.note NOT LIKE '%批量%')");
     }
     var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
@@ -13529,6 +13791,9 @@ async function handleAdminCodes(req, res) {
         used_count: r.used_count,
         note: r.note,
         is_xianyu: isXianyuActivationNote(r.note),
+        is_batch: isBatchActivationNote(r.note),
+        channel_label: activationChannelLabelFromNote(r.note),
+        channel: activationSourceFromCodeNote(r.note),
         created_at: r.created_at ? r.created_at.toISOString() : '',
         last_used_at: r.last_used_at ? r.last_used_at.toISOString() : null,
         used_by_username:
@@ -17420,6 +17685,18 @@ app.post(
   requireAdminAuth,
   requireAdminMenu('codes'),
   handleAdminIssueCodeBatch
+);
+app.get(
+  '/api/admin/activation-batch-channels',
+  requireAdminAuth,
+  requireAdminMenu('codes'),
+  handleAdminActivationBatchChannels
+);
+app.post(
+  '/api/admin/activation-batch-channels',
+  requireAdminAuth,
+  requireAdminMenu('codes'),
+  handleAdminActivationBatchChannels
 );
 app.get('/api/admin/codes', requireAdminAuth, requireAdminMenu('codes'), handleAdminCodes);
 app.post('/api/admin/user-activate', requireAdminAuth, requireAdminMenu('users'), handleAdminUserActivate);
