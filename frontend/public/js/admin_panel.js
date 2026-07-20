@@ -1845,6 +1845,24 @@
             if (k === 'track_alipay_payment_success') {
                 return { button: '支付宝自动开通成功', page: '购买页（purchase.html）' };
             }
+            if (k === 'track_tax_formula_open') {
+                return { button: '展开个税计算公式', page: '我要咨询 · 税务记录' };
+            }
+            if (k === 'track_tax_formula_close') {
+                return { button: '收起个税计算公式', page: '我要咨询 · 税务记录' };
+            }
+            if (k === 'track_tax_formula_try') {
+                return { button: '个税公式快速试算', page: '我要咨询 · 税务记录' };
+            }
+            if (k === 'track_tax_paste_import_open') {
+                return { button: '打开粘贴导入个税', page: '我要咨询 · 税务记录' };
+            }
+            if (k === 'track_tax_paste_import_fill') {
+                return { button: '粘贴导入填充', page: '我要咨询 · 税务记录' };
+            }
+            if (k === 'track_tax_paste_import_generate') {
+                return { button: '粘贴导入生成', page: '我要咨询 · 税务记录' };
+            }
             if (k.indexOf('track_jump_') === 0) {
                 var raw = k.substring('track_jump_'.length);
                 if (raw === '_history_back__' || raw === '__history_back__') {
