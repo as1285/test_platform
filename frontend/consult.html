@@ -1333,7 +1333,7 @@
                 <span id="taxPasteImportTitle">粘贴导入税务信息</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">支持两种粘贴：① 个税 APP 月明细（「YYYY年M月 收入x元 税额y元」）；② 聊天摘要（公司/税号/入职、全年区间、月薪区间、分红/年终奖）。可一次粘贴多家公司。汇总行（📌、合计）会自动忽略。</p>
+            <p class="batch-ms-modal-hint">解析引擎 v0721。支持：① 个税 APP 月明细（收入/税额或已申报税额）；② 聊天摘要（公司/税号/入职、全年区间、月薪、分红）。标签可带【】[]。可一次粘贴多家公司。</p>
             <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;2025年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万&#10;2024年2月2号发2万提成&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
             <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
@@ -5770,6 +5770,19 @@
             return parseMoneyToken(s);
         }
 
+        /** 统一标签：【扣缴义务人名称】： / [统计期间]： → 扣缴义务人名称： */
+        function normalizeTaxPasteLabels(text) {
+            return String(text || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/［/g, '[')
+                .replace(/］/g, ']')
+                .replace(/[【\[]\s*([^\]】\n]{1,40}?)\s*[】\]]\s*[：:]/g, '$1：')
+                .replace(/统计期间/g, '统计区间')
+                .replace(/所得期间/g, '统计区间')
+                .replace(/已申报税额/g, '税额')
+                .replace(/申报税额/g, '税额');
+        }
+
         function splitTaxPasteEmployerBlocks(text) {
             var trimmed = String(text || '').trim();
             if (!trimmed) {
@@ -5807,12 +5820,14 @@
         function extractTaxPasteCompanyName(block) {
             var m =
                 block.match(/扣缴义务人名称\s*[：:]\s*(.+)/) ||
-                block.match(/公司名称\s*[：:]\s*(.+)/);
+                block.match(/公司名称\s*[：:]\s*(.+)/) ||
+                block.match(/扣缴单位\s*[：:]\s*(.+)/);
             if (m) {
                 return String(m[1] || '')
                     .replace(/\s+$/g, '')
                     .replace(/[（(]?统计区间.*$/, '')
                     .replace(/扣缴义务人纳税人识别号.*$/, '')
+                    .replace(/纳税人识别号.*$/, '')
                     .trim();
             }
             var lines = block.split('\n').map(function (l) {
@@ -5931,31 +5946,49 @@
         function parseTaxPasteDetailMonths(block) {
             var months = [];
             var seen = {};
+            function pushMonth(year, month, income, tax) {
+                var y = parseInt(year, 10);
+                var mo = parseInt(month, 10);
+                var inc = parseMoneyToken(income);
+                var tx = parseMoneyToken(tax);
+                if (!y || y < 1 || y > 9999 || !mo || mo < 1 || mo > 12) {
+                    return;
+                }
+                if (inc == null || tx == null) {
+                    return;
+                }
+                var key = y + '-' + pad2(mo);
+                if (seen[key]) {
+                    return;
+                }
+                seen[key] = true;
+                months.push({ year: y, month: mo, income: inc, tax: tx, key: key });
+            }
             var monthRe =
-                /(\d{4})\s*年\s*(\d{1,2})\s*月[^\n\r]*?收入\s*([\d,.]+)\s*元[^\n\r]*?税额\s*([\d,.]+)\s*元/g;
+                /(\d{4})\s*年\s*(\d{1,2})\s*月[^\n\r]*?收入\s*([\d,.]+)\s*元?[^\n\r]*?税额\s*([\d,.]+)\s*元?/g;
             var m;
             while ((m = monthRe.exec(block)) !== null) {
                 var lineStart = block.lastIndexOf('\n', m.index);
                 var line = block.slice(lineStart + 1, m.index + m[0].length);
-                if (/合计|汇总|全年|累计|【注|📌|收入合计|已申报税额合计/.test(line)) {
+                if (/合计|汇总|全年|累计|【注|📌|收入合计|税额合计/.test(line)) {
                     continue;
                 }
-                var year = parseInt(m[1], 10);
-                var month = parseInt(m[2], 10);
-                var income = parseMoneyToken(m[3]);
-                var tax = parseMoneyToken(m[4]);
-                if (!year || year < 1 || year > 9999 || !month || month < 1 || month > 12) {
+                pushMonth(m[1], m[2], m[3], m[4]);
+            }
+            /* 宽松：YYYY年M月 后直接两个金额（收入、税额） */
+            var looseRe =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月\s*[：:]?\s*([\d,.]+)\s*元?\s+[^\d\n]{0,12}([\d,.]+)\s*元?/g;
+            while ((m = looseRe.exec(block)) !== null) {
+                var ls = block.lastIndexOf('\n', m.index);
+                var ln = block.slice(ls + 1, m.index + m[0].length);
+                if (/合计|汇总|全年|累计|【注|📌|奖金|提成|分红/.test(ln)) {
                     continue;
                 }
-                if (income == null || tax == null) {
+                var looseKey = parseInt(m[1], 10) + '-' + pad2(parseInt(m[2], 10));
+                if (seen[looseKey]) {
                     continue;
                 }
-                var key = year + '-' + pad2(month);
-                if (seen[key]) {
-                    continue;
-                }
-                seen[key] = true;
-                months.push({ year: year, month: month, income: income, tax: tax, key: key });
+                pushMonth(m[1], m[2], m[3], m[4]);
             }
             months.sort(function (a, b) {
                 if (a.year !== b.year) return a.year - b.year;
@@ -6181,10 +6214,12 @@
          * 解析粘贴的个税 APP / 聊天记录文本（可含多家公司）。
          */
         function parseTaxPasteText(rawText) {
-            var text = String(rawText || '')
-                .replace(/\u00a0/g, ' ')
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n');
+            var text = normalizeTaxPasteLabels(
+                String(rawText || '')
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+            );
             if (!String(text).trim()) {
                 return { ok: false, error: '请先粘贴税务信息文本' };
             }
@@ -6692,7 +6727,7 @@
             }
 
             var bankLine = text.match(
-                /((?:中国)?(?:工商|建设|农业|中国|交通|邮储|邮政储蓄|招商|浦发|中信|光大|华夏|民生|平安|兴业|广发)?银行)?\s*卡号\s*[：:]?\s*([0-9\s]{16,30})/
+                /((?:中国)?(?:工商|建设|农业|中国|交通|邮储|邮政储蓄|招商|浦发|中信|光大|华夏|民生|平安|兴业|广发)?银行)?\s*卡号\s*[：:]?\s*\n?\s*([0-9\s]{16,30})/
             );
             if (bankLine) {
                 if (bankLine[1]) {
