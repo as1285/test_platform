@@ -16545,14 +16545,21 @@ async function handleAdminAnalyticsApi(req, res) {
 var ANALYTICS_TRACK_EVENT_SQL =
   "(route_key LIKE 'EVENT %' OR route_key LIKE '%#track\\_%')";
 
-/** 激活弹窗相关埋点（单独统计，不计入通用 C 端埋点列表） */
+/** 激活弹窗 / 购买页相关埋点（单独统计，不计入通用 C 端埋点列表） */
 var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_activate_prompt_open',
   'track_activate_prompt_cancel',
   'track_activate_prompt_confirm',
   'track_xianyu_purchase_click',
+  'track_kufaka_purchase_click',
+  'track_online_chat_click',
+  'track_qq_group_click',
   'track_qq_add_click',
-  'track_qq_group_click'
+  'track_purchase_page_view',
+  'track_purchase_wechat_view',
+  'track_purchase_activate_success',
+  'track_purchase_activate_fail',
+  'track_purchase_back_click'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -16561,7 +16568,11 @@ ACTIVATE_TRACK_EVENT_KEYS.forEach(function (k) {
 });
 
 var ACTIVATE_TRACK_EVENT_SQL =
-  "(route_key LIKE '%#track_activate_prompt_open' OR route_key LIKE '%#track_activate_prompt_cancel' OR route_key LIKE '%#track_activate_prompt_confirm' OR route_key LIKE '%#track_xianyu_purchase_click' OR route_key LIKE '%#track_qq_add_click' OR route_key LIKE '%#track_qq_group_click')";
+  '(' +
+  ACTIVATE_TRACK_EVENT_KEYS.map(function (k) {
+    return "route_key LIKE '%#" + k + "'";
+  }).join(' OR ') +
+  ')';
 
 function isActivateTrackEventKey(eventKey) {
   return !!ACTIVATE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
@@ -16571,10 +16582,17 @@ function activateTrackEventLabel(eventKey) {
   var labels = {
     track_activate_prompt_open: '激活弹窗打开',
     track_activate_prompt_cancel: '激活弹窗-取消',
-    track_activate_prompt_confirm: '激活弹窗-确定',
+    track_activate_prompt_confirm: '确认激活',
     track_xianyu_purchase_click: '闲鱼购买',
+    track_kufaka_purchase_click: '酷发卡购买',
+    track_online_chat_click: '在线客服',
     track_qq_add_click: '添加QQ号',
-    track_qq_group_click: '加入QQ群'
+    track_qq_group_click: '加入QQ群',
+    track_purchase_page_view: '购买页浏览',
+    track_purchase_wechat_view: '微信购买展示',
+    track_purchase_activate_success: '购买页激活成功',
+    track_purchase_activate_fail: '购买页激活失败',
+    track_purchase_back_click: '购买页返回'
   };
   return labels[eventKey] || eventKey;
 }

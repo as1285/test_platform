@@ -255,6 +255,15 @@
         qqAdd: '',
         kufaka: KUFAKA_PURCHASE_URL
     };
+    var purchasePageViewTracked = false;
+
+    function trackPurchase(action, meta) {
+        if (typeof window.trackUserAction !== 'function') return;
+        var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
+        if (!payload.page) payload.page = 'purchase';
+        if (!payload.source) payload.source = 'purchase_page';
+        window.trackUserAction(action, payload);
+    }
 
     function openExternalUrl(url) {
         var u = url != null ? String(url).trim() : '';
@@ -280,6 +289,7 @@
         if (showWechat && qr) {
             img.src = qr;
             cardWechat.hidden = false;
+            trackPurchase('track_purchase_wechat_view');
         } else {
             cardWechat.hidden = true;
         }
@@ -302,6 +312,23 @@
         document.getElementById('cardEmptyChannels').hidden = true;
     }
 
+    function trackPurchasePageViewWithChannels() {
+        if (purchasePageViewTracked) return;
+        purchasePageViewTracked = true;
+        var cardWechat = document.getElementById('cardWechat');
+        var cardXianyu = document.getElementById('cardXianyu');
+        var btnGroup = document.getElementById('btnPurchaseQqGroup');
+        var btnAdd = document.getElementById('btnPurchaseQqAdd');
+        trackPurchase('track_purchase_page_view', {
+            wechat: !!(cardWechat && !cardWechat.hidden),
+            xianyu: !!(cardXianyu && !cardXianyu.hidden),
+            kufaka: true,
+            qq_group: !!(btnGroup && !btnGroup.hidden),
+            qq_add: !!(btnAdd && !btnAdd.hidden),
+            online_chat: true
+        });
+    }
+
     function loadConfig() {
         var req =
             typeof fetchPublicInstallPackages === 'function'
@@ -319,12 +346,14 @@
             .then(function (body) {
                 if (body && body.code === 200 && body.data) {
                     applyConfig(body.data);
-                    return;
+                } else {
+                    applyConfig(null);
                 }
-                applyConfig(null);
+                trackPurchasePageViewWithChannels();
             })
             .catch(function () {
                 applyConfig(null);
+                trackPurchasePageViewWithChannels();
             });
     }
 
@@ -338,7 +367,7 @@
         var btn = document.getElementById('btnPurchaseActivate');
         if (btn) btn.disabled = true;
         if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_activate_prompt_confirm', { page: 'purchase' });
+            trackPurchase('track_activate_prompt_confirm');
         }
         fetch('api/auth.php', {
             method: 'POST',
@@ -352,6 +381,7 @@
             })
             .then(function (x) {
                 if (x.status === 200 && x.body && x.body.code === 200) {
+                    trackPurchase('track_purchase_activate_success');
                     var d = x.body.data || {};
                     if (d.token) localStorage.setItem('token', d.token);
                     localStorage.setItem('account_active', '1');
@@ -368,9 +398,14 @@
                     }
                     return;
                 }
+                trackPurchase('track_purchase_activate_fail', {
+                    reason: (x.body && x.body.msg) || 'activate_failed',
+                    http_status: x.status
+                });
                 alert((x.body && x.body.msg) || '激活失败');
             })
             .catch(function () {
+                trackPurchase('track_purchase_activate_fail', { reason: 'network_error' });
                 alert('网络错误');
             })
             .then(function () {
@@ -379,12 +414,7 @@
     }
 
     document.getElementById('btnPurchaseXianyu').addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_xianyu_purchase_click', {
-                page: 'purchase',
-                source: 'purchase_page'
-            });
-        }
+        trackPurchase('track_xianyu_purchase_click');
         var text = cfg.xianyu;
         if (!text) {
             alert('暂未配置闲鱼购买文案');
@@ -402,13 +432,7 @@
     var btnKufaka = document.getElementById('btnPurchaseKufaka');
     if (btnKufaka) {
         btnKufaka.addEventListener('click', function (ev) {
-            if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_kufaka_purchase_click', {
-                    page: 'purchase',
-                    source: 'purchase_page',
-                    url: KUFAKA_PURCHASE_URL
-                });
-            }
+            trackPurchase('track_kufaka_purchase_click', { url: KUFAKA_PURCHASE_URL });
             /* 壳内 WebView 优先外开，避免卡在应用内 */
             if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
                 ev.preventDefault();
@@ -418,21 +442,11 @@
     }
 
     document.getElementById('btnPurchaseOnlineChat').addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_online_chat_click', {
-                page: 'purchase',
-                source: 'purchase_page'
-            });
-        }
+        trackPurchase('track_online_chat_click');
     });
 
     document.getElementById('btnPurchaseQqGroup').addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_qq_group_click', {
-                page: 'purchase',
-                source: 'purchase_page'
-            });
-        }
+        trackPurchase('track_qq_group_click');
         if (!cfg.qqGroup) {
             alert('暂未配置 QQ 群链接');
             return;
@@ -441,12 +455,7 @@
     });
 
     document.getElementById('btnPurchaseQqAdd').addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_qq_add_click', {
-                page: 'purchase',
-                source: 'purchase_page'
-            });
-        }
+        trackPurchase('track_qq_add_click');
         if (!cfg.qqAdd) {
             alert('暂未配置 QQ 添加链接');
             return;
@@ -460,6 +469,10 @@
             e.preventDefault();
             submitActivate();
         }
+    });
+
+    document.querySelector('.back-btn').addEventListener('click', function () {
+        trackPurchase('track_purchase_back_click');
     });
 
     loadConfig();

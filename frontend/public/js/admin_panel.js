@@ -1804,19 +1804,40 @@
                 return { button: '激活弹窗打开', page: '我的/我要咨询（弹窗）' };
             }
             if (k === 'track_activate_prompt_confirm') {
-                return { button: '激活弹窗-确定', page: '我的/我要咨询（弹窗）' };
+                return { button: '确认激活', page: '购买页/激活弹窗' };
             }
             if (k === 'track_activate_prompt_cancel') {
                 return { button: '激活弹窗-取消', page: '我的/我要咨询（弹窗）' };
             }
             if (k === 'track_xianyu_purchase_click') {
-                return { button: '闲鱼购买', page: '我的/我要咨询（激活弹窗）' };
+                return { button: '闲鱼购买', page: '购买页/激活弹窗' };
+            }
+            if (k === 'track_kufaka_purchase_click') {
+                return { button: '酷发卡购买', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_online_chat_click') {
+                return { button: '在线客服', page: '购买页/其它入口' };
             }
             if (k === 'track_qq_add_click' || k === 'track_consult_qq_add_click') {
-                return { button: '添加QQ号', page: '我的/我要咨询（顶栏或咨询修改弹窗）' };
+                return { button: '添加QQ号', page: '购买页/我要咨询等' };
             }
             if (k === 'track_qq_group_click') {
-                return { button: '加入QQ群', page: '激活成功/填税完成/消息/帮助页等' };
+                return { button: '加入QQ群', page: '购买页/激活成功/帮助页等' };
+            }
+            if (k === 'track_purchase_page_view') {
+                return { button: '购买页浏览', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_purchase_wechat_view') {
+                return { button: '微信购买展示', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_purchase_activate_success') {
+                return { button: '购买页激活成功', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_purchase_activate_fail') {
+                return { button: '购买页激活失败', page: '购买页（purchase.html）' };
+            }
+            if (k === 'track_purchase_back_click') {
+                return { button: '购买页返回', page: '购买页（purchase.html）' };
             }
             if (k.indexOf('track_jump_') === 0) {
                 var raw = k.substring('track_jump_'.length);
@@ -3054,9 +3075,49 @@
             'track_activate_prompt_cancel',
             'track_activate_prompt_confirm',
             'track_xianyu_purchase_click',
+            'track_kufaka_purchase_click',
+            'track_online_chat_click',
+            'track_qq_group_click',
             'track_qq_add_click',
-            'track_qq_group_click'
+            'track_purchase_page_view',
+            'track_purchase_wechat_view',
+            'track_purchase_activate_success',
+            'track_purchase_activate_fail',
+            'track_purchase_back_click'
         ];
+        var ACTIVATE_EVENT_SHORT_LABELS = {
+            track_activate_prompt_open: '打开',
+            track_activate_prompt_cancel: '取消',
+            track_activate_prompt_confirm: '确定',
+            track_xianyu_purchase_click: '闲鱼',
+            track_kufaka_purchase_click: '酷发卡',
+            track_online_chat_click: '客服',
+            track_qq_group_click: 'QQ群',
+            track_qq_add_click: '加QQ',
+            track_purchase_page_view: '页浏览',
+            track_purchase_wechat_view: '微信',
+            track_purchase_activate_success: '激活成',
+            track_purchase_activate_fail: '激活败',
+            track_purchase_back_click: '返回'
+        };
+        var ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
+
+        function activateEventShortLabel(key) {
+            return ACTIVATE_EVENT_SHORT_LABELS[key] || key;
+        }
+
+        function syncActivateEventsTableHead() {
+            var theadRow = document.querySelector('#activateEventsDailyTbody')
+                ? document.querySelector('#activateEventsDailyTbody').closest('table').querySelector('thead tr')
+                : null;
+            if (!theadRow) return;
+            var html = '<th>日期</th>';
+            ACTIVATE_EVENT_KEYS.forEach(function (k) {
+                html += '<th>' + esc(activateEventShortLabel(k)) + '</th>';
+            });
+            html += '<th>合计</th><th>去重用户</th><th>操作</th>';
+            theadRow.innerHTML = html;
+        }
 
         function activateDateDomKey(dateStr) {
             return String(dateStr || '').replace(/[^0-9]/g, '');
@@ -3094,7 +3155,11 @@
                 html += '<div class="dau-users-list">暂无点击记录</div>';
             } else {
                 html += '<div class="scroll-x"><table class="user-detail-table"><thead><tr>';
-                html += '<th>账号</th><th>打开</th><th>取消</th><th>确定</th><th>闲鱼</th><th>添加QQ</th><th>合计</th><th>最近点击</th>';
+                html += '<th>账号</th>';
+                ACTIVATE_EVENT_KEYS.forEach(function (k) {
+                    html += '<th>' + esc(activateEventShortLabel(k)) + '</th>';
+                });
+                html += '<th>合计</th><th>最近点击</th>';
                 html += '</tr></thead><tbody>';
                 users.forEach(function (u) {
                     html += '<tr>';
@@ -3205,12 +3270,14 @@
                 dh +=
                     '<tr id="activate_users_row_' +
                     dk +
-                    '" class="activate-users-detail-row" style="display:none;"><td colspan="9"><div id="activate_users_box_' +
+                    '" class="activate-users-detail-row" style="display:none;"><td colspan="' +
+                    ACTIVATE_EVENTS_TABLE_COLSPAN +
+                    '"><div id="activate_users_box_' +
                     dk +
                     '" class="activate-users-box">点击「查看用户」加载列表…</div></td></tr>';
             });
             document.getElementById('activateEventsDailyTbody').innerHTML =
-                dh || '<tr><td colspan="9">暂无数据</td></tr>';
+                dh || '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">暂无数据</td></tr>';
         }
 
         function dauDateDomKey(dateStr) {
@@ -3415,6 +3482,7 @@
 
         function loadAnalyticsTrackingPage() {
             loadInstallTrackStats();
+            syncActivateEventsTableHead();
             var daysT = analyticsPeriodVal(document.getElementById('analyticsTrackingDays'));
             document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             var evtHintInit = document.getElementById('analyticsEventsHint');
@@ -3422,7 +3490,7 @@
             document.getElementById('activateEventsSummaryTbody').innerHTML =
                 '<tr><td colspan="3">加载中…</td></tr>';
             document.getElementById('activateEventsDailyTbody').innerHTML =
-                '<tr><td colspan="9">加载中…</td></tr>';
+                '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">加载中…</td></tr>';
             var activateHintInit = document.getElementById('activateEventsHint');
             if (activateHintInit) {
                 activateHintInit.textContent = '加载中…';
@@ -3443,7 +3511,7 @@
                     document.getElementById('activateEventsSummaryTbody').innerHTML =
                         '<tr><td colspan="3">' + esc((act && act.msg) || '加载失败') + '</td></tr>';
                     document.getElementById('activateEventsDailyTbody').innerHTML =
-                        '<tr><td colspan="9">—</td></tr>';
+                        '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">—</td></tr>';
                     var actHintE = document.getElementById('activateEventsHint');
                     if (actHintE) {
                         actHintE.textContent = '激活埋点加载失败';
