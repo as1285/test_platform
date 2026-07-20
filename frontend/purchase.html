@@ -192,7 +192,12 @@
         <div class="card" id="cardAlipay" hidden>
             <div class="card-title">支付宝购买</div>
             <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">前往支付宝支付</button>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
+            <div class="qr-wrap" id="alipayQrWrap" hidden>
+                <img id="alipayQrImg" src="" alt="支付宝付款二维码">
+                <div class="qr-caption" id="alipayQrCaption">请使用支付宝扫一扫完成付款</div>
+                <button type="button" class="btn btn-secondary" id="btnAlipayOpenLink" hidden>手机上打开支付宝付款</button>
+            </div>
         </div>
 
         <div class="card" id="cardWechat" hidden>
@@ -325,6 +330,35 @@
             .catch(function () {});
     }
 
+    function startAlipayOrderPolling() {
+        if (alipayOrderPolling) return;
+        alipayOrderPolling = setInterval(function () {
+            checkAlipayLatestOrder();
+        }, 2500);
+    }
+
+    function showAlipayQr(qrCode) {
+        var wrap = document.getElementById('alipayQrWrap');
+        var img = document.getElementById('alipayQrImg');
+        var openBtn = document.getElementById('btnAlipayOpenLink');
+        var code = qrCode != null ? String(qrCode).trim() : '';
+        if (!code) throw new Error('未获取到付款二维码');
+        img.src =
+            'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' +
+            encodeURIComponent(code);
+        wrap.hidden = false;
+        /* 手机端可直接打开 qr.alipay.com 链接唤起 App */
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+            openBtn.hidden = false;
+            openBtn.onclick = function () {
+                openExternalUrl(code);
+            };
+        } else {
+            openBtn.hidden = true;
+        }
+        startAlipayOrderPolling();
+    }
+
     function loadAlipayPurchase() {
         return paymentFetch('/api/payments/alipay/config')
             .then(function (x) {
@@ -338,7 +372,7 @@
                         (data.subject || '个税记录平台激活码') +
                         '，支付 ' +
                         (data.amount || '') +
-                        ' 元后自动开通当前登录账号。';
+                        ' 元后自动开通当前登录账号。使用支付宝扫码付款即可。';
                 }
                 return checkAlipayLatestOrder();
             })
@@ -544,10 +578,13 @@
             body: JSON.stringify({})
         })
             .then(function (x) {
-                if (x.status !== 200 || !x.body || !x.body.data || !x.body.data.payment_url) {
+                if (x.status !== 200 || !x.body || !x.body.data) {
                     throw new Error((x.body && x.body.msg) || '创建支付订单失败');
                 }
-                window.location.href = x.body.data.payment_url;
+                var qr = x.body.data.qr_code || x.body.data.payment_url;
+                showAlipayQr(qr);
+                btn.textContent = '刷新付款二维码';
+                btn.disabled = false;
             })
             .catch(function (e) {
                 alert(e && e.message ? e.message : '创建支付订单失败，请稍后重试');

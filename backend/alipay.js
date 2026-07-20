@@ -1,6 +1,6 @@
 'use strict';
 
-const crypto = require('crypto');
+const { AlipaySdk } = require('alipay-sdk');
 
 function envText(name) {
   return String(process.env[name] || '').trim();
@@ -12,43 +12,12 @@ function pemFromEnv(name) {
   value = value.replace(/\\n/g, '\n');
   if (/-----BEGIN [A-Z ]+-----/.test(value)) return value;
 
-  /* 支付宝密钥工具复制的内容通常只有 Base64 主体；补齐 PEM 包装供 Node crypto 使用。 */
+  /* 支付宝密钥工具复制的内容通常只有 Base64 主体；补齐 PEM 包装供 SDK / Node crypto 使用。 */
   var base64 = value.replace(/\s+/g, '');
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return value;
   var lines = base64.match(/.{1,64}/g) || [];
   var type = /PRIVATE/.test(name) ? 'PRIVATE KEY' : 'PUBLIC KEY';
   return '-----BEGIN ' + type + '-----\n' + lines.join('\n') + '\n-----END ' + type + '-----';
-}
-
-function formatTimestamp(date) {
-  function pad(n) {
-    return String(n).padStart(2, '0');
-  }
-  return (
-    date.getFullYear() +
-    '-' +
-    pad(date.getMonth() + 1) +
-    '-' +
-    pad(date.getDate()) +
-    ' ' +
-    pad(date.getHours()) +
-    ':' +
-    pad(date.getMinutes()) +
-    ':' +
-    pad(date.getSeconds())
-  );
-}
-
-function canonicalize(params) {
-  return Object.keys(params)
-    .filter(function (key) {
-      return key !== 'sign' && key !== 'sign_type' && params[key] != null && params[key] !== '';
-    })
-    .sort()
-    .map(function (key) {
-      return key + '=' + params[key];
-    })
-    .join('&');
 }
 
 function getConfig() {
@@ -84,57 +53,80 @@ function isConfigured() {
   );
 }
 
-function sign(params, privateKey) {
-  var signer = crypto.createSign('RSA-SHA256');
-  signer.update(canonicalize(params), 'utf8');
-  signer.end();
-  return signer.sign(privateKey, 'base64');
-}
+var cachedSdk = null;
+var cachedSdkKey = '';
 
-function buildPagePayUrl(order) {
+function getSdk() {
   var cfg = getConfig();
   if (!isConfigured()) {
     throw new Error('支付宝支付尚未配置');
   }
-  var params = {
-    app_id: cfg.appId,
-    method: 'alipay.trade.page.pay',
-    charset: 'utf-8',
-    sign_type: 'RSA2',
-    timestamp: formatTimestamp(new Date()),
-    version: '1.0',
-    notify_url: cfg.notifyUrl,
-    biz_content: JSON.stringify({
+  var key = [cfg.appId, cfg.privateKey, cfg.publicKey].join('\0');
+  if (cachedSdk && cachedSdkKey === key) return cachedSdk;
+  /* 密钥工具默认 PKCS8；与官方 SDK 文档 keyType 说明一致 */
+  cachedSdk = new AlipaySdk({
+    appId: cfg.appId,
+    privateKey: cfg.privateKey,
+    alipayPublicKey: cfg.publicKey,
+    keyType: 'PKCS8',
+    signType: 'RSA2',
+    gateway: cfg.gateway
+  });
+  cachedSdkKey = key;
+  return cachedSdk;
+}
+
+/**
+ * 当面付预下单：返回可生成二维码的 qr_code 串。
+ * @returns {Promise<{ qrCode: string, outTradeNo: string }>}
+ */
+async function createFaceToFaceQr(order) {
+  var cfg = getConfig();
+  var sdk = getSdk();
+  var amount = normalizeAmount(order.amount);
+  if (!amount) {
+    throw new Error('订单金额无效');
+  }
+  var result = await sdk.curl('POST', '/v3/alipay/trade/precreate', {
+    body: {
+      notify_url: cfg.notifyUrl,
       out_trade_no: order.outTradeNo,
-      product_code: 'FAST_INSTANT_TRADE_PAY',
-      total_amount: order.amount,
+      total_amount: amount,
       subject: order.subject,
+      product_code: 'FACE_TO_FACE_PAYMENT',
       timeout_express: '30m'
-    })
-  };
-  if (cfg.returnUrl) params.return_url = cfg.returnUrl;
-  params.sign = sign(params, cfg.privateKey);
-  return (
-    cfg.gateway +
-    '?' +
-    Object.keys(params)
-      .map(function (key) {
-        return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
-      })
-      .join('&')
-  );
+    }
+  });
+  var data = result && result.data != null ? result.data : result;
+  var httpStatus = result && result.responseHttpStatus != null ? Number(result.responseHttpStatus) : 0;
+  var qrCode =
+    (data && (data.qr_code || data.qrCode)) ||
+    (result && (result.qr_code || result.qrCode)) ||
+    '';
+  qrCode = String(qrCode || '').trim();
+  if (!qrCode) {
+    var errMsg =
+      (data && (data.message || data.msg || data.sub_msg || data.subMsg || data.code)) ||
+      (result && result.message) ||
+      (httpStatus && httpStatus !== 200 ? '支付宝预下单失败 HTTP ' + httpStatus : '') ||
+      '支付宝预下单未返回二维码';
+    var err = new Error(String(errMsg));
+    err.alipayResult = result;
+    throw err;
+  }
+  return { qrCode: qrCode, outTradeNo: String(order.outTradeNo) };
 }
 
 function verifyNotify(params) {
-  var cfg = getConfig();
   if (!isConfigured() || !params || !params.sign) return false;
+  var cfg = getConfig();
   if (String(params.app_id || '') !== cfg.appId) return false;
-  if (String(params.sign_type || 'RSA2').toUpperCase() !== 'RSA2') return false;
   try {
-    var verifier = crypto.createVerify('RSA-SHA256');
-    verifier.update(canonicalize(params), 'utf8');
-    verifier.end();
-    return verifier.verify(cfg.publicKey, String(params.sign), 'base64');
+    var sdk = getSdk();
+    if (typeof sdk.checkNotifySignV2 === 'function') {
+      return !!sdk.checkNotifySignV2(params);
+    }
+    return !!sdk.checkNotifySign(params);
   } catch (e) {
     return false;
   }
@@ -144,6 +136,6 @@ module.exports = {
   getConfig: getConfig,
   isConfigured: isConfigured,
   normalizeAmount: normalizeAmount,
-  buildPagePayUrl: buildPagePayUrl,
+  createFaceToFaceQr: createFaceToFaceQr,
   verifyNotify: verifyNotify
 };

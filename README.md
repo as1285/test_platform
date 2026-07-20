@@ -195,7 +195,7 @@ https://www.installguide1.top/
 
 ### 支付宝自动开通
 
-支付功能默认关闭。启用时仅在服务器未提交的 `.env` 或部署平台 Secret 中配置以下变量，然后重新部署后端：
+支付功能默认关闭。启用时仅在服务器未提交的 `.env` 或部署平台 Secret 中配置以下变量，然后重新部署后端。需在开放平台开通 **当面付**；服务端使用官方 `alipay-sdk` 调用 `alipay.trade.precreate`，购买页展示扫码二维码。
 
 ```dotenv
 ALIPAY_APP_ID=你的支付宝应用AppID

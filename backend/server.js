@@ -4168,20 +4168,41 @@ async function handleAlipayCreateOrder(req, res) {
       );
     }
     await conn.commit();
-    var paymentUrl = alipay.buildPagePayUrl({
-      outTradeNo: String(order.out_trade_no),
-      subject: String(order.subject),
-      amount: alipay.normalizeAmount(order.amount)
-    });
-    return res.json({ code: 200, data: { order: plainPaymentOrder(order), payment_url: paymentUrl } });
   } catch (e) {
     try {
       await conn.rollback();
     } catch (rollbackError) {}
-    console.error('create alipay order', e);
+    console.error('create alipay order db', e);
+    try {
+      conn.release();
+    } catch (releaseErr) {}
     return res.status(500).json({ code: 500, msg: '创建支付宝订单失败' });
+  }
+  try {
+    var precreate = await alipay.createFaceToFaceQr({
+      outTradeNo: String(order.out_trade_no),
+      subject: String(order.subject),
+      amount: alipay.normalizeAmount(order.amount)
+    });
+    return res.json({
+      code: 200,
+      data: {
+        order: plainPaymentOrder(order),
+        qr_code: precreate.qrCode,
+        payment_url: precreate.qrCode
+      }
+    });
+  } catch (e) {
+    console.error('create alipay order precreate', e);
+    var tip = e && e.message ? String(e.message) : '创建支付宝订单失败';
+    if (/权限|permission|insufficient/i.test(tip)) {
+      tip = '支付宝当面付权限异常，请稍后重试或联系客服';
+    }
+    return res.status(500).json({ code: 500, msg: tip.length > 80 ? '创建支付宝订单失败' : tip });
   } finally {
-    conn.release();
+    try {
+      conn.release();
+    } catch (releaseErr) {}
   }
 }
 
