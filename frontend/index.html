@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-slow3s"></script>
+    <script src="/js/auth.js?v=20260720-guest-funnel"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
@@ -920,12 +920,19 @@
             }
 
             var loginClientId = '';
+            var loginGuestUsername = '';
             try {
-                if (typeof window.buildClientDevicePayload === 'function') {
+                if (typeof window.getOrCreateClientDeviceId === 'function') {
+                    loginClientId = String(window.getOrCreateClientDeviceId() || '');
+                } else if (typeof window.buildClientDevicePayload === 'function') {
                     var _loginDev = window.buildClientDevicePayload();
                     if (_loginDev && _loginDev.client_id) loginClientId = String(_loginDev.client_id);
                 }
             } catch (eLoginCid) {}
+            try {
+                var lgU = localStorage.getItem('guest_username_v1') || '';
+                if (lgU && lgU.indexOf('__guest_') === 0) loginGuestUsername = lgU;
+            } catch (eLg) {}
             fetch('api/auth.php', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
@@ -933,7 +940,8 @@
                     action: 'login',
                     username: username,
                     password: password,
-                    client_id: loginClientId || undefined
+                    client_id: loginClientId || undefined,
+                    guest_username: loginGuestUsername || undefined
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -944,9 +952,23 @@
                             localStorage.setItem('token', d.token);
                         }
                         localStorage.removeItem('landing_guest_v1');
+                        try {
+                            localStorage.removeItem('guest_username_v1');
+                            localStorage.removeItem('guest_sample_tax_seeded_v1');
+                        } catch (eClrLg) {}
                         localStorage.setItem('userName', d.username || username);
                         localStorage.setItem('user_id', d.user_id || username);
                         localStorage.setItem('real_name', d.real_name || username);
+                        if (d.guest_data_migrated) {
+                            try {
+                                sessionStorage.setItem(
+                                    'guest_data_migrated_notice',
+                                    JSON.stringify({
+                                        msg: '您在游客模式下填写的资料已同步到当前账号'
+                                    })
+                                );
+                            } catch (eMigN) {}
+                        }
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');

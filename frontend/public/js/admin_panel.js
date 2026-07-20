@@ -4493,7 +4493,13 @@
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">点下载未打开</div><div class="ud-val">' +
                 esc(String(dlCohorts.downloaded_not_opened != null ? dlCohorts.downloaded_not_opened : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">宽口径 / 归因断链</div></div>';
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">宽口径 / 归因断链 · 重点盯</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">游客数据合并</div><div class="ud-val">' +
+                esc(String(dlCohorts.guest_data_migrated != null ? dlCohorts.guest_data_migrated : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">UV ' +
+                esc(String(dlCohorts.guest_data_migrated_uv != null ? dlCohorts.guest_data_migrated_uv : 0)) +
+                '</div></div>';
             html += '</div>';
             html += '<div class="scroll-x" style="margin-bottom:12px;"><table><thead><tr>';
             html +=

@@ -866,6 +866,10 @@
     if (el && el.parentNode) el.parentNode.removeChild(el);
     var legacyBar = document.getElementById('cg-mine-onboard-bar');
     if (legacyBar && legacyBar.parentNode) legacyBar.parentNode.removeChild(legacyBar);
+    var fillCard = document.getElementById('cg-guest-fill-card');
+    if (fillCard && fillCard.parentNode) fillCard.parentNode.removeChild(fillCard);
+    var seededHint = document.getElementById('cg-guest-seeded-hint');
+    if (seededHint && seededHint.parentNode) seededHint.parentNode.removeChild(seededHint);
     if (document.body) {
       document.body.classList.add('mine-account-active');
     }
@@ -874,7 +878,48 @@
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
     removeMineConversionUi();
-    if (!isLandingGuest() || hasTaxRecords()) return;
+    if (!isLandingGuest()) return;
+    /* 已自动示例个税：改为短提示 + 引导下载，不再挡「去填写」 */
+    if (hasTaxRecords()) {
+      if (document.getElementById('cg-guest-seeded-hint')) return;
+      ensureGateStyles();
+      var hint = document.createElement('div');
+      hint.id = 'cg-guest-seeded-hint';
+      hint.className = 'cg-inline-hint';
+      hint.style.cssText =
+        'margin:0 16px 12px;padding:12px 14px;border-radius:10px;background:#f0f6ff;border:1px solid #d6e6ff;';
+      hint.innerHTML =
+        '<div style="font-size:14px;font-weight:600;color:#1e6fff;margin:0 0 6px;">已为你生成示例个税</div>' +
+        '<p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.45;">可到「收入纳税明细」查看。下载 App 并注册后，这些资料可同步到正式账号。</p>' +
+        '<button type="button" class="cg-btn cg-btn-primary" id="cgGuestSeededDlBtn" style="width:100%;">下载 App 带走资料</button>';
+      var wrapH = document.querySelector('.content-wrapper');
+      var userCardH = document.getElementById('mineUserCardEditHit');
+      if (wrapH && userCardH && userCardH.parentNode === wrapH) {
+        if (userCardH.nextSibling) wrapH.insertBefore(hint, userCardH.nextSibling);
+        else wrapH.appendChild(hint);
+      } else if (wrapH) {
+        wrapH.insertBefore(hint, wrapH.firstChild);
+      } else {
+        return;
+      }
+      track('track_landing_guest_seeded_hint_show', { page: 'mine' });
+      var dlBtn = document.getElementById('cgGuestSeededDlBtn');
+      if (dlBtn) {
+        dlBtn.onclick = function () {
+          track('track_landing_guest_seeded_hint_ok', { page: 'mine' });
+          if (typeof window.trackPublicAction === 'function') {
+            window.trackPublicAction('track_landing_guest_activate_download', {
+              page: 'mine',
+              landing_variant: 'c',
+              source: 'seeded_hint',
+              tax_count: taxRecordCount()
+            });
+          }
+          window.location.href = 'install_guide.html?download=1#download';
+        };
+      }
+      return;
+    }
     if (document.getElementById('cg-guest-fill-card')) return;
     ensureGateStyles();
     var card = document.createElement('div');

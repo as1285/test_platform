@@ -4551,20 +4551,130 @@ function guestUsernameForClientId(clientId) {
   return GUEST_USERNAME_PREFIX + digest;
 }
 
-/** 注册/登录时：按 client_id 找到未合并游客并迁移沙盒数据 */
-async function maybeMigrateGuestSandboxForRequest(req, registeredUsername, bodyClientId) {
+/** 游客首访自动写入 3 条示例个税，便于立刻看到产品价值并缩短到下载动机 */
+async function seedGuestSampleTaxRecords(conn, userId) {
+  var uid = String(userId || '').trim();
+  if (!uid) {
+    return 0;
+  }
+  const [cntRows] = await conn.execute(
+    'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+    [uid]
+  );
+  var existing = cntRows.length && cntRows[0].c != null ? Number(cntRows[0].c) : 0;
+  if (existing > 0) {
+    return 0;
+  }
+  var now = new Date();
+  var cy = now.getFullYear();
+  var cm = now.getMonth() + 1;
+  var months = [];
+  for (var i = 0; i < 3; i++) {
+    var m = cm - i;
+    var y = cy;
+    if (m <= 0) {
+      m += 12;
+      y -= 1;
+    }
+    months.push({ year: y, month: m });
+  }
+  var company = '北京华示例软件有限公司';
+  var companyTaxId = '91110108MA01ABCD2X';
+  var taxAuthority = '国家税务总局北京市海淀区税务局';
+  var inserted = 0;
+  for (var mi = 0; mi < months.length; mi++) {
+    var ym = months[mi];
+    var id =
+      'guest_demo_' +
+      uid.substring(Math.max(0, uid.length - 12)) +
+      '_' +
+      ym.year +
+      String(ym.month).padStart(2, '0');
+    var income = 15000;
+    var taxReported = 595;
+    var period = ym.year + '-' + String(ym.month).padStart(2, '0');
+    var reportDate =
+      ym.year +
+      '-' +
+      String(ym.month).padStart(2, '0') +
+      '-' +
+      String(Math.min(15, 28)).padStart(2, '0');
+    try {
+      await conn.execute(
+        `INSERT INTO tax_records (
+          id, user_id, year, month, income_type, income_subtype,
+          company_name, company_tax_id, tax_authority,
+          report_channel, report_date, tax_period,
+          income, tax_reported, income_this_period,
+          tax_free_income, deduction_fee, special_deduction,
+          other_deduction, donation_deduction,
+          pension_insurance, medical_insurance,
+          unemployment_insurance, housing_fund
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          uid,
+          ym.year,
+          ym.month,
+          '工资薪金',
+          '正常工资薪金',
+          company,
+          companyTaxId,
+          taxAuthority,
+          '其他',
+          reportDate,
+          period,
+          income,
+          taxReported,
+          income,
+          0,
+          5000,
+          2000,
+          0,
+          0,
+          1200,
+          300,
+          75,
+          1800
+        ]
+      );
+      inserted += 1;
+    } catch (eIns) {
+      /* 主键冲突等忽略，保持幂等 */
+      if (!(eIns && (eIns.errno === 1062 || eIns.code === 'ER_DUP_ENTRY'))) {
+        console.error('seedGuestSampleTaxRecords', eIns);
+      }
+    }
+  }
+  return inserted;
+}
+
+/** 注册/登录时：按 client_id 找到未合并游客并迁移沙盒数据；可显式传 guest_username 兜底 */
+async function maybeMigrateGuestSandboxForRequest(req, registeredUsername, bodyClientId, bodyGuestUsername) {
   var newU = registeredUsername != null ? String(registeredUsername).trim() : '';
   if (!newU || newU.indexOf(GUEST_USERNAME_PREFIX) === 0) {
     return { migrated: false, reason: 'invalid_user' };
   }
-  var guestClientId = readClientIdFromRequest(req);
-  if (!guestClientId && bodyClientId != null) {
-    guestClientId = String(bodyClientId).trim().substring(0, 128);
+  var guestUname = '';
+  var explicitGuest =
+    bodyGuestUsername != null ? String(bodyGuestUsername).trim().substring(0, 255) : '';
+  if (
+    explicitGuest &&
+    explicitGuest.indexOf(GUEST_USERNAME_PREFIX) === 0 &&
+    explicitGuest !== newU
+  ) {
+    guestUname = explicitGuest;
   }
-  if (!guestClientId) {
-    return { migrated: false, reason: 'no_client_id' };
+  if (!guestUname) {
+    var guestClientId = readClientIdFromRequest(req);
+    if (!guestClientId && bodyClientId != null) {
+      guestClientId = String(bodyClientId).trim().substring(0, 128);
+    }
+    if (!guestClientId) {
+      return { migrated: false, reason: 'no_client_id' };
+    }
+    guestUname = guestUsernameForClientId(guestClientId);
   }
-  var guestUname = guestUsernameForClientId(guestClientId);
   if (!guestUname || guestUname === newU) {
     return { migrated: false, reason: 'no_guest' };
   }
@@ -4657,6 +4767,22 @@ async function handlePublicGuestSession(req, res) {
     if (!row || !rowUserTypeIsGuest(row)) {
       return res.status(409).json({ code: 409, msg: '游客账号初始化失败' });
     }
+    var seeded = 0;
+    try {
+      seeded = await seedGuestSampleTaxRecords(conn, row.username);
+    } catch (eSeed) {
+      console.error('guest sample tax seed', eSeed);
+    }
+    var taxCount = seeded;
+    if (taxCount <= 0) {
+      try {
+        const [tcRows] = await conn.execute(
+          'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+          [row.username]
+        );
+        taxCount = tcRows.length && tcRows[0].c != null ? Number(tcRows[0].c) || 0 : 0;
+      } catch (eCnt) {}
+    }
     var out = {
       user_id: row.username,
       username: row.username,
@@ -4665,6 +4791,8 @@ async function handlePublicGuestSession(req, res) {
       gender: row.gender != null ? Number(row.gender) : 1,
       account_active: false,
       is_guest: true,
+      sample_tax_seeded: seeded,
+      tax_record_count: taxCount,
       token: signAccessToken({
         user_id: row.username,
         username: row.username,
@@ -4676,6 +4804,13 @@ async function handlePublicGuestSession(req, res) {
       page: 'install_guide',
       landing_variant: 'c'
     });
+    if (seeded > 0) {
+      recordInstallGuideTrackEvent(req, 'track_landing_guest_tax_seeded', {
+        page: 'install_guide',
+        landing_variant: 'c',
+        count: seeded
+      });
+    }
     try {
       syncUserDeviceFromClientJson(req, row.username);
     } catch (eDev) {}
@@ -6292,6 +6427,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_install_page_perf: '页面加载耗时',
   track_install_apk_click: 'Android 安装包点击',
   track_install_ios_click: 'iOS 描述文件点击',
+  track_install_step_advance: '下载后进入安装步骤',
   track_install_register_click: '注册入口点击',
   track_install_showcase_view: '效果预览展示',
   track_install_showcase_slide: '效果预览滑动',
@@ -6317,6 +6453,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_landing_guest_fill_card_show: 'C 游客填税引导卡片展示',
   track_landing_guest_fill_card_ok: 'C 游客填税引导-去填写',
   track_landing_guest_tax_created: 'C 游客完成个税填写',
+  track_landing_guest_tax_seeded: 'C 游客首访自动示例个税',
   track_guest_data_migrated: '游客数据合并至注册账号'
 };
 
@@ -6347,7 +6484,10 @@ function recordInstallGuideTrackEvent(req, action, meta) {
     !isInstallGuideTrackContext(req, meta) &&
     !/^track_install_/i.test(act) &&
     !/^track_landing_/i.test(act) &&
-    !/^track_app_/i.test(act)
+    !/^track_app_/i.test(act) &&
+    !/^track_guest_/i.test(act) &&
+    !/^track_wechat_/i.test(act) &&
+    !/^track_browser_/i.test(act)
   ) {
     return;
   }
@@ -8700,7 +8840,8 @@ async function handleAuthPost(req, res) {
           var mig = await maybeMigrateGuestSandboxForRequest(
             req,
             out.username,
-            body.client_id || body.clientId
+            body.client_id || body.clientId,
+            body.guest_username || body.guestUsername
           );
           if (mig && mig.migrated) {
             out.guest_data_migrated = true;
@@ -8768,7 +8909,8 @@ async function handleAuthPost(req, res) {
         var loginMig = await maybeMigrateGuestSandboxForRequest(
           req,
           out2.username,
-          body.client_id || body.clientId
+          body.client_id || body.clientId,
+          body.guest_username || body.guestUsername
         );
         if (loginMig && loginMig.migrated) {
           out2.guest_data_migrated = true;
@@ -10083,6 +10225,12 @@ async function handleAdminInstallGuideStats(req, res) {
            )`,
         sinceParams
       );
+      const [guestMigratedRows] = await conn.query(
+        `SELECT COUNT(*) AS cnt, COUNT(DISTINCT NULLIF(TRIM(client_id), '')) AS uv
+         FROM install_guide_track_events
+         WHERE ${cnSince} AND event_key = 'track_guest_data_migrated'`,
+        sinceParams
+      );
 
       var pv = Number((viewRows[0] || {}).pv) || 0;
       var uv = Number((viewRows[0] || {}).uv) || 0;
@@ -10409,10 +10557,13 @@ async function handleAdminInstallGuideStats(req, res) {
           opened_unregistered: Number((openedUnregCountRows[0] || {}).cnt) || 0,
           downloaded_unregistered: Number((downloadedUnregRows[0] || {}).cnt) || 0,
           downloaded_not_opened: Number((downloadedNotOpenedRows[0] || {}).cnt) || 0,
+          guest_data_migrated: Number((guestMigratedRows[0] || {}).cnt) || 0,
+          guest_data_migrated_uv: Number((guestMigratedRows[0] || {}).uv) || 0,
           definitions: {
             opened_unregistered: '准口径：区间内有首次打开/注册弹窗，且同 client_id 从未 track_install_register_success',
             downloaded_unregistered: '窄口径：区间内有下载点击，同 client_id 无注册成功（跨端可能漏计）',
-            downloaded_not_opened: '宽口径：区间内有下载点击，同 client_id 无打开/弹窗（多为未装成或归因断链）'
+            downloaded_not_opened: '宽口径：区间内有下载点击，同 client_id 无打开/弹窗（多为未装成或归因断链）',
+            guest_data_migrated: '游客沙盒数据合并至正式账号次数（track_guest_data_migrated）'
           }
         },
         opened_unregistered_queue: (openedUnregRows || []).map(function (r) {

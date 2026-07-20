@@ -1972,6 +1972,7 @@
   window.measureFetchAndRender = measureFetchAndRender;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
   window.buildClientDevicePayload = buildClientDevicePayload;
+  window.getOrCreateClientDeviceId = getOrCreateClientDeviceId;
   window.getLandingAbAssignment = getLandingAbAssignment;
   window.getLandingAbVariant = getLandingAbVariant;
   window.setLandingAbAssignment = setLandingAbAssignment;
@@ -2015,7 +2016,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260719-purchase';
+    s.src = '/js/conversion-guide.js?v=20260720-guest-funnel';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     document.head.appendChild(s);

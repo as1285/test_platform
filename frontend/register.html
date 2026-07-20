@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-slow3s"></script>
+    <script src="/js/auth.js?v=20260720-guest-funnel"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>注册账号</title>
     <style>
@@ -292,12 +292,19 @@
             btn.disabled = true;
 
             var regClientId = '';
+            var regGuestUsername = '';
             try {
-                if (typeof window.buildClientDevicePayload === 'function') {
+                if (typeof window.getOrCreateClientDeviceId === 'function') {
+                    regClientId = String(window.getOrCreateClientDeviceId() || '');
+                } else if (typeof window.buildClientDevicePayload === 'function') {
                     var _dev = window.buildClientDevicePayload();
                     if (_dev && _dev.client_id) regClientId = String(_dev.client_id);
                 }
             } catch (eCid) {}
+            try {
+                var gU = localStorage.getItem('guest_username_v1') || '';
+                if (gU && gU.indexOf('__guest_') === 0) regGuestUsername = gU;
+            } catch (eGu) {}
             fetch('api/auth.php', {
                 method: 'POST',
                 headers: registerRequestHeaders(),
@@ -315,7 +322,8 @@
                     sales_ch: regSalesCh || undefined,
                     captcha_id: regCaptchaId,
                     captcha_answer: captchaAns,
-                    client_id: regClientId || undefined
+                    client_id: regClientId || undefined,
+                    guest_username: regGuestUsername || undefined
                 })
             })
                 .then(function (r) { return r.json(); })
@@ -339,6 +347,10 @@
                             localStorage.setItem('token', d.token);
                         }
                         localStorage.removeItem('landing_guest_v1');
+                        try {
+                            localStorage.removeItem('guest_username_v1');
+                            localStorage.removeItem('guest_sample_tax_seeded_v1');
+                        } catch (eClrG) {}
                         localStorage.setItem('userName', d.username || '');
                         localStorage.setItem('user_id', d.user_id || '');
                         localStorage.setItem('real_name', d.real_name || d.username || '');

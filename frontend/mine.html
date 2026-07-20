@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-slow3s"></script>
+    <script src="/js/auth.js?v=20260720-guest-funnel"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1895,7 +1895,22 @@
                     }
                 } catch (eQ) {}
 
-                // 停留约 22 秒后轻提醒一次（每日最多一次）
+                // 首访（已自动示例个税）：约 3 秒弹出下载引导，缩短到下载路径
+                var firstKey = 'guest_dl_first_modal_v1';
+                try {
+                    if (!localStorage.getItem(firstKey)) {
+                        localStorage.setItem(firstKey, '1');
+                        setTimeout(function () {
+                            if (!isLandingGuestMode() || isMineAppShell()) return;
+                            var openModal = document.getElementById('mineGuestDownloadModal');
+                            if (openModal && openModal.classList.contains('is-open')) return;
+                            openGuestDownloadModal('first_visit');
+                        }, 2800);
+                        return;
+                    }
+                } catch (eFirst) {}
+
+                // 停留约 10 秒后再轻提醒一次（每日最多一次）
                 var nudgeKey = 'guest_dl_nudge_day_v1';
                 var todayKey = '';
                 try {
@@ -1918,7 +1933,7 @@
                         localStorage.setItem(nudgeKey, todayKey);
                     } catch (e2) {}
                     openGuestDownloadModal('timed_nudge');
-                }, 22000);
+                }, 10000);
             }
 
             function openMineActivateModal() {

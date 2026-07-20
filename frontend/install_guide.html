@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-slow3s"></script>
+    <script src="/js/auth.js?v=20260720-guest-funnel"></script>
     <script>
         (function landingAbBootstrap() {
             document.documentElement.classList.add('landing-ab-pending');
@@ -137,6 +137,18 @@
                                     localStorage.setItem('account_active', '0');
                                     localStorage.setItem('is_test_account', '0');
                                     localStorage.setItem('landing_guest_v1', '1');
+                                    if (guest.username) {
+                                        localStorage.setItem('guest_username_v1', String(guest.username));
+                                    }
+                                    if (guest.tax_record_count != null) {
+                                        localStorage.setItem(
+                                            'tax_record_count',
+                                            String(Number(guest.tax_record_count) || 0)
+                                        );
+                                    }
+                                    if (guest.sample_tax_seeded) {
+                                        localStorage.setItem('guest_sample_tax_seeded_v1', '1');
+                                    }
                                 } catch (eGuestStore) {}
                                 window.location.replace('/mine.html');
                                 return 'c';
@@ -152,7 +164,7 @@
                 });
         })();
     </script>
-    <script src="/js/wechat-open-browser-prompt.js?v=20260608" defer></script>
+    <script src="/js/wechat-open-browser-prompt.js?v=20260720-guest-funnel" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 先体验再下载</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -570,6 +582,30 @@
             color: #1e293b;
             margin-bottom: 8px;
         }
+        .post-download-banner {
+            display: none;
+            margin: 0 0 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+        }
+        .post-download-banner.is-visible,
+        .post-download-banner:not([hidden]) {
+            display: block;
+        }
+        .post-download-banner strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .post-download-banner p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #047857;
+        }
         .step-block p, .step-block li {
             font-size: 13px;
             color: #555;
@@ -924,6 +960,10 @@
 
             <div class="step-block" id="stepInstallBlock">
                 <h3>第 2 步：完成安装</h3>
+                <div id="postDownloadInstallBanner" class="post-download-banner" hidden>
+                    <strong>已开始下载</strong>
+                    <p>请按下方步骤完成安装并打开 App；打开后注册登录，游客填写的资料会自动同步。</p>
+                </div>
 
                 <details class="lp-collapse" id="androidInstallDetails">
                     <summary>Android 安装说明</summary>
@@ -1150,11 +1190,58 @@
                 if (typeof trackFn === 'function') {
                     trackFn();
                 }
+                advanceInstallStepsAfterDownload();
                 if (isInAppShell()) {
                     ev.preventDefault();
                     openDownloadExternally(url || el.href);
                 }
             });
+        }
+
+        /** 下载点击后引导「完成安装」步骤，形成下载→安装→打开闭环 */
+        function advanceInstallStepsAfterDownload() {
+            try {
+                if (sessionStorage.getItem('install_step_advanced_v1') === '1') {
+                    /* 仍可重复展开安装说明 */
+                } else {
+                    sessionStorage.setItem('install_step_advanced_v1', '1');
+                }
+            } catch (e0) {}
+            var pill1 = document.getElementById('stepPill1');
+            var pill2 = document.getElementById('stepPill2');
+            var pill3 = document.getElementById('stepPill3');
+            if (pill1) pill1.classList.remove('is-active');
+            if (pill2) pill2.classList.add('is-active');
+            if (pill3) pill3.classList.remove('is-active');
+            var androidDetails = document.getElementById('androidInstallDetails');
+            var iosDetails = document.getElementById('iosInstallDetails');
+            var androidTips = document.getElementById('androidInstallTips');
+            var ios = isLikelyIOSClient();
+            if (ios) {
+                if (iosDetails) iosDetails.open = true;
+            } else {
+                if (androidDetails) androidDetails.open = true;
+                if (androidTips) androidTips.classList.remove('is-hidden');
+            }
+            var banner = document.getElementById('postDownloadInstallBanner');
+            if (banner) {
+                banner.hidden = false;
+                banner.classList.add('is-visible');
+            }
+            var block = document.getElementById('stepInstallBlock');
+            if (block) {
+                try {
+                    block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e1) {
+                    block.scrollIntoView(true);
+                }
+            }
+            if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction('track_install_step_advance', {
+                    page: 'install_guide',
+                    step: 2
+                });
+            }
         }
 
         function syncStickyDownload(primaryBtn, label) {
@@ -1187,8 +1274,7 @@
             if (hint) {
                 var fromGuestDl =
                     /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || ''));
-                var isGuest =
-                    false;
+                var isGuest = false;
                 try {
                     isGuest = localStorage.getItem('landing_guest_v1') === '1';
                 } catch (eG) {}
@@ -1203,6 +1289,20 @@
                 }
             }
             sticky.onclick = function (ev) {
+                /* 与主按钮共用埋点 + 安装步骤引导 */
+                try {
+                    primaryBtn.click();
+                    ev.preventDefault();
+                    return;
+                } catch (eClick) {}
+                if (typeof window.trackPublicAction === 'function') {
+                    var meta = { page: 'install_guide', via: 'sticky' };
+                    window.trackPublicAction(
+                        isLikelyIOSClient() ? 'track_install_ios_click' : 'track_install_apk_click',
+                        meta
+                    );
+                }
+                advanceInstallStepsAfterDownload();
                 if (isInAppShell()) {
                     ev.preventDefault();
                     openDownloadExternally(sticky.href);
