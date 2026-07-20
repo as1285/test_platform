@@ -229,7 +229,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         .lp-btn {
             display: flex;
@@ -259,11 +259,14 @@
             color: #fff;
             border: 1.5px solid rgba(255, 255, 255, 0.55);
         }
+        .lp-hero-ctas .lp-btn-outline {
+            display: none;
+        }
         .lp-hero-visual {
             position: relative;
             margin: 0 -20px;
-            min-height: 200px;
-            max-height: 280px;
+            min-height: 220px;
+            max-height: min(52vh, 420px);
             overflow: hidden;
         }
         .lp-hero-gradient {
@@ -276,36 +279,36 @@
         .lp-hero-visual img {
             display: block;
             width: 100%;
-            max-height: 280px;
+            max-height: min(52vh, 420px);
             object-fit: cover;
             object-position: top center;
         }
         .lp-hero-visual.has-img .lp-hero-gradient {
-            background: linear-gradient(180deg, transparent 30%, rgba(11, 77, 184, 0.5) 100%);
+            background: linear-gradient(180deg, transparent 40%, rgba(11, 77, 184, 0.55) 100%);
         }
 
         /* ── Sections ── */
         .lp-section {
-            padding: 28px 16px;
+            padding: 22px 16px;
         }
         .lp-section-title {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             line-height: 1.35;
         }
         .lp-section-lead {
-            font-size: 14px;
+            font-size: 13px;
             color: #64748b;
-            line-height: 1.6;
-            margin-bottom: 16px;
+            line-height: 1.55;
+            margin-bottom: 14px;
         }
         .lp-disclaimer {
             font-size: 12px;
             color: #94a3b8;
             line-height: 1.55;
-            margin-top: 16px;
+            margin-top: 12px;
         }
 
         /* ── Preview / Showcase ── */
@@ -313,6 +316,7 @@
             background: #fff;
             border-radius: 0;
             padding: 0;
+            border-top: 1px solid #e8edf4;
         }
         .showcase-card[hidden] {
             display: none !important;
@@ -371,45 +375,39 @@
             margin-top: 6px;
         }
 
-        /* ── Capabilities ── */
-        .lp-caps {
-            background: #fff;
-            border-top: 1px solid #e8edf4;
-            border-bottom: 1px solid #e8edf4;
-        }
-        .lp-cap-item {
-            padding: 16px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .lp-cap-item:last-child {
-            border-bottom: none;
-        }
-        .lp-cap-item h3 {
-            font-size: 15px;
-            font-weight: 600;
-            color: #0f172a;
-            margin-bottom: 4px;
-        }
-        .lp-cap-item p {
-            font-size: 13px;
-            color: #64748b;
-            line-height: 1.55;
+        /* 简化：隐藏功能介绍 / 静态示例表 */
+        .lp-caps,
+        .lp-demo {
+            display: none !important;
         }
 
-        /* ── Demo panel ── */
-        .lp-demo {
-            background: #fff;
+        /* download=1：更聚焦下载 */
+        body.is-download-intent .lp-hero-support {
+            margin-bottom: 18px;
         }
+        body.is-download-intent .showcase-card {
+            display: none !important;
+        }
+        body.is-download-intent .lp-hero-visual {
+            max-height: min(38vh, 280px);
+            min-height: 160px;
+        }
+        body.is-download-intent .lp-hero-visual img {
+            max-height: min(38vh, 280px);
+        }
+        body.is-download-intent .lp-download {
+            padding-top: 16px;
+        }
+        body.is-download-intent .lp-steps-bar {
+            margin-top: 8px;
+        }
+
+        /* ── Demo panel (保留样式，供旧逻辑兼容) ── */
         .lp-demo-panel {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 14px;
             overflow: hidden;
-            animation: demoSlideIn 0.55s ease-out both;
-        }
-        @keyframes demoSlideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         .lp-demo-header {
             background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
@@ -458,10 +456,6 @@
             cursor: pointer;
             border: none;
             -webkit-tap-highlight-color: transparent;
-            transition: transform 0.15s ease;
-        }
-        .lp-demo-btn:active {
-            transform: scale(0.97);
         }
         .lp-demo-btn-primary {
             background: linear-gradient(135deg, #1e6fff 0%, #0b4db8 100%);
@@ -857,15 +851,24 @@
     </style>
 </head>
 <body class="page-install-guide page-landing-b">
+    <script>
+        (function markDownloadIntent() {
+            try {
+                var q = new URLSearchParams(window.location.search || '');
+                if (q.get('download') === '1' || String(window.location.hash || '') === '#download') {
+                    document.body.classList.add('is-download-intent');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <div class="lp-wrap">
         <!-- 1. Hero -->
         <section class="lp-hero" id="lpHero">
             <h1 class="lp-hero-brand">个人所得税</h1>
             <p class="lp-hero-headline">先看效果，再装到手机</p>
-            <p class="lp-hero-support">网页体验示例明细，满意后再下载 App</p>
+            <p class="lp-hero-support">满意后再下载 App，安装即可体验完整功能</p>
             <div class="lp-hero-ctas">
-                <a href="#demo" class="lp-btn lp-btn-primary">查看示例明细</a>
-                <a href="#download" class="lp-btn lp-btn-outline">下载到手机</a>
+                <a href="#download" class="lp-btn lp-btn-primary" id="lpHeroDownloadBtn">下载到手机</a>
             </div>
             <div class="lp-hero-visual" id="lpHeroVisual">
                 <div class="lp-hero-gradient"></div>
@@ -875,64 +878,20 @@
 
         <!-- 2. Preview -->
         <section class="lp-section showcase-card" id="installShowcaseCard" hidden>
-            <h2 class="lp-section-title">效果预览</h2>
-            <p class="lp-section-lead">左右滑动查看明细、申报与税务记录样式</p>
+            <h2 class="lp-section-title">更多界面</h2>
+            <p class="lp-section-lead">左右滑动查看申报与税务记录</p>
             <div class="showcase-gif-wrap" id="installShowcaseGifWrap" hidden>
                 <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="lazy" decoding="async" fetchpriority="low">
             </div>
             <div class="showcase-carousel-wrap" id="installShowcaseCarouselWrap" hidden>
                 <div class="showcase-carousel" id="installShowcaseCarousel" role="list"></div>
-                <p class="showcase-swipe-hint">左右滑动查看：明细 · 申报 · 税记录</p>
             </div>
         </section>
 
-        <!-- 3. Capabilities -->
-        <section class="lp-section lp-caps">
-            <h2 class="lp-section-title">主要功能</h2>
-            <div class="lp-cap-item">
-                <h3>收入纳税明细样式</h3>
-                <p>按年度与所得项目展示工资薪金等明细，含收入、已申报税额等字段。</p>
-            </div>
-            <div class="lp-cap-item">
-                <h3>申报与完税记录</h3>
-                <p>查看申报记录、完税证明样式，便于了解 App 内完整界面效果。</p>
-            </div>
-        </section>
-
-        <!-- 4. Demo -->
-        <section class="lp-section lp-demo" id="demo">
-            <h2 class="lp-section-title">示例明细</h2>
-            <p class="lp-section-lead">以下为演示数据，完整功能需下载 App 或注册后使用</p>
-            <div class="lp-demo-panel">
-                <div class="lp-demo-header">2024 年度 · 收入纳税明细</div>
-                <div class="lp-demo-row">
-                    <span class="lp-demo-label">所得项目</span>
-                    <span class="lp-demo-value">工资薪金</span>
-                </div>
-                <div class="lp-demo-row">
-                    <span class="lp-demo-label">收入</span>
-                    <span class="lp-demo-value is-amount">¥ 186,400.00</span>
-                </div>
-                <div class="lp-demo-row">
-                    <span class="lp-demo-label">已申报税额</span>
-                    <span class="lp-demo-value is-amount">¥ 8,920.00</span>
-                </div>
-                <div class="lp-demo-row">
-                    <span class="lp-demo-label">扣缴义务人</span>
-                    <span class="lp-demo-value">示例科技有限公司</span>
-                </div>
-            </div>
-            <div class="lp-demo-actions">
-                <button type="button" class="lp-demo-btn lp-demo-btn-primary" id="demoFullDetailBtn">查看完整明细</button>
-                <button type="button" class="lp-demo-btn lp-demo-btn-secondary" id="demoCertBtn">生成完税证明</button>
-            </div>
-            <p class="lp-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
-        </section>
-
-        <!-- 5. Download / Install -->
+        <!-- 3. Download / Install -->
         <section class="lp-section lp-download" id="download">
-            <h2 class="lp-section-title">下载到手机</h2>
-            <p class="lp-section-lead">安装 App 后可填写演示数据，体验完整功能</p>
+            <h2 class="lp-section-title">下载安装</h2>
+            <p class="lp-section-lead">下载后按提示安装，打开 App 即可注册使用</p>
 
             <div class="in-app-banner" id="inAppBanner">
                 服务器已迁移或需更新时，请先点击下方<strong>下载最新安装包</strong>；安装新版 App 后再注册/登录。切勿只点注册而跳过下载。
@@ -1007,6 +966,7 @@
                 <p>注册成功后，请在 App 内输入激活码完成激活，即可填写个税演示数据。</p>
                 <a href="register.html?from=install_guide" class="btn btn-primary install-register-link" style="display:flex;margin-top:12px;text-decoration:none;">立即注册账号</a>
             </div>
+            <p class="lp-disclaimer">本应用为界面演示与学习参考，非官方申报渠道。</p>
         </section>
     </div>
 
@@ -1850,7 +1810,7 @@
             var carousel = document.getElementById('installShowcaseCarousel');
             var gifUrl = toAssetUrl(data.install_showcase_gif || '');
             var slides = [
-                { key: 'install_showcase_img_1', label: '收入纳税明细' },
+                { key: 'install_showcase_img_1', label: '收入纳税明细', hero: true },
                 { key: 'install_showcase_img_2', label: '申报记录' },
                 { key: 'install_showcase_img_3', label: '税务记录' }
             ];
@@ -1877,6 +1837,10 @@
             if (carousel) {
                 carousel.innerHTML = '';
                 slides.forEach(function (slide, idx) {
+                    /* 首图已在 Hero 展示，轮播只放其余界面，避免重复 */
+                    if (slide.hero && firstStill) {
+                        return;
+                    }
                     var src = toAssetUrl(data[slide.key] || '');
                     if (!src) {
                         return;
@@ -1903,7 +1867,7 @@
             if (carouselWrap) {
                 carouselWrap.hidden = !hasSlides;
             }
-
+            /* 仅有 Hero 首图、没有其余幻灯时，隐藏整块「更多界面」 */
             if (hasGif || hasSlides) {
                 card.hidden = false;
                 bindInstallRegisterLinks();
@@ -2053,7 +2017,7 @@
             }
             bindLazyVideoDetails();
             var showcaseCard = document.getElementById('installShowcaseCard');
-            var previewAnchor = document.getElementById('demo') || showcaseCard;
+            var previewAnchor = showcaseCard || document.getElementById('lpHero') || document.getElementById('download');
             whenElementNearViewport(previewAnchor, loadShowcase, '280px 0px');
             runAfterFirstPaint(function () {
                 setTimeout(loadShowcase, 1800);
