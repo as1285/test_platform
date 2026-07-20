@@ -1771,7 +1771,7 @@
     return '纳税记录_' + app.period_start + '_' + app.period_end + suffix + '.png';
   }
 
-  /** iOS / App 内 WebView：&lt;a download&gt; 常会整页跳到系统 PNG 预览且无返回 */
+  /** iOS / App 内 WebView：a[download] 常会整页跳到系统 PNG 预览且无返回 */
   function needsInAppSaveViewer() {
     try {
       if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
