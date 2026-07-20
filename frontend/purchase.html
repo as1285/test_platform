@@ -132,6 +132,10 @@
             background: #ff6a00;
             color: #fff;
         }
+        .btn-kufaka {
+            background: #0f766e;
+            color: #fff;
+        }
         .btn:disabled {
             opacity: 0.5;
         }
@@ -178,7 +182,7 @@
     <div class="page">
         <div class="hero">
             <h1>获取激活码</h1>
-            <p>可通过微信扫码、闲鱼购买、在线客服或 QQ 获取激活码；购买后在下方输入即可开通完整功能。</p>
+            <p>可通过微信扫码、闲鱼、酷发卡、在线客服或 QQ 获取激活码；购买后在下方输入即可开通完整功能。</p>
         </div>
 
         <div class="card" id="cardWechat" hidden>
@@ -194,6 +198,12 @@
             <div class="card-title">闲鱼购买</div>
             <p class="card-hint">点击下方按钮复制闲鱼购买文案，打开闲鱼搜索或粘贴即可联系卖家。</p>
             <button type="button" class="btn btn-xianyu" id="btnPurchaseXianyu">复制闲鱼购买文案</button>
+        </div>
+
+        <div class="card" id="cardKufaka">
+            <div class="card-title">酷发卡购买</div>
+            <p class="card-hint">点击下方按钮打开酷发卡商品页，按页面提示下单后获取激活码。</p>
+            <a class="btn btn-kufaka" id="btnPurchaseKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">前往酷发卡购买</a>
         </div>
 
         <div class="card" id="cardContact">
@@ -219,8 +229,8 @@
         <div class="card">
             <div class="card-title">购买说明</div>
             <ol class="steps">
-                <li>选择微信、闲鱼或 QQ 任一方式购买</li>
-                <li>按客服指引付款并领取激活码</li>
+                <li>选择微信、闲鱼、酷发卡或 QQ 任一方式购买</li>
+                <li>按卖家 / 客服指引付款并领取激活码</li>
                 <li>回到本页输入激活码完成开通</li>
             </ol>
         </div>
@@ -237,10 +247,13 @@
         }
     } catch (e0) {}
 
+    var KUFAKA_PURCHASE_URL = 'https://www.kufaka.com/item/bftacz';
+
     var cfg = {
         xianyu: '',
         qqGroup: '',
-        qqAdd: ''
+        qqAdd: '',
+        kufaka: KUFAKA_PURCHASE_URL
     };
 
     function openExternalUrl(url) {
@@ -385,6 +398,24 @@
             alert(text);
         }
     });
+
+    var btnKufaka = document.getElementById('btnPurchaseKufaka');
+    if (btnKufaka) {
+        btnKufaka.addEventListener('click', function (ev) {
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_kufaka_purchase_click', {
+                    page: 'purchase',
+                    source: 'purchase_page',
+                    url: KUFAKA_PURCHASE_URL
+                });
+            }
+            /* 壳内 WebView 优先外开，避免卡在应用内 */
+            if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+                ev.preventDefault();
+                openExternalUrl(KUFAKA_PURCHASE_URL);
+            }
+        });
+    }
 
     document.getElementById('btnPurchaseOnlineChat').addEventListener('click', function () {
         if (typeof window.trackUserAction === 'function') {
