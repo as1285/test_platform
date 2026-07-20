@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260720-batch-channel-v2">
+    <link rel="stylesheet" href="css/admin_panel.css?v=20260720-admin-ui">
 </head>
 <body>
     <div class="layout">
@@ -13,18 +13,23 @@
             <div class="sidebar-brand">管理控制台</div>
             <nav class="sidebar-nav">
                 <div class="nav-group" data-nav-group="config">
-                    <div class="nav-group-label">系统配置</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">系统配置</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item active" data-page="settings" data-title="系统设置">系统设置</button>
                     <button type="button" class="nav-item" data-page="install-guide" data-title="引导安装">引导安装</button>
                     <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
                     <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
+                    </div>
                 </div>
                 <div class="nav-group" data-nav-group="accounts">
-                    <div class="nav-group-label">账号权限</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">账号权限</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item" data-page="admin-accounts" data-title="后台账号权限">后台账号权限</button>
+                    </div>
                 </div>
                 <div class="nav-group" data-nav-group="users">
-                    <div class="nav-group-label">用户管理</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">用户管理</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
                     <button type="button" class="nav-item" data-page="guest-users" data-title="游客用户">游客用户</button>
                     <button type="button" class="nav-item" data-page="users-deleted" data-title="已删除账号">已删除账号</button>
@@ -33,18 +38,24 @@
                     <button type="button" class="nav-item" data-page="activated-user-analysis" data-title="激活用户分析">激活用户分析</button>
                     <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
                     <button type="button" class="nav-item" data-page="chat" data-title="在线客服">在线客服</button>
+                    </div>
                 </div>
                 <div class="nav-group" data-nav-group="logs">
-                    <div class="nav-group-label">日志审计</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">日志审计</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item" data-page="login-log" data-title="管理账号登录流水">管理账号登录流水</button>
                     <button type="button" class="nav-item" data-page="user-login-log" data-title="普通用户登录流水">普通用户登录流水</button>
+                    </div>
                 </div>
                 <div class="nav-group" data-nav-group="ops">
-                    <div class="nav-group-label">系统运维</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">系统运维</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item" data-page="server-monitor" data-title="服务器监控">服务器监控</button>
+                    </div>
                 </div>
                 <div class="nav-group" data-nav-group="stats">
-                    <div class="nav-group-label">数据统计</div>
+                    <button type="button" class="nav-group-label" aria-expanded="true">数据统计</button>
+                    <div class="nav-group-items">
                     <button type="button" class="nav-item" data-page="analytics-conversion" data-title="转化分析">转化分析</button>
                     <button type="button" class="nav-item" data-page="analytics-activity" data-title="用户活跃">用户活跃</button>
                     <button type="button" class="nav-item" data-page="analytics-register" data-title="注册分析">注册分析</button>
@@ -53,6 +64,7 @@
                     <button type="button" class="nav-item" data-page="install-guide-stats" data-title="安装页统计">安装页统计</button>
                     <button type="button" class="nav-item" data-page="channel-analysis" data-title="渠道分析">渠道分析</button>
                     <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
+                    </div>
                 </div>
             </nav>
         </aside>
@@ -552,11 +564,11 @@
                     <button type="button" class="btn-primary" id="btnRefreshCodes">刷新列表</button>
                 </div>
             </div>
+            <p class="stat" id="codeListStat"></p>
             <div class="scroll-x">
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
                             <th>归属管理员</th>
@@ -625,7 +637,6 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>激活码</th>
                             <th>复制</th>
                             <th>归属管理员</th>
@@ -660,7 +671,7 @@
                 </div>
                 <div>
                     <label>密码</label>
-                    <input type="text" id="adminAccPassword" placeholder="4-128 位">
+                    <input type="password" id="adminAccPassword" placeholder="4-128 位" autocomplete="new-password">
                 </div>
                 <div class="flex-row-end">
                     <button type="button" class="btn-primary" id="btnCreateAdminAccount">新增账号</button>
@@ -765,17 +776,19 @@
             </div>
             <p class="stat" id="userStat">加载中…</p>
             <p class="stat" id="purgeBotsStat" style="display:none;"></p>
-            <p class="hint">登录风控：累计出现 ≥2 个不同登录 IP，或关联设备 ≥3 台时标记为风险（IP 含<strong>注册</strong>与登录记录、设备最近 IP）。<strong>账号类型</strong>默认只显示正式注册用户；切换「游客模式」可查看落地页 C 方案生成的沙盒游客账号（仅超级管理员）。游客无正式手机号/激活码，不计入注册与转化统计。<strong>超级管理员</strong>的「已激活」账号仅统计主账号 <code>admin</code> 名下激活码关联用户，不含其他子管理员名下已激活账号；未激活用户仍全部可见。子管理员仅能看到自己激活码关联的账号。<strong>近六个月平均工资</strong>：按该账号个税记录「收入」列，每月合计后取最近最多 6 个月求平均（列表与详情同步）；不足 6 个月按已有月份计算，无个税收入显示「未填写」。<strong>工资收入</strong>筛选按该平均工资区间查询，无个税收入的不计入结果。<strong>当日有否修改</strong>：与数据统计日活一致，按北京时间当日是否有新增/更新个税记录；详情中展示修改前后对比（自本功能上线后保存的改动有完整快照）。<strong>30天未登录</strong>：按普通用户登录流水中的最近成功登录时间判断；从未成功登录的账号以注册时间为准。勾选「精准查询」时账号、姓名为完全匹配。<strong>删除</strong>为软删除：仅从本列表移除，数据保留，可在「已删除账号」恢复。<strong>退款</strong>（仅已激活账号）：封禁并移出列表，激活数据暂不计入统计；可在「已删除账号」恢复。</p>
+            <details class="page-hint-details">
+                <summary>筛选与字段说明</summary>
+                <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员的「已激活」仅统计 admin 名下激活码；子管理员仅见自己激活码关联账号。近六个月平均工资来自个税收入月均。当日修改按北京时间当日个税变更。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+            </details>
             <div class="scroll-x">
                 <table class="users-registry-table">
                     <thead>
                         <tr>
-                            <th class="col-w-52">ID</th>
                             <th class="col-w-120">账号</th>
                             <th class="col-tax-mod">当日修改</th>
                             <th class="col-w-88">姓名</th>
                             <th class="col-w-120">渠道分析</th>
-                            <th class="col-w-120">密码</th>
+                            <th class="col-w-72">密码</th>
                             <th class="col-w-72">激活</th>
                             <th class="col-w-72">封禁</th>
                             <th class="col-w-140">风控</th>
@@ -836,7 +849,6 @@
                 <table class="users-registry-table">
                     <thead>
                         <tr>
-                            <th class="col-w-52">ID</th>
                             <th class="col-w-120">账号</th>
                             <th class="col-w-88">姓名</th>
                             <th class="col-w-120">渠道分析</th>
@@ -909,7 +921,6 @@
                 <table class="users-registry-table">
                     <thead>
                         <tr>
-                            <th class="col-w-52">ID</th>
                             <th class="col-w-140">游客账号</th>
                             <th class="col-w-88">姓名</th>
                             <th class="col-w-120">渠道</th>
@@ -962,40 +973,23 @@
                     </table>
                 </div>
             </div>
-            <div id="userDataGenderChartsWrap" class="device-stats-charts-wrap ud-gender-charts mt-20" style="display:none;">
-                <details id="udGenderSection" class="ud-female-age-section ud-female-age-collapsible">
-                    <summary class="ud-female-age-summary">注册用户 · 性别分析</summary>
-                    <div class="ud-female-age-body">
-                <p class="hint" id="udGenderChartsHint">按用户资料中的性别字段统计（1=男，2=女；用户在「我的」或个人信息中保存后写入）</p>
-                <div class="form-row flex-align-center my-8-4">
-                    <div>
-                        <label for="udGenderDays">统计范围</label>
-                        <select class="filter-select" id="udGenderDays">
-                            <option value="0" selected>全部注册用户</option>
-                            <option value="7">最近 7 天注册</option>
-                            <option value="30">最近 30 天注册</option>
-                            <option value="90">最近 90 天注册</option>
-                            <option value="365">最近 365 天注册</option>
-                        </select>
+            <details id="udFemaleAgeSection" class="ud-female-age-section ud-female-age-collapsible mt-20">
+                <summary class="ud-female-age-summary">女性用户 · 年龄分析</summary>
+                <div class="ud-female-age-body">
+                    <p class="hint mb-10 mt-0">年龄按出生日期或纳税人识别号解析（北京时间周岁）。性别分布请见侧栏「注册分析」。</p>
+                    <div class="form-row flex-align-center my-8-4">
+                        <div>
+                            <label for="udFemaleAgeDays">统计范围</label>
+                            <select class="filter-select" id="udFemaleAgeDays">
+                                <option value="0" selected>全部注册用户</option>
+                                <option value="7">最近 7 天注册</option>
+                                <option value="30">最近 30 天注册</option>
+                                <option value="90">最近 90 天注册</option>
+                                <option value="365">最近 365 天注册</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-page" id="btnRefreshUdFemaleAge">刷新</button>
                     </div>
-                    <button type="button" class="btn-page" id="btnRefreshUdGender">刷新</button>
-                </div>
-                <div id="udGenderSummary" class="user-data-stats ud-gender-summary" aria-live="polite">点击上方标题展开后加载</div>
-                <p id="userDataGenderChartsEmpty" class="hint" style="display:none;">暂无用户性别数据</p>
-                <div class="device-stats-charts ud-gender-charts-grid" id="userDataGenderChartsGrid" style="display:none;">
-                    <div class="device-stats-chart-card chart-card-wide">
-                        <h4>性别分布（人数）</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartGenderBar" aria-label="注册用户性别人数柱状图"></canvas></div>
-                    </div>
-                    <div class="device-stats-chart-card">
-                        <h4>性别占比</h4>
-                        <div class="chart-canvas-wrap"><canvas id="udChartGenderPie" aria-label="注册用户性别占比"></canvas></div>
-                    </div>
-                </div>
-                <details id="udFemaleAgeSection" class="ud-female-age-section ud-female-age-collapsible">
-                    <summary class="ud-female-age-summary">女性用户 · 年龄分析</summary>
-                    <div class="ud-female-age-body">
-                    <p class="hint mb-10 mt-0">年龄按出生日期或 18 位纳税人识别号解析（北京时间周岁）；<strong>未满 30 岁</strong>为筛选结果。</p>
                     <p id="udFemaleAgeSummary" class="stat">点击上方标题展开后加载</p>
                     <div id="udFemaleAgeSummaryCards" class="user-data-stats ud-female-age-summary mt-8"></div>
                     <p id="udFemaleAgeChartsEmpty" class="hint" style="display:none;">暂无女性年龄数据</p>
@@ -1020,11 +1014,8 @@
                             <tbody id="udFemaleUnder30Tbody"><tr><td colspan="5">展开后加载</td></tr></tbody>
                         </table>
                     </div>
-                    </div>
-                </details>
-                    </div>
-                </details>
-            </div>
+                </div>
+            </details>
             <div class="user-filter-bar mt-16">
                 <div class="user-filter-fields">
                     <div>
@@ -1301,7 +1292,6 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>账号</th>
                             <th>姓名</th>
                             <th>账号激活状态</th>
@@ -1626,11 +1616,10 @@
                     <thead>
                         <tr>
                             <th>按钮</th>
-                            <th>事件名</th>
                             <th>区间合计</th>
                         </tr>
                     </thead>
-                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="2">加载中…</td></tr></tbody>
                 </table>
             </div>
             <p id="activateEventsHint" class="stat mb-8">—</p>
@@ -1663,8 +1652,8 @@
             </div>
             <div class="scroll-x mt-12">
                 <table>
-                    <thead><tr><th>按钮名称</th><th>页面名称</th><th>事件名</th><th>次数</th></tr></thead>
-                    <tbody id="analyticsEventsTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
+                    <thead><tr><th>按钮名称</th><th>页面名称</th><th>次数</th></tr></thead>
+                    <tbody id="analyticsEventsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
                 </table>
             </div>
             <p id="analyticsEventsHint" class="hint mt-8">—</p>
@@ -1733,8 +1722,8 @@
             </div>
             <div class="scroll-x mt-12">
                 <table>
-                    <thead><tr><th>client_id</th><th>摘要</th><th>设备指纹</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th><th>接口同步</th><th>上报 JSON</th></tr></thead>
-                    <tbody id="analyticsDevicesTbody"><tr><td colspan="11">输入账号后查询</td></tr></tbody>
+                    <thead><tr><th>摘要</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th></tr></thead>
+                    <tbody id="analyticsDevicesTbody"><tr><td colspan="7">输入账号后查询</td></tr></tbody>
                 </table>
             </div>
         </section>
@@ -2054,7 +2043,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260720-batch-channel-del"></script>
+    <script src="/js/admin_panel.js?v=20260720-admin-ui"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260720-save-back"></script>
 </body>

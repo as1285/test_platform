@@ -335,7 +335,7 @@
                 })
                 .catch(function () {
                     if (summaryEl) summaryEl.textContent = '网络错误';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 });
         }
 
@@ -2244,6 +2244,7 @@
         function adminHasMenu(menuKey) {
             if (!menuKey) return false;
             if (menuKey === 'user-login-log') menuKey = 'login-log';
+            if (menuKey === 'users-deleted') menuKey = 'users';
             if (currentAdminProfile && currentAdminProfile.is_super) return true;
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             if (menus.indexOf(menuKey) >= 0) return true;
@@ -2897,7 +2898,6 @@
                                 repSnippet = repSnippet.substring(0, 60) + '…';
                             }
                             html += '<tr>';
-                            html += '<td>' + esc(String(r.id)) + '</td>';
                             html += '<td class="cell-break">' + esc(r.user_id || '') + '</td>';
                             html += '<td>' + esc(r.real_name_snapshot || '—') + '</td>';
                             html += '<td>' + actLabel + '</td>';
@@ -2920,7 +2920,7 @@
                 })
                 .catch(function () {
                     document.getElementById('feedbackAdminTbody').innerHTML =
-                        '<tr><td colspan="10">网络错误</td></tr>';
+                        '<tr><td colspan="9">网络错误</td></tr>';
                 });
         }
 
@@ -2948,7 +2948,7 @@
             var slowRecentEl = document.getElementById('apiSlowRecentTbody');
             var slowHintEl = document.getElementById('apiSlowSummaryHint');
             if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
-            if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
                 .then(function (r) {
                     return r.json();
@@ -3053,7 +3053,7 @@
                                     esc(row.net_type || '—') +
                                     '</td></tr>';
                             });
-                            slowRecentEl.innerHTML = srh || '<tr><td colspan="11">暂无明细</td></tr>';
+                            slowRecentEl.innerHTML = srh || '<tr><td colspan="7">暂无明细</td></tr>';
                         }
                     } else {
                         document.getElementById('apiAnalyticsCatTbody').innerHTML =
@@ -3061,7 +3061,7 @@
                         document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                             '<tr><td colspan="5">—</td></tr>';
                         if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
-                        if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">—</td></tr>';
+                        if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">—</td></tr>';
                     }
                 })
                 .catch(function () {
@@ -3070,7 +3070,7 @@
                     document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
                         '<tr><td colspan="5">网络错误</td></tr>';
                     if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
-                    if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
+                    if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
                 });
         }
 
@@ -3245,14 +3245,12 @@
                 sh +=
                     '<tr><td>' +
                     esc(meta.button || row.label || '—') +
-                    '</td><td class="cell-break"><code>' +
-                    esc(row.event_key || '') +
-                    '</code></td><td>' +
+                    '</td><td>' +
                     esc(String(row.total || 0)) +
                     '</td></tr>';
             });
             document.getElementById('activateEventsSummaryTbody').innerHTML =
-                sh || '<tr><td colspan="3">暂无数据</td></tr>';
+                sh || '<tr><td colspan="2">暂无数据</td></tr>';
             var hintEl = document.getElementById('activateEventsHint');
             if (hintEl) {
                 hintEl.textContent =
@@ -3484,8 +3482,8 @@
                     }
                 })
                 .catch(function () {
-                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                     document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
                 });
         }
@@ -3519,7 +3517,7 @@
                     renderActivateEventsAnalytics(act.data);
                 } else {
                     document.getElementById('activateEventsSummaryTbody').innerHTML =
-                        '<tr><td colspan="3">' + esc((act && act.msg) || '加载失败') + '</td></tr>';
+                        '<tr><td colspan="2">' + esc((act && act.msg) || '加载失败') + '</td></tr>';
                     document.getElementById('activateEventsDailyTbody').innerHTML =
                         '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">—</td></tr>';
                     var actHintE = document.getElementById('activateEventsHint');
@@ -3538,13 +3536,11 @@
                             esc(meta.button || '—') +
                             '</td><td>' +
                             esc(meta.page || '—') +
-                            '</td><td class="cell-break"><code>' +
-                            esc(row.event_key || '') +
-                            '</code></td><td>' +
+                            '</td><td>' +
                             esc(String(row.total || 0)) +
                             '</td></tr>';
                     });
-                    document.getElementById('analyticsEventsTbody').innerHTML = eh || '<tr><td colspan="4">暂无埋点数据</td></tr>';
+                    document.getElementById('analyticsEventsTbody').innerHTML = eh || '<tr><td colspan="3">暂无埋点数据</td></tr>';
                     var evtHint = document.getElementById('analyticsEventsHint');
                     if (evtHint) {
                         var totalEvt = 0;
@@ -3552,16 +3548,16 @@
                         evtHint.textContent = '共 ' + eRows.length + ' 个事件，累计 ' + totalEvt + ' 次。';
                     }
                 } else {
-                    document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">' + esc((ev && ev.msg) || '加载失败') + '</td></tr>';
+                    document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="3">' + esc((ev && ev.msg) || '加载失败') + '</td></tr>';
                     var evtHintE = document.getElementById('analyticsEventsHint');
                     if (evtHintE) evtHintE.textContent = '埋点统计加载失败';
                 }
             }).catch(function () {
-                document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                document.getElementById('analyticsEventsTbody').innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 var evtHintErr = document.getElementById('analyticsEventsHint');
                 if (evtHintErr) evtHintErr.textContent = '埋点统计加载失败（网络错误）';
                 document.getElementById('activateEventsSummaryTbody').innerHTML =
-                    '<tr><td colspan="3">网络错误</td></tr>';
+                    '<tr><td colspan="2">网络错误</td></tr>';
                 document.getElementById('activateEventsDailyTbody').innerHTML =
                     '<tr><td colspan="9">网络错误</td></tr>';
                 var actHintErr = document.getElementById('activateEventsHint');
@@ -3664,9 +3660,9 @@
                     }
                     document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
                     document.getElementById('deviceStatsOsTbody').innerHTML =
-                        '<tr><td colspan="3">网络错误</td></tr>';
+                        '<tr><td colspan="2">网络错误</td></tr>';
                     document.getElementById('deviceStatsModelTbody').innerHTML =
-                        '<tr><td colspan="3">网络错误</td></tr>';
+                        '<tr><td colspan="2">网络错误</td></tr>';
                 });
         }
 
@@ -3674,13 +3670,6 @@
             loadAnalyticsDeviceStats();
         }
 
-        function loadAnalyticsDashboard() {
-            loadAnalyticsConversionPage();
-            loadAnalyticsActivityPage();
-            loadAnalyticsRegisterPage();
-            loadAnalyticsTrackingPage();
-            loadAnalyticsDevicesPage();
-        }
 
         function formatMonitorUptime(sec) {
             var s = parseInt(sec, 10) || 0;
@@ -3860,7 +3849,7 @@
                 if (hintEl) hintEl.textContent = '后台账号操作日志（含请求路径、目标账号、执行结果、IP、设备）。';
                 if (theadEl) {
                     theadEl.innerHTML =
-                        '<tr><th>时间</th><th>账号</th><th>姓名</th><th>方法</th><th>路径</th><th>动作</th><th>目标账号</th><th>结果</th><th>状态码</th><th>IP/城市</th><th>设备</th><th>请求摘要</th></tr>';
+                        '<tr><th>时间</th><th>账号</th><th>姓名</th><th>方法</th><th>路径</th><th>动作</th><th>目标账号</th><th>结果</th><th>状态码</th><th>IP/城市</th><th>设备</th></tr>';
                 }
             } else {
                 if (hintEl) hintEl.textContent = '后台账号登录记录（成功/失败），含 IP、设备信息。';
@@ -3868,7 +3857,7 @@
                     theadEl.innerHTML = '<tr><th>时间</th><th>账号</th><th>结果</th><th>IP</th><th>城市</th><th>设备</th><th>原因</th></tr>';
                 }
             }
-            var loadingColspan = loginLogMode === 'admin-operation' ? 12 : 7;
+            var loadingColspan = loginLogMode === 'admin-operation' ? 11 : 7;
             document.getElementById('loginLogTbody').innerHTML =
                 '<tr><td colspan="' + loadingColspan + '">加载中…</td></tr>';
 
@@ -3908,9 +3897,6 @@
                                 : '<span class="badge badge-no">失败</span>';
                             if (loginLogMode === 'admin-operation') {
                                 var codeText = String(row.status_code != null ? row.status_code : '—');
-                                if (row.biz_result_code != null && String(row.biz_result_code) !== '') {
-                                    codeText += ' / 业务码 ' + String(row.biz_result_code);
-                                }
                                 rr +=
                                     '<tr><td>' +
                                     formatDt(row.created_at) +
@@ -3934,8 +3920,6 @@
                                     esc((row.ip || '—') + ' / ' + (row.city || '—')) +
                                     '</td><td class="cell-break">' +
                                     esc(row.device_desc || '—') +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.request_brief || '—') +
                                     '</td></tr>';
                                 return;
                             }
@@ -4008,24 +3992,23 @@
                 alert('请输入用户账号');
                 return;
             }
-            document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             adminFetch('api/admin/analytics/devices?username=' + encodeURIComponent(u))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
-                        document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">' + esc(data.msg || '查询失败') + '</td></tr>';
+                        document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">' + esc(data.msg || '查询失败') + '</td></tr>';
                         return;
                     }
                     var list = data.data.devices || [];
                     var h = '';
                     list.forEach(function (d) {
-                        var jshort = d.device_json ? esc(d.device_json.substring(0, 180)) + (d.device_json.length > 180 ? '…' : '') : '—';
-                        h += '<tr><td class="cell-break"><code>' + esc(d.client_id || '—') + '</code></td><td class="cell-break">' + esc(d.summary || '—') + '</td><td class="cell-break"><code>' + esc(d.device_fp) + '</code></td><td class="cell-break">' + esc(d.user_agent_short) + '</td><td>' + esc(d.ip_last) + '</td><td>' + esc(d.city_last) + '</td><td>' + formatDt(d.first_seen) + '</td><td>' + formatDt(d.last_seen) + '</td><td>' + esc(String(d.login_count)) + '</td><td>' + esc(String(d.api_sync_count != null ? d.api_sync_count : 0)) + '</td><td class="cell-break" title="' + esc(d.device_json || '') + '">' + jshort + '</td></tr>';
+                        h += '<tr><td class="cell-break">' + esc(d.summary || '—') + '</td><td class="cell-break">' + esc(d.user_agent_short) + '</td><td>' + esc(d.ip_last) + '</td><td>' + esc(d.city_last) + '</td><td>' + formatDt(d.first_seen) + '</td><td>' + formatDt(d.last_seen) + '</td><td>' + esc(String(d.login_count)) + '</td></tr>';
                     });
-                    document.getElementById('analyticsDevicesTbody').innerHTML = h || '<tr><td colspan="11">暂无设备记录（需客户端携带 X-Client-Device 或发生过登录）</td></tr>';
+                    document.getElementById('analyticsDevicesTbody').innerHTML = h || '<tr><td colspan="7">暂无设备记录（需客户端携带 X-Client-Device 或发生过登录）</td></tr>';
                 })
                 .catch(function () {
-                    document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
+                    document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
                 });
         }
 
@@ -4629,7 +4612,7 @@
             html +=
                 '<th>方案</th><th>PV</th><th>UV</th><th>平均停留</th><th>回访用户</th><th>回访率</th><th>关键门禁</th><th>下载用户</th><th>下载率</th><th>注册用户</th><th>注册率</th></tr></thead><tbody>';
             if (!landingVariants.length) {
-                html += '<tr><td colspan="11">暂无 A/B 数据；新访客进入后开始累计</td></tr>';
+                html += '<tr><td colspan="7">暂无 A/B 数据；新访客进入后开始累计</td></tr>';
             } else {
                 landingVariants.forEach(function (row) {
                     html += '<tr>';
@@ -4866,7 +4849,7 @@
             html +=
                 '<th>日期</th><th>浏览量</th><th>独立访客</th><th>新增游客</th><th>游客合并</th><th>归因注册</th><th>总注册</th><th>注册率</th><th>平均停留</th><th>平均DOM就绪</th><th>平均包接口</th></tr></thead><tbody>';
             if (!daily.length) {
-                html += '<tr><td colspan="11">暂无</td></tr>';
+                html += '<tr><td colspan="7">暂无</td></tr>';
             } else {
                 daily.slice().reverse().forEach(function (row) {
                     html += '<tr>';
@@ -5705,7 +5688,7 @@
         }
 
         function loadUdFemaleAge() {
-            var daysEl = document.getElementById('udGenderDays');
+            var daysEl = document.getElementById('udFemaleAgeDays');
             var days = daysEl ? String(daysEl.value) : '0';
             var summaryEl = document.getElementById('udFemaleAgeSummary');
             var tbody = document.getElementById('udFemaleUnder30Tbody');
@@ -5732,7 +5715,7 @@
 
         function loadUdGenderCharts() {
             var wrap = document.getElementById('userDataGenderChartsWrap');
-            var daysEl = document.getElementById('udGenderDays');
+            var daysEl = document.getElementById('udFemaleAgeDays');
             var days = daysEl ? String(daysEl.value) : '0';
             if (wrap) wrap.style.display = 'block';
             if (!isUdGenderSectionOpen()) return;
@@ -5808,11 +5791,6 @@
                         '</td></tr>';
                 });
                 buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-            var genderWrap = document.getElementById('userDataGenderChartsWrap');
-            if (genderWrap) genderWrap.style.display = 'block';
-            if (isUdGenderSectionOpen()) {
-                loadUdGenderCharts();
             }
             var compTb = document.getElementById('userDataTopCompaniesTbody');
             if (compTb) {
@@ -6196,7 +6174,7 @@
             var stat = document.getElementById('auaUserListStat');
             var tbody = document.getElementById('auaUsersTbody');
             if (stat) stat.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
             var username = document.getElementById('auaFilterUsername');
             var taxF = document.getElementById('auaFilterTax');
             var actF = document.getElementById('auaFilterActivity');
@@ -6233,7 +6211,7 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="11">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="7">' + esc(j.msg || '加载失败') + '</td></tr>';
                         return;
                     }
                     var d = j.data;
@@ -6285,12 +6263,12 @@
                         html += '</tr>';
                         html += '<tr id="aua_path_row_' + key + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="11"><div id="aua_path_box_' +
+                            '<td colspan="7"><div id="aua_path_box_' +
                             key +
                             '">加载中…</div></td></tr>';
                     });
                     if (tbody) {
-                        tbody.innerHTML = html || '<tr><td colspan="11">暂无已激活用户</td></tr>';
+                        tbody.innerHTML = html || '<tr><td colspan="7">暂无已激活用户</td></tr>';
                         tbody.querySelectorAll('.btn-aua-path').forEach(function (btn) {
                             btn.onclick = function () {
                                 var name = btn.getAttribute('data-u');
@@ -6330,7 +6308,7 @@
                 })
                 .catch(function () {
                     if (stat) stat.textContent = '加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="11">加载失败</td></tr>';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
                 });
         }
 
@@ -6707,13 +6685,13 @@
                         html += '</tr>';
                         html += '<tr id="ud_detail_row_' + key + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="11"><div id="ud_detail_box_' +
+                            '<td colspan="7"><div id="ud_detail_box_' +
                             key +
                             '" style="padding:4px 0;color:#888;">点击「档案」加载完整数据…</div></td>';
                         html += '</tr>';
                     });
                     document.getElementById('userDataTbody').innerHTML =
-                        html || '<tr><td colspan="11">暂无数据</td></tr>';
+                        html || '<tr><td colspan="7">暂无数据</td></tr>';
 
                     document.getElementById('userDataTbody').querySelectorAll('.btn-user-data-detail').forEach(function (btn) {
                         btn.onclick = function () {
@@ -7117,7 +7095,6 @@
                             '">详情</button>';
                         var detailKey = keyForUser(u.username);
                         html += '<tr>';
-                        html += '<td>' + esc(u.id) + '</td>';
                         html +=
                             '<td class="cell-break"><code title="' +
                             esc(u.username) +
@@ -7137,13 +7114,13 @@
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="12"><div id="user_detail_box_' +
+                            '<td colspan="11"><div id="user_detail_box_' +
                             detailKey +
                             '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
                     document.getElementById('guestUsersTbody').innerHTML =
-                        html || '<tr><td colspan="12">暂无游客账号</td></tr>';
+                        html || '<tr><td colspan="11">暂无游客账号</td></tr>';
                     document.getElementById('guestUsersTbody').querySelectorAll('.btn-user-detail').forEach(function (btn) {
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
@@ -7271,7 +7248,6 @@
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
-                        html += '<td>' + esc(u.id) + '</td>';
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
@@ -7279,7 +7255,7 @@
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
-                        html += '<td class="cell-break"><button type="button" class="btn-link-pwd btn-user-password" data-u="' + esc(u.username) + '" data-pwd="' + esc(u.password || '') + '" title="点击修改密码">' + esc(u.password || '—') + '</button></td>';
+                        html += '<td><button type="button" class="btn-sm btn-page btn-user-password" data-u="' + esc(u.username) + '" title="修改密码">修改</button></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
@@ -7292,15 +7268,15 @@
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="13"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="12"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="13">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="12">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-user-password').forEach(function (btn) {
                         btn.onclick = function () {
-                            openUserPasswordModal(btn.getAttribute('data-u'), btn.getAttribute('data-pwd') || '');
+                            openUserPasswordModal(btn.getAttribute('data-u'), '');
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
@@ -7441,7 +7417,6 @@
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var refunded = !!(u.activation_refunded_at && String(u.activation_refunded_at).trim());
                         html += '<tr>';
-                        html += '<td>' + esc(u.id) + '</td>';
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
                         html += '<td class="cell-break">' + esc(u.channel_analysis_label || '—') + '</td>';
@@ -7465,7 +7440,7 @@
                         html += '</tr>';
                     });
                     document.getElementById('deletedUserTbody').innerHTML =
-                        html || '<tr><td colspan="10">暂无已删除账号</td></tr>';
+                        html || '<tr><td colspan="9">暂无已删除账号</td></tr>';
 
                     document.getElementById('deletedUserTbody').querySelectorAll('.btn-restore-user').forEach(function (btn) {
                         btn.onclick = function () {
@@ -7518,7 +7493,6 @@
                         ? esc(String(c.used_by_username).trim())
                         : '—';
                 html += '<tr>';
-                html += '<td>' + esc(c.id) + '</td>';
                 html += '<td>' + esc(c.code) + '</td>';
                 html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
                 html += '<td>' + codeOwnerLabel(c) + '</td>';
@@ -7612,7 +7586,7 @@
 
                     var html = renderCodeTableRows(list, { showChannel: false });
                     document.getElementById('codeTbody').innerHTML =
-                        html || '<tr><td colspan="6">暂无激活码</td></tr>';
+                        html || '<tr><td colspan="5">暂无激活码</td></tr>';
                 })
                 .catch(function () {});
         }
@@ -7720,7 +7694,7 @@
                     if (tbody) {
                         var html = renderCodeTableRows(list, { showChannel: true });
                         tbody.innerHTML =
-                            html || '<tr><td colspan="7">暂无渠道批量激活码</td></tr>';
+                            html || '<tr><td colspan="6">暂无渠道批量激活码</td></tr>';
                     }
                 })
                 .catch(function () {});
@@ -8019,24 +7993,16 @@
                 loadUserDataAnalytics();
             };
         }
-        var btnRefreshUdGender = document.getElementById('btnRefreshUdGender');
-        if (btnRefreshUdGender) {
-            btnRefreshUdGender.onclick = function () {
-                loadUdGenderCharts();
+        var btnRefreshUdFemaleAge = document.getElementById('btnRefreshUdFemaleAge');
+        if (btnRefreshUdFemaleAge) {
+            btnRefreshUdFemaleAge.onclick = function () {
+                loadUdFemaleAge();
             };
         }
-        var udGenderDays = document.getElementById('udGenderDays');
-        if (udGenderDays) {
-            udGenderDays.addEventListener('change', function () {
-                loadUdGenderCharts();
-            });
-        }
-        var udGenderSection = document.getElementById('udGenderSection');
-        if (udGenderSection) {
-            udGenderSection.addEventListener('toggle', function () {
-                if (udGenderSection.open) {
-                    loadUdGenderCharts();
-                }
+        var udFemaleAgeDays = document.getElementById('udFemaleAgeDays');
+        if (udFemaleAgeDays) {
+            udFemaleAgeDays.addEventListener('change', function () {
+                if (isUdFemaleAgeSectionOpen()) loadUdFemaleAge();
             });
         }
         var udFemaleAgeSection = document.getElementById('udFemaleAgeSection');
@@ -9726,8 +9692,34 @@
         });
         document.getElementById('btnLoadDevices').addEventListener('click', loadAnalyticsDevices);
 
+
+        function initNavGroupCollapse() {
+            document.querySelectorAll('.nav-group-label').forEach(function (btn) {
+                if (btn.__navCollapseBound) return;
+                btn.__navCollapseBound = true;
+                var group = btn.closest('.nav-group');
+                if (!group) return;
+                var key = group.getAttribute('data-nav-group') || '';
+                try {
+                    var saved = sessionStorage.getItem('admin_nav_' + key);
+                    if (saved === '0') {
+                        group.classList.add('is-collapsed');
+                        btn.setAttribute('aria-expanded', 'false');
+                    }
+                } catch (e0) {}
+                btn.addEventListener('click', function () {
+                    var collapsed = group.classList.toggle('is-collapsed');
+                    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    try {
+                        sessionStorage.setItem('admin_nav_' + key, collapsed ? '0' : '1');
+                    } catch (e1) {}
+                });
+            });
+        }
+
         function initAdminSession() {
             readAdminProfileCache();
+            initNavGroupCollapse();
             applyMenuVisibility();
             if (!location.hash || location.hash === '#') {
                 history.replaceState(null, '', '#' + firstAllowedAdminPage());

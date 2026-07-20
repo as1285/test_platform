@@ -1084,12 +1084,56 @@ tr.ud-salary-bucket-high td {
     margin-bottom: 0;
 }
 .nav-group-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
     padding: 10px 14px 4px;
+    border: none;
+    background: transparent;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.42);
     user-select: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+}
+.nav-group-label::after {
+    content: '▾';
+    font-size: 10px;
+    opacity: 0.7;
+    transition: transform 0.15s ease;
+}
+.nav-group.is-collapsed .nav-group-label::after {
+    transform: rotate(-90deg);
+}
+.nav-group.is-collapsed .nav-group-items {
+    display: none;
+}
+.nav-group-items {
+    display: block;
+}
+.page-hint-details {
+    margin: 0 0 12px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 0 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.page-hint-details summary {
+    cursor: pointer;
+    padding: 12px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    list-style: none;
+}
+.page-hint-details summary::-webkit-details-marker { display: none; }
+.page-hint-details .hint {
+    margin: 0 0 12px;
+    padding-top: 0;
 }
 
 /* 表单布局工具类 */
