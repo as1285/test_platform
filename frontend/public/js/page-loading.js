@@ -5,9 +5,10 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260521-ios12bar';
-  var MIN_DISPLAY_MS = 280;
-  var ABSOLUTE_MAX_MS = 12000;
+  var CSS_HREF = '/css/page-loading.css?v=20260720-fast-nav';
+  var MIN_DISPLAY_MS = 80;
+  var ABSOLUTE_MAX_MS = 8000;
+  var THEME_WAIT_MS = 4000;
   var count = 0;
   var queue = [];
 
@@ -322,20 +323,21 @@
 
     var waits = [];
     if (hasScript('theme-loader')) {
-      waits.push(waitForEvent('appPageLoadingThemeDone', 12000, '__appPageLoadingThemeDone'));
+      waits.push(waitForEvent('appPageLoadingThemeDone', THEME_WAIT_MS, '__appPageLoadingThemeDone'));
     }
     if (currentPage() === 'consult.html') {
-      waits.push(waitForEvent('appPageLoadingConsultDone', 20000, '__appPageLoadingConsultDone'));
+      waits.push(waitForEvent('appPageLoadingConsultDone', 12000, '__appPageLoadingConsultDone'));
     }
     if (document.body && document.body.classList.contains('page-shuiming-result')) {
-      waits.push(waitForEvent('appPageLoadingDataDone', 20000, '__appPageLoadingDataDone'));
+      waits.push(waitForEvent('appPageLoadingDataDone', 12000, '__appPageLoadingDataDone'));
     }
 
     if (!waits.length) {
-      if (document.readyState === 'complete') {
+      /* 用 DOMContentLoaded，不等待全部图片 load，切页更快 */
+      if (document.readyState === 'interactive' || document.readyState === 'complete') {
         finishLoading();
       } else {
-        window.addEventListener('load', finishLoading, { once: true });
+        document.addEventListener('DOMContentLoaded', finishLoading, { once: true });
       }
       setTimeout(finishLoading, ABSOLUTE_MAX_MS);
       return;

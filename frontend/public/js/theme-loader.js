@@ -200,26 +200,39 @@
     return false;
   }
 
-  function isShouyePage() {
-    return !!(document.body && document.body.classList.contains('page-shouye'));
+  /* 不再等首页大图加载完再关转圈，配图后台加载即可 */
+  function finishPageLoadingAfterTheme() {
+    window.__appPageLoadingThemeDone = true;
+    if (typeof window.appPageLoadingDispatchThemeDone === 'function') {
+      window.appPageLoadingDispatchThemeDone();
+    }
   }
 
-  function finishPageLoadingAfterTheme() {
-    function notifyThemeDone() {
-      window.__appPageLoadingThemeDone = true;
-      if (typeof window.appPageLoadingDispatchThemeDone === 'function') {
-        window.appPageLoadingDispatchThemeDone();
+  function prefetchBottomNavPages() {
+    var pages = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
+    var here = '';
+    try {
+      here = String(window.location.pathname || '')
+        .split('/')
+        .pop()
+        .toLowerCase();
+    } catch (e0) {}
+    pages.forEach(function (page) {
+      if (page === here) {
+        return;
       }
-    }
-    if (isShouyePage() && typeof window.waitForPageElementImages === 'function') {
-      window.waitForPageElementImages(
-        ['assetShouyeBanner', 'assetShouyeZdfwdb', 'assetShouyeLb'],
-        notifyThemeDone,
-        10000
-      );
-      return;
-    }
-    notifyThemeDone();
+      if (document.querySelector('link[data-prefetch-nav="' + page + '"]')) {
+        return;
+      }
+      try {
+        var link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.as = 'document';
+        link.href = page;
+        link.setAttribute('data-prefetch-nav', page);
+        document.head.appendChild(link);
+      } catch (e1) {}
+    });
   }
 
   document.documentElement.setAttribute('data-app-theme', 'blue');
@@ -246,6 +259,15 @@
     .finally(function () {
       if (!hadThemeCache) {
         finishPageLoadingAfterTheme();
+      }
+      /* 空闲时预取底栏页面，减轻切 TAB 等待 */
+      var runPrefetch = function () {
+        prefetchBottomNavPages();
+      };
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(runPrefetch, { timeout: 2500 });
+      } else {
+        setTimeout(runPrefetch, 600);
       }
     });
 })();

@@ -654,6 +654,154 @@
             margin: 0 0 8px;
         }
 
+        /* 个税计算表 / 公式 */
+        #taxFormulaCard {
+            padding: 0;
+            overflow: hidden;
+        }
+        #taxFormulaCard .tax-formula-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            background: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            text-align: left;
+        }
+        #taxFormulaCard .tax-formula-toggle-icon {
+            font-size: 11px;
+            color: #94a3b8;
+            transition: transform 0.2s ease;
+        }
+        #taxFormulaCard.is-open .tax-formula-toggle-icon {
+            transform: rotate(180deg);
+        }
+        #taxFormulaCard .tax-formula-body {
+            display: none;
+            padding: 0 14px 14px;
+            border-top: 1px solid #f1f5f9;
+        }
+        #taxFormulaCard.is-open .tax-formula-body {
+            display: block;
+        }
+        #taxFormulaCard .tax-formula-sec {
+            margin-top: 12px;
+        }
+        #taxFormulaCard .tax-formula-sec-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e6fff;
+            margin: 0 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #taxFormulaCard .tax-formula-sec-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            background: #1e6fff;
+            border-radius: 2px;
+        }
+        #taxFormulaCard .tax-formula-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.65;
+            margin-bottom: 8px;
+        }
+        #taxFormulaCard .tax-formula-box code,
+        #taxFormulaCard .tax-formula-box .eq {
+            display: block;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: #0f172a;
+            background: #fff;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin: 6px 0;
+            border: 1px solid #e2e8f0;
+            word-break: break-all;
+        }
+        #taxFormulaCard .tax-formula-note {
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.45;
+            margin: 0;
+        }
+        #taxFormulaCard .tax-rate-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        #taxFormulaCard .tax-rate-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            min-width: 300px;
+        }
+        #taxFormulaCard .tax-rate-table th,
+        #taxFormulaCard .tax-rate-table td {
+            padding: 8px 6px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+            white-space: nowrap;
+        }
+        #taxFormulaCard .tax-rate-table th {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+        }
+        #taxFormulaCard .tax-rate-table tr:last-child td {
+            border-bottom: none;
+        }
+        #taxFormulaCard .tax-rate-table td {
+            color: #334155;
+        }
+        #taxFormulaCard .tax-try-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        #taxFormulaCard .tax-try-row label {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        #taxFormulaCard .tax-try-row input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+        }
+        #taxFormulaCard .tax-try-result {
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #eff6ff;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #1e40af;
+            line-height: 1.5;
+        }
+        #taxFormulaCard .tax-try-result strong {
+            color: #1e6fff;
+            font-size: 16px;
+        }
+
         /* 工作经历：按月自定义工资浮窗 */
         .batch-ms-modal-root {
             position: fixed;
@@ -864,7 +1012,7 @@
         .tab-panel.active { display: block; }
     </style>
     <link rel="stylesheet" href="css/nav.css">
-    <script src="/js/theme-loader.js" defer></script>
+    <script src="/js/theme-loader.js?v=20260720-fast-nav" defer></script>
 </head>
 <body>
     <div class="header">
@@ -1085,6 +1233,92 @@
         </div>
 
         <div id="panel-records" class="tab-panel active">
+            <div class="card" id="taxFormulaCard">
+                <button type="button" class="tax-formula-toggle" id="taxFormulaToggle" aria-expanded="false">
+                    <span>个税计算表与公式</span>
+                    <span class="tax-formula-toggle-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="tax-formula-body" id="taxFormulaBody">
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">工资薪金 · 累计预扣法</div>
+                        <div class="tax-formula-box">
+                            本页「一键生成」按自然年度、同一扣缴单位累计预扣计税（与个税 APP 口径一致）：
+                            <span class="eq">本期应纳税所得额 = 本期收入 − 5000 − 专项扣除 − 专项附加 − 其他扣除</span>
+                            <span class="eq">本期应预扣税额 = 累计应纳税额 − 已预扣税额</span>
+                            <span class="eq">累计应纳税额 = 累计应纳税所得额 × 税率 − 速算扣除数</span>
+                            <p class="tax-formula-note">专项扣除含三险一金；减除费用按月 5000 元累计。年终奖可选单独计税。</p>
+                        </div>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">综合所得预扣税率表（七级）</div>
+                        <div class="tax-rate-table-wrap">
+                            <table class="tax-rate-table" aria-label="综合所得预扣税率表">
+                                <thead>
+                                    <tr>
+                                        <th>级数</th>
+                                        <th>累计应纳税所得额</th>
+                                        <th>税率</th>
+                                        <th>速算扣除数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>1</td><td>不超过 36,000 元</td><td>3%</td><td>0</td></tr>
+                                    <tr><td>2</td><td>超 36,000～144,000</td><td>10%</td><td>2,520</td></tr>
+                                    <tr><td>3</td><td>超 144,000～300,000</td><td>20%</td><td>16,920</td></tr>
+                                    <tr><td>4</td><td>超 300,000～420,000</td><td>25%</td><td>31,920</td></tr>
+                                    <tr><td>5</td><td>超 420,000～660,000</td><td>30%</td><td>52,920</td></tr>
+                                    <tr><td>6</td><td>超 660,000～960,000</td><td>35%</td><td>85,920</td></tr>
+                                    <tr><td>7</td><td>超过 960,000 元</td><td>45%</td><td>181,920</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="tax-formula-note" style="margin-top:8px;">依据国税函〔2018〕164 号附件 · 综合所得预扣预缴。</p>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">年终奖 · 单独计税</div>
+                        <div class="tax-formula-box">
+                            <span class="eq">应纳税额 = 全年一次性奖金 × 税率 − 速算扣除数</span>
+                            税率、速算扣除数按「奖金 ÷ 12」对照下表（月度换算）：
+                        </div>
+                        <div class="tax-rate-table-wrap">
+                            <table class="tax-rate-table" aria-label="年终奖单独计税税率表">
+                                <thead>
+                                    <tr>
+                                        <th>级数</th>
+                                        <th>月度换算应纳税所得额</th>
+                                        <th>税率</th>
+                                        <th>速算扣除数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>1</td><td>不超过 3,000 元</td><td>3%</td><td>0</td></tr>
+                                    <tr><td>2</td><td>超 3,000～12,000</td><td>10%</td><td>210</td></tr>
+                                    <tr><td>3</td><td>超 12,000～25,000</td><td>20%</td><td>1,410</td></tr>
+                                    <tr><td>4</td><td>超 25,000～35,000</td><td>25%</td><td>2,660</td></tr>
+                                    <tr><td>5</td><td>超 35,000～55,000</td><td>30%</td><td>4,410</td></tr>
+                                    <tr><td>6</td><td>超 55,000～80,000</td><td>35%</td><td>7,160</td></tr>
+                                    <tr><td>7</td><td>超过 80,000 元</td><td>45%</td><td>15,160</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">快速试算</div>
+                        <div class="tax-try-row">
+                            <div>
+                                <label for="taxTryCumulative">累计应纳税所得额（元）</label>
+                                <input type="number" id="taxTryCumulative" min="0" step="100" placeholder="如 72000" inputmode="decimal">
+                            </div>
+                            <div>
+                                <label for="taxTryBonus">年终奖（元，可选）</label>
+                                <input type="number" id="taxTryBonus" min="0" step="100" placeholder="如 30000" inputmode="decimal">
+                            </div>
+                        </div>
+                        <div class="tax-try-result" id="taxTryResult">输入金额后自动计算累计预扣税额 / 年终奖税额。</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card" id="batchTaxCard">
                 <div class="card-title" id="batchTaxCardTitle">批量添加</div>
                 <p class="batch-hint" id="batchTaxCardHint">填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。</p>
@@ -2995,6 +3229,60 @@
             }
             return 0;
         }
+
+        function formatTaxYuan(n) {
+            var x = Number(n);
+            if (!isFinite(x)) return '0.00';
+            return (Math.round(x * 100) / 100).toFixed(2);
+        }
+
+        function updateTaxTryResult() {
+            var cumEl = document.getElementById('taxTryCumulative');
+            var bonusEl = document.getElementById('taxTryBonus');
+            var out = document.getElementById('taxTryResult');
+            if (!out) return;
+            var cum = cumEl ? parseFloat(cumEl.value) : NaN;
+            var bonus = bonusEl ? parseFloat(bonusEl.value) : NaN;
+            var hasCum = isFinite(cum) && cum >= 0 && String(cumEl.value).trim() !== '';
+            var hasBonus = isFinite(bonus) && bonus > 0;
+            if (!hasCum && !hasBonus) {
+                out.innerHTML = '输入金额后自动计算累计预扣税额 / 年终奖税额。';
+                return;
+            }
+            var parts = [];
+            if (hasCum) {
+                var tax = cumulativeTaxPayableFromCumulativeTaxable(cum);
+                parts.push('累计预扣税额：<strong>¥' + formatTaxYuan(tax) + '</strong>');
+            }
+            if (hasBonus) {
+                var bTax = yearEndBonusTaxSeparate(bonus);
+                parts.push('年终奖税额：<strong>¥' + formatTaxYuan(bTax) + '</strong>');
+                parts.push('<span style="color:#64748b;font-size:12px;">月度换算 ' + formatTaxYuan(bonus / 12) + ' 元</span>');
+            }
+            out.innerHTML = parts.join('<br>');
+        }
+
+        function initTaxFormulaCard() {
+            var card = document.getElementById('taxFormulaCard');
+            var toggle = document.getElementById('taxFormulaToggle');
+            if (toggle && card) {
+                toggle.addEventListener('click', function () {
+                    var open = card.classList.toggle('is-open');
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+            }
+            var cumEl = document.getElementById('taxTryCumulative');
+            var bonusEl = document.getElementById('taxTryBonus');
+            if (cumEl) {
+                cumEl.addEventListener('input', updateTaxTryResult);
+                cumEl.addEventListener('change', updateTaxTryResult);
+            }
+            if (bonusEl) {
+                bonusEl.addEventListener('input', updateTaxTryResult);
+                bonusEl.addEventListener('change', updateTaxTryResult);
+            }
+        }
+        initTaxFormulaCard();
 
         var BATCH_COMPANY_HISTORY_KEY_V1 = 'consult_batch_company_history_v1';
         var BATCH_COMPANY_PROFILES_KEY = 'consult_batch_company_history_v2';

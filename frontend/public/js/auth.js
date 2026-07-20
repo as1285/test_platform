@@ -2045,7 +2045,7 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260523-consult-modal';
+      s.src = '/js/page-loading.js?v=20260720-fast-nav';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);
