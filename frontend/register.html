@@ -2,170 +2,329 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-fast-nav"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260720-nav-speed"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>注册账号</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-boxing: border-box; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(180deg, #e8f2ff 0%, #f5f6fa 35%, #f5f6fa 100%);
+            background: linear-gradient(180deg, #e8f2ff 0%, #f5f6fa 38%, #f5f6fa 100%);
             min-height: 100vh;
-            padding-bottom: 32px;
+            color: #333;
+            padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
         }
         .header {
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             color: #fff;
-            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px;
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 22px;
             text-align: center;
             position: relative;
-            border-radius: 0 0 20px 20px;
+            border-radius: 0 0 22px 22px;
         }
         .back-btn {
             position: absolute;
-            left: 16px;
-            top: calc(10px + env(safe-area-inset-top, 0px));
+            left: 14px;
+            top: calc(14px + env(safe-area-inset-top, 0px));
             color: #fff;
             font-size: 15px;
             text-decoration: none;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 4px;
+            padding: 4px 2px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .header h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-        .header p { font-size: 12px; opacity: 0.9; }
+        .back-btn img {
+            width: 9px;
+            filter: brightness(0) invert(1);
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: 0.02em;
+        }
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
         .card {
             background: #fff;
-            margin: -12px 16px 0;
+            margin: -14px 14px 0;
             border-radius: 16px;
-            padding: 22px 20px 8px;
-            box-shadow: 0 8px 24px rgba(30, 111, 255, 0.08);
+            padding: 22px 18px 20px;
+            box-shadow: 0 10px 28px rgba(30, 111, 255, 0.08);
         }
-        .field { margin-bottom: 18px; }
+        .field {
+            margin-bottom: 16px;
+        }
         .field label {
             display: block;
-            font-size: 14px;
-            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
             margin-bottom: 8px;
         }
         .field label .req { color: #ff4d4f; }
-        .field input {
+        .input-wrap {
+            position: relative;
+        }
+        .field input,
+        .field select {
             width: 100%;
             padding: 13px 14px;
-            border: 1px solid #e8e8e8;
-            border-radius: 10px;
+            border: 1px solid #e8edf5;
+            border-radius: 12px;
             font-size: 16px;
-            background: #fafafa;
+            background: #f7f9fc;
+            color: #1e293b;
+            transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+            font-family: inherit;
         }
         .field input:focus,
         .field select:focus {
             outline: none;
             border-color: #1e6fff;
             background: #fff;
+            box-shadow: 0 0 0 3px rgba(30, 111, 255, 0.12);
+        }
+        .field input.is-invalid,
+        .field select.is-invalid {
+            border-color: #f87171;
+            background: #fff8f8;
+        }
+        .field input.is-valid {
+            border-color: #86efac;
         }
         .field select {
-            width: 100%;
-            padding: 13px 14px;
-            border: 1px solid #e8e8e8;
-            border-radius: 10px;
-            font-size: 16px;
-            background: #fafafa;
-            color: #333;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23999' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 14px center;
             padding-right: 36px;
         }
-        .hint { font-size: 12px; color: #999; margin-top: 6px; }
+        .pwd-toggle {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: #1e6fff;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .input-wrap.has-toggle input {
+            padding-right: 56px;
+        }
+        .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 6px;
+            line-height: 1.45;
+        }
+        .field-msg {
+            font-size: 12px;
+            margin-top: 6px;
+            line-height: 1.4;
+            min-height: 0;
+        }
+        .field-msg.is-error { color: #dc2626; }
+        .field-msg.is-ok { color: #16a34a; }
+        .captcha-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+        .captcha-row input {
+            flex: 1;
+            min-width: 0;
+        }
+        .captcha-chip {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 84px;
+            padding: 0 12px;
+            border-radius: 12px;
+            background: #eef5ff;
+            color: #1e6fff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .btn-refresh {
+            flex-shrink: 0;
+            padding: 0 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fff;
+            font-size: 13px;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-refresh:active { background: #f8fafc; }
+        .info-banner {
+            margin: 2px 0 16px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #f0f6ff;
+            border: 1px solid #dbeafe;
+        }
+        .info-banner p {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.55;
+        }
+        .info-banner p + p {
+            margin-top: 6px;
+            color: #94a3b8;
+        }
         .btn-submit {
             width: 100%;
-            margin-top: 8px;
+            margin-top: 4px;
             padding: 14px;
             border: none;
-            border-radius: 24px;
+            border-radius: 14px;
             font-size: 17px;
-            font-weight: 500;
+            font-weight: 600;
             color: #fff;
             background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
             cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 8px 18px rgba(30, 111, 255, 0.22);
+            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
-        .btn-submit:disabled { opacity: 0.6; }
+        .btn-submit:active:not(:disabled) {
+            transform: scale(0.985);
+        }
+        .btn-submit:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         .footer-link {
             text-align: center;
-            margin-top: 22px;
-            font-size: 15px;
-            color: #666;
+            margin-top: 18px;
+            font-size: 14px;
+            color: #64748b;
         }
-        .footer-link a { color: #1e6fff; text-decoration: none; }
+        .footer-link a {
+            color: #1e6fff;
+            text-decoration: none;
+            font-weight: 500;
+        }
         .err {
             display: none;
-            padding: 10px 12px;
+            padding: 11px 12px;
             background: #fff2f0;
             border: 1px solid #ffccc7;
-            border-radius: 8px;
+            border-radius: 10px;
             color: #cf1322;
             font-size: 14px;
             margin-bottom: 14px;
+            line-height: 1.45;
         }
         .err.show { display: block; }
+        .ok-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            color: #fff;
+            font-size: 14px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            max-width: calc(100% - 40px);
+        }
+        .ok-toast.show { opacity: 1; }
     </style>
 </head>
 <body class="page-register">
     <div class="header">
-        <a href="login.html" class="back-btn"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
+        <a href="login.html" class="back-btn" id="regBackBtn">
+            <img src="/jt.png" alt="" width="9" decoding="async">
+            <span>返回</span>
+        </a>
         <h1>注册账号</h1>
         <p>个人所得税服务平台</p>
     </div>
 
     <div class="card">
-        <div id="errBox" class="err"></div>
-        <form id="regForm" onsubmit="return false;">
+        <div id="errBox" class="err" role="alert"></div>
+        <form id="regForm" autocomplete="on">
             <div class="field">
-                <label>账号 <span class="req">*</span></label>
+                <label for="username">账号 <span class="req">*</span></label>
                 <input type="text" id="username" name="username" placeholder="手机号或自定义账号（1～32位）" maxlength="32" autocomplete="username" required>
                 <div class="hint">支持数字、字母及 . _ - @</div>
+                <div class="field-msg" id="usernameMsg"></div>
             </div>
             <div class="field">
-                <label>登录密码 <span class="req">*</span></label>
-                <input type="password" id="password" name="password" placeholder="至少 1 位" minlength="1" maxlength="64" autocomplete="new-password" required>
-            </div>
-            <div class="field">
-                <label>确认密码 <span class="req">*</span></label>
-                <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
-            </div>
-            <div class="field">
-                <label>来源渠道 <span class="req">*</span></label>
-                <select id="registerSourceChannel" name="register_source_channel" required>
-                    <option value="">请选择来源渠道</option>
-                    <option value="douyin">1. 抖音</option>
-                    <option value="bilibili">2. B站</option>
-                    <option value="tieba">3. 百度贴吧</option>
-                    <option value="zhihu">4. 知乎</option>
-                    <option value="friend">5. 朋友介绍</option>
-                    <option value="github">6. GitHub</option>
-                    <option value="other">7. 其他</option>
-                </select>
-            </div>
-            <div class="field" id="registerSourceOtherWrap" style="display:none;">
-                <label>请填写渠道 <span class="req">*</span></label>
-                <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="请输入您的来源渠道" maxlength="64" autocomplete="off">
-                <div class="hint">选择「其他」时需手动填写，例如：小红书、微信群等</div>
-            </div>
-            <div class="field">
-                <label>验证码 <span class="req">*</span></label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" style="flex:1;" autocomplete="off" required>
-                    <span id="captchaQuestion" style="flex-shrink:0;min-width:88px;font-size:15px;color:#1e6fff;font-weight:600;">加载中…</span>
-                    <button type="button" id="btnCaptchaRefresh" style="flex-shrink:0;padding:10px 12px;border:1px solid #d9d9d9;border-radius:10px;background:#fff;font-size:13px;color:#666;cursor:pointer;">换一题</button>
+                <label for="password">登录密码 <span class="req">*</span></label>
+                <div class="input-wrap has-toggle">
+                    <input type="password" id="password" name="password" placeholder="请输入登录密码" minlength="1" maxlength="64" autocomplete="new-password" required>
+                    <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
                 </div>
             </div>
-            <p class="hint" style="margin:-6px 0 14px;color:#666;line-height:1.5;">注册成功后账号为<strong>未激活</strong>状态；请登录后在<strong>个人中心</strong>右上角使用激活码开通。</p>
-            <p class="hint" style="margin:-4px 0 14px;color:#888;font-size:12px;line-height:1.5;">本应用为界面演示与学习参考，非国家税务总局官方申报渠道；演示数据可随时修改或删除。</p>
-            <button type="button" class="btn-submit" id="btnSubmit">注 册</button>
+            <div class="field">
+                <label for="password2">确认密码 <span class="req">*</span></label>
+                <div class="input-wrap has-toggle">
+                    <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
+                    <button type="button" class="pwd-toggle" data-target="password2" aria-label="显示密码">显示</button>
+                </div>
+                <div class="field-msg" id="passwordMsg"></div>
+            </div>
+            <div class="field">
+                <label for="registerSourceChannel">来源渠道 <span class="req">*</span></label>
+                <select id="registerSourceChannel" name="register_source_channel" required>
+                    <option value="">请选择来源渠道</option>
+                    <option value="douyin">抖音</option>
+                    <option value="bilibili">B站</option>
+                    <option value="tieba">百度贴吧</option>
+                    <option value="zhihu">知乎</option>
+                    <option value="friend">朋友介绍</option>
+                    <option value="github">GitHub</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <div class="field" id="registerSourceOtherWrap" hidden>
+                <label for="registerSourceChannelOther">请填写渠道 <span class="req">*</span></label>
+                <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="例如：小红书、微信群" maxlength="64" autocomplete="off">
+                <div class="hint">选择「其他」时请填写具体来源</div>
+            </div>
+            <div class="field">
+                <label for="captchaAnswer">验证码 <span class="req">*</span></label>
+                <div class="captcha-row">
+                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" autocomplete="off" required>
+                    <span class="captcha-chip" id="captchaQuestion">加载中…</span>
+                    <button type="button" class="btn-refresh" id="btnCaptchaRefresh">换一题</button>
+                </div>
+            </div>
+
+            <div class="info-banner">
+                <p>注册成功后账号为<strong>未激活</strong>状态，请登录后在<strong>个人中心</strong>使用激活码开通完整功能。</p>
+                <p>本应用为界面演示与学习参考，非官方申报渠道。</p>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">注册</button>
         </form>
         <p class="footer-link">已有账号？<a href="login.html">去登录</a></p>
     </div>
+    <div class="ok-toast" id="regToast" role="status"></div>
 
     <script>
         var regCaptchaId = '';
@@ -175,6 +334,10 @@
                 var q = new URLSearchParams(window.location.search);
                 if (q.get('from') === 'install_guide' && typeof window.markInstallGuideReferral === 'function') {
                     window.markInstallGuideReferral('url_param');
+                }
+                var back = document.getElementById('regBackBtn');
+                if (back && q.get('from') === 'install_guide') {
+                    back.setAttribute('href', 'install_guide.html');
                 }
             } catch (e) {}
         })();
@@ -188,6 +351,35 @@
             }
             el.textContent = msg;
             el.classList.add('show');
+            try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (e0) {}
+        }
+
+        function showToast(msg) {
+            var el = document.getElementById('regToast');
+            if (!el) return;
+            el.textContent = msg || '';
+            el.classList.add('show');
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(function () {
+                el.classList.remove('show');
+            }, 2200);
+        }
+
+        function setFieldMsg(id, text, ok) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text || '';
+            el.classList.remove('is-error', 'is-ok');
+            if (!text) return;
+            el.classList.add(ok ? 'is-ok' : 'is-error');
+        }
+
+        function markInvalid(el, on) {
+            if (!el) return;
+            if (on) el.classList.add('is-invalid');
+            else el.classList.remove('is-invalid');
         }
 
         function registerRequestHeaders() {
@@ -207,7 +399,10 @@
                         var q = document.getElementById('captchaQuestion');
                         if (q) q.textContent = data.data.question || '—';
                         var ans = document.getElementById('captchaAnswer');
-                        if (ans) ans.value = '';
+                        if (ans) {
+                            ans.value = '';
+                            markInvalid(ans, false);
+                        }
                         return;
                     }
                     throw new Error(data.msg || '验证码加载失败');
@@ -220,8 +415,24 @@
         });
 
         document.getElementById('btnCaptchaRefresh').addEventListener('click', function () {
-            loadRegisterCaptcha().catch(function () {
-                showErr('验证码加载失败，请稍后重试');
+            loadRegisterCaptcha()
+                .then(function () {
+                    showToast('已换一题');
+                })
+                .catch(function () {
+                    showErr('验证码加载失败，请稍后重试');
+                });
+        });
+
+        document.querySelectorAll('.pwd-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-target');
+                var input = document.getElementById(id);
+                if (!input) return;
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                btn.textContent = show ? '隐藏' : '显示';
+                btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
             });
         });
 
@@ -231,45 +442,109 @@
             var otherInput = document.getElementById('registerSourceChannelOther');
             if (!sel || !wrap || !otherInput) return;
             var isOther = sel.value === 'other';
-            wrap.style.display = isOther ? 'block' : 'none';
+            wrap.hidden = !isOther;
             otherInput.required = isOther;
             if (!isOther) {
                 otherInput.value = '';
             }
+            markInvalid(sel, false);
         }
 
         document.getElementById('registerSourceChannel').addEventListener('change', syncRegisterSourceOtherField);
         syncRegisterSourceOtherField();
 
-        document.getElementById('btnSubmit').addEventListener('click', function () {
-            var username = document.getElementById('username').value.trim();
-            var password = document.getElementById('password').value;
-            var password2 = document.getElementById('password2').value;
+        function validatePasswordMatch() {
+            var p1 = document.getElementById('password');
+            var p2 = document.getElementById('password2');
+            if (!p1 || !p2) return true;
+            if (!p2.value) {
+                setFieldMsg('passwordMsg', '');
+                markInvalid(p2, false);
+                return true;
+            }
+            if (p1.value !== p2.value) {
+                setFieldMsg('passwordMsg', '两次输入的密码不一致', false);
+                markInvalid(p2, true);
+                return false;
+            }
+            setFieldMsg('passwordMsg', '密码一致', true);
+            markInvalid(p2, false);
+            p2.classList.add('is-valid');
+            return true;
+        }
+
+        document.getElementById('password').addEventListener('input', validatePasswordMatch);
+        document.getElementById('password2').addEventListener('input', validatePasswordMatch);
+
+        document.getElementById('username').addEventListener('blur', function () {
+            var v = this.value.trim();
+            if (!v) {
+                setFieldMsg('usernameMsg', '');
+                markInvalid(this, false);
+                return;
+            }
+            if (v.length > 32) {
+                setFieldMsg('usernameMsg', '账号不能超过 32 位', false);
+                markInvalid(this, true);
+                return;
+            }
+            if (!/^[A-Za-z0-9._\-@]+$/.test(v)) {
+                setFieldMsg('usernameMsg', '仅支持数字、字母及 . _ - @', false);
+                markInvalid(this, true);
+                return;
+            }
+            setFieldMsg('usernameMsg', '');
+            markInvalid(this, false);
+        });
+
+        function submitRegister() {
+            var usernameEl = document.getElementById('username');
+            var passwordEl = document.getElementById('password');
+            var password2El = document.getElementById('password2');
+            var captchaEl = document.getElementById('captchaAnswer');
+            var channelEl = document.getElementById('registerSourceChannel');
+            var otherEl = document.getElementById('registerSourceChannelOther');
+
+            var username = usernameEl.value.trim();
+            var password = passwordEl.value;
+            var password2 = password2El.value;
             showErr('');
+            markInvalid(usernameEl, false);
+            markInvalid(passwordEl, false);
+            markInvalid(password2El, false);
+            markInvalid(captchaEl, false);
+            markInvalid(channelEl, false);
 
             if (!username || !password) {
                 showErr('请填写账号和密码');
+                if (!username) markInvalid(usernameEl, true);
+                if (!password) markInvalid(passwordEl, true);
                 return;
             }
             if (password !== password2) {
                 showErr('两次输入的密码不一致');
+                markInvalid(password2El, true);
+                validatePasswordMatch();
                 return;
             }
-            var captchaAns = document.getElementById('captchaAnswer').value.trim();
+            var captchaAns = captchaEl.value.trim();
             if (!regCaptchaId || !captchaAns) {
                 showErr('请填写验证码');
+                markInvalid(captchaEl, true);
                 return;
             }
-            var sourceChannel = document.getElementById('registerSourceChannel').value.trim();
+            var sourceChannel = channelEl.value.trim();
             if (!sourceChannel) {
                 showErr('请选择来源渠道');
+                markInvalid(channelEl, true);
                 return;
             }
             var sourceChannelOther = '';
             if (sourceChannel === 'other') {
-                sourceChannelOther = document.getElementById('registerSourceChannelOther').value.trim();
+                sourceChannelOther = otherEl.value.trim();
                 if (!sourceChannelOther) {
                     showErr('请填写其他来源渠道');
+                    markInvalid(otherEl, true);
                     return;
                 }
             }
@@ -290,6 +565,8 @@
 
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
+            var oldText = btn.textContent;
+            btn.textContent = '注册中…';
 
             var regClientId = '';
             var regGuestUsername = '';
@@ -395,7 +672,10 @@
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
-                        window.location.href = 'mine.html';
+                        showToast('注册成功');
+                        setTimeout(function () {
+                            window.location.href = 'mine.html';
+                        }, 350);
                         return;
                     }
                     showErr(data.msg || '注册失败');
@@ -406,7 +686,13 @@
                 })
                 .finally(function () {
                     btn.disabled = false;
+                    btn.textContent = oldText;
                 });
+        }
+
+        document.getElementById('regForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            submitRegister();
         });
     </script>
 </body>
