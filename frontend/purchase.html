@@ -206,6 +206,7 @@
             align-items: center;
             gap: 12px;
             width: 100%;
+            min-height: 56px;
             padding: 12px 12px;
             border: 1px solid #eef2f7;
             border-radius: 10px;
@@ -216,7 +217,10 @@
             font-size: 14px;
             text-align: left;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: rgba(30, 111, 255, 0.15);
+            touch-action: manipulation;
+            position: relative;
+            z-index: 1;
         }
         .channel-row[hidden] { display: none !important; }
         .channel-row:active { background: #eef5ff; }
@@ -329,7 +333,7 @@
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
             <div class="qr-wrap" id="alipayQrWrap" hidden>
                 <img id="alipayQrImg" src="" alt="支付宝付款二维码">
-                <div class="qr-caption" id="alipayQrCaption">请使用支付宝扫一扫完成付款</div>
+                <div class="qr-caption" id="alipayQrCaption">请用支付宝扫一扫付款。华为等机型请点「打开支付宝付款」；也可直接扫码，无需下载。</div>
                 <button type="button" class="btn btn-secondary" id="btnAlipayOpenLink" hidden>打开支付宝付款</button>
             </div>
             <div class="pay-status" id="alipayPayStatus" hidden></div>
@@ -338,6 +342,15 @@
         <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
         <div class="card" id="cardOtherChannels">
             <div class="channel-list">
+                <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
+                    <span class="channel-icon kufaka">酷</span>
+                    <span class="channel-body">
+                        <strong>酷发卡购买</strong>
+                        <span>跳转商品页下单获取激活码</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </a>
+
                 <button type="button" class="channel-row" id="rowWechat" hidden>
                     <span class="channel-icon wechat">微</span>
                     <span class="channel-body">
@@ -361,15 +374,6 @@
                     </span>
                     <span class="channel-arrow">›</span>
                 </button>
-
-                <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
-                    <span class="channel-icon kufaka">酷</span>
-                    <span class="channel-body">
-                        <strong>酷发卡购买</strong>
-                        <span>跳转商品页下单获取激活码</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </a>
 
                 <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase">
                     <span class="channel-icon chat">客</span>
@@ -495,26 +499,177 @@
         window.trackUserAction(action, payload);
     }
 
+    function isEmbeddedInAppShell() {
+        try {
+            return !!(window.top && window.top !== window);
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function isAlipayHttpUrl(url) {
+        return /^https?:\/\//i.test(String(url || '')) && /alipay\.com/i.test(String(url || ''));
+    }
+
+    function isAndroidUa() {
+        return /Android/i.test(navigator.userAgent || '');
+    }
+
+    /** 华为 / 荣耀 / Harmony：scheme 自动唤起常失败并误跳「下载支付宝」 */
+    function isHuaweiLikeUa() {
+        var ua = navigator.userAgent || '';
+        return /Huawei|HUAWEI|HarmonyOS|HMSCore|Honor|HONOR|Harmony/i.test(ua);
+    }
+
+    function buildAlipayLaunchUrls(qrCode) {
+        var q = encodeURIComponent(String(qrCode || '').trim());
+        var path = 'platformapi/startapp?saId=10000007&qrcode=' + q;
+        var scheme = 'alipays://' + path;
+        /* Intent 显式指定支付宝包名，避免华为判定「未安装」跳应用市场；勿加 market 回落 */
+        var intentAndroid =
+            'intent://' +
+            path +
+            '#Intent;scheme=alipays;package=com.eg.android.AlipayGphone;' +
+            'category=android.intent.category.BROWSABLE;action=android.intent.action.VIEW;end';
+        var intentHarmony =
+            'intent://' +
+            path +
+            '#Intent;scheme=alipays;package=com.alipay.mobile.client;' +
+            'category=android.intent.category.BROWSABLE;action=android.intent.action.VIEW;end';
+        return { scheme: scheme, intentAndroid: intentAndroid, intentHarmony: intentHarmony };
+    }
+
+    /**
+     * 打开外链/支付宝。绝对禁止 location.href / 当前页跳转。
+     * App iframe 内优先通知壳用 InAppBrowser；自定义 scheme / intent 用系统打开。
+     */
     function openExternalUrl(url) {
         var u = url != null ? String(url).trim() : '';
         if (!u) return false;
-        /* 禁止用 location.href 跳走：App iframe / WebView 会被支付宝页替换，支付后回来白屏 */
+
+        /* 壳内：绝不要用 window.open 打开支付宝 https 页（Android WebView 常会导航当前 iframe） */
+        if (isEmbeddedInAppShell() && isAlipayHttpUrl(u)) {
+            return false;
+        }
+
+        try {
+            if (window.parent && window.parent !== window) {
+                try {
+                    if (typeof window.parent.openTaxPlatformExternal === 'function') {
+                        window.parent.openTaxPlatformExternal(u);
+                        /* 继续走 Intent 兜底，旧壳可能无实现 */
+                    }
+                } catch (eParentFn) {}
+                try {
+                    window.parent.postMessage(
+                        { source: 'tax-platform-h5', type: 'open-external', url: u },
+                        '*'
+                    );
+                } catch (eMsg) {}
+            }
+        } catch (e0) {}
+
         try {
             if (window.cordova && window.cordova.InAppBrowser && typeof window.cordova.InAppBrowser.open === 'function') {
                 window.cordova.InAppBrowser.open(u, '_system');
-                return true;
-            }
-        } catch (e0) {}
-        try {
-            if (window.top && window.top !== window) {
-                var topOpened = window.top.open(u, '_blank');
-                if (topOpened) return true;
+                /* 不立刻 return，华为上再补 Intent */
             }
         } catch (e1) {}
+
+        var isCustomScheme =
+            /^[a-z][a-z0-9+.-]*:/i.test(u) && !/^https?:/i.test(u) && !/^javascript:/i.test(u);
+        var isIntent = /^intent:/i.test(u);
+
+        /* intent:// / alipays://：优先 <a> 点击（华为对隐藏 iframe 支持差） */
+        if (isIntent || isCustomScheme) {
+            try {
+                var aScheme = document.createElement('a');
+                aScheme.href = u;
+                aScheme.rel = 'noopener noreferrer';
+                aScheme.style.display = 'none';
+                document.body.appendChild(aScheme);
+                aScheme.click();
+                setTimeout(function () {
+                    try {
+                        aScheme.parentNode && aScheme.parentNode.removeChild(aScheme);
+                    } catch (eRm2) {}
+                }, 800);
+                return true;
+            } catch (e3) {}
+            if (!isIntent) {
+                try {
+                    var ifr = document.createElement('iframe');
+                    ifr.setAttribute('aria-hidden', 'true');
+                    ifr.style.cssText =
+                        'display:none;width:0;height:0;border:0;position:absolute;left:-9999px;';
+                    ifr.src = u;
+                    document.body.appendChild(ifr);
+                    setTimeout(function () {
+                        try {
+                            ifr.parentNode && ifr.parentNode.removeChild(ifr);
+                        } catch (eRm) {}
+                    }, 2500);
+                    return true;
+                } catch (e2) {}
+            }
+        }
+
+        /* 壳内 https：Intent 外开；勿假装成功导致「点了没反应」 */
+        if (isEmbeddedInAppShell()) {
+            var intentHttps = '';
+            if (isAndroidUa() && /^https?:/i.test(u)) {
+                try {
+                    var parsed = new URL(u, window.location.href);
+                    intentHttps =
+                        'intent://' +
+                        parsed.host +
+                        parsed.pathname +
+                        parsed.search +
+                        parsed.hash +
+                        '#Intent;scheme=' +
+                        parsed.protocol.replace(':', '') +
+                        ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
+                } catch (eParse) {}
+            }
+            if (intentHttps) {
+                try {
+                    window.parent &&
+                        window.parent.postMessage(
+                            { source: 'tax-platform-h5', type: 'open-external', url: intentHttps },
+                            '*'
+                        );
+                } catch (eIntentMsg) {}
+                try {
+                    var aIntent = document.createElement('a');
+                    aIntent.href = intentHttps;
+                    aIntent.rel = 'noopener noreferrer';
+                    aIntent.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+                    document.body.appendChild(aIntent);
+                    aIntent.click();
+                    setTimeout(function () {
+                        try {
+                            aIntent.parentNode && aIntent.parentNode.removeChild(aIntent);
+                        } catch (eRmI) {}
+                    }, 800);
+                } catch (eIntentA) {}
+            }
+            try {
+                var topWin = window.top.open(u, '_blank');
+                if (topWin) return true;
+            } catch (eEmb) {}
+            try {
+                var sysWin = window.open(u, '_system');
+                if (sysWin) return true;
+            } catch (eSys) {}
+            /* 已尝试 postMessage / Intent；旧壳可能无桥，返回 false 让上层提示 */
+            return !!intentHttps;
+        }
+
+        /* 普通浏览器 https */
         try {
             var opened = window.open(u, '_blank');
             if (opened) return true;
-        } catch (e2) {}
+        } catch (e5) {}
         try {
             var a = document.createElement('a');
             a.href = u;
@@ -526,23 +681,48 @@
             setTimeout(function () {
                 try {
                     a.parentNode && a.parentNode.removeChild(a);
-                } catch (e3) {}
+                } catch (e6) {}
             }, 800);
             return true;
-        } catch (e4) {}
+        } catch (e7) {}
         return false;
     }
 
-    /** 唤起支付宝 App 付款，不离开当前购买页 */
+    /**
+     * 唤起已安装的支付宝付款。
+     * Android/华为优先 Intent+包名；勿打开 https 收银页（易白屏），勿带应用市场回落（易误提示下载）。
+     */
     function openAlipayPay(qrCode) {
         var code = qrCode != null ? String(qrCode).trim() : '';
         if (!code) return;
-        var scheme =
-            'alipays://platformapi/startapp?saId=10000007&qrcode=' + encodeURIComponent(code);
-        openExternalUrl(scheme);
-        setTimeout(function () {
-            openExternalUrl(code);
-        }, 600);
+        var urls = buildAlipayLaunchUrls(code);
+        if (isAndroidUa()) {
+            openExternalUrl(urls.intentAndroid);
+            setTimeout(function () {
+                openExternalUrl(urls.scheme);
+            }, 450);
+            if (isHuaweiLikeUa()) {
+                setTimeout(function () {
+                    openExternalUrl(urls.intentHarmony);
+                }, 900);
+            }
+            return;
+        }
+        openExternalUrl(urls.scheme);
+    }
+
+    function openExternalUrlOrHint(url, failHint) {
+        var ok = openExternalUrl(url);
+        if (!ok) {
+            showToast(failHint || '无法直接打开，链接已尝试复制，请到浏览器粘贴打开');
+            try {
+                var text = String(url || '');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).catch(function () {});
+                }
+            } catch (eCopy) {}
+        }
+        return ok;
     }
 
     function paymentFetch(url, options) {
@@ -619,16 +799,23 @@
             'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' +
             encodeURIComponent(code);
         wrap.hidden = false;
-        /* 手机端可直接打开支付宝 App 付款（不离开本页，避免回跳白屏） */
+        /* 手机端可打开支付宝 App 付款（不离开本页，避免回跳白屏） */
         if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
             openBtn.hidden = false;
             openBtn.onclick = function () {
                 openAlipayPay(code);
             };
-            /* 生成二维码后自动尝试唤起支付宝，购买页保留轮询 */
-            setTimeout(function () {
-                openAlipayPay(code);
-            }, 300);
+            /*
+             * 华为/荣耀：定时自动唤起常丢失用户手势，系统会当成未安装并提示下载。
+             * 壳内 iframe 同样建议点按钮唤起。其它机型仍可自动尝试一次。
+             */
+            if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
+                setAlipayStatus('请点击「打开支付宝付款」，或使用支付宝扫上方二维码', false);
+            } else {
+                setTimeout(function () {
+                    openAlipayPay(code);
+                }, 300);
+            }
         } else {
             openBtn.hidden = true;
         }
@@ -800,6 +987,7 @@
         panel.hidden = !panel.hidden;
         trackPurchase('track_purchase_wechat_expand', { open: !panel.hidden });
         if (!panel.hidden) {
+            showToast('请使用微信扫一扫下方收款码');
             try {
                 panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } catch (e4) {}
@@ -826,10 +1014,11 @@
     if (rowKufaka) {
         rowKufaka.addEventListener('click', function (ev) {
             trackPurchase('track_kufaka_purchase_click', { url: KUFAKA_PURCHASE_URL });
-            /* 壳内 WebView 优先外开，避免卡在应用内 */
-            if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+            /* 壳内 WebView 必须外开，target=_blank 在华为 Cordova 常无效 */
+            if (isEmbeddedInAppShell() || (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell())) {
                 ev.preventDefault();
-                openExternalUrl(KUFAKA_PURCHASE_URL);
+                showToast('正在打开酷发卡…');
+                openExternalUrlOrHint(KUFAKA_PURCHASE_URL, '酷发卡链接已复制，请到系统浏览器打开');
             }
         });
     }
@@ -844,7 +1033,8 @@
             showToast('暂未配置 QQ 群链接');
             return;
         }
-        openExternalUrl(cfg.qqGroup);
+        showToast('正在打开 QQ…');
+        openExternalUrlOrHint(cfg.qqGroup, 'QQ 群链接已复制，请到系统浏览器打开');
     });
 
     document.getElementById('rowQqAdd').addEventListener('click', function () {
@@ -853,7 +1043,8 @@
             showToast('暂未配置 QQ 添加链接');
             return;
         }
-        openExternalUrl(cfg.qqAdd);
+        showToast('正在打开 QQ…');
+        openExternalUrlOrHint(cfg.qqAdd, 'QQ 链接已复制，请到系统浏览器打开');
     });
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
@@ -894,8 +1085,24 @@
 
     loadConfig();
     loadAlipayPurchase();
+    /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
+    setTimeout(function () {
+        try {
+            if (typeof window.forceHidePageLoading === 'function') {
+                window.forceHidePageLoading();
+            }
+        } catch (eHide) {}
+    }, 900);
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) checkAlipayLatestOrder();
+    });
+    window.addEventListener('pageshow', function () {
+        checkAlipayLatestOrder();
+        try {
+            if (typeof window.forceHidePageLoading === 'function') {
+                window.forceHidePageLoading();
+            }
+        } catch (eHide2) {}
     });
 })();
     </script>
