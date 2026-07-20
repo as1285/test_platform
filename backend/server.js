@@ -491,13 +491,20 @@ var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
 var _installPackageSettingsCache = null;
 var INSTALL_PACKAGE_SETTINGS_CACHE_MS = 30000;
 var _installPackagesResponseCache = new Map();
-var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 20000;
+var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 90000;
 var _salesPromoChannelCache = new Map();
 var SALES_PROMO_CHANNEL_CACHE_MS = 30000;
 var _taxRecordsListCache = new Map();
-var TAX_RECORDS_LIST_CACHE_MS = 4000;
+var TAX_RECORDS_LIST_CACHE_MS = 20000;
 var _userInfoApiCache = new Map();
 var USER_INFO_API_CACHE_MS = 5000;
+var _userSummaryApiCache = new Map();
+var USER_SUMMARY_API_CACHE_MS = 10000;
+var _messageListCache = new Map();
+var MESSAGE_LIST_CACHE_MS = 10000;
+var _taxBatchLocks = new Map();
+var TAX_BATCH_MAX_RECORDS = 150;
+var TAX_BULK_INSERT_CHUNK = 80;
 
 async function getWechatPayQrcodeUrl() {
   var now = Date.now();
@@ -1281,9 +1288,52 @@ function invalidateTaxRecordsListCache(userId) {
 function invalidateUserInfoApiCache(userId) {
   if (userId == null || String(userId).trim() === '') {
     _userInfoApiCache.clear();
+    _userSummaryApiCache.clear();
     return;
   }
-  _userInfoApiCache.delete(String(userId).trim());
+  var uid = String(userId).trim();
+  _userInfoApiCache.delete(uid);
+  _userSummaryApiCache.delete(uid);
+}
+
+function invalidateMessageListCache(userId) {
+  if (userId == null || String(userId).trim() === '') {
+    _messageListCache.clear();
+    return;
+  }
+  _messageListCache.delete(String(userId).trim());
+}
+
+/** 记录 getConnection 排队耗时，便于确认慢请求是否在等池 */
+function wrapPoolGetConnectionTiming(p) {
+  if (!p || typeof p.getConnection !== 'function' || p.__acquireTimingWrapped) {
+    return p;
+  }
+  var orig = p.getConnection.bind(p);
+  p.getConnection = function () {
+    var t0 = Date.now();
+    return orig().then(
+      function (conn) {
+        var acquireMs = Date.now() - t0;
+        if (acquireMs >= 500) {
+          console.warn('[db-pool] acquire_ms=' + acquireMs);
+        }
+        try {
+          conn.__acquireMs = acquireMs;
+        } catch (e0) {}
+        return conn;
+      },
+      function (err) {
+        var acquireMs = Date.now() - t0;
+        if (acquireMs >= 500 || (err && err.code === 'ER_CON_COUNT_ERROR')) {
+          console.warn('[db-pool] acquire_fail_ms=' + acquireMs + ' err=' + (err && err.message));
+        }
+        throw err;
+      }
+    );
+  };
+  p.__acquireTimingWrapped = true;
+  return p;
 }
 
 function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
@@ -1366,58 +1416,71 @@ async function resolveSalesChannelForRequest(req) {
   var fp = sanitizeAuditText(computeDeviceFingerprint(req), 64);
   var ip = sanitizeAuditText(getClientIp(req), 128);
   var modelKey = deviceModelKeyFromRequest(req);
-  var conn = await pool.getConnection();
-  try {
-    if (cid) {
-      const [rows] = await conn.execute(
+
+  async function pickFirst(sql, params) {
+    const [rows] = await pool.execute(sql, params);
+    if (rows.length && rows[0].sales_ch) {
+      return sanitizeSalesChannelId(rows[0].sales_ch);
+    }
+    return '';
+  }
+
+  var tasks = [];
+  var labels = [];
+  if (cid) {
+    labels.push('cid');
+    tasks.push(
+      pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE client_id = ? AND expires_at > UTC_TIMESTAMP(3)
          ORDER BY created_at DESC LIMIT 1`,
         [cid]
-      );
-      if (rows.length && rows[0].sales_ch) {
-        return sanitizeSalesChannelId(rows[0].sales_ch);
-      }
-    }
-    if (fp) {
-      const [rowsFp] = await conn.execute(
+      )
+    );
+  }
+  if (fp) {
+    labels.push('fp');
+    tasks.push(
+      pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE device_fp = ? AND expires_at > UTC_TIMESTAMP(3)
          ORDER BY created_at DESC LIMIT 1`,
         [fp]
-      );
-      if (rowsFp.length && rowsFp[0].sales_ch) {
-        return sanitizeSalesChannelId(rowsFp[0].sales_ch);
-      }
-    }
-    if (ip && modelKey) {
-      const [rowsIp] = await conn.execute(
+      )
+    );
+  }
+  if (ip && modelKey) {
+    labels.push('ip_model');
+    tasks.push(
+      pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND device_model = ? AND expires_at > UTC_TIMESTAMP(3)
            AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 7 DAY)
          ORDER BY created_at DESC LIMIT 1`,
         [ip, modelKey]
-      );
-      if (rowsIp.length && rowsIp[0].sales_ch) {
-        return sanitizeSalesChannelId(rowsIp[0].sales_ch);
-      }
-    }
-    if (ip) {
-      const [rowsIpOnly] = await conn.execute(
+      )
+    );
+  }
+  if (ip) {
+    labels.push('ip');
+    tasks.push(
+      pickFirst(
         `SELECT sales_ch FROM sales_channel_attributions
          WHERE ip = ? AND expires_at > UTC_TIMESTAMP(3)
            AND created_at >= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 48 HOUR)
          ORDER BY created_at DESC LIMIT 1`,
         [ip]
-      );
-      if (rowsIpOnly.length && rowsIpOnly[0].sales_ch) {
-        return sanitizeSalesChannelId(rowsIpOnly[0].sales_ch);
-      }
-    }
-    return '';
-  } finally {
-    conn.release();
+      )
+    );
   }
+  if (!tasks.length) {
+    return '';
+  }
+  var results = await Promise.all(tasks);
+  for (var i = 0; i < results.length; i++) {
+    if (results[i]) return results[i];
+  }
+  return '';
 }
 
 async function getInstallPackageSettingsFromDb() {
@@ -1805,10 +1868,12 @@ async function initDatabase() {
       waitForConnections: true,
       // 业务页常并发 auth+user+tax+埋点；原 10 易排队，弱网下表现为接口集体变慢
       connectionLimit: parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30,
-      queueLimit: 0,
+      // 有限排队：满则快速失败，避免 message/user 等接口无限挂起成几十秒假慢
+      queueLimit: parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60,
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000
     });
+    wrapPoolGetConnectionTiming(pool);
     
     await createTables();
     registerGuard.initRegisterGuard(pool);
@@ -3325,43 +3390,240 @@ async function insertRecordInConn(conn, userId, record) {
   };
 }
 
-async function batchSaveRecords(userId, records) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const saved = [];
-    var reassigned = 0;
-    for (let i = 0; i < records.length; i++) {
-      const rec = records[i];
-      if (!rec || typeof rec !== 'object') {
-        throw new Error('第 ' + (i + 1) + ' 条记录无效');
-      }
-      const out = await insertRecordInConn(conn, userId, rec);
-      if (out.id_reassigned) {
-        reassigned += 1;
-      }
-      saved.push(out);
-    }
-    await conn.commit();
-    var dedupeOut = await dedupeTaxRecords(userId);
-    invalidateTaxRecordsListCache(userId);
-    invalidateUserInfoApiCache(userId);
-    return {
-      saved: saved.length,
-      ids: saved.map(function (x) {
-        return x.id;
-      }),
-      reassigned_ids: reassigned,
-      auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
-    };
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (e2) {}
-    throw e;
-  } finally {
-    conn.release();
+function taxRecordInsertParamRow(userId, id, record) {
+  return [
+    id,
+    userId,
+    record.year,
+    record.month,
+    record.income_type || '工资薪金',
+    record.income_subtype || '正常工资薪金',
+    record.company_name,
+    record.company_tax_id,
+    record.tax_authority,
+    record.report_channel || '其他',
+    record.report_date,
+    record.tax_period,
+    record.income,
+    record.tax_reported,
+    record.income_this_period,
+    record.tax_free_income,
+    record.deduction_fee,
+    record.special_deduction,
+    record.other_deduction,
+    record.donation_deduction,
+    record.pension_insurance,
+    record.medical_insurance,
+    record.unemployment_insurance,
+    record.housing_fund
+  ];
+}
+
+/** 批量解析可用 id：一次 IN 查询，冲突则换号 */
+async function resolveBulkInsertIds(conn, userId, records) {
+  var planned = [];
+  var preferredIds = [];
+  var i;
+  for (i = 0; i < records.length; i++) {
+    var rec = records[i];
+    var preferredId = rec.id != null ? String(rec.id).trim() : '';
+    var base =
+      preferredId !== ''
+        ? preferredId
+        : 'tr_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 9);
+    planned.push({ rec: rec, base: base, id: base, id_reassigned: false, revive: false });
+    preferredIds.push(base);
   }
+  var occupied = {};
+  if (preferredIds.length) {
+    var ph = preferredIds
+      .map(function () {
+        return '?';
+      })
+      .join(',');
+    const [rows] = await conn.execute(
+      'SELECT id, deleted_at FROM tax_records WHERE user_id = ? AND id IN (' + ph + ')',
+      [userId].concat(preferredIds)
+    );
+    (rows || []).forEach(function (r) {
+      occupied[String(r.id)] = r.deleted_at != null ? 'deleted' : 'active';
+    });
+  }
+  var used = {};
+  var reviveList = [];
+  var insertList = [];
+  for (i = 0; i < planned.length; i++) {
+    var p = planned[i];
+    var st = occupied[p.id];
+    if (st === 'deleted') {
+      p.revive = true;
+      reviveList.push(p);
+      used[p.id] = true;
+      continue;
+    }
+    var n = 0;
+    while (st === 'active' || used[p.id]) {
+      n += 1;
+      p.id_reassigned = true;
+      p.id = p.base + '_n' + n;
+      st = occupied[p.id];
+    }
+    used[p.id] = true;
+    insertList.push(p);
+  }
+  return { insertList: insertList, reviveList: reviveList };
+}
+
+async function bulkInsertTaxChangeLogs(conn, userId, rows) {
+  if (!rows || !rows.length) return;
+  var chunk = TAX_BULK_INSERT_CHUNK;
+  var c;
+  for (c = 0; c < rows.length; c += chunk) {
+    var part = rows.slice(c, c + chunk);
+    var placeholders = part
+      .map(function () {
+        return '(?, ?, ?, ?, ?)';
+      })
+      .join(',');
+    var params = [];
+    part.forEach(function (row) {
+      params.push(
+        String(userId),
+        String(row.id),
+        'insert',
+        null,
+        JSON.stringify(taxRecordPayloadToSnapshot(row.rec, row.id))
+      );
+    });
+    try {
+      await conn.execute(
+        'INSERT INTO tax_record_change_logs (user_id, record_id, action, before_json, after_json) VALUES ' +
+          placeholders,
+        params
+      );
+    } catch (e) {
+      console.error('bulkInsertTaxChangeLogs', e);
+    }
+  }
+}
+
+async function bulkInsertRecordsInConn(conn, userId, records) {
+  var resolved = await resolveBulkInsertIds(conn, userId, records);
+  var saved = [];
+  var reassigned = 0;
+  var r;
+  for (r = 0; r < resolved.reviveList.length; r++) {
+    var rev = resolved.reviveList[r];
+    rev.rec.id = rev.id;
+    await saveRecordInConn(conn, userId, rev.rec);
+    if (rev.id_reassigned) reassigned += 1;
+    saved.push({ id: rev.id, id_reassigned: rev.id_reassigned, rec: rev.rec });
+  }
+  var insertList = resolved.insertList;
+  var chunk = TAX_BULK_INSERT_CHUNK;
+  var c;
+  for (c = 0; c < insertList.length; c += chunk) {
+    var part = insertList.slice(c, c + chunk);
+    var placeholders = part
+      .map(function () {
+        return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      })
+      .join(',');
+    var params = [];
+    part.forEach(function (row) {
+      if (row.id_reassigned) reassigned += 1;
+      params.push.apply(params, taxRecordInsertParamRow(userId, row.id, row.rec));
+      saved.push({ id: row.id, id_reassigned: row.id_reassigned, rec: row.rec });
+    });
+    await conn.execute(
+      `
+      INSERT INTO tax_records (
+        id, user_id, year, month, income_type, income_subtype,
+        company_name, company_tax_id, tax_authority,
+        report_channel, report_date, tax_period,
+        income, tax_reported, income_this_period,
+        tax_free_income, deduction_fee, special_deduction,
+        other_deduction, donation_deduction,
+        pension_insurance, medical_insurance,
+        unemployment_insurance, housing_fund
+      ) VALUES ` + placeholders,
+      params
+    );
+    await bulkInsertTaxChangeLogs(conn, userId, part);
+  }
+  return { saved: saved, reassigned: reassigned };
+}
+
+async function softDeleteTaxRecordsByIdsInConn(conn, userId, ids) {
+  var clean = (Array.isArray(ids) ? ids : [])
+    .map(function (x) {
+      return x != null ? String(x).trim() : '';
+    })
+    .filter(Boolean);
+  if (!clean.length) return 0;
+  var chunk = 80;
+  var deleted = 0;
+  var j;
+  for (j = 0; j < clean.length; j += chunk) {
+    var part = clean.slice(j, j + chunk);
+    var ph = part
+      .map(function () {
+        return '?';
+      })
+      .join(',');
+    const [result] = await conn.execute(
+      'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND deleted_at IS NULL AND id IN (' +
+        ph +
+        ')',
+      [userId].concat(part)
+    );
+    deleted += result.affectedRows != null ? Number(result.affectedRows) : 0;
+  }
+  return deleted;
+}
+
+async function withTaxBatchUserLock(userId, fn) {
+  var uid = String(userId);
+  if (_taxBatchLocks.get(uid)) {
+    var err = new Error('该账号已有批量写入进行中，请稍后再试');
+    err.statusCode = 429;
+    throw err;
+  }
+  _taxBatchLocks.set(uid, true);
+  try {
+    return await fn();
+  } finally {
+    _taxBatchLocks.delete(uid);
+  }
+}
+
+async function batchSaveRecords(userId, records) {
+  return withTaxBatchUserLock(userId, async function () {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      var out = await bulkInsertRecordsInConn(conn, userId, records);
+      await conn.commit();
+      var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
+      invalidateTaxRecordsListCache(userId);
+      invalidateUserInfoApiCache(userId);
+      return {
+        saved: out.saved.length,
+        ids: out.saved.map(function (x) {
+          return x.id;
+        }),
+        reassigned_ids: out.reassigned,
+        auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
+      };
+    } catch (e) {
+      try {
+        await conn.rollback();
+      } catch (e2) {}
+      throw e;
+    } finally {
+      conn.release();
+    }
+  });
 }
 
 async function deleteRecordInConn(conn, userId, id) {
@@ -3388,51 +3650,35 @@ async function deleteRecord(userId, id) {
 
 /** 批量替换：事务内先删指定 id，再写入新记录（用于批量修改税务数据） */
 async function batchReplaceTaxRecords(userId, idsToDelete, records) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const ids = Array.isArray(idsToDelete) ? idsToDelete : [];
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i] != null ? String(ids[i]).trim() : '';
-      if (!id) continue;
-      await deleteRecordInConn(conn, userId, id);
-    }
-    const saved = [];
-    var reassigned = 0;
-    for (let j = 0; j < records.length; j++) {
-      const rec = records[j];
-      if (!rec || typeof rec !== 'object') {
-        throw new Error('第 ' + (j + 1) + ' 条记录无效');
-      }
-      const out = await insertRecordInConn(conn, userId, rec);
-      if (out.id_reassigned) {
-        reassigned += 1;
-      }
-      saved.push(out);
-    }
-    await conn.commit();
-    var dedupeOut = await dedupeTaxRecords(userId);
-    invalidateTaxRecordsListCache(userId);
-    invalidateUserInfoApiCache(userId);
-    return {
-      deleted: ids.filter(function (x) {
-        return x != null && String(x).trim() !== '';
-      }).length,
-      saved: saved.length,
-      ids: saved.map(function (x) {
-        return x.id;
-      }),
-      reassigned_ids: reassigned,
-      auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
-    };
-  } catch (e) {
+  return withTaxBatchUserLock(userId, async function () {
+    const conn = await pool.getConnection();
     try {
-      await conn.rollback();
-    } catch (e2) {}
-    throw e;
-  } finally {
-    conn.release();
-  }
+      await conn.beginTransaction();
+      const ids = Array.isArray(idsToDelete) ? idsToDelete : [];
+      var deleted = await softDeleteTaxRecordsByIdsInConn(conn, userId, ids);
+      var out = await bulkInsertRecordsInConn(conn, userId, records);
+      await conn.commit();
+      var dedupeOut = await dedupeTaxRecordsScoped(userId, records);
+      invalidateTaxRecordsListCache(userId);
+      invalidateUserInfoApiCache(userId);
+      return {
+        deleted: deleted,
+        saved: out.saved.length,
+        ids: out.saved.map(function (x) {
+          return x.id;
+        }),
+        reassigned_ids: out.reassigned,
+        auto_deduped: dedupeOut.deleted != null ? dedupeOut.deleted : 0
+      };
+    } catch (e) {
+      try {
+        await conn.rollback();
+      } catch (e2) {}
+      throw e;
+    } finally {
+      conn.release();
+    }
+  });
 }
 
 async function deleteAllRecords(userId) {
@@ -3495,6 +3741,103 @@ function taxRecordDedupeGroupKey(r) {
   return String(r.year || '') + '|' + String(r.month || '') + '|' + company + '|' + subtype;
 }
 
+async function softDeleteDedupeIds(conn, userId, idsToDelete) {
+  if (!idsToDelete.length) {
+    return { deleted: 0 };
+  }
+  await conn.beginTransaction();
+  try {
+    var chunk = 80;
+    for (var j = 0; j < idsToDelete.length; j += chunk) {
+      var part = idsToDelete.slice(j, j + chunk);
+      var ph = part
+        .map(function () {
+          return '?';
+        })
+        .join(',');
+      await conn.execute(
+        'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND deleted_at IS NULL AND id IN (' +
+          ph +
+          ')',
+        [userId].concat(part)
+      );
+    }
+    await conn.commit();
+    return { deleted: idsToDelete.length };
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  }
+}
+
+function collectDedupeIdsToDelete(rows) {
+  var groups = {};
+  (rows || []).forEach(function (r) {
+    var key = taxRecordDedupeGroupKey(r);
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(r);
+  });
+  var idsToDelete = [];
+  Object.keys(groups).forEach(function (key) {
+    var g = groups[key];
+    if (g.length <= 1) {
+      return;
+    }
+    for (var i = 0; i < g.length - 1; i++) {
+      idsToDelete.push(g[i].id);
+    }
+  });
+  return idsToDelete;
+}
+
+/** 仅对本次写入涉及的去重键做局部去重，避免全表扫描 */
+async function dedupeTaxRecordsScoped(userId, records) {
+  var keySet = {};
+  var ymPairs = [];
+  var ymSeen = {};
+  (records || []).forEach(function (r) {
+    if (!r || typeof r !== 'object') return;
+    keySet[taxRecordDedupeGroupKey(r)] = true;
+    var y = r.year != null ? Number(r.year) : null;
+    var m = r.month != null ? Number(r.month) : null;
+    if (y == null || m == null || isNaN(y) || isNaN(m)) return;
+    var ymk = y + '|' + m;
+    if (!ymSeen[ymk]) {
+      ymSeen[ymk] = true;
+      ymPairs.push([y, m]);
+    }
+  });
+  if (!ymPairs.length) {
+    return { deleted: 0 };
+  }
+  const conn = await pool.getConnection();
+  try {
+    var orParts = [];
+    var params = [userId];
+    ymPairs.forEach(function (ym) {
+      orParts.push('(year = ? AND month = ?)');
+      params.push(ym[0], ym[1]);
+    });
+    const [rows] = await conn.execute(
+      'SELECT id, year, month, company_name, income_subtype, created_at FROM tax_records WHERE user_id = ? AND ' +
+        TAX_RECORD_NOT_DELETED_SQL +
+        ' AND (' +
+        orParts.join(' OR ') +
+        ') ORDER BY year ASC, month ASC, TRIM(company_name) ASC, income_subtype ASC, created_at ASC, id ASC',
+      params
+    );
+    var filtered = (rows || []).filter(function (r) {
+      return !!keySet[taxRecordDedupeGroupKey(r)];
+    });
+    var idsToDelete = collectDedupeIdsToDelete(filtered);
+    return softDeleteDedupeIds(conn, userId, idsToDelete);
+  } finally {
+    conn.release();
+  }
+}
+
 /** 同一扣缴单位 + 同年同月 + 同所得小类重复记录：保留最新一条，删除较早的 */
 async function dedupeTaxRecords(userId) {
   const conn = await pool.getConnection();
@@ -3505,51 +3848,8 @@ async function dedupeTaxRecords(userId) {
         ' ORDER BY year ASC, month ASC, TRIM(company_name) ASC, income_subtype ASC, created_at ASC, id ASC',
       [userId]
     );
-    var groups = {};
-    (rows || []).forEach(function (r) {
-      var key = taxRecordDedupeGroupKey(r);
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(r);
-    });
-    var idsToDelete = [];
-    Object.keys(groups).forEach(function (key) {
-      var g = groups[key];
-      if (g.length <= 1) {
-        return;
-      }
-      for (var i = 0; i < g.length - 1; i++) {
-        idsToDelete.push(g[i].id);
-      }
-    });
-    if (!idsToDelete.length) {
-      return { deleted: 0 };
-    }
-    /* 批量软删除，避免逐条 SELECT+UPDATE+日志拖慢保存 */
-    await conn.beginTransaction();
-    try {
-      var chunk = 80;
-      for (var j = 0; j < idsToDelete.length; j += chunk) {
-        var part = idsToDelete.slice(j, j + chunk);
-        var ph = part
-          .map(function () {
-            return '?';
-          })
-          .join(',');
-        await conn.execute(
-          'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND deleted_at IS NULL AND id IN (' +
-            ph +
-            ')',
-          [userId].concat(part)
-        );
-      }
-      await conn.commit();
-      return { deleted: idsToDelete.length };
-    } catch (e) {
-      await conn.rollback();
-      throw e;
-    }
+    var idsToDelete = collectDedupeIdsToDelete(rows);
+    return softDeleteDedupeIds(conn, userId, idsToDelete);
   } finally {
     conn.release();
   }
@@ -5515,6 +5815,11 @@ async function getUserSummaryForApi(userId) {
     return null;
   }
   const uid = String(userId).trim();
+  var now = Date.now();
+  var cached = _userSummaryApiCache.get(uid);
+  if (cached && now - cached.t < USER_SUMMARY_API_CACHE_MS) {
+    return cached.v;
+  }
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
@@ -5523,7 +5828,7 @@ async function getUserSummaryForApi(userId) {
       [uid]
     );
     if (!rows.length) {
-      return {
+      var empty = {
         username: uid,
         real_name: uid,
         tax_id: DEFAULT_TAX_ID_HINT,
@@ -5536,6 +5841,8 @@ async function getUserSummaryForApi(userId) {
         user_type: USER_TYPE_NORMAL,
         is_guest: false
       };
+      _userSummaryApiCache.set(uid, { v: empty, t: now });
+      return empty;
     }
     const rec = rows[0];
     const [taxCountRows] = await conn.execute(
@@ -5547,7 +5854,7 @@ async function getUserSummaryForApi(userId) {
       rec.account_active === 1 ||
       rec.account_active === true ||
       Number(rec.account_active) === 1;
-    return {
+    var out = {
       username: uid,
       real_name: rec.real_name != null ? String(rec.real_name) : uid,
       tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
@@ -5561,6 +5868,29 @@ async function getUserSummaryForApi(userId) {
       is_test_account: ut === USER_TYPE_TEST,
       is_guest: ut === USER_TYPE_GUEST
     };
+    _userSummaryApiCache.set(uid, { v: out, t: now });
+    if (_userSummaryApiCache.size > 800) {
+      _userSummaryApiCache.clear();
+    }
+    return out;
+  } finally {
+    conn.release();
+  }
+}
+
+async function listEmployersForUser(userId) {
+  if (userId == null || String(userId).trim() === '') {
+    return [];
+  }
+  const uid = String(userId).trim();
+  const conn = await pool.getConnection();
+  try {
+    const [employerRows] = await conn.execute(
+      `SELECT id, user_id, company_name, credit_code, position, hire_date, leave_date, status
+       FROM employers WHERE user_id = ?`,
+      [uid]
+    );
+    return employerRows || [];
   } finally {
     conn.release();
   }
@@ -6018,15 +6348,15 @@ async function handleUserGet(req, res) {
       var zxkList = await listSpecialDeductionRecordsForUser(userId, req.query.year, voidedQ);
       return res.json({ code: 200, data: { records: zxkList } });
     }
+    if (action === 'employers') {
+      var employersOnly = await listEmployersForUser(userId);
+      return res.json({ code: 200, data: { employers: employersOnly } });
+    }
     var data = await getUserInfoForApi(userId);
     if (!data) {
       return res.status(400).json({ code: 400, msg: 'user_id required' });
     }
-    if (action === 'employers') {
-      res.json({ code: 200, data: { employers: data.employers } });
-    } else {
-      res.json({ code: 200, data: data });
-    }
+    res.json({ code: 200, data: data });
   } catch (e) {
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
@@ -7013,6 +7343,15 @@ function analyticsFinishMiddleware(req, res, next) {
         }
       } catch (e2) {}
       if (latencyMs >= API_SLOW_THRESHOLD_MS && info.biz_category !== '管理后台') {
+        var itemCount = null;
+        try {
+          var b = req.body && typeof req.body === 'object' ? req.body : {};
+          if (Array.isArray(b.records)) {
+            itemCount = b.records.length;
+          } else if (Array.isArray(b.ids_to_delete)) {
+            itemCount = b.ids_to_delete.length;
+          }
+        } catch (eIc) {}
         recordApiSlowEvent({
           source: 'server',
           route_key: info.route_key,
@@ -7020,6 +7359,7 @@ function analyticsFinishMiddleware(req, res, next) {
           net_ms: latencyMs,
           render_ms: 0,
           total_ms: latencyMs,
+          item_count: itemCount,
           username: req.authUserId || null,
           client_id: cid || null,
           page_path: inferPagePathFromRequest(req) || null,
@@ -8205,10 +8545,16 @@ async function handleMessageGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'action=list or detail required' });
   }
   try {
+    var uidMsg = String(userId);
+    var nowMsg = Date.now();
+    var hitMsg = _messageListCache.get(uidMsg);
+    if (hitMsg && nowMsg - hitMsg.t < MESSAGE_LIST_CACHE_MS) {
+      return res.json({ code: 200, data: hitMsg.v });
+    }
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
       'SELECT id, title, company_name, msg_date, is_read FROM messages WHERE user_id = ? ORDER BY msg_date DESC, created_at DESC LIMIT 200',
-      [String(userId)]
+      [uidMsg]
     );
     conn.release();
     var out = rows.map(function (r) {
@@ -8220,6 +8566,10 @@ async function handleMessageGet(req, res) {
         is_read: r.is_read != null ? Number(r.is_read) : 0
       };
     });
+    _messageListCache.set(uidMsg, { t: nowMsg, v: out });
+    if (_messageListCache.size > 800) {
+      _messageListCache.clear();
+    }
     res.json({ code: 200, data: out });
   } catch (e) {
     console.error(e);
@@ -8247,6 +8597,7 @@ async function handleMessagePost(req, res) {
         `INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [mid, String(userId), title, content, companyName, msgDate, isRead]
       );
+      invalidateMessageListCache(userId);
       return res.json({ code: 200, data: { id: mid } });
     }
     if (action === 'delete_message') {
@@ -8255,10 +8606,12 @@ async function handleMessagePost(req, res) {
         return res.status(400).json({ code: 400, msg: 'id required' });
       }
       await conn.execute('DELETE FROM messages WHERE id = ? AND user_id = ?', [String(delId), String(userId)]);
+      invalidateMessageListCache(userId);
       return res.json({ code: 200, data: { success: true } });
     }
     if (action === 'mark_all_read') {
       await conn.execute('UPDATE messages SET is_read = 1 WHERE user_id = ?', [String(userId)]);
+      invalidateMessageListCache(userId);
       return res.json({ code: 200, data: { success: true } });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -9279,8 +9632,11 @@ async function handleTaxPost(req, res) {
       if (!Array.isArray(records) || records.length === 0) {
         return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
       }
-      if (records.length > 600) {
-        return res.status(400).json({ code: 400, msg: '单次最多写入 600 条记录' });
+      if (records.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多写入 ' + TAX_BATCH_MAX_RECORDS + ' 条记录'
+        });
       }
       var batchOut = await batchSaveRecords(userId, records);
       return res.json({ code: 200, data: batchOut });
@@ -9297,8 +9653,11 @@ async function handleTaxPost(req, res) {
       if (!Array.isArray(replaceRecords) || replaceRecords.length === 0) {
         return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
       }
-      if (idsToDelete.length > 600 || replaceRecords.length > 600) {
-        return res.status(400).json({ code: 400, msg: '单次最多处理 600 条删除或写入' });
+      if (idsToDelete.length > TAX_BATCH_MAX_RECORDS || replaceRecords.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多处理 ' + TAX_BATCH_MAX_RECORDS + ' 条删除或写入'
+        });
       }
       var replaceOut = await batchReplaceTaxRecords(userId, idsToDelete, replaceRecords);
       return res.json({ code: 200, data: replaceOut });
@@ -9434,6 +9793,9 @@ async function handleTaxPost(req, res) {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   } catch (e) {
     console.error(e);
+    if (e && e.statusCode === 429) {
+      return res.status(429).json({ code: 429, msg: String(e.message || '请求过于频繁') });
+    }
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -15084,7 +15446,7 @@ async function handlePublicInstallPackages(req, res) {
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
     if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
-      res.setHeader('Cache-Control', 'private, max-age=20');
+      res.setHeader('Cache-Control', 'private, max-age=90');
       return res.json(hit.body);
     }
 
@@ -15126,7 +15488,7 @@ async function handlePublicInstallPackages(req, res) {
     if (_installPackagesResponseCache.size > 500) {
       _installPackagesResponseCache.clear();
     }
-    res.setHeader('Cache-Control', 'private, max-age=20');
+    res.setHeader('Cache-Control', 'private, max-age=90');
     return res.json(body);
   } catch (e) {
     console.error(e);

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-nav-speed"></script>
+    <script src="/js/auth.js?v=20260720-api-opt"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -2080,6 +2080,9 @@
                 if (tab === 'employers') titleEl.textContent = '任职受雇';
                 else if (tab === 'messages') titleEl.textContent = '消息管理';
                 else titleEl.textContent = '税务记录';
+            }
+            if (tab === 'messages') {
+                refreshMessageList().catch(function () {});
             }
             if (tab === 'records') {
                 /* 有新鲜缓存则不再重复拉 tax.php / employers（启动时已拉过） */
@@ -5261,24 +5264,54 @@
         }
 
         function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
-            return authFetch('api/tax.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'batch_replace_records',
-                    ids_to_delete: idsToDelete,
-                    records: records
+            var ids = Array.isArray(idsToDelete) ? idsToDelete : [];
+            var list = Array.isArray(records) ? records : [];
+            var CHUNK = 100;
+            function postOne(delIds, part) {
+                return authFetch('api/tax.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'batch_replace_records',
+                        ids_to_delete: delIds,
+                        records: part
+                    })
                 })
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data.code !== 200) {
-                        throw new Error(data.msg || '批量修改失败');
-                    }
-                    return data.data || {};
-                });
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200) {
+                            throw new Error(data.msg || '批量修改失败');
+                        }
+                        return data.data || {};
+                    });
+            }
+            if (list.length <= CHUNK) {
+                return postOne(ids, list);
+            }
+            var agg = { deleted: 0, saved: 0, ids: [], reassigned_ids: 0, auto_deduped: 0 };
+            var chain = Promise.resolve();
+            var i;
+            for (i = 0; i < list.length; i += CHUNK) {
+                (function (part, delIds) {
+                    chain = chain.then(function () {
+                        return postOne(delIds, part).then(function (data) {
+                            agg.deleted += Number(data.deleted) || 0;
+                            agg.saved += Number(data.saved) || part.length;
+                            if (Array.isArray(data.ids)) {
+                                agg.ids = agg.ids.concat(data.ids);
+                            }
+                            agg.reassigned_ids += Number(data.reassigned_ids) || 0;
+                            agg.auto_deduped += Number(data.auto_deduped) || 0;
+                            return agg;
+                        });
+                    });
+                })(list.slice(i, i + CHUNK), i === 0 ? ids : []);
+            }
+            return chain.then(function () {
+                return agg;
+            });
         }
 
         function setBatchTaxActionLoading(loading, isUpdate) {
@@ -6283,19 +6316,47 @@
         }
 
         function postBatchTaxRecordsPromise(records) {
-            return authFetch('api/tax.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'batch_save_records',
-                    records: records
+            var list = Array.isArray(records) ? records : [];
+            var CHUNK = 100;
+            function postOneChunk(part) {
+                return authFetch('api/tax.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'batch_save_records',
+                        records: part
+                    })
                 })
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code !== 200) throw new Error(data.msg || '批量保存失败');
-                    return data.data || {};
-                });
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.code !== 200) throw new Error(data.msg || '批量保存失败');
+                        return data.data || {};
+                    });
+            }
+            if (list.length <= CHUNK) {
+                return postOneChunk(list);
+            }
+            var agg = { saved: 0, ids: [], reassigned_ids: 0, auto_deduped: 0 };
+            var chain = Promise.resolve();
+            var i;
+            for (i = 0; i < list.length; i += CHUNK) {
+                (function (part) {
+                    chain = chain.then(function () {
+                        return postOneChunk(part).then(function (data) {
+                            agg.saved += Number(data.saved) || part.length;
+                            if (Array.isArray(data.ids)) {
+                                agg.ids = agg.ids.concat(data.ids);
+                            }
+                            agg.reassigned_ids += Number(data.reassigned_ids) || 0;
+                            agg.auto_deduped += Number(data.auto_deduped) || 0;
+                            return agg;
+                        });
+                    });
+                })(list.slice(i, i + CHUNK));
+            }
+            return chain.then(function () {
+                return agg;
+            });
         }
 
         function setBatchSubmitBtnLoading(loading) {
@@ -7231,9 +7292,7 @@
                     if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                         window.appPageLoadingDispatchConsultDone();
                     }
-                    setTimeout(function () {
-                        refreshMessageList().catch(function () {});
-                    }, 1200);
+                    /* 消息列表改为进入消息 Tab 时懒加载，避免开机与 tax 并发抢连接 */
                 });
             tryEditFromUrl();
         }

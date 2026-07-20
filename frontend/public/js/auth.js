@@ -1548,6 +1548,36 @@
   var _apiPerfLastReportAt = 0;
   var _authGetInFlight = new Map();
 
+  function extractApiActionHint(url, opts) {
+    var action = '';
+    try {
+      var u = String(url || '');
+      var qIdx = u.indexOf('?');
+      if (qIdx >= 0) {
+        var qs = u.slice(qIdx + 1);
+        var parts = qs.split('&');
+        for (var i = 0; i < parts.length; i++) {
+          var kv = parts[i].split('=');
+          if (decodeURIComponent(kv[0] || '') === 'action') {
+            action = decodeURIComponent(kv[1] || '').trim();
+            break;
+          }
+        }
+      }
+    } catch (eQ) {}
+    if (!action && opts && opts.body != null) {
+      try {
+        var raw = opts.body;
+        if (typeof raw === 'string' && raw.charAt(0) === '{') {
+          var j = JSON.parse(raw);
+          if (j && j.action != null) action = String(j.action).trim();
+        }
+      } catch (eB) {}
+    }
+    if (action.length > 80) action = action.substring(0, 80);
+    return action;
+  }
+
   function authFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
@@ -1564,7 +1594,9 @@
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
-    var routeHint = String(url || '').split('?')[0];
+    var pathHint = String(url || '').split('?')[0];
+    var actionHint = extractApiActionHint(url, opts);
+    var routeHint = actionHint ? pathHint + '#' + actionHint : pathHint;
     var p = fetch(url, opts).then(function (r) {
       var reqEnd =
         typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -1578,6 +1610,8 @@
       if (netMs >= API_PERF_SLOW_MS) {
         reportApiPerf({
           route_key: routeHint,
+          method: method,
+          action: actionHint || undefined,
           net_ms: netMs,
           render_ms: 0,
           total_ms: netMs,
@@ -1664,7 +1698,7 @@
 
   /**
    * 上报接口/渲染耗时（仅总耗时或网络耗时 ≥ 3s 写入异常明细）。
-   * meta: { route_key, net_ms, render_ms, total_ms, item_count, page_path, http_status }
+   * meta: { route_key, method, action, net_ms, render_ms, total_ms, item_count, page_path, http_status }
    */
   function reportApiPerf(meta) {
     try {
@@ -1676,8 +1710,15 @@
       var now = Date.now();
       if (now - _apiPerfLastReportAt < 800) return;
       _apiPerfLastReportAt = now;
+      var routeKey = String(m.route_key || m.route || m.url || '').substring(0, 240);
+      var action = m.action != null ? String(m.action).trim() : '';
+      if (action && routeKey && routeKey.indexOf('#') < 0) {
+        routeKey = (routeKey + '#' + action).substring(0, 240);
+      }
       var payload = {
-        route_key: String(m.route_key || m.route || m.url || '').substring(0, 240),
+        route_key: routeKey,
+        method: m.method != null ? String(m.method).toUpperCase().substring(0, 16) : undefined,
+        action: action || undefined,
         net_ms: netMs,
         render_ms: renderMs,
         total_ms: totalMs,

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-nav-speed"></script>
+    <script src="/js/auth.js?v=20260720-api-opt"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1747,6 +1747,18 @@
             var mineXianyuPurchaseUrl = '';
 
             function fetchMineXianyuUrl() {
+                if (typeof window.getCachedPublicInstallPackages === 'function') {
+                    var cached = window.getCachedPublicInstallPackages();
+                    if (cached) {
+                        if (cached.xianyu_purchase_url) {
+                            mineXianyuPurchaseUrl = String(cached.xianyu_purchase_url).trim();
+                        }
+                        if (typeof applyXianyuPurchaseVisibility === 'function') {
+                            applyXianyuPurchaseVisibility(cached);
+                        }
+                        return;
+                    }
+                }
                 if (typeof window.refreshPublicInstallPackagesUi === 'function') {
                     window
                         .refreshPublicInstallPackagesUi()
