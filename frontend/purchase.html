@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-fast-nav"></script>
+    <script src="/js/auth.js?v=20260720-nav-speed"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>购买激活</title>
     <style>
@@ -12,7 +12,7 @@
             background: #f5f6fa;
             min-height: 100vh;
             color: #333;
-            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
         }
         .header {
             background: #fff;
@@ -33,12 +33,13 @@
             text-decoration: none;
             display: flex;
             align-items: center;
+            gap: 2px;
             -webkit-tap-highlight-color: transparent;
         }
-        .back-btn .arrow {
-            font-size: 22px;
-            line-height: 1;
-            margin-right: 2px;
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            vertical-align: middle;
         }
         .header-title {
             font-size: 17px;
@@ -54,13 +55,13 @@
             background: linear-gradient(160deg, #1e6fff 0%, #3a8bff 55%, #5aa0ff 100%);
             color: #fff;
             border-radius: 14px;
-            padding: 18px 16px;
+            padding: 16px;
             margin-bottom: 12px;
         }
         .hero h1 {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .hero p {
             font-size: 13px;
@@ -87,6 +88,23 @@
             line-height: 1.5;
             margin-bottom: 12px;
         }
+        .card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .card-head .card-title { margin-bottom: 0; }
+        .badge-auto {
+            flex-shrink: 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #1677ff;
+            background: #e8f3ff;
+            border-radius: 999px;
+            padding: 3px 8px;
+        }
         .qr-wrap {
             display: flex;
             flex-direction: column;
@@ -105,6 +123,23 @@
         .qr-caption {
             font-size: 13px;
             color: #666;
+            text-align: center;
+            line-height: 1.45;
+        }
+        .pay-status {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f0f6ff;
+            color: #1e6fff;
+            font-size: 13px;
+            line-height: 1.45;
+            text-align: center;
+        }
+        .pay-status[hidden] { display: none !important; }
+        .pay-status.is-wait {
+            background: #fff7e8;
+            color: #b45309;
         }
         .btn {
             display: block;
@@ -118,6 +153,7 @@
             text-decoration: none;
             -webkit-tap-highlight-color: transparent;
             cursor: pointer;
+            font-family: inherit;
         }
         .btn + .btn { margin-top: 10px; }
         .btn-primary {
@@ -128,20 +164,17 @@
             background: #f0f4fa;
             color: #1e6fff;
         }
-        .btn-xianyu {
-            background: #ff6a00;
-            color: #fff;
-        }
-        .btn-kufaka {
-            background: #0f766e;
-            color: #fff;
-        }
         .btn-alipay {
             background: #1677ff;
             color: #fff;
         }
         .btn:disabled {
-            opacity: 0.5;
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .activate-box {
+            border: 1px solid #dbeafe;
+            box-shadow: 0 2px 10px rgba(30, 111, 255, 0.06);
         }
         .activate-box .field-label {
             display: block;
@@ -163,6 +196,75 @@
             border-color: #1e6fff;
             background: #fff;
         }
+        .channel-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .channel-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 12px;
+            border: 1px solid #eef2f7;
+            border-radius: 10px;
+            background: #f8fafc;
+            text-decoration: none;
+            color: inherit;
+            font-family: inherit;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .channel-row[hidden] { display: none !important; }
+        .channel-row:active { background: #eef5ff; }
+        .channel-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .channel-icon.wechat { background: #07c160; }
+        .channel-icon.xianyu { background: #ff6a00; }
+        .channel-icon.kufaka { background: #0f766e; }
+        .channel-icon.chat { background: #1e6fff; }
+        .channel-icon.qq { background: #12b7f5; }
+        .channel-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .channel-body strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+        .channel-body span {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.35;
+        }
+        .channel-arrow {
+            flex-shrink: 0;
+            color: #c7c7cc;
+            font-size: 16px;
+        }
+        .wechat-panel {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .wechat-panel[hidden] { display: none !important; }
         .steps {
             font-size: 13px;
             color: #666;
@@ -170,86 +272,145 @@
             padding-left: 18px;
         }
         .steps li + li { margin-top: 2px; }
-        .empty-tip {
-            text-align: center;
-            color: #999;
+        .section-label {
             font-size: 13px;
-            padding: 8px 0;
+            font-weight: 600;
+            color: #64748b;
+            margin: 4px 2px 10px;
         }
+        .purchase-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            max-width: calc(100% - 48px);
+            background: rgba(33, 33, 33, 0.92);
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 10px 16px;
+            border-radius: 10px;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .purchase-toast.show { opacity: 1; }
     </style>
 </head>
 <body>
     <div class="header">
-        <a class="back-btn" href="mine.html"><span class="arrow">‹</span>返回</a>
+        <a class="back-btn" id="purchaseBackBtn" href="mine.html">
+            <img src="/jt.png" alt="" width="9" decoding="async">
+            <span>返回</span>
+        </a>
         <div class="header-title">购买激活</div>
     </div>
     <div class="page">
         <div class="hero">
-            <h1>获取激活码</h1>
-            <p>可通过支付宝、微信扫码、闲鱼、酷发卡、在线客服或 QQ 获取激活码；购买后即可开通完整功能。</p>
-        </div>
-
-        <div class="card" id="cardAlipay" hidden>
-            <div class="card-title">支付宝购买</div>
-            <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
-            <div class="qr-wrap" id="alipayQrWrap" hidden>
-                <img id="alipayQrImg" src="" alt="支付宝付款二维码">
-                <div class="qr-caption" id="alipayQrCaption">请使用支付宝扫一扫完成付款</div>
-                <button type="button" class="btn btn-secondary" id="btnAlipayOpenLink" hidden>手机上打开支付宝付款</button>
-            </div>
-        </div>
-
-        <div class="card" id="cardWechat" hidden>
-            <div class="card-title">微信购买</div>
-            <p class="card-hint">使用微信扫描下方二维码，按提示完成购买后获取激活码。</p>
-            <div class="qr-wrap">
-                <img id="wechatQrImg" src="" alt="微信收款二维码">
-                <div class="qr-caption">微信扫一扫</div>
-            </div>
-        </div>
-
-        <div class="card" id="cardXianyu" hidden>
-            <div class="card-title">闲鱼购买</div>
-            <p class="card-hint">点击下方按钮复制闲鱼购买文案，打开闲鱼搜索或粘贴即可联系卖家。</p>
-            <button type="button" class="btn btn-xianyu" id="btnPurchaseXianyu">复制闲鱼购买文案</button>
-        </div>
-
-        <div class="card" id="cardKufaka">
-            <div class="card-title">酷发卡购买</div>
-            <p class="card-hint">点击下方按钮打开酷发卡商品页，按页面提示下单后获取激活码。</p>
-            <a class="btn btn-kufaka" id="btnPurchaseKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">前往酷发卡购买</a>
-        </div>
-
-        <div class="card" id="cardContact">
-            <div class="card-title">联系客服</div>
-            <p class="card-hint">购买、激活遇到问题可先咨询在线客服，也可通过 QQ 联系。</p>
-            <a class="btn btn-secondary" id="btnPurchaseOnlineChat" href="chat.html?from=purchase">在线客服</a>
-            <button type="button" class="btn btn-secondary" id="btnPurchaseQqGroup" hidden>加入 QQ 交流群</button>
-            <button type="button" class="btn btn-secondary" id="btnPurchaseQqAdd" hidden>添加 QQ 号</button>
-        </div>
-
-        <div class="card" id="cardEmptyChannels" hidden>
-            <p class="empty-tip">暂未配置购买渠道，请稍后重试或联系管理员。</p>
+            <h1>开通完整功能</h1>
+            <p>支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。</p>
         </div>
 
         <div class="card activate-box">
-            <div class="card-title">已有激活码？</div>
+            <div class="card-title">已有激活码</div>
             <p class="card-hint">购买完成后，将激活码粘贴到下方确认开通。</p>
             <label class="field-label" for="purchaseActivateCode">激活码</label>
             <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
         </div>
 
+        <div class="card" id="cardAlipay" hidden>
+            <div class="card-head">
+                <div class="card-title">支付宝购买</div>
+                <span class="badge-auto">付款后自动开通</span>
+            </div>
+            <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
+            <div class="qr-wrap" id="alipayQrWrap" hidden>
+                <img id="alipayQrImg" src="" alt="支付宝付款二维码">
+                <div class="qr-caption" id="alipayQrCaption">请使用支付宝扫一扫完成付款</div>
+                <button type="button" class="btn btn-secondary" id="btnAlipayOpenLink" hidden>打开支付宝付款</button>
+            </div>
+            <div class="pay-status" id="alipayPayStatus" hidden></div>
+        </div>
+
+        <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
+        <div class="card" id="cardOtherChannels">
+            <div class="channel-list">
+                <button type="button" class="channel-row" id="rowWechat" hidden>
+                    <span class="channel-icon wechat">微</span>
+                    <span class="channel-body">
+                        <strong>微信购买</strong>
+                        <span>扫码付款后获取激活码</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+                <div class="wechat-panel" id="wechatPanel" hidden>
+                    <div class="qr-wrap">
+                        <img id="wechatQrImg" src="" alt="微信收款二维码">
+                        <div class="qr-caption">使用微信扫一扫完成购买</div>
+                    </div>
+                </div>
+
+                <button type="button" class="channel-row" id="rowXianyu" hidden>
+                    <span class="channel-icon xianyu">闲</span>
+                    <span class="channel-body">
+                        <strong>闲鱼购买</strong>
+                        <span>复制文案，打开闲鱼联系卖家</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+
+                <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
+                    <span class="channel-icon kufaka">酷</span>
+                    <span class="channel-body">
+                        <strong>酷发卡购买</strong>
+                        <span>跳转商品页下单获取激活码</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </a>
+
+                <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase">
+                    <span class="channel-icon chat">客</span>
+                    <span class="channel-body">
+                        <strong>在线客服</strong>
+                        <span>购买、激活问题可先咨询</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </a>
+
+                <button type="button" class="channel-row" id="rowQqGroup" hidden>
+                    <span class="channel-icon qq">群</span>
+                    <span class="channel-body">
+                        <strong>加入 QQ 交流群</strong>
+                        <span>向群内客服咨询购买</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+
+                <button type="button" class="channel-row" id="rowQqAdd" hidden>
+                    <span class="channel-icon qq">QQ</span>
+                    <span class="channel-body">
+                        <strong>添加 QQ 号</strong>
+                        <span>一对一咨询购买开通</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title">购买说明</div>
             <ol class="steps">
-                <li>选择微信、闲鱼、酷发卡或 QQ 任一方式购买</li>
-                <li>按卖家 / 客服指引付款并领取激活码</li>
-                <li>回到本页输入激活码完成开通</li>
+                <li>支付宝：扫码付款成功后自动开通当前账号</li>
+                <li>微信 / 闲鱼 / 酷发卡：付款后领取激活码</li>
+                <li>回到本页顶部输入激活码，点击「确认激活」</li>
             </ol>
         </div>
     </div>
+
+    <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
 
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
@@ -272,6 +433,59 @@
     };
     var purchasePageViewTracked = false;
     var alipayOrderPolling = null;
+    var toastTimer = null;
+
+    function showToast(msg) {
+        var el = document.getElementById('purchaseToast');
+        if (!el) {
+            alert(msg);
+            return;
+        }
+        el.textContent = msg != null ? String(msg) : '';
+        el.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        var ms = 2800;
+        try {
+            if (typeof window.getToastDurationMs === 'function') {
+                ms = window.getToastDurationMs() || ms;
+            }
+        } catch (e1) {}
+        toastTimer = setTimeout(function () {
+            el.classList.remove('show');
+        }, ms);
+    }
+
+    function resolveBackHref() {
+        var from = '';
+        try {
+            from = new URLSearchParams(window.location.search).get('from') || '';
+        } catch (e2) {}
+        from = String(from || '').trim().toLowerCase();
+        var map = {
+            mine: 'mine.html',
+            consult: 'consult.html?tab=records',
+            chat: 'chat.html?from=purchase',
+            shouye: 'shouye.html',
+            guide: 'install_guide.html',
+            register: 'register.html'
+        };
+        if (map[from]) return map[from];
+        try {
+            if (window.history.length > 1 && document.referrer) {
+                var ref = new URL(document.referrer);
+                if (ref.origin === window.location.origin) {
+                    return document.referrer;
+                }
+            }
+        } catch (e3) {}
+        return 'mine.html';
+    }
+
+    (function initBackLink() {
+        var back = document.getElementById('purchaseBackBtn');
+        if (!back) return;
+        back.setAttribute('href', resolveBackHref());
+    })();
 
     function trackPurchase(action, meta) {
         if (typeof window.trackUserAction !== 'function') return;
@@ -344,13 +558,31 @@
         });
     }
 
+    function setAlipayStatus(text, waiting) {
+        var el = document.getElementById('alipayPayStatus');
+        if (!el) return;
+        if (!text) {
+            el.hidden = true;
+            el.textContent = '';
+            el.classList.remove('is-wait');
+            return;
+        }
+        el.hidden = false;
+        el.textContent = text;
+        if (waiting) el.classList.add('is-wait');
+        else el.classList.remove('is-wait');
+    }
+
     function activateAfterAlipayPaid() {
         try {
             localStorage.setItem('account_active', '1');
         } catch (e) {}
         trackPurchase('track_alipay_payment_success');
-        alert('支付宝付款成功，账号已自动开通。');
-        window.location.replace('consult.html?tab=records&onboarding=tax');
+        setAlipayStatus('付款成功，正在开通账号…', false);
+        showToast('支付宝付款成功，账号已自动开通');
+        setTimeout(function () {
+            window.location.replace('consult.html?tab=records&onboarding=tax');
+        }, 600);
     }
 
     function checkAlipayLatestOrder() {
@@ -371,6 +603,7 @@
 
     function startAlipayOrderPolling() {
         if (alipayOrderPolling) return;
+        setAlipayStatus('等待付款中…付款成功后将自动开通', true);
         alipayOrderPolling = setInterval(function () {
             checkAlipayLatestOrder();
         }, 2500);
@@ -415,7 +648,7 @@
                         (data.subject || '个税记录平台激活码') +
                         '，支付 ' +
                         (data.amount || '') +
-                        ' 元后自动开通当前登录账号。使用支付宝扫码付款即可。';
+                        ' 元后自动开通当前登录账号。';
                 }
                 return checkAlipayLatestOrder();
             })
@@ -432,47 +665,45 @@
             data.wechat_pay_qrcode_url ||
             '';
         qr = String(qr || '').trim();
-        var cardWechat = document.getElementById('cardWechat');
+        var rowWechat = document.getElementById('rowWechat');
         var img = document.getElementById('wechatQrImg');
         if (showWechat && qr) {
             img.src = qr;
-            cardWechat.hidden = false;
+            rowWechat.hidden = false;
             trackPurchase('track_purchase_wechat_view');
         } else {
-            cardWechat.hidden = true;
+            rowWechat.hidden = true;
+            document.getElementById('wechatPanel').hidden = true;
         }
 
         cfg.xianyu =
             data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
         var showXy = data.show_xianyu_purchase !== false && !!cfg.xianyu;
-        document.getElementById('cardXianyu').hidden = !showXy;
+        document.getElementById('rowXianyu').hidden = !showXy;
 
         cfg.qqGroup = data.qq_group_url != null ? String(data.qq_group_url).trim() : '';
         cfg.qqAdd = data.qq_add_url != null ? String(data.qq_add_url).trim() : '';
         var showQqGroup = data.show_qq_group !== false && !!cfg.qqGroup;
         var showQqAdd = data.show_qq_add !== false && !!cfg.qqAdd;
-        var btnGroup = document.getElementById('btnPurchaseQqGroup');
-        var btnAdd = document.getElementById('btnPurchaseQqAdd');
-        btnGroup.hidden = !showQqGroup;
-        btnAdd.hidden = !showQqAdd;
-        document.getElementById('cardContact').hidden = false;
-        /* 在线客服始终可用，不再展示「暂未配置购买渠道」 */
-        document.getElementById('cardEmptyChannels').hidden = true;
+        document.getElementById('rowQqGroup').hidden = !showQqGroup;
+        document.getElementById('rowQqAdd').hidden = !showQqAdd;
     }
 
     function trackPurchasePageViewWithChannels() {
         if (purchasePageViewTracked) return;
         purchasePageViewTracked = true;
-        var cardWechat = document.getElementById('cardWechat');
-        var cardXianyu = document.getElementById('cardXianyu');
-        var btnGroup = document.getElementById('btnPurchaseQqGroup');
-        var btnAdd = document.getElementById('btnPurchaseQqAdd');
+        var rowWechat = document.getElementById('rowWechat');
+        var rowXianyu = document.getElementById('rowXianyu');
+        var rowQqGroup = document.getElementById('rowQqGroup');
+        var rowQqAdd = document.getElementById('rowQqAdd');
+        var cardAlipay = document.getElementById('cardAlipay');
         trackPurchase('track_purchase_page_view', {
-            wechat: !!(cardWechat && !cardWechat.hidden),
-            xianyu: !!(cardXianyu && !cardXianyu.hidden),
+            alipay: !!(cardAlipay && !cardAlipay.hidden),
+            wechat: !!(rowWechat && !rowWechat.hidden),
+            xianyu: !!(rowXianyu && !rowXianyu.hidden),
             kufaka: true,
-            qq_group: !!(btnGroup && !btnGroup.hidden),
-            qq_add: !!(btnAdd && !btnAdd.hidden),
+            qq_group: !!(rowQqGroup && !rowQqGroup.hidden),
+            qq_add: !!(rowQqAdd && !rowQqAdd.hidden),
             online_chat: true
         });
     }
@@ -509,7 +740,8 @@
         var input = document.getElementById('purchaseActivateCode');
         var code = input ? String(input.value || '').trim() : '';
         if (!code) {
-            alert('激活码不能为空');
+            showToast('请输入激活码');
+            if (input) input.focus();
             return;
         }
         var btn = document.getElementById('btnPurchaseActivate');
@@ -541,8 +773,10 @@
                     if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
                         window.ConversionGuide.afterActivateSuccess();
                     } else {
-                        alert('激活成功');
-                        window.location.href = 'consult.html?tab=records&onboarding=tax';
+                        showToast('激活成功');
+                        setTimeout(function () {
+                            window.location.href = 'consult.html?tab=records&onboarding=tax';
+                        }, 500);
                     }
                     return;
                 }
@@ -550,36 +784,47 @@
                     reason: (x.body && x.body.msg) || 'activate_failed',
                     http_status: x.status
                 });
-                alert((x.body && x.body.msg) || '激活失败');
+                showToast((x.body && x.body.msg) || '激活失败');
             })
             .catch(function () {
                 trackPurchase('track_purchase_activate_fail', { reason: 'network_error' });
-                alert('网络错误');
+                showToast('网络错误，请稍后重试');
             })
             .then(function () {
                 if (btn) btn.disabled = false;
             });
     }
 
-    document.getElementById('btnPurchaseXianyu').addEventListener('click', function () {
+    document.getElementById('rowWechat').addEventListener('click', function () {
+        var panel = document.getElementById('wechatPanel');
+        panel.hidden = !panel.hidden;
+        trackPurchase('track_purchase_wechat_expand', { open: !panel.hidden });
+        if (!panel.hidden) {
+            try {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (e4) {}
+        }
+    });
+
+    document.getElementById('rowXianyu').addEventListener('click', function () {
         trackPurchase('track_xianyu_purchase_click');
         var text = cfg.xianyu;
         if (!text) {
-            alert('暂未配置闲鱼购买文案');
+            showToast('暂未配置闲鱼购买文案');
             return;
         }
         if (typeof copyXianyuPurchaseText === 'function') {
             copyXianyuPurchaseText(text).catch(function () {
-                alert('复制失败，请手动复制：\n' + text);
+                showToast('复制失败，请手动复制');
             });
         } else {
-            alert(text);
+            showToast(text);
         }
     });
 
-    var btnKufaka = document.getElementById('btnPurchaseKufaka');
-    if (btnKufaka) {
-        btnKufaka.addEventListener('click', function (ev) {
+    var rowKufaka = document.getElementById('rowKufaka');
+    if (rowKufaka) {
+        rowKufaka.addEventListener('click', function (ev) {
             trackPurchase('track_kufaka_purchase_click', { url: KUFAKA_PURCHASE_URL });
             /* 壳内 WebView 优先外开，避免卡在应用内 */
             if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
@@ -589,23 +834,23 @@
         });
     }
 
-    document.getElementById('btnPurchaseOnlineChat').addEventListener('click', function () {
+    document.getElementById('rowOnlineChat').addEventListener('click', function () {
         trackPurchase('track_online_chat_click');
     });
 
-    document.getElementById('btnPurchaseQqGroup').addEventListener('click', function () {
+    document.getElementById('rowQqGroup').addEventListener('click', function () {
         trackPurchase('track_qq_group_click');
         if (!cfg.qqGroup) {
-            alert('暂未配置 QQ 群链接');
+            showToast('暂未配置 QQ 群链接');
             return;
         }
         openExternalUrl(cfg.qqGroup);
     });
 
-    document.getElementById('btnPurchaseQqAdd').addEventListener('click', function () {
+    document.getElementById('rowQqAdd').addEventListener('click', function () {
         trackPurchase('track_qq_add_click');
         if (!cfg.qqAdd) {
-            alert('暂未配置 QQ 添加链接');
+            showToast('暂未配置 QQ 添加链接');
             return;
         }
         openExternalUrl(cfg.qqAdd);
@@ -616,6 +861,7 @@
         var btn = this;
         btn.disabled = true;
         trackPurchase('track_alipay_payment_start');
+        setAlipayStatus('正在创建付款订单…', true);
         paymentFetch('/api/payments/alipay/create', {
             method: 'POST',
             body: JSON.stringify({})
@@ -630,7 +876,8 @@
                 btn.disabled = false;
             })
             .catch(function (e) {
-                alert(e && e.message ? e.message : '创建支付订单失败，请稍后重试');
+                setAlipayStatus('', false);
+                showToast(e && e.message ? e.message : '创建支付订单失败，请稍后重试');
                 btn.disabled = false;
             });
     });
@@ -641,7 +888,7 @@
         }
     });
 
-    document.querySelector('.back-btn').addEventListener('click', function () {
+    document.getElementById('purchaseBackBtn').addEventListener('click', function () {
         trackPurchase('track_purchase_back_click');
     });
 
