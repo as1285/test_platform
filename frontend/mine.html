@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260719-guest-cv"></script>
+    <script src="/js/auth.js?v=20260720-slow3s"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1741,6 +1741,17 @@
             var mineXianyuPurchaseUrl = '';
 
             function fetchMineXianyuUrl() {
+                if (typeof window.refreshPublicInstallPackagesUi === 'function') {
+                    window
+                        .refreshPublicInstallPackagesUi()
+                        .then(function (data) {
+                            if (data && data.xianyu_purchase_url) {
+                                mineXianyuPurchaseUrl = String(data.xianyu_purchase_url).trim();
+                            }
+                        })
+                        .catch(function () {});
+                    return;
+                }
                 var req =
                     typeof fetchPublicInstallPackages === 'function'
                         ? fetchPublicInstallPackages()
@@ -1977,7 +1988,7 @@
                               return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
                           };
 
-                fetchFn('api/user.php?action=info')
+                fetchFn('api/user.php?action=summary')
                     .then(function (r) {
                         return r.json();
                     })

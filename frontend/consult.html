@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260717-slow-opt"></script>
+    <script src="/js/auth.js?v=20260720-slow3s"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -1736,18 +1736,18 @@
                 return;
             }
             
-            authFetch('api/user.php?action=info')
+            authFetch('api/user.php?action=summary')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
                         var user = data.data;
                         
-                        localStorage.setItem('real_name', user.real_name);
-                        localStorage.setItem('tax_id', user.tax_id);
-                        localStorage.setItem('employer_count', user.employer_count);
-                        localStorage.setItem('family_count', user.family_count);
-                        localStorage.setItem('bank_card_count', user.bank_card_count);
-                        localStorage.setItem('gender', user.gender);
+                        if (user.real_name) localStorage.setItem('real_name', user.real_name);
+                        if (user.tax_id) localStorage.setItem('tax_id', user.tax_id);
+                        if (user.employer_count != null) localStorage.setItem('employer_count', user.employer_count);
+                        if (user.family_count != null) localStorage.setItem('family_count', user.family_count);
+                        if (user.bank_card_count != null) localStorage.setItem('bank_card_count', user.bank_card_count);
+                        if (user.gender != null) localStorage.setItem('gender', user.gender);
                         syncAccountActiveToStorage(user);
                         updateProfileForm(user);
                     }
@@ -1933,7 +1933,10 @@
                 initBelongingPeriodSync();
                 initTaxReportedManualEditTracking();
 
-                loadUserInfoFromApi();
+                /* 用户资料不挡税务列表首屏 */
+                setTimeout(function () {
+                    loadUserInfoFromApi();
+                }, 400);
             } catch (err) {
                 console.error('initHeader', err);
             }
@@ -2313,9 +2316,11 @@
                 });
         }
 
-        function refreshRecordList() {
+        function refreshRecordList(opts) {
+            opts = opts || {};
+            var force = opts.force !== false;
             /* 一次拉 records + employers，避免 syncAllCompanyProfiles 再重复拉一遍 records */
-            return Promise.all([apiFetchRecords({ force: true }), apiFetchEmployers({ force: true })]).then(function (res) {
+            return Promise.all([apiFetchRecords({ force: force }), apiFetchEmployers({ force: force })]).then(function (res) {
                 var list = res[0] || [];
                 syncCompanyProfilesFromTaxRecords(list);
                 syncCompanyProfilesFromEmployers(res[1] || []);
@@ -6487,10 +6492,10 @@
             initBatchCompanyHistoryUi();
             initTabs();
             setDefaultMsgDate();
+            /* 首屏：优先税务列表；安装包/用户资料用缓存或延后，降低 4G 并发排队 */
             Promise.all([
                 refreshConsultInstallPackageUrls(),
-                refreshRecordList().then(function () {
-                    /* employers 已在 refreshRecordList 一并拉取，此处只渲染任职列表 */
+                refreshRecordList({ force: false }).then(function () {
                     return refreshEmployerList();
                 })
             ])
@@ -6500,7 +6505,6 @@
                     if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                         window.appPageLoadingDispatchConsultDone();
                     }
-                    /* 消息列表不挡首屏，延后拉取降低 4G 并发排队 */
                     setTimeout(function () {
                         refreshMessageList().catch(function () {});
                     }, 1200);

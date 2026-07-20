@@ -332,6 +332,14 @@ var _wechatPayQrcodeCache = null;
 var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
 var _installPackageSettingsCache = null;
 var INSTALL_PACKAGE_SETTINGS_CACHE_MS = 30000;
+var _installPackagesResponseCache = new Map();
+var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 20000;
+var _salesPromoChannelCache = new Map();
+var SALES_PROMO_CHANNEL_CACHE_MS = 30000;
+var _taxRecordsListCache = new Map();
+var TAX_RECORDS_LIST_CACHE_MS = 4000;
+var _userInfoApiCache = new Map();
+var USER_INFO_API_CACHE_MS = 5000;
 
 async function getWechatPayQrcodeUrl() {
   var now = Date.now();
@@ -362,6 +370,7 @@ function invalidateWechatPayQrcodeCache() {
 
 function invalidateInstallPackageSettingsCache() {
   _installPackageSettingsCache = null;
+  invalidateInstallPackagesResponseCache();
 }
 
 /** 用户端展示用：uploads/… 或相对路径补全为站内 URL */
@@ -1003,15 +1012,26 @@ async function getUserSalesPromoChannel(userId) {
   if (!pool || userId == null || String(userId).trim() === '') {
     return '';
   }
+  var uid = String(userId).trim();
+  var now = Date.now();
+  var hit = _salesPromoChannelCache.get(uid);
+  if (hit && now - hit.t < SALES_PROMO_CHANNEL_CACHE_MS) {
+    return hit.v;
+  }
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute('SELECT sales_promo_channel FROM users WHERE username = ? LIMIT 1', [
-      String(userId).trim()
+      uid
     ]);
-    if (!rows.length || rows[0].sales_promo_channel == null) {
-      return '';
+    var ch = '';
+    if (rows.length && rows[0].sales_promo_channel != null) {
+      ch = sanitizeSalesChannelId(rows[0].sales_promo_channel);
     }
-    return sanitizeSalesChannelId(rows[0].sales_promo_channel);
+    _salesPromoChannelCache.set(uid, { v: ch, t: now });
+    if (_salesPromoChannelCache.size > 4000) {
+      _salesPromoChannelCache.clear();
+    }
+    return ch;
   } finally {
     conn.release();
   }
@@ -1036,19 +1056,61 @@ async function resolveEffectiveSalesChannel(req) {
   }
 }
 
-async function shouldHideXianyuForRequest(req) {
+/**
+ * 一次解析安装包上下文，避免 install-packages 重复查渠道归因 / 用户渠道。
+ * @returns {{ raw: object, salesCh: string, hideXianyu: boolean }}
+ */
+async function resolveInstallPackagesContext(req) {
   var raw = await getInstallPackageSettingsFromDb();
   var hideList = raw.xianyu_hide_channels || [];
+  var queryCh = sanitizeSalesChannelId(
+    (req.query && (req.query.sales_ch || req.query.ch)) || ''
+  );
   var uid =
     req && req.authUserId != null && String(req.authUserId).trim() !== ''
       ? String(req.authUserId).trim()
       : tryAuthUserIdFromRequest(req);
-  if (uid) {
-    var userCh = await getUserSalesPromoChannel(uid);
-    return shouldHideXianyuForSalesChannel(userCh, hideList);
+  var userCh = uid ? await getUserSalesPromoChannel(uid) : '';
+  var salesCh = queryCh || userCh || '';
+  if (!salesCh) {
+    try {
+      salesCh = await resolveSalesChannelForRequest(req);
+    } catch (e) {
+      salesCh = '';
+    }
   }
-  var ch = await resolveEffectiveSalesChannel(req);
-  return shouldHideXianyuForSalesChannel(ch, hideList);
+  var hideXianyu = shouldHideXianyuForSalesChannel(uid ? userCh : salesCh, hideList);
+  return { raw: raw, salesCh: salesCh || null, hideXianyu: hideXianyu };
+}
+
+async function shouldHideXianyuForRequest(req) {
+  var ctx = await resolveInstallPackagesContext(req);
+  return ctx.hideXianyu;
+}
+
+function invalidateInstallPackagesResponseCache() {
+  _installPackagesResponseCache.clear();
+}
+
+function invalidateTaxRecordsListCache(userId) {
+  if (userId == null || String(userId).trim() === '') {
+    _taxRecordsListCache.clear();
+    return;
+  }
+  var prefix = String(userId).trim() + '\0';
+  _taxRecordsListCache.forEach(function (_v, key) {
+    if (key.indexOf(prefix) === 0) {
+      _taxRecordsListCache.delete(key);
+    }
+  });
+}
+
+function invalidateUserInfoApiCache(userId) {
+  if (userId == null || String(userId).trim() === '') {
+    _userInfoApiCache.clear();
+    return;
+  }
+  _userInfoApiCache.delete(String(userId).trim());
 }
 
 function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
@@ -2417,6 +2479,13 @@ async function createTables() {
   } catch (e) {
     /* 已存在或非致命 */
   }
+  try {
+    await conn.execute(
+      'CREATE INDEX idx_messages_user_date ON messages (user_id, msg_date, created_at)'
+    );
+  } catch (e) {
+    /* 已存在或非致命 */
+  }
 
   var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
@@ -2524,6 +2593,18 @@ function recordMatchesIncomeTypes(record, incomeTypes) {
 }
 
 async function getRecords(userId, year, incomeTypes) {
+  var cacheKey =
+    String(userId) +
+    '\0' +
+    (year != null && year !== '' ? String(year) : '') +
+    '\0' +
+    (incomeTypes && incomeTypes.length ? incomeTypes.map(String).sort().join(',') : '');
+  var now = Date.now();
+  var cached = _taxRecordsListCache.get(cacheKey);
+  if (cached && now - cached.t < TAX_RECORDS_LIST_CACHE_MS) {
+    return cached.v;
+  }
+
   const conn = await pool.getConnection();
   /* 列表场景不需要 SELECT *，减少传输与解析开销 */
   var listCols =
@@ -2579,11 +2660,16 @@ async function getRecords(userId, year, incomeTypes) {
     tax += parseFloat(r.tax_reported) || 0;
   });
 
-  return {
+  var out = {
     income_total: income.toFixed(2),
     tax_total: tax.toFixed(2),
     records: filtered
   };
+  _taxRecordsListCache.set(cacheKey, { v: out, t: now });
+  if (_taxRecordsListCache.size > 800) {
+    _taxRecordsListCache.clear();
+  }
+  return out;
 }
 
 var TAX_CHANGE_LOG_FIELDS = [
@@ -2886,7 +2972,10 @@ async function saveRecordInConn(conn, userId, record) {
 async function saveRecord(userId, record) {
   const conn = await pool.getConnection();
   try {
-    return await saveRecordInConn(conn, userId, record);
+    var out = await saveRecordInConn(conn, userId, record);
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
+    return out;
   } finally {
     conn.release();
   }
@@ -2987,6 +3076,8 @@ async function batchSaveRecords(userId, records) {
     }
     await conn.commit();
     var dedupeOut = await dedupeTaxRecords(userId);
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
     return {
       saved: saved.length,
       ids: saved.map(function (x) {
@@ -3020,6 +3111,8 @@ async function deleteRecord(userId, id) {
   const conn = await pool.getConnection();
   try {
     await deleteRecordInConn(conn, userId, id);
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
   } finally {
     conn.release();
   }
@@ -3051,6 +3144,8 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
     }
     await conn.commit();
     var dedupeOut = await dedupeTaxRecords(userId);
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
     return {
       deleted: ids.filter(function (x) {
         return x != null && String(x).trim() !== '';
@@ -3079,6 +3174,8 @@ async function deleteAllRecords(userId) {
       'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
       [userId]
     );
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
     return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
   } finally {
     conn.release();
@@ -3092,6 +3189,8 @@ async function deleteRecordsByYear(userId, year) {
       'UPDATE tax_records SET deleted_at = NOW(3) WHERE user_id = ? AND year = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
       [userId, year]
     );
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
     return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
   } finally {
     conn.release();
@@ -3110,6 +3209,8 @@ async function deleteRecordsByCompany(userId, companyName) {
         TAX_RECORD_NOT_DELETED_SQL,
       [userId, name]
     );
+    invalidateTaxRecordsListCache(userId);
+    invalidateUserInfoApiCache(userId);
     return { deleted: result.affectedRows != null ? Number(result.affectedRows) : 0 };
   } finally {
     conn.release();
@@ -4654,13 +4755,16 @@ async function getUserSummaryForApi(userId) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      `SELECT account_active, employer_count, family_count, bank_card_count, user_type
+      `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
     );
     if (!rows.length) {
       return {
         username: uid,
+        real_name: uid,
+        tax_id: DEFAULT_TAX_ID_HINT,
+        gender: 1,
         account_active: false,
         employer_count: 0,
         family_count: 0,
@@ -4682,6 +4786,9 @@ async function getUserSummaryForApi(userId) {
       Number(rec.account_active) === 1;
     return {
       username: uid,
+      real_name: rec.real_name != null ? String(rec.real_name) : uid,
+      tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
+      gender: rec.gender != null ? Number(rec.gender) : 1,
       account_active: accountActive,
       employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
       family_count: rec.family_count != null ? Number(rec.family_count) : 0,
@@ -4701,11 +4808,27 @@ async function getUserInfoForApi(userId) {
     return null;
   }
   const uid = String(userId).trim();
+  var now = Date.now();
+  var cached = _userInfoApiCache.get(uid);
+  if (cached && now - cached.t < USER_INFO_API_CACHE_MS) {
+    return cached.v;
+  }
 
   const conn = await pool.getConnection();
-  const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [uid]);
+  const [rows] = await conn.execute(
+    `SELECT username, real_name, tax_id, employer_count, family_count, bank_card_count, gender,
+            account_active, user_type, id_type, birth_date, nationality,
+            huji_area, huji_detail, living_area, living_detail,
+            contact_area, contact_detail, education, ethnicity, email
+     FROM users WHERE username = ? LIMIT 1`,
+    [uid]
+  );
 
-  const [employerRows] = await conn.execute('SELECT * FROM employers WHERE user_id = ?', [uid]);
+  const [employerRows] = await conn.execute(
+    `SELECT id, user_id, company_name, credit_code, position, hire_date, leave_date, status
+     FROM employers WHERE user_id = ?`,
+    [uid]
+  );
   const [taxCountRows] = await conn.execute(
     'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
     [uid]
@@ -4742,7 +4865,9 @@ async function getUserInfoForApi(userId) {
   };
   
   if (rows.length === 0) {
-    return Object.assign({ username: uid }, defaults);
+    var emptyOut = Object.assign({ username: uid }, defaults);
+    _userInfoApiCache.set(uid, { v: emptyOut, t: now });
+    return emptyOut;
   }
   
   const rec = rows[0];
@@ -4768,7 +4893,7 @@ async function getUserInfoForApi(userId) {
     }
     return String(v);
   }
-  return {
+  var out = {
     username: uid,
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
     tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
@@ -4797,6 +4922,11 @@ async function getUserInfoForApi(userId) {
     email: profileStr('email', ''),
     employers: employerRows
   };
+  _userInfoApiCache.set(uid, { v: out, t: now });
+  if (_userInfoApiCache.size > 800) {
+    _userInfoApiCache.clear();
+  }
+  return out;
 }
 
 function maskFamilyMemberIdNo(idNo) {
@@ -5365,6 +5495,7 @@ async function handleUserPost(req, res) {
         }
         
         conn.release();
+        invalidateUserInfoApiCache(userId);
         
         return res.json({ code: 200, data: { success: true } });
       }
@@ -7238,7 +7369,7 @@ async function handleMessageGet(req, res) {
   try {
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
-      'SELECT id, user_id, title, content, company_name, msg_date, is_read, created_at FROM messages WHERE user_id = ? ORDER BY msg_date DESC, created_at DESC',
+      'SELECT id, title, company_name, msg_date, is_read FROM messages WHERE user_id = ? ORDER BY msg_date DESC, created_at DESC LIMIT 200',
       [String(userId)]
     );
     conn.release();
@@ -7246,7 +7377,6 @@ async function handleMessageGet(req, res) {
       return {
         id: r.id,
         title: r.title,
-        content: r.content,
         company_name: r.company_name,
         msg_date: r.msg_date,
         is_read: r.is_read != null ? Number(r.is_read) : 0
@@ -7861,6 +7991,20 @@ function shenbaoRecordFromRow(row) {
   return shenbaoSyncListAmountFromSupplement(rec);
 }
 
+/** 列表页不读 detail_json，避免 MEDIUMTEXT 拖慢弱网 */
+function shenbaoListRecordFromRow(row) {
+  return {
+    id: row.id,
+    groupMonth: row.group_month || '',
+    title: row.title || '',
+    periodStart: row.period_start || '',
+    periodEnd: row.period_end || '',
+    amountType: row.amount_type || 'refunded',
+    amount: row.amount != null ? String(row.amount) : '0.00',
+    detailCustomized: !!row.detail_customized
+  };
+}
+
 function shenbaoMergeDetailRecord(r) {
   var out = Object.assign({}, SHENBAO_DETAIL_FIELD_DEFAULTS, r);
   out.taxYear = shenbaoTaxYearFromRecord(r);
@@ -7981,11 +8125,12 @@ async function listShenbaoRecords(userId, tab) {
   try {
     await seedShenbaoDefaultsIfEmpty(conn, userId, tab);
     const [rows] = await conn.execute(
-      `SELECT * FROM shenbao_jilu_records WHERE user_id = ? AND tab = ?
+      `SELECT id, group_month, title, period_start, period_end, amount_type, amount, detail_customized
+       FROM shenbao_jilu_records WHERE user_id = ? AND tab = ?
        ORDER BY group_month DESC, id DESC`,
       [String(userId), tab]
     );
-    return rows.map(shenbaoRecordFromRow);
+    return rows.map(shenbaoListRecordFromRow);
   } finally {
     conn.release();
   }
@@ -13778,15 +13923,27 @@ async function handlePublicResolveSalesChannel(req, res) {
 
 async function handlePublicInstallPackages(req, res) {
   try {
-    var raw = await getInstallPackageSettingsFromDb();
+    var uid = tryAuthUserIdFromRequest(req) || '';
+    var qCh = sanitizeSalesChannelId(
+      (req.query && (req.query.sales_ch || req.query.ch)) || ''
+    );
+    var cacheKey = String(uid || 'anon') + '|' + String(qCh || '');
+    var now = Date.now();
+    var hit = _installPackagesResponseCache.get(cacheKey);
+    if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
+      res.setHeader('Cache-Control', 'private, max-age=20');
+      return res.json(hit.body);
+    }
+
+    var ctx = await resolveInstallPackagesContext(req);
+    var raw = ctx.raw;
     var android = toPublicInstallDownloadUrl(raw.android);
     var ios = toPublicInstallDownloadUrl(raw.ios);
     var xianyu = sanitizeXianyuPurchaseText(raw.xianyu);
     var qq = toPublicInstallDownloadUrl(raw.qq);
     var qqGroup = toPublicInstallDownloadUrl(raw.qq_group);
-    var salesCh = await resolveEffectiveSalesChannel(req);
-    // 已登录用户仅以账号 sales_promo_channel 判断是否隐藏闲鱼，避免 IP 归因误判普通注册用户
-    var hideXianyu = await shouldHideXianyuForRequest(req);
+    var salesCh = ctx.salesCh;
+    var hideXianyu = ctx.hideXianyu;
     if (hideXianyu) {
       xianyu = '';
       var agentApk = toPublicInstallDownloadUrl(raw.agent_android);
@@ -13795,7 +13952,7 @@ async function handlePublicInstallPackages(req, res) {
       }
     }
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
-    return res.json({
+    var body = {
       code: 200,
       data: {
         android_apk_download_url: android,
@@ -13811,7 +13968,13 @@ async function handlePublicInstallPackages(req, res) {
         show_qq_group: !!qqGroup,
         show_qq_add: !!qq
       }
-    });
+    };
+    _installPackagesResponseCache.set(cacheKey, { t: now, body: body });
+    if (_installPackagesResponseCache.size > 500) {
+      _installPackagesResponseCache.clear();
+    }
+    res.setHeader('Cache-Control', 'private, max-age=20');
+    return res.json(body);
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });

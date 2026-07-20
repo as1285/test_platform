@@ -1546,16 +1546,26 @@
 
   var API_PERF_SLOW_MS = 3000;
   var _apiPerfLastReportAt = 0;
+  var _authGetInFlight = new Map();
 
   function authFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+    var method = String(opts.method || 'GET').toUpperCase();
+    var coalesceKey = null;
+    if (method === 'GET') {
+      coalesceKey = String(url || '');
+      var existing = _authGetInFlight.get(coalesceKey);
+      if (existing) {
+        return existing;
+      }
+    }
     var reqStart =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
     var routeHint = String(url || '').split('?')[0];
-    return fetch(url, opts).then(function (r) {
+    var p = fetch(url, opts).then(function (r) {
       var reqEnd =
         typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now()
@@ -1621,6 +1631,16 @@
       }
       return r;
     });
+    if (coalesceKey) {
+      var shared = p.finally(function () {
+        if (_authGetInFlight.get(coalesceKey) === shared) {
+          _authGetInFlight.delete(coalesceKey);
+        }
+      });
+      _authGetInFlight.set(coalesceKey, shared);
+      return shared;
+    }
+    return p;
   }
 
   function detectNetType() {
