@@ -1315,23 +1315,47 @@
                 </div>
 
                 <div id="page-chat" class="page-panel" role="tabpanel">
-        <section>
+        <section class="admin-chat-page">
             <h2>在线客服</h2>
-            <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起的会话；左侧选会话，右侧回复。页面会自动刷新未读消息。</p>
-            <div class="form-row form-stack mt-8">
-                <div class="form-field">
-                    <label for="chatAutoReplyWelcome">开场自动回复（首次进入空会话时发送）</label>
-                    <textarea id="chatAutoReplyWelcome" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送开场话术"></textarea>
+            <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起会话。左侧选会话、右侧回复；未读会自动刷新。开启 AI 后，用户发消息将由 AI 先答；人工客服一旦回复，该会话自动暂停机器人以免抢答。</p>
+
+            <details class="admin-chat-settings" id="chatAutoReplySettings" open>
+                <summary>自动回复与 AI 客服设置</summary>
+                <div class="admin-chat-settings-body">
+                    <div class="admin-chat-settings-grid">
+                        <div class="form-stack">
+                            <h3 class="admin-chat-settings-title">固定话术</h3>
+                            <div class="form-field">
+                                <label for="chatAutoReplyWelcome">开场自动回复（首次进入空会话）</label>
+                                <textarea id="chatAutoReplyWelcome" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送开场话术"></textarea>
+                            </div>
+                            <div class="form-field">
+                                <label for="chatAutoReplyReply">固定自动回复（AI 关闭或失败时的兜底）</label>
+                                <textarea id="chatAutoReplyReply" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送兜底回复"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-stack">
+                            <h3 class="admin-chat-settings-title">AI 自动回复</h3>
+                            <div class="form-field admin-chat-ai-toggle-row">
+                                <label class="admin-chat-check-label" for="chatAiEnabled">
+                                    <input type="checkbox" id="chatAiEnabled">
+                                    启用 AI 客服（用户发消息后自动生成回复）
+                                </label>
+                                <p class="hint mt-4 mb-0" id="chatAiStatusHint">密钥未配置时无法启用实际调用。</p>
+                            </div>
+                            <div class="form-field">
+                                <label for="chatAiPrompt">系统提示词（人设与业务边界）</label>
+                                <textarea id="chatAiPrompt" class="textarea-block" rows="6" maxlength="4000" placeholder="描述产品、回答范围与转人工规则…"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions mt-8">
+                        <button type="button" class="btn-primary" id="btnSaveChatAutoReply">保存设置</button>
+                        <button type="button" class="btn-page" id="btnResetChatAutoReply">恢复默认话术</button>
+                    </div>
                 </div>
-                <div class="form-field">
-                    <label for="chatAutoReplyReply">用户发消息后的自动回复</label>
-                    <textarea id="chatAutoReplyReply" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不自动回复"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-primary" id="btnSaveChatAutoReply">保存自动回复话术</button>
-                    <button type="button" class="btn-page" id="btnResetChatAutoReply">恢复默认</button>
-                </div>
-            </div>
+            </details>
+
             <div class="form-row flex-align-end mt-12">
                 <div>
                     <label for="chatAdminFilterUnread">未读</label>
@@ -1367,10 +1391,13 @@
                     </div>
                 </div>
                 <div class="admin-chat-thread-pane">
-                    <div class="admin-chat-thread-head" id="chatAdminThreadHead">请选择左侧会话</div>
+                    <div class="admin-chat-thread-head" id="chatAdminThreadHead">
+                        <span id="chatAdminThreadTitle">请选择左侧会话</span>
+                        <button type="button" class="btn-page admin-chat-resume-ai" id="chatAdminResumeAiBtn" hidden>恢复 AI</button>
+                    </div>
                     <div class="admin-chat-thread-body" id="chatAdminThreadBody"></div>
                     <div class="admin-chat-composer">
-                        <textarea id="chatAdminInput" class="textarea-block" rows="3" maxlength="2000" placeholder="输入回复内容…" disabled></textarea>
+                        <textarea id="chatAdminInput" class="textarea-block" rows="3" maxlength="2000" placeholder="输入回复内容…（发送后该会话将暂停 AI）" disabled></textarea>
                         <button type="button" class="btn-primary" id="chatAdminSendBtn" disabled>发送</button>
                     </div>
                 </div>
@@ -1827,7 +1854,7 @@
                 <div id="page-api-analytics" class="page-panel" role="tabpanel">
         <section>
             <h2>接口调用（按业务分类）</h2>
-            <p class="hint mb-12 mt-0">按自然日聚合各 API 与业务分类，含<strong>平均/最大响应时间</strong>（后端处理耗时）；另含<strong>≥3 秒慢请求异常</strong>（服务端处理耗时 + 客户端网络/渲染上报，带 client_id）。下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP 列表<strong>不含</strong>管理后台类接口。</p>
+            <p class="hint mb-12 mt-0">按自然日聚合各 API 与业务分类，含<strong>平均/最大响应时间</strong>（后端处理耗时）；另含<strong>≥3 秒慢请求异常</strong>（服务端处理耗时 + 客户端网络/渲染上报，带 client_id）与<strong>用户侧 5xx 报错</strong>。下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP / 5xx 列表<strong>不含</strong>管理后台类接口。</p>
             <div class="form-row flex-align-center">
                 <div>
                     <label for="apiAnalyticsDays">统计区间</label>
@@ -1861,6 +1888,20 @@
                 <table>
                     <thead><tr><th>时间</th><th>来源</th><th>接口</th><th>网络</th><th>渲染</th><th>总计</th><th>条数</th><th>账号</th><th>client_id</th><th>页面</th><th>网络类型</th></tr></thead>
                     <tbody id="apiSlowRecentTbody"><tr><td colspan="11">—</td></tr></tbody>
+                </table>
+            </div>
+            <h3 class="section-subhead">用户接口报错（5xx）</h3>
+            <p class="hint mb-8 mt-0" id="apiErrorSummaryHint">仅统计用户侧接口：HTTP 状态码 5xx，或业务 JSON <code>code</code> 为 5xx；不含管理后台。</p>
+            <div class="scroll-x mb-12">
+                <table>
+                    <thead><tr><th>接口标识</th><th>报错次数</th><th>HTTP</th><th>业务 code</th></tr></thead>
+                    <tbody id="apiErrorTopTbody"><tr><td colspan="4">—</td></tr></tbody>
+                </table>
+            </div>
+            <div class="scroll-x">
+                <table>
+                    <thead><tr><th>时间</th><th>接口</th><th>分类</th><th>HTTP</th><th>业务 code</th><th>耗时</th><th>账号</th><th>页面</th><th>IP</th></tr></thead>
+                    <tbody id="apiErrorRecentTbody"><tr><td colspan="9">—</td></tr></tbody>
                 </table>
             </div>
         </section>

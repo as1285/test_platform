@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS chat_conversations (
     last_sender_role VARCHAR(16) NULL COMMENT 'user | admin | system',
     user_unread INT NOT NULL DEFAULT 0,
     admin_unread INT NOT NULL DEFAULT 0,
+    bot_paused TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=人工介入后暂停AI',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_chat_user_id (user_id),

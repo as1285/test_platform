@@ -233,9 +233,11 @@
             row.setAttribute('data-msg-id', String(id));
             var whoLabel = isMe
                 ? ''
-                : m.sender_role === 'system' || m.sender_id === 'auto_reply'
-                  ? ' · 自动回复'
-                  : ' · 客服';
+                : m.sender_id === 'ai_reply'
+                  ? ' · AI 客服'
+                  : m.sender_role === 'system' || m.sender_id === 'auto_reply'
+                    ? ' · 自动回复'
+                    : ' · 客服';
             row.innerHTML =
                 '<div><div class="msg-bubble">' +
                 escapeHtml(m.content) +

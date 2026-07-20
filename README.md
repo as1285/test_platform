@@ -193,6 +193,20 @@ https://www.installguide1.top/
 
 环境变量与数据库初始化见 `docker-compose.yml` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
+### 在线客服 AI 自动回复
+
+默认关闭。在管理控制台「在线客服」中可开启 AI，并编辑系统提示词。API 密钥**仅**通过服务器 `.env` 配置（OpenAI 兼容协议，默认 DeepSeek）：
+
+```dotenv
+CHAT_AI_API_KEY=你的密钥
+CHAT_AI_BASE_URL=https://api.deepseek.com
+CHAT_AI_MODEL=deepseek-chat
+```
+
+- 开场欢迎语仍为固定话术；用户发消息后优先走 AI，失败时回退到固定自动回复。
+- 人工客服发送消息后该会话会暂停 AI（可点「恢复 AI」重新启用）。
+- 不要将 `CHAT_AI_API_KEY` 写入后台设置或提交到 Git。
+
 ### 支付宝自动开通
 
 支付功能默认关闭。启用时仅在服务器未提交的 `.env` 或部署平台 Secret 中配置以下变量，然后重新部署后端。需在开放平台开通 **当面付**；服务端使用官方 `alipay-sdk` 调用 `alipay.trade.precreate`，购买页展示扫码二维码。

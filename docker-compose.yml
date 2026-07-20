@@ -75,6 +75,11 @@ services:
       ALIPAY_PRODUCT_TITLE: ${ALIPAY_PRODUCT_TITLE:-个税记录平台激活码}
       ALIPAY_PRODUCT_AMOUNT: ${ALIPAY_PRODUCT_AMOUNT:-}
       ALIPAY_GATEWAY: ${ALIPAY_GATEWAY:-https://openapi.alipay.com/gateway.do}
+      # 在线客服 AI（OpenAI 兼容协议，如 DeepSeek；密钥只从未提交的 .env 读取）
+      CHAT_AI_API_KEY: ${CHAT_AI_API_KEY:-}
+      CHAT_AI_BASE_URL: ${CHAT_AI_BASE_URL:-https://api.deepseek.com}
+      CHAT_AI_MODEL: ${CHAT_AI_MODEL:-deepseek-chat}
+      CHAT_AI_TIMEOUT_MS: ${CHAT_AI_TIMEOUT_MS:-20000}
     ports:
       # 后端仅由前端 Nginx 通过 Docker 内网访问；宿主本机保留调试入口
       - "127.0.0.1:3000:3000"

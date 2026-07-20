@@ -14,6 +14,7 @@ const registerGuard = require('./register-guard');
 const serverMonitor = require('./serverMonitor');
 const dbLogRetention = require('./dbLogRetention');
 const alipay = require('./alipay');
+const chatAi = require('./chatAi');
 const { inferBankNameFromCardNo } = require('./bank_card_bins');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
@@ -381,11 +382,20 @@ const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 const SETTING_KEY_LANDING_AB = 'landing_ab_json';
 const SETTING_KEY_CHAT_AUTO_REPLY_WELCOME = 'chat_auto_reply_welcome';
 const SETTING_KEY_CHAT_AUTO_REPLY_REPLY = 'chat_auto_reply_reply';
+const SETTING_KEY_CHAT_AI_ENABLED = 'chat_ai_enabled';
+const SETTING_KEY_CHAT_AI_PROMPT = 'chat_ai_prompt';
 
 const DEFAULT_CHAT_AUTO_REPLY_WELCOME =
   '您好，欢迎咨询在线客服。如需购买激活码，请到「我的」点击「激活」打开购买页（微信/闲鱼/QQ）；也可直接在此留言，客服看到后会尽快回复。';
 const DEFAULT_CHAT_AUTO_REPLY_REPLY =
   '已收到您的消息，客服稍候会人工回复。紧急购买请到「我的 → 激活」查看微信收款码、闲鱼与 QQ 联系方式。';
+const DEFAULT_CHAT_AI_PROMPT =
+  '你是「个税记录平台」的在线客服助手，语气简洁友好，用中文回复。\n' +
+  '产品说明：用户购买激活码后可去除水印、完整使用平台功能；购买入口在 App「我的 → 激活 / 购买」页，支持支付宝扫码、微信/闲鱼/QQ 等渠道。\n' +
+  '你可解答：激活码如何购买与填写、支付后多久生效、常见使用问题。\n' +
+  '你不能：编造订单/支付结果、索要银行卡密码、承诺退款政策以外的条款、代替人工处理投诉纠纷。\n' +
+  '若用户明确要求人工、涉及退款纠纷、账号安全敏感问题，或你不确定答案：简短说明后请用户等待人工客服，并建议到购买页查看联系方式。\n' +
+  '单次回复控制在 200 字以内，不要使用 Markdown 标题。';
 
 const DEFAULT_CONVERSION_AB = {
   enabled: true,
@@ -2356,6 +2366,14 @@ async function createTables() {
     SETTING_KEY_CHAT_AUTO_REPLY_REPLY,
     DEFAULT_CHAT_AUTO_REPLY_REPLY
   ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_CHAT_AI_ENABLED,
+    '0'
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_CHAT_AI_PROMPT,
+    DEFAULT_CHAT_AI_PROMPT
+  ]);
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS analytics_api_daily (
@@ -2411,6 +2429,26 @@ async function createTables() {
       INDEX idx_slow_route_created (route_key, created_at),
       INDEX idx_slow_total (total_ms),
       INDEX idx_slow_client (client_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS api_error_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      route_key VARCHAR(240) NOT NULL,
+      biz_category VARCHAR(64) NULL,
+      http_status SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+      biz_code INT NULL COMMENT '业务 JSON code，如 500',
+      latency_ms INT UNSIGNED NOT NULL DEFAULT 0,
+      username VARCHAR(255) NULL,
+      client_id VARCHAR(128) NULL,
+      page_path VARCHAR(255) NULL,
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_err_created (created_at),
+      INDEX idx_err_route_created (route_key, created_at),
+      INDEX idx_err_http (http_status, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
@@ -2531,6 +2569,7 @@ async function createTables() {
       last_sender_role VARCHAR(16) NULL COMMENT 'user | admin | system',
       user_unread INT NOT NULL DEFAULT 0,
       admin_unread INT NOT NULL DEFAULT 0,
+      bot_paused TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=人工介入后暂停AI',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uk_chat_user_id (user_id),
@@ -2538,6 +2577,15 @@ async function createTables() {
       INDEX idx_chat_admin_unread (admin_unread)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  try {
+    await conn.execute(
+      `ALTER TABLE chat_conversations ADD COLUMN bot_paused TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=人工介入后暂停AI' AFTER admin_unread`
+    );
+  } catch (e) {
+    if (!(e && (e.code === 'ER_DUP_FIELDNAME' || e.errno === 1060))) {
+      console.warn('chat_conversations.bot_paused alter', e && e.message);
+    }
+  }
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS chat_messages (
@@ -6806,6 +6854,50 @@ function recordApiSlowEvent(payload) {
     });
 }
 
+function isUserApi5xxError(httpStatus, bizCode) {
+  var hs = Number(httpStatus || 0);
+  if (hs >= 500 && hs < 600) return true;
+  var bc = bizCode != null && isFinite(Number(bizCode)) ? Number(bizCode) : null;
+  return bc != null && bc >= 500 && bc < 600;
+}
+
+function recordApiErrorEvent(payload) {
+  if (!pool || !payload) return;
+  var routeKey = sanitizeSlowRouteKey(payload.route_key);
+  if (!routeKey) return;
+  var httpStatus =
+    payload.http_status != null && isFinite(Number(payload.http_status))
+      ? Math.max(0, Math.min(Math.round(Number(payload.http_status)), 999))
+      : 0;
+  var bizCode =
+    payload.biz_code != null && isFinite(Number(payload.biz_code))
+      ? Math.round(Number(payload.biz_code))
+      : null;
+  if (!isUserApi5xxError(httpStatus, bizCode)) return;
+  pool
+    .execute(
+      `INSERT INTO api_error_events
+       (route_key, biz_category, http_status, biz_code, latency_ms,
+        username, client_id, page_path, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        routeKey,
+        payload.biz_category != null ? String(payload.biz_category).substring(0, 64) : null,
+        httpStatus,
+        bizCode,
+        clampPerfMs(payload.latency_ms),
+        payload.username != null ? String(payload.username).substring(0, 255) : null,
+        payload.client_id != null ? String(payload.client_id).substring(0, 128) : null,
+        payload.page_path != null ? String(payload.page_path).substring(0, 255) : null,
+        payload.ip != null ? String(payload.ip).substring(0, 128) : null,
+        payload.user_agent != null ? String(payload.user_agent).substring(0, 512) : null
+      ]
+    )
+    .catch(function (e) {
+      console.error('recordApiErrorEvent', e);
+    });
+}
+
 function maybeRecordClientApiPerfTrack(req, action, meta) {
   var act = String(action || '').toLowerCase();
   if (act !== 'track_api_perf' && act !== 'track_api_slow') {
@@ -6847,6 +6939,15 @@ function maybeRecordClientApiPerfTrack(req, action, meta) {
 
 function analyticsFinishMiddleware(req, res, next) {
   var startedAt = Date.now();
+  var origJson = res.json;
+  res.json = function (body) {
+    try {
+      if (body && typeof body === 'object' && body.code != null && isFinite(Number(body.code))) {
+        res.__apiBizCode = Number(body.code);
+      }
+    } catch (e0) {}
+    return origJson.call(this, body);
+  };
   res.on('finish', function () {
     try {
       var info = classifyAnalyticsRoute(req);
@@ -6856,13 +6957,13 @@ function analyticsFinishMiddleware(req, res, next) {
       var latencyMs = Math.max(0, Date.now() - startedAt);
       incrementApiDailyCounter(info.route_key, info.biz_category, latencyMs);
       recordUserPageEvent(req, info.route_key);
+      var cid = '';
+      try {
+        if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+          cid = String(req.clientDevicePayload.client_id).trim();
+        }
+      } catch (e2) {}
       if (latencyMs >= API_SLOW_THRESHOLD_MS && info.biz_category !== '管理后台') {
-        var cid = '';
-        try {
-          if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
-            cid = String(req.clientDevicePayload.client_id).trim();
-          }
-        } catch (e2) {}
         recordApiSlowEvent({
           source: 'server',
           route_key: info.route_key,
@@ -6877,6 +6978,23 @@ function analyticsFinishMiddleware(req, res, next) {
           ip: getClientIp(req),
           user_agent: req.headers && req.headers['user-agent'] ? String(req.headers['user-agent']) : ''
         });
+      }
+      if (info.biz_category !== '管理后台') {
+        var bizCode = res.__apiBizCode != null ? Number(res.__apiBizCode) : null;
+        if (isUserApi5xxError(res.statusCode, bizCode)) {
+          recordApiErrorEvent({
+            route_key: info.route_key,
+            biz_category: info.biz_category,
+            http_status: res.statusCode,
+            biz_code: bizCode,
+            latency_ms: latencyMs,
+            username: req.authUserId || null,
+            client_id: cid || null,
+            page_path: inferPagePathFromRequest(req) || null,
+            ip: getClientIp(req),
+            user_agent: req.headers && req.headers['user-agent'] ? String(req.headers['user-agent']) : ''
+          });
+        }
       }
     } catch (e) {
       console.error('analyticsFinishMiddleware', e);
@@ -8216,6 +8334,8 @@ async function handleFeedbackPost(req, res) {
 var CHAT_MSG_MAX_LEN = 2000;
 var CHAT_THREAD_LIMIT = 200;
 var CHAT_AUTO_SENDER_ID = 'auto_reply';
+var CHAT_AI_SENDER_ID = 'ai_reply';
+var CHAT_AI_PROMPT_MAX_LEN = 4000;
 var _chatAutoReplyCache = null;
 var CHAT_AUTO_REPLY_CACHE_MS = 10000;
 
@@ -8238,8 +8358,13 @@ function sanitizeChatAutoReplyText(raw, maxLen) {
 
 async function loadChatAutoReplySettingsFromConn(conn) {
   const [rows] = await conn.execute(
-    'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?)',
-    [SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, SETTING_KEY_CHAT_AUTO_REPLY_REPLY]
+    'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?)',
+    [
+      SETTING_KEY_CHAT_AUTO_REPLY_WELCOME,
+      SETTING_KEY_CHAT_AUTO_REPLY_REPLY,
+      SETTING_KEY_CHAT_AI_ENABLED,
+      SETTING_KEY_CHAT_AI_PROMPT
+    ]
   );
   var map = {};
   rows.forEach(function (r) {
@@ -8255,7 +8380,17 @@ async function loadChatAutoReplySettingsFromConn(conn) {
       ? map[SETTING_KEY_CHAT_AUTO_REPLY_REPLY]
       : DEFAULT_CHAT_AUTO_REPLY_REPLY
   );
-  return { welcome: welcome, reply: reply };
+  var aiEnabledRaw =
+    map[SETTING_KEY_CHAT_AI_ENABLED] != null ? String(map[SETTING_KEY_CHAT_AI_ENABLED]).trim() : '0';
+  var ai_enabled = aiEnabledRaw === '1' || aiEnabledRaw.toLowerCase() === 'true';
+  var ai_prompt = sanitizeChatAutoReplyText(
+    map[SETTING_KEY_CHAT_AI_PROMPT] != null ? map[SETTING_KEY_CHAT_AI_PROMPT] : DEFAULT_CHAT_AI_PROMPT,
+    CHAT_AI_PROMPT_MAX_LEN
+  );
+  if (!ai_prompt) {
+    ai_prompt = DEFAULT_CHAT_AI_PROMPT;
+  }
+  return { welcome: welcome, reply: reply, ai_enabled: ai_enabled, ai_prompt: ai_prompt };
 }
 
 async function getChatAutoReplySettings() {
@@ -8299,6 +8434,7 @@ function mapChatConversationRow(r) {
     last_sender_role: r.last_sender_role != null ? String(r.last_sender_role) : '',
     user_unread: Number(r.user_unread) || 0,
     admin_unread: Number(r.admin_unread) || 0,
+    bot_paused: !!(Number(r.bot_paused) || 0),
     created_at: r.created_at ? r.created_at.toISOString() : ''
   };
 }
@@ -8389,7 +8525,19 @@ async function maybeInsertChatWelcome(conn, conversationId) {
   return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.welcome);
 }
 
-async function maybeInsertChatAutoReply(conn, conversationId) {
+async function shouldSkipChatBotReply(conn, conversationId) {
+  const [rows] = await conn.execute(
+    'SELECT bot_paused FROM chat_conversations WHERE id = ? LIMIT 1',
+    [conversationId]
+  );
+  return !!(rows.length && Number(rows[0].bot_paused));
+}
+
+/**
+ * 在持有 DB 连接时收集自动回复上下文；实际 AI 请求在连接释放后执行。
+ * @returns {Promise<null|{mode:string,messages?:Array,prompt?:string,fallbackReply?:string}>}
+ */
+async function buildChatBotReplyContext(conn, conversationId) {
   var cfg =
     (_chatAutoReplyCache && Date.now() - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS
       ? _chatAutoReplyCache.v
@@ -8397,10 +8545,81 @@ async function maybeInsertChatAutoReply(conn, conversationId) {
   if (!_chatAutoReplyCache || Date.now() - _chatAutoReplyCache.t >= CHAT_AUTO_REPLY_CACHE_MS) {
     _chatAutoReplyCache = { v: cfg, t: Date.now() };
   }
-  if (!cfg.reply) {
+  if (await shouldSkipChatBotReply(conn, conversationId)) {
     return null;
   }
-  return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.reply);
+  var fallbackReply = cfg.reply || '';
+  if (cfg.ai_enabled && chatAi.isConfigured()) {
+    const [hist] = await conn.execute(
+      `SELECT sender_role, content FROM chat_messages
+       WHERE conversation_id = ? ORDER BY id DESC LIMIT 16`,
+      [conversationId]
+    );
+    var messages = hist
+      .slice()
+      .reverse()
+      .map(function (r) {
+        return {
+          role: r.sender_role === 'user' ? 'user' : 'assistant',
+          content: r.content != null ? String(r.content) : ''
+        };
+      })
+      .filter(function (m) {
+        return !!m.content;
+      });
+    return {
+      mode: 'ai',
+      messages: messages,
+      prompt: cfg.ai_prompt || DEFAULT_CHAT_AI_PROMPT,
+      fallbackReply: fallbackReply
+    };
+  }
+  if (!fallbackReply) {
+    return null;
+  }
+  return { mode: 'static', fallbackReply: fallbackReply };
+}
+
+async function runChatBotReply(botCtx) {
+  if (!botCtx) {
+    return null;
+  }
+  if (botCtx.mode === 'ai') {
+    try {
+      var text = await chatAi.generateReply({
+        systemPrompt: botCtx.prompt,
+        messages: botCtx.messages || []
+      });
+      if (text) {
+        return { senderId: CHAT_AI_SENDER_ID, content: text };
+      }
+    } catch (e) {
+      console.error('chat AI reply failed', e && e.message ? e.message : e);
+    }
+    if (botCtx.fallbackReply) {
+      return { senderId: CHAT_AUTO_SENDER_ID, content: botCtx.fallbackReply };
+    }
+    return null;
+  }
+  if (botCtx.mode === 'static' && botCtx.fallbackReply) {
+    return { senderId: CHAT_AUTO_SENDER_ID, content: botCtx.fallbackReply };
+  }
+  return null;
+}
+
+async function maybeInsertChatAutoReply(conn, conversationId) {
+  var botCtx = await buildChatBotReplyContext(conn, conversationId);
+  var planned = await runChatBotReply(botCtx);
+  if (!planned) {
+    return null;
+  }
+  return insertChatMessage(
+    conn,
+    conversationId,
+    'system',
+    planned.senderId,
+    planned.content
+  );
 }
 
 async function handleChatGet(req, res) {
@@ -8500,28 +8719,56 @@ async function handleChatPost(req, res) {
     });
   }
   try {
+    var convId = 0;
+    var msg = null;
+    var botCtx = null;
+    var convSnapshot = null;
     const conn = await pool.getConnection();
     try {
       var conv = await ensureUserChatConversation(conn, userId);
-      var convId = Number(conv.id);
+      convId = Number(conv.id);
       await maybeInsertChatWelcome(conn, convId);
-      var msg = await insertChatMessage(conn, convId, 'user', String(userId), content);
-      var autoMsg = await maybeInsertChatAutoReply(conn, convId);
-      const [fresh] = await conn.execute(
+      msg = await insertChatMessage(conn, convId, 'user', String(userId), content);
+      botCtx = await buildChatBotReplyContext(conn, convId);
+      const [fresh0] = await conn.execute(
         'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
         [convId]
       );
-      return res.json({
-        code: 200,
-        data: {
-          conversation: mapChatConversationRow(fresh[0] || conv),
-          message: mapChatMessageRow(msg),
-          auto_reply: autoMsg ? mapChatMessageRow(autoMsg) : null
-        }
-      });
+      convSnapshot = fresh0[0] || conv;
     } finally {
       conn.release();
     }
+
+    var planned = await runChatBotReply(botCtx);
+    var autoMsg = null;
+    if (planned) {
+      const conn2 = await pool.getConnection();
+      try {
+        autoMsg = await insertChatMessage(
+          conn2,
+          convId,
+          'system',
+          planned.senderId,
+          planned.content
+        );
+        const [fresh] = await conn2.execute(
+          'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+          [convId]
+        );
+        convSnapshot = fresh[0] || convSnapshot;
+      } finally {
+        conn2.release();
+      }
+    }
+
+    return res.json({
+      code: 200,
+      data: {
+        conversation: mapChatConversationRow(convSnapshot),
+        message: mapChatMessageRow(msg),
+        auto_reply: autoMsg ? mapChatMessageRow(autoMsg) : null
+      }
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
@@ -16883,6 +17130,67 @@ async function handleAdminAnalyticsApi(req, res) {
       } catch (slowErr) {
         console.error('handleAdminAnalyticsApi slow', slowErr);
       }
+      var errorSummary = { total: 0, http_5xx_cnt: 0, biz_5xx_cnt: 0 };
+      var errorTopRoutes = [];
+      var errorRecent = [];
+      try {
+        const [errAgg] = await conn.query(
+          `SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN http_status >= 500 AND http_status < 600 THEN 1 ELSE 0 END) AS http_5xx_cnt,
+                  SUM(CASE WHEN biz_code >= 500 AND biz_code < 600 THEN 1 ELSE 0 END) AS biz_5xx_cnt
+           FROM api_error_events
+           WHERE ${slowPf.sql}`,
+          slowPf.params
+        );
+        var ea = (errAgg && errAgg[0]) || {};
+        errorSummary.total = Number(ea.total) || 0;
+        errorSummary.http_5xx_cnt = Number(ea.http_5xx_cnt) || 0;
+        errorSummary.biz_5xx_cnt = Number(ea.biz_5xx_cnt) || 0;
+        const [errTop] = await conn.query(
+          `SELECT route_key, COUNT(*) AS cnt,
+                  MAX(http_status) AS http_status,
+                  MAX(biz_code) AS biz_code
+           FROM api_error_events
+           WHERE ${slowPf.sql}
+           GROUP BY route_key
+           ORDER BY cnt DESC
+           LIMIT 10`,
+          slowPf.params
+        );
+        errorTopRoutes = (errTop || []).map(function (r) {
+          return {
+            route_key: String(r.route_key || ''),
+            cnt: Number(r.cnt) || 0,
+            http_status: r.http_status != null ? Number(r.http_status) : null,
+            biz_code: r.biz_code != null ? Number(r.biz_code) : null
+          };
+        });
+        const [errRows] = await conn.query(
+          `SELECT route_key, biz_category, http_status, biz_code, latency_ms,
+                  username, client_id, page_path, ip, created_at
+           FROM api_error_events
+           WHERE ${slowPf.sql}
+           ORDER BY id DESC
+           LIMIT 30`,
+          slowPf.params
+        );
+        errorRecent = (errRows || []).map(function (r) {
+          return {
+            route_key: String(r.route_key || ''),
+            biz_category: r.biz_category != null ? String(r.biz_category) : '',
+            http_status: r.http_status != null ? Number(r.http_status) : 0,
+            biz_code: r.biz_code != null ? Number(r.biz_code) : null,
+            latency_ms: Number(r.latency_ms) || 0,
+            username: r.username != null ? String(r.username) : '',
+            client_id: r.client_id != null ? String(r.client_id) : '',
+            page_path: r.page_path != null ? String(r.page_path) : '',
+            ip: r.ip != null ? String(r.ip) : '',
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : ''
+          };
+        });
+      } catch (errErr) {
+        console.error('handleAdminAnalyticsApi errors', errErr);
+      }
       return res.json({
         code: 200,
         data: Object.assign(
@@ -16912,6 +17220,11 @@ async function handleAdminAnalyticsApi(req, res) {
               summary: slowSummary,
               top_routes: slowTopRoutes,
               recent: slowRecent
+            },
+            errors: {
+              summary: errorSummary,
+              top_routes: errorTopRoutes,
+              recent: errorRecent
             }
           },
           conversionAnalyticsPeriodMeta(period)
@@ -17850,6 +18163,10 @@ async function handleAdminChatSend(req, res) {
         return res.status(404).json({ code: 404, msg: '会话不存在' });
       }
       var msg = await insertChatMessage(conn, conversationId, 'admin', adminName, content);
+      await conn.execute(
+        `UPDATE chat_conversations SET bot_paused = 1, updated_at = NOW() WHERE id = ?`,
+        [conversationId]
+      );
       const [fresh] = await conn.execute(
         'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
         [conversationId]
@@ -17870,17 +18187,64 @@ async function handleAdminChatSend(req, res) {
   }
 }
 
+async function handleAdminChatBotPaused(req, res) {
+  try {
+    var body = req.body || {};
+    var conversationId = parseInt(body.conversation_id, 10) || 0;
+    if (!conversationId) {
+      return res.status(400).json({ code: 400, msg: 'conversation_id 无效' });
+    }
+    var paused =
+      body.bot_paused === true ||
+      body.bot_paused === 1 ||
+      body.bot_paused === '1' ||
+      String(body.bot_paused).toLowerCase() === 'true';
+    const conn = await pool.getConnection();
+    try {
+      const [convRows] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [conversationId]
+      );
+      if (!convRows.length) {
+        return res.status(404).json({ code: 404, msg: '会话不存在' });
+      }
+      await conn.execute(
+        `UPDATE chat_conversations SET bot_paused = ?, updated_at = NOW() WHERE id = ?`,
+        [paused ? 1 : 0, conversationId]
+      );
+      const [fresh] = await conn.execute(
+        'SELECT * FROM chat_conversations WHERE id = ? LIMIT 1',
+        [conversationId]
+      );
+      return res.json({
+        code: 200,
+        data: { conversation: mapChatConversationRow(fresh[0] || convRows[0]) }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminChatAutoReplyGet(req, res) {
   try {
     var cfg = await getChatAutoReplySettings();
+    var aiStatus = chatAi.getPublicStatus();
     return res.json({
       code: 200,
       data: {
         welcome: cfg.welcome,
         reply: cfg.reply,
+        ai_enabled: !!cfg.ai_enabled,
+        ai_prompt: cfg.ai_prompt,
+        ai: aiStatus,
         defaults: {
           welcome: DEFAULT_CHAT_AUTO_REPLY_WELCOME,
-          reply: DEFAULT_CHAT_AUTO_REPLY_REPLY
+          reply: DEFAULT_CHAT_AUTO_REPLY_REPLY,
+          ai_prompt: DEFAULT_CHAT_AI_PROMPT
         }
       }
     });
@@ -17895,13 +18259,29 @@ async function handleAdminChatAutoReplySave(req, res) {
     var body = req.body || {};
     var hasWelcome = Object.prototype.hasOwnProperty.call(body, 'welcome');
     var hasReply = Object.prototype.hasOwnProperty.call(body, 'reply');
-    if (!hasWelcome && !hasReply) {
-      return res.status(400).json({ code: 400, msg: '请提供 welcome 或 reply' });
+    var hasAiEnabled = Object.prototype.hasOwnProperty.call(body, 'ai_enabled');
+    var hasAiPrompt = Object.prototype.hasOwnProperty.call(body, 'ai_prompt');
+    if (!hasWelcome && !hasReply && !hasAiEnabled && !hasAiPrompt) {
+      return res.status(400).json({ code: 400, msg: '请提供要保存的字段' });
     }
-    var welcome = hasWelcome
-      ? sanitizeChatAutoReplyText(body.welcome)
-      : null;
+    var welcome = hasWelcome ? sanitizeChatAutoReplyText(body.welcome) : null;
     var reply = hasReply ? sanitizeChatAutoReplyText(body.reply) : null;
+    var aiEnabledVal = null;
+    if (hasAiEnabled) {
+      aiEnabledVal =
+        body.ai_enabled === true ||
+        body.ai_enabled === 1 ||
+        body.ai_enabled === '1' ||
+        String(body.ai_enabled).toLowerCase() === 'true'
+          ? '1'
+          : '0';
+    }
+    var aiPrompt = hasAiPrompt
+      ? sanitizeChatAutoReplyText(body.ai_prompt, CHAT_AI_PROMPT_MAX_LEN)
+      : null;
+    if (hasAiPrompt && !aiPrompt) {
+      aiPrompt = DEFAULT_CHAT_AI_PROMPT;
+    }
     const conn = await pool.getConnection();
     try {
       if (hasWelcome) {
@@ -17918,6 +18298,20 @@ async function handleAdminChatAutoReplySave(req, res) {
           [SETTING_KEY_CHAT_AUTO_REPLY_REPLY, reply]
         );
       }
+      if (hasAiEnabled) {
+        await conn.execute(
+          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
+          [SETTING_KEY_CHAT_AI_ENABLED, aiEnabledVal]
+        );
+      }
+      if (hasAiPrompt) {
+        await conn.execute(
+          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
+          [SETTING_KEY_CHAT_AI_PROMPT, aiPrompt]
+        );
+      }
     } finally {
       conn.release();
     }
@@ -17925,7 +18319,13 @@ async function handleAdminChatAutoReplySave(req, res) {
     var cfg = await getChatAutoReplySettings();
     return res.json({
       code: 200,
-      data: { welcome: cfg.welcome, reply: cfg.reply }
+      data: {
+        welcome: cfg.welcome,
+        reply: cfg.reply,
+        ai_enabled: !!cfg.ai_enabled,
+        ai_prompt: cfg.ai_prompt,
+        ai: chatAi.getPublicStatus()
+      }
     });
   } catch (e) {
     console.error(e);
@@ -18189,6 +18589,7 @@ app.post('/api/admin/feedback/reply', requireAdminAuth, requireAdminMenu('feedba
 app.get('/api/admin/chat/conversations', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatConversations);
 app.get('/api/admin/chat/messages', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatMessages);
 app.post('/api/admin/chat/send', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatSend);
+app.post('/api/admin/chat/bot-paused', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatBotPaused);
 app.get('/api/admin/chat/auto-reply', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatAutoReplyGet);
 app.post('/api/admin/chat/auto-reply', requireAdminAuth, requireAdminMenu('chat'), handleAdminChatAutoReplySave);
 app.get('/api/admin/accounts', requireAdminAuth, handleAdminAccountsList);

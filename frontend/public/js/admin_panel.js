@@ -2489,7 +2489,7 @@
         var chatAdminKnownIds = {};
         var chatAdminPollTimer = null;
         var chatAdminSending = false;
-        var chatAutoReplyDefaults = { welcome: '', reply: '' };
+        var chatAutoReplyDefaults = { welcome: '', reply: '', ai_prompt: '' };
 
         function escapeChatHtml(s) {
             return String(s == null ? '' : s)
@@ -2542,6 +2542,24 @@
             }, 4000);
         }
 
+        function updateChatAiStatusHint(ai) {
+            var hint = document.getElementById('chatAiStatusHint');
+            if (!hint) return;
+            if (!ai || !ai.configured) {
+                hint.textContent =
+                    '未检测到 CHAT_AI_API_KEY：请在服务器 .env 配置密钥后重新部署后端；当前开启仅保存开关，不会实际调用。';
+                hint.style.color = '#b45309';
+                return;
+            }
+            hint.textContent =
+                '已配置 · 模型 ' +
+                (ai.model || '-') +
+                ' · 接口 ' +
+                (ai.base_host || '-') +
+                '（密钥仅存环境变量，不会显示在此）';
+            hint.style.color = '#047857';
+        }
+
         function loadAdminChatAutoReply() {
             adminFetch('api/admin/chat/auto-reply')
                 .then(function (r) {
@@ -2553,13 +2571,22 @@
                     if (d.defaults) {
                         chatAutoReplyDefaults = {
                             welcome: d.defaults.welcome || '',
-                            reply: d.defaults.reply || ''
+                            reply: d.defaults.reply || '',
+                            ai_prompt: d.defaults.ai_prompt || ''
                         };
                     }
                     var w = document.getElementById('chatAutoReplyWelcome');
                     var rp = document.getElementById('chatAutoReplyReply');
+                    var aiEn = document.getElementById('chatAiEnabled');
+                    var aiPrompt = document.getElementById('chatAiPrompt');
                     if (w) w.value = d.welcome != null ? String(d.welcome) : '';
                     if (rp) rp.value = d.reply != null ? String(d.reply) : '';
+                    if (aiEn) aiEn.checked = !!d.ai_enabled;
+                    if (aiPrompt) {
+                        aiPrompt.value =
+                            d.ai_prompt != null ? String(d.ai_prompt) : chatAutoReplyDefaults.ai_prompt || '';
+                    }
+                    updateChatAiStatusHint(d.ai);
                 })
                 .catch(function () {});
         }
@@ -2567,6 +2594,8 @@
         function saveAdminChatAutoReply() {
             var w = document.getElementById('chatAutoReplyWelcome');
             var rp = document.getElementById('chatAutoReplyReply');
+            var aiEn = document.getElementById('chatAiEnabled');
+            var aiPrompt = document.getElementById('chatAiPrompt');
             var btn = document.getElementById('btnSaveChatAutoReply');
             if (btn) btn.disabled = true;
             adminFetch('api/admin/chat/auto-reply', {
@@ -2574,7 +2603,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     welcome: w ? w.value : '',
-                    reply: rp ? rp.value : ''
+                    reply: rp ? rp.value : '',
+                    ai_enabled: !!(aiEn && aiEn.checked),
+                    ai_prompt: aiPrompt ? aiPrompt.value : ''
                 })
             })
                 .then(function (r) {
@@ -2584,10 +2615,15 @@
                     if (!body || body.code !== 200) {
                         throw new Error((body && body.msg) || '保存失败');
                     }
-                    alert('自动回复话术已保存');
+                    alert('客服自动回复设置已保存');
                     if (body.data) {
                         if (w && body.data.welcome != null) w.value = String(body.data.welcome);
                         if (rp && body.data.reply != null) rp.value = String(body.data.reply);
+                        if (aiEn) aiEn.checked = !!body.data.ai_enabled;
+                        if (aiPrompt && body.data.ai_prompt != null) {
+                            aiPrompt.value = String(body.data.ai_prompt);
+                        }
+                        updateChatAiStatusHint(body.data.ai);
                     }
                 })
                 .catch(function (e) {
@@ -2694,14 +2730,18 @@
                 chatAdminKnownIds[id] = 1;
                 if (id > chatAdminLastMsgId) chatAdminLastMsgId = id;
                 var isAdmin = m.sender_role === 'admin' || m.sender_role === 'system';
+                var isAi = m.sender_id === 'ai_reply';
                 var row = document.createElement('div');
-                row.className = 'admin-chat-bubble-row ' + (isAdmin ? 'me' : 'them');
+                row.className =
+                    'admin-chat-bubble-row ' + (isAdmin ? 'me' : 'them') + (isAi ? ' ai' : '');
                 var who =
-                    m.sender_role === 'system' || m.sender_id === 'auto_reply'
-                        ? '自动回复'
-                        : isAdmin
-                          ? '客服'
-                          : '用户';
+                    m.sender_id === 'ai_reply'
+                        ? 'AI 客服'
+                        : m.sender_role === 'system' || m.sender_id === 'auto_reply'
+                          ? '自动回复'
+                          : isAdmin
+                            ? '客服'
+                            : '用户';
                 row.innerHTML =
                     '<div><div class="admin-chat-bubble">' +
                     escapeChatHtml(m.content) +
@@ -2737,13 +2777,22 @@
                     var data = body.data || {};
                     var conv = data.conversation || {};
                     chatAdminActiveId = Number(conv.id) || cid;
-                    var head = document.getElementById('chatAdminThreadHead');
-                    if (head) {
-                        head.textContent =
+                    var titleEl = document.getElementById('chatAdminThreadTitle');
+                    if (titleEl) {
+                        titleEl.textContent =
                             (conv.user_id || '') +
                             ' · ' +
                             (conv.real_name_snapshot || '—') +
-                            (conv.account_active ? ' · 已激活' : ' · 未激活');
+                            (conv.account_active ? ' · 已激活' : ' · 未激活') +
+                            (conv.bot_paused ? ' · AI 已暂停' : '');
+                    }
+                    var resumeBtn = document.getElementById('chatAdminResumeAiBtn');
+                    if (resumeBtn) {
+                        if (conv.bot_paused) {
+                            resumeBtn.hidden = false;
+                        } else {
+                            resumeBtn.hidden = true;
+                        }
                     }
                     var input = document.getElementById('chatAdminInput');
                     var sendBtn = document.getElementById('chatAdminSendBtn');
@@ -2761,6 +2810,44 @@
                     if (!isPoll) {
                         alert(String(e && e.message ? e.message : e) || '加载会话失败');
                     }
+                });
+        }
+
+        function resumeAdminChatAi() {
+            if (!chatAdminActiveId) return;
+            var resumeBtn = document.getElementById('chatAdminResumeAiBtn');
+            if (resumeBtn) resumeBtn.disabled = true;
+            adminFetch('api/admin/chat/bot-paused', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    conversation_id: chatAdminActiveId,
+                    bot_paused: false
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200) {
+                        throw new Error((body && body.msg) || '操作失败');
+                    }
+                    var conv = (body.data && body.data.conversation) || {};
+                    var titleEl = document.getElementById('chatAdminThreadTitle');
+                    if (titleEl && conv.user_id) {
+                        titleEl.textContent =
+                            (conv.user_id || '') +
+                            ' · ' +
+                            (conv.real_name_snapshot || '—') +
+                            (conv.account_active ? ' · 已激活' : ' · 未激活');
+                    }
+                    if (resumeBtn) resumeBtn.hidden = true;
+                })
+                .catch(function (e) {
+                    alert(String(e && e.message ? e.message : e) || '恢复失败');
+                })
+                .then(function () {
+                    if (resumeBtn) resumeBtn.disabled = false;
                 });
         }
 
@@ -2790,6 +2877,20 @@
                     if (input) input.value = '';
                     if (body.data && body.data.message) {
                         appendAdminChatMessages([body.data.message], true);
+                    }
+                    if (body.data && body.data.conversation) {
+                        var conv = body.data.conversation;
+                        var titleEl = document.getElementById('chatAdminThreadTitle');
+                        if (titleEl) {
+                            titleEl.textContent =
+                                (conv.user_id || '') +
+                                ' · ' +
+                                (conv.real_name_snapshot || '—') +
+                                (conv.account_active ? ' · 已激活' : ' · 未激活') +
+                                (conv.bot_paused ? ' · AI 已暂停' : '');
+                        }
+                        var resumeBtn = document.getElementById('chatAdminResumeAiBtn');
+                        if (resumeBtn) resumeBtn.hidden = !conv.bot_paused;
                     }
                     loadAdminChatConversations(chatAdminPage, true);
                 })
@@ -2947,8 +3048,13 @@
             var slowTopEl = document.getElementById('apiSlowTopTbody');
             var slowRecentEl = document.getElementById('apiSlowRecentTbody');
             var slowHintEl = document.getElementById('apiSlowSummaryHint');
+            var errTopEl = document.getElementById('apiErrorTopTbody');
+            var errRecentEl = document.getElementById('apiErrorRecentTbody');
+            var errHintEl = document.getElementById('apiErrorSummaryHint');
             if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
+            if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
             adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
                 .then(function (r) {
                     return r.json();
@@ -3055,6 +3161,61 @@
                             });
                             slowRecentEl.innerHTML = srh || '<tr><td colspan="7">暂无明细</td></tr>';
                         }
+
+                        var errors = api.data.errors || {};
+                        var es = errors.summary || {};
+                        if (errHintEl) {
+                            errHintEl.textContent =
+                                '本区间用户侧 5xx 报错 ' +
+                                (es.total != null ? es.total : 0) +
+                                ' 次（HTTP 5xx ' +
+                                (es.http_5xx_cnt != null ? es.http_5xx_cnt : 0) +
+                                ' · 业务 code 5xx ' +
+                                (es.biz_5xx_cnt != null ? es.biz_5xx_cnt : 0) +
+                                '）；不含管理后台。';
+                        }
+                        if (errTopEl) {
+                            var eth = '';
+                            (errors.top_routes || []).forEach(function (row) {
+                                eth +=
+                                    '<tr><td class="cell-break"><code>' +
+                                    esc(row.route_key) +
+                                    '</code></td><td>' +
+                                    esc(String(row.cnt)) +
+                                    '</td><td>' +
+                                    esc(row.http_status != null ? String(row.http_status) : '—') +
+                                    '</td><td>' +
+                                    esc(row.biz_code != null ? String(row.biz_code) : '—') +
+                                    '</td></tr>';
+                            });
+                            errTopEl.innerHTML = eth || '<tr><td colspan="4">暂无 5xx 报错</td></tr>';
+                        }
+                        if (errRecentEl) {
+                            var erh = '';
+                            (errors.recent || []).forEach(function (row) {
+                                erh +=
+                                    '<tr><td>' +
+                                    esc(row.created_at ? formatDt(row.created_at) : '—') +
+                                    '</td><td class="cell-break"><code>' +
+                                    esc(row.route_key) +
+                                    '</code></td><td>' +
+                                    esc(row.biz_category || '—') +
+                                    '</td><td>' +
+                                    esc(row.http_status != null ? String(row.http_status) : '—') +
+                                    '</td><td>' +
+                                    esc(row.biz_code != null ? String(row.biz_code) : '—') +
+                                    '</td><td>' +
+                                    esc(formatApiLatencyMs(row.latency_ms)) +
+                                    '</td><td class="cell-break"><code>' +
+                                    esc(row.username || '—') +
+                                    '</code></td><td class="cell-break">' +
+                                    esc(row.page_path || '—') +
+                                    '</td><td class="cell-break">' +
+                                    esc(row.ip || '—') +
+                                    '</td></tr>';
+                            });
+                            errRecentEl.innerHTML = erh || '<tr><td colspan="9">暂无明细</td></tr>';
+                        }
                     } else {
                         document.getElementById('apiAnalyticsCatTbody').innerHTML =
                             '<tr><td colspan="4">' + esc(api.msg || '加载失败') + '</td></tr>';
@@ -3062,6 +3223,8 @@
                             '<tr><td colspan="5">—</td></tr>';
                         if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
                         if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">—</td></tr>';
+                        if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
+                        if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">—</td></tr>';
                     }
                 })
                 .catch(function () {
@@ -3071,6 +3234,8 @@
                         '<tr><td colspan="5">网络错误</td></tr>';
                     if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                     if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
+                    if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
+                    if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">网络错误</td></tr>';
                 });
         }
 
@@ -9643,8 +9808,10 @@
             btnResetChatAutoReply.addEventListener('click', function () {
                 var w = document.getElementById('chatAutoReplyWelcome');
                 var rp = document.getElementById('chatAutoReplyReply');
+                var aiPrompt = document.getElementById('chatAiPrompt');
                 if (w) w.value = chatAutoReplyDefaults.welcome || '';
                 if (rp) rp.value = chatAutoReplyDefaults.reply || '';
+                if (aiPrompt) aiPrompt.value = chatAutoReplyDefaults.ai_prompt || '';
             });
         }
         document.getElementById('chatAdminFilterUnread').addEventListener('change', function () {
@@ -9674,6 +9841,10 @@
             loadAdminChatThread(id, false);
         });
         document.getElementById('chatAdminSendBtn').addEventListener('click', sendAdminChatMessage);
+        var chatAdminResumeAiBtn = document.getElementById('chatAdminResumeAiBtn');
+        if (chatAdminResumeAiBtn) {
+            chatAdminResumeAiBtn.addEventListener('click', resumeAdminChatAi);
+        }
         document.getElementById('chatAdminInput').addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
