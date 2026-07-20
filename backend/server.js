@@ -17336,21 +17336,23 @@ var ANALYTICS_TRACK_EVENT_SQL =
 
 /** 激活弹窗 / 购买页相关埋点（单独统计，不计入通用 C 端埋点列表） */
 var ACTIVATE_TRACK_EVENT_KEYS = [
+  'track_purchase_page_view',
   'track_activate_prompt_open',
   'track_activate_prompt_cancel',
   'track_activate_prompt_confirm',
-  'track_xianyu_purchase_click',
+  'track_purchase_activate_success',
+  'track_purchase_activate_fail',
+  'track_alipay_payment_start',
+  'track_alipay_open_click',
+  'track_alipay_payment_success',
   'track_kufaka_purchase_click',
+  'track_purchase_wechat_view',
+  'track_purchase_wechat_expand',
+  'track_xianyu_purchase_click',
   'track_online_chat_click',
   'track_qq_group_click',
   'track_qq_add_click',
-  'track_purchase_page_view',
-  'track_purchase_wechat_view',
-  'track_purchase_activate_success',
-  'track_purchase_activate_fail',
-  'track_purchase_back_click',
-  'track_alipay_payment_start',
-  'track_alipay_payment_success'
+  'track_purchase_back_click'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -17380,12 +17382,14 @@ function activateTrackEventLabel(eventKey) {
     track_qq_add_click: '添加QQ号',
     track_qq_group_click: '加入QQ群',
     track_purchase_page_view: '购买页浏览',
-    track_purchase_wechat_view: '微信购买展示',
-    track_purchase_activate_success: '购买页激活成功',
-    track_purchase_activate_fail: '购买页激活失败',
+    track_purchase_wechat_view: '微信购买入口展示',
+    track_purchase_wechat_expand: '展开微信收款码',
+    track_purchase_activate_success: '激活码开通成功',
+    track_purchase_activate_fail: '激活码开通失败',
     track_purchase_back_click: '购买页返回',
-    track_alipay_payment_start: '支付宝发起支付',
-    track_alipay_payment_success: '支付宝自动开通成功'
+    track_alipay_payment_start: '生成支付宝付款码',
+    track_alipay_open_click: '打开支付宝付款',
+    track_alipay_payment_success: '支付宝付款开通成功'
   };
   return labels[eventKey] || eventKey;
 }

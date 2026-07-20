@@ -1636,17 +1636,18 @@
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
             </div>
-            <h2>激活相关埋点</h2>
-            <p class="hint mt-0 mb-8">单独统计激活弹窗与购买页行为（含 <code>track_purchase_*</code>、<code>track_kufaka_purchase_click</code>、<code>track_online_chat_click</code> 等）。按<strong>北京时间自然日</strong>汇总点击次数；可展开查看当日点击过的账号及每人各按钮次数。数据来自用户上报流水 <code>user_page_events</code>。</p>
+            <h2>激活 / 购买页埋点（详细）</h2>
+            <p class="hint mt-0 mb-8">覆盖购买激活页全链路：页浏览 → 确认激活 / 支付宝生成码与打开付款 → 酷发卡 / 微信 / 闲鱼 / 客服。按<strong>北京时间自然日</strong>汇总；可展开查看当日账号及每人各按钮次数。数据来自 <code>user_page_events</code>。</p>
             <div class="scroll-x mb-10">
                 <table>
                     <thead>
                         <tr>
-                            <th>按钮</th>
+                            <th>按钮 / 事件</th>
+                            <th>所在位置</th>
                             <th>区间合计</th>
                         </tr>
                     </thead>
-                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="2">加载中…</td></tr></tbody>
+                    <tbody id="activateEventsSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
                 </table>
             </div>
             <p id="activateEventsHint" class="stat mb-8">—</p>
@@ -1655,17 +1656,12 @@
                     <thead>
                         <tr>
                             <th>日期</th>
-                            <th>打开</th>
-                            <th>取消</th>
-                            <th>确定</th>
-                            <th>闲鱼</th>
-                            <th>添加QQ</th>
                             <th>合计</th>
                             <th>去重用户</th>
                             <th>操作</th>
                         </tr>
                     </thead>
-                    <tbody id="activateEventsDailyTbody"><tr><td colspan="9">加载中…</td></tr></tbody>
+                    <tbody id="activateEventsDailyTbody"><tr><td colspan="4">加载中…</td></tr></tbody>
                 </table>
             </div>
         </section>
@@ -2084,7 +2080,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260720-tax-formula-track"></script>
+    <script src="/js/admin_panel.js?v=20260720-purchase-track-detail"></script>
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/najilu.js?v=20260720-save-back"></script>
 </body>

@@ -1824,26 +1824,32 @@
             if (k === 'track_qq_group_click') {
                 return { button: '加入QQ群', page: '购买页/激活成功/帮助页等' };
             }
+            if (k === 'track_alipay_payment_start') {
+                return { button: '生成支付宝付款码', page: '购买页 · 支付宝购买' };
+            }
+            if (k === 'track_alipay_open_click') {
+                return { button: '打开支付宝付款', page: '购买页 · 支付宝购买' };
+            }
+            if (k === 'track_alipay_payment_success') {
+                return { button: '支付宝付款开通成功', page: '购买页 · 支付宝购买' };
+            }
             if (k === 'track_purchase_page_view') {
                 return { button: '购买页浏览', page: '购买页（purchase.html）' };
             }
             if (k === 'track_purchase_wechat_view') {
-                return { button: '微信购买展示', page: '购买页（purchase.html）' };
+                return { button: '微信购买入口展示', page: '购买页 · 其他购买方式' };
+            }
+            if (k === 'track_purchase_wechat_expand') {
+                return { button: '展开微信收款码', page: '购买页 · 其他购买方式' };
             }
             if (k === 'track_purchase_activate_success') {
-                return { button: '购买页激活成功', page: '购买页（purchase.html）' };
+                return { button: '激活码开通成功', page: '购买页 · 已有激活码' };
             }
             if (k === 'track_purchase_activate_fail') {
-                return { button: '购买页激活失败', page: '购买页（purchase.html）' };
+                return { button: '激活码开通失败', page: '购买页 · 已有激活码' };
             }
             if (k === 'track_purchase_back_click') {
                 return { button: '购买页返回', page: '购买页（purchase.html）' };
-            }
-            if (k === 'track_alipay_payment_start') {
-                return { button: '支付宝发起支付', page: '购买页（purchase.html）' };
-            }
-            if (k === 'track_alipay_payment_success') {
-                return { button: '支付宝自动开通成功', page: '购买页（purchase.html）' };
             }
             if (k === 'track_tax_formula_open') {
                 return { button: '展开个税计算公式', page: '我要咨询 · 税务记录' };
@@ -3260,38 +3266,42 @@
         var DAU_USERS_PAGE_LIMIT = 10;
         var ACTIVATE_USERS_PAGE_LIMIT = 15;
         var ACTIVATE_EVENT_KEYS = [
+            'track_purchase_page_view',
             'track_activate_prompt_open',
             'track_activate_prompt_cancel',
             'track_activate_prompt_confirm',
-            'track_xianyu_purchase_click',
+            'track_purchase_activate_success',
+            'track_purchase_activate_fail',
+            'track_alipay_payment_start',
+            'track_alipay_open_click',
+            'track_alipay_payment_success',
             'track_kufaka_purchase_click',
+            'track_purchase_wechat_view',
+            'track_purchase_wechat_expand',
+            'track_xianyu_purchase_click',
             'track_online_chat_click',
             'track_qq_group_click',
             'track_qq_add_click',
-            'track_purchase_page_view',
-            'track_purchase_wechat_view',
-            'track_purchase_activate_success',
-            'track_purchase_activate_fail',
-            'track_purchase_back_click',
-            'track_alipay_payment_start',
-            'track_alipay_payment_success'
+            'track_purchase_back_click'
         ];
         var ACTIVATE_EVENT_SHORT_LABELS = {
-            track_activate_prompt_open: '打开',
-            track_activate_prompt_cancel: '取消',
-            track_activate_prompt_confirm: '确定',
-            track_xianyu_purchase_click: '闲鱼',
+            track_purchase_page_view: '页浏览',
+            track_activate_prompt_open: '弹窗开',
+            track_activate_prompt_cancel: '弹窗取消',
+            track_activate_prompt_confirm: '确认激活',
+            track_purchase_activate_success: '激活成功',
+            track_purchase_activate_fail: '激活失败',
+            track_alipay_payment_start: '生成码',
+            track_alipay_open_click: '打开支付宝',
+            track_alipay_payment_success: '支付宝成',
             track_kufaka_purchase_click: '酷发卡',
+            track_purchase_wechat_view: '微信展示',
+            track_purchase_wechat_expand: '展开微信',
+            track_xianyu_purchase_click: '闲鱼',
             track_online_chat_click: '客服',
             track_qq_group_click: 'QQ群',
             track_qq_add_click: '加QQ',
-            track_purchase_page_view: '页浏览',
-            track_purchase_wechat_view: '微信',
-            track_purchase_activate_success: '激活成',
-            track_purchase_activate_fail: '激活败',
-            track_purchase_back_click: '返回',
-            track_alipay_payment_start: '支付宝付',
-            track_alipay_payment_success: '支付成'
+            track_purchase_back_click: '返回'
         };
         var ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
 
@@ -3422,18 +3432,27 @@
         function renderActivateEventsAnalytics(data) {
             var summary = Array.isArray(data.summary) ? data.summary : [];
             var byDay = Array.isArray(data.by_day) ? data.by_day : [];
+            if (Array.isArray(data.event_keys) && data.event_keys.length) {
+                ACTIVATE_EVENT_KEYS = data.event_keys.slice();
+                ACTIVATE_EVENTS_TABLE_COLSPAN = ACTIVATE_EVENT_KEYS.length + 4;
+            }
+            syncActivateEventsTableHead();
             var sh = '';
             summary.forEach(function (row) {
                 var meta = parseTrackEventMeta(row.event_key || '');
                 sh +=
                     '<tr><td>' +
                     esc(meta.button || row.label || '—') +
-                    '</td><td>' +
+                    '<div class="hint mt-0 mb-0" style="font-size:11px;color:#94a3b8;">' +
+                    esc(row.event_key || '') +
+                    '</div></td><td>' +
+                    esc(meta.page || '—') +
+                    '</td><td><strong>' +
                     esc(String(row.total || 0)) +
-                    '</td></tr>';
+                    '</strong></td></tr>';
             });
             document.getElementById('activateEventsSummaryTbody').innerHTML =
-                sh || '<tr><td colspan="2">暂无数据</td></tr>';
+                sh || '<tr><td colspan="3">暂无数据</td></tr>';
             var hintEl = document.getElementById('activateEventsHint');
             if (hintEl) {
                 hintEl.textContent =
@@ -3441,7 +3460,7 @@
                     (data.total_clicks != null ? data.total_clicks : 0) +
                     ' 次点击，' +
                     byDay.length +
-                    ' 天有记录。';
+                    ' 天有记录。下方按日明细可展开到账号级。';
             }
             var dh = '';
             byDay.forEach(function (row) {
