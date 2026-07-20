@@ -473,12 +473,17 @@
             -webkit-appearance: none;
             appearance: none;
             color: #334155;
-            background: #f8fafc;
+            background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
+            padding-right: 36px;
             position: relative;
         }
         #panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator,
         #panel-messages .form-group input[type="date"]::-webkit-calendar-picker-indicator {
-            opacity: 0.55;
+            opacity: 0;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             cursor: pointer;
         }
         #panel-employers .form-row,
@@ -503,8 +508,8 @@
             overflow: hidden;
             transition: box-shadow 0.2s ease;
         }
-        #panel-employers .consult-form-card.is-collapsed .consult-form-body,
-        #panel-messages .consult-form-card.is-collapsed .consult-form-body {
+        #panel-employers .consult-form-card.is-collapsed,
+        #panel-messages .consult-form-card.is-collapsed {
             display: none;
         }
         #panel-employers .consult-form-toggle,
@@ -516,7 +521,9 @@
             gap: 10px;
             border: none;
             background: transparent;
-            padding: 0;
+            padding: 0 0 10px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
@@ -533,20 +540,50 @@
             flex-shrink: 0;
             font-size: 12px;
             font-weight: 600;
-            color: #1e6fff;
-            background: #eef5ff;
+            color: #64748b;
+            background: #f1f5f9;
             border-radius: 999px;
             padding: 5px 10px;
-        }
-        #panel-employers .consult-form-card:not(.is-collapsed) .consult-form-toggle {
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #f1f5f9;
         }
         #panel-employers .consult-form-body,
         #panel-messages .consult-form-body {
             padding-top: 2px;
         }
+        #panel-messages .msg-card {
+            background: #f8fafc;
+            border: 1px solid #eef2f7;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        #panel-messages .msg-card:last-child {
+            margin-bottom: 0;
+        }
+        #panel-messages .msg-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        #panel-messages .msg-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            line-height: 1.35;
+        }
+        #panel-messages .msg-card-desc {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-top: 6px;
+        }
+        #panel-messages .msg-card .btn-sm {
+            flex-shrink: 0;
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+        .header .back-link span { font-size: 13px; }
+        .header h1#consultPageTitle { font-size: 16px; font-weight: 600; }
         #panel-employers .status-pill,
         #panel-messages .status-pill {
             display: inline-block;
@@ -1219,8 +1256,8 @@
 </head>
 <body>
     <div class="header">
-        <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回个人中心</span></a>
-        <h1>个人中心</h1>
+        <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
+        <h1 id="consultPageTitle">个人中心</h1>
     </div>
 
     <div id="consultActivateModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="consultActivateModalTitle">
@@ -1340,7 +1377,7 @@
             <div class="card consult-form-card is-collapsed" id="employerFormCard">
                 <button type="button" class="consult-form-toggle" id="employerFormToggle" aria-expanded="false">
                     <span class="consult-form-toggle-title" id="employerFormCardTitle">添加任职受雇</span>
-                    <span class="consult-form-toggle-hint" id="employerFormToggleHint">展开填写</span>
+                    <span class="consult-form-toggle-hint" id="employerFormToggleHint">收起</span>
                 </button>
                 <div class="consult-form-body">
                     <form id="employerForm" onsubmit="onSubmitEmployer(event)">
@@ -1393,7 +1430,7 @@
             <div class="card consult-form-card is-collapsed" id="messageFormCard">
                 <button type="button" class="consult-form-toggle" id="messageFormToggle" aria-expanded="false">
                     <span class="consult-form-toggle-title">添加消息</span>
-                    <span class="consult-form-toggle-hint" id="messageFormToggleHint">展开填写</span>
+                    <span class="consult-form-toggle-hint" id="messageFormToggleHint">收起</span>
                 </button>
                 <div class="consult-form-body">
                     <form id="msgForm" onsubmit="onSubmitMessage(event)">
@@ -2037,6 +2074,12 @@
                 u.searchParams.set('user_id', currentUserId());
                 u.searchParams.set('tab', tab);
                 history.replaceState({}, '', u);
+            }
+            var titleEl = document.getElementById('consultPageTitle');
+            if (titleEl) {
+                if (tab === 'employers') titleEl.textContent = '任职受雇';
+                else if (tab === 'messages') titleEl.textContent = '消息管理';
+                else titleEl.textContent = '税务记录';
             }
             if (tab === 'records') {
                 /* 有新鲜缓存则不再重复拉 tax.php / employers（启动时已拉过） */
@@ -6639,7 +6682,7 @@
                 if (toggle) toggle.setAttribute('aria-expanded', 'true');
             } else {
                 card.classList.add('is-collapsed');
-                if (hint) hint.textContent = '展开填写';
+                if (hint) hint.textContent = '收起';
                 if (toggle) toggle.setAttribute('aria-expanded', 'false');
             }
         }
@@ -6938,7 +6981,7 @@
             var mount = document.getElementById('messageListMount');
             if (!mount) return;
             if (!list.length) {
-                mount.innerHTML = '<div class="empty">暂无消息<br><span style="font-size:12px;">点击右上角「添加」开始填写</span></div>';
+                mount.innerHTML = '<div class="empty">暂无消息<br><span style="font-size:12px;">点击上方「添加消息」填写</span></div>';
                 return;
             }
             var html = '';
@@ -6948,14 +6991,13 @@
                 var datePart = (m.msg_date || '').trim();
                 var desc = datePart ? (line + ' · ' + datePart) : line;
                 var id = escAttr(m.id);
-                html += '<div class="list-item">';
-                html += '<div class="list-item-content">';
-                html += '<div class="list-item-title">' + escapeHtml(m.title || '') + '</div>';
-                html += '<div class="list-item-desc">' + escapeHtml(desc) + '</div>';
-                html += '</div>';
-                html += '<div class="list-item-actions">';
+                html += '<div class="msg-card">';
+                html += '<div class="msg-card-top">';
+                html += '<div class="msg-card-title">' + escapeHtml(m.title || '') + '</div>';
                 html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteMessage(\'' + id + '\')">删除</button>';
-                html += '</div></div>';
+                html += '</div>';
+                html += '<div class="msg-card-desc">' + escapeHtml(desc) + '</div>';
+                html += '</div>';
             });
             mount.innerHTML = html;
         }
