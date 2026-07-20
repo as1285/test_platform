@@ -1333,8 +1333,8 @@
                 <span id="taxPasteImportTitle">粘贴导入税务信息</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">从个税 APP / 聊天记录复制「公司名称 + 各月收入/税额」文本，粘贴后可填入表单或直接生成记录。汇总行（📌、合计）会自动忽略。</p>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="公司名称：某某有限公司&#10;统计区间：2025年7月-2026年7月&#10;&#10;2025年7月 收入29801.76元 税额3398.62元&#10;2025年8月 收入29799.52元 税额3916.87元&#10;…"></textarea>
+            <p class="batch-ms-modal-hint">支持两种粘贴：① 个税 APP 月明细（「YYYY年M月 收入x元 税额y元」）；② 聊天摘要（公司/税号/入职、全年区间、月薪区间、分红/年终奖）。可一次粘贴多家公司。汇总行（📌、合计）会自动忽略。</p>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;2025年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万&#10;2024年2月2号发2万提成&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
             <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
@@ -5242,16 +5242,17 @@
                 records.push(buildBatchSalaryRecord(writes[wi], base, uidKey));
             }
             (employments || []).forEach(function (emp) {
+                var bonusCompany = {
+                    name: emp.company,
+                    company_tax_id: emp.company_tax_id || '',
+                    tax_authority: emp.tax_authority || ''
+                };
                 if (emp.yearEndBonus > 0) {
                     records.push(
                         buildBatchYearEndBonusRecord(
                             uidKey,
                             base,
-                            {
-                                name: emp.company,
-                                company_tax_id: emp.company_tax_id || '',
-                                tax_authority: emp.tax_authority || ''
-                            },
+                            bonusCompany,
                             emp.bonusYear,
                             emp.bonusMonth,
                             emp.yearEndBonus,
@@ -5259,6 +5260,16 @@
                         )
                     );
                 }
+                (emp.extraBonuses || []).forEach(function (b) {
+                    var amt = round2(parseFloat(b && b.amount) || 0);
+                    var by = parseInt(b && b.year, 10) || 0;
+                    var bm = parseInt(b && b.month, 10) || 0;
+                    if (amt > 0 && by > 0 && bm >= 1 && bm <= 12) {
+                        records.push(
+                            buildBatchYearEndBonusRecord(uidKey, base, bonusCompany, by, bm, amt, emp.empIdx)
+                        );
+                    }
+                });
             });
             return records;
         }
@@ -5479,7 +5490,8 @@
                     monthTaxOverrides: monthTaxOverrides,
                     yearEndBonus: round2(yearEndBonus),
                     bonusMonth: bonusMonth,
-                    bonusYear: bonusYear
+                    bonusYear: bonusYear,
+                    extraBonuses: Array.isArray(row._extraBonuses) ? row._extraBonuses.slice() : []
                 }
             };
         }
@@ -5709,46 +5721,195 @@
             return round2(n);
         }
 
-        /**
-         * 解析粘贴的个税 APP / 聊天记录文本：
-         * 公司名称：…  统计区间：…  YYYY年M月 收入x元 税额y元
-         */
-        function parseTaxPasteText(rawText) {
-            var text = String(rawText || '')
-                .replace(/\u00a0/g, ' ')
-                .replace(/\r\n/g, '\n')
-                .replace(/\r/g, '\n');
-            if (!String(text).trim()) {
-                return { ok: false, error: '请先粘贴税务信息文本' };
+        /** 解析金额：支持 2万 / 18.2万 / 20000元 / 逗号千分位 */
+        function parseFlexibleMoney(raw) {
+            var s = String(raw || '')
+                .replace(/,/g, '')
+                .replace(/，/g, '')
+                .replace(/\s+/g, '')
+                .trim();
+            if (!s) {
+                return null;
             }
-            var company = '';
-            var companyMatch = text.match(/公司名称\s*[：:]\s*(.+)/);
-            if (companyMatch) {
-                company = String(companyMatch[1] || '')
+            var wan = s.match(/^([\d.]+)\s*万/);
+            if (wan) {
+                var wv = parseFloat(wan[1]);
+                if (!isFinite(wv) || wv < 0) {
+                    return null;
+                }
+                return round2(wv * 10000);
+            }
+            s = s.replace(/元$/g, '');
+            return parseMoneyToken(s);
+        }
+
+        function splitTaxPasteEmployerBlocks(text) {
+            var trimmed = String(text || '').trim();
+            if (!trimmed) {
+                return [];
+            }
+            var re =
+                /(?=^\s*\d+\s*(?:[、.．)]\s*)?(?:扣缴义务人名称\s*[：:]|[^\n]{0,80}?(?:有限责任公司|股份有限公司|有限公司)))/m;
+            var parts = trimmed
+                .split(re)
+                .map(function (p) {
+                    return String(p || '').trim();
+                })
+                .filter(function (p) {
+                    return p.length > 8 && /(?:公司|有限|扣缴义务人名称)/.test(p);
+                });
+            if (parts.length >= 2) {
+                return parts;
+            }
+            var named = trimmed.split(/(?=扣缴义务人名称\s*[：:])/);
+            if (named.length >= 2) {
+                var namedParts = named
+                    .map(function (p) {
+                        return String(p || '').trim();
+                    })
+                    .filter(function (p) {
+                        return p.length > 8;
+                    });
+                if (namedParts.length >= 2) {
+                    return namedParts;
+                }
+            }
+            return [trimmed];
+        }
+
+        function extractTaxPasteCompanyName(block) {
+            var m =
+                block.match(/扣缴义务人名称\s*[：:]\s*(.+)/) ||
+                block.match(/公司名称\s*[：:]\s*(.+)/);
+            if (m) {
+                return String(m[1] || '')
                     .replace(/\s+$/g, '')
                     .replace(/[（(]?统计区间.*$/, '')
+                    .replace(/扣缴义务人纳税人识别号.*$/, '')
                     .trim();
             }
-            var range = null;
-            var rangeMatch = text.match(
-                /统计区间\s*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*[-–—~～至到]+\s*(\d{4})\s*年\s*(\d{1,2})\s*月/
-            );
-            if (rangeMatch) {
-                range = {
-                    sy: parseInt(rangeMatch[1], 10),
-                    sm: parseInt(rangeMatch[2], 10),
-                    ey: parseInt(rangeMatch[3], 10),
-                    em: parseInt(rangeMatch[4], 10)
-                };
+            var lines = block.split('\n').map(function (l) {
+                return String(l || '').trim();
+            }).filter(Boolean);
+            var i;
+            for (i = 0; i < lines.length; i++) {
+                var line = lines[i].replace(/^\d+\s*[、.．)]?\s*/, '').trim();
+                if (/公司|有限|集团/.test(line) && !/识别号|税务机关|入职|工资|分红|提成|个税|统计区间|收入|税额/.test(line)) {
+                    return line.slice(0, 80);
+                }
             }
+            return '';
+        }
+
+        function parseTaxPasteSalaryRange(block) {
+            var salary = null;
+            var salaryMax = null;
+            var m;
+            m = block.match(
+                /正常工资薪金\s*[：:]\s*月薪(?:税前)?\s*([\d.]+)\s*万/
+            );
+            if (m) {
+                salary = parseFlexibleMoney(m[1] + '万');
+                return { salary: salary, salary_max: null };
+            }
+            m = block.match(/月薪(?:税前)?\s*([\d.]+)\s*万/);
+            if (m) {
+                salary = parseFlexibleMoney(m[1] + '万');
+                return { salary: salary, salary_max: null };
+            }
+            m = block.match(
+                /正常工资薪金\s*[：:]\s*([\d,.]+)\s*(?:元)?\s*[—\-–~～到至]+\s*([\d,.]+)\s*(?:元)?/
+            );
+            if (m) {
+                salary = parseFlexibleMoney(m[1]);
+                salaryMax = parseFlexibleMoney(m[2]);
+                return { salary: salary, salary_max: salaryMax };
+            }
+            m = block.match(
+                /(?:月薪|工资薪金|税前)\s*[：:]?\s*([\d,.]+)\s*(?:元)?\s*[—\-–~～到至]+\s*([\d,.]+)\s*(?:元)?/
+            );
+            if (m) {
+                salary = parseFlexibleMoney(m[1]);
+                salaryMax = parseFlexibleMoney(m[2]);
+                return { salary: salary, salary_max: salaryMax };
+            }
+            m = block.match(/正常工资薪金\s*[：:]\s*(?:约|大约)?\s*([\d,.]+)\s*万/);
+            if (m) {
+                salary = parseFlexibleMoney(m[1] + '万');
+                return { salary: salary, salary_max: null };
+            }
+            m = block.match(/正常工资薪金\s*[：:]\s*(?:约|大约)?\s*([\d,.]+)\s*元/);
+            if (m) {
+                salary = parseFlexibleMoney(m[1]);
+                return { salary: salary, salary_max: null };
+            }
+            m = block.match(/月薪(?:税前)?\s*[：:]?\s*([\d,.]+)\s*元/);
+            if (m) {
+                salary = parseFlexibleMoney(m[1]);
+                return { salary: salary, salary_max: null };
+            }
+            return { salary: null, salary_max: null };
+        }
+
+        function parseTaxPasteBonuses(block) {
+            var bonuses = [];
+            var seen = {};
+            function pushBonus(year, month, amount) {
+                var y = parseInt(year, 10);
+                var mo = parseInt(month, 10);
+                var amt = typeof amount === 'number' ? amount : parseFlexibleMoney(amount);
+                if (!y || y < 1 || y > 9999 || !mo || mo < 1 || mo > 12 || amt == null || amt <= 0) {
+                    return;
+                }
+                var key = y + '-' + pad2(mo) + '-' + amt;
+                if (seen[key]) {
+                    return;
+                }
+                seen[key] = true;
+                bonuses.push({ year: y, month: mo, amount: amt });
+            }
+            var reAnnualParen =
+                /(\d{4})\s*年?\s*全年\s*[（(]\s*(\d{1,2})\s*月(?:份)?\s*[：:]\s*全年一次性奖金(?:收入)?\s*([\d,.]+)\s*元/g;
+            var m;
+            while ((m = reAnnualParen.exec(block)) !== null) {
+                pushBonus(m[1], m[2], m[3]);
+            }
+            var reAnnual =
+                /(\d{4})\s*年[^\n]{0,40}?(\d{1,2})\s*月(?:份)?\s*[：:]\s*全年一次性奖金(?:收入)?\s*([\d,.]+)\s*元/g;
+            while ((m = reAnnual.exec(block)) !== null) {
+                pushBonus(m[1], m[2], m[3]);
+            }
+            var reWan =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?[^\n]{0,20}?发\s*([\d.]+)\s*万/g;
+            while ((m = reWan.exec(block)) !== null) {
+                pushBonus(m[1], m[2], parseFlexibleMoney(m[4] + '万'));
+            }
+            var reYuan =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?[^\n]{0,20}?发\s*([\d,.]+)\s*元/g;
+            while ((m = reYuan.exec(block)) !== null) {
+                pushBonus(m[1], m[2], m[4]);
+            }
+            var reBonusLine =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月(?:份)?[^\n]{0,30}?(?:分红|提成|年终奖|奖金)[^\n]{0,20}?([\d.]+)\s*万/g;
+            while ((m = reBonusLine.exec(block)) !== null) {
+                pushBonus(m[1], m[2], parseFlexibleMoney(m[3] + '万'));
+            }
+            bonuses.sort(function (a, b) {
+                if (a.year !== b.year) return a.year - b.year;
+                return a.month - b.month;
+            });
+            return bonuses;
+        }
+
+        function parseTaxPasteDetailMonths(block) {
             var months = [];
             var seen = {};
             var monthRe =
                 /(\d{4})\s*年\s*(\d{1,2})\s*月[^\n\r]*?收入\s*([\d,.]+)\s*元[^\n\r]*?税额\s*([\d,.]+)\s*元/g;
             var m;
-            while ((m = monthRe.exec(text)) !== null) {
-                var lineStart = text.lastIndexOf('\n', m.index);
-                var line = text.slice(lineStart + 1, m.index + m[0].length);
+            while ((m = monthRe.exec(block)) !== null) {
+                var lineStart = block.lastIndexOf('\n', m.index);
+                var line = block.slice(lineStart + 1, m.index + m[0].length);
                 if (/合计|汇总|全年|累计|【注|📌|收入合计|已申报税额合计/.test(line)) {
                     continue;
                 }
@@ -5769,54 +5930,279 @@
                 seen[key] = true;
                 months.push({ year: year, month: month, income: income, tax: tax, key: key });
             }
-            if (!months.length) {
-                return {
-                    ok: false,
-                    error: '未识别到「YYYY年M月 收入x元 税额y元」格式的月份行，请检查粘贴内容'
-                };
-            }
             months.sort(function (a, b) {
                 if (a.year !== b.year) return a.year - b.year;
                 return a.month - b.month;
             });
-            if (!company) {
-                var firstLine = text
-                    .split('\n')
-                    .map(function (l) {
-                        return String(l || '').trim();
-                    })
-                    .filter(Boolean)[0];
-                if (
-                    firstLine &&
-                    !/统计区间|收入|税额|汇总|📌/.test(firstLine) &&
-                    firstLine.length <= 80
-                ) {
-                    company = firstLine.replace(/^公司名称\s*[：:]\s*/, '').trim();
+            return months;
+        }
+
+        function inferTaxPasteSummaryRange(block, bonuses) {
+            var hire = null;
+            var hireM = block.match(/入职\s*[：:]?\s*[^\n]{0,20}?(\d{4})\s*年\s*(\d{1,2})\s*月/);
+            if (hireM) {
+                hire = { y: parseInt(hireM[1], 10), m: parseInt(hireM[2], 10) };
+            }
+            var fullYears = [];
+            var fyRe = /(\d{4})\s*年?\s*全年/g;
+            var fm;
+            while ((fm = fyRe.exec(block)) !== null) {
+                var y = parseInt(fm[1], 10);
+                if (y >= 1990 && y <= 2100 && fullYears.indexOf(y) < 0) {
+                    fullYears.push(y);
                 }
             }
-            if (!company) {
-                return { ok: false, error: '未识别到公司名称，请在文本中包含「公司名称：xxx」' };
+            fullYears.sort(function (a, b) {
+                return a - b;
+            });
+            var until = null;
+            var untilM = block.match(/一直到\s*(\d{4})\s*年\s*(\d{1,2})\s*月/);
+            if (untilM) {
+                until = { y: parseInt(untilM[1], 10), m: parseInt(untilM[2], 10) };
             }
-            var first = months[0];
-            var last = months[months.length - 1];
-            var monthSpan = { sy: first.year, sm: first.month, ey: last.year, em: last.month };
-            if (!range) {
-                range = monthSpan;
+            var rangeFromText = null;
+            var rangeMatch = block.match(
+                /统计区间\s*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*[-–—~～至到]+\s*(\d{4})\s*年\s*(\d{1,2})\s*月/
+            );
+            if (rangeMatch) {
+                rangeFromText = {
+                    sy: parseInt(rangeMatch[1], 10),
+                    sm: parseInt(rangeMatch[2], 10),
+                    ey: parseInt(rangeMatch[3], 10),
+                    em: parseInt(rangeMatch[4], 10)
+                };
             }
+            if (rangeFromText) {
+                return rangeFromText;
+            }
+            var sy = null;
+            var sm = null;
+            var ey = null;
+            var em = null;
+            if (hire) {
+                sy = hire.y;
+                sm = hire.m;
+            } else if (fullYears.length) {
+                sy = fullYears[0];
+                sm = 1;
+            }
+            if (until) {
+                ey = until.y;
+                em = until.m;
+            } else if (fullYears.length) {
+                ey = fullYears[fullYears.length - 1];
+                em = 12;
+            }
+            if ((sy == null || ey == null) && bonuses && bonuses.length) {
+                var b0 = bonuses[0];
+                var b1 = bonuses[bonuses.length - 1];
+                if (sy == null) {
+                    sy = b0.year;
+                    sm = b0.month;
+                }
+                if (ey == null) {
+                    ey = b1.year;
+                    em = b1.month;
+                }
+            }
+            if (sy == null || ey == null || !sm || !em) {
+                return null;
+            }
+            if (ymToKey(sy, sm) > ymToKey(ey, em)) {
+                return null;
+            }
+            return { sy: sy, sm: sm, ey: ey, em: em };
+        }
+
+        function buildSummaryMonthsFromRange(range, salary, salaryMax) {
+            var months = [];
+            var mid =
+                salary != null && salaryMax != null && salaryMax > salary
+                    ? round2((salary + salaryMax) / 2)
+                    : salary != null
+                      ? salary
+                      : salaryMax != null
+                        ? salaryMax
+                        : 0;
+            var list = enumerateYmRange(range.sy, range.sm, range.ey, range.em);
+            var i;
+            for (i = 0; i < list.length; i++) {
+                var ym = list[i];
+                months.push({
+                    year: ym.year,
+                    month: ym.month,
+                    income: mid,
+                    tax: null,
+                    key: ym.year + '-' + pad2(ym.month)
+                });
+            }
+            return months;
+        }
+
+        function finalizeTaxPasteEmployment(emp) {
             var incomeSum = 0;
             var taxSum = 0;
-            months.forEach(function (row) {
-                incomeSum = round2(incomeSum + row.income);
-                taxSum = round2(taxSum + row.tax);
+            var taxLocked = true;
+            emp.months.forEach(function (row) {
+                incomeSum = round2(incomeSum + (parseFloat(row.income) || 0));
+                if (row.tax == null || !isFinite(row.tax)) {
+                    taxLocked = false;
+                } else {
+                    taxSum = round2(taxSum + row.tax);
+                }
             });
+            if (!emp.months.length) {
+                taxLocked = false;
+            }
+            emp.income_sum = incomeSum;
+            emp.tax_sum = taxLocked ? taxSum : 0;
+            emp.tax_locked = !!emp.tax_locked && taxLocked && emp.mode === 'detail';
+            if (emp.mode === 'summary') {
+                emp.tax_locked = false;
+            }
+            return emp;
+        }
+
+        /**
+         * 解析单段粘贴文本（一家公司）：支持 APP 月明细或自然语言摘要。
+         */
+        function parseOneTaxPasteEmployerBlock(block) {
+            var company = extractTaxPasteCompanyName(block);
+            var taxIdM = block.match(/(?:扣缴义务人)?纳税人识别号\s*[：:]\s*([0-9A-Za-z]+)/);
+            var companyTaxId = taxIdM ? String(taxIdM[1] || '').trim() : '';
+            var authM = block.match(/主管税务机关\s*[：:]\s*([^\n]+)/);
+            var taxAuthority = authM
+                ? String(authM[1] || '')
+                      .replace(/\s+$/g, '')
+                      .trim()
+                : '';
+            var salaryInfo = parseTaxPasteSalaryRange(block);
+            var bonuses = parseTaxPasteBonuses(block);
+            var detailMonths = parseTaxPasteDetailMonths(block);
+            var range = null;
+            var months = [];
+            var mode = 'detail';
+
+            if (detailMonths.length) {
+                mode = 'detail';
+                months = detailMonths;
+                var first = months[0];
+                var last = months[months.length - 1];
+                range = { sy: first.year, sm: first.month, ey: last.year, em: last.month };
+                var rangeMatch = block.match(
+                    /统计区间\s*[：:]\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*[-–—~～至到]+\s*(\d{4})\s*年\s*(\d{1,2})\s*月/
+                );
+                if (rangeMatch) {
+                    range = {
+                        sy: parseInt(rangeMatch[1], 10),
+                        sm: parseInt(rangeMatch[2], 10),
+                        ey: parseInt(rangeMatch[3], 10),
+                        em: parseInt(rangeMatch[4], 10)
+                    };
+                }
+                if (salaryInfo.salary == null) {
+                    var incomes = months.map(function (r) {
+                        return r.income;
+                    });
+                    incomes.sort(function (a, b) {
+                        return a - b;
+                    });
+                    salaryInfo.salary = incomes[Math.floor(incomes.length / 2)] || incomes[0] || 0;
+                }
+            } else {
+                mode = 'summary';
+                range = inferTaxPasteSummaryRange(block, bonuses);
+                if (!range) {
+                    return {
+                        ok: false,
+                        error:
+                            '未识别到任职区间：请写明入职时间、「YYYY年全年」或「一直到YYYY年M月」，或粘贴「YYYY年M月 收入x元 税额y元」月明细'
+                    };
+                }
+                if (salaryInfo.salary == null && salaryInfo.salary_max == null) {
+                    return {
+                        ok: false,
+                        error: '未识别到月薪：请写明「正常工资薪金：月薪税前x万」或「10000—15000元」等'
+                    };
+                }
+                months = buildSummaryMonthsFromRange(range, salaryInfo.salary, salaryInfo.salary_max);
+            }
+
+            if (!company) {
+                return { ok: false, error: '未识别到公司名称，请包含公司全称或「扣缴义务人名称：xxx」' };
+            }
+            if (!months.length) {
+                return { ok: false, error: '未能展开出有效月份，请检查入职/全年区间' };
+            }
+
+            return finalizeTaxPasteEmployment({
+                ok: true,
+                mode: mode,
+                tax_locked: mode === 'detail',
+                company: company,
+                company_tax_id: companyTaxId,
+                tax_authority: taxAuthority,
+                salary: salaryInfo.salary,
+                salary_max: salaryInfo.salary_max,
+                bonuses: bonuses,
+                range: range,
+                months: months
+            });
+        }
+
+        /**
+         * 解析粘贴的个税 APP / 聊天记录文本（可含多家公司）。
+         */
+        function parseTaxPasteText(rawText) {
+            var text = String(rawText || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n');
+            if (!String(text).trim()) {
+                return { ok: false, error: '请先粘贴税务信息文本' };
+            }
+            var blocks = splitTaxPasteEmployerBlocks(text);
+            var employments = [];
+            var errors = [];
+            var bi;
+            for (bi = 0; bi < blocks.length; bi++) {
+                var one = parseOneTaxPasteEmployerBlock(blocks[bi]);
+                if (one.ok) {
+                    employments.push(one);
+                } else {
+                    errors.push('第' + (bi + 1) + '段：' + (one.error || '解析失败'));
+                }
+            }
+            if (!employments.length) {
+                return {
+                    ok: false,
+                    error: errors.length ? errors.join('；') : '未能解析粘贴内容'
+                };
+            }
+            var monthTotal = 0;
+            var incomeSum = 0;
+            var taxSum = 0;
+            var allTaxLocked = true;
+            employments.forEach(function (e) {
+                monthTotal += e.months.length;
+                incomeSum = round2(incomeSum + e.income_sum);
+                taxSum = round2(taxSum + e.tax_sum);
+                if (!e.tax_locked) {
+                    allTaxLocked = false;
+                }
+            });
+            var first = employments[0];
             return {
                 ok: true,
-                company: company,
-                range: monthSpan,
-                range_from_text: range,
-                months: months,
+                employments: employments,
+                company: first.company,
+                range: first.range,
+                months: first.months,
                 income_sum: incomeSum,
-                tax_sum: taxSum
+                tax_sum: taxSum,
+                month_total: monthTotal,
+                tax_locked: allTaxLocked,
+                parse_warnings: errors
             };
         }
 
@@ -5825,26 +6211,68 @@
                 return parsed && parsed.error ? parsed.error : '解析失败';
             }
             var lines = [];
-            lines.push('公司：' + parsed.company);
-            lines.push(
-                '区间：' +
-                    parsed.range.sy +
-                    '年' +
-                    parsed.range.sm +
-                    '月 — ' +
-                    parsed.range.ey +
-                    '年' +
-                    parsed.range.em +
-                    '月'
-            );
-            lines.push('识别月份：' + parsed.months.length + ' 个月');
-            lines.push('收入合计：' + parsed.income_sum + ' 元');
-            lines.push('税额合计：' + parsed.tax_sum + ' 元');
-            var sample = parsed.months.slice(0, 3).map(function (r) {
-                return r.year + '年' + r.month + '月 收入' + r.income + ' / 税' + r.tax;
+            var list = parsed.employments || [parsed];
+            lines.push('共识别 ' + list.length + ' 家公司，合计 ' + (parsed.month_total || parsed.months.length) + ' 个月');
+            if (parsed.tax_locked) {
+                lines.push('税额：使用粘贴明细（不重算）');
+            } else {
+                lines.push('税额：摘要模式，生成时按公式重算');
+            }
+            list.forEach(function (emp, idx) {
+                lines.push('—— ' + (idx + 1) + '. ' + emp.company + ' ——');
+                if (emp.company_tax_id) {
+                    lines.push('税号：' + emp.company_tax_id);
+                }
+                if (emp.tax_authority) {
+                    lines.push('机关：' + emp.tax_authority);
+                }
+                lines.push(
+                    '区间：' +
+                        emp.range.sy +
+                        '年' +
+                        emp.range.sm +
+                        '月 — ' +
+                        emp.range.ey +
+                        '年' +
+                        emp.range.em +
+                        '月（' +
+                        emp.months.length +
+                        ' 个月）'
+                );
+                if (emp.salary != null) {
+                    lines.push(
+                        '月薪：' +
+                            emp.salary +
+                            (emp.salary_max != null && emp.salary_max > emp.salary
+                                ? ' — ' + emp.salary_max
+                                : '') +
+                            ' 元'
+                    );
+                }
+                if (emp.bonuses && emp.bonuses.length) {
+                    lines.push(
+                        '奖金/提成：' +
+                            emp.bonuses
+                                .map(function (b) {
+                                    return b.year + '年' + b.month + '月 ' + b.amount + '元';
+                                })
+                                .join('；')
+                    );
+                }
+                if (emp.mode === 'detail') {
+                    lines.push('收入合计：' + emp.income_sum + ' 元；税额合计：' + emp.tax_sum + ' 元');
+                    var sample = emp.months.slice(0, 2).map(function (r) {
+                        return r.year + '年' + r.month + '月 收入' + r.income + ' / 税' + r.tax;
+                    });
+                    if (sample.length) {
+                        lines.push('样例：' + sample.join('；'));
+                    }
+                } else {
+                    lines.push('摘要展开：按月薪生成工资行，税额将自动计算');
+                }
             });
-            if (sample.length) {
-                lines.push('样例：' + sample.join('；'));
+            if (parsed.parse_warnings && parsed.parse_warnings.length) {
+                lines.push('部分段落未解析：' + parsed.parse_warnings.join('；'));
             }
             return lines.join('\n');
         }
@@ -5894,40 +6322,43 @@
             return parsed;
         }
 
-        function applyTaxPasteParsedToForm(parsed) {
-            if (!parsed || !parsed.ok) {
-                return false;
+        function applyOneTaxPasteEmpToRow(row, emp) {
+            if (!row || !emp) {
+                return;
             }
-            switchTab('records', true);
-            exitBatchTaxEditMode();
-            var list = document.getElementById('batch_employment_list');
-            if (!list) return false;
-            list.innerHTML = '';
-            addBatchEmpRow();
-            var row = list.querySelector('.batch-emp-row');
-            if (!row) return false;
             var monthSalaryMap = {};
             var monthTaxMap = {};
-            var incomes = [];
-            parsed.months.forEach(function (m) {
-                monthSalaryMap[m.key] = m.income;
-                monthTaxMap[m.key] = m.tax;
-                incomes.push(m.income);
-            });
-            incomes.sort(function (a, b) {
-                return a - b;
-            });
-            var medianIncome = incomes[Math.floor(incomes.length / 2)] || incomes[0] || 0;
+            if (emp.mode === 'detail') {
+                emp.months.forEach(function (m) {
+                    monthSalaryMap[m.key] = m.income;
+                    if (m.tax != null && isFinite(m.tax)) {
+                        monthTaxMap[m.key] = m.tax;
+                    }
+                });
+            }
+            var salary = emp.salary;
+            if (salary == null && emp.months.length) {
+                var incomes = emp.months.map(function (m) {
+                    return m.income;
+                });
+                incomes.sort(function (a, b) {
+                    return a - b;
+                });
+                salary = incomes[Math.floor(incomes.length / 2)] || incomes[0] || 0;
+            }
+            var bonuses = Array.isArray(emp.bonuses) ? emp.bonuses.slice() : [];
+            var primary = bonuses.length ? bonuses[0] : null;
+            var extra = bonuses.length > 1 ? bonuses.slice(1) : [];
             setBatchEmpRowValues(row, {
-                company: parsed.company,
-                company_tax_id: '',
-                tax_authority: '',
-                sy: parsed.range.sy,
-                sm: parsed.range.sm,
-                ey: parsed.range.ey,
-                em: parsed.range.em,
-                salary: medianIncome,
-                salary_max: '',
+                company: emp.company,
+                company_tax_id: emp.company_tax_id || '',
+                tax_authority: emp.tax_authority || '',
+                sy: emp.range.sy,
+                sm: emp.range.sm,
+                ey: emp.range.ey,
+                em: emp.range.em,
+                salary: salary != null ? salary : '',
+                salary_max: emp.salary_max != null ? emp.salary_max : '',
                 ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
@@ -5939,11 +6370,38 @@
                 unemployment: 0,
                 fund: 0,
                 special: 0,
-                yearEndBonus: 0,
+                yearEndBonus: primary ? primary.amount : 0,
+                bonusYear: primary ? primary.year : '',
+                bonusMonth: primary ? primary.month : 12,
                 monthSalaryMap: monthSalaryMap,
                 monthTaxMap: monthTaxMap
             });
+            row._extraBonuses = extra.map(function (b) {
+                return { year: b.year, month: b.month, amount: b.amount };
+            });
             updateBatchEmpMonthSalaryBadge(row);
+        }
+
+        function applyTaxPasteParsedToForm(parsed) {
+            if (!parsed || !parsed.ok) {
+                return false;
+            }
+            switchTab('records', true);
+            exitBatchTaxEditMode();
+            var list = document.getElementById('batch_employment_list');
+            if (!list) return false;
+            list.innerHTML = '';
+            var employments = parsed.employments && parsed.employments.length ? parsed.employments : [parsed];
+            var ei;
+            for (ei = 0; ei < employments.length; ei++) {
+                addBatchEmpRow();
+                var rows = list.querySelectorAll('.batch-emp-row');
+                var row = rows[rows.length - 1];
+                if (!row) {
+                    return false;
+                }
+                applyOneTaxPasteEmpToRow(row, employments[ei]);
+            }
             scheduleBatchTaxDraftSave();
             var card = document.getElementById('batchTaxCard');
             if (card) {
@@ -5966,18 +6424,23 @@
                 return;
             }
             closeTaxPasteImportModal();
+            var nEmp = (parsed.employments && parsed.employments.length) || 1;
+            var nMon = parsed.month_total || parsed.months.length;
             showMsg(
-                '已填入「' +
-                    parsed.company +
-                    '」共 ' +
-                    parsed.months.length +
-                    ' 个月（收入/税额均按粘贴文本）。核对后点「一键生成税务记录」即可写入。',
+                '已填入 ' +
+                    nEmp +
+                    ' 家公司共 ' +
+                    nMon +
+                    ' 个月' +
+                    (parsed.tax_locked ? '（收入/税额均按粘贴文本）' : '（摘要模式，税额将按公式计算）') +
+                    '。核对后点「一键生成税务记录」即可写入。',
                 true
             );
             if (typeof window.trackUserAction === 'function') {
                 window.trackUserAction('track_tax_paste_import_fill', {
                     page: 'consult',
-                    months: parsed.months.length
+                    months: nMon,
+                    employers: nEmp
                 });
             }
         }
@@ -5987,17 +6450,27 @@
             if (!parsed.ok) {
                 return;
             }
+            var nEmp = (parsed.employments && parsed.employments.length) || 1;
+            var nMon = parsed.month_total || parsed.months.length;
+            var names = (parsed.employments || [parsed])
+                .map(function (e) {
+                    return e.company;
+                })
+                .join('、');
+            var taxNote = parsed.tax_locked
+                ? '税额使用粘贴值（不重算）。'
+                : '摘要模式：税额将按公式重算。';
             if (
                 !confirm(
-                    '将按粘贴文本为「' +
-                        parsed.company +
-                        '」写入 ' +
-                        parsed.months.length +
-                        ' 条工资薪金记录：\n收入合计 ' +
-                        parsed.income_sum +
-                        ' 元，税额合计 ' +
-                        parsed.tax_sum +
-                        ' 元。\n税额使用粘贴值（不重算）。是否写入？'
+                    '将为「' +
+                        names +
+                        '」写入约 ' +
+                        nMon +
+                        ' 条工资薪金记录（共 ' +
+                        nEmp +
+                        ' 家）。\n' +
+                        taxNote +
+                        '\n是否写入？'
                 )
             ) {
                 return;
@@ -6010,7 +6483,8 @@
             if (typeof window.trackUserAction === 'function') {
                 window.trackUserAction('track_tax_paste_import_generate', {
                     page: 'consult',
-                    months: parsed.months.length
+                    months: nMon,
+                    employers: nEmp
                 });
             }
             batchAddEmploymentTaxRecords();
