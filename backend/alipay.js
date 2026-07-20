@@ -9,7 +9,15 @@ function envText(name) {
 function pemFromEnv(name) {
   var value = envText(name);
   if (!value) return '';
-  return value.replace(/\\n/g, '\n');
+  value = value.replace(/\\n/g, '\n');
+  if (/-----BEGIN [A-Z ]+-----/.test(value)) return value;
+
+  /* 支付宝密钥工具复制的内容通常只有 Base64 主体；补齐 PEM 包装供 Node crypto 使用。 */
+  var base64 = value.replace(/\s+/g, '');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return value;
+  var lines = base64.match(/.{1,64}/g) || [];
+  var type = /PRIVATE/.test(name) ? 'PRIVATE KEY' : 'PUBLIC KEY';
+  return '-----BEGIN ' + type + '-----\n' + lines.join('\n') + '\n-----END ' + type + '-----';
 }
 
 function formatTimestamp(date) {
