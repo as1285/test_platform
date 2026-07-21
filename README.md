@@ -60,10 +60,11 @@ https://www.installguide1.top/
    首次使用按页面提示完成注册；安装页提供 **「装好后点这里注册」** 入口。注册页会说明：本应用为界面演示，非官方申报渠道。
 
 3. **激活**  
-   新账号需输入 **激活码** 后方可完整使用：  
-   - 注册成功后会引导至 **「我的」** 激活；在 **「我的」** 页点击 **「激活」**，粘贴激活码并确认；  
-   - 激活成功后会引导至 **税务记录** 添加演示数据；  
-   - 或通过 **闲鱼 / 酷发卡** 等渠道购买，按卖家说明获取激活码（APP 内 **「闲鱼购买」** 可复制购买文案）。
+   新账号需 **激活** 后方可完整使用：  
+   - 注册成功后会引导至 **「我的」** 激活；在 **「我的」** 页点击 **「激活」** 进入购买页；  
+   - **支付宝**：扫码付款成功后自动开通当前账号；  
+   - 或通过 **微信 / 闲鱼 / 酷发卡** 等渠道购买激活码，回到购买页顶部粘贴并确认；  
+   - 激活成功后会引导至 **税务记录** 添加演示数据。
 
 4. **维护演示数据（办税相关）**  
    - 进入 **「我的」→「我要咨询」**，打开 **税务记录** Tab；  
@@ -120,64 +121,77 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | 约 **120** 个源文件、**7 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
+| **源码规模** | 约 **150+** 个源文件、**7 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
 | **前端页面** | **58** 个 HTML 页面（`frontend/*.html`） |
-| **后端 API** | 单文件 `backend/server.js`（约 **1.7 万** 行） |
-| **数据库表** | 以 `backend/schema.sql` / 启动迁移为准 |
+| **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；业务暂存 `src/legacy/monolith.js`（约 **1.9 万** 行），域路由见 `src/{auth,user,tax,payments,...}/` |
+| **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 3 个工作流：Android APK、iOS 打包、MySQL 定时备份 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，2026-07）
+### 代码规模（按语言，约 2026-07）
 
-| 语言 | 文件数 | 行数 |
-|------|--------|------|
-| JavaScript | ~35 | ~35,000+ |
-| HTML | 58 | ~30,000+ |
-| CSS | 5 | ~1,800 |
-| Shell / YAML / SQL / 其他 | ~15 | ~1,100 |
-| **合计** | **~120** | **~71,000** |
+| 语言 | 说明 |
+|------|------|
+| JavaScript | 后端 `src/` + 前端 `public/js/`（含管理端懒加载模块） |
+| HTML / CSS | 用户端多页 + 管理端面板 |
+| Shell / YAML / SQL | 部署、CI、migrations |
 
-按模块：`frontend/` 约 5 万行 · `backend/` 约 1.7 万行 · `scripts/` + CI 约 0.1 万行。
+按模块：`frontend/` 为主 · `backend/src/` 为 API 与迁移 · `docs/` 含架构与转化规划。
 
-核心大文件：`backend/server.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`、`frontend/public/js/auth.js`、`frontend/install_guide.html`。
+核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`、`frontend/public/js/auth.js`、`frontend/purchase.html`。
 
 ### 技术栈
 
 | 层 | 技术 |
 |----|------|
-| 前端 | 静态 HTML/CSS/JS，多页应用，主题可配置 |
-| 后端 | Node.js + Express 风格 API（`server.js`） |
+| 前端 | 静态 HTML/CSS/JS，多页应用，主题可配置；底栏预取 / JS 强缓存加速切页 |
+| 后端 | Node.js（Express）；域路由模块化，对外仍兼容 `*.php?action=` |
 | 数据库 | MySQL 8.0（库名 `personal_tax`） |
 | 部署 | Docker Compose（`frontend` + `backend` + `db`） |
-| 移动端 | Cordova（Android / iOS WebView 壳） |
+| 移动端 | Cordova（Android / iOS WebView 壳）；支付外链经壳 `InAppBrowser` / Intent 打开 |
+| 支付 | 支付宝当面付（`alipay-sdk` → `alipay.trade.precreate` 扫码） |
 
 ### 常用命令
 
 | 操作 | 命令 |
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
-| 仅部署前端/后端 | `DEPLOY_SERVICES=frontend ./scripts/deploy.sh` |
+| 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
 | 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/` |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
 
 ### 管理后台能力
 
-`admin_panel.html` 主要模块：
+入口：`/admin`、`/admin/login`、`/admin/panel`（亦可 `admin_login.html` / `admin_panel.html`）；菜单权限由后端 `menuRegistry` 下发，前端按菜单懒加载。
 
-- **激活码**：单码生成；超管可 **按渠道批量生成**（内置闲鱼 / 酷发卡，可手动添加或删除自定义渠道），备注为「渠道名+批量」，并导出 TXT；渠道批量码列表可按渠道筛选
-- **数据统计**：注册转化率、7 日漏斗、渠道分析、安装页统计（最近访客默认展示 3 位）、API 调用分析
-- **用户管理**：注册/删除/封禁、激活、**修改密码**、退款
+主要模块：
+
+- **激活码**：单码生成；超管可 **按渠道批量生成**（内置闲鱼 / 酷发卡，可自定义渠道），导出 TXT；列表可按渠道 / 归属管理员筛选
+- **用户管理**：注册/删除/封禁、激活、**修改密码**、退款；列表展示 **上线**（激活码 `owner_admin_username`）
+- **数据统计**：注册转化率、7 日漏斗、渠道分析、安装页统计、API 调用 / 用户接口 5xx
 - **用户数据**：扣缴义务人分析、工资分布、未填个税行为导出
-- **引导安装**：APK / 描述文件、代理推广链接生成；落地页 A/B（体验向游客沙盒 / 下载向安装页）
+- **在线客服**：会话回复、固定话术、可选 AI 自动回复
+- **引导安装**：APK / 描述文件、代理推广链接；落地页 A/B
 - **系统设置**：转化 A/B、外观主题、QQ / 收款码
+
+### 架构重构文档
+
+- [总计划](docs/system-architecture-refactor-plan.md)
+- [阶段 0 基线](docs/architecture-phase0/README.md)
+- [阶段 1 后端切块](docs/architecture-phase1/README.md)（已完成）
+- [阶段 2 管理端解耦](docs/architecture-phase2/README.md)（已完成；可选 DNS：`admin.geshui.vip`）
 
 ### 近期产品要点（2026-07）
 
-- **安装引导页**：首屏精简为品牌 + 一句说明 + 下载主按钮；`?download=1` 更聚焦下载区
-- **咨询 · 税务记录**：布局收紧；可折叠「个税计算表与公式」（七级预扣 + 年终奖单独计税 + 试算）
-- **批量激活码多渠道**：生成时选择渠道；自定义渠道入库共享；内置渠道不可删
-- **游客 / 落地漏斗**：落地 A/B 分流、游客样例数据与下载引导（详见 `docs/user-conversion-plan.md`）
+- **安装引导页**：首屏精简；`?download=1` 聚焦下载
+- **咨询 · 税务记录**：个税计算表与公式；批量生成 / 粘贴导入 / 示例填写
+- **批量激活码多渠道**：闲鱼 / 酷发卡 / 自定义；备注「渠道名+批量」
+- **游客 / 落地漏斗**：落地 A/B、游客样例数据（见 `docs/user-conversion-plan.md`）
+- **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
+- **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
+- **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
+- **在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节）
 
 ### 数据库备份（GitHub Actions）
 
@@ -222,6 +236,8 @@ ALIPAY_PRODUCT_AMOUNT=199
 ```
 
 - 服务器收到 `TRADE_SUCCESS`/`TRADE_FINISHED` 回调并完成 RSA2 验签、订单金额校验后，自动激活下单账号。
+- 自动发卡写入 `activation_codes`，`owner_admin_username` 为超级管理员（默认 `admin`），用户列表「上线」与转化统计可归属到 admin；酷发卡批量 / 渠道激活码同样规则。
+- App 内勿用整页跳转打开支付宝 H5；未付款返回应仍停在购买页。Cordova 壳改动需重新打包 APK 后生效。
 - 回调地址必须可由支付宝公网访问；不要将支付宝私钥、平台公钥或 `.env` 提交到 Git、后台设置或前端代码。
 - 初次上线请使用支付宝沙箱先验证支付、异步回调和自动开通流程。
 
