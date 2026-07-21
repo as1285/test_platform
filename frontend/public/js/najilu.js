@@ -1405,14 +1405,14 @@
       drawText(ctx, '3.不同打印设备造成的色差不影响使用效力。', 90, explainY + 178, { size: 16, color: '#999' });
       drawText(ctx, '本凭证不作为纳税人记账、抵扣凭证', 90, explainY + 232, { size: 20, color: '#555' });
       drawText(ctx, '开具机关（盖章）', width - 430, explainY + 138, { size: 20, color: '#555' });
-      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 205, { size: 20, color: '#555' });
-      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 265, {
+      drawText(ctx, '开具时间： ' + formatDateCn(app.apply_time, app.period_end), width - 430, explainY + 212, { size: 20, color: '#555' });
+      drawText(ctx, '当前第' + pageNum + '页，共' + pageCount + '页', width - 230, explainY + 268, {
         size: 18,
         color: '#555'
       });
       if (showStamp) {
-        /* 压住「盖章」二字，对齐官方电子章落位 */
-        drawStamp(ctx, width - 248, explainY + 118, stampAuthority(allRows));
+        /* 压住「盖章」，底缘贴近开具时间，对齐官方电子章 */
+        drawStamp(ctx, width - 238, explainY + 122, stampAuthority(allRows));
       }
       return canvas.toDataURL('image/png');
     }
@@ -1585,44 +1585,54 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（标准：细红圆框、上弧「国家税务总局××市税务局」、正中横排「业务专用章」，无五角星） */
+  /** 纳税记录右下角章（标准双圈：外粗内细、上弧机关名、正中「业务专用章」） */
   function drawStamp(ctx, cx, cy, authority) {
     var name = authorityToCityStampText(authority) || '国家税务总局深圳市税务局';
-    var stampRed = '#d32f2f';
-    var radius = 90;
+    var stampRed = '#e53935';
+    var radius = 94;
+    var innerGap = 7.5;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
-    /* 印泥叠压：压住下方「盖章」字样时仍可见 */
-    ctx.globalAlpha = 0.94;
+    ctx.globalAlpha = 0.92;
     if (ctx.globalCompositeOperation) {
       try {
         ctx.globalCompositeOperation = 'multiply';
       } catch (e) {}
     }
+
     ctx.strokeStyle = stampRed;
-    ctx.lineWidth = 2.8;
+    /* 外圈略粗 */
+    ctx.lineWidth = 3.4;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
+    /* 内圈更细 */
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - innerGap, 0, Math.PI * 2);
+    ctx.stroke();
 
-    var arcSize = name.length > 14 ? 16 : name.length > 12 ? 17 : 18;
-    var arcGap = name.length > 14 ? 3.2 : name.length > 12 ? 2.6 : 2.2;
-    drawArcText(ctx, name, cx, cy, radius - 15, Math.PI * 1.1, Math.PI * 1.9, {
+    /* 弧文贴在双圈内侧，跨度约半圆偏上 */
+    var arcR = radius - 19;
+    var arcSize = name.length > 14 ? 15.5 : name.length >= 13 ? 16.5 : 17.5;
+    var arcGap = name.length > 14 ? 2.4 : name.length >= 13 ? 2.0 : 2.4;
+    drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.14, Math.PI * 1.86, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0.45,
+      strokeWidth: 0.55,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 0.98
+      maxSpanRad: Math.PI * 0.9
     });
-    /* 「业务专用章」略偏下，贴近官方电子章 */
-    drawSpacedText(ctx, '业务专用章', cx, cy + 10, {
-      size: 18,
+
+    /* 「业务专用章」居中略下，字距贴近标准章 */
+    drawSpacedText(ctx, '业务专用章', cx, cy + 8, {
+      size: 19,
       weight: 'bold',
       color: stampRed,
-      letterGap: 4,
-      strokeWidth: 0.35,
+      letterGap: 5,
+      strokeWidth: 0.45,
       font: font,
       baseline: 'middle'
     });
