@@ -10,6 +10,7 @@ var _pool = null;
 var _captchaStore = new Map();
 var CAPTCHA_TTL_MS = 5 * 60 * 1000;
 
+/** 读取整型环境变量（带默认与上限） */
 function envInt(name, def, max) {
   var n = parseInt(process.env[name], 10);
   if (isNaN(n) || n < 0) return def;
@@ -17,38 +18,47 @@ function envInt(name, def, max) {
   return n;
 }
 
+/** 注册防刷总开关 */
 function guardEnabled() {
   return String(process.env.REGISTER_GUARD_ENABLED || '1') !== '0';
 }
 
+/** 每日同 IP 注册上限 */
 function maxPerIpDay() {
   return envInt('REGISTER_MAX_PER_IP_DAY', 10, 200);
 }
 
+/** 每日同设备指纹注册上限 */
 function maxPerFpDay() {
   return envInt('REGISTER_MAX_PER_FP_DAY', 5, 100);
 }
 
+/** 每分钟注册突发上限 */
 function burstPerMinute() {
   return envInt('REGISTER_BURST_PER_MINUTE', 8, 60);
 }
 
+/** 注册失败退避基准毫秒 */
 function failBackoffBaseMs() {
   return envInt('REGISTER_FAIL_BACKOFF_BASE_MS', 800, 30000);
 }
 
+/** 是否强制客户端合法性校验 */
 function requireClientCheck() {
   return String(process.env.REGISTER_REQUIRE_CLIENT || '1') !== '0';
 }
 
+/** 是否允许 Web 端注册 */
 function allowWebRegister() {
   return String(process.env.REGISTER_ALLOW_WEB || '1') === '1';
 }
 
+/** 客户端签名校验密钥 */
 function appSignSecret() {
   return String(process.env.REGISTER_APP_SIGN_SECRET || process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production');
 }
 
+/** 当前北京时间日期键 YYYY-MM-DD */
 function chinaDateKeyNow() {
   var now = new Date();
   var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -59,6 +69,7 @@ function chinaDateKeyNow() {
   return y + '-' + m + '-' + d;
 }
 
+/** 辅助函数：pruneCaptchaStore */
 function pruneCaptchaStore() {
   var now = Date.now();
   _captchaStore.forEach(function (v, k) {
@@ -66,11 +77,13 @@ function pruneCaptchaStore() {
   });
 }
 
+/** 注入数据库连接池到注册防刷模块 */
 function initRegisterGuard(pool) {
   _pool = pool;
   setInterval(pruneCaptchaStore, 60000).unref();
 }
 
+/** 签发注册验证码 */
 function issueRegisterCaptcha() {
   pruneCaptchaStore();
   var a = 2 + Math.floor(Math.random() * 8);
@@ -85,6 +98,7 @@ function issueRegisterCaptcha() {
   };
 }
 
+/** 校验注册验证码 */
 function verifyRegisterCaptcha(captchaId, answer) {
   if (!captchaId || answer == null) return false;
   var row = _captchaStore.get(String(captchaId).trim());
@@ -96,16 +110,19 @@ function verifyRegisterCaptcha(captchaId, answer) {
   return String(answer).trim() === row.answer;
 }
 
+/** 判断：CordovaUserAgent */
 function isCordovaUserAgent(req) {
   var ua = req && req.headers ? String(req.headers['user-agent'] || '') : '';
   return CORDOVA_UA_RE.test(ua);
 }
 
+/** 判断：DistributorCordovaUserAgent */
 function isDistributorCordovaUserAgent(req) {
   var ua = req && req.headers ? String(req.headers['user-agent'] || '') : '';
   return CORDOVA_UA_RE.test(ua) && DISTRIBUTOR_UA_RE.test(ua);
 }
 
+/** 拦截分发端非法注册 */
 function checkRegisterDistributorBlock(req) {
   if (!isDistributorCordovaUserAgent(req)) {
     return { ok: true };
@@ -117,6 +134,7 @@ function checkRegisterDistributorBlock(req) {
   };
 }
 
+/** 校验：AppSignHeader */
 function verifyAppSignHeader(req) {
   var raw = req && req.headers ? String(req.headers['x-tax-app-sign'] || '').trim() : '';
   if (!raw) return false;
@@ -134,6 +152,7 @@ function verifyAppSignHeader(req) {
   }
 }
 
+/** 判断：TrustedWebReferer */
 function isTrustedWebReferer(req) {
   if (!allowWebRegister()) return false;
   var ref = req && req.headers ? String(req.headers.referer || req.headers.referrer || '').trim() : '';
@@ -148,6 +167,7 @@ function isTrustedWebReferer(req) {
   }
 }
 
+/** 校验注册客户端（UA/签名等） */
 function checkRegisterClient(req) {
   if (!requireClientCheck()) return { ok: true };
   if (isCordovaUserAgent(req)) return { ok: true };
@@ -156,6 +176,7 @@ function checkRegisterClient(req) {
   return { ok: false, reason: 'register_fail:invalid_client', msg: '请使用官方 App 或本站页面注册' };
 }
 
+/** 辅助函数：guardKeys */
 function guardKeys(req, getClientIp, computeDeviceFingerprint) {
   var ip = getClientIp(req) || 'unknown';
   var fp = computeDeviceFingerprint(req) || 'unknown';
@@ -167,6 +188,7 @@ function guardKeys(req, getClientIp, computeDeviceFingerprint) {
   };
 }
 
+/** 辅助函数：incrementGuardCounter */
 async function incrementGuardCounter(key, field, failReason) {
   if (!_pool) return;
   var day = chinaDateKeyCol();
@@ -189,10 +211,12 @@ async function incrementGuardCounter(key, field, failReason) {
   );
 }
 
+/** 辅助函数：chinaDateKeyCol */
 function chinaDateKeyCol() {
   return chinaDateKeyNow();
 }
 
+/** 获取：GuardCounts */
 async function getGuardCounts(keys) {
   if (!_pool || !keys.length) return {};
   var day = chinaDateKeyCol();
@@ -217,6 +241,7 @@ async function getGuardCounts(keys) {
   return map;
 }
 
+/** 获取：MinuteBurst */
 async function getMinuteBurst(ipKey) {
   if (!_pool) return 0;
   var [rows] = await _pool.execute(
@@ -226,6 +251,7 @@ async function getMinuteBurst(ipKey) {
   return rows.length ? Number(rows[0].c) || 0 : 0;
 }
 
+/** 辅助函数：bumpMinuteBurst */
 async function bumpMinuteBurst(ipKey) {
   if (!_pool) return;
   var win = new Date();
@@ -237,12 +263,14 @@ async function bumpMinuteBurst(ipKey) {
   );
 }
 
+/** 辅助函数：computeFailBackoffMs */
 function computeFailBackoffMs(failCount) {
   var base = failBackoffBaseMs();
   var n = Math.min(Number(failCount) || 0, 8);
   return Math.min(base * Math.pow(2, n), 60000);
 }
 
+/** 辅助函数：failReasonLabel */
 function failReasonLabel(reason) {
   var r = String(reason || '').trim();
   var map = {
@@ -259,10 +287,12 @@ function failReasonLabel(reason) {
   return map[r] || '';
 }
 
+/** 选取：LastFailReason */
 function pickLastFailReason(ipC, fpC) {
   return (ipC && ipC.last_fail_reason) || (fpC && fpC.last_fail_reason) || '';
 }
 
+/** 检查注册 IP/指纹限流 */
 async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprint) {
   var keys = guardKeys(req, getClientIp, computeDeviceFingerprint);
   var counts = await getGuardCounts([keys.ipKey, keys.fpKey]);
@@ -320,6 +350,7 @@ async function checkRegisterRateLimits(req, getClientIp, computeDeviceFingerprin
   return { ok: true, keys: keys };
 }
 
+/** 获取：LastAttemptMs */
 async function getLastAttemptMs(ipKey) {
   if (!_pool) return 0;
   var [rows] = await _pool.execute(
@@ -329,18 +360,21 @@ async function getLastAttemptMs(ipKey) {
   return rows.length && rows[0].ts != null ? Number(rows[0].ts) : 0;
 }
 
+/** 记录注册成功审计 */
 async function markRegisterAttemptSuccess(keys) {
   await incrementGuardCounter(keys.ipKey, 'success');
   await incrementGuardCounter(keys.fpKey, 'success');
   await bumpMinuteBurst(keys.ipKey);
 }
 
+/** 记录注册失败并触发退避 */
 async function markRegisterAttemptFail(keys, reason) {
   await incrementGuardCounter(keys.ipKey, 'fail', reason);
   await incrementGuardCounter(keys.fpKey, 'fail', reason);
   await bumpMinuteBurst(keys.ipKey);
 }
 
+/** 确保注册审计相关表存在 */
 async function ensureRegisterGuardTables(conn) {
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS register_guard_counters (
@@ -377,6 +411,7 @@ function looksLikeBotUsername(username) {
   return /^[A-Za-z0-9]{8}$/.test(u);
 }
 
+/** 构建疑似机器人清理 SQL 条件 */
 function buildBotPurgeWhere(body) {
   var startBj = body.start_bj != null ? String(body.start_bj).trim() : '2026-05-22 00:00:00';
   var endBj = body.end_bj != null ? String(body.end_bj).trim() : '2026-05-22 01:00:00';
@@ -401,12 +436,14 @@ function buildBotPurgeWhere(body) {
   return { sql: clauses.join(' AND '), params: params, startBj: startBj, endBj: endBj };
 }
 
+/** 统计可清理的疑似机器人数量 */
 async function countBotPurgeCandidates(conn, criteria) {
   var w = buildBotPurgeWhere(criteria || {});
   var [[row]] = await conn.execute('SELECT COUNT(*) AS c FROM users WHERE ' + w.sql, w.params);
   return { count: Number(row.c) || 0, window: { start_bj: w.startBj, end_bj: w.endBj } };
 }
 
+/** 删除用户及其关联业务数据 */
 async function deleteUserAndRelated(conn, username) {
   await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [username]);
   await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [username]);
@@ -421,6 +458,7 @@ async function deleteUserAndRelated(conn, username) {
   await conn.execute('DELETE FROM users WHERE username = ?', [username]);
 }
 
+/** 批量清理/封禁疑似机器人用户 */
 async function purgeBotUsersBatch(conn, criteria, options) {
   var batchSize = options && options.batch_size ? Math.min(Number(options.batch_size) || 200, 500) : 200;
   var mode = options && options.mode === 'ban' ? 'ban' : 'delete';

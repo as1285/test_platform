@@ -2,6 +2,7 @@
  * Legacy monolith：业务 handler / 中间件 / 建表逻辑暂存于此。
  * 路由注册已拆到 src/{auth,user,tax,...}/routes.js；入口见 server.js → src/bootstrap.js。
  * 阶段 1 约定：勿在 createTables/initDatabase 新增业务 ALTER，改走 backend/migrations/。
+ * 函数均附带中文 JSDoc；对外入口见 getHandlers / getMiddleware。
  */
 const crypto = require('crypto');
 const express = require('express');
@@ -108,12 +109,12 @@ const ACTIVATION_BATCH_BUILTIN_CHANNELS = {
 
 const SETTING_KEY_ACTIVATION_BATCH_CHANNELS = 'activation_batch_channels_json';
 
-/** 激活码 note 含「闲鱼」视为闲鱼渠道批量码（兼容旧逻辑） */
+/** 是否：xianyu activation note */
 function isXianyuActivationNote(note) {
   return String(note || '').indexOf('闲鱼') >= 0;
 }
 
-/** 是否为渠道批量备注（以「批量」结尾，或历史闲鱼备注） */
+/** 是否：batch activation note */
 function isBatchActivationNote(note) {
   var n = String(note || '').trim();
   if (!n) return false;
@@ -121,6 +122,7 @@ function isBatchActivationNote(note) {
   return isXianyuActivationNote(n);
 }
 
+/** 清洗激活批次渠道展示名 */
 function sanitizeActivationBatchChannelLabel(raw) {
   var s = String(raw != null ? raw : '')
     .trim()
@@ -131,7 +133,7 @@ function sanitizeActivationBatchChannelLabel(raw) {
   return s;
 }
 
-/** 从备注解析渠道展示名，如「闲鱼批量」→「闲鱼」 */
+/** activation channel label from note */
 function activationChannelLabelFromNote(note) {
   var n = String(note || '').trim();
   if (!n) return '';
@@ -147,7 +149,7 @@ function activationChannelLabelFromNote(note) {
   return '';
 }
 
-/** 展示名 / key → 写入 users.activation_source_channel 的值 */
+/** activation source key from label */
 function activationSourceKeyFromLabel(label) {
   var lab = sanitizeActivationBatchChannelLabel(label);
   if (!lab) return '';
@@ -160,12 +162,14 @@ function activationSourceKeyFromLabel(label) {
   return lab;
 }
 
+/** 从激活码备注解析激活来源 */
 function activationSourceFromCodeNote(note) {
   var label = activationChannelLabelFromNote(note);
   if (!label) return '';
   return activationSourceKeyFromLabel(label);
 }
 
+/** 按渠道生成激活批次备注 */
 function activationBatchNoteFromChannel(channelInput) {
   var lab = sanitizeActivationBatchChannelLabel(channelInput);
   if (!lab) lab = ACTIVATION_BATCH_BUILTIN_CHANNELS.xianyu;
@@ -179,6 +183,7 @@ function activationBatchNoteFromChannel(channelInput) {
   return lab + '批量';
 }
 
+/** 激活来源渠道展示文案 */
 function activationSourceChannelLabel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
@@ -193,6 +198,7 @@ function activationSourceChannelLabel(channel) {
   return c;
 }
 
+/** 解析激活批次自定义渠道 JSON */
 function parseActivationBatchCustomChannels(raw) {
   var list = [];
   var seen = Object.create(null);
@@ -229,6 +235,7 @@ function parseActivationBatchCustomChannels(raw) {
   return list.slice(0, 40);
 }
 
+/** 加载激活批次自定义渠道 */
 async function loadActivationBatchCustomChannels(conn) {
   var ownConn = !conn;
   var c = conn;
@@ -247,6 +254,7 @@ async function loadActivationBatchCustomChannels(conn) {
   }
 }
 
+/** 保存激活批次自定义渠道 */
 async function saveActivationBatchCustomChannels(conn, labels) {
   var list = parseActivationBatchCustomChannels(labels);
   var json = JSON.stringify(list);
@@ -258,6 +266,7 @@ async function saveActivationBatchCustomChannels(conn, labels) {
   return list;
 }
 
+/** 组装激活批次渠道配置响应 */
 function buildActivationBatchChannelsPayload(customLabels) {
   var builtins = Object.keys(ACTIVATION_BATCH_BUILTIN_CHANNELS).map(function (k) {
     return { key: k, label: ACTIVATION_BATCH_BUILTIN_CHANNELS[k], builtin: true };
@@ -268,7 +277,7 @@ function buildActivationBatchChannelsPayload(customLabels) {
   return builtins.concat(customs);
 }
 
-/** 注册来源 + 激活来源（闲鱼码等）综合展示 */
+/** 用户辅助：channel analysis label */
 function userChannelAnalysisLabel(registerChannel, activationChannel) {
   var reg = registerSourceChannelLabel(registerChannel);
   var act = activationSourceChannelLabel(activationChannel);
@@ -283,6 +292,7 @@ function userChannelAnalysisLabel(registerChannel, activationChannel) {
 
 const REGISTER_SOURCE_OTHER_MAX = 64;
 
+/** 规范化注册来源渠道入参 */
 function normalizeRegisterSourceChannelInput(channel, otherText) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
@@ -304,6 +314,7 @@ function normalizeRegisterSourceChannelInput(channel, otherText) {
   return { value: c };
 }
 
+/** 校验注册来源渠道是否合法 */
 function validateRegisterSourceChannel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
@@ -325,6 +336,7 @@ function validateRegisterSourceChannel(channel) {
   return null;
 }
 
+/** 注册来源渠道展示文案 */
 function registerSourceChannelLabel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
@@ -344,12 +356,14 @@ const LEGACY_DEFAULT_TAX_ID = '620000000000000000';
 const DEFAULT_TAX_ID_HINT = '所有信息点击我要咨询修改';
 const LEGACY_TAX_ID_HINT = '注册默认： 所有信息点击我要咨询修改';
 
+/** 规范化对外返回的税务记录 id */
 function normalizeTaxIdForApi(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
   if (!s || s === LEGACY_DEFAULT_TAX_ID || s === LEGACY_TAX_ID_HINT) return DEFAULT_TAX_ID_HINT;
   return s;
 }
 
+/** 判断是否为占位税务记录 id */
 function isPlaceholderTaxId(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
   return (
@@ -362,12 +376,13 @@ function isPlaceholderTaxId(taxId) {
   );
 }
 
-/** C 端「纳税人识别号」在管理后台用户数据中展示为身份证号 */
+/** 格式化：user id card for admin */
 function formatUserIdCardForAdmin(taxId) {
   var s = taxId == null ? '' : String(taxId).trim();
   return isPlaceholderTaxId(s) ? '' : s;
 }
 
+/** 管理端展示用的用户证件号文案 */
 function userIdCardLabelForAdmin(taxId) {
   var s = formatUserIdCardForAdmin(taxId);
   return s || '未填写';
@@ -437,10 +452,12 @@ let pool;
 var _testCompanyNameCache = null;
 var TEST_COMPANY_CACHE_MS = 3000;
 
+/** 使用盐值对密码做哈希 */
 function hashPasswordWithSalt(password, saltBuf) {
   return crypto.scryptSync(password, saltBuf, 64).toString('hex');
 }
 
+/** 使用盐值哈希校验密码 */
 function verifyPasswordBySaltHash(password, saltHex, hashHex) {
   if (!saltHex || !hashHex) {
     return false;
@@ -454,6 +471,7 @@ function verifyPasswordBySaltHash(password, saltHex, hashHex) {
   }
 }
 
+/** 规范化管理菜单权限列表 */
 function normalizeAdminMenuList(rawMenus, isSuper) {
   if (isSuper) {
     return ADMIN_MENU_KEYS.slice();
@@ -494,6 +512,7 @@ var _taxBatchLocks = new Map();
 var TAX_BATCH_MAX_RECORDS = 150;
 var TAX_BULK_INSERT_CHUNK = 80;
 
+/** 获取微信支付二维码 URL */
 async function getWechatPayQrcodeUrl() {
   var now = Date.now();
   if (_wechatPayQrcodeCache && now - _wechatPayQrcodeCache.t < WECHAT_PAY_QRCODE_CACHE_MS) {
@@ -517,16 +536,18 @@ async function getWechatPayQrcodeUrl() {
   }
 }
 
+/** 清除微信支付二维码缓存 */
 function invalidateWechatPayQrcodeCache() {
   _wechatPayQrcodeCache = null;
 }
 
+/** 清除安装包设置缓存 */
 function invalidateInstallPackageSettingsCache() {
   _installPackageSettingsCache = null;
   invalidateInstallPackagesResponseCache();
 }
 
-/** 用户端展示用：uploads/… 或相对路径补全为站内 / CDN URL（PUBLIC_ASSET_BASE_URL） */
+/** 解析：public asset url */
 function resolvePublicAssetUrl(ref) {
   var ok = sanitizeMineUiImageRef(ref);
   if (!ok) return '';
@@ -560,6 +581,7 @@ async function upsertAppSetting(conn, key, value) {
   );
 }
 
+/** 获取测试账号公司名 */
 async function getTestAccountCompanyName() {
   var now = Date.now();
   if (_testCompanyNameCache && now - _testCompanyNameCache.t < TEST_COMPANY_CACHE_MS) {
@@ -583,11 +605,12 @@ async function getTestAccountCompanyName() {
   }
 }
 
+/** 清除测试公司名缓存 */
 function invalidateTestCompanyNameCache() {
   _testCompanyNameCache = null;
 }
 
-/** 用户数据分析中不计入 TOP / 公司数的测试或无效扣缴义务人名称 */
+/** 获取：user data analytics excluded companies */
 function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
   var names = ['1', '北京华示示例软件有限公司', '北京华示例软件有限公司', '示例科技有限公司'];
   var tc = testCompanyName != null ? String(testCompanyName).trim() : '';
@@ -604,6 +627,7 @@ function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
   });
 }
 
+/** 排除指定公司名的 SQL 片段 */
 function sqlCompanyNotInExcludedClause(excludedCompanies, columnExpr) {
   if (!excludedCompanies || !excludedCompanies.length) {
     return { sql: '', params: [] };
@@ -614,6 +638,7 @@ function sqlCompanyNotInExcludedClause(excludedCompanies, columnExpr) {
   };
 }
 
+/** 深拷贝「我的」页 UI 默认配置 */
 function cloneMineUiDefaults() {
   return {
     theme: DEFAULT_MINE_UI.theme,
@@ -650,7 +675,7 @@ function cloneMineUiDefaults() {
 }
 
 /** 允许站内相对路径或 https/http 图片地址，禁止 .. 与脚本伪协议 */
-/** 安装包下载：完整 http(s) URL 或站内绝对路径（以 / 开头） */
+/** sanitize install download url */
 function sanitizeInstallDownloadUrl(raw) {
   if (raw == null) {
     return '';
@@ -689,7 +714,7 @@ function sanitizeInstallDownloadUrl(raw) {
   return '';
 }
 
-/** 公开安装包链接：本站绝对地址改成相对路径，避免 http/https 混用导致下载失败 */
+/** to public install download url */
 function toPublicInstallDownloadUrl(raw) {
   var s = sanitizeInstallDownloadUrl(raw);
   if (!s) {
@@ -716,7 +741,7 @@ function toPublicInstallDownloadUrl(raw) {
   return s;
 }
 
-/** 闲鱼购买文案：任意文本（复制到剪贴板），仅做长度与空白修剪 */
+/** sanitize xianyu purchase text */
 function sanitizeXianyuPurchaseText(raw) {
   if (raw == null) {
     return '';
@@ -731,6 +756,7 @@ function sanitizeXianyuPurchaseText(raw) {
   return s;
 }
 
+/** 清洗销售渠道 id */
 function sanitizeSalesChannelId(raw) {
   var s = String(raw || '').trim().toLowerCase();
   if (!s || s.length > 64) {
@@ -742,6 +768,7 @@ function sanitizeSalesChannelId(raw) {
   return s;
 }
 
+/** 解析需隐藏闲鱼入口的销售渠道列表 */
 function parseXianyuHideSalesChannels(raw) {
   if (raw == null) {
     return [];
@@ -775,6 +802,7 @@ function parseXianyuHideSalesChannels(raw) {
   return list;
 }
 
+/** 序列化闲鱼隐藏渠道配置 */
 function serializeXianyuHideSalesChannels(list) {
   var out = [];
   (list || []).forEach(function (item) {
@@ -786,6 +814,7 @@ function serializeXianyuHideSalesChannels(list) {
   return JSON.stringify(out);
 }
 
+/** 判断该销售渠道是否隐藏闲鱼 */
 function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   var ch = sanitizeSalesChannelId(salesCh);
   if (!ch) {
@@ -794,13 +823,13 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   return (hideList || []).indexOf(ch) >= 0;
 }
 
-/** 后台「代理推广渠道」列表，用于区分自有流量与代理推广用户 */
+/** 获取：agent promo channel list from settings */
 async function getAgentPromoChannelListFromSettings() {
   var raw = await getInstallPackageSettingsFromDb();
   return raw.xianyu_hide_channels || [];
 }
 
-/** segment: own | agent；按 users.sales_promo_channel 是否在代理渠道列表中划分 */
+/** promo segment filter */
 function promoSegmentFilter(segment, userAlias, agentChannels) {
   var col = userAlias + '.sales_promo_channel';
   if (!agentChannels || !agentChannels.length) {
@@ -827,6 +856,7 @@ function promoSegmentFilter(segment, userAlias, agentChannels) {
   };
 }
 
+/** 计算转化率百分比 */
 function analyticsConversionPct(n, d) {
   if (!d || d <= 0) {
     return null;
@@ -834,6 +864,7 @@ function analyticsConversionPct(n, d) {
   return (Math.round((n / d) * 1000) / 10).toFixed(1) + '%';
 }
 
+/** 汇总转化时间序列各项合计 */
 function sumConversionSeriesTotals(series) {
   var registered = 0;
   var activated = 0;
@@ -848,6 +879,7 @@ function sumConversionSeriesTotals(series) {
   };
 }
 
+/** 构建每日转化时间序列 */
 function buildDailyConversionSeries(days, regMap, actMap) {
   var series = [];
   var todayKey = chinaDateKeyNow();
@@ -888,6 +920,7 @@ function buildDailyConversionSeries(days, regMap, actMap) {
   };
 }
 
+/** 按日期范围构建每日转化序列 */
 function buildDailyConversionSeriesForRange(startKey, endKey, regMap, actMap) {
   var series = [];
   var startParts = startKey.split('-').map(Number);
@@ -920,6 +953,7 @@ function buildDailyConversionSeriesForRange(startKey, endKey, regMap, actMap) {
   };
 }
 
+/** 查询某日转化分段数据 */
 async function queryDailyConversionSegment(conn, period, admin, segment, agentChannels) {
   var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
@@ -1000,10 +1034,12 @@ async function queryDailyConversionSegment(conn, period, admin, segment, agentCh
   return buildDailyConversionSeries(period.days, regMap, actMap);
 }
 
+/** 查询某日闲鱼激活分段 */
 async function queryDailyXianyuActivationSegment(conn, period, admin) {
   return queryDailyActivationChannelSegment(conn, period, admin, 'xianyu');
 }
 
+/** 查询某日激活渠道分段 */
 async function queryDailyActivationChannelSegment(conn, period, admin, channelKey) {
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
   var cnActDay = 'DATE(DATE_ADD(ac.last_used_at, INTERVAL 8 HOUR))';
@@ -1064,6 +1100,7 @@ async function queryDailyActivationChannelSegment(conn, period, admin, channelKe
   return result;
 }
 
+/** 查询注册漏斗分段 */
 async function queryRegistrationFunnelSegment(conn, period, admin, segment, agentChannels) {
   var cnUserDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
   var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
@@ -1184,6 +1221,7 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
   };
 }
 
+/** 尝试从请求解析已登录用户 id */
 function tryAuthUserIdFromRequest(req) {
   var auth = req && req.headers ? req.headers.authorization || '' : '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
@@ -1201,6 +1239,7 @@ function tryAuthUserIdFromRequest(req) {
   }
 }
 
+/** 获取用户销售推广渠道 */
 async function getUserSalesPromoChannel(userId) {
   if (!pool || userId == null || String(userId).trim() === '') {
     return '';
@@ -1230,6 +1269,7 @@ async function getUserSalesPromoChannel(userId) {
   }
 }
 
+/** 解析生效销售渠道 */
 async function resolveEffectiveSalesChannel(req) {
   var ch = sanitizeSalesChannelId((req.query && (req.query.sales_ch || req.query.ch)) || '');
   if (ch) {
@@ -1276,15 +1316,18 @@ async function resolveInstallPackagesContext(req) {
   return { raw: raw, salesCh: salesCh || null, hideXianyu: hideXianyu };
 }
 
+/** 按当前请求判断是否隐藏闲鱼 */
 async function shouldHideXianyuForRequest(req) {
   var ctx = await resolveInstallPackagesContext(req);
   return ctx.hideXianyu;
 }
 
+/** 清除安装包公开响应缓存 */
 function invalidateInstallPackagesResponseCache() {
   _installPackagesResponseCache.clear();
 }
 
+/** 清除税务记录列表缓存 */
 function invalidateTaxRecordsListCache(userId) {
   if (userId == null || String(userId).trim() === '') {
     _taxRecordsListCache.clear();
@@ -1298,6 +1341,7 @@ function invalidateTaxRecordsListCache(userId) {
   });
 }
 
+/** 清除用户 info API 缓存 */
 function invalidateUserInfoApiCache(userId) {
   if (userId == null || String(userId).trim() === '') {
     _userInfoApiCache.clear();
@@ -1311,6 +1355,7 @@ function invalidateUserInfoApiCache(userId) {
   _employersApiCache.delete(uid);
 }
 
+/** 清除站内信列表缓存 */
 function invalidateMessageListCache(userId) {
   if (userId == null || String(userId).trim() === '') {
     _messageListCache.clear();
@@ -1319,7 +1364,7 @@ function invalidateMessageListCache(userId) {
   _messageListCache.delete(String(userId).trim());
 }
 
-/** 记录 getConnection 排队耗时，便于确认慢请求是否在等池 */
+/** wrap pool get connection timing */
 function wrapPoolGetConnectionTiming(p) {
   if (!p || typeof p.getConnection !== 'function' || p.__acquireTimingWrapped) {
     return p;
@@ -1351,6 +1396,7 @@ function wrapPoolGetConnectionTiming(p) {
   return p;
 }
 
+/** 组装反馈功能公开配置 */
 function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
   var qq = sanitizeInstallDownloadUrl(qqGroupUrl);
   if (hideXianyu) {
@@ -1375,6 +1421,7 @@ function feedbackConfigPayload(qrRef, hideXianyu, xianyuText, qqGroupUrl) {
   };
 }
 
+/** 从请求读取客户端标识 */
 function readClientIdFromRequest(req) {
   try {
     if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
@@ -1384,6 +1431,7 @@ function readClientIdFromRequest(req) {
   return '';
 }
 
+/** 从请求推导设备型号 key */
 function deviceModelKeyFromRequest(req) {
   var ex = req.clientDevicePayload;
   if (ex && ex.model) {
@@ -1396,6 +1444,7 @@ function deviceModelKeyFromRequest(req) {
   return slugDeviceStatsKey(classifyUserDeviceRow(ua, null).model_label || '');
 }
 
+/** 记录销售渠道归因 */
 async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
   if (!pool) {
     return;
@@ -1423,6 +1472,7 @@ async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
   }
 }
 
+/** 按请求解析销售渠道 */
 async function resolveSalesChannelForRequest(req) {
   if (!pool) {
     return '';
@@ -1498,6 +1548,7 @@ async function resolveSalesChannelForRequest(req) {
   return '';
 }
 
+/** 从库读安装包设置 */
 async function getInstallPackageSettingsFromDb() {
   var now = Date.now();
   if (
@@ -1550,11 +1601,13 @@ async function getInstallPackageSettingsFromDb() {
   }
 }
 
+/** 判断是否为已废弃的消息头图引用 */
 function isDeprecatedMessageHeaderRef(raw) {
   var s = raw != null ? String(raw).trim() : '';
   return !s || s === 'message_header.jpg' || /(^|\/)message_header\.jpg$/i.test(s);
 }
 
+/** 清洗「我的」页图片引用路径 */
 function sanitizeMineUiImageRef(raw) {
   if (raw == null) {
     return '';
@@ -1588,6 +1641,7 @@ function sanitizeMineUiImageRef(raw) {
   return '';
 }
 
+/** 加载「我的」页 UI 配置 */
 async function loadMineUiParsed() {
   if (!pool) {
     return null;
@@ -1615,7 +1669,7 @@ async function loadMineUiParsed() {
   }
 }
 
-/** 用户端实际生效：勾选「默认配置」时仅内置配图，主题仍读库 */
+/** 获取：mine ui for api */
 async function getMineUiForApi() {
   var out = cloneMineUiDefaults();
   var parsed = await loadMineUiParsed();
@@ -1657,7 +1711,7 @@ async function getMineUiForApi() {
   return out;
 }
 
-/** 管理后台表单：始终返回库中保存的路径与开关（不因默认配图而清空输入框） */
+/** 获取：mine ui for admin form */
 async function getMineUiForAdminForm() {
   var base = cloneMineUiDefaults();
   var form = Object.assign({ use_default_images: false }, base);
@@ -1751,6 +1805,7 @@ const userChatImageUpload = multer({
   }
 });
 
+/** 管理端上传资源 */
 function handleAdminUploadAsset(req, res) {
   if (!req.file) {
     return res.status(400).json({ code: 400, msg: '未选择文件或扩展名不支持' });
@@ -1758,7 +1813,7 @@ function handleAdminUploadAsset(req, res) {
   return res.json({ code: 200, data: { path: 'uploads/' + req.file.filename } });
 }
 
-/** 客服 H5 上传图片：落盘后按普通消息入库（content 为 [chat_img]…[/chat_img]） */
+/** 客服聊天图片上传 */
 async function handleChatUploadImage(req, res) {
   if (!req.file) {
     return res.status(400).json({ code: 400, msg: '未选择图片或格式不支持' });
@@ -1771,18 +1826,21 @@ async function handleChatUploadImage(req, res) {
   return handleChatPost(req, res);
 }
 
+/** 判断用户行是否为测试账号 */
 function rowUserTypeIsTest(row) {
   if (!row) return false;
   var t = row.user_type != null ? Number(row.user_type) : 0;
   return t === USER_TYPE_TEST;
 }
 
+/** 判断用户行是否为访客 */
 function rowUserTypeIsGuest(row) {
   if (!row) return false;
   var t = row.user_type != null ? Number(row.user_type) : 0;
   return t === USER_TYPE_GUEST;
 }
 
+/** 解析客户端 IP */
 function getClientIp(req) {
   // Cloudflare：优先 CF-Connecting-IP（Nginx 亦会改写 X-Real-IP）
   var cf = req.headers['cf-connecting-ip'];
@@ -1803,6 +1861,7 @@ function getClientIp(req) {
 
 var memoryRateBuckets = new Map();
 
+/** 清理内存限流桶中的过期项 */
 function pruneMemoryRateBuckets(now) {
   if (memoryRateBuckets.size < 20000) return;
   memoryRateBuckets.forEach(function (v, k) {
@@ -1810,6 +1869,7 @@ function pruneMemoryRateBuckets(now) {
   });
 }
 
+/** 消耗一次内存限流配额 */
 function consumeMemoryRateLimit(bucket, key, max, windowMs) {
   var limit = Number(max) || 0;
   if (limit <= 0) return { ok: true };
@@ -1828,12 +1888,14 @@ function consumeMemoryRateLimit(bucket, key, max, windowMs) {
   return { ok: true };
 }
 
+/** 返回限流错误 */
 function sendRateLimited(res, result, msg) {
   var retryMs = result && result.retry_after_ms ? Number(result.retry_after_ms) : 60000;
   res.set('Retry-After', String(Math.ceil(retryMs / 1000)));
   return res.status(429).json({ code: 429, msg: msg || '请求过于频繁，请稍后再试', retry_after_ms: retryMs });
 }
 
+/** 检查登录业务限流 */
 function checkLoginBusinessRate(req, username) {
   var ip = getClientIp(req) || 'unknown';
   var byIp = consumeMemoryRateLimit('login-ip', ip, LOGIN_RATE_PER_IP_MIN, 60 * 1000);
@@ -1844,6 +1906,7 @@ function checkLoginBusinessRate(req, username) {
   return { ok: true };
 }
 
+/** 管理 API 限流 */
 function adminApiRateLimit(req, res, next) {
   var ip = getClientIp(req) || 'unknown';
   var result = consumeMemoryRateLimit('admin-api-ip', ip, ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
@@ -1851,6 +1914,7 @@ function adminApiRateLimit(req, res, next) {
   next();
 }
 
+/** 管理重查询限流 */
 function heavyAdminApiRateLimit(req, res, next) {
   var ip = getClientIp(req) || 'unknown';
   var result = consumeMemoryRateLimit('admin-heavy-ip', ip, HEAVY_ADMIN_API_RATE_PER_IP_MIN, 60 * 1000);
@@ -1858,6 +1922,7 @@ function heavyAdminApiRateLimit(req, res, next) {
   next();
 }
 
+/** 由 IP 解析城市展示名 */
 function cityLabelFromIp(ip) {
   if (!ip) return '—';
   if (ip === '::1' || ip === '127.0.0.1') return '本地';
@@ -1877,13 +1942,14 @@ function cityLabelFromIp(ip) {
   return parts.join(' · ') || '—';
 }
 
-/** 设备/登录展示用城市：优先库内 city_last，否则按 IP 推断 */
+/** 解析：device city label */
 function resolveDeviceCityLabel(ip, cityStored) {
   var c = cityStored != null ? String(cityStored).trim() : '';
   if (c && c !== '—') return c.substring(0, 255);
   return cityLabelFromIp(ip);
 }
 
+/** 更新用户最近登录城市 */
 async function updateUserLastLoginCity(username, req) {
   try {
     var ip = getClientIp(req);
@@ -1899,6 +1965,7 @@ async function updateUserLastLoginCity(username, req) {
   }
 }
 
+/** 初始化库表与连接池 */
 async function initDatabase() {
   try {
     const conn = await mysql.createConnection({
@@ -2962,6 +3029,7 @@ async function createTables() {
 /** 用户可见的税务记录（未在回收站） */
 const TAX_RECORD_NOT_DELETED_SQL = 'deleted_at IS NULL';
 
+/** 规范化收入类型展示名 */
 function normalizeIncomeTypeLabel(t) {
   var s = t != null ? String(t).trim() : '';
   if (s.endsWith('所得')) {
@@ -2970,6 +3038,7 @@ function normalizeIncomeTypeLabel(t) {
   return s;
 }
 
+/** 判断税务记录是否匹配收入类型筛选 */
 function recordMatchesIncomeTypes(record, incomeTypes) {
   if (!incomeTypes || !incomeTypes.length) {
     return true;
@@ -2983,6 +3052,7 @@ function recordMatchesIncomeTypes(record, incomeTypes) {
   return false;
 }
 
+/** 查询用户税务记录列表 */
 async function getRecords(userId, year, incomeTypes) {
   var cacheKey =
     String(userId) +
@@ -3095,6 +3165,7 @@ var ADMIN_TAX_RECORD_SELECT_SQL =
   'pension_insurance, medical_insurance, unemployment_insurance, housing_fund, created_at, updated_at ' +
   'FROM tax_records';
 
+/** 将税务记录行映射为管理端结构 */
 function mapTaxRecordRowForAdmin(r) {
   if (!r) {
     return null;
@@ -3138,6 +3209,7 @@ function mapTaxRecordRowForAdmin(r) {
   };
 }
 
+/** 将税务记录载荷转为变更快照 */
 function taxRecordPayloadToSnapshot(record, recordId) {
   var r = record || {};
   var y = r.year != null ? Number(r.year) : null;
@@ -3175,6 +3247,7 @@ function taxRecordPayloadToSnapshot(record, recordId) {
   };
 }
 
+/** 将税务记录行转为变更快照 */
 function taxRecordRowToSnapshot(row) {
   if (!row) {
     return null;
@@ -3182,6 +3255,7 @@ function taxRecordRowToSnapshot(row) {
   return taxRecordPayloadToSnapshot(row, row.id);
 }
 
+/** 对比前后快照生成字段差异 */
 function buildTaxChangeFieldDiffs(beforeSnap, afterSnap) {
   var diffs = [];
   TAX_CHANGE_LOG_FIELDS.forEach(function (f) {
@@ -3200,6 +3274,7 @@ function buildTaxChangeFieldDiffs(beforeSnap, afterSnap) {
   return diffs;
 }
 
+/** 写入税务记录变更审计日志 */
 async function insertTaxChangeLog(conn, userId, recordId, action, beforeSnap, afterSnap) {
   try {
     await conn.execute(
@@ -3217,17 +3292,19 @@ async function insertTaxChangeLog(conn, userId, recordId, action, beforeSnap, af
   }
 }
 
-/** mysql2 禁止 bind undefined；缺字段统一转 null，避免 consult 保存秒级 500 */
+/** 将 undefined 转为 null，避免 mysql2 绑定报错 */
 function sqlBindNull(v) {
   return v === undefined ? null : v;
 }
 
+/** 将税务数值规范化为可绑定数字或 null */
 function taxSqlNumber(v) {
   if (v === undefined || v === null || v === '') return null;
   var n = Number(v);
   return isFinite(n) ? n : null;
 }
 
+/** 规范化税务记录，保证 SQL 绑定参数合法 */
 function normalizeTaxRecordForSql(record) {
   var r = record && typeof record === 'object' ? record : {};
   return {
@@ -3257,6 +3334,7 @@ function normalizeTaxRecordForSql(record) {
   };
 }
 
+/** 加载用户税务记录变更日志 */
 async function loadTaxRecordChangesForUser(conn, username, dateStr) {
   var day = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : chinaDateKeyNow();
   const [rows] = await conn.execute(
@@ -3294,6 +3372,7 @@ async function loadTaxRecordChangesForUser(conn, username, dateStr) {
   });
 }
 
+/** 在指定连接中保存税务记录 */
 async function saveRecordInConn(conn, userId, record) {
   record = normalizeTaxRecordForSql(record);
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
@@ -3401,6 +3480,7 @@ async function saveRecordInConn(conn, userId, record) {
   return { id: id };
 }
 
+/** 保存单条税务记录 */
 async function saveRecord(userId, record) {
   const conn = await pool.getConnection();
   try {
@@ -3413,7 +3493,7 @@ async function saveRecord(userId, record) {
   }
 }
 
-/** 批量写入专用：若 id 已被本用户活跃记录占用则自动换号；若在回收站则恢复并更新 */
+/** 插入：record in conn */
 async function insertRecordInConn(conn, userId, record) {
   record = normalizeTaxRecordForSql(record);
   var preferredId = record.id != null ? String(record.id).trim() : '';
@@ -3469,6 +3549,7 @@ async function insertRecordInConn(conn, userId, record) {
   };
 }
 
+/** 组装税务记录 INSERT 参数行 */
 function taxRecordInsertParamRow(userId, id, record) {
   var r = normalizeTaxRecordForSql(record);
   return [
@@ -3499,7 +3580,7 @@ function taxRecordInsertParamRow(userId, id, record) {
   ];
 }
 
-/** 按 id 批量查询占用（主键全局唯一） */
+/** 查询税务记录主键 id 全局占用 */
 async function loadTaxRecordIdOccupancy(conn, ids) {
   var occupied = {};
   var list = (Array.isArray(ids) ? ids : [])
@@ -3531,7 +3612,7 @@ async function loadTaxRecordIdOccupancy(conn, ids) {
   return occupied;
 }
 
-/** 批量解析可用 id：主键 id 全局唯一，冲突则换号；本用户回收站可恢复 */
+/** 为批量插入分配不冲突的主键 id */
 async function resolveBulkInsertIds(conn, userId, records) {
   var uid = String(userId);
   var planned = [];
@@ -3613,6 +3694,7 @@ async function resolveBulkInsertIds(conn, userId, records) {
   return { insertList: insertList, reviveList: reviveList };
 }
 
+/** 批量写入税务变更审计日志 */
 async function bulkInsertTaxChangeLogs(conn, userId, rows) {
   if (!rows || !rows.length) return;
   var chunk = TAX_BULK_INSERT_CHUNK;
@@ -3646,6 +3728,7 @@ async function bulkInsertTaxChangeLogs(conn, userId, rows) {
   }
 }
 
+/** 在连接中批量插入税务记录 */
 async function bulkInsertRecordsInConn(conn, userId, records) {
   var resolved = await resolveBulkInsertIds(conn, userId, records);
   var saved = [];
@@ -3693,6 +3776,7 @@ async function bulkInsertRecordsInConn(conn, userId, records) {
   return { saved: saved, reassigned: reassigned };
 }
 
+/** 按 id 软删税务记录 */
 async function softDeleteTaxRecordsByIdsInConn(conn, userId, ids) {
   var clean = (Array.isArray(ids) ? ids : [])
     .map(function (x) {
@@ -3721,6 +3805,7 @@ async function softDeleteTaxRecordsByIdsInConn(conn, userId, ids) {
   return deleted;
 }
 
+/** 在用户级锁内执行税务批处理 */
 async function withTaxBatchUserLock(userId, fn) {
   var uid = String(userId);
   if (_taxBatchLocks.get(uid)) {
@@ -3736,6 +3821,7 @@ async function withTaxBatchUserLock(userId, fn) {
   }
 }
 
+/** 批量保存税务记录（一键生成等） */
 async function batchSaveRecords(userId, records) {
   return withTaxBatchUserLock(userId, async function () {
     const conn = await pool.getConnection();
@@ -3765,6 +3851,7 @@ async function batchSaveRecords(userId, records) {
   });
 }
 
+/** 在连接中删除税务记录 */
 async function deleteRecordInConn(conn, userId, id) {
   const [rows] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL, [
     id,
@@ -3776,6 +3863,7 @@ async function deleteRecordInConn(conn, userId, id) {
   }
 }
 
+/** 删除单条税务记录 */
 async function deleteRecord(userId, id) {
   const conn = await pool.getConnection();
   try {
@@ -3787,7 +3875,7 @@ async function deleteRecord(userId, id) {
   }
 }
 
-/** 批量替换：事务内先删指定 id，再写入新记录（用于批量修改税务数据） */
+/** batch replace tax records */
 async function batchReplaceTaxRecords(userId, idsToDelete, records) {
   return withTaxBatchUserLock(userId, async function () {
     const conn = await pool.getConnection();
@@ -3820,6 +3908,7 @@ async function batchReplaceTaxRecords(userId, idsToDelete, records) {
   });
 }
 
+/** 删除用户全部税务记录 */
 async function deleteAllRecords(userId) {
   const conn = await pool.getConnection();
   try {
@@ -3835,6 +3924,7 @@ async function deleteAllRecords(userId) {
   }
 }
 
+/** 按年份删除税务记录 */
 async function deleteRecordsByYear(userId, year) {
   const conn = await pool.getConnection();
   try {
@@ -3850,6 +3940,7 @@ async function deleteRecordsByYear(userId, year) {
   }
 }
 
+/** 按公司删除税务记录 */
 async function deleteRecordsByCompany(userId, companyName) {
   const name = companyName != null ? String(companyName).trim() : '';
   if (!name) {
@@ -3870,7 +3961,7 @@ async function deleteRecordsByCompany(userId, companyName) {
   }
 }
 
-/** 去重分组键：同扣缴单位 + 同年同月 + 同所得小类（工资与年终奖分开） */
+/** 税务：record dedupe group key */
 function taxRecordDedupeGroupKey(r) {
   var company = r.company_name != null ? String(r.company_name).trim() : '';
   var subtype = r.income_subtype != null ? String(r.income_subtype).trim() : '正常工资薪金';
@@ -3880,6 +3971,7 @@ function taxRecordDedupeGroupKey(r) {
   return String(r.year || '') + '|' + String(r.month || '') + '|' + company + '|' + subtype;
 }
 
+/** 软删重复税务记录 id */
 async function softDeleteDedupeIds(conn, userId, idsToDelete) {
   if (!idsToDelete.length) {
     return { deleted: 0 };
@@ -3909,6 +4001,7 @@ async function softDeleteDedupeIds(conn, userId, idsToDelete) {
   }
 }
 
+/** 收集需删除的重复记录 id */
 function collectDedupeIdsToDelete(rows) {
   var groups = {};
   (rows || []).forEach(function (r) {
@@ -3931,7 +4024,7 @@ function collectDedupeIdsToDelete(rows) {
   return idsToDelete;
 }
 
-/** 仅对本次写入涉及的去重键做局部去重，避免全表扫描 */
+/** dedupe tax records scoped */
 async function dedupeTaxRecordsScoped(userId, records) {
   var keySet = {};
   var ymPairs = [];
@@ -3977,7 +4070,7 @@ async function dedupeTaxRecordsScoped(userId, records) {
   }
 }
 
-/** 同一扣缴单位 + 同年同月 + 同所得小类重复记录：保留最新一条，删除较早的 */
+/** dedupe tax records */
 async function dedupeTaxRecords(userId) {
   const conn = await pool.getConnection();
   try {
@@ -3994,6 +4087,7 @@ async function dedupeTaxRecords(userId) {
   }
 }
 
+/** 按 id 获取税务记录 */
 async function getTaxRecordById(userId, id, opts) {
   opts = opts || {};
   const conn = await pool.getConnection();
@@ -4006,6 +4100,7 @@ async function getTaxRecordById(userId, id, opts) {
   return rows.length > 0 ? rows[0] : null;
 }
 
+/** 将税务记录行映射为客户端结构 */
 function mapTaxRecordRowForClient(r) {
   if (!r) {
     return null;
@@ -4041,6 +4136,7 @@ function mapTaxRecordRowForClient(r) {
   };
 }
 
+/** 获取已删除税务记录列表 */
 async function getDeletedTaxRecords(userId) {
   const conn = await pool.getConnection();
   try {
@@ -4054,6 +4150,7 @@ async function getDeletedTaxRecords(userId) {
   }
 }
 
+/** restore tax record */
 async function restoreTaxRecord(userId, id) {
   const conn = await pool.getConnection();
   try {
@@ -4090,6 +4187,7 @@ async function restoreTaxRecord(userId, id) {
   }
 }
 
+/** 恢复用户全部已删税务记录 */
 async function restoreAllDeletedTaxRecords(userId) {
   const conn = await pool.getConnection();
   try {
@@ -4103,6 +4201,7 @@ async function restoreAllDeletedTaxRecords(userId) {
   }
 }
 
+/** restore records by company */
 async function restoreRecordsByCompany(userId, companyName) {
   const name = companyName != null ? String(companyName).trim() : '';
   if (!name) {
@@ -4120,6 +4219,7 @@ async function restoreRecordsByCompany(userId, companyName) {
   }
 }
 
+/** 格式化：tax amt */
 function formatTaxAmt(v, defaultStr) {
   if (v == null || v === '') return defaultStr;
   const n = parseFloat(String(v).replace(/,/g, ''));
@@ -4127,7 +4227,7 @@ function formatTaxAmt(v, defaultStr) {
   return n.toFixed(2);
 }
 
-/** 全年一次性奖金单独计税：按「应纳税所得额÷12」对照月度税率表（与前端 consult 写入逻辑一致） */
+/** year end bonus separate tax from taxable */
 function yearEndBonusSeparateTaxFromTaxable(taxable) {
   const t = Math.max(0, Number(taxable) || 0);
   if (t <= 0) {
@@ -4168,7 +4268,7 @@ function yearEndBonusSeparateTaxFromTaxable(taxable) {
   };
 }
 
-/** 居民个人工资薪金累计预扣预缴适用税率表（简化） */
+/** iit withholding bracket */
 function iitWithholdingBracket(cumulativeTaxable) {
   const x = Math.max(0, Number(cumulativeTaxable) || 0);
   if (x <= 36000) return { ratePct: 3, quick: 0, rateStr: '3%' };
@@ -4180,6 +4280,7 @@ function iitWithholdingBracket(cumulativeTaxable) {
   return { ratePct: 45, quick: 181920, rateStr: '45%' };
 }
 
+/** sum row money */
 function sumRowMoney(r, field) {
   const v = r[field];
   if (v == null || v === '') return 0;
@@ -4187,7 +4288,7 @@ function sumRowMoney(r, field) {
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** 基本减除 5000 与专项附加扣除拆分（旧数据曾把专项附加并入 deduction_fee） */
+/** split basic and special additional deduction */
 function splitBasicAndSpecialAdditionalDeduction(rec) {
   const sub = String(rec.income_subtype || '').trim();
   if (sub === '全年一次性奖金收入') {
@@ -4208,6 +4309,7 @@ function splitBasicAndSpecialAdditionalDeduction(rec) {
   return { basic: df, specialAdditional: 0 };
 }
 
+/** row period income */
 function rowPeriodIncome(r) {
   if (r.income_this_period != null && String(r.income_this_period).trim() !== '') {
     return sumRowMoney(r, 'income_this_period');
@@ -4215,6 +4317,7 @@ function rowPeriodIncome(r) {
   return sumRowMoney(r, 'income');
 }
 
+/** 组装个税测算数据 */
 async function getTaxCalculationData(userId, recordId) {
   const anchor = await getTaxRecordById(userId, recordId);
   if (!anchor) return null;
@@ -4333,6 +4436,7 @@ async function getTaxCalculationData(userId, recordId) {
   };
 }
 
+/** 格式化：tax detail response */
 function formatTaxDetailResponse(rec, userIdStr) {
   const y = rec.year != null ? parseInt(rec.year, 10) : null;
   const m = rec.month != null ? parseInt(rec.month, 10) : null;
@@ -4399,11 +4503,13 @@ function formatTaxDetailResponse(rec, userIdStr) {
   return base;
 }
 
+/** 是否有：h password */
 function hashPassword(password, saltHex) {
   const salt = Buffer.from(saltHex, 'hex');
   return crypto.scryptSync(password, salt, 64).toString('hex');
 }
 
+/** validate username */
 function validateUsername(u) {
   if (!u || typeof u !== 'string') return '账号不能为空';
   u = u.trim();
@@ -4413,7 +4519,7 @@ function validateUsername(u) {
   return null;
 }
 
-/** 常见 SQL 注入探测串（作密码提交时仅记录为明文，不执行；注册/改密时拒绝） */
+/** password looks like sql probe */
 function passwordLooksLikeSqlProbe(p) {
   if (!p || typeof p !== 'string') return false;
   var s = p.toLowerCase().replace(/\s+/g, ' ');
@@ -4429,6 +4535,7 @@ function passwordLooksLikeSqlProbe(p) {
   return false;
 }
 
+/** validate password */
 function validatePassword(p) {
   if (!p || typeof p !== 'string') return '密码不能为空';
   if (p.length < 1 || p.length > 64) return '密码长度为 1～64 位';
@@ -4436,6 +4543,7 @@ function validatePassword(p) {
   return null;
 }
 
+/** 合并：user risk info */
 function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword) {
   var info = computeUserLoginRisk(ipDistinctCount, deviceCount);
   if (passwordLooksLikeSqlProbe(plainPassword)) {
@@ -4449,6 +4557,7 @@ function mergeUserRiskInfo(ipDistinctCount, deviceCount, plainPassword) {
   return info;
 }
 
+/** 用户辅助：session rev from row */
 function userSessionRevFromRow(rec) {
   if (!rec || rec.session_rev == null) return 0;
   return Number(rec.session_rev) || 0;
@@ -4459,11 +4568,13 @@ var USER_AUTH_CACHE_TTL_MS = parseInt(process.env.USER_AUTH_CACHE_TTL_MS || '150
 var _userAuthCache = new Map();
 var _userAuthCacheLastPrune = 0;
 
+/** 清除用户鉴权状态缓存 */
 function invalidateUserAuthCache(username) {
   if (username == null || username === '') return;
   _userAuthCache.delete(String(username).trim());
 }
 
+/** prune user auth cache */
 function pruneUserAuthCache(now) {
   if (now - _userAuthCacheLastPrune < 60000) return;
   _userAuthCacheLastPrune = now;
@@ -4474,6 +4585,7 @@ function pruneUserAuthCache(now) {
   });
 }
 
+/** 加载用户鉴权状态 */
 async function loadUserAuthState(username) {
   var u = String(username || '').trim();
   if (!u) return null;
@@ -4506,6 +4618,7 @@ async function loadUserAuthState(username) {
   }
 }
 
+/** 签名：access token */
 function signAccessToken(userPayload) {
   var uid = userPayload.user_id != null ? String(userPayload.user_id) : String(userPayload.username || '');
   var act =
@@ -4519,6 +4632,7 @@ function signAccessToken(userPayload) {
   return jwt.sign({ sub: uid, act: act, srv: srv }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
+/** 按用户名查 users 行 */
 async function getUserRowByUsername(username) {
   const conn = await pool.getConnection();
   try {
@@ -4529,6 +4643,7 @@ async function getUserRowByUsername(username) {
   }
 }
 
+/** recover credentials by activation code */
 async function recoverCredentialsByActivationCode(rawCode) {
   var code = String(rawCode || '').trim().toUpperCase();
   if (!code) {
@@ -4562,6 +4677,7 @@ async function recoverCredentialsByActivationCode(rawCode) {
   }
 }
 
+/** 应用：activation code */
 async function applyActivationCode(username, rawCode) {
   var code = String(rawCode || '').trim().toUpperCase();
   if (!code) {
@@ -4618,6 +4734,7 @@ async function applyActivationCode(username, rawCode) {
   }
 }
 
+/** 生成支付宝商户订单号 */
 function createAlipayOutTradeNo() {
   var now = new Date();
   var stamp =
@@ -4630,6 +4747,7 @@ function createAlipayOutTradeNo() {
   return 'AP' + stamp + crypto.randomBytes(8).toString('hex').toUpperCase();
 }
 
+/** 读取支付宝商品配置 */
 function getAlipayProductConfig() {
   var cfg = alipay.getConfig();
   var amount = alipay.normalizeAmount(cfg.productAmount);
@@ -4639,6 +4757,7 @@ function getAlipayProductConfig() {
   };
 }
 
+/** plain payment order */
 function plainPaymentOrder(row) {
   if (!row) return null;
   var paidAt = '';
@@ -4656,6 +4775,7 @@ function plainPaymentOrder(row) {
   };
 }
 
+/** 返回支付宝公开配置 */
 async function handleAlipayConfig(req, res) {
   var product = getAlipayProductConfig();
   return res.json({
@@ -4668,6 +4788,7 @@ async function handleAlipayConfig(req, res) {
   });
 }
 
+/** 创建支付宝当面付预下单 */
 async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
     return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
@@ -4743,6 +4864,7 @@ async function handleAlipayCreateOrder(req, res) {
   }
 }
 
+/** 查询最近支付宝订单并刷新 token */
 async function handleAlipayLatestOrder(req, res) {
   const conn = await pool.getConnection();
   try {
@@ -4815,6 +4937,7 @@ async function handleAlipayLatestOrder(req, res) {
   }
 }
 
+/** 支付宝：notify payload hash */
 function alipayNotifyPayloadHash(body) {
   var pairs = Object.keys(body || {})
     .sort()
@@ -4910,6 +5033,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
   }
 }
 
+/** 支付宝异步通知验签与履约 */
 async function handleAlipayNotify(req, res) {
   var body = req.body && typeof req.body === 'object' ? req.body : {};
   if (!alipay.verifyNotify(body)) {
@@ -4988,6 +5112,7 @@ async function handleAlipayNotify(req, res) {
   }
 }
 
+/** 要求账号已激活 */
 async function requireActivated(req, res, next) {
   try {
     var row = req.authUserRow;
@@ -5012,6 +5137,7 @@ async function requireActivated(req, res, next) {
   }
 }
 
+/** 规范化用户 API 路径 */
 function normalizeUserApiPath(req) {
   var p = req.path || '';
   if (!p && req.url) {
@@ -5020,7 +5146,7 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 匹配规范路径 /api/foo、/foo 以及兼容别名 /api/foo.php、/foo.php，含子路径（如 /api/chat/upload-image） */
+/** matches user api resource */
 function matchesUserApiResource(path, resource) {
   var p = String(path || '');
   var name = String(resource || '');
@@ -5031,7 +5157,7 @@ function matchesUserApiResource(path, resource) {
   return false;
 }
 
-/** 未激活账号仍可访问：税演示、用户资料、埋点 track_*、反馈、在线客服、消息 */
+/** 是否：unactivated allowed request */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
   if (
@@ -5052,6 +5178,7 @@ function isUnactivatedAllowedRequest(req) {
   return false;
 }
 
+/** 要求登录且激活（白名单除外） */
 function requireAuthAndActivatedUnlessAllowed(req, res, next) {
   requireAuth(req, res, function () {
     if (isUnactivatedAllowedRequest(req)) {
@@ -5061,10 +5188,12 @@ function requireAuthAndActivatedUnlessAllowed(req, res, next) {
   });
 }
 
+/** 签名：admin token */
 function signAdminToken(username) {
   return jwt.sign({ role: 'admin', sub: String(username || '') }, JWT_SECRET, { expiresIn: '12h' });
 }
 
+/** 按名加载管理员账号 */
 async function loadAdminAccountByUsername(conn, username) {
   const [rows] = await conn.execute(
     'SELECT id, username, full_name, salt, hash, is_super, banned, created_at FROM admin_accounts WHERE username = ? LIMIT 1',
@@ -5096,6 +5225,7 @@ async function loadAdminAccountByUsername(conn, username) {
   };
 }
 
+/** 管理辅助：has menu */
 function adminHasMenu(admin, menuKey) {
   if (!admin || !menuKey) {
     return false;
@@ -5115,6 +5245,7 @@ function adminHasMenu(admin, menuKey) {
   return false;
 }
 
+/** 要求指定管理菜单权限 */
 function requireAdminMenu(menuKey) {
   return function (req, res, next) {
     if (!req.admin || !adminHasMenu(req.admin, menuKey)) {
@@ -5124,6 +5255,7 @@ function requireAdminMenu(menuKey) {
   };
 }
 
+/** 要求任一指定管理菜单权限 */
 function requireAdminAnyMenu(menuKeys) {
   return function (req, res, next) {
     if (!req.admin) {
@@ -5142,6 +5274,7 @@ function requireAdminAnyMenu(menuKeys) {
   };
 }
 
+/** 管理辅助：can access target user */
 async function adminCanAccessTargetUser(conn, admin, username) {
   if (!username) return false;
   if (!admin || admin.is_super) return true;
@@ -5154,6 +5287,7 @@ async function adminCanAccessTargetUser(conn, admin, username) {
   return rows.length > 0;
 }
 
+/** 要求管理员已登录 */
 async function requireAdminAuth(req, res, next) {
   var auth = req.headers.authorization || '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
@@ -5207,6 +5341,7 @@ async function requireAdminAuth(req, res, next) {
   }
 }
 
+/** 要求已登录（JWT） */
 async function requireAuth(req, res, next) {
   var auth = req.headers.authorization || '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
@@ -5251,6 +5386,7 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/** 解析：tax record income */
 function parseTaxRecordIncome(raw) {
   if (raw == null || raw === '') return 0;
   var n = Number(raw);
@@ -5260,6 +5396,7 @@ function parseTaxRecordIncome(raw) {
   return isNaN(n) || n < 0 ? 0 : n;
 }
 
+/** 格式化：avg salary6m label */
 function formatAvgSalary6mLabel(avg, monthCount) {
   if (avg == null || isNaN(avg)) return '未填写';
   var n = Number(avg);
@@ -5270,6 +5407,7 @@ function formatAvgSalary6mLabel(avg, monthCount) {
   return base;
 }
 
+/** 解析：salary range filter param */
 function parseSalaryRangeFilterParam(raw) {
   if (raw == null || raw === '') return null;
   var n = Number(String(raw).replace(/,/g, '').trim());
@@ -5277,6 +5415,7 @@ function parseSalaryRangeFilterParam(raw) {
   return Math.round(n * 100) / 100;
 }
 
+/** 用户辅助：matches salary range */
 function userMatchesSalaryRange(salInfo, minVal, maxVal) {
   if (minVal == null && maxVal == null) return true;
   var avg =
@@ -5289,7 +5428,7 @@ function userMatchesSalaryRange(salInfo, minVal, maxVal) {
   return true;
 }
 
-/** 按个税记录「收入」：每月合计后取最近最多 6 个月求平均 */
+/** compute tax records avg salary6m */
 function computeTaxRecordsAvgSalary6m(records) {
   if (!records || !records.length) {
     return { avg_salary_6m: null, avg_salary_6m_label: '未填写', salary_month_count: 0 };
@@ -5338,6 +5477,7 @@ function computeTaxRecordsAvgSalary6m(records) {
   };
 }
 
+/** 构建：user tax avg salary map */
 async function buildUserTaxAvgSalaryMap(conn, usernames) {
   var map = {};
   if (!conn || !usernames || !usernames.length) return map;
@@ -5459,6 +5599,7 @@ var GUEST_MIGRATE_USER_TABLES = [
   ['user_page_events', 'username']
 ];
 
+/** guest profile field has value */
 function guestProfileFieldHasValue(field, val) {
   var s = val != null ? String(val).trim() : '';
   if (!s) return false;
@@ -5637,6 +5778,7 @@ async function migrateGuestDataToRegisteredUser(guestUsername, newUsername) {
   }
 }
 
+/** guest username for client id */
 function guestUsernameForClientId(clientId) {
   var digest = crypto
     .createHmac('sha256', JWT_SECRET)
@@ -5646,7 +5788,7 @@ function guestUsernameForClientId(clientId) {
   return GUEST_USERNAME_PREFIX + digest;
 }
 
-/** 游客首访自动写入 3 条示例个税，便于立刻看到产品价值并缩短到下载动机 */
+/** seed guest sample tax records */
 async function seedGuestSampleTaxRecords(conn, userId) {
   var uid = String(userId || '').trim();
   if (!uid) {
@@ -5744,7 +5886,7 @@ async function seedGuestSampleTaxRecords(conn, userId) {
   return inserted;
 }
 
-/** 注册/登录时：按 client_id 找到未合并游客并迁移沙盒数据；可显式传 guest_username 兜底 */
+/** maybe migrate guest sandbox for request */
 async function maybeMigrateGuestSandboxForRequest(req, registeredUsername, bodyClientId, bodyGuestUsername) {
   var newU = registeredUsername != null ? String(registeredUsername).trim() : '';
   if (!newU || newU.indexOf(GUEST_USERNAME_PREFIX) === 0) {
@@ -5781,6 +5923,7 @@ async function maybeMigrateGuestSandboxForRequest(req, registeredUsername, bodyC
   }
 }
 
+/** non guest username sql */
 function nonGuestUsernameSql(userCol) {
   var col = String(userCol || 'users.username').trim();
   /* 兼容误传表别名（如 'u'）时补全为 u.username，避免 LEFT(u, n) 语法错误 */
@@ -5802,11 +5945,13 @@ function nonGuestUsernameSql(userCol) {
   );
 }
 
+/** guest only user sql */
 function guestOnlyUserSql(tableAlias) {
   var t = tableAlias || 'users';
   return 'COALESCE(' + t + '.user_type, 0) = ' + USER_TYPE_GUEST;
 }
 
+/** 访客会话创建/续期 */
 async function handlePublicGuestSession(req, res) {
   var clientId = readClientIdFromRequest(req);
   if (!clientId || clientId.length < 8) {
@@ -5918,6 +6063,7 @@ async function handlePublicGuestSession(req, res) {
   }
 }
 
+/** 日志：in user */
 async function loginUser(username, password) {
   if (username != null && typeof username !== 'string') username = String(username);
   if (password != null && typeof password !== 'string') password = String(password);
@@ -5976,7 +6122,7 @@ async function loginUser(username, password) {
   };
 }
 
-/** 轻量摘要：转化引导 / Tab 页刷新用，避免拉全量任职与资料 */
+/** 获取：user summary for api */
 async function getUserSummaryForApi(userId) {
   if (userId == null || String(userId).trim() === '') {
     return null;
@@ -6045,6 +6191,7 @@ async function getUserSummaryForApi(userId) {
   }
 }
 
+/** list employers for user */
 async function listEmployersForUser(userId) {
   if (userId == null || String(userId).trim() === '') {
     return [];
@@ -6073,6 +6220,7 @@ async function listEmployersForUser(userId) {
   }
 }
 
+/** 组装用户 info 接口数据 */
 async function getUserInfoForApi(userId) {
   if (userId == null || String(userId).trim() === '') {
     return null;
@@ -6199,6 +6347,7 @@ async function getUserInfoForApi(userId) {
   return out;
 }
 
+/** mask family member id no */
 function maskFamilyMemberIdNo(idNo) {
   var s = String(idNo || '').trim();
   if (!s) return '';
@@ -6208,6 +6357,7 @@ function maskFamilyMemberIdNo(idNo) {
   return s.charAt(0) + '*'.repeat(s.length - 2) + s.charAt(s.length - 1);
 }
 
+/** list family members for user */
 async function listFamilyMembersForUser(userId) {
   const conn = await pool.getConnection();
   try {
@@ -6232,6 +6382,7 @@ async function listFamilyMembersForUser(userId) {
   }
 }
 
+/** sync user family count */
 async function syncUserFamilyCount(conn, userId) {
   const [cntRows] = await conn.execute('SELECT COUNT(*) AS count FROM family_members WHERE user_id = ?', [
     userId
@@ -6241,6 +6392,7 @@ async function syncUserFamilyCount(conn, userId) {
   return n;
 }
 
+/** 获取家庭成员信息 */
 async function getFamilyMemberForUser(userId, memberId) {
   const conn = await pool.getConnection();
   try {
@@ -6268,6 +6420,7 @@ async function getFamilyMemberForUser(userId, memberId) {
   }
 }
 
+/** 解析：family member body */
 function parseFamilyMemberBody(body) {
   var fmName = String(body.real_name || '').trim();
   var fmRelation = String(body.relation || '').trim();
@@ -6308,6 +6461,7 @@ function parseFamilyMemberBody(body) {
   };
 }
 
+/** mask bank card no */
 function maskBankCardNo(cardNo) {
   var d = String(cardNo || '').replace(/\D/g, '');
   if (!d) return '—';
@@ -6315,7 +6469,7 @@ function maskBankCardNo(cardNo) {
   return d.slice(0, 4) + ' **** ' + d.slice(-4);
 }
 
-/** 用户端列表：前段 **** 分组，仅末 4 位可见（19 位卡末段为 ***0 287 样式） */
+/** mask bank card no short */
 function maskBankCardNoShort(cardNo) {
   var d = String(cardNo || '').replace(/\D/g, '');
   if (!d) return '—';
@@ -6344,6 +6498,7 @@ function maskBankCardNoShort(cardNo) {
   return groups.join(' ');
 }
 
+/** list bank cards for user */
 async function listBankCardsForUser(userId) {
   const conn = await pool.getConnection();
   try {
@@ -6369,6 +6524,7 @@ async function listBankCardsForUser(userId) {
   }
 }
 
+/** sync user bank card count */
 async function syncUserBankCardCount(conn, userId) {
   const [cntRows] = await conn.execute('SELECT COUNT(*) AS count FROM bank_cards WHERE user_id = ?', [userId]);
   var n = cntRows.length && cntRows[0].count != null ? Number(cntRows[0].count) : 0;
@@ -6386,10 +6542,12 @@ var ZXK_DEDUCTION_CATEGORIES = [
   '3岁以下婴幼儿照护'
 ];
 
+/** 是否：valid zxk category */
 function isValidZxkCategory(cat) {
   return ZXK_DEDUCTION_CATEGORIES.indexOf(String(cat || '').trim()) >= 0;
 }
 
+/** 格式化：zxk record title */
 function formatZxkRecordTitle(category, relatedName) {
   var cat = String(category || '').trim();
   var name = String(relatedName || '').trim();
@@ -6407,6 +6565,7 @@ function formatZxkRecordTitle(category, relatedName) {
   return cat;
 }
 
+/** 格式化：zxk date for api */
 function formatZxkDateForApi(d) {
   if (!d) {
     return '';
@@ -6424,6 +6583,7 @@ function formatZxkDateForApi(d) {
   return s;
 }
 
+/** map zxk record row */
 function mapZxkRecordRow(r) {
   return {
     id: r.id,
@@ -6439,6 +6599,7 @@ function mapZxkRecordRow(r) {
   };
 }
 
+/** list special deduction records for user */
 async function listSpecialDeductionRecordsForUser(userId, year, includeVoided) {
   const conn = await pool.getConnection();
   try {
@@ -6464,6 +6625,7 @@ async function listSpecialDeductionRecordsForUser(userId, year, includeVoided) {
   }
 }
 
+/** 确保：user exists for zxk */
 async function ensureUserExistsForZxk(conn, userId) {
   const [userRows] = await conn.execute('SELECT username FROM users WHERE username = ?', [userId]);
   if (userRows.length === 0) {
@@ -6475,6 +6637,7 @@ async function ensureUserExistsForZxk(conn, userId) {
   }
 }
 
+/** 用户域 GET */
 async function handleUserGet(req, res) {
   var action = req.query.action;
   if (
@@ -6540,6 +6703,7 @@ async function handleUserGet(req, res) {
   }
 }
 
+/** 用户域 POST */
 async function handleUserPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -7269,7 +7433,7 @@ async function handleUserPost(req, res) {
   }
 }
 
-/** ---------- 埋点统计（日活、接口聚合、登录与设备） ---------- */
+/** classify analytics route */
 
 function classifyAnalyticsRoute(req) {
   var path = req.path || '';
@@ -7330,6 +7494,7 @@ function classifyAnalyticsRoute(req) {
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
 }
 
+/** increment api daily counter */
 function incrementApiDailyCounter(routeKey, bizCategory, latencyMs) {
   if (!pool || !routeKey || !bizCategory) {
     return;
@@ -7357,12 +7522,14 @@ function incrementApiDailyCounter(routeKey, bizCategory, latencyMs) {
 
 var API_SLOW_THRESHOLD_MS = parseInt(process.env.API_SLOW_THRESHOLD_MS || '3000', 10) || 3000;
 
+/** clamp perf ms */
 function clampPerfMs(v) {
   var n = Number(v);
   if (!isFinite(n) || n < 0) return 0;
   return Math.min(Math.round(n), 600000);
 }
 
+/** sanitize slow route key */
 function sanitizeSlowRouteKey(raw) {
   var s = String(raw == null ? '' : raw).trim();
   if (!s) return '';
@@ -7370,6 +7537,7 @@ function sanitizeSlowRouteKey(raw) {
   return s;
 }
 
+/** 记录：api slow event */
 function recordApiSlowEvent(payload) {
   if (!pool || !payload) return;
   var totalMs = clampPerfMs(payload.total_ms);
@@ -7420,6 +7588,7 @@ function recordApiSlowEvent(payload) {
     });
 }
 
+/** 是否：user api5xx error */
 function isUserApi5xxError(httpStatus, bizCode) {
   var hs = Number(httpStatus || 0);
   if (hs >= 500 && hs < 600) return true;
@@ -7427,6 +7596,7 @@ function isUserApi5xxError(httpStatus, bizCode) {
   return bc != null && bc >= 500 && bc < 600;
 }
 
+/** 记录：api error event */
 function recordApiErrorEvent(payload) {
   if (!pool || !payload) return;
   var routeKey = sanitizeSlowRouteKey(payload.route_key);
@@ -7464,6 +7634,7 @@ function recordApiErrorEvent(payload) {
     });
 }
 
+/** maybe record client api perf track */
 function maybeRecordClientApiPerfTrack(req, action, meta) {
   var act = String(action || '').toLowerCase();
   if (act !== 'track_api_perf' && act !== 'track_api_slow') {
@@ -7503,6 +7674,7 @@ function maybeRecordClientApiPerfTrack(req, action, meta) {
   return true;
 }
 
+/** 埋点请求收尾中间件 */
 function analyticsFinishMiddleware(req, res, next) {
   var startedAt = Date.now();
   var origJson = res.json;
@@ -7579,6 +7751,7 @@ function analyticsFinishMiddleware(req, res, next) {
   next();
 }
 
+/** 规范化客户端页面路径 */
 function normalizeClientPagePath(raw) {
   var s = String(raw == null ? '' : raw).trim();
   if (!s) return '';
@@ -7597,6 +7770,7 @@ function normalizeClientPagePath(raw) {
   return s;
 }
 
+/** infer page path from request */
 function inferPagePathFromRequest(req) {
   var direct = normalizeClientPagePath(req.headers && req.headers['x-page-path']);
   if (direct) return direct;
@@ -7612,6 +7786,7 @@ var _pageEventDebounce = new Map();
 var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '60000', 10) || 60000;
 var _deviceSyncThrottle = new Map();
 
+/** 记录：user page event */
 function recordUserPageEvent(req, routeKey) {
   if (!pool || !req || !req.authUserId) return;
   /* 游客沙盒也记页面点击，便于后台详情查看；注册/转化统计仍按 user_type 排除游客 */
@@ -7682,6 +7857,7 @@ var INSTALL_GUIDE_EVENT_LABELS = {
   track_guest_data_migrated: '游客数据合并至注册账号'
 };
 
+/** 是否：install guide track context */
 function isInstallGuideTrackContext(req, meta) {
   var m = meta && typeof meta === 'object' ? meta : {};
   if (String(m.page || '').trim() === 'install_guide') {
@@ -7691,12 +7867,14 @@ function isInstallGuideTrackContext(req, meta) {
   return /install_guide\.html/i.test(pp);
 }
 
+/** 解析：from install guide flag */
 function parseFromInstallGuideFlag(body) {
   var b = body && typeof body === 'object' ? body : {};
   var v = b.from_install_guide;
   return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
 }
 
+/** 记录：install guide track event */
 function recordInstallGuideTrackEvent(req, action, meta) {
   if (!pool) {
     return;
@@ -7751,11 +7929,13 @@ function recordInstallGuideTrackEvent(req, action, meta) {
     });
 }
 
+/** install guide event label */
 function installGuideEventLabel(eventKey) {
   var k = String(eventKey || '').trim();
   return INSTALL_GUIDE_EVENT_LABELS[k] || k;
 }
 
+/** truncate install guide visitor key */
 function truncateInstallGuideVisitorKey(key) {
   var visitor = key ? String(key) : '—';
   if (visitor.length > 14) {
@@ -7764,6 +7944,7 @@ function truncateInstallGuideVisitorKey(key) {
   return visitor;
 }
 
+/** install guide device summary from ua */
 function installGuideDeviceSummaryFromUa(uaRaw) {
   var ua = uaRaw != null ? String(uaRaw).trim() : '';
   if (!ua) {
@@ -7785,6 +7966,7 @@ function installGuideDeviceSummaryFromUa(uaRaw) {
   return ua.length > 100 ? ua.substring(0, 100) + '…' : ua;
 }
 
+/** 构建：install guide recent visitors */
 function buildInstallGuideRecentVisitors(rows, maxVisitors) {
   maxVisitors = maxVisitors || 3;
   var groups = {};
@@ -7851,6 +8033,7 @@ function buildInstallGuideRecentVisitors(rows, maxVisitors) {
   return list.slice(0, maxVisitors);
 }
 
+/** median from sorted numbers */
 function medianFromSortedNumbers(arr) {
   if (!arr || !arr.length) {
     return null;
@@ -7862,6 +8045,7 @@ function medianFromSortedNumbers(arr) {
   return Math.round((arr[mid - 1] + arr[mid]) / 2);
 }
 
+/** 格式化：latency ms label */
 function formatLatencyMsLabel(ms) {
   var n = Math.round(Number(ms));
   if (!isFinite(n) || n < 0) {
@@ -7873,6 +8057,7 @@ function formatLatencyMsLabel(ms) {
   return String(n) + ' ms';
 }
 
+/** 解析：install guide perf meta */
 function parseInstallGuidePerfMeta(metaJson) {
   var m = null;
   try {
@@ -7914,6 +8099,7 @@ function parseInstallGuidePerfMeta(metaJson) {
   return out;
 }
 
+/** aggregate ms stats */
 function aggregateMsStats(values) {
   var vals = (values || [])
     .map(function (n) {
@@ -7949,6 +8135,7 @@ function aggregateMsStats(values) {
   };
 }
 
+/** install guide perf load label */
 function installGuidePerfLoadLabel(perf) {
   if (!perf) {
     return '—';
@@ -7969,6 +8156,7 @@ function installGuidePerfLoadLabel(perf) {
   return parts.length ? parts.join(' · ') : '—';
 }
 
+/** touch user daily activity */
 function touchUserDailyActivity(username) {
   if (!pool || username == null) {
     return;
@@ -7986,6 +8174,7 @@ function touchUserDailyActivity(username) {
     });
 }
 
+/** 规范化 User-Agent */
 function normalizeUserAgentHeader(req) {
   return String((req.headers && req.headers['user-agent']) || '').trim().substring(0, 500);
 }
@@ -8008,6 +8197,7 @@ var CLIENT_DEVICE_FIELD_LIMITS = {
   extra: 1024
 };
 
+/** sanitize client device payload */
 function sanitizeClientDevicePayload(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return null;
@@ -8035,6 +8225,7 @@ function sanitizeClientDevicePayload(raw) {
   return Object.keys(out).length ? out : null;
 }
 
+/** 读取：client device from request */
 function readClientDeviceFromRequest(req) {
   var raw = req.headers['x-client-device'];
   if (!raw || typeof raw !== 'string') {
@@ -8052,6 +8243,7 @@ function readClientDeviceFromRequest(req) {
   }
 }
 
+/** fingerprint from explicit device */
 function fingerprintFromExplicitDevice(obj) {
   var cid = obj.client_id ? String(obj.client_id).trim() : '';
   if (cid) {
@@ -8065,6 +8257,7 @@ function fingerprintFromExplicitDevice(obj) {
   return crypto.createHash('sha256').update('exobj:' + JSON.stringify(stable), 'utf8').digest('hex');
 }
 
+/** compute device fingerprint */
 function computeDeviceFingerprint(req) {
   var ex = req.clientDevicePayload;
   if (ex && Object.keys(ex).length > 0) {
@@ -8079,6 +8272,7 @@ function computeDeviceFingerprint(req) {
   return crypto.createHash('sha256').update(ua + '|' + plat, 'utf8').digest('hex');
 }
 
+/** 用户辅助：agent short for store */
 function userAgentShortForStore(req) {
   var s = normalizeUserAgentHeader(req);
   if (s.length <= 220) {
@@ -8087,6 +8281,7 @@ function userAgentShortForStore(req) {
   return s.substring(0, 220) + '…';
 }
 
+/** display user agent from device */
 function displayUserAgentFromDevice(req) {
   var ex = req.clientDevicePayload;
   if (ex && ex.user_agent) {
@@ -8099,6 +8294,7 @@ function displayUserAgentFromDevice(req) {
   return userAgentShortForStore(req);
 }
 
+/** sync user device from client json */
 function syncUserDeviceFromClientJson(req, username) {
   if (!pool || !username) {
     return Promise.resolve();
@@ -8142,6 +8338,7 @@ function syncUserDeviceFromClientJson(req, username) {
     });
 }
 
+/** 记录：user registration attempt */
 async function recordUserRegistrationAttempt(username, ok, req, reason) {
   var uname = username != null && String(username).trim() !== '' ? String(username).trim() : '(register)';
   await recordUserLoginAttempt(uname, ok, req, reason);
@@ -8150,6 +8347,7 @@ async function recordUserRegistrationAttempt(username, ok, req, reason) {
   }
 }
 
+/** 记录：user login attempt */
 async function recordUserLoginAttempt(username, ok, req, reason) {
   if (!pool || !username) {
     return;
@@ -8205,6 +8403,7 @@ async function recordUserLoginAttempt(username, ok, req, reason) {
   }
 }
 
+/** 规范化登录失败原因 */
 function normalizeUserLoginFailReason(rawMsg) {
   var msg = String(rawMsg || '').trim();
   if (!msg) return 'unknown_error';
@@ -8232,11 +8431,13 @@ function normalizeUserLoginFailReason(rawMsg) {
   return 'other_error';
 }
 
+/** 用户辅助：login reason label */
 function userLoginReasonLabel(reason) {
   var k = String(reason || '').trim();
   return USER_LOGIN_REASON_LABELS[k] || k || '未知错误';
 }
 
+/** 用户辅助：login reason display label */
 function userLoginReasonDisplayLabel(reasonKey, reasonDetail) {
   var label = userLoginReasonLabel(reasonKey);
   var detail = reasonDetail != null ? String(reasonDetail).trim() : '';
@@ -8252,6 +8453,7 @@ function userLoginReasonDisplayLabel(reasonKey, reasonDetail) {
   return label;
 }
 
+/** 用户辅助：login reason keys for fuzzy query */
 function userLoginReasonKeysForFuzzyQuery(q) {
   q = q != null ? String(q).trim() : '';
   if (!q) return [];
@@ -8265,6 +8467,7 @@ function userLoginReasonKeysForFuzzyQuery(q) {
   return keys;
 }
 
+/** append user login reason fuzzy filter */
 function appendUserLoginReasonFuzzyFilter(whereClauses, params, qReason) {
   qReason = qReason != null ? String(qReason).trim() : '';
   if (!qReason) return;
@@ -8288,6 +8491,7 @@ function appendUserLoginReasonFuzzyFilter(whereClauses, params, qReason) {
   whereClauses.push('(' + parts.join(' OR ') + ')');
 }
 
+/** append user login reason filter */
 function appendUserLoginReasonFilter(whereClauses, params, qReason) {
   qReason = qReason != null ? String(qReason).trim() : '';
   if (!qReason) return;
@@ -8320,7 +8524,7 @@ const USER_LOGIN_REASON_LABELS = {
   'register_fail:validation': '注册-参数校验失败'
 };
 
-/** 将含记录 ID / 查询参数的 track_jump_* 合并为「页面级」一条，便于管理台统计 */
+/** collapse track jump event key */
 function collapseTrackJumpEventKey(eventKey) {
   var k = String(eventKey || '')
     .trim()
@@ -8358,6 +8562,7 @@ function collapseTrackJumpEventKey(eventKey) {
   return k;
 }
 
+/** 从路由推导埋点 key */
 function normalizeTrackEventKeyFromRoute(routeKey) {
   var rk = String(routeKey || '').trim();
   if (!rk) return '';
@@ -8374,6 +8579,7 @@ function normalizeTrackEventKeyFromRoute(routeKey) {
   return collapseTrackJumpEventKey(eventKey);
 }
 
+/** sanitize audit text */
 function sanitizeAuditText(val, maxLen) {
   var s = String(val == null ? '' : val)
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
@@ -8384,6 +8590,7 @@ function sanitizeAuditText(val, maxLen) {
   return s;
 }
 
+/** sanitize audit object top level */
 function sanitizeAuditObjectTopLevel(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return null;
@@ -8414,6 +8621,7 @@ function sanitizeAuditObjectTopLevel(raw) {
   return Object.keys(out).length ? out : null;
 }
 
+/** 管理辅助：device desc */
 function adminDeviceDesc(req) {
   var ex = req && req.clientDevicePayload;
   if (ex && typeof ex === 'object') {
@@ -8429,6 +8637,7 @@ function adminDeviceDesc(req) {
   return sanitizeAuditText(displayUserAgentFromDevice(req), 255);
 }
 
+/** 构建：admin request brief */
 function buildAdminRequestBrief(req) {
   if (!req) return '';
   var parts = [];
@@ -8443,6 +8652,7 @@ function buildAdminRequestBrief(req) {
   return sanitizeAuditText(parts.join(' | '), 1024);
 }
 
+/** 记录：admin login attempt */
 async function recordAdminLoginAttempt(adminUsername, ok, reason, req) {
   if (!pool) return;
   var uname = sanitizeAuditText(adminUsername, 255);
@@ -8468,6 +8678,7 @@ async function recordAdminLoginAttempt(adminUsername, ok, reason, req) {
   }
 }
 
+/** 记录：admin operation log */
 async function recordAdminOperationLog(req, res) {
   if (!pool || !req || !req.admin || !res) return;
   var p = sanitizeAuditText(req.path || '', 255);
@@ -8548,7 +8759,7 @@ app.use(function attachClientDevicePayload(req, res, next) {
 });
 app.use(analyticsFinishMiddleware);
 
-/** 扫码验证纳税记录开具：无需登录，仅返回非敏感摘要 */
+/** 税务核验/开具查询 */
 async function handleTaxVerifyIssueGet(req, res) {
   var code = String(req.query.code != null ? req.query.code : '')
     .replace(/\s+/g, '')
@@ -8596,6 +8807,7 @@ async function handleTaxVerifyIssueGet(req, res) {
   }
 }
 
+/** 税务域 GET */
 async function handleTaxGet(req, res) {
   var action = req.query.action;
   if (action === 'detail') {
@@ -8682,6 +8894,7 @@ async function handleTaxGet(req, res) {
   }
 }
 
+/** 站内信 GET */
 async function handleMessageGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -8764,6 +8977,7 @@ async function handleMessageGet(req, res) {
   }
 }
 
+/** 站内信 POST */
 async function handleMessagePost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -8810,6 +9024,7 @@ async function handleMessagePost(req, res) {
   }
 }
 
+/** 反馈 GET */
 async function handleFeedbackGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -8882,6 +9097,7 @@ async function handleFeedbackGet(req, res) {
   }
 }
 
+/** 反馈 POST */
 async function handleFeedbackPost(req, res) {
   var body = req.body || {};
   var userId = req.authUserId;
@@ -8931,6 +9147,7 @@ var CHAT_AUTO_REPLY_CACHE_MS = 10000;
 /** 客服图片消息：content = [chat_img]uploads/xxx.jpg[/chat_img] */
 var CHAT_IMG_RE = /^\[chat_img\](uploads\/[a-zA-Z0-9_.\-]+)\[\/chat_img\]$/i;
 
+/** 解析：chat image path */
 function parseChatImagePath(content) {
   var m = String(content || '')
     .trim()
@@ -8944,6 +9161,7 @@ function parseChatImagePath(content) {
   return rel;
 }
 
+/** 格式化：chat image content */
 function formatChatImageContent(uploadsRelPath) {
   var rel = String(uploadsRelPath || '')
     .trim()
@@ -8954,6 +9172,7 @@ function formatChatImageContent(uploadsRelPath) {
   return '[chat_img]' + rel + '[/chat_img]';
 }
 
+/** 客服：content for bot */
 function chatContentForBot(content) {
   if (parseChatImagePath(content)) {
     return '（用户发送了一张图片）';
@@ -8961,6 +9180,7 @@ function chatContentForBot(content) {
   return content != null ? String(content) : '';
 }
 
+/** 客服：preview text */
 function chatPreviewText(content) {
   if (parseChatImagePath(content)) {
     return '[图片]';
@@ -8972,6 +9192,7 @@ function chatPreviewText(content) {
   return s;
 }
 
+/** sanitize chat auto reply text */
 function sanitizeChatAutoReplyText(raw, maxLen) {
   var s = raw != null ? String(raw).trim() : '';
   var lim = maxLen != null ? maxLen : CHAT_MSG_MAX_LEN;
@@ -8981,6 +9202,7 @@ function sanitizeChatAutoReplyText(raw, maxLen) {
   return s;
 }
 
+/** 从连接读自动回复配置 */
 async function loadChatAutoReplySettingsFromConn(conn) {
   const [rows] = await conn.execute(
     'SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN (?, ?, ?, ?)',
@@ -9018,6 +9240,7 @@ async function loadChatAutoReplySettingsFromConn(conn) {
   return { welcome: welcome, reply: reply, ai_enabled: ai_enabled, ai_prompt: ai_prompt };
 }
 
+/** 获取自动回复配置 */
 async function getChatAutoReplySettings() {
   var now = Date.now();
   if (_chatAutoReplyCache && now - _chatAutoReplyCache.t < CHAT_AUTO_REPLY_CACHE_MS) {
@@ -9033,10 +9256,12 @@ async function getChatAutoReplySettings() {
   }
 }
 
+/** 清除客服自动回复缓存 */
 function invalidateChatAutoReplyCache() {
   _chatAutoReplyCache = null;
 }
 
+/** map chat message row */
 function mapChatMessageRow(r) {
   var content = r.content != null ? String(r.content) : '';
   var imgPath = parseChatImagePath(content);
@@ -9052,6 +9277,7 @@ function mapChatMessageRow(r) {
   };
 }
 
+/** map chat conversation row */
 function mapChatConversationRow(r) {
   return {
     id: Number(r.id),
@@ -9068,6 +9294,7 @@ function mapChatConversationRow(r) {
   };
 }
 
+/** 确保：user chat conversation */
 async function ensureUserChatConversation(conn, userId) {
   var uid = String(userId);
   const [rows] = await conn.execute(
@@ -9095,6 +9322,7 @@ async function ensureUserChatConversation(conn, userId) {
   return created[0];
 }
 
+/** 插入：chat message */
 async function insertChatMessage(conn, conversationId, senderRole, senderId, content) {
   var preview = chatPreviewText(content);
   const [ins] = await conn.execute(
@@ -9132,6 +9360,7 @@ async function insertChatMessage(conn, conversationId, senderRole, senderId, con
   return msgRows[0];
 }
 
+/** maybe insert chat welcome */
 async function maybeInsertChatWelcome(conn, conversationId) {
   const [cntRows] = await conn.execute(
     'SELECT COUNT(*) AS c FROM chat_messages WHERE conversation_id = ?',
@@ -9154,6 +9383,7 @@ async function maybeInsertChatWelcome(conn, conversationId) {
   return insertChatMessage(conn, conversationId, 'system', CHAT_AUTO_SENDER_ID, cfg.welcome);
 }
 
+/** 是否应：skip chat bot reply */
 async function shouldSkipChatBotReply(conn, conversationId) {
   const [rows] = await conn.execute(
     'SELECT bot_paused FROM chat_conversations WHERE id = ? LIMIT 1',
@@ -9209,6 +9439,7 @@ async function buildChatBotReplyContext(conn, conversationId) {
   return { mode: 'static', fallbackReply: fallbackReply };
 }
 
+/** 执行：chat bot reply */
 async function runChatBotReply(botCtx) {
   if (!botCtx) {
     return null;
@@ -9236,6 +9467,7 @@ async function runChatBotReply(botCtx) {
   return null;
 }
 
+/** maybe insert chat auto reply */
 async function maybeInsertChatAutoReply(conn, conversationId) {
   var botCtx = await buildChatBotReplyContext(conn, conversationId);
   var planned = await runChatBotReply(botCtx);
@@ -9251,6 +9483,7 @@ async function maybeInsertChatAutoReply(conn, conversationId) {
   );
 }
 
+/** 客服聊天 GET */
 async function handleChatGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -9313,6 +9546,7 @@ async function handleChatGet(req, res) {
   }
 }
 
+/** 客服聊天 POST */
 async function handleChatPost(req, res) {
   var body = req.body || {};
   var action = body.action != null ? String(body.action).trim() : 'send';
@@ -9487,6 +9721,7 @@ var SHENBAO_LIST_KEYS = {
   detailCustomized: 1
 };
 
+/** shenbao tax year from record */
 function shenbaoTaxYearFromRecord(r) {
   if (r.taxYear) {
     return String(r.taxYear);
@@ -9500,6 +9735,7 @@ function shenbaoTaxYearFromRecord(r) {
   return '';
 }
 
+/** shenbao sync list amount from supplement */
 function shenbaoSyncListAmountFromSupplement(rec) {
   if (!rec) {
     return rec;
@@ -9516,6 +9752,7 @@ function shenbaoSyncListAmountFromSupplement(rec) {
   return rec;
 }
 
+/** shenbao record from row */
 function shenbaoRecordFromRow(row) {
   var detail = {};
   if (row.detail_json) {
@@ -9541,7 +9778,7 @@ function shenbaoRecordFromRow(row) {
   return shenbaoSyncListAmountFromSupplement(rec);
 }
 
-/** 列表页不读 detail_json，避免 MEDIUMTEXT 拖慢弱网 */
+/** shenbao list record from row */
 function shenbaoListRecordFromRow(row) {
   return {
     id: row.id,
@@ -9555,12 +9792,14 @@ function shenbaoListRecordFromRow(row) {
   };
 }
 
+/** shenbao merge detail record */
 function shenbaoMergeDetailRecord(r) {
   var out = Object.assign({}, SHENBAO_DETAIL_FIELD_DEFAULTS, r);
   out.taxYear = shenbaoTaxYearFromRecord(r);
   return out;
 }
 
+/** shenbao design detail template */
 function shenbaoDesignDetailTemplate(r) {
   var out = Object.assign({}, SHENBAO_DETAIL_FIELD_DEFAULTS, {
     id: r.id,
@@ -9577,6 +9816,7 @@ function shenbaoDesignDetailTemplate(r) {
   return out;
 }
 
+/** shenbao record for detail */
 function shenbaoRecordForDetail(rec) {
   if (!rec) {
     return null;
@@ -9587,6 +9827,7 @@ function shenbaoRecordForDetail(rec) {
   return shenbaoDesignDetailTemplate(rec);
 }
 
+/** shenbao build detail json */
 function shenbaoBuildDetailJson(record) {
   var detail = {};
   Object.keys(record || {}).forEach(function (k) {
@@ -9597,6 +9838,7 @@ function shenbaoBuildDetailJson(record) {
   return JSON.stringify(detail);
 }
 
+/** shenbao normalize incoming record */
 function shenbaoNormalizeIncomingRecord(record) {
   var rec = Object.assign({}, record || {});
   rec.id = String(rec.id != null ? rec.id : '').trim();
@@ -9617,6 +9859,7 @@ function shenbaoNormalizeIncomingRecord(record) {
   return rec;
 }
 
+/** 写入或更新：shenbao record in conn */
 async function upsertShenbaoRecordInConn(conn, userId, tab, record) {
   var rec = shenbaoNormalizeIncomingRecord(record);
   if (!rec) {
@@ -9653,6 +9896,7 @@ async function upsertShenbaoRecordInConn(conn, userId, tab, record) {
   return rec;
 }
 
+/** seed shenbao defaults if empty */
 async function seedShenbaoDefaultsIfEmpty(conn, userId, tab) {
   if (tab !== 'done') {
     return;
@@ -9670,6 +9914,7 @@ async function seedShenbaoDefaultsIfEmpty(conn, userId, tab) {
   }
 }
 
+/** list shenbao records */
 async function listShenbaoRecords(userId, tab) {
   const conn = await pool.getConnection();
   try {
@@ -9686,6 +9931,7 @@ async function listShenbaoRecords(userId, tab) {
   }
 }
 
+/** 读取申报记录 */
 async function getShenbaoRecord(userId, tab, id) {
   const conn = await pool.getConnection();
   try {
@@ -9703,6 +9949,7 @@ async function getShenbaoRecord(userId, tab, id) {
   }
 }
 
+/** 保存：shenbao record */
 async function saveShenbaoRecord(userId, tab, record) {
   var rec = shenbaoNormalizeIncomingRecord(record);
   if (!rec) {
@@ -9725,6 +9972,7 @@ async function saveShenbaoRecord(userId, tab, record) {
   }
 }
 
+/** batch save shenbao records */
 async function batchSaveShenbaoRecords(userId, tab, records) {
   const conn = await pool.getConnection();
   try {
@@ -9742,6 +9990,7 @@ async function batchSaveShenbaoRecords(userId, tab, records) {
   }
 }
 
+/** 删除：shenbao record */
 async function deleteShenbaoRecord(userId, tab, id) {
   const conn = await pool.getConnection();
   try {
@@ -9754,6 +10003,7 @@ async function deleteShenbaoRecord(userId, tab, id) {
   }
 }
 
+/** 申报记录 GET */
 async function handleShenbaoJiluGet(req, res) {
   var action = req.query.action;
   var userId = req.authUserId;
@@ -9787,6 +10037,7 @@ async function handleShenbaoJiluGet(req, res) {
   }
 }
 
+/** 申报记录 POST */
 async function handleShenbaoJiluPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -9833,7 +10084,7 @@ async function handleShenbaoJiluPost(req, res) {
   }
 }
 
-/** 税务写入错误转用户可读文案，避免把 MySQL 原文甩给用户 */
+/** 将税务写入异常转为友好中文提示 */
 function friendlyTaxWriteError(err) {
   var msg = String((err && err.message) || err || '').trim();
   var code = err && err.code != null ? String(err.code) : '';
@@ -9852,6 +10103,7 @@ function friendlyTaxWriteError(err) {
   return msg || '保存失败，请稍后重试';
 }
 
+/** 税务域 POST */
 async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -10092,6 +10344,7 @@ async function handleAuthGet(req, res) {
   }
 }
 
+/** 激活码开通账号 */
 async function handleActivatePost(req, res) {
   try {
     var uid = req.authUserId;
@@ -10147,6 +10400,7 @@ async function handleActivatePost(req, res) {
   }
 }
 
+/** 认证域 POST（登录注册等） */
 async function handleAuthPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -10344,6 +10598,7 @@ async function handleAuthPost(req, res) {
   }
 }
 
+/** 认证 POST 动作分发 */
 function routeAuthPost(req, res) {
   var body = req.body || {};
   if (body.action === 'activate') {
@@ -10399,6 +10654,7 @@ async function handleAdminLogin(req, res) {
   }
 }
 
+/** 当前管理员信息 */
 async function handleAdminMe(req, res) {
   return res.json({
     code: 200,
@@ -10406,6 +10662,7 @@ async function handleAdminMe(req, res) {
   });
 }
 
+/** 管理员账号列表 */
 async function handleAdminAccountsList(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -10454,6 +10711,7 @@ async function handleAdminAccountsList(req, res) {
   }
 }
 
+/** 创建管理员 */
 async function handleAdminAccountsCreate(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -10509,6 +10767,7 @@ async function handleAdminAccountsCreate(req, res) {
   }
 }
 
+/** 更新管理员 */
 async function handleAdminAccountsUpdate(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -10565,6 +10824,7 @@ async function handleAdminAccountsUpdate(req, res) {
   }
 }
 
+/** 管理员开通的用户 */
 async function handleAdminAccountActivatedUsers(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -10643,6 +10903,7 @@ async function handleAdminAccountActivatedUsers(req, res) {
   }
 }
 
+/** 删除管理员 */
 async function handleAdminAccountsDelete(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅 admin 账号可管理后台账号权限' });
@@ -10677,6 +10938,7 @@ async function handleAdminAccountsDelete(req, res) {
   }
 }
 
+/** 格式化：date key */
 function formatDateKey(d) {
   if (!d) return '';
   if (d instanceof Date) {
@@ -10689,20 +10951,21 @@ function formatDateKey(d) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
 }
 
-/** 与后台列表 formatDt（UTC+8）一致：按北京时间取日 */
+/** china date key now */
 function chinaDateKeyNow() {
   var now = new Date();
   var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
   return formatDateKey(new Date(utcMs + 8 * 3600000));
 }
 
+/** china date parts now */
 function chinaDatePartsNow() {
   var todayKey = chinaDateKeyNow();
   var p = todayKey.split('-').map(Number);
   return { year: p[0], month: p[1], day: p[2], todayKey: todayKey };
 }
 
-/** YYYY-MM-DD 是否为真实公历日 */
+/** 是否：valid analytics ymd */
 function isValidAnalyticsYmd(ymd) {
   var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return false;
@@ -10714,6 +10977,7 @@ function isValidAnalyticsYmd(ymd) {
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
 }
 
+/** analytics ymd day count */
 function analyticsYmdDayCount(startYmd, endYmd) {
   var a = String(startYmd).split('-').map(function (x) {
     return parseInt(x, 10);
@@ -10726,7 +10990,7 @@ function analyticsYmdDayCount(startYmd, endYmd) {
   );
 }
 
-/** 最近 N 天（非法自定义区间等回退） */
+/** analytics period fallback days */
 function analyticsPeriodFallbackDays() {
   return {
     mode: 'days',
@@ -10737,7 +11001,7 @@ function analyticsPeriodFallbackDays() {
   };
 }
 
-/** 转化分析页：按天、自然月或自定义闭区间（北京时间）解析统计区间 */
+/** 解析：conversion analytics period */
 function parseConversionAnalyticsPeriod(raw, maxDays) {
   maxDays = maxDays == null ? 90 : maxDays;
   var customMaxDays = 366;
@@ -10830,6 +11094,7 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
   };
 }
 
+/** conversion analytics period meta */
 function conversionAnalyticsPeriodMeta(period) {
   return {
     days: period.period_key,
@@ -10841,6 +11106,7 @@ function conversionAnalyticsPeriodMeta(period) {
 
 var parseAnalyticsPeriod = parseConversionAnalyticsPeriod;
 
+/** analytics period cn date filter */
 function analyticsPeriodCnDateFilter(dateExpr, period) {
   if (period.mode === 'range') {
     return {
@@ -10855,6 +11121,7 @@ function analyticsPeriodCnDateFilter(dateExpr, period) {
   };
 }
 
+/** analytics period stat date filter */
 function analyticsPeriodStatDateFilter(period) {
   if (period.mode === 'range') {
     return {
@@ -10868,6 +11135,7 @@ function analyticsPeriodStatDateFilter(period) {
   };
 }
 
+/** analytics period activity date filter */
 function analyticsPeriodActivityDateFilter(period) {
   if (period.mode === 'range') {
     return {
@@ -10881,6 +11149,7 @@ function analyticsPeriodActivityDateFilter(period) {
   };
 }
 
+/** analytics period login datetime filter */
 function analyticsPeriodLoginDatetimeFilter(period) {
   if (period.mode === 'range') {
     return {
@@ -10898,7 +11167,7 @@ function analyticsPeriodLoginDatetimeFilter(period) {
 var USER_LOGIN_RISK_IP_THRESHOLD = 2;
 var USER_LOGIN_RISK_DEVICE_THRESHOLD = 3;
 
-/** SQL：账号最近成功登录（无记录则用注册时间）早于 N 天前 */
+/** 用户辅助：login inactive since sql */
 function userLoginInactiveSinceSql(days, usernameExpr) {
   var u = usernameExpr || 'users.username';
   var d = parseInt(days, 10);
@@ -10914,6 +11183,7 @@ function userLoginInactiveSinceSql(days, usernameExpr) {
   );
 }
 
+/** 用户辅助：login risk ip union subquery */
 function userLoginRiskIpUnionSubquery(usernameExpr) {
   var u = usernameExpr || 'users.username';
   return (
@@ -10925,6 +11195,7 @@ function userLoginRiskIpUnionSubquery(usernameExpr) {
   );
 }
 
+/** 构建：user login risk maps */
 async function buildUserLoginRiskMaps(conn, usernames) {
   var ipDistinct = {};
   var deviceCnt = {};
@@ -10970,6 +11241,7 @@ async function buildUserLoginRiskMaps(conn, usernames) {
   return { ipDistinct: ipDistinct, deviceCnt: deviceCnt };
 }
 
+/** compute user login risk */
 function computeUserLoginRisk(ipDistinctCount, deviceCount) {
   var ipCnt = Number(ipDistinctCount) || 0;
   var devCnt = Number(deviceCount) || 0;
@@ -10988,7 +11260,7 @@ function computeUserLoginRisk(ipDistinctCount, deviceCount) {
   };
 }
 
-/** SQL：账号是否命中登录风控（不同 IP 数或设备数） */
+/** 用户辅助：login risk match sql */
 function userLoginRiskMatchSql(usernameExpr) {
   var u = usernameExpr || 'users.username';
   return (
@@ -11004,7 +11276,7 @@ function userLoginRiskMatchSql(usernameExpr) {
   );
 }
 
-/** 激活类统计：排除已退款、已从注册用户列表软删除的账号 */
+/** 用户辅助：activation stats eligible sql */
 function userActivationStatsEligibleSql(userCol) {
   var alias = userTableAliasFromCol(userCol || 'users.username');
   return (
@@ -11018,6 +11290,7 @@ function userActivationStatsEligibleSql(userCol) {
   );
 }
 
+/** 每日转化统计 */
 async function handleAdminUsersDailyConversion(req, res) {
   try {
     var period = parseConversionAnalyticsPeriod(req.query.days, 90);
@@ -11054,7 +11327,7 @@ async function handleAdminUsersDailyConversion(req, res) {
   }
 }
 
-/** 注册后 7 日内漏斗：激活 / 有个税 / 查看收入明细（按用户注册日 cohort） */
+/** 注册漏斗 */
 async function handleAdminRegistrationFunnel(req, res) {
   try {
     var period = parseConversionAnalyticsPeriod(req.query.days, 90);
@@ -11084,6 +11357,7 @@ async function handleAdminRegistrationFunnel(req, res) {
   }
 }
 
+/** 解析转化 A/B 分组 */
 function resolveConversionAbVariant(seed) {
   var s = String(seed || 'guest');
   var h = 0;
@@ -11093,6 +11367,7 @@ function resolveConversionAbVariant(seed) {
   return Math.abs(h) % 2 === 0 ? 'a' : 'b';
 }
 
+/** 加载转化 A/B 配置 */
 async function loadConversionAbParsed() {
   if (!pool) {
     return Object.assign({}, DEFAULT_CONVERSION_AB);
@@ -11121,6 +11396,7 @@ async function loadConversionAbParsed() {
   }
 }
 
+/** 加载：landing ab parsed */
 async function loadLandingAbParsed() {
   if (!pool) {
     return Object.assign({}, DEFAULT_LANDING_AB);
@@ -11146,6 +11422,7 @@ async function loadLandingAbParsed() {
   }
 }
 
+/** 公开落地页 A/B 配置 */
 async function handlePublicLandingAbConfig(req, res) {
   try {
     var cfg = await loadLandingAbParsed();
@@ -11164,6 +11441,7 @@ async function handlePublicLandingAbConfig(req, res) {
   }
 }
 
+/** 公开转化配置 */
 async function handlePublicConversionConfig(req, res) {
   try {
     var cfg = await loadConversionAbParsed();
@@ -11196,6 +11474,7 @@ async function handlePublicConversionConfig(req, res) {
   }
 }
 
+/** funnel metrics sql aliases */
 function funnelMetricsSqlAliases(userAlias) {
   var u = userAlias || 'u';
   return {
@@ -11222,7 +11501,7 @@ function funnelMetricsSqlAliases(userAlias) {
   };
 }
 
-/** 按注册来源渠道的 7 日转化漏斗 */
+/** 分渠道注册漏斗 */
 async function handleAdminChannelRegistrationFunnel(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -11286,6 +11565,7 @@ async function handleAdminChannelRegistrationFunnel(req, res) {
   }
 }
 
+/** activation funnel metrics sql aliases */
 function activationFunnelMetricsSqlAliases(userAlias, actAlias) {
   var u = userAlias || 'u';
   var ac = actAlias || 'ac';
@@ -11305,7 +11585,7 @@ function activationFunnelMetricsSqlAliases(userAlias, actAlias) {
   };
 }
 
-/** 按激活来源渠道的 7 日转化（激活 cohort：激活后有个税 / 看明细） */
+/** 分渠道激活漏斗 */
 async function handleAdminActivationChannelFunnel(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -11368,7 +11648,7 @@ async function handleAdminActivationChannelFunnel(req, res) {
   }
 }
 
-/** install_guide.html 访问、行为与停留统计 */
+/** 安装引导统计 */
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -12244,7 +12524,7 @@ async function handleAdminInstallGuideStats(req, res) {
   }
 }
 
-/** 安装页与注册相关埋点汇总（analytics_api_daily） */
+/** 安装追踪统计 */
 async function handleAdminInstallTrackStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -12305,7 +12585,7 @@ async function handleAdminInstallTrackStats(req, res) {
   }
 }
 
-/** 未填个税用户 CSV 导出（运营分群） */
+/** 未填税行为导出 */
 async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
   try {
     var scope = noTaxUserWhereSql(req);
@@ -12369,7 +12649,7 @@ async function handleAdminUserDataNoTaxBehaviorExport(req, res) {
   }
 }
 
-/** 转化 KPI：激活后 1 日个税填写率、有个税后 1 日明细查看率 */
+/** 转化 KPI */
 async function handleAdminConversionKpis(req, res) {
   try {
     var period = parseConversionAnalyticsPeriod(req.query.days, 90);
@@ -12530,7 +12810,7 @@ async function handleAdminConversionKpis(req, res) {
   }
 }
 
-/** 注册超过 24h 仍未激活的用户（运营跟进） */
+/** 注册超 24h 未激活 */
 async function handleAdminUsersPendingActivate24h(req, res) {
   try {
     var page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -12585,7 +12865,7 @@ async function handleAdminUsersPendingActivate24h(req, res) {
   }
 }
 
-/** 注册时段分布（按北京时间 created_at） */
+/** 注册时段分布 */
 async function handleAdminRegisterTimeDistribution(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 365);
@@ -12810,11 +13090,12 @@ async function handleAdminRegisterTimeDistribution(req, res) {
   }
 }
 
+/** pad2 */
 function pad2(n) {
   return n < 10 ? '0' + n : String(n);
 }
 
-/** 从 birth_date 或 18 位税号解析出生日期 YYYY-MM-DD */
+/** 解析：user birth iso */
 function parseUserBirthIso(birthDateRaw, taxIdRaw) {
   var s = String(birthDateRaw || '').trim();
   if (s) {
@@ -12843,13 +13124,14 @@ function parseUserBirthIso(birthDateRaw, taxIdRaw) {
   return null;
 }
 
+/** china today parts */
 function chinaTodayParts() {
   var key = chinaDateKeyNow();
   var p = key.split('-').map(Number);
   return { y: p[0], m: p[1], d: p[2], key: key };
 }
 
-/** 按北京时间计算周岁 */
+/** compute age full years */
 function computeAgeFullYears(birthIso, refParts) {
   if (!birthIso || !refParts) {
     return null;
@@ -12868,6 +13150,7 @@ function computeAgeFullYears(birthIso, refParts) {
   return age;
 }
 
+/** register scope label */
 function registerScopeLabel(scope, suffix) {
   suffix = suffix || '';
   if (scope.all_time) {
@@ -12879,6 +13162,7 @@ function registerScopeLabel(scope, suffix) {
   return '最近 ' + scope.span_days + ' 天注册用户' + suffix;
 }
 
+/** 构建：register user scope where */
 function buildRegisterUserScopeWhere(daysRaw, admin) {
   var allTime =
     daysRaw === '0' ||
@@ -12916,7 +13200,7 @@ function buildRegisterUserScopeWhere(daysRaw, admin) {
   };
 }
 
-/** 女性用户年龄分析（未满 max_age 周岁筛选） */
+/** 女性年龄分布 */
 async function handleAdminFemaleAgeStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
@@ -13065,13 +13349,13 @@ async function handleAdminFemaleAgeStats(req, res) {
   }
 }
 
-/** 注册用户性别分布（users.gender：1=男 2=女） */
+/** register channel stats key */
 function registerChannelStatsKey(raw) {
   var c = raw != null ? String(raw).trim() : '';
   return c || '__empty__';
 }
 
-/** 北京时间日期序列：startIso ~ endIso（含首尾） */
+/** date keys between */
 function dateKeysBetween(startIso, endIso) {
   var keys = [];
   var p = String(startIso || '')
@@ -13094,7 +13378,7 @@ function dateKeysBetween(startIso, endIso) {
   return keys;
 }
 
-/** 北京时间日期序列：含首尾共 spanDays 天（从今天往前） */
+/** china date keys for span */
 function chinaDateKeysForSpan(spanDays) {
   var n = Math.max(1, parseInt(spanDays, 10) || 1);
   var today = chinaTodayParts();
@@ -13107,7 +13391,7 @@ function chinaDateKeysForSpan(spanDays) {
   return keys;
 }
 
-/** 注册渠道按日趋势（仅统计已填写 register_source_channel 的用户） */
+/** query register channel by day */
 async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
   var cnCreated = 'DATE_ADD(users.created_at, INTERVAL 8 HOUR)';
   var dayWhere =
@@ -13177,6 +13461,7 @@ async function queryRegisterChannelByDay(conn, scope, trendSpanDays) {
   return { byDay: byDay, channelRank: channelRank };
 }
 
+/** 构建：channel stats items */
 function buildChannelStatsItems(rows, total, labelFn) {
   return (rows || []).map(function (r) {
     var raw = r.ch;
@@ -13200,7 +13485,7 @@ function buildChannelStatsItems(rows, total, labelFn) {
   });
 }
 
-/** 注册用户来源渠道分析（register_source_channel / activation_source_channel） */
+/** 注册渠道统计 */
 async function handleAdminRegisterChannelStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
@@ -13350,6 +13635,7 @@ async function handleAdminRegisterChannelStats(req, res) {
   }
 }
 
+/** 注册性别统计 */
 async function handleAdminRegisterGenderStats(req, res) {
   try {
     var scope = buildRegisterUserScopeWhere(req.query.days, req.admin);
@@ -13449,6 +13735,7 @@ async function handleAdminRegisterGenderStats(req, res) {
   }
 }
 
+/** 访客用户列表 */
 async function handleAdminGuestUsers(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客用户' });
@@ -13727,6 +14014,7 @@ async function handleAdminGuestUsers(req, res) {
   }
 }
 
+/** 管理端用户列表 */
 async function handleAdminUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -13995,6 +14283,7 @@ async function handleAdminUsers(req, res) {
 
 var USER_DATA_GC_DELIM = '\x1f';
 
+/** split gc list */
 function splitGcList(raw) {
   if (raw == null || raw === '') return [];
   return String(raw)
@@ -14005,6 +14294,7 @@ function splitGcList(raw) {
     .filter(Boolean);
 }
 
+/** 合并：unique strings */
 function mergeUniqueStrings() {
   var seen = {};
   var out = [];
@@ -14021,6 +14311,7 @@ function mergeUniqueStrings() {
   return out;
 }
 
+/** summarize text list */
 function summarizeTextList(items, maxItems, maxChars) {
   maxItems = maxItems == null ? 3 : maxItems;
   maxChars = maxChars == null ? 160 : maxChars;
@@ -14037,6 +14328,7 @@ function summarizeTextList(items, maxItems, maxChars) {
   return text;
 }
 
+/** append admin user scope */
 function appendAdminUserScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
   if (!admin || admin.is_super) return;
@@ -14048,7 +14340,7 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
   params.push(admin.username);
 }
 
-/** 注册用户列表：子管理员仅看本账号激活码用户；超级管理员排除已归属子管理员的已激活用户 */
+/** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
   var owner = conversionAnalyticsOwnerAdmin(admin);
@@ -14072,7 +14364,7 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   params.push(admin.username);
 }
 
-/** 转化分析页：超级管理员仅统计主账号（admin）名下用户，子管理员仍只看自己 */
+/** conversion analytics owner admin */
 function conversionAnalyticsOwnerAdmin(admin) {
   if (!admin || !admin.username) {
     return null;
@@ -14083,6 +14375,7 @@ function conversionAnalyticsOwnerAdmin(admin) {
   return String(admin.username).trim();
 }
 
+/** append conversion analytics admin scope */
 function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCol) {
   whereClauses.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
@@ -14097,7 +14390,7 @@ function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCo
   params.push(owner);
 }
 
-/** 注册转化率：注册数按注册日统计；超级管理员排除已归属其他子管理员的用户，含未激活 */
+/** append conversion analytics registration scope */
 function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, userCol) {
   whereParts.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
@@ -14123,11 +14416,12 @@ function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, u
   params.push(owner);
 }
 
+/** xianyu activation filter sql */
 function xianyuActivationFilterSql(userAlias, codeAlias) {
   return activationChannelFilterSql(userAlias, codeAlias, 'xianyu');
 }
 
-/** 按激活渠道统计：用户 activation_source_channel 或激活码备注匹配 */
+/** activation channel filter sql */
 function activationChannelFilterSql(userAlias, codeAlias, channelKey) {
   var key = String(channelKey || '').trim().toLowerCase();
   var labelMap = {
@@ -14150,6 +14444,7 @@ function activationChannelFilterSql(userAlias, codeAlias, channelKey) {
   );
 }
 
+/** activation channel filter params */
 function activationChannelFilterParams(channelKey) {
   var key = String(channelKey || '').trim().toLowerCase();
   var labelMap = {
@@ -14162,22 +14457,25 @@ function activationChannelFilterParams(channelKey) {
   return [key, '%' + label + '%'];
 }
 
+/** 用户辅助：table alias from col */
 function userTableAliasFromCol(userCol) {
   if (!userCol) return 'users';
   var idx = String(userCol).indexOf('.');
   return idx >= 0 ? String(userCol).slice(0, idx) : String(userCol);
 }
 
-/** 排除已激活退款、已软删除的账号（不计入激活相关统计） */
+/** append non refunded user filter */
 function appendNonRefundedUserFilter(whereClauses, userCol) {
   whereClauses.push(userActivationStatsEligibleSql(userCol));
 }
 
+/** SQL：scope and */
 function sqlScopeAnd(scopeSql, clause) {
   if (scopeSql) return scopeSql + ' AND ' + clause;
   return ' WHERE ' + clause;
 }
 
+/** 构建：user data batch maps */
 async function buildUserDataBatchMaps(conn, usernames) {
   var map = {};
   if (!conn || !usernames || !usernames.length) return map;
@@ -14339,6 +14637,7 @@ async function buildUserDataBatchMaps(conn, usernames) {
   return map;
 }
 
+/** 用户业务数据分析 */
 async function handleAdminUserDataAnalytics(req, res) {
   try {
     const conn = await pool.getConnection();
@@ -14451,6 +14750,7 @@ async function handleAdminUserDataAnalytics(req, res) {
 
 const HIGH_SALARY_CHART_DEFAULT_MIN = 20000;
 
+/** 构建：high salary distribution buckets */
 function buildHighSalaryDistributionBuckets(values) {
   var defs = [
     { label: '2万–2.5万', min: 20000, max: 25000 },
@@ -14470,6 +14770,7 @@ function buildHighSalaryDistributionBuckets(values) {
   });
 }
 
+/** median of numbers */
 function medianOfNumbers(nums) {
   if (!nums || !nums.length) return null;
   var s = nums.slice().sort(function (a, b) {
@@ -14480,6 +14781,7 @@ function medianOfNumbers(nums) {
   return Math.round(((s[mid - 1] + s[mid]) / 2) * 100) / 100;
 }
 
+/** 高薪用户图表 */
 async function handleAdminUserDataSalaryHighCharts(req, res) {
   try {
     var threshold = parseSalaryRangeFilterParam(req.query.min_salary);
@@ -14579,6 +14881,7 @@ async function handleAdminUserDataSalaryHighCharts(req, res) {
   }
 }
 
+/** 用户业务数据列表 */
 async function handleAdminUserDataList(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -14737,6 +15040,7 @@ async function handleAdminUserDataList(req, res) {
   }
 }
 
+/** 用户业务数据详情 */
 async function handleAdminUserDataDetail(req, res) {
   var username = req.query.username != null ? String(req.query.username).trim() : '';
   if (!username) {
@@ -14846,10 +15150,12 @@ async function handleAdminUserDataDetail(req, res) {
   }
 }
 
+/** random activation code plain */
 function randomActivationCodePlain() {
   return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
+/** 发放单个激活码 */
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
@@ -14870,7 +15176,7 @@ async function handleAdminIssueCode(req, res) {
   }
 }
 
-/** 批量生成激活码（闲鱼 / 酷发卡 / 自定义渠道），数量可自定义，写入库并返回列表供前端导出 TXT */
+/** 批量发放激活码 */
 async function handleAdminIssueCodeBatch(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅超级管理员可批量生成激活码' });
@@ -14963,6 +15269,7 @@ async function handleAdminIssueCodeBatch(req, res) {
   }
 }
 
+/** 激活批次渠道配置 */
 async function handleAdminActivationBatchChannels(req, res) {
   if (!req.admin || !req.admin.is_super) {
     return res.status(403).json({ code: 403, msg: '仅超级管理员可管理批量渠道' });
@@ -15036,6 +15343,7 @@ async function handleAdminActivationBatchChannels(req, res) {
   }
 }
 
+/** 激活码列表 */
 async function handleAdminCodes(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -15186,6 +15494,7 @@ async function handleAdminCodes(req, res) {
   }
 }
 
+/** 管理员手动开通 */
 async function handleAdminUserActivate(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -15236,6 +15545,7 @@ async function handleAdminUserActivate(req, res) {
   }
 }
 
+/** 管理员重置密码 */
 async function handleAdminUserPassword(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -15281,6 +15591,7 @@ async function handleAdminUserPassword(req, res) {
   }
 }
 
+/** 封禁/解封用户 */
 async function handleAdminBan(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -15320,6 +15631,7 @@ async function handleAdminBan(req, res) {
   }
 }
 
+/** 读取系统设置 */
 async function handleAdminSettingsGet(req, res) {
   try {
     var mineUi = await getMineUiForAdminForm();
@@ -15350,6 +15662,7 @@ async function handleAdminSettingsGet(req, res) {
   }
 }
 
+/** 保存系统设置 */
 async function handleAdminSettingsPost(req, res) {
   var body = req.body || {};
   var hasMineUi = body.mine_ui != null && typeof body.mine_ui === 'object';
@@ -15664,6 +15977,7 @@ async function handleAdminSettingsPost(req, res) {
   }
 }
 
+/** 公开「我的」页 UI 配置 */
 async function handlePublicMineUi(req, res) {
   try {
     var mineUi = await getMineUiForApi();
@@ -15674,6 +15988,7 @@ async function handlePublicMineUi(req, res) {
   }
 }
 
+/** 销售渠道归因 */
 async function handlePublicSalesChannelAttribution(req, res) {
   try {
     var body = req.body || {};
@@ -15690,6 +16005,7 @@ async function handlePublicSalesChannelAttribution(req, res) {
   }
 }
 
+/** 解析销售渠道 */
 async function handlePublicResolveSalesChannel(req, res) {
   try {
     var ch = await resolveSalesChannelForRequest(req);
@@ -15706,6 +16022,7 @@ async function handlePublicResolveSalesChannel(req, res) {
   }
 }
 
+/** 公开安装包配置 */
 async function handlePublicInstallPackages(req, res) {
   try {
     var uid = tryAuthUserIdFromRequest(req) || '';
@@ -15775,6 +16092,7 @@ async function handlePublicInstallPackages(req, res) {
   }
 }
 
+/** 查看用户税务记录 */
 async function handleAdminUserTaxRecords(req, res) {
   var username = req.query.username != null ? String(req.query.username).trim() : '';
   if (!username) {
@@ -15945,6 +16263,7 @@ var CERT_PAGE_TITLE_ZH = {
   'install_guide.html': '引导安装'
 };
 
+/** html file from page path */
 function htmlFileFromPagePath(pagePath) {
   var p = String(pagePath || '').trim().toLowerCase();
   if (!p) return '';
@@ -15954,6 +16273,7 @@ function htmlFileFromPagePath(pagePath) {
   return fileM ? fileM[1] : '';
 }
 
+/** chinese title from page path */
 function chineseTitleFromPagePath(pagePath) {
   var p = String(pagePath || '').trim().toLowerCase();
   if (!p) return '—';
@@ -15981,6 +16301,7 @@ function chineseTitleFromPagePath(pagePath) {
   return p;
 }
 
+/** beijing date key from created at */
 function beijingDateKeyFromCreatedAt(createdAt) {
   if (!createdAt) return '';
   var d = createdAt instanceof Date ? createdAt : new Date(createdAt);
@@ -15989,6 +16310,7 @@ function beijingDateKeyFromCreatedAt(createdAt) {
   return formatDateKey(new Date(utcMs + 8 * 3600000));
 }
 
+/** 格式化：stay seconds label */
 function formatStaySecondsLabel(sec) {
   var s = Math.max(0, Math.round(Number(sec) || 0));
   if (s < 60) return s + ' 秒';
@@ -16003,6 +16325,7 @@ var NO_TAX_BEHAVIOR_SINGLE_DAY_SEC = 120;
 /** 用户行为页：低于该停留秒数时展示最近上报机型 */
 var NO_TAX_BEHAVIOR_SHORT_STAY_SEC = 10 * 60;
 
+/** compute behavior metrics from events */
 function computeBehaviorMetricsFromEvents(events) {
   events = Array.isArray(events) ? events : [];
   if (!events.length) {
@@ -16084,6 +16407,7 @@ function computeBehaviorMetricsFromEvents(events) {
   };
 }
 
+/** 加载：page events for users */
 async function loadPageEventsForUsers(conn, usernames, maxPerUser) {
   var out = {};
   if (!usernames.length) return out;
@@ -16118,7 +16442,7 @@ async function loadPageEventsForUsers(conn, usernames, maxPerUser) {
   return out;
 }
 
-/** 批量取各用户最近一次上报/同步的设备信息（用于行为分析页短停留机型展示） */
+/** 加载：latest devices for users */
 async function loadLatestDevicesForUsers(conn, usernames) {
   var out = {};
   if (!usernames || !usernames.length) return out;
@@ -16152,6 +16476,7 @@ async function loadLatestDevicesForUsers(conn, usernames) {
   return out;
 }
 
+/** no tax user where sql */
 function noTaxUserWhereSql(req) {
   var where = ["NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND tr.deleted_at IS NULL)"];
   var params = [];
@@ -16159,6 +16484,7 @@ function noTaxUserWhereSql(req) {
   return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params };
 }
 
+/** 未填税行为分析 */
 async function handleAdminUserDataNoTaxBehavior(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -16273,6 +16599,7 @@ async function handleAdminUserDataNoTaxBehavior(req, res) {
   }
 }
 
+/** 未填税路径明细 */
 async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
   var username = req.query.username != null ? String(req.query.username).trim() : '';
   if (!username) {
@@ -16335,6 +16662,7 @@ async function handleAdminUserDataNoTaxBehaviorPath(req, res) {
   }
 }
 
+/** append activated user scope */
 function appendActivatedUserScope(whereClauses, params, admin, userCol) {
   userCol = userCol || 'u.username';
   var userAlias = userCol.indexOf('.') >= 0 ? userCol.split('.')[0] : 'u';
@@ -16344,6 +16672,7 @@ function appendActivatedUserScope(whereClauses, params, admin, userCol) {
   appendAdminUserScope(whereClauses, params, admin, userCol);
 }
 
+/** activated user scope sql */
 function activatedUserScopeSql(req, userCol) {
   var where = [];
   var params = [];
@@ -16351,6 +16680,7 @@ function activatedUserScopeSql(req, userCol) {
   return { sql: where.length ? ' WHERE ' + where.join(' AND ') : '', params: params, where: where };
 }
 
+/** 加载：activated user activity map */
 async function loadActivatedUserActivityMap(conn, usernames, activityDays) {
   var map = {};
   if (!usernames || !usernames.length) return map;
@@ -16399,6 +16729,7 @@ async function loadActivatedUserActivityMap(conn, usernames, activityDays) {
   return map;
 }
 
+/** 已激活用户分析总览 */
 async function handleAdminActivatedUserAnalysisOverview(req, res) {
   try {
     var days = clampAnalyticsDays(req.query.days, 14, 90);
@@ -16591,6 +16922,7 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
   }
 }
 
+/** 已激活用户分析列表 */
 async function handleAdminActivatedUserAnalysisUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -16753,6 +17085,7 @@ async function handleAdminActivatedUserAnalysisUsers(req, res) {
   }
 }
 
+/** 已激活用户行为路径 */
 async function handleAdminActivatedUserAnalysisBehaviorPath(req, res) {
   var username = req.query.username != null ? String(req.query.username).trim() : '';
   if (!username) {
@@ -16818,7 +17151,7 @@ async function handleAdminActivatedUserAnalysisBehaviorPath(req, res) {
   }
 }
 
-/** 批量清理刷号机器人账号（默认：2026-05-22 00:00–01:00 北京、8位随机名、未激活） */
+/** 清理疑似机器人 */
 async function handleAdminPurgeBotUsers(req, res) {
   var body = req.body || {};
   var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
@@ -16863,7 +17196,7 @@ async function handleAdminPurgeBotUsers(req, res) {
   }
 }
 
-/** 激活退款：封禁、软删除，并从用户数据与激活统计中排除 */
+/** 退款并处理激活 */
 async function handleAdminUserRefund(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -16934,7 +17267,7 @@ async function handleAdminUserRefund(req, res) {
   }
 }
 
-/** 从注册用户列表软删除（保留数据库数据，可在「已删除账号」恢复） */
+/** 软删用户 */
 async function handleAdminDeleteUser(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -16982,6 +17315,7 @@ async function handleAdminDeleteUser(req, res) {
   }
 }
 
+/** 已删用户列表 */
 async function handleAdminDeletedUsers(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -17072,6 +17406,7 @@ async function handleAdminDeletedUsers(req, res) {
   }
 }
 
+/** 恢复已删用户 */
 async function handleAdminUserRestore(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
@@ -17127,6 +17462,7 @@ async function handleAdminUserRestore(req, res) {
   }
 }
 
+/** clamp analytics days */
 function clampAnalyticsDays(raw, def, max) {
   var n = parseInt(raw, 10);
   if (isNaN(n) || n < 1) {
@@ -17138,7 +17474,7 @@ function clampAnalyticsDays(raw, def, max) {
   return n;
 }
 
-/** 管理端设备分布：解析上报 JSON 与 UA */
+/** 解析：device detail json for stats */
 function parseDeviceDetailJsonForStats(raw) {
   if (!raw || typeof raw !== 'string') {
     return null;
@@ -17158,6 +17494,7 @@ function parseDeviceDetailJsonForStats(raw) {
   return null;
 }
 
+/** slug device stats key */
 function slugDeviceStatsKey(s) {
   var t = String(s || '')
     .trim()
@@ -17168,6 +17505,7 @@ function slugDeviceStatsKey(s) {
   return t || 'unknown';
 }
 
+/** 规范化：underscore version */
 function normalizeUnderscoreVersion(s) {
   var t = String(s || '')
     .trim()
@@ -17177,6 +17515,7 @@ function normalizeUnderscoreVersion(s) {
   return t;
 }
 
+/** os version from client detail */
 function osVersionFromClientDetail(osKey, detail) {
   if (!detail || detail.os_version == null || detail.os_version === '') {
     return '';
@@ -17195,6 +17534,7 @@ function osVersionFromClientDetail(osKey, detail) {
   return v.substring(0, 48);
 }
 
+/** extract ios version from ua */
 function extractIosVersionFromUa(ua) {
   var m = ua.match(/(?:CPU )?(?:iPhone |iPad |iPod )?OS\s+([\d_]+)/i);
   if (m) {
@@ -17207,16 +17547,19 @@ function extractIosVersionFromUa(ua) {
   return '';
 }
 
+/** extract android version from ua */
 function extractAndroidVersionFromUa(ua) {
   var m = ua.match(/Android\s+([\d.]+)/i);
   return m ? String(m[1]).trim() : '';
 }
 
+/** extract windows nt from ua */
 function extractWindowsNtFromUa(ua) {
   var m = ua.match(/Windows NT\s+([\d.]+)/i);
   return m ? String(m[1]).trim() : '';
 }
 
+/** extract mac os version from ua */
 function extractMacOsVersionFromUa(ua) {
   var m = ua.match(/Mac\s+OS\s+X\s+([\d_]+)/i);
   if (m) {
@@ -17225,12 +17568,13 @@ function extractMacOsVersionFromUa(ua) {
   return '';
 }
 
+/** extract chrome os version from ua */
 function extractChromeOsVersionFromUa(ua) {
   var m = ua.match(/CrOS\s+[^\s]+\s+([\d.]+)/i);
   return m ? String(m[1]).trim() : '';
 }
 
-/** 展示用的版本号片段（不含「iOS/Android」前缀）；优先 X-Client-Device 的 os_version，其次 UA。 */
+/** 解析：os version string */
 function resolveOsVersionString(osKey, ua, detail) {
   var fromClient = osVersionFromClientDetail(osKey, detail);
   if (fromClient) {
@@ -17383,7 +17727,7 @@ var DEVICE_STATS_MODEL_ICON_LABEL = {
   other: '其他'
 };
 
-/** 机型图标：结合展示名、UA、上报 JSON 做规则匹配 */
+/** 解析：model icon key */
 function resolveModelIconKey(osKey, modelLabel, ua, detail) {
   var label = String(modelLabel || '').trim();
   var u = String(ua || '');
@@ -17439,6 +17783,7 @@ function resolveModelIconKey(osKey, modelLabel, ua, detail) {
   return DEVICE_STATS_OS_ICON_KEY[osKey] || 'other';
 }
 
+/** 解析：model icon hint */
 function resolveModelIconHint(iconKey, modelLabel, ua) {
   var hints = {
     iphone: 'UA/平台含 iPhone',
@@ -17463,6 +17808,7 @@ function resolveModelIconHint(iconKey, modelLabel, ua) {
   return base;
 }
 
+/** 解析：os icon hint */
 function resolveOsIconHint(iconKey, osLabel) {
   var hints = {
     ios: 'iOS 系统（含版本号来自上报或 UA）',
@@ -17476,6 +17822,7 @@ function resolveOsIconHint(iconKey, osLabel) {
   return (hints[iconKey] || hints.other) + ' · ' + String(osLabel || '');
 }
 
+/** sort device stat list */
 function sortDeviceStatList(map) {
   var arr = Object.keys(map).map(function (k) {
     var o = map[k];
@@ -17493,6 +17840,7 @@ function sortDeviceStatList(map) {
   return arr;
 }
 
+/** 设备统计 */
 async function handleAdminAnalyticsDeviceStats(req, res) {
   if (!pool) {
     return res.status(503).json({ code: 503, msg: '数据库未就绪' });
@@ -17582,6 +17930,7 @@ async function handleAdminAnalyticsDeviceStats(req, res) {
   }
 }
 
+/** 加载：tax record flags for usernames */
 async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
   var flags = {};
   if (!usernames || !usernames.length) {
@@ -17618,6 +17967,7 @@ async function loadTaxRecordFlagsForUsernames(conn, usernames, activityDate) {
   return flags;
 }
 
+/** DAU 用户列表 */
 async function handleAdminAnalyticsDauUsers(req, res) {
   try {
     var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
@@ -17689,6 +18039,7 @@ async function handleAdminAnalyticsDauUsers(req, res) {
   }
 }
 
+/** 埋点总览 */
 async function handleAdminAnalyticsOverview(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -17755,6 +18106,7 @@ async function handleAdminAnalyticsOverview(req, res) {
   }
 }
 
+/** 埋点查询 API */
 async function handleAdminAnalyticsApi(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -18008,10 +18360,12 @@ var ACTIVATE_TRACK_EVENT_SQL =
   }).join(' OR ') +
   ')';
 
+/** 是否：activate track event key */
 function isActivateTrackEventKey(eventKey) {
   return !!ACTIVATE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
 }
 
+/** activate track event label */
 function activateTrackEventLabel(eventKey) {
   var labels = {
     track_activate_prompt_open: '激活弹窗打开',
@@ -18035,6 +18389,7 @@ function activateTrackEventLabel(eventKey) {
   return labels[eventKey] || eventKey;
 }
 
+/** 清理埋点事件 */
 async function handleAdminAnalyticsEventsClear(req, res) {
   try {
     var period = parseAnalyticsPeriod(
@@ -18068,6 +18423,7 @@ async function handleAdminAnalyticsEventsClear(req, res) {
   }
 }
 
+/** 页面事件列表 */
 async function handleAdminAnalyticsEvents(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -18138,6 +18494,7 @@ async function handleAdminAnalyticsEvents(req, res) {
   }
 }
 
+/** 激活相关事件 */
 async function handleAdminAnalyticsActivateEvents(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -18235,6 +18592,7 @@ async function handleAdminAnalyticsActivateEvents(req, res) {
   }
 }
 
+/** 激活事件用户 */
 async function handleAdminAnalyticsActivateEventUsers(req, res) {
   try {
     var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
@@ -18339,6 +18697,7 @@ async function handleAdminAnalyticsActivateEventUsers(req, res) {
   }
 }
 
+/** 设备列表 */
 async function handleAdminAnalyticsDevices(req, res) {
   var username = req.query.username != null ? String(req.query.username).trim() : '';
   if (!username) {
@@ -18401,6 +18760,7 @@ async function handleAdminAnalyticsDevices(req, res) {
   }
 }
 
+/** 最近登录 */
 async function handleAdminAnalyticsLoginRecent(req, res) {
   try {
     var page = parseInt(req.query.page, 10);
@@ -18493,6 +18853,7 @@ async function handleAdminAnalyticsLoginRecent(req, res) {
   }
 }
 
+/** 登录日志 */
 async function handleAdminLoginLogs(req, res) {
   try {
     var page = parseInt(req.query.page, 10);
@@ -18564,6 +18925,7 @@ async function handleAdminLoginLogs(req, res) {
   }
 }
 
+/** 操作日志 */
 async function handleAdminOperationLogs(req, res) {
   try {
     var page = parseInt(req.query.page, 10);
@@ -18647,6 +19009,7 @@ async function handleAdminOperationLogs(req, res) {
   }
 }
 
+/** 反馈列表 */
 async function handleAdminFeedbackList(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -18719,6 +19082,7 @@ async function handleAdminFeedbackList(req, res) {
   }
 }
 
+/** 回复反馈 */
 async function handleAdminFeedbackReply(req, res) {
   try {
     var body = req.body || {};
@@ -18749,6 +19113,7 @@ async function handleAdminFeedbackReply(req, res) {
   }
 }
 
+/** 客服会话列表 */
 async function handleAdminChatConversations(req, res) {
   try {
     var page = parseInt(req.query.page, 10) || 1;
@@ -18809,6 +19174,7 @@ async function handleAdminChatConversations(req, res) {
   }
 }
 
+/** 客服会话消息 */
 async function handleAdminChatMessages(req, res) {
   try {
     var conversationId = parseInt(req.query.conversation_id, 10) || 0;
@@ -18873,6 +19239,7 @@ async function handleAdminChatMessages(req, res) {
   }
 }
 
+/** 管理员发客服消息 */
 async function handleAdminChatSend(req, res) {
   try {
     var body = req.body || {};
@@ -18923,6 +19290,7 @@ async function handleAdminChatSend(req, res) {
   }
 }
 
+/** 暂停/恢复机器人 */
 async function handleAdminChatBotPaused(req, res) {
   try {
     var body = req.body || {};
@@ -18965,6 +19333,7 @@ async function handleAdminChatBotPaused(req, res) {
   }
 }
 
+/** 读自动回复配置 */
 async function handleAdminChatAutoReplyGet(req, res) {
   try {
     var cfg = await getChatAutoReplySettings();
@@ -18990,6 +19359,7 @@ async function handleAdminChatAutoReplyGet(req, res) {
   }
 }
 
+/** 存自动回复配置 */
 async function handleAdminChatAutoReplySave(req, res) {
   try {
     var body = req.body || {};
@@ -19068,6 +19438,7 @@ async function handleAdminMonitorOverview(req, res) {
   }
 }
 
+/** 监控测试邮件 */
 async function handleAdminMonitorTestEmail(req, res) {
   try {
     var result = await serverMonitor.sendTestAlertEmail();
@@ -19077,6 +19448,7 @@ async function handleAdminMonitorTestEmail(req, res) {
   }
 }
 
+/** 健康检查 */
 function healthHandler(req, res) {
   res.json({ ok: true });
 }
@@ -19084,6 +19456,7 @@ function healthHandler(req, res) {
 const DB_LOG_PURGE_INTERVAL_MS = parseInt(process.env.DB_LOG_PURGE_INTERVAL_MS || String(24 * 60 * 60 * 1000), 10);
 var _dbLogPurgeRunning = false;
 
+/** 调度日志清理任务 */
 function scheduleDbLogRetention() {
   var run = function (reason) {
     if (_dbLogPurgeRunning || !pool) return;
@@ -19117,7 +19490,7 @@ function scheduleDbLogRetention() {
   }, Math.max(60 * 60 * 1000, DB_LOG_PURGE_INTERVAL_MS));
 }
 
-/** 阶段 0 安全基线：启动告警（不阻断）。见 docs/architecture-phase0/05-security-baseline.md */
+/** 输出安全基线警告 */
 function logSecurityBaselineWarnings() {
   var warns = [];
   if (JWT_SECRET === 'dev-jwt-secret-change-in-production') {
@@ -19134,10 +19507,15 @@ function logSecurityBaselineWarnings() {
   }
 }
 
+/** 创建 Express 应用 */
 function createApp() {
   return app;
 }
 
+/**
+ * 导出鉴权、激活校验、管理权限与限流等中间件。
+ * 由 src 下各域 routes.js 在注册路由时挂载。
+ */
 function getMiddleware() {
   return {
     requireAuth,
@@ -19154,6 +19532,10 @@ function getMiddleware() {
   };
 }
 
+/**
+ * 导出各域 HTTP 处理函数（用户/税务/支付/管理/公开配置等）。
+ * 路由路径见 src/{auth,user,tax,payments,admin,growth,chat,platform}/routes.js。
+ */
 function getHandlers() {
   return {
     handleTaxVerifyIssueGet,
@@ -19256,6 +19638,7 @@ function getHandlers() {
   };
 }
 
+/** 初始化并启动 HTTP 服务 */
 async function startServer() {
   logSecurityBaselineWarnings();
   if (UPLOAD_STORAGE_BACKEND && UPLOAD_STORAGE_BACKEND !== 'local') {

@@ -52,6 +52,7 @@ SORTED_BINS.sort(function (a, b) {
   return b.bin.length - a.bin.length;
 });
 
+/** 根据卡号 BIN 推断银行名称 */
 function inferBankNameFromCardNo(cardNo) {
   var s = String(cardNo || '').replace(/\D/g, '');
   if (!s) return '银行卡';

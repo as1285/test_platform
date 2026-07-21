@@ -60,10 +60,12 @@ function classifySettingKey(key) {
   return { forbidden: false };
 }
 
+/** 判断：ForbiddenSettingKey */
 function isForbiddenSettingKey(key) {
   return classifySettingKey(key).forbidden;
 }
 
+/** 判断：OpsSettingKey */
 function isOpsSettingKey(key) {
   var k = String(key || '').trim();
   return OPS_SETTING_KEYS.indexOf(k) >= 0;

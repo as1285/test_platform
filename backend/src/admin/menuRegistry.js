@@ -140,6 +140,7 @@ const ADMIN_MENU_LABELS = (function () {
   return map;
 })();
 
+/** 获取：AssignableMenuDefs */
 function getAssignableMenuDefs() {
   var seen = Object.create(null);
   var out = [];
@@ -159,6 +160,7 @@ function getAssignableMenuDefs() {
   return out;
 }
 
+/** 辅助函数：resolveMenuKeyForPage */
 function resolveMenuKeyForPage(page) {
   var p = String(page || '')
     .replace(/^#/, '')
@@ -173,6 +175,7 @@ function resolveMenuKeyForPage(page) {
   return p;
 }
 
+/** 获取：PageDef */
 function getPageDef(page) {
   var p = String(page || '')
     .replace(/^#/, '')
@@ -187,6 +190,7 @@ function getPageDef(page) {
   return null;
 }
 
+/** 辅助函数：adminProfileCanAccessPage */
 function adminProfileCanAccessPage(admin, page) {
   var def = getPageDef(page);
   if (!def) return false;
@@ -198,6 +202,7 @@ function adminProfileCanAccessPage(admin, page) {
   return false;
 }
 
+/** 构建：MenuTreeForAdmin */
 function buildMenuTreeForAdmin(admin) {
   var groupMap = Object.create(null);
   for (var g = 0; g < ADMIN_MENU_GROUPS.length; g++) {
@@ -241,12 +246,14 @@ function buildMenuTreeForAdmin(admin) {
   return { menu_tree: tree, pages: pages };
 }
 
+/** 辅助函数：firstAllowedPage */
 function firstAllowedPage(admin) {
   var built = buildMenuTreeForAdmin(admin);
   if (built.pages.length) return built.pages[0].page;
   return 'settings';
 }
 
+/** 构建：AdminSessionPayload */
 function buildAdminSessionPayload(admin) {
   var built = buildMenuTreeForAdmin(admin);
   return {

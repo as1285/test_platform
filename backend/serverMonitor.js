@@ -50,6 +50,7 @@ const SERVICE_DEFS = [
   { id: 'frontend', label: '前端 Nginx', type: 'http', url: MONITOR_FRONTEND_URL }
 ];
 
+/** 辅助函数：formatBytes */
 function formatBytes(n) {
   if (n == null || !isFinite(n) || n < 0) return '—';
   var units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -62,11 +63,13 @@ function formatBytes(n) {
   return (i === 0 ? String(Math.round(v)) : v.toFixed(2)) + ' ' + units[i];
 }
 
+/** 辅助函数：formatBps */
 function formatBps(bps) {
   if (bps == null || !isFinite(bps)) return '—';
   return formatBytes(bps) + '/s';
 }
 
+/** 辅助函数：readNetBytes */
 function readNetBytes() {
   try {
     var raw = fs.readFileSync('/proc/net/dev', 'utf8');
@@ -89,6 +92,7 @@ function readNetBytes() {
   }
 }
 
+/** 辅助函数：calcNetworkRates */
 function calcNetworkRates(sample) {
   if (!_lastNetSample || !sample) {
     return { rx_bps: null, tx_bps: null, rx_total: sample ? sample.rx : null, tx_total: sample ? sample.tx : null };
@@ -105,6 +109,7 @@ function calcNetworkRates(sample) {
   };
 }
 
+/** 获取：DiskUsage */
 async function getDiskUsage(dir) {
   var target = dir || '/';
   try {
@@ -164,6 +169,7 @@ function withDiskLabels(disk) {
   });
 }
 
+/** 辅助函数：fetchWithTimeout */
 function fetchWithTimeout(url, timeoutMs) {
   var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   var timer = ctrl
@@ -177,6 +183,7 @@ function fetchWithTimeout(url, timeoutMs) {
   });
 }
 
+/** 辅助函数：probeService */
 async function probeService(def) {
   var started = Date.now();
   if (def.type === 'self') {
@@ -229,6 +236,7 @@ async function probeService(def) {
   return { id: def.id, label: def.label, ok: false, latency_ms: null, message: '未知探针类型' };
 }
 
+/** 辅助函数：pushAlert */
 function pushAlert(entry) {
   _state.alerts.unshift(entry);
   if (_state.alerts.length > 50) {
@@ -236,11 +244,13 @@ function pushAlert(entry) {
   }
 }
 
+/** 辅助函数：canSendAlert */
 function canSendAlert(serviceId) {
   var last = _alertCooldown[serviceId] || 0;
   return Date.now() - last >= MONITOR_ALERT_COOLDOWN_MS;
 }
 
+/** 辅助函数：alertSuppressedReason */
 function alertSuppressedReason() {
   if (
     MONITOR_DEPLOY_GRACE_MS > 0 &&
@@ -325,6 +335,7 @@ async function notifyServiceDown(svc, hostSnapshot) {
   pushAlert(alertEntry);
 }
 
+/** 辅助函数：notifyServiceRecovered */
 async function notifyServiceRecovered(svc) {
   pushAlert({
     at: new Date().toISOString(),
@@ -337,6 +348,7 @@ async function notifyServiceRecovered(svc) {
   delete _serviceDownSince[svc.id];
 }
 
+/** 辅助函数：notifyHostMetricAlert */
 async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
   var suppressed = alertSuppressedReason();
   if (suppressed) {
@@ -396,6 +408,7 @@ async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
   pushAlert(alertEntry);
 }
 
+/** 辅助函数：runMonitorTick */
 async function runMonitorTick() {
   var netSample = readNetBytes();
   var netRates = calcNetworkRates(netSample);
@@ -494,6 +507,7 @@ function getMonitorOverview() {
   return JSON.parse(JSON.stringify(_state));
 }
 
+/** 初始化：ServerMonitor */
 function initServerMonitor(opts) {
   _pool = opts.pool || null;
   _uploadDir = opts.uploadDir || '';
@@ -501,6 +515,7 @@ function initServerMonitor(opts) {
   _state.alert_email = MONITOR_ALERT_EMAIL;
 }
 
+/** 启动：ServerMonitor */
 function startServerMonitor() {
   if (_intervalId) {
     return;
@@ -523,6 +538,7 @@ function startServerMonitor() {
   );
 }
 
+/** 停止：ServerMonitor */
 function stopServerMonitor() {
   if (_intervalId) {
     clearInterval(_intervalId);
@@ -530,6 +546,7 @@ function stopServerMonitor() {
   }
 }
 
+/** 发送：TestAlertEmail */
 async function sendTestAlertEmail() {
   if (!mail.isMailConfigured()) {
     throw new Error('未配置 SMTP（请设置 SMTP_USER 与 SMTP_PASS，QQ 邮箱需使用授权码）');

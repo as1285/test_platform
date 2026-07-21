@@ -92,6 +92,7 @@ const PURGE_TARGETS = [
   }
 ];
 
+/** 规范化：RetainDays */
 function normalizeRetainDays(days) {
   var n = parseInt(days, 10);
   if (!isFinite(n) || n < 7) return 7;
@@ -99,6 +100,7 @@ function normalizeRetainDays(days) {
   return n;
 }
 
+/** 规范化：BatchSize */
 function normalizeBatchSize(size) {
   var n = parseInt(size, 10);
   if (!isFinite(n) || n < 1000) return 1000;
@@ -122,6 +124,7 @@ function resolveTargetRetainDays(target, globalDays) {
   return normalizeRetainDays(globalDays);
 }
 
+/** 判断：DateOnlyColumn */
 function isDateOnlyColumn(col) {
   return col === 'stat_date' || col === 'activity_date';
 }

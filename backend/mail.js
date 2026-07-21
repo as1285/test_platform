@@ -13,10 +13,12 @@ const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 let _transporter = null;
 
+/** 判断 SMTP 是否已配置 */
 function isMailConfigured() {
   return !!(SMTP_USER && SMTP_PASS);
 }
 
+/** 获取或创建 nodemailer 传输实例 */
 function getTransporter() {
   if (!isMailConfigured()) {
     return null;

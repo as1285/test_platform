@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 
+/** 辅助函数：ensureMigrationsTable */
 async function ensureMigrationsTable(conn) {
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -18,6 +19,7 @@ async function ensureMigrationsTable(conn) {
   `);
 }
 
+/** 辅助函数：listMigrationFiles */
 function listMigrationFiles() {
   var dir = config.MIGRATIONS_DIR;
   if (!fs.existsSync(dir)) {
@@ -31,6 +33,7 @@ function listMigrationFiles() {
     .sort();
 }
 
+/** 执行：Migrations */
 async function runMigrations(pool) {
   if (!pool) {
     throw new Error('runMigrations requires a pool');

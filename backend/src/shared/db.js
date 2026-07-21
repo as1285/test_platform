@@ -4,10 +4,12 @@
  */
 let _pool = null;
 
+/** 注入全局 MySQL 连接池 */
 function setPool(pool) {
   _pool = pool || null;
 }
 
+/** 获取已初始化的连接池（未初始化则抛错） */
 function getPool() {
   if (!_pool) {
     throw new Error('Database pool is not initialized');
@@ -15,6 +17,7 @@ function getPool() {
   return _pool;
 }
 
+/** 获取连接池，未初始化时返回 null */
 function getPoolOrNull() {
   return _pool;
 }

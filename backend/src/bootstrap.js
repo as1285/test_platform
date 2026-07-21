@@ -11,6 +11,7 @@ const { registerAdminRoutes } = require('./admin/routes');
 const { registerChatRoutes } = require('./chat/routes');
 const { registerPlatformRoutes } = require('./platform/routes');
 
+/** 创建 Express 应用并按域挂载全部路由 */
 function buildApp() {
   const app = createApp();
   const deps = {
@@ -30,6 +31,7 @@ function buildApp() {
   return app;
 }
 
+/** 装配应用并启动 HTTP 服务 */
 function start() {
   buildApp();
   return startServer();

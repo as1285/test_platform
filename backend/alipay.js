@@ -3,10 +3,12 @@
 const crypto = require('crypto');
 const { AlipaySdk } = require('alipay-sdk');
 
+/** 辅助函数：envText */
 function envText(name) {
   return String(process.env[name] || '').trim();
 }
 
+/** 辅助函数：pemFromEnv */
 function pemFromEnv(name) {
   var value = envText(name);
   if (!value) return '';
@@ -35,6 +37,7 @@ function getConfig() {
   };
 }
 
+/** 规范化金额为两位小数字符串 */
 function normalizeAmount(value) {
   var raw = String(value || '').trim();
   if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return '';
@@ -43,6 +46,7 @@ function normalizeAmount(value) {
   return (cents / 100).toFixed(2);
 }
 
+/** 判断支付宝是否已完整配置 */
 function isConfigured() {
   var cfg = getConfig();
   return !!(
@@ -57,6 +61,7 @@ function isConfigured() {
 var cachedSdk = null;
 var cachedSdkKey = '';
 
+/** 获取或懒加载支付宝 SDK 实例 */
 function getSdk() {
   var cfg = getConfig();
   if (!isConfigured()) {
@@ -144,6 +149,7 @@ async function queryTrade(outTradeNo) {
   };
 }
 
+/** 按支付宝规则拼接待验签字符串 */
 function canonicalizeNotify(params, includeSignType) {
   return Object.keys(params || {})
     .filter(function (key) {
@@ -158,6 +164,7 @@ function canonicalizeNotify(params, includeSignType) {
     .join('&');
 }
 
+/** 用支付宝公钥做 RSA2 验签 */
 function verifyWithPublicKey(params, publicKeyPem) {
   if (!params || !params.sign || !publicKeyPem) return false;
   var sign = String(params.sign);
@@ -174,6 +181,7 @@ function verifyWithPublicKey(params, publicKeyPem) {
   return false;
 }
 
+/** 校验支付宝异步通知签名与 app_id */
 function verifyNotify(params) {
   if (!isConfigured() || !params || !params.sign) return false;
   var cfg = getConfig();

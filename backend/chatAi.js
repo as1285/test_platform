@@ -9,10 +9,12 @@ function envText(name) {
   return String(process.env[name] || '').trim();
 }
 
+/** 判断客服 AI 是否已配置 API Key */
 function isConfigured() {
   return !!envText('CHAT_AI_API_KEY');
 }
 
+/** 返回可对外展示的 AI 配置状态 */
 function getPublicStatus() {
   var base = envText('CHAT_AI_BASE_URL') || 'https://api.deepseek.com';
   var host = '';
@@ -28,6 +30,7 @@ function getPublicStatus() {
   };
 }
 
+/** 清洗并截断 AI 回复文本 */
 function sanitizeReplyText(raw, maxLen) {
   var s = raw != null ? String(raw).trim() : '';
   s = s.replace(/\u0000/g, '');
