@@ -1585,12 +1585,11 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（标准双圈：外粗内细、上弧机关名、正中「业务专用章」） */
+  /** 纳税记录右下角章（标准单圈：细红圆框、上弧机关名、正中「业务专用章」） */
   function drawStamp(ctx, cx, cy, authority) {
     var name = authorityToCityStampText(authority) || '国家税务总局深圳市税务局';
     var stampRed = '#e53935';
-    var radius = 94;
-    var innerGap = 7.5;
+    var radius = 90;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
     ctx.globalAlpha = 0.92;
@@ -1601,38 +1600,30 @@
     }
 
     ctx.strokeStyle = stampRed;
-    /* 外圈略粗 */
-    ctx.lineWidth = 3.4;
+    ctx.lineWidth = 2.8;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
-    /* 内圈更细 */
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius - innerGap, 0, Math.PI * 2);
-    ctx.stroke();
 
-    /* 弧文贴在双圈内侧，跨度约半圆偏上 */
-    var arcR = radius - 19;
+    var arcR = radius - 15;
     var arcSize = name.length > 14 ? 15.5 : name.length >= 13 ? 16.5 : 17.5;
     var arcGap = name.length > 14 ? 2.4 : name.length >= 13 ? 2.0 : 2.4;
-    drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.14, Math.PI * 1.86, {
+    drawArcText(ctx, name, cx, cy, arcR, Math.PI * 1.12, Math.PI * 1.88, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0.55,
+      strokeWidth: 0.5,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 0.9
+      maxSpanRad: Math.PI * 0.92
     });
 
-    /* 「业务专用章」居中略下，字距贴近标准章 */
     drawSpacedText(ctx, '业务专用章', cx, cy + 8, {
-      size: 19,
+      size: 18,
       weight: 'bold',
       color: stampRed,
       letterGap: 5,
-      strokeWidth: 0.45,
+      strokeWidth: 0.4,
       font: font,
       baseline: 'middle'
     });
