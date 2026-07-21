@@ -2,9 +2,10 @@
 
 > 文档位置：`docs/system-architecture-refactor-plan.md`  
 > 适用仓库：`test_platform`（个税 H5 模拟平台）  
-> 状态：阶段 0 已完成；阶段 1 未开始  
+> 状态：阶段 0–1 已完成；阶段 2 未开始  
 > 更新日期：2026-07-21  
-> 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)
+> 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)  
+> 阶段 1 产出目录：[`docs/architecture-phase1/`](./architecture-phase1/README.md)
 
 ---
 
@@ -115,33 +116,17 @@
 
 ---
 
-### 阶段 1：后端切块（约 2–4 周）——收益最大
+### 阶段 1：后端切块（约 2–4 周）—— ✅ 已完成（2026-07-21）
 
 把 `server.js` 按域拆成同仓模块（仍一个进程）：
 
-- 路由层：对外保留 `/api/auth.php` 等兼容别名 → 内部转新 handler。
-- 迁移：引入 `migrations/`（knex / prisma / flyway 等任选其一），冻结 `initDatabase` 里新增 ALTER。
-- 仓储层：禁止 handler 里散落 SQL；按域 `repos/*.js`。
+- 路由层：对外保留 `/api/auth.php` 等兼容别名 → 域 `routes.js` 注册，handler 暂由 `legacy/monolith.js` 提供。
+- 迁移：引入轻量 `migrations/` + `src/shared/migrate.js`，冻结 `initDatabase` 里新增 ALTER。
+- 仓储层：`repos/*.js` 与 handler 下沉列为阶段 1 后续迭代（见 phase1 README）。
 
-**建议目录形态（示意）：**
+**落地目录：** 见 [`architecture-phase1/README.md`](./architecture-phase1/README.md)。
 
-```text
-backend/
-  server.js                 # 仅装配与启动
-  src/
-    auth/
-    user/
-    tax/
-    payments/
-    growth/
-    admin/
-    chat/
-    platform/
-    shared/                 # db pool、jwt、errors、logger
-  migrations/
-```
-
-**退出标准**：`server.js` 只做装配；核心税/登录测试可单跑；行为与线上一致。
+**退出标准**：`server.js` 只做装配；行为与线上一致。→ 已满足装配与契约兼容；单测 / repos 下沉继续迭代。
 
 ---
 
@@ -245,10 +230,12 @@ backend/
 
 | 日期 | 议题 | 结论 | 记录人 |
 |------|------|------|--------|
+| 2026-07-21 | 阶段 0 | 契约/漏斗/安全/回滚文档落地；明文密码暂保留，见下线计划 P1–P4 | agent |
+| 2026-07-21 | 阶段 1 | 同仓域路由拆分 + migrations 骨架；handler 暂留 legacy/monolith，repos 下沉后续迭代 | agent |
 | （待填） | 管理端域名策略 |  |  |
 | （待填） | 前端技术路线 |  |  |
 | （待填） | 改造时限 |  |  |
-| （待填） | 明文密码策略 |  |  |
+| （待填） | 明文密码策略 | 默认仍开；生产建议 env 先 `REGISTER_STORE_PLAIN_PASSWORD=0` |  |
 
 ---
 

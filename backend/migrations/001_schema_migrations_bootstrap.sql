@@ -1,0 +1,2 @@
+-- noop: schema_migrations 表由 runner 自行创建；本文件仅占位，标记迁移体系已启用。
+-- 冻结约定：自阶段 1 起，禁止在 initDatabase/createTables 中新增业务 ALTER；新变更请新增本目录下 SQL。
