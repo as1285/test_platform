@@ -2019,6 +2019,8 @@
                                 window.refreshWatermarkFromApi();
                             }
                             updateMineActivateButton({ account_active: true });
+                            var inviteCard = document.getElementById('mineInviteCard');
+                            if (inviteCard) inviteCard.hidden = true;
                             if (window.ConversionGuide && typeof window.ConversionGuide.removeMineConversionUi === 'function') {
                                 window.ConversionGuide.removeMineConversionUi();
                             }
