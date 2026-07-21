@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth.js?v=20260720-api-opt"></script>
+    <!-- TAX_APP_SHELL_START -->
+    <link rel="stylesheet" href="/css/app-shell.css">
+    <script src="/js/app/ui.js"></script>
+    <script src="/js/app/nav.js"></script>
+    <script src="/js/app/core.js"></script>
+    <!-- TAX_APP_SHELL_END -->
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -1060,7 +1066,7 @@
         }
     </style>
 </head>
-<body class="page-mine">
+<body class="page-mine tax-app-shell has-bottom-nav">
     <div class="header-bg">
         <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
@@ -1732,7 +1738,8 @@
                             if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
                                 window.ConversionGuide.afterActivateSuccess();
                             } else {
-                                alert('激活成功');
+                                if (window.TaxApp && TaxApp.ui) TaxApp.ui.toast('激活成功', { ok: true });
+                                else alert('激活成功');
                                 window.location.href = 'consult.html?tab=records&onboarding=tax';
                             }
                             return;

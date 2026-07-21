@@ -11,6 +11,7 @@ htmlcov/
 # Frontend
 node_modules/
 dist/
+site/
 .DS_Store
 
 # IDE

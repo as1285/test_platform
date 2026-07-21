@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/auth.js?v=20260720-api-opt"></script>
+    <!-- TAX_APP_SHELL_START -->
+    <link rel="stylesheet" href="/css/app-shell.css">
+    <script src="/js/app/ui.js"></script>
+    <script src="/js/app/nav.js"></script>
+    <script src="/js/app/core.js"></script>
+    <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
@@ -1254,7 +1260,7 @@
     <link rel="stylesheet" href="css/nav.css">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
-<body>
+<body class="tax-app-shell has-bottom-nav">
     <div class="header">
         <a href="mine.html" class="back-link"><img src="/jt.png" class="back-icon" alt="" width="9" decoding="async"><span>返回</span></a>
         <h1 id="consultPageTitle">个人中心</h1>
@@ -2049,13 +2055,21 @@
         }
 
         function getToastDurationMs() {
+            if (window.TaxApp && TaxApp.ui && typeof TaxApp.ui.durationMs === 'function') {
+                return TaxApp.ui.durationMs();
+            }
             var ms = typeof window !== 'undefined' && window.TOAST_DURATION_MS != null
                 ? Number(window.TOAST_DURATION_MS) : 3000;
             return isNaN(ms) || ms <= 0 ? 3000 : ms;
         }
 
         function showMsg(text, ok) {
+            if (window.TaxApp && TaxApp.ui && typeof TaxApp.ui.toast === 'function') {
+                TaxApp.ui.toast(text, { ok: !!ok, error: !ok });
+                return;
+            }
             var el = document.getElementById('msgBar');
+            if (!el) return;
             el.innerHTML = '<div class="msg ' + (ok ? 'msg-success' : 'msg-error') + '">' + text + '</div>';
             setTimeout(function() { el.innerHTML = ''; }, getToastDurationMs());
         }

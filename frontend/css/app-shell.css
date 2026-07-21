@@ -1,0 +1,14 @@
+/* TaxApp shell tokens — 阶段 3；各页可逐步迁到变量，避免散落魔法色 */
+:root {
+  --tax-app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tax-app-nav-height: 56px;
+  --tax-app-toast-z: 10050;
+}
+
+body.tax-app-shell {
+  min-height: 100%;
+}
+
+body.tax-app-shell.has-bottom-nav {
+  padding-bottom: calc(var(--tax-app-nav-height) + var(--tax-app-safe-bottom) + 8px);
+}

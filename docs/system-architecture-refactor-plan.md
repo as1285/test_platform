@@ -2,11 +2,12 @@
 
 > 文档位置：`docs/system-architecture-refactor-plan.md`  
 > 适用仓库：`test_platform`（个税 H5 模拟平台）  
-> 状态：阶段 0–2 已完成；阶段 3 未开始  
+> 状态：阶段 0–3 已完成；阶段 4 未开始  
 > 更新日期：2026-07-21  
 > 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)  
 > 阶段 1 产出目录：[`docs/architecture-phase1/`](./architecture-phase1/README.md)  
-> 阶段 2 产出目录：[`docs/architecture-phase2/`](./architecture-phase2/README.md)
+> 阶段 2 产出目录：[`docs/architecture-phase2/`](./architecture-phase2/README.md)  
+> 阶段 3 产出目录：[`docs/architecture-phase3/`](./architecture-phase3/README.md)
 
 ---
 
@@ -146,16 +147,18 @@
 
 ---
 
-### 阶段 3：用户端前端现代化（约 3–6 周，可并行）
+### 阶段 3：用户端前端现代化（约 3–6 周，可并行）—— ✅ 已完成（2026-07-21）
 
-不要一次把全部页面 Vue 化。建议：
+不要一次把全部页面 Vue 化。本阶段落地：
 
-1. **建设计系统壳**：布局、导航、请求层、鉴权、Toast（可从现有 `auth.js` 抽出 SDK）。
-2. **按流量迁移**：`mine` / `shouye` / `consult`（税）/ `install_guide` 优先。
-3. **其余页**：先壳内兼容或逐步替换；Dockerfile 不再手写上百个 COPY。
-4. **Cordova**：继续薄壳；导航白名单保持仅 `geshui.vip`；壳版本与 H5 契约测试固定。
+1. **设计系统壳**：`TaxApp`（auth 门面 / Toast / 底栏 hydrate / Cordova 外链）。
+2. **核心页接入**：`mine` / `shouye` / `consult` / `install_guide`。
+3. **统一组装**：`assemble-site.mjs` 产出 `site/`，Dockerfile 整站拷贝；核心壳 **content-hash**。
+4. **Cordova**：薄壳 + `geshui.vip` 白名单契约文档化。
 
-**退出标准**：核心 4–5 页进统一构建管线；缓存/发版靠内容 hash，不再靠手写 `?v=`。
+**落地目录：** 见 [`architecture-phase3/README.md`](./architecture-phase3/README.md)。
+
+**退出标准**：核心 4–5 页进统一构建管线；缓存/发版靠内容 hash。→ 已满足（壳 hash；余页渐进）。
 
 ---
 
@@ -236,6 +239,7 @@
 | 2026-07-21 | 阶段 0 | 契约/漏斗/安全/回滚文档落地；明文密码暂保留，见下线计划 P1–P4 | agent |
 | 2026-07-21 | 阶段 1 | 同仓域路由拆分 + migrations 骨架；handler 暂留 legacy/monolith，repos 下沉后续迭代 | agent |
 | 2026-07-21 | 阶段 2 | 管理端 menuRegistry + menu_tree；路径/Host 隔离与 CSP；admin JS 懒加载 | agent |
+| 2026-07-21 | 阶段 3 | TaxApp 壳 + 四核心页接入；assemble-site content-hash；Dockerfile 收拢 | agent |
 | （待填） | 管理端域名策略 |  |  |
 | （待填） | 前端技术路线 |  |  |
 | （待填） | 改造时限 |  |  |

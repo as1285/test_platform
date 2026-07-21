@@ -1,4 +1,4 @@
-# 构建阶段
+# 构建阶段：Vite 产物 + 组装带 content-hash 的静态站点
 FROM node:18-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
@@ -8,112 +8,9 @@ RUN npm config set registry https://registry.npmjs.org/ \
 COPY . .
 RUN npm run build
 
-# 生产阶段
+# 生产阶段：整站一次性拷贝（阶段 3 收拢百余条 COPY）
 FROM nginx:stable-alpine AS production-stage
-COPY --from=build-stage /app/dist /usr/share/nginx/html
-COPY mine.html /usr/share/nginx/html/
-COPY jtcy.html /usr/share/nginx/html/
-COPY jtcy_add.html /usr/share/nginx/html/
-COPY jtcy_detail.html /usr/share/nginx/html/
-COPY yhk.html /usr/share/nginx/html/
-COPY yhk_add.html /usr/share/nginx/html/
-COPY yhk_manage.html /usr/share/nginx/html/
-COPY aqzx.html /usr/share/nginx/html/
-COPY xiugaimima.html /usr/share/nginx/html/
-COPY zhzh_jhm.html /usr/share/nginx/html/
-COPY install_guide.html /usr/share/nginx/html/
-COPY tutorial_video.html /usr/share/nginx/html/
-COPY about_app_icon.png /usr/share/nginx/html/
-COPY login_avatar.png /usr/share/nginx/html/
-COPY about_update.html /usr/share/nginx/html/
-COPY about_update_notes.html /usr/share/nginx/html/
-COPY about_agreement.html /usr/share/nginx/html/
-COPY 个人.mobileconfig /usr/share/nginx/html/personal.mobileconfig
-COPY consult.html /usr/share/nginx/html/
-COPY help_center.html /usr/share/nginx/html/
-COPY chat.html /usr/share/nginx/html/
-COPY purchase.html /usr/share/nginx/html/
-COPY care_version.html /usr/share/nginx/html/
-COPY guanhuai.jpg /usr/share/nginx/html/
-COPY shouye.html /usr/share/nginx/html/
-COPY shuiming.html /usr/share/nginx/html/
-COPY shuiming_result.html /usr/share/nginx/html/
-COPY shuiming_empty.png /usr/share/nginx/html/
-COPY income_empty.png /usr/share/nginx/html/
-COPY xiangqing.html /usr/share/nginx/html/
-COPY shuikuanjisuan.html /usr/share/nginx/html/
-COPY daiban.html /usr/share/nginx/html/
-COPY bancha.html /usr/share/nginx/html/
-COPY wodepiaojia.html /usr/share/nginx/html/
-COPY wodepiaojia-xiaoshou.html /usr/share/nginx/html/
-COPY piaojia-goumai.png /usr/share/nginx/html/
-COPY piaojia-xiaoshou.png /usr/share/nginx/html/
-COPY message.html /usr/share/nginx/html/
-COPY message_detail.html /usr/share/nginx/html/
-COPY register.html /usr/share/nginx/html/
-COPY admin_login.html /usr/share/nginx/html/
-COPY admin_panel.html /usr/share/nginx/html/
-COPY profile.html /usr/share/nginx/html/
-COPY zonghe.html /usr/share/nginx/html/
-COPY shenbao_jilu.html /usr/share/nginx/html/
-COPY shenbao_jilu_detail.html /usr/share/nginx/html/
-COPY shenbao_income_detail.html /usr/share/nginx/html/
-COPY shenbao_stamp_done.png /usr/share/nginx/html/
-COPY shenbao_jilu_detail_design.png /usr/share/nginx/html/
-COPY zxkouchu.html /usr/share/nginx/html/
-COPY zxk_zhengce.html /usr/share/nginx/html/
-COPY zxk_zhengce.jpg /usr/share/nginx/html/
-COPY najilu.html /usr/share/nginx/html/
-# 微信公众号/业务域名校验文件（根路径可访问）
-COPY 2dd4cb5cb0fa1ede2240d147545250a1.txt /usr/share/nginx/html/
-COPY dc4f66bfde25a504178cc8101b1fa3d0.txt /usr/share/nginx/html/
-COPY gerenyanglao.html /usr/share/nginx/html/
-COPY gerenyanglao_banner.jpg /usr/share/nginx/html/
-COPY jingyingsuode.html /usr/share/nginx/html/
-COPY gongyicishan.html /usr/share/nginx/html/
-COPY weituodaili.html /usr/share/nginx/html/
-COPY sheshuifuwu.html /usr/share/nginx/html/
-COPY yiyishensu.html /usr/share/nginx/html/
-COPY shuiwuwenshu.html /usr/share/nginx/html/
-COPY sheshuizhuanye.html /usr/share/nginx/html/
-COPY renzhi.html /usr/share/nginx/html/
-COPY renzhi_detail.html /usr/share/nginx/html/
-COPY personal_info.html /usr/share/nginx/html/
-COPY gerenxinxi.html /usr/share/nginx/html/
-COPY tax_benefit.html /usr/share/nginx/html/
-COPY other_id.html /usr/share/nginx/html/
-COPY index.html /usr/share/nginx/html/index.html
-COPY index.html /usr/share/nginx/html/login.html
-COPY caidan /usr/share/nginx/html/caidan/
-COPY erji.jpg /usr/share/nginx/html/
-COPY hk.jpg /usr/share/nginx/html/
-COPY grdb.jpg /usr/share/nginx/html/
-COPY jtcy.jpg /usr/share/nginx/html/
-COPY rzsp.jpg /usr/share/nginx/html/
-COPY yhk.jpg /usr/share/nginx/html/
-COPY nx.jpg /usr/share/nginx/html/
-COPY lb.jpg /usr/share/nginx/html/
-COPY ld.png /usr/share/nginx/html/
-COPY tax_record_logo.png /usr/share/nginx/html/
-COPY tax_record_header.png /usr/share/nginx/html/
-COPY jt.png /usr/share/nginx/html/
-COPY jt.jpg /usr/share/nginx/html/
-COPY message_item_icon.png /usr/share/nginx/html/
-COPY msg_clear_unread_icon.png /usr/share/nginx/html/
-COPY sydb-v2.jpg /usr/share/nginx/html/sydb-v2.jpg
-COPY sydb-v2.jpg /usr/share/nginx/html/sydb.jpg
-COPY zdb.jpg /usr/share/nginx/html/
-COPY zdfwdb.jpg /usr/share/nginx/html/
-COPY sy_svc_cards_1.jpg /usr/share/nginx/html/
-COPY sy_svc_cards_2.jpg /usr/share/nginx/html/
-COPY daiban.jpg /usr/share/nginx/html/
-COPY bs.jpg /usr/share/nginx/html/
-COPY cx.jpg /usr/share/nginx/html/
-COPY db.jpg /usr/share/nginx/html/
-COPY fp.jpg /usr/share/nginx/html/
-COPY bank_icons /usr/share/nginx/html/bank_icons/
-COPY css /usr/share/nginx/html/css/
-COPY public/js /usr/share/nginx/html/js/
+COPY --from=build-stage /app/site/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]

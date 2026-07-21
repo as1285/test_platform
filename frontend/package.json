@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vue-tsc --noEmit && vite build && node scripts/assemble-site.mjs",
+    "assemble": "node scripts/assemble-site.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
