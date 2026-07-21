@@ -649,7 +649,7 @@
         }
 
         function openRealNameEditor() {
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -690,7 +690,7 @@
 
         function openBirthDateEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -961,7 +961,7 @@
 
         function saveProfileFields(payload, onOk) {
             if (!requireProfileEdit()) return;
-            authFetch('api/user.php', {
+            authFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -991,7 +991,7 @@
             var titles = { huji: '户籍详细地址', living: '经常居住地详细地址', contact: '联系地址详细地址' };
             document.getElementById('addressSheetTitle').textContent = titles[target] || '详细地址';
             var cur = '';
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -1084,7 +1084,7 @@
 
         function openEmailEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -1136,7 +1136,7 @@
                 return;
             }
 
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (response) {
                     return response.json();
                 })

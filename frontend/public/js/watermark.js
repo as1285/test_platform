@@ -142,10 +142,10 @@
             } catch (e2) {}
         }
 
-        // 从 API 获取最新状态（与 /api/user.php 一致，需 JWT，不再使用 URL 上的 user_id）
+        // 从 API 获取最新状态（与 /api/user 一致，需 JWT，不再使用 URL 上的 user_id）
         var xhr = new XMLHttpRequest();
         var base = typeof WM_API_BASE !== 'undefined' ? WM_API_BASE : '';
-        xhr.open('GET', base + 'api/user.php?action=info', true);
+        xhr.open('GET', base + 'api/user?action=info', true);
         xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {

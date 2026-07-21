@@ -229,7 +229,7 @@
             loadFromStorage();
             var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
             var headers = typeof authHeaders === 'function' ? authHeaders() : {};
-            fetchFn('api/user.php?action=info', { headers: headers })
+            fetchFn('api/user?action=info', { headers: headers })
                 .then(function (r) {
                     return r.json();
                 })

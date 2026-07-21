@@ -466,7 +466,7 @@
 
             function loadRecords() {
                 var q =
-                    'api/user.php?action=special_deduction_records&year=' +
+                    'api/user?action=special_deduction_records&year=' +
                     encodeURIComponent(queryYear);
                 if (viewingVoided) {
                     q += '&voided=1';
@@ -577,7 +577,7 @@
                     payload.record_id = editingId;
                 }
                 document.getElementById('btnModalSave').disabled = true;
-                authJson('api/user.php', {
+                authJson('api/user', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:
@@ -610,7 +610,7 @@
                 if (!editingId || !confirm('确定删除该条扣除信息？')) {
                     return;
                 }
-                authJson('api/user.php', {
+                authJson('api/user', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:
@@ -645,7 +645,7 @@
                 if (!rec) {
                     return;
                 }
-                authJson('api/user.php', {
+                authJson('api/user', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:

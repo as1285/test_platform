@@ -693,7 +693,7 @@
             var btn = document.getElementById('btnDoActivate');
             btn.disabled = true;
             setActivateMsg('');
-            fetch('api/auth.php', {
+            fetch('api/auth', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'activate', code: code })
@@ -933,7 +933,7 @@
                 var lgU = localStorage.getItem('guest_username_v1') || '';
                 if (lgU && lgU.indexOf('__guest_') === 0) loginGuestUsername = lgU;
             } catch (eLg) {}
-            fetch('api/auth.php', {
+            fetch('api/auth', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

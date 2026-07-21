@@ -266,7 +266,7 @@
                 errEl.textContent = '缺少记录 id';
                 return;
             }
-            authFetch('api/tax.php?action=calculation&id=' + encodeURIComponent(id))
+            authFetch('api/tax?action=calculation&id=' + encodeURIComponent(id))
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {

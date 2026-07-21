@@ -4915,19 +4915,27 @@ function normalizeUserApiPath(req) {
   return p.replace(/\/+$/, '') || '/';
 }
 
-/** 未激活账号仍可访问：tax.php 个税生成/演示、user.php 全部资料读写（不含激活/去水印）、埋点 track_*、反馈 feedback.php、在线客服 chat.php、message.php 全部读写 */
+/** 匹配规范路径 /api/foo、/foo 以及兼容别名 /api/foo.php、/foo.php，含子路径（如 /api/chat/upload-image） */
+function matchesUserApiResource(path, resource) {
+  var p = String(path || '');
+  var name = String(resource || '');
+  if (!name) return false;
+  if (p === '/' + name || p === '/' + name + '.php') return true;
+  if (p === '/api/' + name || p === '/api/' + name + '.php') return true;
+  if (p.indexOf('/api/' + name + '/') === 0) return true;
+  return false;
+}
+
+/** 未激活账号仍可访问：税演示、用户资料、埋点 track_*、反馈、在线客服、消息 */
 function isUnactivatedAllowedRequest(req) {
   var path = normalizeUserApiPath(req);
-  if (path.endsWith('/feedback.php') || path.endsWith('/tax.php')) {
-    return true;
-  }
-  if (path.endsWith('/chat.php')) {
-    return true;
-  }
-  if (path.endsWith('/user.php')) {
-    return true;
-  }
-  if (path.endsWith('/message.php')) {
+  if (
+    matchesUserApiResource(path, 'feedback') ||
+    matchesUserApiResource(path, 'tax') ||
+    matchesUserApiResource(path, 'chat') ||
+    matchesUserApiResource(path, 'user') ||
+    matchesUserApiResource(path, 'message')
+  ) {
     return true;
   }
   if (req.method === 'POST') {
@@ -7170,23 +7178,30 @@ function classifyAnalyticsRoute(req) {
   if (path.indexOf('/api/admin') === 0) {
     return { route_key: method + ' ' + path + actionSuffix, biz_category: '管理后台' };
   }
-  if (path.endsWith('/tax.php') || path === '/tax.php') {
-    return { route_key: method + ' tax.php' + actionSuffix, biz_category: '税务记录' };
+  if (matchesUserApiResource(path, 'tax')) {
+    return { route_key: method + ' /api/tax' + actionSuffix, biz_category: '税务记录' };
   }
-  if (path.endsWith('/message.php') || path === '/message.php') {
-    return { route_key: method + ' message.php' + actionSuffix, biz_category: '消息中心' };
+  if (matchesUserApiResource(path, 'message')) {
+    return { route_key: method + ' /api/message' + actionSuffix, biz_category: '消息中心' };
   }
-  if (path.endsWith('/user.php') || path === '/user.php') {
-    return { route_key: method + ' user.php' + actionSuffix, biz_category: '用户资料与任职' };
+  if (matchesUserApiResource(path, 'user')) {
+    return { route_key: method + ' /api/user' + actionSuffix, biz_category: '用户资料与任职' };
   }
-  if (path.endsWith('/feedback.php') || path === '/feedback.php') {
-    return { route_key: method + ' feedback.php' + actionSuffix, biz_category: '用户反馈' };
+  if (matchesUserApiResource(path, 'feedback')) {
+    return { route_key: method + ' /api/feedback' + actionSuffix, biz_category: '用户反馈' };
   }
-  if (path.endsWith('/chat.php') || path === '/chat.php') {
-    return { route_key: method + ' chat.php' + actionSuffix, biz_category: '在线客服' };
+  if (matchesUserApiResource(path, 'chat')) {
+    return { route_key: method + ' /api/chat' + actionSuffix, biz_category: '在线客服' };
   }
-  if (path.endsWith('/auth.php') || path === '/auth.php') {
-    return { route_key: method + ' auth.php' + actionSuffix, biz_category: '认证注册' };
+  if (matchesUserApiResource(path, 'auth')) {
+    return { route_key: method + ' /api/auth' + actionSuffix, biz_category: '认证注册' };
+  }
+  if (
+    path === '/api/shenbao-jilu' ||
+    path === '/api/shenbao_jilu.php' ||
+    path === '/shenbao_jilu.php'
+  ) {
+    return { route_key: method + ' /api/shenbao-jilu' + actionSuffix, biz_category: '申报记录' };
   }
   if (path === '/api/public/mine-ui') {
     return { route_key: method + ' /api/public/mine-ui', biz_category: '公开配置' };
@@ -12110,14 +12125,23 @@ async function handleAdminInstallTrackStats(req, res) {
         pf.params
       );
       var labelMap = {
+        'POST /api/auth#track_install_apk_click': 'Android 安装包点击',
         'POST auth.php#track_install_apk_click': 'Android 安装包点击',
+        'POST /api/auth#track_install_ios_click': 'iOS 描述文件点击',
         'POST auth.php#track_install_ios_click': 'iOS 描述文件点击',
+        'POST /api/auth#track_install_ios_video_play': '苹果安装视频播放',
         'POST auth.php#track_install_ios_video_play': '苹果安装视频播放',
+        'POST /api/auth#track_install_usage_video_play': '操作视频播放',
         'POST auth.php#track_install_usage_video_play': '操作视频播放',
+        'POST /api/auth#track_app_first_open': 'App 首次打开',
         'POST auth.php#track_app_first_open': 'App 首次打开',
+        'POST /api/auth#track_tutorial_video_play': '操作教程视频播放',
         'POST auth.php#track_tutorial_video_play': '操作教程视频播放',
+        'POST /api/auth#track_tutorial_prompt_show': '操作教程弹窗展示',
         'POST auth.php#track_tutorial_prompt_show': '操作教程弹窗展示',
+        'POST /api/auth#track_tutorial_prompt_watch_click': '操作教程弹窗-观看',
         'POST auth.php#track_tutorial_prompt_watch_click': '操作教程弹窗-观看',
+        'POST /api/auth#track_tutorial_prompt_dismiss': '操作教程弹窗-关闭',
         'POST auth.php#track_tutorial_prompt_dismiss': '操作教程弹窗-关闭',
         'EVENT register_success': '注册成功'
       };

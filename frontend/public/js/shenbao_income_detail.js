@@ -133,7 +133,7 @@
         if (typeof authFetch !== 'function') {
             return Promise.reject(new Error('请先登录'));
         }
-        return authFetch('api/tax.php?action=records')
+        return authFetch('api/tax?action=records')
             .then(function (r) {
                 return r.json();
             })

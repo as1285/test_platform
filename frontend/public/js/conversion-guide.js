@@ -356,7 +356,7 @@
     if (profileFetchInFlight && !opts.force) {
       return profileFetchInFlight;
     }
-    profileFetchInFlight = authFetch('api/user.php?action=summary')
+    profileFetchInFlight = authFetch('api/user?action=summary')
       .then(function (r) {
         return r.json();
       })

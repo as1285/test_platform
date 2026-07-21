@@ -210,7 +210,7 @@
 
             function postAction(action, payload) {
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                return fetchFn('api/user.php', {
+                return fetchFn('api/user', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
@@ -261,7 +261,7 @@
                     return;
                 }
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user.php?action=bank_cards', { credentials: 'same-origin' })
+                fetchFn('api/user?action=bank_cards', { credentials: 'same-origin' })
                     .then(function (r) {
                         return r.json();
                     })

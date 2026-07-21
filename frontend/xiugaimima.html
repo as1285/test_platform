@@ -219,7 +219,7 @@
                     btn.disabled = true;
                     var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
                     var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
-                    fetchFn('api/user.php', {
+                    fetchFn('api/user', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({

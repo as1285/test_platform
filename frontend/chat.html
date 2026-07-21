@@ -337,7 +337,7 @@
 
     function loadThread(isPoll) {
         var url =
-            'api/chat.php?action=' +
+            'api/chat?action=' +
             (isPoll && lastMsgId > 0 ? 'poll' : 'thread') +
             (lastMsgId > 0 ? '&after_id=' + encodeURIComponent(lastMsgId) : '');
         return authFetch(url)
@@ -376,7 +376,7 @@
         var content = String(inputEl.value || '').trim();
         if (!content) return;
         setBusy(true);
-        authFetch('api/chat.php', {
+        authFetch('api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'send', content: content })

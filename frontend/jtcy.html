@@ -182,7 +182,7 @@
             function loadMembers() {
                 if (!mount) return;
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user.php?action=family_members', { credentials: 'same-origin' })
+                fetchFn('api/user?action=family_members', { credentials: 'same-origin' })
                     .then(function (r) {
                         return r.json();
                     })

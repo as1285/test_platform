@@ -309,7 +309,7 @@
       }
     };
     window
-      .authFetch('api/tax.php', {
+      .authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -386,7 +386,7 @@
   function fetchUserInfo() {
     var local = getLocalUser();
     if (typeof window.authFetch !== 'function') return Promise.resolve(local);
-    return authFetch('api/user.php?action=info')
+    return authFetch('api/user?action=info')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.code === 200 && j.data) {
@@ -402,7 +402,7 @@
   }
 
   function fetchTaxRecords() {
-    return authFetch('api/tax.php?action=records')
+    return authFetch('api/tax?action=records')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.code === 200 && j.data && Array.isArray(j.data.records)) return j.data.records;
@@ -1701,7 +1701,7 @@
     if (record) {
       qs += '&record=' + encodeURIComponent(record);
     }
-    fetch('api/tax.php?' + qs)
+    fetch('api/tax?' + qs)
       .then(function (r) {
         return r.json();
       })

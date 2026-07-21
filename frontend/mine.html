@@ -1528,7 +1528,7 @@
                         : function (url, opts) {
                               return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
                           };
-                fetchFn('api/user.php', {
+                fetchFn('api/user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1718,7 +1718,7 @@
                     alert('激活码不能为空');
                     return;
                 }
-                fetch('api/auth.php', {
+                fetch('api/auth', {
                     method: 'POST',
                     headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'activate', code: code })
@@ -2036,7 +2036,7 @@
                               return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
                           };
 
-                fetchFn('api/user.php?action=summary')
+                fetchFn('api/user?action=summary')
                     .then(function (r) {
                         return r.json();
                     })

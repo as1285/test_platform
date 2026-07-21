@@ -277,7 +277,7 @@
                         return;
                     }
                     btn.disabled = true;
-                    fetch('api/auth.php', {
+                    fetch('api/auth', {
                         method: 'POST',
                         headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

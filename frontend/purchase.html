@@ -938,7 +938,7 @@
         if (typeof window.trackUserAction === 'function') {
             trackPurchase('track_activate_prompt_confirm');
         }
-        fetch('api/auth.php', {
+        fetch('api/auth', {
             method: 'POST',
             headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'activate', code: code })

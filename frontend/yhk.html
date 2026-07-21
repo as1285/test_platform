@@ -217,7 +217,7 @@
             function loadCards() {
                 if (!mount) return;
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user.php?action=bank_cards', { credentials: 'same-origin' })
+                fetchFn('api/user?action=bank_cards', { credentials: 'same-origin' })
                     .then(function (r) {
                         return r.json();
                     })

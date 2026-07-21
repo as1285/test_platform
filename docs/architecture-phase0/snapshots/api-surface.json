@@ -384,27 +384,27 @@
     },
     {
       "method": "GET",
-      "path": "/api/auth.php"
+      "path": "/api/auth"
     },
     {
       "method": "POST",
-      "path": "/api/auth.php"
+      "path": "/api/auth"
     },
     {
       "method": "GET",
-      "path": "/api/chat.php"
+      "path": "/api/chat"
     },
     {
       "method": "POST",
-      "path": "/api/chat.php"
+      "path": "/api/chat"
     },
     {
       "method": "GET",
-      "path": "/api/feedback.php"
+      "path": "/api/feedback"
     },
     {
       "method": "POST",
-      "path": "/api/feedback.php"
+      "path": "/api/feedback"
     },
     {
       "method": "GET",
@@ -412,11 +412,11 @@
     },
     {
       "method": "GET",
-      "path": "/api/message.php"
+      "path": "/api/message"
     },
     {
       "method": "POST",
-      "path": "/api/message.php"
+      "path": "/api/message"
     },
     {
       "method": "GET",
@@ -464,79 +464,44 @@
     },
     {
       "method": "GET",
-      "path": "/api/shenbao_jilu.php"
+      "path": "/api/shenbao-jilu"
     },
     {
       "method": "POST",
-      "path": "/api/shenbao_jilu.php"
+      "path": "/api/shenbao-jilu"
     },
     {
       "method": "GET",
-      "path": "/api/tax.php"
+      "path": "/api/tax"
     },
     {
       "method": "POST",
-      "path": "/api/tax.php"
+      "path": "/api/tax"
     },
     {
       "method": "GET",
-      "path": "/api/user.php"
+      "path": "/api/user"
     },
     {
       "method": "POST",
-      "path": "/api/user.php"
-    },
-    {
-      "method": "GET",
-      "path": "/auth.php"
-    },
-    {
-      "method": "POST",
-      "path": "/auth.php"
-    },
-    {
-      "method": "GET",
-      "path": "/chat.php"
-    },
-    {
-      "method": "POST",
-      "path": "/chat.php"
-    },
-    {
-      "method": "GET",
-      "path": "/feedback.php"
-    },
-    {
-      "method": "POST",
-      "path": "/feedback.php"
+      "path": "/api/user"
     },
     {
       "method": "GET",
       "path": "/health"
-    },
-    {
-      "method": "GET",
-      "path": "/message.php"
-    },
-    {
-      "method": "POST",
-      "path": "/message.php"
-    },
-    {
-      "method": "GET",
-      "path": "/shenbao_jilu.php"
-    },
-    {
-      "method": "POST",
-      "path": "/shenbao_jilu.php"
-    },
-    {
-      "method": "GET",
-      "path": "/user.php"
-    },
-    {
-      "method": "POST",
-      "path": "/user.php"
     }
-  ]
+  ],
+  "meta": {
+    "canonical_c_end_paths": [
+      "/api/auth",
+      "/api/user",
+      "/api/tax",
+      "/api/message",
+      "/api/feedback",
+      "/api/chat",
+      "/api/shenbao-jilu"
+    ],
+    "php_aliases_retained": true,
+    "updated": "2026-07-21"
+  }
 }

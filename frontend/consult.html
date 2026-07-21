@@ -2126,7 +2126,7 @@
                 refreshMessageList().catch(function () {});
             }
             if (tab === 'records') {
-                /* 有新鲜缓存则不再重复拉 tax.php / employers（启动时已拉过） */
+                /* 有新鲜缓存则不再重复拉 /api/tax / employers（启动时已拉过） */
                 if (window.__consultRecordsCache && window.__consultEmployersCache) {
                     syncCompanyProfilesFromTaxRecords(window.__consultRecordsCache);
                     syncCompanyProfilesFromEmployers(window.__consultEmployersCache);
@@ -2216,7 +2216,7 @@
         }
 
         function loadFeedbackWechatPayQr() {
-            return authFetch('api/feedback.php?action=config')
+            return authFetch('api/feedback?action=config')
                 .then(function (r) {
                     return r.json();
                 })
@@ -2246,7 +2246,7 @@
                     openFeedbackQqGroupUrl(feedbackQqGroupUrl);
                     return;
                 }
-                authFetch('api/feedback.php?action=config')
+                authFetch('api/feedback?action=config')
                     .then(function (r) {
                         return r.json();
                     })
@@ -2295,7 +2295,7 @@
                     doCopy(feedbackXianyuPurchaseUrl);
                     return;
                 }
-                authFetch('api/feedback.php?action=config')
+                authFetch('api/feedback?action=config')
                     .then(function (r) {
                         return r.json();
                     })
@@ -2360,7 +2360,7 @@
                 return;
             }
             
-            authFetch('api/user.php?action=summary')
+            authFetch('api/user?action=summary')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200) {
@@ -2469,7 +2469,7 @@
                 alert('激活码不能为空');
                 return;
             }
-            fetch('api/auth.php', {
+            fetch('api/auth', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'activate', code: code })
@@ -2575,7 +2575,7 @@
             if (window.__consultRecordsInFlight) {
                 return window.__consultRecordsInFlight;
             }
-            window.__consultRecordsInFlight = authFetch('api/tax.php?action=records')
+            window.__consultRecordsInFlight = authFetch('api/tax?action=records')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
@@ -2891,7 +2891,7 @@
                         o.tax_reported = computeSingleRecordTaxReported(o, list);
                         document.getElementById('f_tax_reported').value = o.tax_reported;
                     }
-                    return authFetch('api/tax.php', {
+                    return authFetch('api/tax', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -3009,7 +3009,7 @@
 
         function deleteRecord(id) {
             if (!confirm('确定删除？删除后可在回收站恢复或导出。')) return;
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3035,7 +3035,7 @@
 
         function deleteAllTaxRecords() {
             if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复或导出。')) return;
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3071,7 +3071,7 @@
                 return;
             }
             if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3109,7 +3109,7 @@
             ) {
                 return;
             }
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3193,7 +3193,7 @@
             if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复或导出。')) {
                 return;
             }
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3243,7 +3243,7 @@
         }
 
         function apiFetchDeletedRecords() {
-            return authFetch('api/tax.php?action=deleted_records')
+            return authFetch('api/tax?action=deleted_records')
                 .then(function (r) {
                     return r.json();
                 })
@@ -3334,7 +3334,7 @@
         }
 
         function restoreDeletedTaxRecord(id) {
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3376,7 +3376,7 @@
             if (!confirm('确定恢复扣缴单位「' + company + '」下的 ' + n + ' 条记录？')) {
                 return;
             }
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3412,7 +3412,7 @@
             if (!confirm('确定恢复回收站中的全部 ' + taxRecycleBinCache.length + ' 条记录？')) {
                 return;
             }
-            authFetch('api/tax.php', {
+            authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -4622,7 +4622,7 @@
             }
             return Promise.all(
                 companies.map(function (company) {
-                    return authFetch('api/tax.php', {
+                    return authFetch('api/tax', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -5320,7 +5320,7 @@
             var list = Array.isArray(records) ? records : [];
             var CHUNK = 100;
             function postOne(delIds, part) {
-                return authFetch('api/tax.php', {
+                return authFetch('api/tax', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -6928,7 +6928,7 @@
             var chain = Promise.resolve();
             if (hasProfile) {
                 chain = chain.then(function () {
-                    return authFetch('api/user.php', {
+                    return authFetch('api/user', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(profilePayload)
@@ -6956,7 +6956,7 @@
 
             if (parsed.card_no && parsed.phone && parsed.phone.length === 11 && parsed.card_no.length >= 16) {
                 chain = chain.then(function () {
-                    return authFetch('api/user.php', {
+                    return authFetch('api/user', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -7312,7 +7312,7 @@
             var list = Array.isArray(records) ? records : [];
             var CHUNK = 100;
             function postOneChunk(part) {
-                return authFetch('api/tax.php', {
+                return authFetch('api/tax', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -7695,7 +7695,7 @@
             if (window.__consultEmployersInFlight) {
                 return window.__consultEmployersInFlight;
             }
-            window.__consultEmployersInFlight = authFetch('api/user.php?action=employers')
+            window.__consultEmployersInFlight = authFetch('api/user?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.employers) {
@@ -7838,7 +7838,7 @@
             if (employerEditId) {
                 data.employer_id = employerEditId;
             }
-            authFetch('api/user.php', {
+            authFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(data)
@@ -7960,7 +7960,7 @@
 
         function deleteEmployer(id) {
             if (!confirm('确定要删除这条任职受雇记录吗？')) return;
-            authFetch('api/user.php', {
+            authFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -8005,7 +8005,7 @@
                     leave_date: item.leave_date || '',
                     status: item.status === '0' || item.status === 0 || item.status === '离职' ? '0' : '1'
                 };
-                authFetch('api/user.php', {
+                authFetch('api/user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams(data)
@@ -8036,7 +8036,7 @@
 
         function apiFetchMessages() {
             var uid = currentUserId();
-            return authFetch('api/message.php?action=list')
+            return authFetch('api/message?action=list')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && Array.isArray(data.data)) {
@@ -8088,7 +8088,7 @@
                 company_name: document.getElementById('mf_company_name').value.trim(),
                 msg_date: document.getElementById('mf_msg_date').value
             };
-            authFetch('api/message.php', {
+            authFetch('api/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -8111,7 +8111,7 @@
 
         function deleteMessage(id) {
             if (!confirm('确定删除？')) return;
-            authFetch('api/message.php', {
+            authFetch('api/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -8194,7 +8194,7 @@
         }
 
         function refreshFeedbackList() {
-            return authFetch('api/feedback.php?action=list')
+            return authFetch('api/feedback?action=list')
                 .then(function (r) {
                     return r.json();
                 })
@@ -8230,7 +8230,7 @@
                 showMsg('请填写反馈内容', false);
                 return;
             }
-            authFetch('api/feedback.php', {
+            authFetch('api/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ feedback_type: type, content: content })

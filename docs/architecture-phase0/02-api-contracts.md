@@ -8,7 +8,8 @@
 
 - 多数业务接口返回：`{ code: number, msg?: string, data?: any }`，成功 `code === 200`。
 - 用户 JWT：`Authorization: Bearer <token>`；管理端：`admin_token`（见 `admin_auth.js`）。
-- 兼容路径：`/api/xxx.php` 与 `/xxx.php` 双挂（用户侧 RPC）。
+- **规范路径**：`/api/auth`、`/api/user`、`/api/tax`、`/api/message`、`/api/feedback`、`/api/chat`、`/api/shenbao-jilu`（仓库前端已改用）。
+- **兼容别名**：`/api/xxx.php` 与 `/xxx.php` 仍双挂，旧客户端可继续调用。
 
 ---
 
@@ -20,7 +21,7 @@
 
 ---
 
-## 2. 鉴权 `auth.php`
+## 2. 鉴权 `/api/auth`
 
 | action | 方法 | 鉴权 | 要点 |
 |--------|------|------|------|
@@ -43,7 +44,7 @@
 
 ---
 
-## 3. 用户 `user.php`
+## 3. 用户 `/api/user`
 
 | action | 读写 | 说明 |
 |--------|------|------|
@@ -56,11 +57,11 @@
 | `change_password` | 写 | 改密（可同步 plain） |
 | `track_*` | 写 | 埋点（未激活也可） |
 
-未激活白名单：见 `server.js` 中 `requireAuthAndActivatedUnlessAllowed` 注释（税演示、资料、埋点、反馈、客服、消息）。
+未激活白名单：见 `requireAuthAndActivatedUnlessAllowed`（税演示、资料、埋点、反馈、客服、消息）。
 
 ---
 
-## 4. 税务 `tax.php`
+## 4. 税务 `/api/tax`
 
 | action | 说明 |
 |--------|------|
@@ -114,12 +115,12 @@
 
 ## 7. 其他用户 RPC
 
-| 端点 | 典型 action |
-|------|-------------|
-| `message.php` | `list`、`add_message`、`delete_message`、`mark_all_read` |
-| `feedback.php` | `list`、`config`、提交类 |
-| `chat.php` | `thread`、`mark_read`、发送类 |
-| `shenbao_jilu.php` | `list` / `get` / `save_record` 等申报记录 |
+| 端点（规范） | 兼容别名 | 典型 action |
+|--------------|----------|-------------|
+| `/api/message` | `message.php` | `list`、`add_message`、`delete_message`、`mark_all_read` |
+| `/api/feedback` | `feedback.php` | `list`、`config`、提交类 |
+| `/api/chat` | `chat.php` | `thread`、`poll`、`send`、`mark_read`；上传 `POST /api/chat/upload-image` |
+| `/api/shenbao-jilu` | `shenbao_jilu.php` | `list` / `get` / `save_record` 等申报记录 |
 
 ---
 
@@ -128,4 +129,4 @@
 完整列表见 `snapshots/api-surface.json` → `routes`。  
 鉴权：`POST /api/admin/login` → Bearer admin JWT；菜单门闸 `requireAdminMenu` / `requireAdminAnyMenu`。
 
-阶段 1 **禁止**在未更新本快照的情况下静默删除或改名上述路径/action。
+规范路径优先；`.php` 别名可继续调用。删除别名前须更新本快照与客户端。

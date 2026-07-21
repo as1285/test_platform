@@ -18,7 +18,7 @@
 
 **重构基线看什么：**
 
-- 核心 route：`POST /api/tax.php`、`GET /api/tax.php`、`POST /api/user.php`、`POST /api/auth.php`、`POST /api/payments/alipay/create`
+- 核心 route：`POST /api/tax`、`GET /api/tax`、`POST /api/user`、`POST /api/auth`、`POST /api/payments/alipay/create`
 - 日均次数、平均耗时（sum_ms/cnt）、max_ms、慢事件条数
 
 ### 1.2 转化 / 安装漏斗
@@ -67,10 +67,10 @@ SELECT stat_date, route_key, cnt,
 FROM analytics_api_daily
 WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
   AND route_key IN (
-    'POST /api/tax.php',
-    'GET /api/tax.php',
-    'POST /api/auth.php',
-    'POST /api/user.php'
+    'POST /api/tax',
+    'GET /api/tax',
+    'POST /api/auth',
+    'POST /api/user'
   )
 ORDER BY stat_date DESC, route_key;
 

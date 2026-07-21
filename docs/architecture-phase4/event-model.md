@@ -17,8 +17,8 @@
 
 前端：
 
-- `window.trackUserAction` → `POST /api/user.php`
-- `window.trackPublicAction` → `POST /api/auth.php`
+- `window.trackUserAction` → `POST /api/user`
+- `window.trackPublicAction` → `POST /api/auth`
 - `TaxApp.analytics.*`（阶段 3 门面）
 
 ## 逻辑类型 ↔ 物理表

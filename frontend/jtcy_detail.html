@@ -717,7 +717,7 @@
                     return;
                 }
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user.php?action=family_member&id=' + encodeURIComponent(memberId), {
+                fetchFn('api/user?action=family_member&id=' + encodeURIComponent(memberId), {
                     credentials: 'same-origin'
                 })
                     .then(function (r) {
@@ -759,7 +759,7 @@
                     var birthIso = birthEl ? birthEl.getAttribute('data-iso') || '' : '';
                     var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
                     var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
-                    fetchFn('api/user.php', {
+                    fetchFn('api/user', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({
@@ -802,7 +802,7 @@
                     deleteBtn.disabled = true;
                     var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
                     var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
-                    fetchFn('api/user.php', {
+                    fetchFn('api/user', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({ action: 'delete_family_member', member_id: memberId })

@@ -1128,7 +1128,7 @@
                 applyPurchaseWatermark(false);
             }
 
-            authFetch('api/user.php?action=info')
+            authFetch('api/user?action=info')
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
                     var d = res && res.code === 200 ? res.data : null;
@@ -1175,7 +1175,7 @@
                     : getUrlParam('year') || new Date().getFullYear()
             );
             var incomeTypes = getSelectedIncomeTypesFromUrl();
-            var apiUrl = 'api/tax.php?action=records&year=' + encodeURIComponent(year);
+            var apiUrl = 'api/tax?action=records&year=' + encodeURIComponent(year);
             if (incomeTypes && incomeTypes.length) {
                 apiUrl += '&types=' + encodeURIComponent(incomeTypes.join(','));
             }

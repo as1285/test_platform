@@ -298,7 +298,7 @@
                     if (rn && holderNameEl) holderNameEl.textContent = rn;
                 } catch (e) {}
                 var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-                fetchFn('api/user.php?action=info', { credentials: 'same-origin' })
+                fetchFn('api/user?action=info', { credentials: 'same-origin' })
                     .then(function (r) {
                         return r.json();
                     })
@@ -374,7 +374,7 @@
                     if (bankName === '—') bankName = '银行卡';
                     var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
                     var headers = typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' };
-                    fetchFn('api/user.php', {
+                    fetchFn('api/user', {
                         method: 'POST',
                         headers: headers,
                         body: JSON.stringify({

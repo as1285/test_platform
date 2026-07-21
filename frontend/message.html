@@ -427,7 +427,7 @@
         }
 
         function loadMessages() {
-            authFetch('api/message.php?action=list')
+            authFetch('api/message?action=list')
                 .then(function (response) {
                     return response.json();
                 })
@@ -464,7 +464,7 @@
         document.getElementById('btnMsgClearUnread').addEventListener('click', function () {
             var btn = this;
             btn.disabled = true;
-            authFetch('api/message.php', {
+            authFetch('api/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'mark_all_read' })

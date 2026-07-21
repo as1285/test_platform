@@ -367,7 +367,7 @@
                     '<div class="detail-error">消息不存在</div>';
                 return;
             }
-            authFetch('api/message.php?action=detail&id=' + encodeURIComponent(id))
+            authFetch('api/message?action=detail&id=' + encodeURIComponent(id))
                 .then(function (r) {
                     return r.json();
                 })

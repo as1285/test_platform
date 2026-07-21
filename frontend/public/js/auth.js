@@ -1917,7 +1917,7 @@
     var headers = Object.assign({}, authHeaders(), {
       'X-Page-Path': normalizeTrackPath(pagePath || '/event/' + act)
     });
-    fetch('api/user.php', {
+    fetch('api/user', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(payload),
@@ -1941,7 +1941,7 @@
       headers = Object.assign(headers, getClientDeviceHeaders());
     }
     headers['X-Page-Path'] = normalizeTrackPath(pagePath || '/event/' + act);
-    fetch('api/auth.php', {
+    fetch('api/auth', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(payload),

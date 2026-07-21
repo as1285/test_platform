@@ -123,7 +123,7 @@
 
 把 `server.js` 按域拆成同仓模块（仍一个进程）：
 
-- 路由层：对外保留 `/api/auth.php` 等兼容别名 → 域 `routes.js` 注册，handler 暂由 `legacy/monolith.js` 提供。
+- 路由层：规范路径 `/api/auth` 等为主；保留 `/api/auth.php` 等兼容别名 → 域 `routes.js` 注册，handler 暂由 `legacy/monolith.js` 提供。
 - 迁移：引入轻量 `migrations/` + `src/shared/migrate.js`，冻结 `initDatabase` 里新增 ALTER。
 - 仓储层：`repos/*.js` 与 handler 下沉列为阶段 1 后续迭代（见 phase1 README）。
 

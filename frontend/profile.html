@@ -260,7 +260,7 @@
         
         // 加载任职受雇列表
         function loadEmployers(userId) {
-            authFetch('api/user.php?action=employers')
+            authFetch('api/user?action=employers')
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 200) {
@@ -329,7 +329,7 @@
             }
             
             // 提交到后端
-            authFetch('api/user.php', {
+            authFetch('api/user', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -397,7 +397,7 @@
         }
 
         function editEmployer(id) {
-            authFetch('api/user.php?action=employers')
+            authFetch('api/user?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data || !data.data.employers) return;
@@ -427,7 +427,7 @@
         }
 
         function copyEmployer(id) {
-            authFetch('api/user.php?action=employers')
+            authFetch('api/user?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data || !data.data.employers) return;
@@ -439,7 +439,7 @@
                         return;
                     }
                     var userId = localStorage.getItem('user_id') || '64';
-                    return authFetch('api/user.php', {
+                    return authFetch('api/user', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams({
@@ -473,7 +473,7 @@
             var userId = localStorage.getItem('user_id') || '64';
             
             if (confirm('确定要删除这条任职受雇记录吗？')) {
-                authFetch('api/user.php', {
+                authFetch('api/user', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'

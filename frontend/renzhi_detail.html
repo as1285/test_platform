@@ -122,7 +122,7 @@
                 mount.innerHTML = '<div class="empty-state">缺少记录参数</div>';
                 return;
             }
-            authFetch('api/user.php?action=employers')
+            authFetch('api/user?action=employers')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code !== 200 || !data.data || !data.data.employers) {

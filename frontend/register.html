@@ -480,7 +480,7 @@
         }
 
         function loadRegisterCaptcha() {
-            return fetch('api/auth.php?action=register_captcha', { method: 'GET' })
+            return fetch('api/auth?action=register_captcha', { method: 'GET' })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
@@ -671,7 +671,7 @@
                 var gU = localStorage.getItem('guest_username_v1') || '';
                 if (gU && gU.indexOf('__guest_') === 0) regGuestUsername = gU;
             } catch (eGu) {}
-            fetch('api/auth.php', {
+            fetch('api/auth', {
                 method: 'POST',
                 headers: registerRequestHeaders(),
                 body: JSON.stringify({

@@ -1,5 +1,5 @@
 /**
- * 申报记录列表与详情共用存储（服务端 api/shenbao_jilu.php）
+ * 申报记录列表与详情共用存储（服务端 api/shenbao-jilu）
  */
 (function (global) {
     var LIST_AMOUNT_LABEL = '应退税额';
@@ -309,7 +309,7 @@
                 localStorage.setItem(migrateFlagKey(tab), '1');
                 return Promise.resolve();
             }
-            return apiJson('api/shenbao_jilu.php', {
+            return apiJson('api/shenbao-jilu', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'batch_save', tab: tab, records: parsed })
@@ -327,7 +327,7 @@
     function loadRecords(tab) {
         return migrateLegacyOnce(tab)
             .then(function () {
-                return apiJson('api/shenbao_jilu.php?action=list&tab=' + encodeURIComponent(tab));
+                return apiJson('api/shenbao-jilu?action=list&tab=' + encodeURIComponent(tab));
             })
             .then(function (data) {
                 if (data.code !== 200) {
@@ -393,7 +393,7 @@
         return migrateLegacyOnce(tab)
             .then(function () {
                 return apiJson(
-                    'api/shenbao_jilu.php?action=get&tab=' +
+                    'api/shenbao-jilu?action=get&tab=' +
                         encodeURIComponent(tab) +
                         '&id=' +
                         encodeURIComponent(id)
@@ -425,7 +425,7 @@
     function saveRecord(tab, record) {
         var payload = Object.assign({}, record);
         payload.detailCustomized = true;
-        return apiJson('api/shenbao_jilu.php', {
+        return apiJson('api/shenbao-jilu', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'save_record', tab: tab, record: payload })
@@ -440,7 +440,7 @@
     }
 
     function deleteRecord(tab, id) {
-        return apiJson('api/shenbao_jilu.php', {
+        return apiJson('api/shenbao-jilu', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'delete_record', tab: tab, id: id })
