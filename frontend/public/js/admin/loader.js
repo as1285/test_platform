@@ -7,7 +7,7 @@
 
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260721-p2',
-    chat: '/js/admin/modules/chat.js?v=20260721-p2',
+    chat: '/js/admin/modules/chat.js?v=20260721-chat-img',
     analytics: '/js/admin/modules/analytics.js?v=20260721-p2',
     feedback: '/js/admin/modules/feedback.js?v=20260721-p2',
     users: '/js/admin/modules/users.js?v=20260721-p2',

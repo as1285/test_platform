@@ -1697,6 +1697,7 @@ async function getMineUiForAdminForm() {
 
 var ADMIN_UPLOAD_MEDIA_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.m4v', '.webm'];
 var ADMIN_UPLOAD_INSTALL_EXT = ['.apk', '.mobileconfig'];
+var CHAT_USER_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
 const adminUpload = multer({
   storage: multer.diskStorage({
@@ -1723,11 +1724,47 @@ const adminUpload = multer({
   }
 });
 
+const userChatImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, UPLOAD_DIR);
+    },
+    filename: function (req, file, cb) {
+      var ext = path.extname(file.originalname || '').toLowerCase();
+      if (CHAT_USER_IMAGE_EXT.indexOf(ext) < 0) {
+        ext = '.jpg';
+      }
+      cb(null, crypto.randomBytes(16).toString('hex') + ext);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    var ext = path.extname(file.originalname || '').toLowerCase();
+    var mime = String(file.mimetype || '').toLowerCase();
+    var okExt = CHAT_USER_IMAGE_EXT.indexOf(ext) >= 0;
+    var okMime = !mime || /^image\/(jpeg|png|gif|webp)$/.test(mime);
+    cb(okExt && okMime ? null : new Error('仅支持 jpg / png / gif / webp 图片，且不超过 5MB'), okExt && okMime);
+  }
+});
+
 function handleAdminUploadAsset(req, res) {
   if (!req.file) {
     return res.status(400).json({ code: 400, msg: '未选择文件或扩展名不支持' });
   }
   return res.json({ code: 200, data: { path: 'uploads/' + req.file.filename } });
+}
+
+/** 客服 H5 上传图片：落盘后按普通消息入库（content 为 [chat_img]…[/chat_img]） */
+async function handleChatUploadImage(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ code: 400, msg: '未选择图片或格式不支持' });
+  }
+  var rel = 'uploads/' + req.file.filename;
+  req.body = Object.assign({}, req.body || {}, {
+    action: 'send',
+    content: formatChatImageContent(rel)
+  });
+  return handleChatPost(req, res);
 }
 
 function rowUserTypeIsTest(row) {
@@ -8758,7 +8795,43 @@ var CHAT_AI_PROMPT_MAX_LEN = 4000;
 var _chatAutoReplyCache = null;
 var CHAT_AUTO_REPLY_CACHE_MS = 10000;
 
+/** 客服图片消息：content = [chat_img]uploads/xxx.jpg[/chat_img] */
+var CHAT_IMG_RE = /^\[chat_img\](uploads\/[a-zA-Z0-9_.\-]+)\[\/chat_img\]$/i;
+
+function parseChatImagePath(content) {
+  var m = String(content || '')
+    .trim()
+    .match(CHAT_IMG_RE);
+  if (!m) return '';
+  var rel = String(m[1] || '').replace(/^\/+/, '');
+  var ext = path.extname(rel).toLowerCase();
+  if (CHAT_USER_IMAGE_EXT.indexOf(ext) < 0) return '';
+  if (rel.indexOf('..') >= 0) return '';
+  if (!/^uploads\/[a-zA-Z0-9_.\-]+$/i.test(rel)) return '';
+  return rel;
+}
+
+function formatChatImageContent(uploadsRelPath) {
+  var rel = String(uploadsRelPath || '')
+    .trim()
+    .replace(/^\/+/, '');
+  if (!/^uploads\//i.test(rel)) {
+    rel = 'uploads/' + rel.replace(/^uploads\//i, '');
+  }
+  return '[chat_img]' + rel + '[/chat_img]';
+}
+
+function chatContentForBot(content) {
+  if (parseChatImagePath(content)) {
+    return '（用户发送了一张图片）';
+  }
+  return content != null ? String(content) : '';
+}
+
 function chatPreviewText(content) {
+  if (parseChatImagePath(content)) {
+    return '[图片]';
+  }
   var s = content != null ? String(content).replace(/\s+/g, ' ').trim() : '';
   if (s.length > 80) {
     return s.substring(0, 80) + '…';
@@ -8832,12 +8905,16 @@ function invalidateChatAutoReplyCache() {
 }
 
 function mapChatMessageRow(r) {
+  var content = r.content != null ? String(r.content) : '';
+  var imgPath = parseChatImagePath(content);
   return {
     id: Number(r.id),
     conversation_id: Number(r.conversation_id),
     sender_role: r.sender_role,
     sender_id: r.sender_id != null ? String(r.sender_id) : '',
-    content: r.content != null ? String(r.content) : '',
+    content: content,
+    image_path: imgPath || '',
+    image_url: imgPath ? resolvePublicAssetUrl(imgPath) : '',
     created_at: r.created_at ? r.created_at.toISOString() : ''
   };
 }
@@ -8980,7 +9057,7 @@ async function buildChatBotReplyContext(conn, conversationId) {
       .map(function (r) {
         return {
           role: r.sender_role === 'user' ? 'user' : 'assistant',
-          content: r.content != null ? String(r.content) : ''
+          content: chatContentForBot(r.content)
         };
       })
       .filter(function (m) {
@@ -9136,6 +9213,9 @@ async function handleChatPost(req, res) {
       code: 400,
       msg: '内容不能为空且不超过 ' + CHAT_MSG_MAX_LEN + ' 字'
     });
+  }
+  if (/\[chat_img\]/i.test(content) && !parseChatImagePath(content)) {
+    return res.status(400).json({ code: 400, msg: '图片消息格式无效' });
   }
   try {
     var convId = 0;
@@ -18897,6 +18977,7 @@ function getMiddleware() {
     adminApiRateLimit,
     heavyAdminApiRateLimit,
     adminUpload,
+    userChatImageUpload,
     analyticsFinishMiddleware
   };
 }
@@ -18916,6 +18997,7 @@ function getHandlers() {
     handleFeedbackPost,
     handleChatGet,
     handleChatPost,
+    handleChatUploadImage,
     handleAuthGet,
     routeAuthPost,
     handleAlipayConfig,

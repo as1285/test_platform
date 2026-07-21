@@ -259,10 +259,30 @@
                           : isAdmin
                             ? '客服'
                             : '用户';
+                var bubbleInner = '';
+                var imgUrl = m.image_url
+                    ? String(m.image_url)
+                    : m.image_path
+                      ? '/' + String(m.image_path).replace(/^\/+/, '')
+                      : '';
+                if (!imgUrl) {
+                    var c = String(m.content || '').trim();
+                    var imm = c.match(/^\[chat_img\](uploads\/[a-zA-Z0-9_.\-]+)\[\/chat_img\]$/i);
+                    if (imm) imgUrl = '/' + imm[1];
+                }
+                if (imgUrl) {
+                    bubbleInner =
+                        '<div class="admin-chat-bubble admin-chat-bubble-img"><img src="' +
+                        escapeChatHtml(imgUrl) +
+                        '" alt="图片" style="max-width:220px;max-height:280px;border-radius:8px;display:block;"></div>';
+                } else {
+                    bubbleInner =
+                        '<div class="admin-chat-bubble">' + escapeChatHtml(m.content) + '</div>';
+                }
                 row.innerHTML =
-                    '<div><div class="admin-chat-bubble">' +
-                    escapeChatHtml(m.content) +
-                    '</div><div class="admin-chat-bubble-meta">' +
+                    '<div>' +
+                    bubbleInner +
+                    '<div class="admin-chat-bubble-meta">' +
                     escapeChatHtml(formatChatTime(m.created_at)) +
                     ' · ' +
                     who +

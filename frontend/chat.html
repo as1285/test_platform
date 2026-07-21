@@ -137,7 +137,7 @@
             border-color: #1e6fff;
             background: #fff;
         }
-        .composer button {
+        .composer #chatSendBtn {
             flex-shrink: 0;
             height: 40px;
             padding: 0 16px;
@@ -149,8 +149,52 @@
             font-weight: 500;
             -webkit-tap-highlight-color: transparent;
         }
-        .composer button:disabled {
+        .composer #chatSendBtn:disabled {
             opacity: 0.5;
+        }
+        .composer-attach {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            background: #f7f8fa;
+            color: #1e6fff;
+            font-size: 22px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+            padding: 0;
+        }
+        .composer-attach:disabled {
+            opacity: 0.5;
+        }
+        .composer-file {
+            display: none;
+        }
+        .msg-bubble.msg-bubble-img {
+            padding: 6px;
+            background: transparent;
+            box-shadow: none;
+        }
+        .msg-row.me .msg-bubble.msg-bubble-img {
+            background: transparent;
+        }
+        .msg-row.them .msg-bubble.msg-bubble-img {
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .msg-bubble img.chat-img {
+            display: block;
+            max-width: min(220px, 70vw);
+            max-height: 280px;
+            border-radius: 8px;
+            object-fit: contain;
+            background: #f0f2f5;
+            cursor: zoom-in;
         }
     </style>
 </head>
@@ -164,6 +208,8 @@
         <div class="chat-empty" id="chatEmpty">有问题可以直接发消息，客服看到后会回复。</div>
     </div>
     <div class="composer">
+        <button type="button" class="composer-attach" id="chatAttachBtn" title="发送图片" aria-label="发送图片">＋</button>
+        <input type="file" class="composer-file" id="chatFileInput" accept="image/jpeg,image/png,image/gif,image/webp,image/*" capture="environment">
         <textarea id="chatInput" rows="1" maxlength="2000" placeholder="输入消息…" enterkeyhint="send"></textarea>
         <button type="button" id="chatSendBtn">发送</button>
     </div>
@@ -190,6 +236,8 @@
     var statusEl = document.getElementById('chatStatus');
     var inputEl = document.getElementById('chatInput');
     var sendBtn = document.getElementById('chatSendBtn');
+    var attachBtn = document.getElementById('chatAttachBtn');
+    var fileInput = document.getElementById('chatFileInput');
     var lastMsgId = 0;
     var pollTimer = null;
     var sending = false;
@@ -213,6 +261,30 @@
         } catch (e) {
             return '';
         }
+    }
+
+    function resolveChatImageUrl(m) {
+        if (!m) return '';
+        if (m.image_url) return String(m.image_url);
+        if (m.image_path) {
+            var p = String(m.image_path).replace(/^\/+/, '');
+            return '/' + p;
+        }
+        var c = String(m.content || '').trim();
+        var mm = c.match(/^\[chat_img\](uploads\/[a-zA-Z0-9_.\-]+)\[\/chat_img\]$/i);
+        return mm ? '/' + mm[1] : '';
+    }
+
+    function bubbleHtml(m) {
+        var imgUrl = resolveChatImageUrl(m);
+        if (imgUrl) {
+            return (
+                '<div class="msg-bubble msg-bubble-img"><img class="chat-img" src="' +
+                escapeHtml(imgUrl) +
+                '" alt="图片" loading="lazy"></div>'
+            );
+        }
+        return '<div class="msg-bubble">' + escapeHtml(m.content) + '</div>';
     }
 
     function appendMessages(messages, scrollToEnd) {
@@ -239,9 +311,9 @@
                     ? ' · 自动回复'
                     : ' · 客服';
             row.innerHTML =
-                '<div><div class="msg-bubble">' +
-                escapeHtml(m.content) +
-                '</div><div class="msg-meta">' +
+                '<div>' +
+                bubbleHtml(m) +
+                '<div class="msg-meta">' +
                 escapeHtml(formatTime(m.created_at)) +
                 whoLabel +
                 '</div></div>';
@@ -254,6 +326,13 @@
 
     function setStatus(text) {
         if (statusEl) statusEl.textContent = text || '';
+    }
+
+    function setBusy(busy) {
+        sending = !!busy;
+        if (sendBtn) sendBtn.disabled = sending;
+        if (attachBtn) attachBtn.disabled = sending;
+        if (fileInput) fileInput.disabled = sending;
     }
 
     function loadThread(isPoll) {
@@ -281,12 +360,22 @@
         inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
     }
 
+    function applySendResult(body) {
+        if (body.data && body.data.message) {
+            appendMessages([body.data.message], true);
+            if (body.data.auto_reply) {
+                appendMessages([body.data.auto_reply], true);
+            }
+        } else {
+            return loadThread(true);
+        }
+    }
+
     function sendMessage() {
         if (sending) return;
         var content = String(inputEl.value || '').trim();
         if (!content) return;
-        sending = true;
-        sendBtn.disabled = true;
+        setBusy(true);
         authFetch('api/chat.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -299,22 +388,68 @@
                 }
                 inputEl.value = '';
                 autoGrow();
-                if (body.data && body.data.message) {
-                    appendMessages([body.data.message], true);
-                    if (body.data.auto_reply) {
-                        appendMessages([body.data.auto_reply], true);
-                    }
-                } else {
-                    return loadThread(true);
-                }
+                return applySendResult(body);
             })
             .catch(function (e) {
                 alert(String(e && e.message ? e.message : e) || '发送失败');
             })
             .then(function () {
-                sending = false;
-                sendBtn.disabled = false;
+                setBusy(false);
                 inputEl.focus();
+            });
+    }
+
+    function uploadChatImage(file) {
+        if (sending || !file) return;
+        if (!/^image\//i.test(file.type || '') && !/\.(jpe?g|png|gif|webp)$/i.test(file.name || '')) {
+            alert('请选择图片文件（jpg / png / gif / webp）');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('图片不能超过 5MB');
+            return;
+        }
+        setBusy(true);
+        setStatus('正在上传图片…');
+        var fd = new FormData();
+        fd.append('file', file);
+        var headers = {};
+        try {
+            if (typeof getClientDeviceHeaders === 'function') {
+                Object.assign(headers, getClientDeviceHeaders());
+            }
+        } catch (eH) {}
+        try {
+            var token =
+                typeof authGetToken === 'function'
+                    ? authGetToken()
+                    : localStorage.getItem('token');
+            if (token) headers.Authorization = 'Bearer ' + token;
+        } catch (eT) {}
+        fetch('/api/chat/upload-image', {
+            method: 'POST',
+            headers: headers,
+            body: fd
+        })
+            .then(function (r) {
+                if (r.status === 401) {
+                    throw new Error('请先登录');
+                }
+                return r.json();
+            })
+            .then(function (body) {
+                if (!body || body.code !== 200) {
+                    throw new Error((body && body.msg) || '上传失败');
+                }
+                return applySendResult(body);
+            })
+            .catch(function (e) {
+                alert(String(e && e.message ? e.message : e) || '上传失败');
+                setStatus('客服在线 · 消息实时刷新');
+            })
+            .then(function () {
+                setBusy(false);
+                if (fileInput) fileInput.value = '';
             });
     }
 
@@ -324,6 +459,24 @@
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
+        }
+    });
+
+    if (attachBtn && fileInput) {
+        attachBtn.addEventListener('click', function () {
+            if (sending) return;
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', function () {
+            var f = fileInput.files && fileInput.files[0];
+            if (f) uploadChatImage(f);
+        });
+    }
+
+    listEl.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && t.tagName === 'IMG' && t.classList.contains('chat-img') && t.src) {
+            window.open(t.src, '_blank');
         }
     });
 
