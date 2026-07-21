@@ -10517,6 +10517,31 @@ async function handleAuthPost(req, res) {
       recordInstallGuideTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
+    if (action === 'invite_link_click') {
+      var inviteClickCode =
+        body.invite != null
+          ? body.invite
+          : body.invite_code != null
+            ? body.invite_code
+            : '';
+      var inviteClickClient =
+        body.client_id != null
+          ? body.client_id
+          : body.clientId != null
+            ? body.clientId
+            : req.headers['x-client-id'] || '';
+      var inviteClickPath =
+        body.page_path != null
+          ? body.page_path
+          : req.headers['x-page-path'] || '';
+      var clickOut = await getInviteReward().recordInviteLinkClick({
+        inviteCode: inviteClickCode,
+        clientId: inviteClickClient,
+        pagePath: inviteClickPath,
+        ip: typeof getClientIp === 'function' ? getClientIp(req) : ''
+      });
+      return res.json({ code: 200, data: clickOut });
+    }
     if (action === 'admin_issue_code') {
       var adm = body.admin_key || req.headers['x-admin-key'];
       if (!ADMIN_ACTIVATION_KEY || adm !== ADMIN_ACTIVATION_KEY) {

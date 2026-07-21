@@ -530,6 +530,54 @@ function createInviteReward(deps) {
     }
   }
 
+  /**
+   * 记录邀请链接打开（公开接口）。
+   * 同设备同邀请码 30 分钟内只记 1 次，减少刷新刷量。
+   */
+  async function recordInviteLinkClick(opts) {
+    var code = String((opts && opts.inviteCode) || '')
+      .trim()
+      .toUpperCase();
+    if (!code || code.length > 16 || !/^[A-Z0-9]+$/.test(code)) {
+      return { ok: false, reason: 'invalid_code' };
+    }
+    var clientId = opts && opts.clientId != null ? String(opts.clientId).trim().slice(0, 128) : '';
+    var pagePath = opts && opts.pagePath != null ? String(opts.pagePath).trim().slice(0, 255) : '';
+    var ip = opts && opts.ip != null ? String(opts.ip).trim().slice(0, 64) : '';
+    const conn = await pool.getConnection();
+    try {
+      const [owners] = await conn.execute(
+        'SELECT username FROM users WHERE invite_code = ? LIMIT 1',
+        [code]
+      );
+      if (!owners.length) {
+        return { ok: false, reason: 'unknown_code' };
+      }
+      var inviter = String(owners[0].username);
+      if (clientId) {
+        const [dup] = await conn.execute(
+          `SELECT id FROM invite_link_clicks
+           WHERE invite_code = ? AND visitor_client_id = ?
+             AND created_at >= (CURRENT_TIMESTAMP - INTERVAL 30 MINUTE)
+           LIMIT 1`,
+          [code, clientId]
+        );
+        if (dup.length) {
+          return { ok: true, recorded: false, deduped: true };
+        }
+      }
+      await conn.execute(
+        `INSERT INTO invite_link_clicks
+         (invite_code, inviter_username, visitor_client_id, visitor_ip, page_path)
+         VALUES (?, ?, ?, ?, ?)`,
+        [code, inviter, clientId || null, ip || null, pagePath || null]
+      );
+      return { ok: true, recorded: true };
+    } finally {
+      conn.release();
+    }
+  }
+
   async function getInviteOverviewForUser(username) {
     var u = String(username || '').trim();
     var cfg = await loadInviteSettings();
@@ -551,6 +599,14 @@ function createInviteReward(deps) {
         [u]
       );
       var s = stats[0] || {};
+      const [clickStats] = await conn.execute(
+        `SELECT
+           COUNT(*) AS clicks,
+           COUNT(DISTINCT NULLIF(visitor_client_id, '')) AS visitors
+         FROM invite_link_clicks WHERE inviter_username = ?`,
+        [u]
+      );
+      var cs = clickStats[0] || {};
       const [codes] = await conn.execute(
         `SELECT transferable_code, granted_at, reward_days, invitee_username
          FROM user_invites
@@ -569,6 +625,8 @@ function createInviteReward(deps) {
         invited_activated: Number(s.invited_activated) || 0,
         rewarded_total: Number(s.rewarded) || 0,
         pending_rewards: Number(s.pending) || 0,
+        link_clicks: Number(cs.clicks) || 0,
+        link_visitors: Number(cs.visitors) || 0,
         transferable_codes: (codes || []).map(function (c) {
           return {
             code: c.transferable_code,
@@ -637,6 +695,7 @@ function createInviteReward(deps) {
     bindInvitedByOnRegister: bindInvitedByOnRegister,
     markInviteeActivatedInConn: markInviteeActivatedInConn,
     processPendingInviteRewards: processPendingInviteRewards,
+    recordInviteLinkClick: recordInviteLinkClick,
     getInviteOverviewForUser: getInviteOverviewForUser,
     saveInviteSettingsFromAdmin: saveInviteSettingsFromAdmin,
     invalidateInviteSettingsCache: invalidateInviteSettingsCache,

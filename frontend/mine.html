@@ -1864,11 +1864,15 @@
                         var stats = document.getElementById('mineInviteStats');
                         if (stats) {
                             stats.textContent =
-                                '本月已获奖 ' +
+                                '链接点击 ' +
+                                (d.link_clicks || 0) +
+                                '（约 ' +
+                                (d.link_visitors || 0) +
+                                ' 人）· 本月已获奖 ' +
                                 (d.rewarded_this_month || 0) +
                                 '/' +
                                 (d.monthly_cap || 4) +
-                                ' · 累计成功 ' +
+                                ' · 累计注册 ' +
                                 (d.invited_activated || 0) +
                                 ' 人 · 待到账 ' +
                                 (d.pending_rewards || 0);

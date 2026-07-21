@@ -1138,6 +1138,34 @@
     return s;
   }
 
+  function reportInviteLinkClick(code) {
+    var c = sanitizeInviteCode(code);
+    if (!c) return;
+    try {
+      var dedupeKey = 'invite_click_reported_v1_' + c;
+      if (sessionStorage.getItem(dedupeKey) === '1') return;
+      sessionStorage.setItem(dedupeKey, '1');
+    } catch (eDedupe) {}
+    try {
+      var payload = {
+        action: 'invite_link_click',
+        invite: c,
+        client_id: typeof getOrCreateClientDeviceId === 'function' ? getOrCreateClientDeviceId() : '',
+        page_path: (window.location && window.location.pathname) || ''
+      };
+      var headers = { 'Content-Type': 'application/json' };
+      if (typeof getClientDeviceHeaders === 'function') {
+        headers = Object.assign(headers, getClientDeviceHeaders());
+      }
+      fetch('api/auth', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function initInviteCodeFromUrl() {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -1151,6 +1179,7 @@
           source: 'url'
         })
       );
+      reportInviteLinkClick(code);
     } catch (e) {}
   }
 
