@@ -1559,6 +1559,10 @@
                     .then(function (data) {
                         if (data.code !== 200) {
                             alert('保存失败：' + (data.msg || '未知错误'));
+                        } else {
+                            try {
+                                sessionStorage.removeItem('mine_summary_cache_v1');
+                            } catch (eClr) {}
                         }
                     })
                     .catch(function () {
@@ -1756,7 +1760,7 @@
                             if (window.ConversionGuide && typeof window.ConversionGuide.removeMineConversionUi === 'function') {
                                 window.ConversionGuide.removeMineConversionUi();
                             }
-                            loadUserInfo();
+                            loadUserInfo({ force: true });
                             if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
                                 window.ConversionGuide.afterActivateSuccess();
                             } else {
@@ -2014,10 +2018,13 @@
                 };
             }
 
-            function loadUserInfo() {
+            function loadUserInfo(opts) {
+                opts = opts || {};
+                var forceSummary = !!opts.force;
                 var nameEl = document.getElementById('mineDisplayName');
                 var taxEl = document.getElementById('userTaxIdText');
                 var taxToggleBtn = document.getElementById('toggleTaxIdBtn');
+                var MINE_SUMMARY_CLIENT_TTL_MS = 45000;
                 mineTaxRevealState = false;
                 function renderTaxId() {
                     taxEl.textContent = mineCurrentTaxIdRaw
@@ -2030,6 +2037,78 @@
                     }
                 }
                 mineRenderTaxIdFn = renderTaxId;
+
+                function applySummaryToUi(u) {
+                    if (!u) {
+                        updateCountsFromStorage();
+                        return;
+                    }
+                    if (u.account_active !== undefined && u.account_active !== null) {
+                        var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
+                        localStorage.setItem('account_active', active ? '1' : '0');
+                        updateMineActivateButton({ account_active: active ? 1 : 0 });
+                    }
+                    if (u.tax_record_count != null) {
+                        localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
+                    }
+                    if (u.real_name) {
+                        nameEl.textContent = u.real_name;
+                        localStorage.setItem('real_name', u.real_name);
+                    }
+                    if (u.tax_id) {
+                        localStorage.setItem('tax_id', u.tax_id);
+                        mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(u.tax_id) ? '' : u.tax_id;
+                        renderTaxId();
+                    }
+                    if (u.gender != null) {
+                        localStorage.setItem('gender', String(u.gender));
+                        applyAvatarGender(u.gender);
+                    }
+                    if (u.employer_count != null) {
+                        localStorage.setItem('employer_count', String(u.employer_count));
+                    }
+                    if (u.family_count != null) {
+                        localStorage.setItem('family_count', String(u.family_count));
+                    }
+                    if (u.bank_card_count != null) {
+                        localStorage.setItem('bank_card_count', String(u.bank_card_count));
+                    }
+                    setCounts(u);
+                }
+
+                function readMineSummarySessionCache() {
+                    try {
+                        var raw = sessionStorage.getItem('mine_summary_cache_v1');
+                        if (!raw) return null;
+                        var parsed = JSON.parse(raw);
+                        if (
+                            parsed &&
+                            parsed.t &&
+                            Date.now() - Number(parsed.t) < MINE_SUMMARY_CLIENT_TTL_MS &&
+                            parsed.data
+                        ) {
+                            return parsed.data;
+                        }
+                    } catch (e) {}
+                    return null;
+                }
+
+                function writeMineSummarySessionCache(data) {
+                    try {
+                        sessionStorage.setItem(
+                            'mine_summary_cache_v1',
+                            JSON.stringify({ t: Date.now(), data: data })
+                        );
+                    } catch (e) {}
+                }
+
+                function clearMineSummarySessionCache() {
+                    try {
+                        sessionStorage.removeItem('mine_summary_cache_v1');
+                    } catch (e) {}
+                }
+
+                /* 本地优先：立刻上屏，不等网络 */
                 var rn = localStorage.getItem('real_name');
                 var tid = localStorage.getItem('tax_id');
                 if (rn) {
@@ -2043,60 +2122,53 @@
                 applyAvatarGender(g);
                 updateCountsFromStorage();
 
+                if (forceSummary) {
+                    clearMineSummarySessionCache();
+                }
+
+                var sessionSummary = forceSummary ? null : readMineSummarySessionCache();
+                if (sessionSummary) {
+                    applySummaryToUi(sessionSummary);
+                }
+
                 var fetchFn =
                     typeof authFetch === 'function'
                         ? authFetch
-                        : function (url, opts) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                        : function (url, opts2) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts2 || {}));
                           };
 
-                fetchFn('api/user?action=summary')
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code !== 200 || !data.data) {
-                            updateCountsFromStorage();
-                            return;
-                        }
-                        var u = data.data;
-                        if (u.account_active !== undefined && u.account_active !== null) {
-                            var active = u.account_active === true || u.account_active === 1 || u.account_active === '1';
-                            localStorage.setItem('account_active', active ? '1' : '0');
-                            updateMineActivateButton({ account_active: active ? 1 : 0 });
-                        }
-                        if (u.tax_record_count != null) {
-                            localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
-                        }
-                        if (u.real_name) {
-                            nameEl.textContent = u.real_name;
-                            localStorage.setItem('real_name', u.real_name);
-                        }
-                        if (u.tax_id) {
-                            localStorage.setItem('tax_id', u.tax_id);
-                            mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(u.tax_id) ? '' : u.tax_id;
-                            renderTaxId();
-                        }
-                        if (u.gender != null) {
-                            localStorage.setItem('gender', String(u.gender));
-                            applyAvatarGender(u.gender);
-                        }
-                        if (u.employer_count != null) {
-                            localStorage.setItem('employer_count', String(u.employer_count));
-                        }
-                        if (u.family_count != null) {
-                            localStorage.setItem('family_count', String(u.family_count));
-                        }
-                        if (u.bank_card_count != null) {
-                            localStorage.setItem('bank_card_count', String(u.bank_card_count));
-                        }
-                        setCounts(u);
-                    })
-                    .catch(function () {
-                        updateCountsFromStorage();
-                    });
+                function refreshSummaryInBackground() {
+                    fetchFn('api/user?action=summary')
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data.code !== 200 || !data.data) {
+                                if (!sessionSummary) updateCountsFromStorage();
+                                return;
+                            }
+                            writeMineSummarySessionCache(data.data);
+                            applySummaryToUi(data.data);
+                        })
+                        .catch(function () {
+                            if (!sessionSummary) updateCountsFromStorage();
+                        });
+                }
 
-                if (taxToggleBtn) {
+                /* 45s 内有会话缓存则跳过网络；强制刷新或无缓存时后台拉取 */
+                if (!sessionSummary) {
+                    if (typeof requestIdleCallback === 'function') {
+                        requestIdleCallback(function () {
+                            refreshSummaryInBackground();
+                        }, { timeout: 1200 });
+                    } else {
+                        setTimeout(refreshSummaryInBackground, 0);
+                    }
+                }
+
+                if (taxToggleBtn && !taxToggleBtn.__mineTaxToggleBound) {
+                    taxToggleBtn.__mineTaxToggleBound = true;
                     taxToggleBtn.addEventListener('click', function (e) {
                         e.stopPropagation();
                         mineTaxRevealState = !mineTaxRevealState;

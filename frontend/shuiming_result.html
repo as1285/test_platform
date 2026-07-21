@@ -1223,6 +1223,71 @@
             return null;
         }
 
+        var SHUIMING_RECORDS_CLIENT_TTL_MS = 60000;
+        var __shuimingRecordsMem = Object.create(null);
+        var __shuimingRecordsInFlight = Object.create(null);
+
+        function shuimingRecordsCacheKey(year, incomeTypes) {
+            return (
+                String(year) +
+                '|' +
+                (incomeTypes && incomeTypes.length ? incomeTypes.slice().sort().join(',') : '')
+            );
+        }
+
+        function readShuimingRecordsCache(cacheKey) {
+            var mem = __shuimingRecordsMem[cacheKey];
+            if (mem && Date.now() - mem.t < SHUIMING_RECORDS_CLIENT_TTL_MS) {
+                return mem.payload;
+            }
+            try {
+                var raw = sessionStorage.getItem('shuiming_records_v1:' + cacheKey);
+                if (!raw) return null;
+                var parsed = JSON.parse(raw);
+                if (
+                    parsed &&
+                    parsed.t &&
+                    Date.now() - Number(parsed.t) < SHUIMING_RECORDS_CLIENT_TTL_MS &&
+                    parsed.payload
+                ) {
+                    __shuimingRecordsMem[cacheKey] = { t: Number(parsed.t), payload: parsed.payload };
+                    return parsed.payload;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function writeShuimingRecordsCache(cacheKey, payload) {
+            var entry = { t: Date.now(), payload: payload };
+            __shuimingRecordsMem[cacheKey] = entry;
+            try {
+                sessionStorage.setItem(
+                    'shuiming_records_v1:' + cacheKey,
+                    JSON.stringify(entry)
+                );
+            } catch (e) {}
+        }
+
+        function applyShuimingRecordsPayload(payload, year) {
+            var records = payload && Array.isArray(payload.records) ? payload.records : [];
+            applyTotals({
+                income_total: payload && payload.income_total != null ? payload.income_total : '0.00',
+                tax_total: payload && payload.tax_total != null ? payload.tax_total : '0.00'
+            });
+            renderList(records, year);
+        }
+
+        function finishShuimingPageLoading() {
+            stripShuimingBottomBar();
+            if (typeof window.appPageLoadingDispatchDataDone === 'function') {
+                window.appPageLoadingDispatchDataDone();
+            } else if (typeof window.forceHidePageLoading === 'function') {
+                window.forceHidePageLoading();
+            } else if (typeof window.hidePageLoading === 'function') {
+                window.hidePageLoading();
+            }
+        }
+
         function loadData() {
             if (typeof window.showPageLoading === 'function') {
                 window.showPageLoading();
@@ -1233,41 +1298,57 @@
                     : getUrlParam('year') || new Date().getFullYear()
             );
             var incomeTypes = getSelectedIncomeTypesFromUrl();
+            var cacheKey = shuimingRecordsCacheKey(year, incomeTypes);
             var apiUrl = 'api/tax?action=records&year=' + encodeURIComponent(year);
             if (incomeTypes && incomeTypes.length) {
                 apiUrl += '&types=' + encodeURIComponent(incomeTypes.join(','));
             }
 
-            authFetch(apiUrl)
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.code === 200 && data.data) {
-                        var records = data.data.records;
-                        if (!Array.isArray(records)) records = [];
-                        applyTotals({
-                            income_total: data.data.income_total,
-                            tax_total: data.data.tax_total
-                        });
-                        renderList(records, year);
-                        return;
-                    }
-                    throw new Error('api_not_ok');
+            var cached = readShuimingRecordsCache(cacheKey);
+            if (cached) {
+                applyShuimingRecordsPayload(cached, year);
+                finishShuimingPageLoading();
+                return;
+            }
+
+            var fetchPromise = __shuimingRecordsInFlight[cacheKey];
+            if (!fetchPromise) {
+                fetchPromise = authFetch(apiUrl)
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data) {
+                            var records = data.data.records;
+                            if (!Array.isArray(records)) records = [];
+                            var payload = {
+                                records: records,
+                                income_total: data.data.income_total,
+                                tax_total: data.data.tax_total
+                            };
+                            writeShuimingRecordsCache(cacheKey, payload);
+                            return payload;
+                        }
+                        throw new Error('api_not_ok');
+                    })
+                    .finally(function () {
+                        delete __shuimingRecordsInFlight[cacheKey];
+                    });
+                __shuimingRecordsInFlight[cacheKey] = fetchPromise;
+            }
+
+            fetchPromise
+                .then(function (payload) {
+                    applyShuimingRecordsPayload(payload, year);
                 })
-                .catch(function() {
+                .catch(function () {
                     applyTotals({ income_total: '0.00', tax_total: '0.00' });
                     document.getElementById('recordList').innerHTML =
                         '<div class="list-empty">无法加载数据，请确认已登录且税务记录服务可用</div>';
                     syncRecordEmptyUi(false);
                 })
                 .finally(function () {
-                    stripShuimingBottomBar();
-                    if (typeof window.appPageLoadingDispatchDataDone === 'function') {
-                        window.appPageLoadingDispatchDataDone();
-                    } else if (typeof window.forceHidePageLoading === 'function') {
-                        window.forceHidePageLoading();
-                    } else if (typeof window.hidePageLoading === 'function') {
-                        window.hidePageLoading();
-                    }
+                    finishShuimingPageLoading();
                 });
         }
 

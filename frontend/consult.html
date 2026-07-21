@@ -2875,8 +2875,31 @@
             return round2(p + m + u + h);
         }
 
+        function patchConsultRecordsCacheAfterSave(record) {
+            var list = Array.isArray(window.__consultRecordsCache)
+                ? window.__consultRecordsCache.slice()
+                : [];
+            var rid = record && record.id != null ? String(record.id) : '';
+            var found = false;
+            var i;
+            for (i = 0; i < list.length; i++) {
+                if (list[i] && String(list[i].id) === rid) {
+                    list[i] = Object.assign({}, list[i], record);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                list.unshift(record);
+            }
+            window.__consultRecordsCache = list;
+            return list;
+        }
+
         function onSubmitRecord(e) {
             e.preventDefault();
+            if (window.__recordSaveInFlight) return;
+            var submitBtn = document.getElementById('recordSubmitBtn');
             var o = formObjectFromInputs();
             var cn = o.company_name != null ? String(o.company_name).trim() : '';
             if (!cn) {
@@ -2897,7 +2920,13 @@
                 o.id = editId;
             }
             var usedManualTax = taxReportedWasManuallyChanged();
-            apiFetchRecords()
+            window.__recordSaveInFlight = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.setAttribute('aria-busy', 'true');
+            }
+            /* 优先用内存缓存算税，避免保存前再打一轮 records */
+            apiFetchRecords({ force: false })
                 .then(function (list) {
                     if (usedManualTax) {
                         o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
@@ -2924,9 +2953,11 @@
                             company_tax_id: o.company_tax_id || '',
                             tax_authority: o.tax_authority || ''
                         });
+                        patchConsultRecordsCacheAfterSave(o);
                         clearSingleTaxDraft();
                         clearForm();
-                        return refreshRecordList();
+                        /* 用本地补丁刷新列表，默认不再强制拉 records */
+                        return refreshRecordList({ force: false });
                     }
                     throw new Error(data.msg || '保存失败');
                 })
@@ -2952,6 +2983,13 @@
                 })
                 .catch(function (err) {
                     showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
+                })
+                .then(function () {
+                    window.__recordSaveInFlight = false;
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.removeAttribute('aria-busy');
+                    }
                 });
         }
 

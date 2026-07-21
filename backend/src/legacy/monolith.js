@@ -3372,15 +3372,37 @@ async function loadTaxRecordChangesForUser(conn, username, dateStr) {
   });
 }
 
-/** 在指定连接中保存税务记录 */
-async function saveRecordInConn(conn, userId, record) {
+/** 单条保存：变更审计日志异步写入（不占用主连接） */
+function queueTaxChangeLogAsync(userId, recordId, action, beforeSnap, afterSnap) {
+  setImmediate(function () {
+    insertTaxChangeLog(pool, userId, recordId, action, beforeSnap, afterSnap).catch(function (e) {
+      console.error('queueTaxChangeLogAsync', e);
+    });
+  });
+}
+
+/** 在指定连接中保存税务记录；opts.deferChangeLog 时返回 pendingChangeLog 供调用方异步落库 */
+async function saveRecordInConn(conn, userId, record, opts) {
+  opts = opts || {};
+  var deferChangeLog = !!opts.deferChangeLog;
   record = normalizeTaxRecordForSql(record);
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
 
-  const [existing] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [
-    id,
-    userId
-  ]);
+  const [existing] = await conn.execute(
+    `SELECT id, year, month, income_type, income_subtype,
+            company_name, company_tax_id, tax_authority,
+            report_channel, report_date, tax_period,
+            income, tax_reported, income_this_period,
+            tax_free_income, deduction_fee, special_deduction,
+            other_deduction, donation_deduction,
+            pension_insurance, medical_insurance,
+            unemployment_insurance, housing_fund
+     FROM tax_records WHERE id = ? AND user_id = ?`,
+    [id, userId]
+  );
+
+  var pendingChangeLog = null;
+  var afterSnap = taxRecordPayloadToSnapshot(record, id);
 
   if (existing.length > 0) {
     var beforeSnap = taxRecordRowToSnapshot(existing[0]);
@@ -3425,14 +3447,11 @@ async function saveRecordInConn(conn, userId, record) {
         userId
       ]
     );
-    await insertTaxChangeLog(
-      conn,
-      userId,
-      id,
-      'update',
-      beforeSnap,
-      taxRecordPayloadToSnapshot(record, id)
-    );
+    if (deferChangeLog) {
+      pendingChangeLog = { action: 'update', before: beforeSnap, after: afterSnap };
+    } else {
+      await insertTaxChangeLog(conn, userId, id, 'update', beforeSnap, afterSnap);
+    }
   } else {
     await conn.execute(
       `
@@ -3474,23 +3493,37 @@ async function saveRecordInConn(conn, userId, record) {
         record.housing_fund
       ]
     );
-    await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
+    if (deferChangeLog) {
+      pendingChangeLog = { action: 'insert', before: null, after: afterSnap };
+    } else {
+      await insertTaxChangeLog(conn, userId, id, 'insert', null, afterSnap);
+    }
   }
 
-  return { id: id };
+  return { id: id, pendingChangeLog: pendingChangeLog };
 }
 
-/** 保存单条税务记录 */
+/** 保存单条税务记录（审计日志异步，缩短接口耗时） */
 async function saveRecord(userId, record) {
   const conn = await pool.getConnection();
+  var out;
   try {
-    var out = await saveRecordInConn(conn, userId, record);
+    out = await saveRecordInConn(conn, userId, record, { deferChangeLog: true });
     invalidateTaxRecordsListCache(userId);
     invalidateUserInfoApiCache(userId);
-    return out;
   } finally {
     conn.release();
   }
+  if (out && out.pendingChangeLog) {
+    queueTaxChangeLogAsync(
+      userId,
+      out.id,
+      out.pendingChangeLog.action,
+      out.pendingChangeLog.before,
+      out.pendingChangeLog.after
+    );
+  }
+  return { id: out.id };
 }
 
 /** 插入：record in conn */
