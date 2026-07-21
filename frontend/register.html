@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-invite-poster"></script>
+    <script src="/js/auth.js?v=20260722-invite-reg-first"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>注册账号</title>
     <style>
@@ -300,6 +300,18 @@
             max-width: calc(100% - 40px);
         }
         .ok-toast.show { opacity: 1; }
+        .invite-reg-banner {
+            margin: 0 20px 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #eef5ff;
+            border: 1px solid #c9ddff;
+            color: #1a3a6b;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .invite-reg-banner strong { color: #0b3d91; }
+        .invite-reg-banner[hidden] { display: none !important; }
     </style>
 </head>
 <body class="page-register">
@@ -310,6 +322,11 @@
         </a>
         <h1>注册账号</h1>
         <p>个人所得税服务平台</p>
+    </div>
+
+    <div class="invite-reg-banner" id="inviteRegBanner" hidden>
+        <strong>好友邀请你注册</strong>
+        · 请先完成注册，成功后再下载 App 使用
     </div>
 
     <div class="card">
@@ -393,6 +410,20 @@
                 var back = document.getElementById('regBackBtn');
                 if (back && q.get('from') === 'install_guide') {
                     back.setAttribute('href', 'install_guide.html');
+                }
+                var inviteCode =
+                    typeof window.getRegisterInviteCode === 'function' ? window.getRegisterInviteCode() : '';
+                if (!inviteCode) {
+                    inviteCode = String(q.get('invite') || q.get('invite_code') || '').trim().toUpperCase();
+                }
+                var banner = document.getElementById('inviteRegBanner');
+                if (banner && inviteCode) {
+                    banner.hidden = false;
+                }
+                if (q.get('next_download') === '1') {
+                    try {
+                        sessionStorage.setItem('invite_next_download_v1', '1');
+                    } catch (eNd) {}
                 }
             } catch (e) {}
         })();
@@ -765,10 +796,26 @@
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
-                        showToast('注册成功');
+                        showToast('注册成功，接下来请下载 App');
                         setTimeout(function () {
-                            window.location.href = 'mine.html';
-                        }, 350);
+                            var goDownload = false;
+                            try {
+                                goDownload =
+                                    sessionStorage.getItem('invite_next_download_v1') === '1' ||
+                                    !!(
+                                        typeof window.getRegisterInviteCode === 'function' &&
+                                        window.getRegisterInviteCode()
+                                    );
+                                sessionStorage.removeItem('invite_next_download_v1');
+                            } catch (eGo) {
+                                goDownload = false;
+                            }
+                            if (goDownload) {
+                                window.location.href = 'install_guide.html?download=1#download';
+                            } else {
+                                window.location.href = 'mine.html';
+                            }
+                        }, 450);
                         return;
                     }
                     showErr(formatRegisterFailMsg(data));

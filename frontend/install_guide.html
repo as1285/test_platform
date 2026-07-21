@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-invite-poster"></script>
+    <script src="/js/auth.js?v=20260722-invite-reg-first"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -885,8 +885,22 @@
                 if (q.get('download') === '1' || String(window.location.hash || '') === '#download') {
                     document.body.classList.add('is-download-intent');
                 }
-                if (q.get('invite') || q.get('invite_code')) {
+                var inviteRaw = String(q.get('invite') || q.get('invite_code') || '').trim();
+                if (inviteRaw) {
                     document.body.classList.add('is-invite-landing');
+                    /* 未登录带邀请码进入下载页：统一先去注册 */
+                    var hasToken = false;
+                    try {
+                        hasToken = !!localStorage.getItem('token');
+                    } catch (eTok) {}
+                    if (!hasToken) {
+                        var next =
+                            'register.html?invite=' +
+                            encodeURIComponent(inviteRaw) +
+                            '&from=install_guide&next_download=1';
+                        window.location.replace(next);
+                        return;
+                    }
                 }
             } catch (e) {}
         })();
@@ -894,7 +908,7 @@
     <div class="lp-wrap">
         <div class="lp-invite-banner" id="lpInviteBanner" hidden>
             <strong>好友邀请你来体验</strong>
-            · 建议先注册账号，再下载 App
+            · 请先注册账号，注册后再下载 App
             <a href="register.html?from=install_guide" class="install-register-link" id="lpInviteRegisterLink">去注册</a>
         </div>
         <!-- 1. Hero -->

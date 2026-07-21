@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-invite-poster"></script>
+    <script src="/js/auth.js?v=20260722-invite-reg-first"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1232,7 +1232,7 @@
 
         <div class="mine-invite-card" id="mineInviteCard" hidden>
             <div class="mine-invite-title">邀请好友得试用</div>
-            <p class="mine-invite-desc" id="mineInviteDesc">好友扫码或打开链接下载 App 并注册后，你可获得时效使用权。</p>
+            <p class="mine-invite-desc" id="mineInviteDesc">好友扫码或打开链接先注册，再下载 App；注册成功后你可获得时效使用权。</p>
             <div class="mine-invite-code-row">
                 <span class="mine-invite-label">邀请码</span>
                 <strong id="mineInviteCodeText">—</strong>
@@ -1252,7 +1252,7 @@
             <div class="activate-modal-panel">
                 <p class="activate-modal-title" id="mineInvitePosterTitle">邀请海报</p>
                 <img class="mine-invite-poster-img" id="mineInvitePosterImg" alt="邀请二维码海报">
-                <p class="activate-modal-hint" style="display:block;margin:0 0 12px;font-size:12px;color:#666;line-height:1.45;">好友微信扫一扫即可进入 App 下载页</p>
+                <p class="activate-modal-hint" style="display:block;margin:0 0 12px;font-size:12px;color:#666;line-height:1.45;">好友微信扫一扫先完成注册，再下载 App</p>
                 <div class="activate-modal-actions">
                     <button type="button" class="activate-modal-btn" id="btnMineInvitePosterClose">关闭</button>
                     <button type="button" class="activate-modal-btn primary" id="btnMineInvitePosterSave">保存图片</button>
@@ -1902,7 +1902,7 @@
                             if (d.reward_days) rewardBits.push(d.reward_days + ' 天');
                             if (d.reward_hours) rewardBits.push(d.reward_hours + ' 小时');
                             desc.textContent =
-                                '好友扫码下载 App 并注册成功后，你可获得 ' +
+                                '好友扫码先注册、再下载 App；注册成功后你可获得 ' +
                                 (rewardBits.length ? rewardBits.join(' ') : '7 天') +
                                 ' 使用权（每月最多 ' +
                                 (d.monthly_cap || 4) +
@@ -2473,7 +2473,7 @@
             function getMineInviteShareText() {
                 var url = getMineInviteAbsoluteUrl();
                 var reward = window.__mineInviteRewardText || '试用';
-                return '我在用个税演示工具，扫码或点开即可下载 App。邀请注册后我可获得' + reward + '使用权：\n' + url;
+                return '我在用个税演示工具，请先扫码/打开链接完成注册，再下载 App。你注册成功后我可获得' + reward + '使用权：\n' + url;
             }
 
             function toastMineInvite(msg) {
@@ -2485,7 +2485,7 @@
                 if (!dataUrl) return;
                 var a = document.createElement('a');
                 a.href = dataUrl;
-                a.download = '邀请下载海报.png';
+                a.download = '邀请注册海报.png';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -2555,11 +2555,11 @@
 
                                     ctx.fillStyle = '#1a1a1a';
                                     ctx.font = 'bold 36px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                    ctx.fillText('邀请你下载 App', w / 2, 230);
+                                    ctx.fillText('邀请你先注册', w / 2, 230);
 
                                     ctx.fillStyle = '#666';
                                     ctx.font = '26px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                    ctx.fillText('扫码进入下载页 · 注册即算邀请成功', w / 2, 280);
+                                    ctx.fillText('扫码注册 → 再下载 App', w / 2, 280);
 
                                     var qrSize = 380;
                                     var qrX = (w - qrSize) / 2;
@@ -2571,7 +2571,7 @@
 
                                     ctx.fillStyle = '#333';
                                     ctx.font = '24px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                    ctx.fillText('微信扫一扫即可下载', w / 2, qrY + qrSize + 70);
+                                    ctx.fillText('微信扫一扫，先注册再下载', w / 2, qrY + qrSize + 70);
 
                                     var code = window.__mineInviteCode || '';
                                     if (code) {
@@ -2668,11 +2668,11 @@
                                     return r.blob();
                                 })
                                 .then(function (blob) {
-                                    var file = new File([blob], 'invite-download.png', { type: 'image/png' });
+                                    var file = new File([blob], 'invite-register.png', { type: 'image/png' });
                                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                                         return navigator.share({
                                             files: [file],
-                                            title: '邀请下载 App',
+                                            title: '邀请先注册再下载',
                                             text: shareText
                                         });
                                     }
