@@ -617,7 +617,14 @@ function createInviteReward(deps) {
       return {
         enabled: cfg.enabled,
         invite_code: inviteCode,
-        invite_path: inviteCode ? 'register.html?invite=' + encodeURIComponent(inviteCode) : '',
+        invite_path: inviteCode
+          ? 'install_guide.html?invite=' +
+            encodeURIComponent(inviteCode) +
+            '&download=1#download'
+          : '',
+        invite_register_path: inviteCode
+          ? 'register.html?invite=' + encodeURIComponent(inviteCode)
+          : '',
         reward_days: cfg.reward_days,
         reward_hours: cfg.reward_hours,
         monthly_cap: cfg.monthly_cap,
