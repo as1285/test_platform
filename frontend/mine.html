@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-api-opt"></script>
+    <script src="/js/auth.js?v=20260721-mine-tight"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -133,8 +133,8 @@
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name {
-            margin-bottom: 3px;
-            line-height: 1.3;
+            margin-bottom: 1px;
+            line-height: 1.2;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn {
@@ -157,8 +157,8 @@
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-name {
             font-size: 12px;
-            margin-bottom: 0;
-            line-height: 1.3;
+            margin-bottom: 1px;
+            line-height: 1.2;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-id {
@@ -479,7 +479,7 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            padding: 2px 2px 0;
+            padding: 0 2px;
             min-height: 0;
         }
 
@@ -491,8 +491,8 @@
             font-size: 16px;
             color: #1a1a1a;
             font-weight: 600;
-            margin-bottom: 4px;
-            line-height: 1.3;
+            margin-bottom: 1px;
+            line-height: 1.2;
         }
 
         .user-id {
@@ -506,7 +506,7 @@
             font-size: 12px;
             font-weight: 500;
             color: #c8863a;
-            line-height: 1.35;
+            line-height: 1.2;
         }
 
         .user-tax-label {
@@ -528,7 +528,8 @@
         html[class*='app-ios'] body.page-mine .user-name {
             font-size: 16px;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 1px;
+            line-height: 1.2;
         }
 
         html.app-ios-client body.page-mine .user-id,
@@ -570,7 +571,7 @@
                 body.page-mine .user-tax-label,
                 body.page-mine .user-tax-value {
                     font-size: 12px;
-                    line-height: 1.35;
+                    line-height: 1.2;
                     white-space: nowrap;
                 }
 
@@ -866,10 +867,17 @@
 
         .function-title {
             font-size: 14px;
-            color: #333;
-            font-weight: 700;
+            color: #1a1a1a;
+            font-weight: 800;
             margin-bottom: 8px;
             line-height: 1.3;
+            font-synthesis: weight;
+        }
+
+        /* Android WebView 部分中文字体对 700 不明显，强制更粗 */
+        html.platform-android body.page-mine .function-title,
+        html.app-android-client body.page-mine .function-title {
+            font-weight: 900;
         }
 
         .function-btn {
