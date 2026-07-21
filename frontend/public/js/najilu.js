@@ -507,22 +507,21 @@
     return raw;
   }
 
-  /** 章面机关名：只保留到市级，不写区/县/新区（如「国家税务局重庆市税务局」） */
+  /** 章面机关名：官方样式为「国家税务总局××市税务局」，只保留到市级，不写区/县/新区 */
   function authorityToCityStampText(raw) {
     var v = cleanText(raw);
     if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
-    if (/国家税务局.+?市税务局/.test(v) && v.indexOf('区') < 0 && v.indexOf('县') < 0) {
-      return v.replace(/国家税务总局/g, '国家税务局');
+    var city =
+      (v.match(/国家税务总局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
+      (v.match(/国家税务局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
+      (v.match(/([^省自治区直辖市]+?市)/) || [])[1] ||
+      '';
+    if (city) {
+      city = city.replace(/.*(重庆|上海|北京|天津)市$/, '$1市');
+      return '国家税务总局' + city + '税务局';
     }
-    var m = v.match(/国家(?:税务总)?局([^省自治区]+?市)/);
-    if (m) return '国家税务局' + m[1] + '税务局';
-    if (v.indexOf('深圳市') >= 0) return '国家税务局深圳市税务局';
-    if (v.indexOf('税务局') >= 0) {
-      return v
-        .replace(/国家税务总局/g, '国家税务局')
-        .replace(/(.+?市)[^市]+?(税务局|税务分局).*/, '$1税务局');
-    }
-    return v;
+    if (v.indexOf('深圳') >= 0) return '国家税务总局深圳市税务局';
+    return '';
   }
 
   function stampAuthority(rows) {
@@ -531,7 +530,7 @@
       var t = authorityToCityStampText(rows[i] && rows[i].tax_authority);
       if (t) return t;
     }
-    return '国家税务局重庆市税务局';
+    return '国家税务总局深圳市税务局';
   }
 
   function queryCode(app) {
@@ -1412,7 +1411,8 @@
         color: '#555'
       });
       if (showStamp) {
-        drawStamp(ctx, width - 275, explainY + 126, stampAuthority(allRows));
+        /* 压住「盖章」二字，对齐官方电子章落位 */
+        drawStamp(ctx, width - 248, explainY + 118, stampAuthority(allRows));
       }
       return canvas.toDataURL('image/png');
     }
@@ -1585,40 +1585,48 @@
     ctx.restore();
   }
 
-  /** 纳税记录右下角章（参考官方电子章：细圆框、上弧加粗机关名、下横「业务专用章」，无中心五角星） */
+  /** 纳税记录右下角章（标准：细红圆框、上弧「国家税务总局××市税务局」、正中横排「业务专用章」，无五角星） */
   function drawStamp(ctx, cx, cy, authority) {
-    var name = authorityToCityStampText(authority) || '国家税务局重庆市税务局';
-    var stampRed = '#c41e24';
-    /* 半径与字号略放大，贴近官方电子章观感 */
-    var radius = 86;
-    var font = 'STSong, SimSun, serif';
+    var name = authorityToCityStampText(authority) || '国家税务总局深圳市税务局';
+    var stampRed = '#d32f2f';
+    var radius = 90;
+    var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
     ctx.save();
-    ctx.globalAlpha = 1;
+    /* 印泥叠压：压住下方「盖章」字样时仍可见 */
+    ctx.globalAlpha = 0.94;
+    if (ctx.globalCompositeOperation) {
+      try {
+        ctx.globalCompositeOperation = 'multiply';
+      } catch (e) {}
+    }
     ctx.strokeStyle = stampRed;
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2.8;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.restore();
-    var arcSize = name.length > 14 ? 16 : name.length > 11 ? 17 : 18;
-    var arcGap = name.length > 14 ? 4 : name.length > 11 ? 3 : 2;
-    drawArcText(ctx, name, cx, cy, radius - 14, Math.PI * 1.06, Math.PI * 1.94, {
+
+    var arcSize = name.length > 14 ? 16 : name.length > 12 ? 17 : 18;
+    var arcGap = name.length > 14 ? 3.2 : name.length > 12 ? 2.6 : 2.2;
+    drawArcText(ctx, name, cx, cy, radius - 15, Math.PI * 1.1, Math.PI * 1.9, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0.35,
+      strokeWidth: 0.45,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 1.02
+      maxSpanRad: Math.PI * 0.98
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 18, {
-      size: 17,
+    /* 「业务专用章」略偏下，贴近官方电子章 */
+    drawSpacedText(ctx, '业务专用章', cx, cy + 10, {
+      size: 18,
       weight: 'bold',
       color: stampRed,
-      letterGap: 5,
+      letterGap: 4,
+      strokeWidth: 0.35,
       font: font,
       baseline: 'middle'
     });
+    ctx.restore();
   }
 
   function replaceApplicationSnapshot(app) {
