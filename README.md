@@ -121,11 +121,11 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | 约 **150+** 个源文件、**7 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
+| **源码规模** | 约 **160+** 个源文件、**8.8 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
 | **前端页面** | **58** 个 HTML 页面（`frontend/*.html`） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；业务暂存 `src/legacy/monolith.js`（约 **1.9 万** 行），域路由见 `src/{auth,user,tax,payments,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
-| **GitHub Actions** | 3 个工作流：Android APK、iOS 打包、MySQL 定时备份 |
+| **GitHub Actions** | 2 个工作流：Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
 ### 代码规模（按语言，约 2026-07）
@@ -157,7 +157,7 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
-| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/` |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，保留 24h） |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
 
@@ -193,15 +193,12 @@ https://www.installguide1.top/
 - **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
 - **在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节）
 
-### 数据库备份（GitHub Actions）
+### 数据库备份
 
-工作流：`.github/workflows/mysql-backup.yml`
-
-- **调度**：每天 UTC 19:00（约北京时间 03:00）
-- **方式**：SSH 连服务器 → `docker exec` mysqldump → 上传 **Artifact**（保留 90 天）
-- **手动触发**：Actions → **MySQL Database Backup** → Run workflow
-
-首次使用需在仓库 **Settings → Secrets** 配置：`BACKUP_SSH_HOST`、`BACKUP_SSH_USER`、`BACKUP_SSH_KEY`（可选 `BACKUP_DB_ROOT_PASSWORD`）。详见 workflow 文件头注释。
+- **本机**：cron 每 30 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`
+- **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
+- **保留**：**24 小时**、最多约 50 份
+- GitHub Actions 远端每日备份已取消
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
 
