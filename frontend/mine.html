@@ -1204,7 +1204,7 @@
 
         <div class="mine-invite-card" id="mineInviteCard" hidden>
             <div class="mine-invite-title">邀请有礼</div>
-            <p class="mine-invite-desc" id="mineInviteDesc">每成功邀请 1 人注册并激活，你可获得时效使用权。</p>
+            <p class="mine-invite-desc" id="mineInviteDesc">每成功邀请 1 人注册，你可获得时效使用权。</p>
             <div class="mine-invite-code-row">
                 <span class="mine-invite-label">邀请码</span>
                 <strong id="mineInviteCodeText">—</strong>
@@ -1855,7 +1855,7 @@
                             if (d.reward_days) rewardBits.push(d.reward_days + ' 天');
                             if (d.reward_hours) rewardBits.push(d.reward_hours + ' 小时');
                             desc.textContent =
-                                '好友通过你的链接注册并激活后，你可获得 ' +
+                                '好友通过你的链接注册成功后，你可获得 ' +
                                 (rewardBits.length ? rewardBits.join(' ') : '7 天') +
                                 ' 使用权（每月最多 ' +
                                 (d.monthly_cap || 4) +

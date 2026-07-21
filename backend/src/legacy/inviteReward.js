@@ -330,6 +330,10 @@ function createInviteReward(deps) {
     return rows.length ? Number(rows[0].c) || 0 : 0;
   }
 
+  /**
+   * 被邀请人首次激活时补记 first_activated_at。
+   * 发奖已改为注册成功即排队；此处仅兼容旧数据 status=none 的补发。
+   */
   async function markInviteeActivatedInConn(conn, inviteeUsername, invitedBy) {
     var invitee = String(inviteeUsername || '').trim();
     var inviter = invitedBy != null ? String(invitedBy).trim() : '';
@@ -343,30 +347,38 @@ function createInviteReward(deps) {
       'SELECT id, reward_status FROM user_invites WHERE invitee_username = ? LIMIT 1',
       [invitee]
     );
-    var delayMs = cfg.grant_delay_hours * 3600 * 1000;
-    var grantAt = new Date(Date.now() + delayMs);
-
     if (existing.length) {
       var st = String(existing[0].reward_status || '');
-      if (st === 'granted' || st === 'pending' || st === 'rejected') return;
+      if (st === 'none') {
+        var delayMs = cfg.grant_delay_hours * 3600 * 1000;
+        var grantAt = new Date(Date.now() + delayMs);
+        await conn.execute(
+          `UPDATE user_invites SET first_activated_at = CURRENT_TIMESTAMP,
+           reward_status = 'pending', reward_days = ?, grant_at = ?, reject_reason = NULL
+           WHERE id = ?`,
+          [cfg.reward_days, grantAt, existing[0].id]
+        );
+        return;
+      }
       await conn.execute(
-        `UPDATE user_invites SET first_activated_at = CURRENT_TIMESTAMP,
-         reward_status = 'pending', reward_days = ?, grant_at = ?, reject_reason = NULL
+        `UPDATE user_invites SET first_activated_at = COALESCE(first_activated_at, CURRENT_TIMESTAMP)
          WHERE id = ?`,
-        [cfg.reward_days, grantAt, existing[0].id]
+        [existing[0].id]
       );
       return;
     }
 
+    var delayMsNew = cfg.grant_delay_hours * 3600 * 1000;
+    var grantAtNew = new Date(Date.now() + delayMsNew);
     await conn.execute(
       `INSERT INTO user_invites
        (inviter_username, invitee_username, first_activated_at, reward_status, reward_days, grant_at)
        VALUES (?, ?, CURRENT_TIMESTAMP, 'pending', ?, ?)`,
-      [inviter, invitee, cfg.reward_days, grantAt]
+      [inviter, invitee, cfg.reward_days, grantAtNew]
     );
   }
 
-  /** 注册时绑定邀请人 */
+  /** 注册成功即绑定邀请人并进入发奖排队（可配置延迟） */
   async function bindInvitedByOnRegister(username, inviteCode, clientId) {
     var cfg = await loadInviteSettings();
     if (!cfg.enabled) return null;
@@ -374,6 +386,9 @@ function createInviteReward(deps) {
     if (!inviter) return null;
     var u = String(username || '').trim();
     if (!u || inviter.toLowerCase() === u.toLowerCase()) return null;
+
+    var delayMs = cfg.grant_delay_hours * 3600 * 1000;
+    var grantAt = new Date(Date.now() + delayMs);
 
     const conn = await pool.getConnection();
     try {
@@ -403,9 +418,9 @@ function createInviteReward(deps) {
       );
       await conn.execute(
         `INSERT IGNORE INTO user_invites
-         (inviter_username, invitee_username, invitee_client_id, reward_status, reward_days)
-         VALUES (?, ?, ?, 'none', ?)`,
-        [inviter, u, clientId ? String(clientId).trim() : null, cfg.reward_days]
+         (inviter_username, invitee_username, invitee_client_id, reward_status, reward_days, grant_at)
+         VALUES (?, ?, ?, 'pending', ?, ?)`,
+        [inviter, u, clientId ? String(clientId).trim() : null, cfg.reward_days, grantAt]
       );
       return inviter;
     } finally {
