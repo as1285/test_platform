@@ -1099,7 +1099,7 @@
                     role="button"
                     tabindex="0"
                     aria-label="修改姓名、纳税人识别号与性别"
-                >--</div>
+                >点击我修改名字</div>
                 <div class="user-id" id="userTaxId">
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
@@ -1295,6 +1295,7 @@
             var MINE_LEGACY_DEFAULT_TAX_ID = '620000000000000000';
             var MINE_DEFAULT_TAX_ID_HINT = '所有信息点击税务演示数据修改';
             var MINE_LEGACY_TAX_ID_HINT = '所***************改';
+            var MINE_DEFAULT_DISPLAY_NAME = '点击我修改名字';
             var mineCurrentTaxIdRaw = '';
             var mineTaxRevealState = false;
             var mineRenderTaxIdFn = null;
@@ -1307,6 +1308,25 @@
                     s === MINE_DEFAULT_TAX_ID_HINT ||
                     s === MINE_LEGACY_TAX_ID_HINT
                 );
+            }
+
+            /** 未自定义姓名时的占位（游客默认名、注册时用账号当姓名、旧演示名等） */
+            function isPlaceholderRealNameMine(v) {
+                var s = String(v || '').trim();
+                if (!s || s === '--' || s === MINE_DEFAULT_DISPLAY_NAME) return true;
+                if (s === '游客用户' || s === '杰瑞') return true;
+                var uid = mineCurrentUserId();
+                if (uid && s === uid) return true;
+                return false;
+            }
+
+            function resolveMineDisplayName(v) {
+                return isPlaceholderRealNameMine(v) ? MINE_DEFAULT_DISPLAY_NAME : String(v).trim();
+            }
+
+            function setMineDisplayName(v) {
+                var nameEl = document.getElementById('mineDisplayName');
+                if (nameEl) nameEl.textContent = resolveMineDisplayName(v);
             }
 
             function mineCurrentUserId() {
@@ -1470,8 +1490,14 @@
                 var genderSel = document.getElementById('mineEditGender');
                 var nameEl = document.getElementById('mineDisplayName');
                 if (!root || !nameInp || !taxInp) return;
+                var storedName = localStorage.getItem('real_name') || '';
                 var displayName = nameEl ? String(nameEl.textContent || '').trim() : '';
-                nameInp.value = displayName === '--' ? '' : displayName;
+                var seed = !isPlaceholderRealNameMine(storedName)
+                    ? String(storedName).trim()
+                    : !isPlaceholderRealNameMine(displayName)
+                      ? displayName
+                      : '';
+                nameInp.value = seed;
                 var tid = mineCurrentTaxIdRaw || localStorage.getItem('tax_id') || '';
                 if (isPlaceholderTaxIdMine(tid)) tid = '';
                 taxInp.value = tid;
@@ -1503,12 +1529,11 @@
                 var nameInp = document.getElementById('mineEditRealName');
                 var taxInp = document.getElementById('mineEditTaxId');
                 var genderSel = document.getElementById('mineEditGender');
-                var nameEl = document.getElementById('mineDisplayName');
                 if (!nameInp || !taxInp) return;
                 var realName = nameInp.value.trim();
                 var taxId = taxInp.value.trim();
                 var gender = genderSel ? genderSel.value : '1';
-                if (!realName) {
+                if (!realName || isPlaceholderRealNameMine(realName)) {
                     alert('请输入姓名');
                     return;
                 }
@@ -1516,7 +1541,7 @@
                     alert('请输入纳税人识别号');
                     return;
                 }
-                if (nameEl) nameEl.textContent = realName;
+                setMineDisplayName(realName);
                 localStorage.setItem('real_name', realName);
                 mineCurrentTaxIdRaw = taxId;
                 mineTaxRevealState = false;
@@ -2045,8 +2070,10 @@
                         localStorage.setItem('tax_record_count', String(Number(u.tax_record_count) || 0));
                     }
                     if (u.real_name) {
-                        nameEl.textContent = u.real_name;
                         localStorage.setItem('real_name', u.real_name);
+                        setMineDisplayName(u.real_name);
+                    } else {
+                        setMineDisplayName('');
                     }
                     if (u.tax_id) {
                         localStorage.setItem('tax_id', u.tax_id);
@@ -2104,9 +2131,7 @@
                 /* 本地优先：立刻上屏，不等网络 */
                 var rn = localStorage.getItem('real_name');
                 var tid = localStorage.getItem('tax_id');
-                if (rn) {
-                    nameEl.textContent = rn;
-                }
+                setMineDisplayName(rn);
                 mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(tid) ? '' : tid || '';
                 renderTaxId();
                 updateMineActivateButton(null);
