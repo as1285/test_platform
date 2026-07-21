@@ -1,0 +1,542 @@
+{
+  "generated_at": "2026-07-21",
+  "source": "backend/server.js",
+  "admin_menu_keys": [
+    "settings",
+    "install-guide",
+    "appearance",
+    "codes",
+    "users",
+    "guest-users",
+    "user-data",
+    "user-behavior",
+    "activated-user-analysis",
+    "feedback",
+    "chat",
+    "login-log",
+    "analytics-conversion",
+    "analytics-activity",
+    "analytics-register",
+    "analytics-tracking",
+    "analytics-devices",
+    "install-guide-stats",
+    "channel-analysis",
+    "api-analytics",
+    "admin-accounts",
+    "server-monitor"
+  ],
+  "rpc_actions": [
+    "activate",
+    "add_bank_card",
+    "add_employer",
+    "add_family_member",
+    "add_message",
+    "add_record",
+    "add_special_deduction_record",
+    "admin_issue_code",
+    "bank_cards",
+    "batch_replace_records",
+    "batch_save",
+    "batch_save_records",
+    "calculation",
+    "change_password",
+    "config",
+    "dedupe_records",
+    "delete",
+    "delete_all_records",
+    "delete_bank_card",
+    "delete_employer",
+    "delete_family_member",
+    "delete_message",
+    "delete_record",
+    "delete_records_by_company",
+    "delete_records_by_year",
+    "delete_special_deduction_record",
+    "deleted_records",
+    "detail",
+    "employers",
+    "family_member",
+    "family_members",
+    "get",
+    "insert",
+    "list",
+    "log_issue_application",
+    "login",
+    "mark_all_read",
+    "mark_read",
+    "recover_by_activation_code",
+    "register",
+    "register_captcha",
+    "remove",
+    "restore_all_deleted_records",
+    "restore_record",
+    "restore_records_by_company",
+    "save_profile",
+    "save_record",
+    "set_default_bank_card",
+    "special_deduction_records",
+    "summary",
+    "thread",
+    "update_employer",
+    "update_family_member",
+    "update_special_deduction_record"
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/accounts/activated-users"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/accounts/create"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/accounts/delete"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/accounts/update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/accounts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activated-user-analysis/behavior-path"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activated-user-analysis/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activated-user-analysis/users"
+    },
+    {
+      "method": "USE",
+      "path": "/api/admin/activated-user-analysis"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/activation-batch-channels"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/activation-batch-channels"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/admin-login-logs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/admin-operation-logs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/activate-events/users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/activate-events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/activation-channel-funnel"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/api-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/channel-registration-funnel"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/conversion-kpis"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/daily-conversion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/dau-users"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/device-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/devices"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/analytics/events/clear"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/female-age"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/install-guide-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/install-track-stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/login-recent"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/register-channels"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/register-gender"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/register-time"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/registration-funnel"
+    },
+    {
+      "method": "USE",
+      "path": "/api/admin/analytics"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/ban"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/chat/auto-reply"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/chat/auto-reply"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/chat/bot-paused"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/chat/conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/chat/messages"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/chat/send"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/codes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/feedback/reply"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/guest-users"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/issue-code-batch"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/issue-code"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/monitor/overview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/monitor/test-email"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/settings"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/settings"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/upload-asset"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/user-activate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/analytics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/detail"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/female-age"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/no-tax-behavior/export"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/no-tax-behavior/path"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/no-tax-behavior"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data/salary-high/charts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-data"
+    },
+    {
+      "method": "USE",
+      "path": "/api/admin/user-data"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/user-delete"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/user-password"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/user-refund"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/user-restore"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-tax-records"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/deleted"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/pending-activate-24h"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/purge-bots"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users"
+    },
+    {
+      "method": "USE",
+      "path": "/api/admin"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/feedback.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/message.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/message.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payments/alipay/config"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/alipay/create"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payments/alipay/latest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/alipay/notify"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/conversion-config"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/guest-session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/install-packages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/landing-ab-config"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/mine-ui"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/resolve-sales-channel"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/sales-channel-attribution"
+    },
+    {
+      "method": "GET",
+      "path": "/api/shenbao_jilu.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shenbao_jilu.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tax.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tax.php"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user.php"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user.php"
+    },
+    {
+      "method": "GET",
+      "path": "/auth.php"
+    },
+    {
+      "method": "POST",
+      "path": "/auth.php"
+    },
+    {
+      "method": "GET",
+      "path": "/chat.php"
+    },
+    {
+      "method": "POST",
+      "path": "/chat.php"
+    },
+    {
+      "method": "GET",
+      "path": "/feedback.php"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback.php"
+    },
+    {
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "method": "GET",
+      "path": "/message.php"
+    },
+    {
+      "method": "POST",
+      "path": "/message.php"
+    },
+    {
+      "method": "GET",
+      "path": "/shenbao_jilu.php"
+    },
+    {
+      "method": "POST",
+      "path": "/shenbao_jilu.php"
+    },
+    {
+      "method": "GET",
+      "path": "/user.php"
+    },
+    {
+      "method": "POST",
+      "path": "/user.php"
+    }
+  ]
+}

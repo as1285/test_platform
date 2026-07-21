@@ -19118,7 +19118,25 @@ function scheduleDbLogRetention() {
   }, Math.max(60 * 60 * 1000, DB_LOG_PURGE_INTERVAL_MS));
 }
 
+/** 阶段 0 安全基线：启动告警（不阻断）。见 docs/architecture-phase0/05-security-baseline.md */
+function logSecurityBaselineWarnings() {
+  var warns = [];
+  if (JWT_SECRET === 'dev-jwt-secret-change-in-production') {
+    warns.push('JWT_SECRET 仍为代码默认值，生产环境必须通过环境变量覆盖');
+  }
+  if (String(ADMIN_PANEL_PASSWORD || '') === '640810') {
+    warns.push('ADMIN_PANEL_PASSWORD 仍为代码默认口令，请立即修改');
+  }
+  if (String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') !== '0') {
+    warns.push('REGISTER_STORE_PLAIN_PASSWORD 开启：注册/改密会写入 users.plain_password（见阶段 0 下线计划）');
+  }
+  for (var i = 0; i < warns.length; i++) {
+    console.warn('[security-baseline] ' + warns[i]);
+  }
+}
+
 async function startServer() {
+  logSecurityBaselineWarnings();
   await initDatabase();
   try {
     await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });

@@ -2,8 +2,9 @@
 
 > 文档位置：`docs/system-architecture-refactor-plan.md`  
 > 适用仓库：`test_platform`（个税 H5 模拟平台）  
-> 状态：规划稿（未开始大规模实施）  
-> 更新日期：2026-07-21
+> 状态：阶段 0 已完成；阶段 1 未开始  
+> 更新日期：2026-07-21  
+> 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)
 
 ---
 
@@ -100,16 +101,17 @@
 
 ## 4. 分阶段实施计划
 
-### 阶段 0：冻结与基线（约 1 周）
+### 阶段 0：冻结与基线（约 1 周）— ✅ 已完成（2026-07-21）
 
 | 事项 | 产出 |
 |------|------|
-| 盘点核心链路 | 登录/激活 → 税记录生成 → 明细展示 → 支付/激活码 → 安装漏斗 |
-| 契约快照 | 关键 API 请求/响应样例 + 管理台菜单权限表 |
-| 可观测性 | 错误率、慢接口、核心转化漏斗仪表盘固定 |
-| 安全基线 | 去掉默认弱密钥依赖；`plain_password` 下线计划；管理端强制独立凭证 |
+| 盘点核心链路 | [`architecture-phase0/01-core-flows.md`](./architecture-phase0/01-core-flows.md) |
+| 契约快照 | [`02-api-contracts.md`](./architecture-phase0/02-api-contracts.md) + [`03-admin-menus.md`](./architecture-phase0/03-admin-menus.md) + `snapshots/api-surface.json` |
+| 可观测性 | [`04-observability-baseline.md`](./architecture-phase0/04-observability-baseline.md) |
+| 安全基线 | [`05-security-baseline.md`](./architecture-phase0/05-security-baseline.md)；启动时 `security-baseline` 告警 |
+| 金丝雀 / 回滚 | [`06-canary-regression-checklist.md`](./architecture-phase0/06-canary-regression-checklist.md)、[`07-rollback-drill.md`](./architecture-phase0/07-rollback-drill.md) |
 
-**退出标准**：有回滚演练；生产有「金丝雀」账号回归清单。
+**退出标准**：有回滚演练；生产有「金丝雀」账号回归清单。→ 文档已齐；生产 env 改密钥/口令需运维按安全基线执行。
 
 ---
 
