@@ -10440,9 +10440,45 @@ function chinaDatePartsNow() {
   return { year: p[0], month: p[1], day: p[2], todayKey: todayKey };
 }
 
-/** 转化分析页：按天或按自然月（北京时间）解析统计区间 */
+/** YYYY-MM-DD 是否为真实公历日 */
+function isValidAnalyticsYmd(ymd) {
+  var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  var y = parseInt(m[1], 10);
+  var mo = parseInt(m[2], 10);
+  var d = parseInt(m[3], 10);
+  if (y < 2019 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  var dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+}
+
+function analyticsYmdDayCount(startYmd, endYmd) {
+  var a = String(startYmd).split('-').map(function (x) {
+    return parseInt(x, 10);
+  });
+  var b = String(endYmd).split('-').map(function (x) {
+    return parseInt(x, 10);
+  });
+  return (
+    Math.floor((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000) + 1
+  );
+}
+
+/** 最近 N 天（非法自定义区间等回退） */
+function analyticsPeriodFallbackDays() {
+  return {
+    mode: 'days',
+    days: 1,
+    span: 0,
+    label: '最近 1 天',
+    period_key: '1'
+  };
+}
+
+/** 转化分析页：按天、自然月或自定义闭区间（北京时间）解析统计区间 */
 function parseConversionAnalyticsPeriod(raw, maxDays) {
   maxDays = maxDays == null ? 90 : maxDays;
+  var customMaxDays = 366;
   var s = raw != null ? String(raw).trim() : '';
   if (s === 'month_current') {
     var cn = chinaDatePartsNow();
@@ -10494,6 +10530,31 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
         days: fLastDay
       };
     }
+  }
+  var customRange = s.match(/^range_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
+  if (customRange) {
+    var cStart = customRange[1];
+    var cEnd = customRange[2];
+    if (!isValidAnalyticsYmd(cStart) || !isValidAnalyticsYmd(cEnd)) {
+      return analyticsPeriodFallbackDays();
+    }
+    var todayKey = chinaDatePartsNow().todayKey;
+    if (cEnd > todayKey) cEnd = todayKey;
+    if (cStart > cEnd) {
+      return analyticsPeriodFallbackDays();
+    }
+    var cDays = analyticsYmdDayCount(cStart, cEnd);
+    if (cDays < 1 || cDays > customMaxDays) {
+      return analyticsPeriodFallbackDays();
+    }
+    return {
+      mode: 'range',
+      start: cStart,
+      end: cEnd,
+      label: '自定义',
+      period_key: 'range_' + cStart + '_' + cEnd,
+      days: cDays
+    };
   }
   var days = parseInt(s, 10) || 1;
   if (days < 1) days = 1;

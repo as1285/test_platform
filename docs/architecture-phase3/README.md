@@ -17,6 +17,7 @@
 | 核心页接入 | `mine` / `shouye` / `consult` / `install_guide`（`TAX_APP_SHELL` 标记） |
 | 构建管线 | `npm run build` → Vite + [`scripts/assemble-site.mjs`](../../frontend/scripts/assemble-site.mjs) → `site/` |
 | content-hash | `js/app/core.<hash>.js` 等写入 `site/js/app/manifest.json`，核心页引用 hash 路径 |
+| 复制成本 | 生产 `site/`：JS minify + 关键 C 端文件轻度混淆；CSS minify；HTML 去注释并压缩内联脚本；不产出/不提供 `.map` |
 | Dockerfile | 百余条 `COPY` 收拢为整站 `COPY site/` |
 | Cordova | 仍为薄壳；白名单仅 `geshui.vip`；契约见下 |
 
@@ -42,8 +43,10 @@
 
 ```bash
 cd frontend && npm ci && npm run build
-# 产物：frontend/site/
+# 产物：frontend/site/（已压缩/混淆，勿把 site/ 当可读源码）
 ```
+
+源码仍以仓库内 `*.html` / `public/js/` / `css/` 为准；线上仅部署 `site/`。
 
 ## 下一阶段
 

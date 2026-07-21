@@ -2,8 +2,9 @@
 FROM node:18-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm config set registry https://registry.npmjs.org/ \
-  && sed -i 's|http://mirrors.tencentyun.com/npm/|https://registry.npmjs.org/|g' package-lock.json \
+RUN npm config set registry https://registry.npmmirror.com \
+  && sed -i 's|http://mirrors.tencentyun.com/npm/|https://registry.npmmirror.com/|g' package-lock.json \
+  && sed -i 's|https://registry.npmjs.org/|https://registry.npmmirror.com/|g' package-lock.json \
   && npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build

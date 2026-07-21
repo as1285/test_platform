@@ -1,6 +1,9 @@
 (function (global) {
     'use strict';
 
+    var CUSTOM_MAX_DAYS = 366;
+    var RANGE_RE = /^range_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
+
     function pad2(n) {
         return n < 10 ? '0' + n : String(n);
     }
@@ -10,6 +13,35 @@
         var utc = now.getTime() + now.getTimezoneOffset() * 60000;
         var cn = new Date(utc + 8 * 3600000);
         return { year: cn.getFullYear(), month: cn.getMonth() + 1, day: cn.getDate() };
+    }
+
+    function chinaTodayYmd() {
+        var cn = chinaNowParts();
+        return cn.year + '-' + pad2(cn.month) + '-' + pad2(cn.day);
+    }
+
+    function isValidYmd(ymd) {
+        var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return false;
+        var y = parseInt(m[1], 10);
+        var mo = parseInt(m[2], 10);
+        var d = parseInt(m[3], 10);
+        if (y < 2019 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+        var dt = new Date(Date.UTC(y, mo - 1, d));
+        return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+    }
+
+    function dayCount(startYmd, endYmd) {
+        var a = String(startYmd).split('-').map(function (x) {
+            return parseInt(x, 10);
+        });
+        var b = String(endYmd).split('-').map(function (x) {
+            return parseInt(x, 10);
+        });
+        return (
+            Math.floor((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000) +
+            1
+        );
     }
 
     /** 指定月份列表最早年份（不含 2023–2025 等更早月份） */
@@ -66,12 +98,146 @@
             });
     }
 
+    function defaultCustomRange() {
+        var today = chinaTodayYmd();
+        return { start: today, end: today };
+    }
+
+    function ensureCustomControls(el) {
+        if (!el || el._analyticsCustomWrap) return el._analyticsCustomWrap;
+        var parent = el.parentNode;
+        if (!parent) return null;
+
+        var wrap = document.createElement('span');
+        wrap.className = 'analytics-custom-range';
+        wrap.style.cssText =
+            'display:none;align-items:center;gap:6px;margin-left:8px;flex-wrap:wrap;vertical-align:middle;';
+        wrap.setAttribute('aria-hidden', 'true');
+
+        var startLab = document.createElement('label');
+        startLab.className = 'analytics-custom-range-label';
+        startLab.style.cssText = 'margin:0;font-weight:normal;display:inline-flex;align-items:center;gap:4px;';
+        startLab.appendChild(document.createTextNode('起'));
+        var startInput = document.createElement('input');
+        startInput.type = 'date';
+        startInput.className = 'filter-select analytics-custom-start';
+        startInput.setAttribute('aria-label', '自定义开始日期');
+        startLab.appendChild(startInput);
+
+        var endLab = document.createElement('label');
+        endLab.className = 'analytics-custom-range-label';
+        endLab.style.cssText = 'margin:0;font-weight:normal;display:inline-flex;align-items:center;gap:4px;';
+        endLab.appendChild(document.createTextNode('止'));
+        var endInput = document.createElement('input');
+        endInput.type = 'date';
+        endInput.className = 'filter-select analytics-custom-end';
+        endInput.setAttribute('aria-label', '自定义结束日期');
+        endLab.appendChild(endInput);
+
+        wrap.appendChild(startLab);
+        wrap.appendChild(endLab);
+
+        var defs = defaultCustomRange();
+        startInput.value = defs.start;
+        endInput.value = defs.end;
+        endInput.max = chinaTodayYmd();
+        startInput.max = chinaTodayYmd();
+
+        if (el.nextSibling) {
+            parent.insertBefore(wrap, el.nextSibling);
+        } else {
+            parent.appendChild(wrap);
+        }
+
+        el._analyticsCustomWrap = wrap;
+        el._analyticsCustomStart = startInput;
+        el._analyticsCustomEnd = endInput;
+
+        function onDateChange() {
+            syncCustomVisibility(el);
+            var encoded = encodeCustomRange(
+                el._analyticsCustomStart && el._analyticsCustomStart.value,
+                el._analyticsCustomEnd && el._analyticsCustomEnd.value
+            );
+            if (!encoded) {
+                alert('请选择有效的起止日期（起 ≤ 止，跨度不超过 366 天，且不超过今天）');
+            }
+            try {
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (e1) {
+                var changeEv = document.createEvent('Event');
+                changeEv.initEvent('change', true, false);
+                el.dispatchEvent(changeEv);
+            }
+            dispatchPeriodChange(el);
+        }
+        startInput.addEventListener('change', onDateChange);
+        endInput.addEventListener('change', onDateChange);
+
+        return wrap;
+    }
+
+    function syncCustomVisibility(el) {
+        if (!el) return;
+        var wrap = ensureCustomControls(el);
+        if (!wrap) return;
+        var isCustom = String(el.value) === 'custom';
+        wrap.style.display = isCustom ? 'inline-flex' : 'none';
+        wrap.setAttribute('aria-hidden', isCustom ? 'false' : 'true');
+        if (isCustom) {
+            var today = chinaTodayYmd();
+            el._analyticsCustomEnd.max = today;
+            el._analyticsCustomStart.max = today;
+            if (!el._analyticsCustomStart.value || !el._analyticsCustomEnd.value) {
+                var defs = defaultCustomRange();
+                if (!el._analyticsCustomStart.value) el._analyticsCustomStart.value = defs.start;
+                if (!el._analyticsCustomEnd.value) el._analyticsCustomEnd.value = defs.end;
+            }
+        }
+    }
+
+    function dispatchPeriodChange(el) {
+        if (!el) return;
+        try {
+            el.dispatchEvent(
+                new CustomEvent('analytics-period-change', {
+                    bubbles: true,
+                    detail: { value: getValue(el) }
+                })
+            );
+        } catch (e0) {
+            var ev = document.createEvent('Event');
+            ev.initEvent('analytics-period-change', true, false);
+            el.dispatchEvent(ev);
+        }
+    }
+
+    function encodeCustomRange(start, end) {
+        var today = chinaTodayYmd();
+        if (!isValidYmd(start) || !isValidYmd(end)) return null;
+        if (end > today) end = today;
+        if (start > end) return null;
+        var n = dayCount(start, end);
+        if (n < 1 || n > CUSTOM_MAX_DAYS) return null;
+        return 'range_' + start + '_' + end;
+    }
+
     function initSelect(el, opts) {
         if (!el) return;
         opts = opts || {};
         var dayValues = opts.dayValues || parseDayValues(el.getAttribute('data-day-options'));
         var selected = opts.defaultValue != null ? opts.defaultValue : el.getAttribute('data-default') || el.value || '1';
         var fixedCount = opts.fixedMonthCount != null ? opts.fixedMonthCount : 24;
+
+        var customStart = null;
+        var customEnd = null;
+        var rangeMatch = String(selected).match(RANGE_RE);
+        if (rangeMatch) {
+            customStart = rangeMatch[1];
+            customEnd = rangeMatch[2];
+            selected = 'custom';
+        }
+
         var html =
             '<optgroup label="按月">' +
             '<option value="month_current">当月</option>' +
@@ -82,7 +248,10 @@
             buildFixedMonthOptions(fixedCount) +
             '</optgroup>' +
             '<optgroup label="按天">' +
-            buildDayOptions(dayValues, selected) +
+            buildDayOptions(dayValues, selected === 'custom' ? '' : selected) +
+            '</optgroup>' +
+            '<optgroup label="自定义">' +
+            '<option value="custom">自定义日期</option>' +
             '</optgroup>';
         if (opts.prependHtml) {
             html = opts.prependHtml + html;
@@ -90,6 +259,26 @@
         el.innerHTML = html;
         if (selected) {
             el.value = selected;
+            if (el.value !== selected && selected !== 'custom') {
+                el.value = dayValues[0] != null ? String(dayValues[0]) : '1';
+            }
+        }
+
+        ensureCustomControls(el);
+        if (customStart && el._analyticsCustomStart) {
+            el._analyticsCustomStart.value = customStart;
+        }
+        if (customEnd && el._analyticsCustomEnd) {
+            el._analyticsCustomEnd.value = customEnd;
+        }
+        syncCustomVisibility(el);
+
+        if (!el._analyticsPeriodBound) {
+            el._analyticsPeriodBound = true;
+            el.addEventListener('change', function () {
+                syncCustomVisibility(el);
+                dispatchPeriodChange(el);
+            });
         }
     }
 
@@ -105,7 +294,14 @@
 
     function getValue(el) {
         if (!el) return '1';
-        return String(el.value || '1');
+        var v = String(el.value || '1');
+        if (v !== 'custom') return v;
+        ensureCustomControls(el);
+        var start = el._analyticsCustomStart && el._analyticsCustomStart.value;
+        var end = el._analyticsCustomEnd && el._analyticsCustomEnd.value;
+        var encoded = encodeCustomRange(start, end);
+        if (encoded) return encoded;
+        return el.getAttribute('data-default') || '1';
     }
 
     function hintHtml(data) {
