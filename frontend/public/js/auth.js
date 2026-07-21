@@ -570,27 +570,41 @@
   }
 
   /**
-   * 底栏位置锁：各 TAB 统一 bottom:10px，避免 iPhone 用 safe-area 再抬高（「我的」空隙尤其明显）。
-   * 仅 Cordova 2410 需要额外 inset；内容避让仍靠 nav.css 的 --bottom-nav-clearance。
+   * 底栏位置锁：各 TAB / 机型只认 --bottom-nav-bottom（默认 10px；Cordova 2410=32px）。
+   * 用 html body … 高优先级覆盖页内硬编码（如「我的」曾写死 10px 导致切页跳动）。
    */
   function ensureBottomNavLockStyle(opts) {
     opts = opts || {};
+    var bottom = opts.cordovaXiaomi2410 ? '32px' : '10px';
+    try {
+      document.documentElement.style.setProperty('--bottom-nav-bottom', bottom);
+      if (opts.cordovaXiaomi2410) {
+        document.documentElement.style.setProperty('--app-cordova-bottom-inset', '32px');
+      }
+    } catch (eVar) {}
     var existing = document.querySelector('style[data-app-bottom-nav-lock]');
     if (existing) {
       existing.parentNode && existing.parentNode.removeChild(existing);
     }
     var st = document.createElement('style');
     st.setAttribute('data-app-bottom-nav-lock', '1');
-    var bottom = opts.cordovaXiaomi2410 ? 'max(10px, 32px)' : '10px';
     st.textContent =
-      '.bottom-nav{position:fixed!important;left:16px!important;right:16px!important;' +
-      'bottom:' +
+      'html{--bottom-nav-bottom:' +
       bottom +
-      '!important;z-index:200!important;animation:none!important;' +
-      'transform:none!important;-webkit-transform:none!important;view-transition-name:none!important;}' +
-      '.bottom-nav.ios-device{bottom:' +
-      bottom +
-      '!important;padding-bottom:0!important;}';
+      ' !important;}' +
+      'html body .bottom-nav,html body > .bottom-nav,' +
+      'html body.page-mine > .bottom-nav,html body.page-shouye > .bottom-nav,' +
+      'html body.page-daiban > .bottom-nav,html body.page-bancha > .bottom-nav,' +
+      'html body.page-message > .bottom-nav,html body.tax-app-shell > .bottom-nav,' +
+      '.bottom-nav.ios-device{' +
+      'position:fixed!important;' +
+      'left:var(--bottom-nav-side,16px)!important;' +
+      'right:var(--bottom-nav-side,16px)!important;' +
+      'bottom:var(--bottom-nav-bottom,10px)!important;' +
+      'z-index:200!important;margin:0!important;animation:none!important;' +
+      'transform:none!important;-webkit-transform:none!important;' +
+      'view-transition-name:none!important;}' +
+      '.bottom-nav.ios-device{padding-bottom:0!important;}';
     (document.head || document.documentElement).appendChild(st);
   }
 

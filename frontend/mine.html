@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-nav-pin"></script>
+    <script src="/js/auth.js?v=20260721-nav-pin2"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -13,7 +13,7 @@
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
-    <link rel="stylesheet" href="css/nav.css?v=20260721-nav-pin">
+    <link rel="stylesheet" href="css/nav.css?v=20260721-nav-pin2">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -32,14 +32,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 与前四 TAB 同一贴底位置，避免短页被 safe-area / 过渡动画抬高 */
-        body.page-mine > .bottom-nav {
-            bottom: 10px !important;
-            transform: none !important;
-            -webkit-transform: none !important;
-            view-transition-name: none !important;
-            margin: 0 !important;
-        }
+        /* 底栏位置统一由 nav.css / auth 锁控制，勿在此写死 bottom（会与机型 inset 冲突导致切页跳动） */
 
         /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
         .header-bg {

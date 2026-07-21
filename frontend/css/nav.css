@@ -1,4 +1,4 @@
-/* 底部导航：悬浮白色胶囊。各 TAB 共用同一 bottom，切页不上下跳 */
+/* 底部导航：悬浮白色胶囊。各 TAB / 机型共用同一 --bottom-nav-bottom，切页不上下跳 */
 
 :root {
     --bottom-nav-height: 72px;
@@ -15,12 +15,32 @@
     );
 }
 
+/*
+ * 高优先级锁：覆盖各页内联 / 机型补丁，保证切 TAB 时 bottom 一致。
+ * 位置只由 --bottom-nav-bottom 决定（默认 10px；Cordova 2410 为 32px）。
+ */
+html body .bottom-nav,
+html body > .bottom-nav,
+html body.page-mine > .bottom-nav,
+html body.page-shouye > .bottom-nav,
+html body.page-daiban > .bottom-nav,
+html body.page-bancha > .bottom-nav,
+html body.page-message > .bottom-nav,
+html body.tax-app-shell > .bottom-nav,
+.bottom-nav.ios-device {
+    position: fixed !important;
+    left: var(--bottom-nav-side) !important;
+    right: var(--bottom-nav-side) !important;
+    bottom: var(--bottom-nav-bottom) !important;
+    z-index: 200 !important;
+    margin: 0 !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+    view-transition-name: none !important;
+    animation: none !important;
+}
+
 .bottom-nav {
-    position: fixed;
-    left: var(--bottom-nav-side);
-    right: var(--bottom-nav-side);
-    bottom: var(--bottom-nav-bottom);
-    z-index: 200;
     display: flex;
     align-items: center;
     justify-content: space-around;
@@ -32,13 +52,11 @@
     box-shadow: 0 8px 24px rgba(36, 55, 86, 0.12);
     box-sizing: border-box;
     overflow: hidden;
-    animation: none !important;
 }
 
-/* 旧脚本会加 ios-device，位置必须与默认完全一致 */
+/* 旧脚本会加 ios-device，内边距不得抬高胶囊 */
 .bottom-nav.ios-device {
-    bottom: var(--bottom-nav-bottom);
-    padding-bottom: 0;
+    padding-bottom: 0 !important;
 }
 
 .bottom-nav .nav-item,
@@ -101,17 +119,16 @@
     }
 }
 
-/* Cordova 2410DPN6CC：env 常为 0，需额外抬高避开手势条 */
+/* Cordova 2410DPN6CC：env 常为 0，需额外抬高避开手势条（所有 TAB 同一值） */
 html.app-cordova-xiaomi-2410 {
     --app-cordova-bottom-inset: 32px;
-    --bottom-nav-bottom: max(var(--bottom-nav-gap), var(--app-cordova-bottom-inset));
+    --bottom-nav-bottom: 32px;
     --bottom-nav-clearance: calc(
         var(--bottom-nav-height) + var(--bottom-nav-bottom) + 16px
     );
 }
 
 html.app-cordova-xiaomi-2410 .bottom-nav {
-    bottom: var(--bottom-nav-bottom);
     padding-bottom: 4px;
     box-sizing: border-box;
 }
@@ -121,5 +138,5 @@ html.app-cordova-xiaomi-2410 .bottom-nav .nav-item {
 }
 
 html.app-cordova-xiaomi-2410 body.page-mine {
-    padding-bottom: calc(58px + var(--app-cordova-bottom-inset)) !important;
+    padding-bottom: var(--bottom-nav-clearance) !important;
 }
