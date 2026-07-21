@@ -19,6 +19,10 @@ const DB_PASSWORD = process.env.DB_PASSWORD || 'password';
 const DB_DATABASE = process.env.DB_DATABASE || 'personal_tax';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(BACKEND_ROOT, 'uploads');
+/** 可选 CDN / 对象存储公网前缀，如 https://cdn.example.com；空则走同源 /uploads */
+const PUBLIC_ASSET_BASE_URL = String(process.env.PUBLIC_ASSET_BASE_URL || '').replace(/\/+$/, '');
+/** local | s3 | oss … 当前仅 local 写入；用于文档与未来切换 */
+const UPLOAD_STORAGE_BACKEND = String(process.env.UPLOAD_STORAGE_BACKEND || 'local').trim() || 'local';
 const LOGIN_RATE_PER_IP_MIN = parseInt(process.env.LOGIN_RATE_PER_IP_MIN || '20', 10);
 const LOGIN_RATE_PER_USER_MIN = parseInt(process.env.LOGIN_RATE_PER_USER_MIN || '8', 10);
 const ADMIN_LOGIN_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_LOGIN_RATE_PER_IP_MIN || '10', 10);
@@ -42,6 +46,8 @@ module.exports = {
   DB_DATABASE,
   PORT,
   UPLOAD_DIR,
+  PUBLIC_ASSET_BASE_URL,
+  UPLOAD_STORAGE_BACKEND,
   LOGIN_RATE_PER_IP_MIN,
   LOGIN_RATE_PER_USER_MIN,
   ADMIN_LOGIN_RATE_PER_IP_MIN,

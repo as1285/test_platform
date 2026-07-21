@@ -21,6 +21,7 @@ const config = require('../shared/config');
 const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
+const settingsPolicy = require('../shared/settingsPolicy');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -35,6 +36,8 @@ const DB_PASSWORD = config.DB_PASSWORD;
 const DB_DATABASE = config.DB_DATABASE;
 const PORT = config.PORT;
 const UPLOAD_DIR = config.UPLOAD_DIR;
+const PUBLIC_ASSET_BASE_URL = config.PUBLIC_ASSET_BASE_URL;
+const UPLOAD_STORAGE_BACKEND = config.UPLOAD_STORAGE_BACKEND;
 const LOGIN_RATE_PER_IP_MIN = config.LOGIN_RATE_PER_IP_MIN;
 const LOGIN_RATE_PER_USER_MIN = config.LOGIN_RATE_PER_USER_MIN;
 const ADMIN_LOGIN_RATE_PER_IP_MIN = config.ADMIN_LOGIN_RATE_PER_IP_MIN;
@@ -521,13 +524,38 @@ function invalidateInstallPackageSettingsCache() {
   invalidateInstallPackagesResponseCache();
 }
 
-/** 用户端展示用：uploads/… 或相对路径补全为站内 URL */
+/** 用户端展示用：uploads/… 或相对路径补全为站内 / CDN URL（PUBLIC_ASSET_BASE_URL） */
 function resolvePublicAssetUrl(ref) {
   var ok = sanitizeMineUiImageRef(ref);
   if (!ok) return '';
   if (/^https?:\/\//i.test(ok)) return ok;
-  if (ok.charAt(0) === '/') return ok;
-  return '/' + ok;
+  if (ok.charAt(0) === '/') {
+    if (PUBLIC_ASSET_BASE_URL) return PUBLIC_ASSET_BASE_URL + ok;
+    return ok;
+  }
+  var pathRef = '/' + ok.replace(/^\/+/, '');
+  if (PUBLIC_ASSET_BASE_URL) return PUBLIC_ASSET_BASE_URL + pathRef;
+  return pathRef;
+}
+
+/**
+ * 写入 app_settings（阶段 4：拒绝密钥类键）
+ * @param {import('mysql2/promise').PoolConnection} conn
+ * @param {string} key
+ * @param {string} value
+ */
+async function upsertAppSetting(conn, key, value) {
+  var classified = settingsPolicy.classifySettingKey(key);
+  if (classified.forbidden) {
+    var err = new Error('禁止将密钥类配置写入 app_settings（' + classified.reason + '）：' + key);
+    err.statusCode = 400;
+    throw err;
+  }
+  await conn.execute(
+    `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
+    [String(key), value == null ? '' : String(value)]
+  );
 }
 
 async function getTestAccountCompanyName() {
@@ -18738,35 +18766,23 @@ async function handleAdminChatAutoReplySave(req, res) {
     if (hasAiPrompt && !aiPrompt) {
       aiPrompt = DEFAULT_CHAT_AI_PROMPT;
     }
+    var secretLikeWarn = hasAiPrompt && settingsPolicy.looksLikeSecretBlob(aiPrompt);
+    if (secretLikeWarn) {
+      console.warn('[settings-policy] chat_ai_prompt 内容疑似含密钥片段，已保存但请勿粘贴真实 API Key');
+    }
     const conn = await pool.getConnection();
     try {
       if (hasWelcome) {
-        await conn.execute(
-          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
-          [SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, welcome]
-        );
+        await upsertAppSetting(conn, SETTING_KEY_CHAT_AUTO_REPLY_WELCOME, welcome);
       }
       if (hasReply) {
-        await conn.execute(
-          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
-          [SETTING_KEY_CHAT_AUTO_REPLY_REPLY, reply]
-        );
+        await upsertAppSetting(conn, SETTING_KEY_CHAT_AUTO_REPLY_REPLY, reply);
       }
       if (hasAiEnabled) {
-        await conn.execute(
-          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
-          [SETTING_KEY_CHAT_AI_ENABLED, aiEnabledVal]
-        );
+        await upsertAppSetting(conn, SETTING_KEY_CHAT_AI_ENABLED, aiEnabledVal);
       }
       if (hasAiPrompt) {
-        await conn.execute(
-          `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
-           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = CURRENT_TIMESTAMP`,
-          [SETTING_KEY_CHAT_AI_PROMPT, aiPrompt]
-        );
+        await upsertAppSetting(conn, SETTING_KEY_CHAT_AI_PROMPT, aiPrompt);
       }
     } finally {
       conn.release();
@@ -18780,7 +18796,8 @@ async function handleAdminChatAutoReplySave(req, res) {
         reply: cfg.reply,
         ai_enabled: !!cfg.ai_enabled,
         ai_prompt: cfg.ai_prompt,
-        ai: chatAi.getPublicStatus()
+        ai: chatAi.getPublicStatus(),
+        warnings: secretLikeWarn ? ['ai_prompt_looks_like_secret'] : []
       }
     });
   } catch (e) {
@@ -18987,6 +19004,16 @@ function getHandlers() {
 
 async function startServer() {
   logSecurityBaselineWarnings();
+  if (UPLOAD_STORAGE_BACKEND && UPLOAD_STORAGE_BACKEND !== 'local') {
+    console.warn(
+      '[uploads] UPLOAD_STORAGE_BACKEND=' +
+        UPLOAD_STORAGE_BACKEND +
+        '（当前写入仍为本地 UPLOAD_DIR；对象存储写入未启用）'
+    );
+  }
+  if (PUBLIC_ASSET_BASE_URL) {
+    console.log('[uploads] PUBLIC_ASSET_BASE_URL=' + PUBLIC_ASSET_BASE_URL);
+  }
   await initDatabase();
   try {
     await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });

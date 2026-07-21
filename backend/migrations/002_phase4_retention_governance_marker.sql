@@ -1,0 +1,2 @@
+-- noop: 阶段 4 热表保留由 dbLogRetention 环境变量驱动；本文件占位标记治理策略已文档化。
+-- 见 docs/architecture-phase4/README.md

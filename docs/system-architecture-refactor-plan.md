@@ -2,12 +2,13 @@
 
 > 文档位置：`docs/system-architecture-refactor-plan.md`  
 > 适用仓库：`test_platform`（个税 H5 模拟平台）  
-> 状态：阶段 0–3 已完成；阶段 4 未开始  
+> 状态：阶段 0–4 已完成；阶段 5 按需  
 > 更新日期：2026-07-21  
 > 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)  
 > 阶段 1 产出目录：[`docs/architecture-phase1/`](./architecture-phase1/README.md)  
 > 阶段 2 产出目录：[`docs/architecture-phase2/`](./architecture-phase2/README.md)  
-> 阶段 3 产出目录：[`docs/architecture-phase3/`](./architecture-phase3/README.md)
+> 阶段 3 产出目录：[`docs/architecture-phase3/`](./architecture-phase3/README.md)  
+> 阶段 4 产出目录：[`docs/architecture-phase4/`](./architecture-phase4/README.md)
 
 ---
 
@@ -162,14 +163,16 @@
 
 ---
 
-### 阶段 4：数据与增长治理（约 2–3 周）
+### 阶段 4：数据与增长治理（约 2–3 周）—— ✅ 已完成（2026-07-21）
 
 | 事项 | 说明 |
 |------|------|
-| 事件模型统一 | 页面浏览 / 转化 / API 慢日志 schema 文档化 |
-| 热表归档 | 埋点、API 日统计按保留策略分区或冷热分离 |
-| 配置中心 | `app_settings` 分层：运营配置 vs 密钥（密钥进环境/密钥管理） |
-| 上传资产 | `uploads` 明确走对象存储或独立卷策略 |
+| 事件模型统一 | [`architecture-phase4/event-model.md`](./architecture-phase4/event-model.md) |
+| 热表归档 | `dbLogRetention` 按表 `DB_RETAIN_*_DAYS`；补齐 error/日活/归因 |
+| 配置中心 | `settingsPolicy`：运营键 vs env 密钥 |
+| 上传资产 | 本地卷 + `PUBLIC_ASSET_BASE_URL` CDN 钩子 |
+
+**落地目录：** [`architecture-phase4/README.md`](./architecture-phase4/README.md)。
 
 ---
 
@@ -240,6 +243,7 @@
 | 2026-07-21 | 阶段 1 | 同仓域路由拆分 + migrations 骨架；handler 暂留 legacy/monolith，repos 下沉后续迭代 | agent |
 | 2026-07-21 | 阶段 2 | 管理端 menuRegistry + menu_tree；路径/Host 隔离与 CSP；admin JS 懒加载 | agent |
 | 2026-07-21 | 阶段 3 | TaxApp 壳 + 四核心页接入；assemble-site content-hash；Dockerfile 收拢 | agent |
+| 2026-07-21 | 阶段 4 | 事件模型文档；按表保留；settingsPolicy；PUBLIC_ASSET_BASE_URL | agent |
 | （待填） | 管理端域名策略 |  |  |
 | （待填） | 前端技术路线 |  |  |
 | （待填） | 改造时限 |  |  |
