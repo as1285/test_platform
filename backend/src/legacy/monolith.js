@@ -7874,6 +7874,65 @@ function parseFromInstallGuideFlag(body) {
   return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
 }
 
+/**
+ * 解析 B/C 落地页方案：优先请求体，其次同 client_id / device_fp / IP 近 48h 的分流记录。
+ * 解决浏览器落地与 App 内注册 localStorage 隔离导致 variant 丢失。
+ */
+async function resolveLandingAbVariantForReq(req, hintVariant) {
+  var v = String(hintVariant || '').toLowerCase();
+  if (v === 'b' || v === 'c') {
+    return v;
+  }
+  if (!pool) {
+    return '';
+  }
+  var cid = '';
+  try {
+    if (req.clientDevicePayload && req.clientDevicePayload.client_id) {
+      cid = String(req.clientDevicePayload.client_id).trim().substring(0, 128);
+    }
+  } catch (e0) {}
+  var fp = '';
+  try {
+    fp = String(sanitizeAuditText(computeDeviceFingerprint(req), 64) || '').trim();
+  } catch (e1) {}
+  var ip = '';
+  try {
+    ip = String(sanitizeAuditText(getClientIp(req), 128) || '').trim();
+  } catch (e2) {}
+  if (!cid && !fp && !ip) {
+    return '';
+  }
+  try {
+    const [rows] = await pool.query(
+      `SELECT JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.landing_variant')) AS v
+       FROM install_guide_track_events
+       WHERE event_key IN ('track_landing_ab_view', 'track_landing_ab_assignment')
+         AND JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.landing_variant')) IN ('b', 'c')
+         AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 48 HOUR)
+         AND (
+           (? <> '' AND client_id = ?)
+           OR (? <> '' AND device_fp = ?)
+           OR (? <> '' AND ip = ?)
+         )
+       ORDER BY
+         CASE
+           WHEN ? <> '' AND client_id = ? THEN 1
+           WHEN ? <> '' AND device_fp = ? THEN 2
+           ELSE 3
+         END,
+         created_at DESC
+       LIMIT 1`,
+      [cid, cid, fp, fp, ip, ip, cid, cid, fp, fp]
+    );
+    var found = rows && rows[0] ? String(rows[0].v || '').toLowerCase() : '';
+    return found === 'b' || found === 'c' ? found : '';
+  } catch (e3) {
+    console.error('resolveLandingAbVariantForReq', e3);
+    return '';
+  }
+}
+
 /** 记录：install guide track event */
 function recordInstallGuideTrackEvent(req, action, meta) {
   if (!pool) {
@@ -10514,15 +10573,13 @@ async function handleAuthPost(req, res) {
           console.error('register guest migrate', eGuestMig);
         }
         if (parseFromInstallGuideFlag(body)) {
-          var landingVariant = String(body.landing_variant || '').toLowerCase();
-          if (landingVariant !== 'b' && landingVariant !== 'c') {
-            landingVariant = '';
-          }
+          var landingVariant = await resolveLandingAbVariantForReq(req, body.landing_variant);
           recordInstallGuideTrackEvent(req, 'track_install_register_success', {
             page: 'register',
             username: out.username,
             reported: true,
-            landing_variant: landingVariant || undefined
+            landing_variant: landingVariant || undefined,
+            landing_variant_inferred: landingVariant && !String(body.landing_variant || '').trim() ? true : undefined
           });
         }
         out.token = signAccessToken(out);
@@ -11703,10 +11760,24 @@ async function handleAdminInstallGuideStats(req, res) {
         sinceParams
       );
       const [landingAbRows] = await conn.query(
-        `SELECT client_id, device_fp, event_key, dwell_seconds, meta_json, ${cnDay} AS d
+        `SELECT client_id, device_fp, event_key, dwell_seconds, meta_json, ip, ${cnDay} AS d, created_at
          FROM install_guide_track_events
          WHERE meta_json IS NOT NULL
            AND JSON_UNQUOTE(JSON_EXTRACT(meta_json, '$.landing_variant')) IN ('b', 'c')
+           AND ${cnSince}`,
+        sinceParams
+      );
+      const [landingAbRegisterRows] = await conn.query(
+        `SELECT client_id, device_fp, ip, meta_json, created_at
+         FROM install_guide_track_events
+         WHERE event_key = 'track_install_register_success'
+           AND ${cnSince}`,
+        sinceParams
+      );
+      const [landingAbDownloadRows] = await conn.query(
+        `SELECT client_id, device_fp, ip, meta_json, created_at
+         FROM install_guide_track_events
+         WHERE event_key IN ('track_install_apk_click', 'track_install_ios_click')
            AND ${cnSince}`,
         sinceParams
       );
@@ -12038,6 +12109,35 @@ async function handleAdminInstallGuideStats(req, res) {
         b: newLandingVariantStats(),
         c: newLandingVariantStats()
       };
+      var landingVisitorVariant = {};
+      var landingIpVariant = {};
+      function rememberLandingVariant(visitor, ip, variant, atMs) {
+        if (variant !== 'b' && variant !== 'c') return;
+        var ts = atMs != null ? Number(atMs) : 0;
+        if (visitor) {
+          var prevV = landingVisitorVariant[visitor];
+          if (!prevV || ts >= prevV.at) {
+            landingVisitorVariant[visitor] = { variant: variant, at: ts };
+          }
+        }
+        if (ip) {
+          var prevIp = landingIpVariant[ip];
+          if (!prevIp || ts >= prevIp.at) {
+            landingIpVariant[ip] = { variant: variant, at: ts };
+          }
+        }
+      }
+      function resolveLandingVariantForStats(metaVariant, visitor, ip) {
+        var direct = String(metaVariant || '').toLowerCase();
+        if (direct === 'b' || direct === 'c') return direct;
+        if (visitor && landingVisitorVariant[visitor]) {
+          return landingVisitorVariant[visitor].variant;
+        }
+        if (ip && landingIpVariant[ip]) {
+          return landingIpVariant[ip].variant;
+        }
+        return '';
+      }
       (landingAbRows || []).forEach(function (row) {
         var meta = null;
         try {
@@ -12051,8 +12151,16 @@ async function handleAdminInstallGuideStats(req, res) {
         }
         var stat = landingAbRaw[variant];
         var visitor = String(row.client_id || row.device_fp || '').trim();
+        var ip = String(row.ip || '').trim();
         var eventKey = String(row.event_key || '');
         var dayKey = formatDateKey(row.d);
+        var atMs = row.created_at ? new Date(row.created_at).getTime() : 0;
+        if (
+          eventKey === 'track_landing_ab_view' ||
+          eventKey === 'track_landing_ab_assignment'
+        ) {
+          rememberLandingVariant(visitor, ip, variant, atMs);
+        }
         if (eventKey === 'track_landing_ab_view') {
           stat.page_views += 1;
           if (visitor) {
@@ -12060,15 +12168,6 @@ async function handleAdminInstallGuideStats(req, res) {
             if (!stat.visit_days[visitor]) stat.visit_days[visitor] = {};
             if (dayKey) stat.visit_days[visitor][dayKey] = true;
           }
-        }
-        if (
-          visitor &&
-          (eventKey === 'track_install_apk_click' || eventKey === 'track_install_ios_click')
-        ) {
-          stat.download_visitors[visitor] = true;
-        }
-        if (visitor && eventKey === 'track_install_register_success') {
-          stat.register_visitors[visitor] = true;
         }
         if (
           visitor &&
@@ -12082,6 +12181,29 @@ async function handleAdminInstallGuideStats(req, res) {
             stat.dwell_values.push(dwell);
           }
         }
+      });
+      /* 下载/注册：事件本身可能无 landing_variant（App 壳与浏览器隔离），用访客或 IP 回填 */
+      (landingAbDownloadRows || []).forEach(function (row) {
+        var meta = {};
+        try {
+          meta = JSON.parse(String(row.meta_json || '{}')) || {};
+        } catch (eDlMeta) {}
+        var visitor = String(row.client_id || row.device_fp || '').trim();
+        var ip = String(row.ip || '').trim();
+        var variant = resolveLandingVariantForStats(meta.landing_variant, visitor, ip);
+        if ((variant !== 'b' && variant !== 'c') || !visitor) return;
+        landingAbRaw[variant].download_visitors[visitor] = true;
+      });
+      (landingAbRegisterRows || []).forEach(function (row) {
+        var meta = {};
+        try {
+          meta = JSON.parse(String(row.meta_json || '{}')) || {};
+        } catch (eRegMeta) {}
+        var visitor = String(row.client_id || row.device_fp || meta.username || '').trim();
+        var ip = String(row.ip || '').trim();
+        var variant = resolveLandingVariantForStats(meta.landing_variant, visitor, ip);
+        if ((variant !== 'b' && variant !== 'c') || !visitor) return;
+        landingAbRaw[variant].register_visitors[visitor] = true;
       });
 
       function finishLandingVariantStats(variant, raw) {
@@ -12485,7 +12607,8 @@ async function handleAdminInstallGuideStats(req, res) {
             },
             actions: actions,
             landing_ab: {
-              definition: '回访用户 = 统计区间内同一访客至少在 2 个不同自然日访问对应方案',
+              definition:
+                '注册/下载：优先用事件自带方案，否则按同访客或同 IP 近 48h 的 B/C 访问回填（缓解浏览器落地与 App 注册隔离）。注册用户=安装页引流注册成功，不等于全站总注册（见上方「当日总注册」）。回访用户=区间内至少 2 个自然日访问同一方案。',
               variants: [
                 finishLandingVariantStats('b', landingAbRaw.b),
                 finishLandingVariantStats('c', landingAbRaw.c)

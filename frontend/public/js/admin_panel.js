@@ -3186,7 +3186,7 @@
             html +=
                 '<th>方案</th><th>PV</th><th>UV</th><th>平均停留</th><th>回访用户</th><th>回访率</th><th>关键门禁</th><th>下载用户</th><th>下载率</th><th>注册用户</th><th>注册率</th></tr></thead><tbody>';
             if (!landingVariants.length) {
-                html += '<tr><td colspan="7">暂无 A/B 数据；新访客进入后开始累计</td></tr>';
+                html += '<tr><td colspan="11">暂无 A/B 数据；新访客进入后开始累计</td></tr>';
             } else {
                 landingVariants.forEach(function (row) {
                     html += '<tr>';
