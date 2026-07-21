@@ -777,9 +777,10 @@
             opacity: 0.9;
         }
 
-        /* 已激活：隐藏截图模式条与税务演示数据入口 */
+        /* 已激活：隐藏截图模式条、税务演示入口、邀请有礼 */
         body.page-mine.mine-account-active #cgMineScreenshotBar,
-        body.page-mine.mine-account-active #mineTaxEntryLink {
+        body.page-mine.mine-account-active #mineTaxEntryLink,
+        body.page-mine.mine-account-active #mineInviteCard {
             display: none !important;
         }
 
@@ -1877,6 +1878,20 @@
             function loadMineInviteOverview() {
                 var card = document.getElementById('mineInviteCard');
                 if (!card) return;
+                function isAccountActiveNow() {
+                    try {
+                        if (document.body && document.body.classList.contains('mine-account-active')) {
+                            return true;
+                        }
+                        return localStorage.getItem('account_active') === '1';
+                    } catch (e) {
+                        return false;
+                    }
+                }
+                if (isAccountActiveNow()) {
+                    card.hidden = true;
+                    return;
+                }
                 var fetchFn =
                     typeof authFetch === 'function'
                         ? authFetch
@@ -1893,6 +1908,20 @@
                             return;
                         }
                         var d = data.data;
+                        updateMineActivateButton({
+                            account_active: d.account_active,
+                            activation_kind: d.activation_kind,
+                            active_days_left: d.active_days_left
+                        });
+                        if (
+                            d.account_active === true ||
+                            d.account_active === 1 ||
+                            d.account_active === '1' ||
+                            isAccountActiveNow()
+                        ) {
+                            card.hidden = true;
+                            return;
+                        }
                         card.hidden = false;
                         var codeEl = document.getElementById('mineInviteCodeText');
                         if (codeEl) codeEl.textContent = d.invite_code || '—';
@@ -1957,11 +1986,6 @@
                                 return bits.length ? bits.join('') : '7天';
                             })();
                         window.__mineInvitePosterDataUrl = '';
-                        updateMineActivateButton({
-                            account_active: d.account_active,
-                            activation_kind: d.activation_kind,
-                            active_days_left: d.active_days_left
-                        });
                     })
                     .catch(function () {
                         card.hidden = true;
