@@ -5007,16 +5007,16 @@
             var latestIssue = data.latest_issue_application || null;
             html +=
                 '<div class="ud-certificate-head">' +
-                '<div style="color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（可在含公章预览与 C 端无章图之间切换）</span></div>' +
+                '<div style="color:#666;">纳税记录凭证 <span style="color:#999;font-size:12px;">（激活用户 C 端含公章；可切换对比未激活无章）</span></div>' +
                 '<div class="ud-cert-mode-btns">' +
                 '<button type="button" class="btn-sm ud-cert-mode-btn is-active" id="ud_certificate_stamp_btn_' +
                 safeKey +
-                '">含公章预览</button>' +
+                '">含公章（激活）</button>' +
                 '<button type="button" class="btn-sm ud-cert-mode-btn" id="ud_certificate_client_btn_' +
                 safeKey +
                 '" data-u="' +
                 esc(username) +
-                '">C端无章图</button>' +
+                '">无章（未激活）</button>' +
                 '</div>' +
                 '</div>';
             if (latestIssue && latestIssue.period_start && latestIssue.period_end) {
@@ -5065,13 +5065,13 @@
                 container.textContent = '暂无个税记录，无法生成凭证预览';
                 return Promise.resolve();
             }
-            container.textContent = showStamp ? '正在生成含公章预览…' : '正在生成 C 端无章图…';
+            container.textContent = showStamp ? '正在生成含公章（激活态）预览…' : '正在生成无章（未激活）预览…';
             try {
                 var app = window.TaxIssueCertificate.buildAppFromAdminDetail(data);
                 return window.TaxIssueCertificate.renderDataUrl(app, { showStamp: showStamp })
                     .then(function (urlOrUrls) {
                         var urls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
-                        var title = showStamp ? '管理端预览含公章' : 'C 端无章预览';
+                        var title = showStamp ? '含公章（激活）' : '无章（未激活）';
                         var downloadBase =
                             (data.user && (data.user.real_name || data.user.username)) ||
                             (issue.record_no ? '纳税记录_' + issue.record_no : '纳税记录');
@@ -5099,7 +5099,7 @@
                                         '<a class="btn-sm" href="' +
                                         u +
                                         '" download="' +
-                                        esc(downloadBase + (showStamp ? '_管理端' : '_C端无章') + pageSuffix + '.png') +
+                                        esc(downloadBase + (showStamp ? '_含公章' : '_无章') + pageSuffix + '.png') +
                                         '">下载' +
                                         (urls.length > 1 ? '第' + (i + 1) + '页' : '') +
                                         '</a>' +
@@ -5149,14 +5149,14 @@
                 setModeActive(showStamp);
                 return renderUserDataCertificateImages(el, data, {
                     showStamp: showStamp,
-                    altSuffix: showStamp ? '（管理端）' : '（C端无章）'
+                    altSuffix: showStamp ? '（激活含章）' : '（未激活无章）'
                 }).then(function () {
                     certCache[cacheKey] = el.innerHTML;
                 });
             }
 
             if (!canRender) {
-                renderUserDataCertificateImages(el, data, { showStamp: true, altSuffix: '（管理端）' });
+                renderUserDataCertificateImages(el, data, { showStamp: true, altSuffix: '（激活含章）' });
                 if (clientBtn) {
                     clientBtn.disabled = true;
                     clientBtn.title = '需有 C 端开具记录及个税明细';

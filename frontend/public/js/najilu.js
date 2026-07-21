@@ -1212,9 +1212,20 @@
     return pages;
   }
 
+  /** C 端：已激活用户导出/预览图带公章；未激活不加章。管理端可显式传 showStamp 覆盖。 */
+  function shouldShowClientStamp() {
+    try {
+      return localStorage.getItem('account_active') === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function renderCertificateDataUrl(app, options) {
     options = options || {};
-    var showStamp = options.showStamp === true;
+    var showStamp = Object.prototype.hasOwnProperty.call(options, 'showStamp')
+      ? options.showStamp === true
+      : shouldShowClientStamp();
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
 
@@ -1578,32 +1589,33 @@
   function drawStamp(ctx, cx, cy, authority) {
     var name = authorityToCityStampText(authority) || '国家税务局重庆市税务局';
     var stampRed = '#c41e24';
-    var radius = 74;
+    /* 半径与字号略放大，贴近官方电子章观感 */
+    var radius = 86;
     var font = 'STSong, SimSun, serif';
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.strokeStyle = stampRed;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    var arcSize = name.length > 14 ? 12 : name.length > 11 ? 13 : 14;
-    var arcGap = name.length > 14 ? 5 : name.length > 11 ? 4 : 3;
-    drawArcText(ctx, name, cx, cy, radius - 11, Math.PI * 1.08, Math.PI * 1.92, {
+    var arcSize = name.length > 14 ? 16 : name.length > 11 ? 17 : 18;
+    var arcGap = name.length > 14 ? 4 : name.length > 11 ? 3 : 2;
+    drawArcText(ctx, name, cx, cy, radius - 14, Math.PI * 1.06, Math.PI * 1.94, {
       size: arcSize,
       weight: 'bold',
       color: stampRed,
-      strokeWidth: 0,
+      strokeWidth: 0.35,
       font: font,
       arcLetterGap: arcGap,
-      maxSpanRad: Math.PI * 0.98
+      maxSpanRad: Math.PI * 1.02
     });
-    drawSpacedText(ctx, '业务专用章', cx, cy + 16, {
-      size: 13,
-      weight: 'normal',
+    drawSpacedText(ctx, '业务专用章', cx, cy + 18, {
+      size: 17,
+      weight: 'bold',
       color: stampRed,
-      letterGap: 6,
+      letterGap: 5,
       font: font,
       baseline: 'middle'
     });

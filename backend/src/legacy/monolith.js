@@ -14101,7 +14101,14 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
     if (!qGuest) {
-      appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+      /*
+       * 默认按激活码归属隔离：超管列表不含其它子管理员名下开通用户。
+       * 但超管按「账号」搜索时放开归属，便于从登录流水定位任意用户。
+       */
+      var skipOwnerScopeForSuperSearch = !!(req.admin && req.admin.is_super && qUsername);
+      if (!skipOwnerScopeForSuperSearch) {
+        appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
+      }
     }
 
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';

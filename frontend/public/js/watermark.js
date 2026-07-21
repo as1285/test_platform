@@ -24,18 +24,18 @@
         }
     }
 
-    /** 未激活水印文案与平铺尺寸 */
+    /** 未激活水印：稀疏、低透明度，提示未开通但不抢内容、少干扰付费 */
     function getInactiveWatermarkSpec() {
         return {
-            w: 200,
-            h: 120,
+            w: 360,
+            h: 260,
             line1: '未激活',
             line2: 'Unactivated',
-            font1: 'bold 18px Arial, sans-serif',
-            font2: '12px Arial, sans-serif',
-            color1: 'rgba(160, 0, 0, 0.35)',
-            color2: 'rgba(160, 0, 0, 0.28)',
-            line2OffsetY: 20
+            font1: '16px Arial, sans-serif',
+            font2: '11px Arial, sans-serif',
+            color1: 'rgba(160, 0, 0, 0.14)',
+            color2: 'rgba(160, 0, 0, 0.10)',
+            line2OffsetY: 18
         };
     }
 
