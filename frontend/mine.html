@@ -1851,10 +1851,13 @@
                         if (codeEl) codeEl.textContent = d.invite_code || '—';
                         var desc = document.getElementById('mineInviteDesc');
                         if (desc) {
+                            var rewardBits = [];
+                            if (d.reward_days) rewardBits.push(d.reward_days + ' 天');
+                            if (d.reward_hours) rewardBits.push(d.reward_hours + ' 小时');
                             desc.textContent =
                                 '好友通过你的链接注册并激活后，你可获得 ' +
-                                (d.reward_days || 7) +
-                                ' 天使用权（每月最多 ' +
+                                (rewardBits.length ? rewardBits.join(' ') : '7 天') +
+                                ' 使用权（每月最多 ' +
                                 (d.monthly_cap || 4) +
                                 ' 次）。';
                         }

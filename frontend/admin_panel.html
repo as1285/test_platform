@@ -111,7 +111,11 @@
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="inviteRewardDays">每次奖励天数</label>
-                                <input type="number" id="inviteRewardDays" min="1" max="365" step="1" value="7">
+                                <input type="number" id="inviteRewardDays" min="0" max="365" step="1" value="7">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="inviteRewardHours">每次奖励小时</label>
+                                <input type="number" id="inviteRewardHours" min="0" max="720" step="1" value="0">
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="inviteMonthlyCap">每月最多计奖次数</label>
@@ -479,9 +483,18 @@
                 <div id="page-codes" class="page-panel" role="tabpanel">
         <section>
             <h2>生成激活码</h2>
-            <div class="form-row flex-row-end gap-10">
-                <button type="button" class="btn-primary" id="btnIssue">生成 1 个</button>
+            <div class="form-row flex-wrap gap-10" style="align-items:flex-end;margin-bottom:10px;">
+                <div>
+                    <label for="issueGrantDays">时效天数（可选）</label>
+                    <input class="filter-select input-w-100 mt-6" type="number" id="issueGrantDays" min="0" max="365" step="1" value="0" inputmode="numeric" placeholder="0=不按天">
+                </div>
+                <div>
+                    <label for="issueGrantHours">时效小时（可选）</label>
+                    <input class="filter-select input-w-100 mt-6" type="number" id="issueGrantHours" min="0" max="720" step="1" value="0" inputmode="numeric" placeholder="0=不按小时">
+                </div>
+                <button type="button" class="btn-primary mb-1" id="btnIssue">生成 1 个</button>
             </div>
+            <p class="hint" style="margin-top:0;">天数与小时都填 0（或不填）时生成<strong>永久</strong>激活码；任一项大于 0 则为时效码（可叠加，如 0 天 + 2 小时）。</p>
             <div class="form-row flex-wrap gap-10" id="batchIssueWrap" style="display:none; align-items:flex-end; margin-top:8px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
                 <div>
                     <label for="batchIssueChannel">批量渠道</label>
@@ -2052,6 +2065,6 @@
     <script src="/js/admin/loader.js?v=20260721-p2"></script>
     <script src="/js/admin/nav.js?v=20260721-p2"></script>
     <script src="/js/admin-analytics-period.js?v=20260721-custom-today"></script>
-    <script src="/js/admin_panel.js?v=20260721-active-stamp"></script>
+    <script src="/js/admin_panel.js?v=20260722-invite-hours"></script>
 </body>
 </html>

@@ -22,6 +22,7 @@ const OPS_SETTING_KEYS = [
   'migration_activation_codes_no_expiry_v1',
   'invite_enabled',
   'invite_reward_days',
+  'invite_reward_hours',
   'invite_monthly_cap',
   'invite_grant_delay_hours'
 ];

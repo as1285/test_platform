@@ -6,6 +6,7 @@
 
 var SETTING_INVITE_ENABLED = 'invite_enabled';
 var SETTING_INVITE_REWARD_DAYS = 'invite_reward_days';
+var SETTING_INVITE_REWARD_HOURS = 'invite_reward_hours';
 var SETTING_INVITE_MONTHLY_CAP = 'invite_monthly_cap';
 var SETTING_INVITE_GRANT_DELAY_HOURS = 'invite_grant_delay_hours';
 
@@ -87,10 +88,14 @@ function createInviteReward(deps) {
     try {
       var enabled = await readSetting(conn, SETTING_INVITE_ENABLED, '0');
       var days = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_DAYS, '7'), 10);
+      var hours = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_HOURS, '0'), 10);
       var cap = parseInt(await readSetting(conn, SETTING_INVITE_MONTHLY_CAP, '4'), 10);
       var delay = parseInt(await readSetting(conn, SETTING_INVITE_GRANT_DELAY_HOURS, '48'), 10);
-      if (!days || days < 1) days = 7;
+      if (!isFinite(days) || days < 0) days = 7;
       if (days > 365) days = 365;
+      if (!isFinite(hours) || hours < 0) hours = 0;
+      if (hours > 24 * 30) hours = 24 * 30;
+      if (!days && !hours) days = 7;
       if (!cap || cap < 0) cap = 4;
       if (cap > 100) cap = 100;
       if (!isFinite(delay) || delay < 0) delay = 48;
@@ -98,6 +103,7 @@ function createInviteReward(deps) {
       _settingsCache = {
         enabled: enabled === '1' || enabled === 'true',
         reward_days: days,
+        reward_hours: hours,
         monthly_cap: cap,
         grant_delay_hours: delay
       };
@@ -186,10 +192,13 @@ function createInviteReward(deps) {
     }
   }
 
-  /** 在连接内叠加 trial 天数；已永久则不变并返回 permanent */
-  async function addTrialDaysInConn(conn, username, days, source, refId) {
-    var d = parseInt(days, 10);
-    if (!d || d < 1) throw new Error('奖励天数无效');
+  /** 在连接内叠加 trial 时长；已永久则不变并返回 permanent */
+  async function addTrialDurationInConn(conn, username, days, hours, source, refId) {
+    var d = parseInt(days, 10) || 0;
+    var h = parseInt(hours, 10) || 0;
+    if (d < 0) d = 0;
+    if (h < 0) h = 0;
+    if (d < 1 && h < 1) throw new Error('奖励时长无效');
     const [rows] = await conn.execute(
       `SELECT account_active, activation_kind, active_until FROM users WHERE username = ? FOR UPDATE`,
       [username]
@@ -198,7 +207,6 @@ function createInviteReward(deps) {
     var rec = rows[0];
     var kind = rec.activation_kind != null ? String(rec.activation_kind) : '';
     if (kind === 'permanent' || (isUserEffectivelyActive(rec) && kind !== 'trial')) {
-      /* 已永久：不叠天数 */
       return { kind: 'permanent', active_until: null, skipped: true };
     }
     var base = Date.now();
@@ -206,7 +214,8 @@ function createInviteReward(deps) {
       var prev = new Date(rec.active_until).getTime();
       if (isFinite(prev) && prev > base) base = prev;
     }
-    var until = new Date(base + d * 86400000);
+    var until = new Date(base + d * 86400000 + h * 3600000);
+    var grantDaysLog = d + (h > 0 ? Math.round((h / 24) * 1000) / 1000 : 0);
     await conn.execute(
       `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ? WHERE username = ?`,
       [until, username]
@@ -214,9 +223,13 @@ function createInviteReward(deps) {
     await conn.execute(
       `INSERT INTO activation_grants (username, days, source, ref_id, active_until_after)
        VALUES (?, ?, ?, ?, ?)`,
-      [username, d, source || 'trial', refId != null ? String(refId) : null, until]
+      [username, grantDaysLog || d || 1, source || 'trial', refId != null ? String(refId) : null, until]
     );
     return { kind: 'trial', active_until: until, skipped: false };
+  }
+
+  async function addTrialDaysInConn(conn, username, days, source, refId) {
+    return addTrialDurationInConn(conn, username, days, 0, source, refId);
   }
 
   /** 应用激活码：支持 grant_days 时效码与永久码 */
@@ -229,7 +242,7 @@ function createInviteReward(deps) {
     try {
       await conn.beginTransaction();
       const [rows] = await conn.execute(
-        'SELECT id, max_uses, used_count, note, grant_days FROM activation_codes WHERE code = ? FOR UPDATE',
+        'SELECT id, max_uses, used_count, note, grant_days, grant_hours FROM activation_codes WHERE code = ? FOR UPDATE',
         [code]
       );
       if (!rows.length) {
@@ -254,7 +267,10 @@ function createInviteReward(deps) {
           [ADMIN_PANEL_USER, r.id]
         );
       }
-      var grantDays = r.grant_days != null ? parseInt(r.grant_days, 10) : null;
+      var grantDays = r.grant_days != null ? parseInt(r.grant_days, 10) : 0;
+      var grantHours = r.grant_hours != null ? parseInt(r.grant_hours, 10) : 0;
+      if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
+      if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
       var wasFirstActivation = false;
       const [urows] = await conn.execute(
         `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
@@ -267,8 +283,15 @@ function createInviteReward(deps) {
       var beforeActive = isUserEffectivelyActive(urows[0]);
       wasFirstActivation = !beforeActive;
 
-      if (grantDays && grantDays > 0) {
-        await addTrialDaysInConn(conn, username, grantDays, 'trial_code', String(r.id));
+      if (grantDays > 0 || grantHours > 0) {
+        await addTrialDurationInConn(
+          conn,
+          username,
+          grantDays,
+          grantHours,
+          'trial_code',
+          String(r.id)
+        );
         if (actChannel) {
           await conn.execute(
             'UPDATE users SET activation_source_channel = COALESCE(activation_source_channel, ?) WHERE username = ?',
@@ -417,7 +440,8 @@ function createInviteReward(deps) {
             continue;
           }
           var inviter = String(locked[0].inviter_username);
-          var days = Number(locked[0].reward_days) || cfg.reward_days;
+          var days = cfg.reward_days;
+          var hours = cfg.reward_hours;
           var monthCount = await countInviterGrantsThisMonth(conn, inviter);
           if (monthCount >= cfg.monthly_cap) {
             await conn.execute(
@@ -448,21 +472,30 @@ function createInviteReward(deps) {
           var transferable = null;
           if (invKind === 'permanent' || (isUserEffectivelyActive(invRows[0]) && invKind !== 'trial')) {
             transferable = randomActivationCodePlain();
+            var noteBits = [];
+            if (days) noteBits.push(days + '天');
+            if (hours) noteBits.push(hours + '小时');
             await conn.execute(
-              `INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, note, owner_admin_username)
-               VALUES (?, 1, 0, NULL, ?, ?, ?)`,
-              [transferable, days, '邀请奖励可转赠', inviter]
+              `INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username)
+               VALUES (?, 1, 0, NULL, ?, ?, ?, ?)`,
+              [
+                transferable,
+                days || null,
+                hours || null,
+                '邀请奖励可转赠' + (noteBits.length ? '（' + noteBits.join('') + '）' : ''),
+                inviter
+              ]
             );
             await conn.execute(
               `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP,
-               transferable_code = ? WHERE id = ?`,
-              [transferable, row.id]
+               transferable_code = ?, reward_days = ? WHERE id = ?`,
+              [transferable, days, row.id]
             );
           } else {
-            await addTrialDaysInConn(conn, inviter, days, 'invite_reward', String(row.id));
+            await addTrialDurationInConn(conn, inviter, days, hours, 'invite_reward', String(row.id));
             await conn.execute(
-              `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              [row.id]
+              `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP, reward_days = ? WHERE id = ?`,
+              [days, row.id]
             );
           }
           await conn.commit();
@@ -515,6 +548,7 @@ function createInviteReward(deps) {
         invite_code: inviteCode,
         invite_path: inviteCode ? 'register.html?invite=' + encodeURIComponent(inviteCode) : '',
         reward_days: cfg.reward_days,
+        reward_hours: cfg.reward_hours,
         monthly_cap: cfg.monthly_cap,
         rewarded_this_month: Number(s.rewarded_month) || 0,
         invited_activated: Number(s.invited_activated) || 0,
@@ -547,9 +581,15 @@ function createInviteReward(deps) {
       }
       if (Object.prototype.hasOwnProperty.call(body, 'invite_reward_days')) {
         var d = parseInt(body.invite_reward_days, 10);
-        if (!d || d < 1) d = 7;
+        if (!isFinite(d) || d < 0) d = 7;
         if (d > 365) d = 365;
         await upsertAppSetting(conn, SETTING_INVITE_REWARD_DAYS, String(d));
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'invite_reward_hours')) {
+        var rh = parseInt(body.invite_reward_hours, 10);
+        if (!isFinite(rh) || rh < 0) rh = 0;
+        if (rh > 24 * 30) rh = 24 * 30;
+        await upsertAppSetting(conn, SETTING_INVITE_REWARD_HOURS, String(rh));
       }
       if (Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap')) {
         var c = parseInt(body.invite_monthly_cap, 10);
@@ -587,6 +627,7 @@ function createInviteReward(deps) {
     invalidateInviteSettingsCache: invalidateInviteSettingsCache,
     SETTING_INVITE_ENABLED: SETTING_INVITE_ENABLED,
     SETTING_INVITE_REWARD_DAYS: SETTING_INVITE_REWARD_DAYS,
+    SETTING_INVITE_REWARD_HOURS: SETTING_INVITE_REWARD_HOURS,
     SETTING_INVITE_MONTHLY_CAP: SETTING_INVITE_MONTHLY_CAP,
     SETTING_INVITE_GRANT_DELAY_HOURS: SETTING_INVITE_GRANT_DELAY_HOURS
   };

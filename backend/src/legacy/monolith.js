@@ -15354,29 +15354,45 @@ function randomActivationCodePlain() {
   return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
-/** 发放单个激活码；body.grant_days 正整数时为时效码 */
+/** 发放单个激活码；body.grant_days / grant_hours 为正时生成时效码 */
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
     var plainCode = randomActivationCodePlain();
     var grantDays = null;
+    var grantHours = null;
     var body = req.body || {};
     if (body.grant_days != null && String(body.grant_days).trim() !== '') {
       var gd = parseInt(body.grant_days, 10);
-      if (!gd || gd < 1 || gd > 365) {
-        return res.status(400).json({ code: 400, msg: 'grant_days 须为 1–365 的整数' });
+      if (!isFinite(gd) || gd < 0 || gd > 365) {
+        return res.status(400).json({ code: 400, msg: 'grant_days 须为 0–365 的整数' });
       }
-      grantDays = gd;
+      if (gd > 0) grantDays = gd;
     }
-    var note = grantDays ? '时效激活' + grantDays + '天' : null;
+    if (body.grant_hours != null && String(body.grant_hours).trim() !== '') {
+      var gh = parseInt(body.grant_hours, 10);
+      if (!isFinite(gh) || gh < 0 || gh > 24 * 30) {
+        return res.status(400).json({ code: 400, msg: 'grant_hours 须为 0–720 的整数' });
+      }
+      if (gh > 0) grantHours = gh;
+    }
+    var isTrial = !!(grantDays || grantHours);
+    var note = null;
+    if (isTrial) {
+      var bits = [];
+      if (grantDays) bits.push(grantDays + '天');
+      if (grantHours) bits.push(grantHours + '小时');
+      note = '时效激活' + bits.join('');
+    }
     const conn = await pool.getConnection();
     await conn.execute(
-      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?)',
+      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
       [
         plainCode,
         maxUses,
         null,
         grantDays,
+        grantHours,
         note,
         req.admin && req.admin.username ? req.admin.username : null
       ]
@@ -15384,7 +15400,12 @@ async function handleAdminIssueCode(req, res) {
     conn.release();
     return res.json({
       code: 200,
-      data: { code: plainCode, max_uses: maxUses, grant_days: grantDays }
+      data: {
+        code: plainCode,
+        max_uses: maxUses,
+        grant_days: grantDays,
+        grant_hours: grantHours
+      }
     });
   } catch (e) {
     console.error(e);
@@ -15873,6 +15894,7 @@ async function handleAdminSettingsGet(req, res) {
         landing_ab: landingAb,
         invite_enabled: inviteCfg.enabled,
         invite_reward_days: inviteCfg.reward_days,
+        invite_reward_hours: inviteCfg.reward_hours,
         invite_monthly_cap: inviteCfg.monthly_cap,
         invite_grant_delay_hours: inviteCfg.grant_delay_hours
       }
@@ -15900,6 +15922,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasInvite =
     Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_reward_days') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_reward_hours') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours');
   if (
@@ -16202,6 +16225,7 @@ async function handleAdminSettingsPost(req, res) {
     var inviteAfter = await getInviteReward().loadInviteSettings(true);
     outData.invite_enabled = inviteAfter.enabled;
     outData.invite_reward_days = inviteAfter.reward_days;
+    outData.invite_reward_hours = inviteAfter.reward_hours;
     outData.invite_monthly_cap = inviteAfter.monthly_cap;
     outData.invite_grant_delay_hours = inviteAfter.grant_delay_hours;
     return res.json({ code: 200, data: outData });

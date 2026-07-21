@@ -6853,16 +6853,42 @@
 
         document.getElementById('btnIssue').addEventListener('click', function () {
             var btn = document.getElementById('btnIssue');
+            var daysEl = document.getElementById('issueGrantDays');
+            var hoursEl = document.getElementById('issueGrantHours');
+            var days = daysEl ? parseInt(daysEl.value, 10) : 0;
+            var hours = hoursEl ? parseInt(hoursEl.value, 10) : 0;
+            if (!isFinite(days) || days < 0) days = 0;
+            if (!isFinite(hours) || hours < 0) hours = 0;
+            if (days > 365) {
+                alert('时效天数不能超过 365');
+                return;
+            }
+            if (hours > 720) {
+                alert('时效小时不能超过 720');
+                return;
+            }
+            var payload = {};
+            if (days > 0) payload.grant_days = days;
+            if (hours > 0) payload.grant_hours = hours;
             btn.disabled = true;
             adminFetch('api/admin/issue-code', {
                 method: 'POST',
-                body: JSON.stringify({})
+                body: JSON.stringify(payload)
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data && data.data.code) {
                         var el = document.getElementById('issueOut');
-                        el.textContent = '激活码：' + data.data.code + '（单次有效、永不过期，仅可激活一个账号）';
+                        var tip = '永久、仅可激活一个账号';
+                        var gd = data.data.grant_days;
+                        var gh = data.data.grant_hours;
+                        if (gd || gh) {
+                            var bits = [];
+                            if (gd) bits.push(gd + '天');
+                            if (gh) bits.push(gh + '小时');
+                            tip = '时效 ' + bits.join('') + '、仅可激活一个账号';
+                        }
+                        el.textContent = '激活码：' + data.data.code + '（' + tip + '）';
                         el.classList.add('show');
                         loadCodes(1);
                     } else {
@@ -7320,6 +7346,10 @@
                         if (inviteDays && data.data.invite_reward_days != null) {
                             inviteDays.value = String(data.data.invite_reward_days);
                         }
+                        var inviteHours = document.getElementById('inviteRewardHours');
+                        if (inviteHours && data.data.invite_reward_hours != null) {
+                            inviteHours.value = String(data.data.invite_reward_hours);
+                        }
                         var inviteCap = document.getElementById('inviteMonthlyCap');
                         if (inviteCap && data.data.invite_monthly_cap != null) {
                             inviteCap.value = String(data.data.invite_monthly_cap);
@@ -7524,10 +7554,19 @@
         if (btnSaveInviteReward) {
             btnSaveInviteReward.addEventListener('click', function () {
                 var days = parseInt(document.getElementById('inviteRewardDays').value, 10);
+                var hours = parseInt(document.getElementById('inviteRewardHours').value, 10);
                 var cap = parseInt(document.getElementById('inviteMonthlyCap').value, 10);
                 var delay = parseInt(document.getElementById('inviteGrantDelayHours').value, 10);
-                if (!days || days < 1 || days > 365) {
-                    alert('奖励天数请输入 1–365');
+                if (!isFinite(days) || days < 0 || days > 365) {
+                    alert('奖励天数请输入 0–365');
+                    return;
+                }
+                if (!isFinite(hours) || hours < 0 || hours > 720) {
+                    alert('奖励小时请输入 0–720');
+                    return;
+                }
+                if (!days && !hours) {
+                    alert('奖励天数与小时不能同时为 0');
                     return;
                 }
                 if (!isFinite(cap) || cap < 0 || cap > 100) {
@@ -7544,6 +7583,7 @@
                     body: JSON.stringify({
                         invite_enabled: !!document.getElementById('inviteEnabled').checked,
                         invite_reward_days: days,
+                        invite_reward_hours: hours,
                         invite_monthly_cap: cap,
                         invite_grant_delay_hours: delay
                     })
