@@ -10610,6 +10610,14 @@ async function handleAuthPost(req, res) {
           } finally {
             connInvite.release();
           }
+          /* 延迟为 0 时尽快发奖，不等定时任务 */
+          setImmediate(function () {
+            getInviteReward()
+              .processPendingInviteRewards()
+              .catch(function (e) {
+                console.error('processPendingInviteRewards after register', e);
+              });
+          });
         } catch (eInvite) {
           console.error('bind invite on register', eInvite);
         }
