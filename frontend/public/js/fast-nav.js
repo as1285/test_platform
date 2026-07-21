@@ -11,7 +11,7 @@
 
   var TAB_PAGES = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
   var WARM_JS = [
-    '/js/auth.js?v=20260721-nav-pin2',
+    '/js/auth.js?v=20260722-invite',
     '/js/page-loading.js?v=20260721-shuiming-spin',
     '/js/theme-loader.js?v=20260720-nav-speed',
     '/js/toast-duration.js?v=20260529-toast-3s'

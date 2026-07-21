@@ -23,6 +23,11 @@ const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const settingsPolicy = require('../shared/settingsPolicy');
+const {
+  createInviteReward,
+  isUserEffectivelyActive,
+  activationFieldsForApi
+} = require('./inviteReward');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -448,6 +453,25 @@ const DEFAULT_MINE_UI = {
 };
 
 let pool;
+/** 时效激活 / 邀请有礼 API（pool 就绪后懒初始化） */
+var inviteRewardApi = null;
+
+function getInviteReward() {
+  if (!inviteRewardApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    inviteRewardApi = createInviteReward({
+      pool: pool,
+      upsertAppSetting: upsertAppSetting,
+      invalidateUserAuthCache: invalidateUserAuthCache,
+      invalidateUserInfoApiCache: invalidateUserInfoApiCache,
+      randomActivationCodePlain: randomActivationCodePlain,
+      ADMIN_PANEL_USER: ADMIN_PANEL_USER
+    });
+  }
+  return inviteRewardApi;
+}
 /** @type {{ v: string, t: number }|null} */
 var _testCompanyNameCache = null;
 var TEST_COMPANY_CACHE_MS = 3000;
@@ -4631,7 +4655,7 @@ async function loadUserAuthState(username) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      'SELECT banned, session_rev, account_active, user_type FROM users WHERE username = ? LIMIT 1',
+      'SELECT banned, session_rev, account_active, user_type, activation_kind, active_until FROM users WHERE username = ? LIMIT 1',
       [u]
     );
     if (!rows.length) {
@@ -4642,8 +4666,11 @@ async function loadUserAuthState(username) {
       banned: rows[0].banned === 1 || rows[0].banned === true,
       session_rev: userSessionRevFromRow(rows[0]),
       account_active: rows[0].account_active === 1 || rows[0].account_active === true,
-      user_type: rows[0].user_type != null ? Number(rows[0].user_type) : USER_TYPE_NORMAL
+      user_type: rows[0].user_type != null ? Number(rows[0].user_type) : USER_TYPE_NORMAL,
+      activation_kind: rows[0].activation_kind != null ? String(rows[0].activation_kind) : 'none',
+      active_until: rows[0].active_until || null
     };
+    row.account_active = isUserEffectivelyActive(row);
     _userAuthCache.set(u, { expiresAt: now + USER_AUTH_CACHE_TTL_MS, row: row });
     return row;
   } finally {
@@ -4710,61 +4737,9 @@ async function recoverCredentialsByActivationCode(rawCode) {
   }
 }
 
-/** 应用：activation code */
+/** 应用：activation code（支持永久码与 grant_days 时效码） */
 async function applyActivationCode(username, rawCode) {
-  var code = String(rawCode || '').trim().toUpperCase();
-  if (!code) {
-    throw new Error('请输入激活码');
-  }
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const [rows] = await conn.execute(
-      'SELECT id, max_uses, used_count, note FROM activation_codes WHERE code = ? FOR UPDATE',
-      [code]
-    );
-    if (rows.length === 0) {
-      await conn.rollback();
-      throw new Error('激活码无效');
-    }
-    var r = rows[0];
-    if (Number(r.used_count) >= Number(r.max_uses)) {
-      await conn.rollback();
-      throw new Error('激活码已用完');
-    }
-    var actChannel = activationSourceFromCodeNote(r.note);
-    await conn.execute(
-      'UPDATE activation_codes SET used_count = used_count + 1, last_used_at = CURRENT_TIMESTAMP, used_by_username = ? WHERE id = ?',
-      [username, r.id]
-    );
-    /* 支付宝 / 酷发卡激活码归属超级管理员，便于「上线」与转化统计 */
-    if (actChannel === 'alipay' || actChannel === 'kufaka') {
-      await conn.execute(
-        `UPDATE activation_codes
-         SET owner_admin_username = COALESCE(NULLIF(TRIM(owner_admin_username), ''), ?)
-         WHERE id = ?`,
-        [ADMIN_PANEL_USER, r.id]
-      );
-    }
-    if (actChannel) {
-      await conn.execute(
-        'UPDATE users SET account_active = 1, activation_source_channel = ? WHERE username = ?',
-        [actChannel, username]
-      );
-    } else {
-      await conn.execute('UPDATE users SET account_active = 1 WHERE username = ?', [username]);
-    }
-    await conn.commit();
-    invalidateUserAuthCache(username);
-    invalidateUserInfoApiCache(username);
-  } catch (e) {
-    try {
-      await conn.rollback();
-    } catch (e2) {}
-    throw e;
-  } finally {
-    conn.release();
-  }
+  await getInviteReward().applyActivationCodeExtended(username, rawCode, activationSourceFromCodeNote);
 }
 
 /** 生成支付宝商户订单号 */
@@ -4826,7 +4801,7 @@ async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
     return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
   }
-  if (req.authUserRow && (req.authUserRow.account_active === 1 || req.authUserRow.account_active === true)) {
+  if (req.authUserRow && isUserEffectivelyActive(req.authUserRow)) {
     return res.status(409).json({ code: 409, msg: '当前账号已激活，无需重复购买' });
   }
   var product = getAlipayProductConfig();
@@ -5029,6 +5004,12 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       ]
     );
     var activationCode = randomActivationCodePlain();
+    const [beforeUserRows] = await conn.execute(
+      `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
+      [locked.username]
+    );
+    var wasFirstPayActivation =
+      beforeUserRows.length && !isUserEffectivelyActive(beforeUserRows[0]);
     const [codeResult] = await conn.execute(
       `INSERT INTO activation_codes
        (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username, owner_admin_username)
@@ -5038,10 +5019,23 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     await conn.execute(
       `UPDATE users
        SET account_active = 1,
+           activation_kind = 'permanent',
+           active_until = NULL,
            activation_source_channel = CASE WHEN account_active = 0 THEN 'alipay' ELSE activation_source_channel END
        WHERE username = ?`,
       [locked.username]
     );
+    if (wasFirstPayActivation && beforeUserRows[0].invited_by) {
+      try {
+        await getInviteReward().markInviteeActivatedInConn(
+          conn,
+          locked.username,
+          beforeUserRows[0].invited_by
+        );
+      } catch (eInvPay) {
+        console.error('alipay invite mark', eInvPay);
+      }
+    }
     await conn.execute(
       `UPDATE payment_orders
        SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP,
@@ -5159,8 +5153,7 @@ async function requireActivated(req, res, next) {
     if (rowUserTypeIsGuest(row)) {
       return next();
     }
-    var a = row.account_active;
-    if (a === 1 || a === true) {
+    if (isUserEffectivelyActive(row)) {
       return next();
     }
     return res.status(403).json({ code: 403, msg: '账号未激活', need_activation: true });
@@ -6139,8 +6132,8 @@ async function loginUser(username, password) {
     throw new Error('账号已被封禁');
   }
 
-  var activeVal = rec.account_active != null ? Number(rec.account_active) : 1;
-  var accountActive = activeVal === 1;
+  var actFields = activationFieldsForApi(rec);
+  var accountActive = actFields.account_active;
   
   var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
   return {
@@ -6148,6 +6141,9 @@ async function loginUser(username, password) {
     real_name: rec.real_name || username,
     username: username,
     account_active: accountActive,
+    activation_kind: actFields.activation_kind,
+    active_until: actFields.active_until,
+    active_days_left: actFields.active_days_left,
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
     is_guest: ut === USER_TYPE_GUEST,
@@ -6169,7 +6165,8 @@ async function getUserSummaryForApi(userId) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type
+      `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
+              activation_kind, active_until
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
     );
@@ -6180,6 +6177,9 @@ async function getUserSummaryForApi(userId) {
         tax_id: DEFAULT_TAX_ID_HINT,
         gender: 1,
         account_active: false,
+        activation_kind: 'none',
+        active_until: null,
+        active_days_left: null,
         employer_count: 0,
         family_count: 0,
         bank_card_count: 0,
@@ -6196,16 +6196,16 @@ async function getUserSummaryForApi(userId) {
       [uid]
     );
     var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
-    var accountActive =
-      rec.account_active === 1 ||
-      rec.account_active === true ||
-      Number(rec.account_active) === 1;
+    var actFields = activationFieldsForApi(rec);
     var out = {
       username: uid,
       real_name: rec.real_name != null ? String(rec.real_name) : uid,
       tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
       gender: rec.gender != null ? Number(rec.gender) : 1,
-      account_active: accountActive,
+      account_active: actFields.account_active,
+      activation_kind: actFields.activation_kind,
+      active_until: actFields.active_until,
+      active_days_left: actFields.active_days_left,
       employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
       family_count: rec.family_count != null ? Number(rec.family_count) : 0,
       bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
@@ -6270,7 +6270,8 @@ async function getUserInfoForApi(userId) {
     `SELECT username, real_name, tax_id, employer_count, family_count, bank_card_count, gender,
             account_active, user_type, id_type, birth_date, nationality,
             huji_area, huji_detail, living_area, living_detail,
-            contact_area, contact_detail, education, ethnicity, email
+            contact_area, contact_detail, education, ethnicity, email,
+            activation_kind, active_until, invite_code
      FROM users WHERE username = ? LIMIT 1`,
     [uid]
   );
@@ -6323,10 +6324,8 @@ async function getUserInfoForApi(userId) {
   
   const rec = rows[0];
   var ut = rec.user_type != null ? Number(rec.user_type) : USER_TYPE_NORMAL;
-  var accountActive =
-    rec.account_active === 1 ||
-    rec.account_active === true ||
-    Number(rec.account_active) === 1;
+  var actFields = activationFieldsForApi(rec);
+  var accountActive = actFields.account_active;
   var wmFlag = !accountActive;
   var lockedCompany = '';
   if (ut === USER_TYPE_TEST) {
@@ -6354,6 +6353,9 @@ async function getUserInfoForApi(userId) {
     tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
     gender: rec.gender != null ? Number(rec.gender) : 1,
     account_active: accountActive,
+    activation_kind: actFields.activation_kind,
+    active_until: actFields.active_until,
+    active_days_left: actFields.active_days_left,
     watermark_enabled: wmFlag,
     user_type: ut,
     is_test_account: ut === USER_TYPE_TEST,
@@ -6676,6 +6678,7 @@ async function handleUserGet(req, res) {
   if (
     action !== 'info' &&
     action !== 'summary' &&
+    action !== 'invite_overview' &&
     action !== 'employers' &&
     action !== 'family_members' &&
     action !== 'family_member' &&
@@ -6689,6 +6692,10 @@ async function handleUserGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'user_id required' });
   }
   try {
+    if (action === 'invite_overview') {
+      var overview = await getInviteReward().getInviteOverviewForUser(userId);
+      return res.json({ code: 200, data: overview });
+    }
     if (action === 'summary') {
       var summary = await getUserSummaryForApi(userId);
       if (!summary) {
@@ -10415,15 +10422,18 @@ async function handleAuthGet(req, res) {
     var uid = payload.sub;
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
-      'SELECT account_active, user_type FROM users WHERE username = ?',
+      'SELECT account_active, user_type, activation_kind, active_until FROM users WHERE username = ?',
       [uid]
     );
     conn.release();
-    var active = rows.length && (rows[0].account_active === 1 || rows[0].account_active === true);
+    var actFields = activationFieldsForApi(rows[0] || {});
     return res.json({
       code: 200,
       data: {
-        account_active: !!active,
+        account_active: actFields.account_active,
+        activation_kind: actFields.activation_kind,
+        active_until: actFields.active_until,
+        active_days_left: actFields.active_days_left,
         username: uid,
         is_guest: !!(rows.length && rowUserTypeIsGuest(rows[0]))
       }
@@ -10451,16 +10461,17 @@ async function handleActivatePost(req, res) {
         guest_download_required: true
       });
     }
-    var already =
-      rec.account_active === 1 ||
-      rec.account_active === true ||
-      Number(rec.account_active) === 1;
+    var already = isUserEffectivelyActive(rec);
     if (already) {
+      var actOk = activationFieldsForApi(rec);
       var outOk = {
         user_id: rec.username,
         real_name: rec.real_name || rec.username,
         username: rec.username,
         account_active: true,
+        activation_kind: actOk.activation_kind,
+        active_until: actOk.active_until,
+        active_days_left: actOk.active_days_left,
         is_test_account: rowUserTypeIsTest(rec),
         token: signAccessToken({
           user_id: rec.username,
@@ -10473,16 +10484,20 @@ async function handleActivatePost(req, res) {
     }
     await applyActivationCode(uid, req.body && req.body.code);
     var rec2 = await getUserRowByUsername(uid);
+    var act2 = activationFieldsForApi(rec2);
     var out = {
       user_id: rec2.username,
       real_name: rec2.real_name || rec2.username,
       username: rec2.username,
-      account_active: true,
+      account_active: act2.account_active,
+      activation_kind: act2.activation_kind,
+      active_until: act2.active_until,
+      active_days_left: act2.active_days_left,
       is_test_account: rowUserTypeIsTest(rec2),
       token: signAccessToken({
         user_id: rec2.username,
         username: rec2.username,
-        account_active: true,
+        account_active: act2.account_active,
         session_rev: userSessionRevFromRow(rec2)
       })
     };
@@ -10577,6 +10592,27 @@ async function handleAuthPost(req, res) {
           parseFromInstallGuideFlag(body),
           regSalesCh
         );
+        try {
+          var inviteRaw =
+            body.invite != null
+              ? body.invite
+              : body.invite_code != null
+                ? body.invite_code
+                : '';
+          await getInviteReward().bindInvitedByOnRegister(
+            out.username,
+            inviteRaw,
+            body.client_id || body.clientId || ''
+          );
+          var connInvite = await pool.getConnection();
+          try {
+            await getInviteReward().ensureUserInviteCode(connInvite, out.username);
+          } finally {
+            connInvite.release();
+          }
+        } catch (eInvite) {
+          console.error('bind invite on register', eInvite);
+        }
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
@@ -15318,20 +15354,37 @@ function randomActivationCodePlain() {
   return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
-/** 发放单个激活码 */
+/** 发放单个激活码；body.grant_days 正整数时为时效码 */
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
     var plainCode = randomActivationCodePlain();
+    var grantDays = null;
+    var body = req.body || {};
+    if (body.grant_days != null && String(body.grant_days).trim() !== '') {
+      var gd = parseInt(body.grant_days, 10);
+      if (!gd || gd < 1 || gd > 365) {
+        return res.status(400).json({ code: 400, msg: 'grant_days 须为 1–365 的整数' });
+      }
+      grantDays = gd;
+    }
+    var note = grantDays ? '时效激活' + grantDays + '天' : null;
     const conn = await pool.getConnection();
     await conn.execute(
-      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?)',
-      [plainCode, maxUses, null, null, req.admin && req.admin.username ? req.admin.username : null]
+      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?)',
+      [
+        plainCode,
+        maxUses,
+        null,
+        grantDays,
+        note,
+        req.admin && req.admin.username ? req.admin.username : null
+      ]
     );
     conn.release();
     return res.json({
       code: 200,
-      data: { code: plainCode, max_uses: maxUses }
+      data: { code: plainCode, max_uses: maxUses, grant_days: grantDays }
     });
   } catch (e) {
     console.error(e);
@@ -15802,6 +15855,7 @@ async function handleAdminSettingsGet(req, res) {
     var qrRef = await getWechatPayQrcodeUrl();
     var conversionAb = await loadConversionAbParsed();
     var landingAb = await loadLandingAbParsed();
+    var inviteCfg = await getInviteReward().loadInviteSettings(true);
     return res.json({
       code: 200,
       data: {
@@ -15816,7 +15870,11 @@ async function handleAdminSettingsGet(req, res) {
         wechat_pay_qrcode_url: qrRef,
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
         conversion_ab: conversionAb,
-        landing_ab: landingAb
+        landing_ab: landingAb,
+        invite_enabled: inviteCfg.enabled,
+        invite_reward_days: inviteCfg.reward_days,
+        invite_monthly_cap: inviteCfg.monthly_cap,
+        invite_grant_delay_hours: inviteCfg.grant_delay_hours
       }
     });
   } catch (e) {
@@ -15839,6 +15897,11 @@ async function handleAdminSettingsPost(req, res) {
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
   var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
+  var hasInvite =
+    Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_reward_days') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours');
   if (
     !hasMineUi &&
     !hasAndroid &&
@@ -15850,11 +15913,12 @@ async function handleAdminSettingsPost(req, res) {
     !hasQqGroup &&
     !hasWechatPayQr &&
     !hasConversionAb &&
-    !hasLandingAb
+    !hasLandingAb &&
+    !hasInvite
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置、邀请有礼配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -16104,6 +16168,10 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasInvite) {
+      await getInviteReward().saveInviteSettingsFromAdmin(body);
+    }
+
     if (
       hasAndroid ||
       hasAgentAndroid ||
@@ -16131,6 +16199,11 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
+    var inviteAfter = await getInviteReward().loadInviteSettings(true);
+    outData.invite_enabled = inviteAfter.enabled;
+    outData.invite_reward_days = inviteAfter.reward_days;
+    outData.invite_monthly_cap = inviteAfter.monthly_cap;
+    outData.invite_grant_delay_hours = inviteAfter.grant_delay_hours;
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -19823,6 +19896,20 @@ async function startServer() {
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
   serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
+  setInterval(function () {
+    getInviteReward()
+      .processPendingInviteRewards()
+      .catch(function (e) {
+        console.error('processPendingInviteRewards', e);
+      });
+  }, 60000);
+  setTimeout(function () {
+    getInviteReward()
+      .processPendingInviteRewards()
+      .catch(function (e) {
+        console.error('processPendingInviteRewards', e);
+      });
+  }, 8000);
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

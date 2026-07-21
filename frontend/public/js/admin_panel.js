@@ -7309,6 +7309,25 @@
                             );
                             updateLandingAbSplitHint();
                         }
+                        var inviteEn = document.getElementById('inviteEnabled');
+                        if (inviteEn) {
+                            inviteEn.checked =
+                                data.data.invite_enabled === true ||
+                                data.data.invite_enabled === 1 ||
+                                data.data.invite_enabled === '1';
+                        }
+                        var inviteDays = document.getElementById('inviteRewardDays');
+                        if (inviteDays && data.data.invite_reward_days != null) {
+                            inviteDays.value = String(data.data.invite_reward_days);
+                        }
+                        var inviteCap = document.getElementById('inviteMonthlyCap');
+                        if (inviteCap && data.data.invite_monthly_cap != null) {
+                            inviteCap.value = String(data.data.invite_monthly_cap);
+                        }
+                        var inviteDelay = document.getElementById('inviteGrantDelayHours');
+                        if (inviteDelay && data.data.invite_grant_delay_hours != null) {
+                            inviteDelay.value = String(data.data.invite_grant_delay_hours);
+                        }
                     }
                     if (data.code === 200 && data.data) {
                         var apkEl = document.getElementById('androidApkDownloadUrl');
@@ -7497,6 +7516,54 @@
                     })
                     .finally(function () {
                         btnSaveLandingAb.disabled = false;
+                    });
+            });
+        }
+
+        var btnSaveInviteReward = document.getElementById('btnSaveInviteReward');
+        if (btnSaveInviteReward) {
+            btnSaveInviteReward.addEventListener('click', function () {
+                var days = parseInt(document.getElementById('inviteRewardDays').value, 10);
+                var cap = parseInt(document.getElementById('inviteMonthlyCap').value, 10);
+                var delay = parseInt(document.getElementById('inviteGrantDelayHours').value, 10);
+                if (!days || days < 1 || days > 365) {
+                    alert('奖励天数请输入 1–365');
+                    return;
+                }
+                if (!isFinite(cap) || cap < 0 || cap > 100) {
+                    alert('月封顶请输入 0–100');
+                    return;
+                }
+                if (!isFinite(delay) || delay < 0 || delay > 720) {
+                    alert('发奖延迟请输入 0–720 小时');
+                    return;
+                }
+                btnSaveInviteReward.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        invite_enabled: !!document.getElementById('inviteEnabled').checked,
+                        invite_reward_days: days,
+                        invite_monthly_cap: cap,
+                        invite_grant_delay_hours: delay
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('邀请有礼配置已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnSaveInviteReward.disabled = false;
                     });
             });
         }

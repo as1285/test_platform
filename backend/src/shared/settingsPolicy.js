@@ -19,7 +19,11 @@ const OPS_SETTING_KEYS = [
   'chat_auto_reply_reply',
   'chat_ai_enabled',
   'chat_ai_prompt',
-  'migration_activation_codes_no_expiry_v1'
+  'migration_activation_codes_no_expiry_v1',
+  'invite_enabled',
+  'invite_reward_days',
+  'invite_monthly_cap',
+  'invite_grant_delay_hours'
 ];
 
 /** 只允许环境变量 / 密钥管理，禁止写入 app_settings */

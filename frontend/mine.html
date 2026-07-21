@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-nav-pin2"></script>
+    <script src="/js/auth.js?v=20260722-invite"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -13,7 +13,7 @@
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
-    <link rel="stylesheet" href="css/nav.css?v=20260721-nav-pin2">
+    <link rel="stylesheet" href="css/nav.css?v=20260722-invite">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -921,6 +921,63 @@
             padding: 4px 0 2px;
         }
 
+        .mine-invite-card {
+            margin: 14px 16px 0;
+            padding: 14px 14px 12px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .mine-invite-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+
+        .mine-invite-desc {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.45;
+            margin: 0 0 10px;
+        }
+
+        .mine-invite-code-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .mine-invite-label { color: #888; }
+
+        .mine-invite-copy {
+            margin-left: auto;
+            border: none;
+            background: #1677ff;
+            color: #fff;
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+
+        .mine-invite-stats {
+            margin: 10px 0 0;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .mine-invite-transfer {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #444;
+            word-break: break-all;
+        }
+
         .menu-item {
             display: flex;
             align-items: center;
@@ -1143,6 +1200,18 @@
                 </a>
                 <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
             </div>
+        </div>
+
+        <div class="mine-invite-card" id="mineInviteCard" hidden>
+            <div class="mine-invite-title">邀请有礼</div>
+            <p class="mine-invite-desc" id="mineInviteDesc">每成功邀请 1 人注册并激活，你可获得时效使用权。</p>
+            <div class="mine-invite-code-row">
+                <span class="mine-invite-label">邀请码</span>
+                <strong id="mineInviteCodeText">—</strong>
+                <button type="button" class="mine-invite-copy" id="btnMineInviteCopy">复制链接</button>
+            </div>
+            <p class="mine-invite-stats" id="mineInviteStats"></p>
+            <div id="mineInviteTransferCodes" class="mine-invite-transfer" hidden></div>
         </div>
 
         <div class="menu-list">
@@ -1739,13 +1808,101 @@
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
                 }
+                var kind = user && user.activation_kind != null ? String(user.activation_kind) : '';
+                var days = user && user.active_days_left != null ? Number(user.active_days_left) : NaN;
                 if (btn) {
-                    btn.style.display = active ? 'none' : 'inline-flex';
-                    btn.textContent = isLandingGuestMode() ? '下载' : '激活';
+                    if (active && kind === 'trial' && isFinite(days)) {
+                        btn.style.display = 'inline-flex';
+                        btn.textContent = '剩' + days + '天';
+                    } else if (active) {
+                        btn.style.display = 'none';
+                        btn.textContent = '已激活';
+                    } else {
+                        btn.style.display = 'inline-flex';
+                        btn.textContent = isLandingGuestMode() ? '下载' : '激活';
+                    }
                 }
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
                 }
+            }
+
+            function loadMineInviteOverview() {
+                var card = document.getElementById('mineInviteCard');
+                if (!card) return;
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
+                fetchFn('api/user?action=invite_overview')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code !== 200 || !data.data || !data.data.enabled) {
+                            card.hidden = true;
+                            return;
+                        }
+                        var d = data.data;
+                        card.hidden = false;
+                        var codeEl = document.getElementById('mineInviteCodeText');
+                        if (codeEl) codeEl.textContent = d.invite_code || '—';
+                        var desc = document.getElementById('mineInviteDesc');
+                        if (desc) {
+                            desc.textContent =
+                                '好友通过你的链接注册并激活后，你可获得 ' +
+                                (d.reward_days || 7) +
+                                ' 天使用权（每月最多 ' +
+                                (d.monthly_cap || 4) +
+                                ' 次）。';
+                        }
+                        var stats = document.getElementById('mineInviteStats');
+                        if (stats) {
+                            stats.textContent =
+                                '本月已获奖 ' +
+                                (d.rewarded_this_month || 0) +
+                                '/' +
+                                (d.monthly_cap || 4) +
+                                ' · 累计成功 ' +
+                                (d.invited_activated || 0) +
+                                ' 人 · 待到账 ' +
+                                (d.pending_rewards || 0);
+                        }
+                        var transfer = document.getElementById('mineInviteTransferCodes');
+                        if (transfer) {
+                            var list = d.transferable_codes || [];
+                            if (!list.length) {
+                                transfer.hidden = true;
+                                transfer.innerHTML = '';
+                            } else {
+                                transfer.hidden = false;
+                                transfer.innerHTML =
+                                    '<div>可转赠时效码：</div>' +
+                                    list
+                                        .map(function (c) {
+                                            return (
+                                                '<div>' +
+                                                String(c.code || '') +
+                                                '（' +
+                                                (c.days || '') +
+                                                '天）</div>'
+                                            );
+                                        })
+                                        .join('');
+                            }
+                        }
+                        window.__mineInvitePath = d.invite_path || '';
+                        updateMineActivateButton({
+                            account_active: d.account_active,
+                            activation_kind: d.activation_kind,
+                            active_days_left: d.active_days_left
+                        });
+                    })
+                    .catch(function () {
+                        card.hidden = true;
+                    });
             }
 
             function submitMineActivateWithCode(code) {
@@ -2075,6 +2232,9 @@
                     } else {
                         setMineDisplayName('');
                     }
+                    if (u.activation_kind != null || u.active_days_left != null || u.account_active != null) {
+                        updateMineActivateButton(u);
+                    }
                     if (u.tax_id) {
                         localStorage.setItem('tax_id', u.tax_id);
                         mineCurrentTaxIdRaw = isPlaceholderTaxIdMine(u.tax_id) ? '' : u.tax_id;
@@ -2236,9 +2396,37 @@
             });
 
             loadUserInfo();
+            loadMineInviteOverview();
             syncMineProfileEditGate();
             fetchMineXianyuUrl();
             installLegacyActivatePromptShim();
+
+            var btnMineInviteCopy = document.getElementById('btnMineInviteCopy');
+            if (btnMineInviteCopy) {
+                btnMineInviteCopy.addEventListener('click', function () {
+                    var path = window.__mineInvitePath || '';
+                    var url = path
+                        ? window.location.origin.replace(/\/$/, '') + '/' + String(path).replace(/^\//, '')
+                        : '';
+                    if (!url) {
+                        alert('邀请链接暂不可用');
+                        return;
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(url).then(
+                            function () {
+                                if (window.TaxApp && TaxApp.ui) TaxApp.ui.toast('邀请链接已复制', { ok: true });
+                                else alert('邀请链接已复制');
+                            },
+                            function () {
+                                prompt('复制邀请链接', url);
+                            }
+                        );
+                    } else {
+                        prompt('复制邀请链接', url);
+                    }
+                });
+            }
 
             function handleConsultMenuClick(e) {
                 e.preventDefault();

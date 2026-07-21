@@ -12,6 +12,7 @@
   var LANDING_AB_ASSIGNMENT_KEY = 'landing_bc_assignment_v1';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
+  var INVITE_CODE_KEY = 'invite_code_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
   var SALES_CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var PUBLIC_PAGES = {
@@ -1128,6 +1129,45 @@
     } catch (e) {}
   }
 
+  function sanitizeInviteCode(raw) {
+    var s = String(raw || '')
+      .trim()
+      .toUpperCase();
+    if (!s || s.length > 32) return '';
+    if (!/^[A-Z0-9]+$/.test(s)) return '';
+    return s;
+  }
+
+  function initInviteCodeFromUrl() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var code = sanitizeInviteCode(p.get('invite') || p.get('invite_code') || '');
+      if (!code) return;
+      localStorage.setItem(
+        INVITE_CODE_KEY,
+        JSON.stringify({
+          code: code,
+          at: Date.now(),
+          source: 'url'
+        })
+      );
+    } catch (e) {}
+  }
+
+  function getRegisterInviteCode() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var fromUrl = sanitizeInviteCode(p.get('invite') || p.get('invite_code') || '');
+      if (fromUrl) return fromUrl;
+      var raw = localStorage.getItem(INVITE_CODE_KEY);
+      if (!raw) return '';
+      var parsed = JSON.parse(raw);
+      return sanitizeInviteCode(parsed && parsed.code);
+    } catch (e) {
+      return '';
+    }
+  }
+
   function initDistributorAppFromUrl() {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -1407,6 +1447,7 @@
   }
 
   initSalesChannelFromUrl();
+  initInviteCodeFromUrl();
   initDistributorAppFromUrl();
 
   (function bootstrapSalesChannel() {
@@ -2225,6 +2266,7 @@
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
   window.getSalesChannel = getSalesChannel;
   window.getRegisterSalesChannel = getRegisterSalesChannel;
+  window.getRegisterInviteCode = getRegisterInviteCode;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
   window.isDistributorApp = isDistributorApp;
   window.isInAppRegisterDisabled = isInAppRegisterDisabled;
