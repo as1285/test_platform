@@ -858,7 +858,7 @@
           /* 华为 Pura 70：H5 横向铺满，录屏黑边改为页面灰底；个人中心主区贴边 */
           'html.app-huawei-pura70,html.app-huawei-pura70 body{width:100% !important;min-width:100% !important;max-width:none !important;margin:0 !important;background:#f5f6fa !important;overflow-x:hidden !important;}' +
           'html.app-huawei-pura70 body.page-mine .header-bg,html.app-huawei-pura70 body.page-mine .content-wrapper{width:100vw !important;max-width:100vw !important;margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;box-sizing:border-box !important;}' +
-          'html.app-huawei-pura70 body.page-mine .user-card,html.app-huawei-pura70 body.page-mine .menu-list,html.app-huawei-pura70 body.page-mine .logout-section{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+          'html.app-huawei-pura70 body.page-mine .user-card,html.app-huawei-pura70 body.page-mine .menu-list{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
           'html.app-huawei-pura70 body.page-mine .function-cards{margin-left:8px !important;margin-right:8px !important;}' +
           'html.app-huawei-pura70.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
           /* 华为 Pura 70 Cordova：壳已避开状态栏，顶栏贴 WebView 顶；高度由首页 JS 写入 --shouye-fixed-top-h */
@@ -2241,7 +2241,7 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260721-query-spin';
+      s.src = '/js/page-loading.js?v=20260720-detail-speed';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);
