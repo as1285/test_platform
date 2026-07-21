@@ -20,6 +20,7 @@ const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
 const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
+const adminMenuRegistry = require('../admin/menuRegistry');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -415,30 +416,8 @@ const DEFAULT_LANDING_AB = {
   c_percent: 50
 };
 
-const ADMIN_MENU_KEYS = [
-  'settings',
-  'install-guide',
-  'appearance',
-  'codes',
-  'users',
-  'guest-users',
-  'user-data',
-  'user-behavior',
-  'activated-user-analysis',
-  'feedback',
-  'chat',
-  'login-log',
-  'analytics-conversion',
-  'analytics-activity',
-  'analytics-register',
-  'analytics-tracking',
-  'analytics-devices',
-  'install-guide-stats',
-  'channel-analysis',
-  'api-analytics',
-  'admin-accounts',
-  'server-monitor'
-];
+/** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
+const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
 
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
@@ -10144,17 +10123,10 @@ async function handleAdminLogin(req, res) {
         return res.status(403).json({ code: 403, msg: '管理账号已停用' });
       }
       recordAdminLoginAttempt(admin.username, true, 'ok', req).catch(function () {});
+      var sessionPayload = adminMenuRegistry.buildAdminSessionPayload(admin);
       return res.json({
         code: 200,
-        data: {
-          token: signAdminToken(admin.username),
-          admin: {
-            username: admin.username,
-            full_name: admin.full_name || '',
-            is_super: !!admin.is_super,
-            menus: admin.menus
-          }
-        }
+        data: Object.assign({ token: signAdminToken(admin.username) }, sessionPayload)
       });
     } finally {
       conn.release();
@@ -10168,14 +10140,7 @@ async function handleAdminLogin(req, res) {
 async function handleAdminMe(req, res) {
   return res.json({
     code: 200,
-    data: {
-      admin: {
-        username: req.admin.username,
-        full_name: req.admin.full_name || '',
-        is_super: !!req.admin.is_super,
-        menus: req.admin.menus
-      }
-    }
+    data: adminMenuRegistry.buildAdminSessionPayload(req.admin)
   });
 }
 
@@ -10210,7 +10175,14 @@ async function handleAdminAccountsList(req, res) {
           )
         });
       }
-      return res.json({ code: 200, data: { accounts: out, menu_keys: ADMIN_MENU_KEYS } });
+      return res.json({
+        code: 200,
+        data: {
+          accounts: out,
+          menu_keys: ADMIN_MENU_KEYS,
+          menu_defs: adminMenuRegistry.getAssignableMenuDefs()
+        }
+      });
     } finally {
       conn.release();
     }

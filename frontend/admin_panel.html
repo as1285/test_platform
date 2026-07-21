@@ -2,77 +2,24 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js"></script>
+    <script src="/js/admin_auth.js?v=20260721-p2"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
-    <link rel="stylesheet" href="css/admin_panel.css?v=20260720-admin-ui">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260721-p2">
 </head>
 <body>
     <div class="layout">
         <aside class="sidebar" aria-label="功能导航">
             <div class="sidebar-brand">管理控制台</div>
-            <nav class="sidebar-nav">
-                <div class="nav-group" data-nav-group="config">
-                    <button type="button" class="nav-group-label" aria-expanded="true">系统配置</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item active" data-page="settings" data-title="系统设置">系统设置</button>
-                    <button type="button" class="nav-item" data-page="install-guide" data-title="引导安装">引导安装</button>
-                    <button type="button" class="nav-item" data-page="appearance" data-title="用户端外观">用户端外观</button>
-                    <button type="button" class="nav-item" data-page="codes" data-title="激活码">激活码</button>
-                    </div>
-                </div>
-                <div class="nav-group" data-nav-group="accounts">
-                    <button type="button" class="nav-group-label" aria-expanded="true">账号权限</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item" data-page="admin-accounts" data-title="后台账号权限">后台账号权限</button>
-                    </div>
-                </div>
-                <div class="nav-group" data-nav-group="users">
-                    <button type="button" class="nav-group-label" aria-expanded="true">用户管理</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item" data-page="users" data-title="注册用户">注册用户</button>
-                    <button type="button" class="nav-item" data-page="guest-users" data-title="游客用户">游客用户</button>
-                    <button type="button" class="nav-item" data-page="users-deleted" data-title="已删除账号">已删除账号</button>
-                    <button type="button" class="nav-item" data-page="user-data" data-title="用户数据">用户数据</button>
-                    <button type="button" class="nav-item" data-page="user-behavior" data-title="用户行为">用户行为</button>
-                    <button type="button" class="nav-item" data-page="activated-user-analysis" data-title="激活用户分析">激活用户分析</button>
-                    <button type="button" class="nav-item" data-page="feedback" data-title="用户反馈">用户反馈</button>
-                    <button type="button" class="nav-item" data-page="chat" data-title="在线客服">在线客服</button>
-                    </div>
-                </div>
-                <div class="nav-group" data-nav-group="logs">
-                    <button type="button" class="nav-group-label" aria-expanded="true">日志审计</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item" data-page="login-log" data-title="管理账号登录流水">管理账号登录流水</button>
-                    <button type="button" class="nav-item" data-page="user-login-log" data-title="普通用户登录流水">普通用户登录流水</button>
-                    </div>
-                </div>
-                <div class="nav-group" data-nav-group="ops">
-                    <button type="button" class="nav-group-label" aria-expanded="true">系统运维</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item" data-page="server-monitor" data-title="服务器监控">服务器监控</button>
-                    </div>
-                </div>
-                <div class="nav-group" data-nav-group="stats">
-                    <button type="button" class="nav-group-label" aria-expanded="true">数据统计</button>
-                    <div class="nav-group-items">
-                    <button type="button" class="nav-item" data-page="analytics-conversion" data-title="转化分析">转化分析</button>
-                    <button type="button" class="nav-item" data-page="analytics-activity" data-title="用户活跃">用户活跃</button>
-                    <button type="button" class="nav-item" data-page="analytics-register" data-title="注册分析">注册分析</button>
-                    <button type="button" class="nav-item" data-page="analytics-tracking" data-title="埋点分析">埋点分析</button>
-                    <button type="button" class="nav-item" data-page="analytics-devices" data-title="设备分析">设备分析</button>
-                    <button type="button" class="nav-item" data-page="install-guide-stats" data-title="安装页统计">安装页统计</button>
-                    <button type="button" class="nav-item" data-page="channel-analysis" data-title="渠道分析">渠道分析</button>
-                    <button type="button" class="nav-item" data-page="api-analytics" data-title="接口统计">接口统计</button>
-                    </div>
-                </div>
+            <nav id="adminSidebarNav" class="sidebar-nav" aria-live="polite">
+                <!-- 侧栏由 /api/admin/me 的 menu_tree 渲染（阶段 2） -->
             </nav>
         </aside>
         <div class="main-area">
             <div class="top">
                 <div class="top-inner">
                     <h1 id="pageTitle">系统设置</h1>
-                    <button type="button" class="btn-logout" onclick="adminLogout()">退出管理</button>
+                    <button type="button" class="btn-logout" id="btnAdminLogout">退出管理</button>
                 </div>
             </div>
             <div class="wrap">
@@ -2078,10 +2025,9 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script src="/js/admin/loader.js?v=20260721-p2"></script>
+    <script src="/js/admin/nav.js?v=20260721-p2"></script>
     <script src="/js/admin-analytics-period.js?v=20260611-month-pick"></script>
-    <script src="/js/admin_panel.js?v=20260720-api-opt"></script>
-    <script src="/js/vendor/qrcode.min.js"></script>
-    <script src="/js/najilu.js?v=20260720-save-back"></script>
+    <script src="/js/admin_panel.js?v=20260721-p2"></script>
 </body>
 </html>

@@ -1,16 +1,34 @@
 /**
  * 管理后台：独立 token（admin_token），与用户端 localStorage.token 分离。
+ * 阶段 2：支持独立管理域 /admin 路径入口。
  */
 (function () {
   var TOKEN_KEY = 'admin_token';
-  var LOGIN_PAGE = 'admin_login.html';
-  var PANEL_PAGE = 'admin_panel.html';
+  var LOGIN_PAGE = '/admin_login.html';
+  var PANEL_PAGE = '/admin_panel.html';
 
-  function currentPageName() {
-    var p = window.location.pathname || '';
-    var i = p.lastIndexOf('/');
-    var name = (i >= 0 ? p.slice(i + 1) : p) || '';
-    return name || 'index.html';
+  function currentPath() {
+    return String(window.location.pathname || '');
+  }
+
+  function isLoginPage() {
+    var p = currentPath();
+    return (
+      p === LOGIN_PAGE ||
+      p === '/admin_login.html' ||
+      p === '/admin/login' ||
+      /\/admin_login\.html$/i.test(p)
+    );
+  }
+
+  function isPanelPage() {
+    var p = currentPath();
+    return (
+      p === PANEL_PAGE ||
+      p === '/admin_panel.html' ||
+      p === '/admin/panel' ||
+      /\/admin_panel\.html$/i.test(p)
+    );
   }
 
   function getToken() {
@@ -41,6 +59,10 @@
   function adminFetch(url, opts) {
     opts = opts || {};
     opts.headers = Object.assign({}, adminHeaders(), opts.headers || {});
+    // 管理域与主站同路径 API；绝对路径更稳
+    if (typeof url === 'string' && url.indexOf('http') !== 0 && url.charAt(0) !== '/') {
+      url = '/' + url;
+    }
     return fetch(url, opts).then(function (r) {
       if (r.status === 401) {
         return rejectUnauthorized();
@@ -54,6 +76,9 @@
     var fd = new FormData();
     fd.append(fieldName, file);
     var t = getToken();
+    if (typeof url === 'string' && url.indexOf('http') !== 0 && url.charAt(0) !== '/') {
+      url = '/' + url;
+    }
     return fetch(url, {
       method: 'POST',
       headers: t ? { Authorization: 'Bearer ' + t } : {},
@@ -70,6 +95,7 @@
     try {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('admin_profile');
+      localStorage.removeItem('admin_menu_tree');
     } catch (e) {}
     window.location.href = LOGIN_PAGE;
   }
@@ -79,12 +105,11 @@
   window.adminUpload = adminUpload;
   window.adminLogout = adminLogout;
 
-  var page = currentPageName();
-  if (page === PANEL_PAGE) {
+  if (isPanelPage()) {
     if (!getToken()) {
       window.location.replace(LOGIN_PAGE);
     }
-  } else if (page === LOGIN_PAGE) {
+  } else if (isLoginPage()) {
     if (getToken()) {
       window.location.replace(PANEL_PAGE);
     }

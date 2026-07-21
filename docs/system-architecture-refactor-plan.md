@@ -2,10 +2,11 @@
 
 > 文档位置：`docs/system-architecture-refactor-plan.md`  
 > 适用仓库：`test_platform`（个税 H5 模拟平台）  
-> 状态：阶段 0–1 已完成；阶段 2 未开始  
+> 状态：阶段 0–2 已完成；阶段 3 未开始  
 > 更新日期：2026-07-21  
 > 阶段 0 产出目录：[`docs/architecture-phase0/`](./architecture-phase0/README.md)  
-> 阶段 1 产出目录：[`docs/architecture-phase1/`](./architecture-phase1/README.md)
+> 阶段 1 产出目录：[`docs/architecture-phase1/`](./architecture-phase1/README.md)  
+> 阶段 2 产出目录：[`docs/architecture-phase2/`](./architecture-phase2/README.md)
 
 ---
 
@@ -130,16 +131,18 @@
 
 ---
 
-### 阶段 2：管理端解耦（约 2–3 周）
+### 阶段 2：管理端解耦（约 2–3 周）—— ✅ 已完成（2026-07-21）
 
 | 事项 | 说明 |
 |------|------|
-| 管理端独立入口 | `admin.geshui.vip` 或路径隔离 + 更严 CSP |
-| 拆分 `admin_panel.js` | 按菜单懒加载（用户、激活码、转化、税务、客服、系统） |
-| 菜单权限单一来源 | 后端下发权限树，前端不再硬编码双份 |
-| 只读分析库（可选） | 重报表走只读副本，避免拖垮业务库 |
+| 管理端独立入口 | 路径 `/admin*` + nginx `admin.geshui.vip` + 管理页 CSP |
+| 拆分 `admin_panel.js` | `js/admin/loader` + modules（charts/chat 已拆；其余按菜单懒加载占位） |
+| 菜单权限单一来源 | `src/admin/menuRegistry.js` → `/me` 下发 `menu_tree` |
+| 只读分析库（可选） | 未做，留后续 |
 
-**退出标准**：改用户端税页不强制重发管理台大包；管理台发版可独立。
+**落地目录：** 见 [`architecture-phase2/README.md`](./architecture-phase2/README.md)。
+
+**退出标准**：改用户端税页不强制重发管理台大包；管理台发版可独立。→ 管理 JS 已按菜单懒加载；独立 Host 待 DNS。
 
 ---
 
@@ -232,6 +235,7 @@
 |------|------|------|--------|
 | 2026-07-21 | 阶段 0 | 契约/漏斗/安全/回滚文档落地；明文密码暂保留，见下线计划 P1–P4 | agent |
 | 2026-07-21 | 阶段 1 | 同仓域路由拆分 + migrations 骨架；handler 暂留 legacy/monolith，repos 下沉后续迭代 | agent |
+| 2026-07-21 | 阶段 2 | 管理端 menuRegistry + menu_tree；路径/Host 隔离与 CSP；admin JS 懒加载 | agent |
 | （待填） | 管理端域名策略 |  |  |
 | （待填） | 前端技术路线 |  |  |
 | （待填） | 改造时限 |  |  |
