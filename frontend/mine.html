@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-mine-ui-ref"></script>
+    <script src="/js/auth.js?v=20260721-nav-pin"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -13,7 +13,7 @@
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
-    <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/nav.css?v=20260721-nav-pin">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -28,8 +28,17 @@
             min-height: 100vh;
             max-width: 100vw;
             overflow-x: hidden;
-            padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: var(--bottom-nav-clearance, calc(98px + env(safe-area-inset-bottom, 0px)));
             -webkit-font-smoothing: antialiased;
+        }
+
+        /* 与前四 TAB 同一贴底位置，避免短页被 safe-area / 过渡动画抬高 */
+        body.page-mine > .bottom-nav {
+            bottom: 10px !important;
+            transform: none !important;
+            -webkit-transform: none !important;
+            view-transition-name: none !important;
+            margin: 0 !important;
         }
 
         /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
@@ -1211,30 +1220,30 @@
         </div>
     </div>
 
-    <nav class="bottom-nav" aria-label="主导航">
+    <div class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
             <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
-            <span>首页</span>
+            <span class="nav-text">首页</span>
         </a>
         <a class="nav-item" data-icon="db" href="daiban.html">
             <span class="nav-icon"><img src="caidan/db2.png" alt=""></span>
-            <span>待办</span>
+            <span class="nav-text">待办</span>
         </a>
         <a class="nav-item" data-icon="bc" href="bancha.html">
             <span class="nav-icon"><img src="caidan/bc2.png" alt=""></span>
-            <span>办&amp;查</span>
+            <span class="nav-text">办&amp;查</span>
         </a>
         <a class="nav-item" data-icon="xx" href="message.html">
             <span class="nav-icon"><img src="caidan/xx2.png" alt=""></span>
-            <span>消息</span>
+            <span class="nav-text">消息</span>
         </a>
         <a class="nav-item active" data-icon="w" href="mine.html">
             <span class="nav-icon"><img src="caidan/w1.png" alt=""></span>
-            <span>我的</span>
+            <span class="nav-text">我的</span>
         </a>
-    </nav>
+    </div>
 
-    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/watermark.js?v=20260721-alipay-wm"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -2310,6 +2319,19 @@
                     }, hideMs);
                 } catch (eGuestMigToast) {}
             })();
+        })();
+    </script>
+    <script>
+        (function () {
+            var isIOS =
+                /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS) {
+                var bottomNav = document.querySelector('.bottom-nav');
+                if (bottomNav) {
+                    bottomNav.classList.add('ios-device');
+                }
+            }
         })();
     </script>
 </body>

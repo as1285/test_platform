@@ -2841,13 +2841,14 @@
             if (ownerHint) {
                 html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
             }
+            /* 总览（注册/激活/转化率）置顶，渠道块在下 */
+            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             if (data.segments.alipay) {
                 html += renderDailyConversionSegmentBlock('支付宝激活', data.segments.alipay, data, {
                     activationOnly: true,
                     channelLabel: '支付宝'
                 });
             }
-            html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
             [
                 { key: 'xianyu', title: '闲鱼激活', label: '闲鱼' },

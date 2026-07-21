@@ -3217,6 +3217,46 @@ async function insertTaxChangeLog(conn, userId, recordId, action, beforeSnap, af
   }
 }
 
+/** mysql2 禁止 bind undefined；缺字段统一转 null，避免 consult 保存秒级 500 */
+function sqlBindNull(v) {
+  return v === undefined ? null : v;
+}
+
+function taxSqlNumber(v) {
+  if (v === undefined || v === null || v === '') return null;
+  var n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+function normalizeTaxRecordForSql(record) {
+  var r = record && typeof record === 'object' ? record : {};
+  return {
+    id: r.id,
+    year: taxSqlNumber(r.year),
+    month: taxSqlNumber(r.month),
+    income_type: r.income_type || '工资薪金',
+    income_subtype: r.income_subtype || '正常工资薪金',
+    company_name: sqlBindNull(r.company_name),
+    company_tax_id: sqlBindNull(r.company_tax_id),
+    tax_authority: sqlBindNull(r.tax_authority),
+    report_channel: r.report_channel || '其他',
+    report_date: sqlBindNull(r.report_date),
+    tax_period: sqlBindNull(r.tax_period),
+    income: taxSqlNumber(r.income),
+    tax_reported: taxSqlNumber(r.tax_reported),
+    income_this_period: taxSqlNumber(r.income_this_period),
+    tax_free_income: taxSqlNumber(r.tax_free_income),
+    deduction_fee: taxSqlNumber(r.deduction_fee),
+    special_deduction: taxSqlNumber(r.special_deduction),
+    other_deduction: taxSqlNumber(r.other_deduction),
+    donation_deduction: taxSqlNumber(r.donation_deduction),
+    pension_insurance: taxSqlNumber(r.pension_insurance),
+    medical_insurance: taxSqlNumber(r.medical_insurance),
+    unemployment_insurance: taxSqlNumber(r.unemployment_insurance),
+    housing_fund: taxSqlNumber(r.housing_fund)
+  };
+}
+
 async function loadTaxRecordChangesForUser(conn, username, dateStr) {
   var day = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : chinaDateKeyNow();
   const [rows] = await conn.execute(
@@ -3255,6 +3295,7 @@ async function loadTaxRecordChangesForUser(conn, username, dateStr) {
 }
 
 async function saveRecordInConn(conn, userId, record) {
+  record = normalizeTaxRecordForSql(record);
   const id = record.id != null ? String(record.id) : 'tr_' + Date.now();
 
   const [existing] = await conn.execute('SELECT * FROM tax_records WHERE id = ? AND user_id = ?', [
@@ -3281,12 +3322,12 @@ async function saveRecordInConn(conn, userId, record) {
       [
         record.year,
         record.month,
-        record.income_type || '工资薪金',
-        record.income_subtype || '正常工资薪金',
+        record.income_type,
+        record.income_subtype,
         record.company_name,
         record.company_tax_id,
         record.tax_authority,
-        record.report_channel || '其他',
+        record.report_channel,
         record.report_date,
         record.tax_period,
         record.income,
@@ -3332,12 +3373,12 @@ async function saveRecordInConn(conn, userId, record) {
         userId,
         record.year,
         record.month,
-        record.income_type || '工资薪金',
-        record.income_subtype || '正常工资薪金',
+        record.income_type,
+        record.income_subtype,
         record.company_name,
         record.company_tax_id,
         record.tax_authority,
-        record.report_channel || '其他',
+        record.report_channel,
         record.report_date,
         record.tax_period,
         record.income,
@@ -3374,6 +3415,7 @@ async function saveRecord(userId, record) {
 
 /** 批量写入专用：若 id 已被本用户活跃记录占用则自动换号；若在回收站则恢复并更新 */
 async function insertRecordInConn(conn, userId, record) {
+  record = normalizeTaxRecordForSql(record);
   var preferredId = record.id != null ? String(record.id).trim() : '';
   var base =
     preferredId !== ''
@@ -3385,13 +3427,13 @@ async function insertRecordInConn(conn, userId, record) {
 
   while (true) {
     const [rows] = await conn.execute(
-      'SELECT id, deleted_at FROM tax_records WHERE id = ? AND user_id = ? LIMIT 1',
-      [id, userId]
+      'SELECT id, user_id, deleted_at FROM tax_records WHERE id = ? LIMIT 1',
+      [id]
     );
     if (rows.length === 0) {
       break;
     }
-    if (rows[0].deleted_at != null) {
+    if (String(rows[0].user_id) === String(userId) && rows[0].deleted_at != null) {
       record.id = id;
       await saveRecordInConn(conn, userId, record);
       return { id: id, id_reassigned: idReassigned };
@@ -3399,6 +3441,10 @@ async function insertRecordInConn(conn, userId, record) {
     n += 1;
     idReassigned = true;
     id = base + '_n' + n;
+    if (n > 80) {
+      id = base + '_r' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+      break;
+    }
   }
 
   await conn.execute(
@@ -3414,32 +3460,7 @@ async function insertRecordInConn(conn, userId, record) {
         unemployment_insurance, housing_fund
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    [
-      id,
-      userId,
-      record.year,
-      record.month,
-      record.income_type || '工资薪金',
-      record.income_subtype || '正常工资薪金',
-      record.company_name,
-      record.company_tax_id,
-      record.tax_authority,
-      record.report_channel || '其他',
-      record.report_date,
-      record.tax_period,
-      record.income,
-      record.tax_reported,
-      record.income_this_period,
-      record.tax_free_income,
-      record.deduction_fee,
-      record.special_deduction,
-      record.other_deduction,
-      record.donation_deduction,
-      record.pension_insurance,
-      record.medical_insurance,
-      record.unemployment_insurance,
-      record.housing_fund
-    ]
+    taxRecordInsertParamRow(userId, id, record)
   );
   await insertTaxChangeLog(conn, userId, id, 'insert', null, taxRecordPayloadToSnapshot(record, id));
   return {
@@ -3449,36 +3470,70 @@ async function insertRecordInConn(conn, userId, record) {
 }
 
 function taxRecordInsertParamRow(userId, id, record) {
+  var r = normalizeTaxRecordForSql(record);
   return [
     id,
     userId,
-    record.year,
-    record.month,
-    record.income_type || '工资薪金',
-    record.income_subtype || '正常工资薪金',
-    record.company_name,
-    record.company_tax_id,
-    record.tax_authority,
-    record.report_channel || '其他',
-    record.report_date,
-    record.tax_period,
-    record.income,
-    record.tax_reported,
-    record.income_this_period,
-    record.tax_free_income,
-    record.deduction_fee,
-    record.special_deduction,
-    record.other_deduction,
-    record.donation_deduction,
-    record.pension_insurance,
-    record.medical_insurance,
-    record.unemployment_insurance,
-    record.housing_fund
+    r.year,
+    r.month,
+    r.income_type,
+    r.income_subtype,
+    r.company_name,
+    r.company_tax_id,
+    r.tax_authority,
+    r.report_channel,
+    r.report_date,
+    r.tax_period,
+    r.income,
+    r.tax_reported,
+    r.income_this_period,
+    r.tax_free_income,
+    r.deduction_fee,
+    r.special_deduction,
+    r.other_deduction,
+    r.donation_deduction,
+    r.pension_insurance,
+    r.medical_insurance,
+    r.unemployment_insurance,
+    r.housing_fund
   ];
 }
 
-/** 批量解析可用 id：一次 IN 查询，冲突则换号 */
+/** 按 id 批量查询占用（主键全局唯一） */
+async function loadTaxRecordIdOccupancy(conn, ids) {
+  var occupied = {};
+  var list = (Array.isArray(ids) ? ids : [])
+    .map(function (x) {
+      return x != null ? String(x).trim() : '';
+    })
+    .filter(Boolean);
+  if (!list.length) return occupied;
+  var chunk = 80;
+  var c;
+  for (c = 0; c < list.length; c += chunk) {
+    var part = list.slice(c, c + chunk);
+    var ph = part
+      .map(function () {
+        return '?';
+      })
+      .join(',');
+    const [rows] = await conn.execute(
+      'SELECT id, user_id, deleted_at FROM tax_records WHERE id IN (' + ph + ')',
+      part
+    );
+    (rows || []).forEach(function (r) {
+      occupied[String(r.id)] = {
+        userId: r.user_id != null ? String(r.user_id) : '',
+        deleted: r.deleted_at != null
+      };
+    });
+  }
+  return occupied;
+}
+
+/** 批量解析可用 id：主键 id 全局唯一，冲突则换号；本用户回收站可恢复 */
 async function resolveBulkInsertIds(conn, userId, records) {
+  var uid = String(userId);
   var planned = [];
   var preferredIds = [];
   var i;
@@ -3492,42 +3547,68 @@ async function resolveBulkInsertIds(conn, userId, records) {
     planned.push({ rec: rec, base: base, id: base, id_reassigned: false, revive: false });
     preferredIds.push(base);
   }
-  var occupied = {};
-  if (preferredIds.length) {
-    var ph = preferredIds
-      .map(function () {
-        return '?';
-      })
-      .join(',');
-    const [rows] = await conn.execute(
-      'SELECT id, deleted_at FROM tax_records WHERE user_id = ? AND id IN (' + ph + ')',
-      [userId].concat(preferredIds)
-    );
-    (rows || []).forEach(function (r) {
-      occupied[String(r.id)] = r.deleted_at != null ? 'deleted' : 'active';
-    });
-  }
+  var occupied = await loadTaxRecordIdOccupancy(conn, preferredIds);
   var used = {};
   var reviveList = [];
   var insertList = [];
+
+  function isGloballyTaken(id) {
+    if (used[id]) return true;
+    var o = occupied[id];
+    if (!o) return false;
+    if (o.userId === uid && o.deleted) return false;
+    return true;
+  }
+
   for (i = 0; i < planned.length; i++) {
     var p = planned[i];
-    var st = occupied[p.id];
-    if (st === 'deleted') {
+    var occ = occupied[p.id];
+    if (occ && occ.userId === uid && occ.deleted) {
       p.revive = true;
       reviveList.push(p);
       used[p.id] = true;
       continue;
     }
-    var n = 0;
-    while (st === 'active' || used[p.id]) {
-      n += 1;
-      p.id_reassigned = true;
-      p.id = p.base + '_n' + n;
-      st = occupied[p.id];
+    if (!isGloballyTaken(p.id)) {
+      used[p.id] = true;
+      insertList.push(p);
+      continue;
     }
-    used[p.id] = true;
-    insertList.push(p);
+    var n = 0;
+    var assigned = false;
+    while (n < 80) {
+      n += 1;
+      var cand = p.base + '_n' + n;
+      if (used[cand]) continue;
+      if (!Object.prototype.hasOwnProperty.call(occupied, cand)) {
+        var more = await loadTaxRecordIdOccupancy(conn, [cand]);
+        Object.keys(more).forEach(function (k) {
+          occupied[k] = more[k];
+        });
+        if (!Object.prototype.hasOwnProperty.call(occupied, cand)) {
+          occupied[cand] = null;
+        }
+      }
+      if (occupied[cand] == null && !used[cand]) {
+        p.id = cand;
+        p.id_reassigned = true;
+        used[cand] = true;
+        insertList.push(p);
+        assigned = true;
+        break;
+      }
+    }
+    if (!assigned) {
+      p.id =
+        p.base +
+        '_r' +
+        Date.now().toString(36) +
+        '_' +
+        Math.random().toString(36).slice(2, 8);
+      p.id_reassigned = true;
+      used[p.id] = true;
+      insertList.push(p);
+    }
   }
   return { insertList: insertList, reviveList: reviveList };
 }
@@ -4526,6 +4607,7 @@ async function applyActivationCode(username, rawCode) {
     }
     await conn.commit();
     invalidateUserAuthCache(username);
+    invalidateUserInfoApiCache(username);
   } catch (e) {
     try {
       await conn.rollback();
@@ -4703,9 +4785,27 @@ async function handleAlipayLatestOrder(req, res) {
         console.warn('alipay trade query sync', syncErr && syncErr.message);
       }
     }
+    var paidNow = !!(order && String(order.status) === 'paid');
+    var freshToken = null;
+    if (paidNow && req.authUserId) {
+      /* 付款开通后签发新 JWT，避免客户端仍拿着 act=0 的旧令牌 */
+      var urow = await getUserRowByUsername(req.authUserId);
+      if (urow) {
+        freshToken = signAccessToken({
+          user_id: urow.username,
+          username: urow.username,
+          account_active: true,
+          session_rev: userSessionRevFromRow(urow)
+        });
+      }
+    }
     return res.json({
       code: 200,
-      data: { order: order ? plainPaymentOrder(order) : null }
+      data: {
+        order: order ? plainPaymentOrder(order) : null,
+        account_active: paidNow,
+        token: freshToken
+      }
     });
   } catch (e) {
     console.error('get alipay latest order', e);
@@ -4800,6 +4900,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     );
     await conn.commit();
     invalidateUserAuthCache(locked.username);
+    invalidateUserInfoApiCache(locked.username);
     return true;
   } catch (e) {
     try {
@@ -5830,7 +5931,7 @@ async function loginUser(username, password) {
   
   if (rows.length === 0) {
     conn.release();
-    throw new Error('账号或密码错误');
+    throw new Error('账号或密码错误，可以使用激活码找回账号密码');
   }
   
   const rec = rows[0];
@@ -5838,7 +5939,7 @@ async function loginUser(username, password) {
 
   if (check !== rec.hash) {
     conn.release();
-    throw new Error('密码错误，请通过激活码找回密码');
+    throw new Error('密码错误，可以使用激活码找回账号密码');
   }
 
   /* 历史账号未存明文时，登录成功即回填，供管理后台展示 */
@@ -8116,7 +8217,7 @@ function normalizeUserLoginFailReason(rawMsg) {
   }
   if (msg.indexOf('请输入密码') >= 0) return 'empty_password';
   if (msg.indexOf('账号已被封禁') >= 0 || msg.indexOf('封禁') >= 0) return 'account_banned';
-  if (msg.indexOf('密码错误') >= 0 && msg.indexOf('激活码') >= 0) return 'wrong_password';
+  if (msg.indexOf('密码错误') >= 0) return 'wrong_password';
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
   if (msg.indexOf('已注册') >= 0 || msg.indexOf('账号已存在') >= 0) return 'register_fail:duplicate';
   if (msg.indexOf('请求过于频繁') >= 0 || msg.indexOf('rate_limited') >= 0) return 'rate_limited';
@@ -9732,6 +9833,25 @@ async function handleShenbaoJiluPost(req, res) {
   }
 }
 
+/** 税务写入错误转用户可读文案，避免把 MySQL 原文甩给用户 */
+function friendlyTaxWriteError(err) {
+  var msg = String((err && err.message) || err || '').trim();
+  var code = err && err.code != null ? String(err.code) : '';
+  if (code === 'ER_DUP_ENTRY' || /Duplicate entry/i.test(msg)) {
+    return '部分税务记录已存在，请勿重复一键生成；可先删除旧记录或修改后再试';
+  }
+  if (/Bind parameters must not contain undefined/i.test(msg)) {
+    return '提交数据不完整，请检查填写项后重试';
+  }
+  if (/该账号已有批量写入进行中/i.test(msg)) {
+    return msg;
+  }
+  if (/ER_|SQLSTATE|mysql|ECONNREFUSED|ECONNRESET|PROTOCOL_/i.test(msg)) {
+    return '保存失败，请稍后重试；若反复出现请联系客服';
+  }
+  return msg || '保存失败，请稍后重试';
+}
+
 async function handleTaxPost(req, res) {
   var body = req.body || {};
   var action = body.action;
@@ -9925,7 +10045,9 @@ async function handleTaxPost(req, res) {
     if (e && e.statusCode === 429) {
       return res.status(429).json({ code: 429, msg: String(e.message || '请求过于频繁') });
     }
-    res.status(500).json({ code: 500, msg: String(e.message) });
+    var friendly = friendlyTaxWriteError(e);
+    var status = e && e.code === 'ER_DUP_ENTRY' ? 409 : 500;
+    res.status(status).json({ code: status, msg: friendly });
   }
 }
 

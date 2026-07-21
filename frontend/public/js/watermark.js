@@ -152,13 +152,22 @@
                 try {
                     var data = JSON.parse(xhr.responseText);
                     if (data.code === 200 && data.data) {
-                        if (data.data.account_active !== undefined && data.data.account_active !== null) {
-                            localStorage.setItem('account_active', data.data.account_active ? '1' : '0');
+                        var apiActive =
+                            data.data.account_active === true ||
+                            data.data.account_active === 1 ||
+                            data.data.account_active === '1';
+                        var apiInactive = data.data.account_active === false;
+                        if (apiActive) {
+                            localStorage.setItem('account_active', '1');
+                            localStorage.setItem(WM_CACHE_KEY, '0');
+                            localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
+                            applyWatermark('0');
+                        } else if (apiInactive) {
+                            localStorage.setItem('account_active', '0');
+                            localStorage.setItem(WM_CACHE_KEY, '1');
+                            localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
+                            applyWatermark('1');
                         }
-                        var val = data.data.account_active === false ? '1' : '0';
-                        localStorage.setItem(WM_CACHE_KEY, val);
-                        localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
-                        applyWatermark(val);
                     }
                 } catch (e) {}
             }

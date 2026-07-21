@@ -589,7 +589,7 @@
         
         <!-- 查询按钮 -->
         <div class="query-btn-wrapper">
-            <button class="query-btn" onclick="doQuery()">查询</button>
+            <button type="button" class="query-btn" data-page-loading="1" onclick="doQuery()">查询</button>
         </div>
     </div>
     
@@ -803,6 +803,10 @@
             } catch (e) {}
             var q = 'year=' + encodeURIComponent(selectedYear) +
                 '&types=' + encodeURIComponent(types.join(','));
+            /* location.href 不会走 <a> 点击拦截，需手动显示全页转圈 */
+            if (typeof window.showPageLoading === 'function') {
+                window.showPageLoading();
+            }
             window.location.href = 'shuiming_result.html?' + q;
         }
         

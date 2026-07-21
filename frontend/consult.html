@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/auth.js?v=20260721-nav-pin"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1257,7 +1257,7 @@
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
     </style>
-    <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/nav.css?v=20260721-nav-pin">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
 <body class="tax-app-shell has-bottom-nav">
@@ -1951,7 +1951,7 @@
     </div>
 
     <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
-    <script src="/js/watermark.js?v=20260529-no-consult-wm"></script>
+    <script src="/js/watermark.js?v=20260721-alipay-wm"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -2082,10 +2082,25 @@
         }
 
         /** 税务批量等阻塞校验：居中弹框，避免顶栏轻提示易被忽略 */
+        function friendlyConsultTaxError(raw) {
+            var msg = String(raw || '').trim();
+            if (!msg) return '保存失败，请稍后重试';
+            if (/Duplicate entry|ER_DUP_ENTRY|PRIMARY/i.test(msg)) {
+                return '部分税务记录已存在，请勿重复一键生成；可先删除旧记录或修改后再试';
+            }
+            if (/Bind parameters must not contain undefined/i.test(msg)) {
+                return '提交数据不完整，请检查填写项后重试';
+            }
+            if (/ER_|SQLSTATE|mysql|ECONN/i.test(msg)) {
+                return '保存失败，请稍后重试；若反复出现请联系客服';
+            }
+            return msg;
+        }
+
         function showConsultStrongAlert(message) {
             var body = document.getElementById('consultStrongAlertText');
             if (body) {
-                body.textContent = message || '';
+                body.textContent = friendlyConsultTaxError(message) || '';
             }
             var root = document.getElementById('consultStrongAlertModal');
             if (root) {
@@ -7707,7 +7722,7 @@
                     return refreshRecordList();
                 })
                 .catch(function (err) {
-                    showConsultStrongAlert('批量生成失败：' + (err.message || ''));
+                    showConsultStrongAlert('批量生成失败：' + friendlyConsultTaxError(err && err.message));
                     return refreshRecordList();
                 })
                 .finally(function () {

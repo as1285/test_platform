@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/auth.js?v=20260721-nav-fixed"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope=".page-root"></script>
@@ -802,6 +802,55 @@
             font-size: 14px;
         }
 
+        /* 查询结果加载：仅转圈，无「加载中」文案 */
+        .list-loading-spin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42vh;
+            padding: 48px 16px;
+            box-sizing: border-box;
+        }
+
+        .list-loading-spinner {
+            width: 36px;
+            height: 36px;
+            position: relative;
+        }
+
+        .list-loading-spinner span {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2.5px;
+            height: 8px;
+            margin-left: -1.25px;
+            margin-top: -15px;
+            border-radius: 1.5px;
+            background: #1677ff;
+            transform-origin: 50% 15px;
+            opacity: 0.22;
+            animation: shuiming-list-spin-bar 1s linear infinite;
+        }
+
+        .list-loading-spinner span:nth-child(1) { transform: rotate(0deg); animation-delay: -1s; }
+        .list-loading-spinner span:nth-child(2) { transform: rotate(30deg); animation-delay: -0.9167s; }
+        .list-loading-spinner span:nth-child(3) { transform: rotate(60deg); animation-delay: -0.8333s; }
+        .list-loading-spinner span:nth-child(4) { transform: rotate(90deg); animation-delay: -0.75s; }
+        .list-loading-spinner span:nth-child(5) { transform: rotate(120deg); animation-delay: -0.6667s; }
+        .list-loading-spinner span:nth-child(6) { transform: rotate(150deg); animation-delay: -0.5833s; }
+        .list-loading-spinner span:nth-child(7) { transform: rotate(180deg); animation-delay: -0.5s; }
+        .list-loading-spinner span:nth-child(8) { transform: rotate(210deg); animation-delay: -0.4167s; }
+        .list-loading-spinner span:nth-child(9) { transform: rotate(240deg); animation-delay: -0.3333s; }
+        .list-loading-spinner span:nth-child(10) { transform: rotate(270deg); animation-delay: -0.25s; }
+        .list-loading-spinner span:nth-child(11) { transform: rotate(300deg); animation-delay: -0.1667s; }
+        .list-loading-spinner span:nth-child(12) { transform: rotate(330deg); animation-delay: -0.0833s; }
+
+        @keyframes shuiming-list-spin-bar {
+            0% { opacity: 1; }
+            100% { opacity: 0.22; }
+        }
+
         /* 无纳税记录时的空状态（与产品参考一致：插画 + 文案） */
         .list-empty-state {
             text-align: center;
@@ -879,7 +928,13 @@
     </div>
 
     <div class="list" id="recordList">
-        <div class="list-empty">加载中…</div>
+        <div class="list-loading-spin" role="status" aria-label="加载中">
+            <div class="list-loading-spinner" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+            </div>
+        </div>
     </div>
     </div>
 
@@ -1169,6 +1224,9 @@
         }
 
         function loadData() {
+            if (typeof window.showPageLoading === 'function') {
+                window.showPageLoading();
+            }
             var year = String(
                 typeof normalizeTaxYear === 'function'
                     ? normalizeTaxYear(getUrlParam('year'))
@@ -1205,6 +1263,10 @@
                     stripShuimingBottomBar();
                     if (typeof window.appPageLoadingDispatchDataDone === 'function') {
                         window.appPageLoadingDispatchDataDone();
+                    } else if (typeof window.forceHidePageLoading === 'function') {
+                        window.forceHidePageLoading();
+                    } else if (typeof window.hidePageLoading === 'function') {
+                        window.hidePageLoading();
                     }
                 });
         }
@@ -1228,6 +1290,6 @@
         setTimeout(function () { clearInterval(stripBarTimer); }, 4000);
         loadData();
     </script>
-    <script src="/js/watermark.js?v=20260511-mine-wm"></script>
+    <script src="/js/watermark.js?v=20260721-alipay-wm"></script>
 </body>
 </html>

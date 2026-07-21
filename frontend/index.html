@@ -873,8 +873,9 @@
         }
         function showLoginErrorModal(msg) {
             var text = String(msg || '登录失败');
-            var isWrongPassword = text.indexOf('密码错误') >= 0;
-            if (!isWrongPassword) {
+            var isCredFail =
+                text.indexOf('密码错误') >= 0 || text.indexOf('账号或密码错误') >= 0;
+            if (!isCredFail) {
                 alert(text);
                 return;
             }
@@ -884,7 +885,7 @@
                 alert(text);
                 return;
             }
-            body.textContent = '密码错误。如忘记密码，请通过激活码找回账号与密码。';
+            body.textContent = '账号或密码错误，可以使用激活码找回账号密码';
             root.classList.add('is-open');
         }
 

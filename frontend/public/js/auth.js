@@ -253,6 +253,7 @@
   /**
    * iPhone 12 Pro Max：收入纳税明细大屏下正文字号偏小，单独放大。
    * UA：iPhone13,4；逻辑屏约 428×926（容差）。
+   * 13 Pro Max（iPhone14,3）同分辨率，UA 能区分时排除。
    */
   function isIPhone12ProMaxClient() {
     if (!isLikelyIOSViewportClient()) {
@@ -262,6 +263,9 @@
       return false;
     }
     var ua = navigator.userAgent || '';
+    if (/iPhone\s*13\s*Pro\s*Max|iPhone14,3\b/i.test(ua)) {
+      return false;
+    }
     if (/iPhone\s*12\s*Pro\s*Max|iPhone13,4\b/i.test(ua)) {
       return true;
     }
@@ -565,6 +569,43 @@
     } catch (e) {}
   }
 
+  /**
+   * 底栏位置锁：各 TAB 统一 bottom:10px，避免 iPhone 用 safe-area 再抬高（「我的」空隙尤其明显）。
+   * 仅 Cordova 2410 需要额外 inset；内容避让仍靠 nav.css 的 --bottom-nav-clearance。
+   */
+  function ensureBottomNavLockStyle(opts) {
+    opts = opts || {};
+    var existing = document.querySelector('style[data-app-bottom-nav-lock]');
+    if (existing) {
+      existing.parentNode && existing.parentNode.removeChild(existing);
+    }
+    var st = document.createElement('style');
+    st.setAttribute('data-app-bottom-nav-lock', '1');
+    var bottom = opts.cordovaXiaomi2410 ? 'max(10px, 32px)' : '10px';
+    st.textContent =
+      '.bottom-nav{position:fixed!important;left:16px!important;right:16px!important;' +
+      'bottom:' +
+      bottom +
+      '!important;z-index:200!important;animation:none!important;' +
+      'transform:none!important;-webkit-transform:none!important;view-transition-name:none!important;}' +
+      '.bottom-nav.ios-device{bottom:' +
+      bottom +
+      '!important;padding-bottom:0!important;}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function lockAppSafeBottomInset(opts) {
+    opts = opts || {};
+    try {
+      sessionStorage.removeItem('app_safe_bottom_px_v2');
+      sessionStorage.removeItem('app_safe_bottom_px');
+    } catch (e0) {}
+    try {
+      document.documentElement.style.removeProperty('--app-safe-bottom');
+    } catch (e1) {}
+    ensureBottomNavLockStyle(opts);
+  }
+
   function setupMobileStatusBar() {
     try {
       var cordovaShell = isCordovaTaxAppShell();
@@ -578,6 +619,7 @@
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
+      lockAppSafeBottomInset({ cordovaXiaomi2410: cordovaXiaomi2410 });
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
       var vivoX200ProClient = androidClient && isVivoX200ProLikeClient();
       var cordovaVivoX200Pro = cordovaShell && vivoX200ProClient;
@@ -2241,7 +2283,7 @@
     window.__pageLoadingQueue.push(['show']);
     if (!document.querySelector('script[data-app-page-loading-js]')) {
       var s = document.createElement('script');
-      s.src = '/js/page-loading.js?v=20260720-detail-speed';
+      s.src = '/js/page-loading.js?v=20260721-shuiming-spin';
       s.setAttribute('data-app-page-loading-js', '1');
       s.async = false;
       document.head.appendChild(s);

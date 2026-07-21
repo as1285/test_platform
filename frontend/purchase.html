@@ -753,13 +753,20 @@
         else el.classList.remove('is-wait');
     }
 
-    function activateAfterAlipayPaid() {
+    function activateAfterAlipayPaid(payload) {
+        payload = payload || {};
         try {
+            if (payload.token) localStorage.setItem('token', payload.token);
             localStorage.setItem('account_active', '1');
+            localStorage.removeItem('wm_cache');
+            localStorage.removeItem('wm_cache_time');
         } catch (e) {}
         trackPurchase('track_alipay_payment_success');
-        setAlipayStatus('付款成功，正在开通账号…', false);
+        setAlipayStatus('付款成功，账号已开通', false);
         showToast('支付宝付款成功，账号已自动开通');
+        if (typeof window.refreshWatermarkFromApi === 'function') {
+            window.refreshWatermarkFromApi();
+        }
         setTimeout(function () {
             window.location.replace('consult.html?tab=records&onboarding=tax');
         }, 600);
@@ -768,14 +775,18 @@
     function checkAlipayLatestOrder() {
         return paymentFetch('/api/payments/alipay/latest')
             .then(function (x) {
-                var order = x.body && x.body.data && x.body.data.order;
+                var data = x.body && x.body.data;
+                var order = data && data.order;
                 if (!order) return;
                 if (order.status === 'paid') {
                     if (alipayOrderPolling) {
                         clearInterval(alipayOrderPolling);
                         alipayOrderPolling = null;
                     }
-                    activateAfterAlipayPaid();
+                    activateAfterAlipayPaid({
+                        token: data.token || null,
+                        account_active: data.account_active
+                    });
                 }
             })
             .catch(function () {});

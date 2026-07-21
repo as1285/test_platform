@@ -10,5 +10,5 @@ body.tax-app-shell {
 }
 
 body.tax-app-shell.has-bottom-nav {
-  padding-bottom: calc(var(--tax-app-nav-height) + var(--tax-app-safe-bottom) + 8px);
+  padding-bottom: var(--bottom-nav-clearance, calc(96px + env(safe-area-inset-bottom, 0px)));
 }

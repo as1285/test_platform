@@ -5,9 +5,10 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260720-nav-speed';
+  var CSS_HREF = '/css/page-loading.css?v=20260721-query-spin';
   var MIN_DISPLAY_MS = 40;
   var ABSOLUTE_MAX_MS = 6000;
+  var ABSOLUTE_MAX_DATA_PAGE_MS = 15000;
   var THEME_WAIT_MS = 2500;
   var count = 0;
   var queue = [];
@@ -253,6 +254,10 @@
         if (el.closest('[data-no-page-loading]')) {
           return;
         }
+        if (el.getAttribute && el.getAttribute('data-page-loading') === '1') {
+          showPageLoading();
+          return;
+        }
         if (el.tagName && el.tagName.toLowerCase() === 'a') {
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;
@@ -353,7 +358,14 @@
     Promise.all(waits)
       .then(finishLoading)
       .catch(finishLoading);
-    setTimeout(finishLoading, ABSOLUTE_MAX_MS);
+    var absoluteCap = ABSOLUTE_MAX_MS;
+    if (
+      (document.body && document.body.classList.contains('page-shuiming-result')) ||
+      (document.body && document.body.classList.contains('page-xiangqing'))
+    ) {
+      absoluteCap = ABSOLUTE_MAX_DATA_PAGE_MS;
+    }
+    setTimeout(finishLoading, absoluteCap);
   }
 
   window.showPageLoading = showPageLoading;

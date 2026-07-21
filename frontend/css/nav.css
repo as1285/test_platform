@@ -1,15 +1,25 @@
-/* 底部导航：悬浮白色胶囊，与 theme-loader.js 的 .bottom-nav / .nav-item / data-icon 约定一致 */
+/* 底部导航：悬浮白色胶囊。各 TAB 共用同一 bottom，切页不上下跳 */
 
 :root {
     --bottom-nav-height: 72px;
-    --bottom-nav-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
+    --bottom-nav-side: 16px;
+    --bottom-nav-gap: 10px;
+    /*
+     * 悬浮胶囊贴视觉底部（gap），不要再用 safe-area 整段上抬。
+     * iPhone 上用 safe 抬高后，「我的」等短页空隙会特别明显；
+     * 内容避让交给 --bottom-nav-clearance（含 safe-area）。
+     */
+    --bottom-nav-bottom: var(--bottom-nav-gap);
+    --bottom-nav-clearance: calc(
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + env(safe-area-inset-bottom, 0px) + 16px
+    );
 }
 
 .bottom-nav {
     position: fixed;
-    left: 16px;
-    right: 16px;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: var(--bottom-nav-side);
+    right: var(--bottom-nav-side);
+    bottom: var(--bottom-nav-bottom);
     z-index: 200;
     display: flex;
     align-items: center;
@@ -22,6 +32,13 @@
     box-shadow: 0 8px 24px rgba(36, 55, 86, 0.12);
     box-sizing: border-box;
     overflow: hidden;
+    animation: none !important;
+}
+
+/* 旧脚本会加 ios-device，位置必须与默认完全一致 */
+.bottom-nav.ios-device {
+    bottom: var(--bottom-nav-bottom);
+    padding-bottom: 0;
 }
 
 .bottom-nav .nav-item,
@@ -74,22 +91,27 @@
 }
 
 @media (max-width: 360px) {
+    :root {
+        --bottom-nav-side: 12px;
+        --bottom-nav-height: 68px;
+    }
+
     .bottom-nav {
-        left: 12px;
-        right: 12px;
-        height: 68px;
         border-radius: 34px;
     }
 }
 
-/* Cordova 2410DPN6CC：底部 env 常为 0，抬高胶囊导航，避免与系统手势条/主页条重叠 */
+/* Cordova 2410DPN6CC：env 常为 0，需额外抬高避开手势条 */
 html.app-cordova-xiaomi-2410 {
     --app-cordova-bottom-inset: 32px;
-    --bottom-nav-clearance: calc(96px + var(--app-cordova-bottom-inset));
+    --bottom-nav-bottom: max(var(--bottom-nav-gap), var(--app-cordova-bottom-inset));
+    --bottom-nav-clearance: calc(
+        var(--bottom-nav-height) + var(--bottom-nav-bottom) + 16px
+    );
 }
 
 html.app-cordova-xiaomi-2410 .bottom-nav {
-    bottom: calc(12px + var(--app-cordova-bottom-inset));
+    bottom: var(--bottom-nav-bottom);
     padding-bottom: 4px;
     box-sizing: border-box;
 }
