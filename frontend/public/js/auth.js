@@ -1354,17 +1354,34 @@
   initDistributorAppFromUrl();
 
   (function bootstrapSalesChannel() {
+    var path = (window.location && window.location.pathname) || '';
+    var deferPackages =
+      /consult\.html/i.test(path) || /shuiming\.html/i.test(path) || /xiangqing\.html/i.test(path);
+    function loadPackages() {
+      refreshPublicInstallPackagesUi();
+    }
+    function afterChannel() {
+      if (deferPackages) {
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(loadPackages, { timeout: 4000 });
+        } else {
+          setTimeout(loadPackages, 2200);
+        }
+      } else {
+        loadPackages();
+      }
+    }
     var ch = getSalesChannel();
     if (ch) {
       persistSalesChannelAttribution(window.location.pathname || 'direct');
-      refreshPublicInstallPackagesUi();
+      afterChannel();
       return;
     }
     resolveSalesChannelFromServer().then(function (resolved) {
       if (resolved) {
         persistSalesChannelAttribution('server_resolve');
       }
-      refreshPublicInstallPackagesUi();
+      afterChannel();
     });
   })();
 
@@ -1547,6 +1564,103 @@
   var API_PERF_SLOW_MS = 3000;
   var _apiPerfLastReportAt = 0;
   var _authGetInFlight = new Map();
+  var _authGetShortCache = new Map();
+  var AUTH_GET_SHORT_CACHE_MS = 8000;
+  var _trackQueue = [];
+  var _trackFlushTimer = null;
+  var _pageBootAt = Date.now();
+  var TRACK_BOOT_QUIET_MS = 2800;
+
+  function authGetCacheKey(url) {
+    return String(url || '');
+  }
+
+  function isShortCacheableGetUrl(url) {
+    var u = String(url || '');
+    if (u.indexOf('/api/public/install-packages') >= 0) return true;
+    if (/[?&]action=records(?:&|$)/.test(u) && /(?:^|\/)api\/tax(?:\.php)?(?:\?|$)/.test(u)) {
+      return true;
+    }
+    if (
+      /[?&]action=(?:summary|employers)(?:&|$)/.test(u) &&
+      /(?:^|\/)api\/user(?:\.php)?(?:\?|$)/.test(u)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function readAuthGetShortCache(url) {
+    var key = authGetCacheKey(url);
+    var hit = _authGetShortCache.get(key);
+    if (!hit || Date.now() - hit.t > AUTH_GET_SHORT_CACHE_MS) {
+      if (hit) _authGetShortCache.delete(key);
+      return null;
+    }
+    return new Response(hit.body, {
+      status: hit.status || 200,
+      statusText: hit.statusText || 'OK',
+      headers: hit.headers || { 'Content-Type': 'application/json' }
+    });
+  }
+
+  function writeAuthGetShortCache(url, res, bodyText) {
+    if (!isShortCacheableGetUrl(url) || !res || res.status !== 200) return;
+    try {
+      _authGetShortCache.set(authGetCacheKey(url), {
+        t: Date.now(),
+        status: res.status,
+        statusText: res.statusText,
+        headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/json' },
+        body: bodyText
+      });
+      if (_authGetShortCache.size > 40) {
+        _authGetShortCache.clear();
+      }
+    } catch (e) {}
+  }
+
+  function invalidateAuthGetShortCache() {
+    _authGetShortCache.clear();
+  }
+
+  function scheduleTrackFlush() {
+    if (_trackFlushTimer) return;
+    _trackFlushTimer = setTimeout(function () {
+      _trackFlushTimer = null;
+      flushTrackQueue();
+    }, 400);
+  }
+
+  function flushTrackQueue() {
+    if (!_trackQueue.length) return;
+    if (_authGetInFlight.size > 0 || Date.now() - _pageBootAt < TRACK_BOOT_QUIET_MS) {
+      scheduleTrackFlush();
+      return;
+    }
+    var jobs = _trackQueue.splice(0, _trackQueue.length);
+    var i = 0;
+    function next() {
+      if (i >= jobs.length) return;
+      try {
+        jobs[i++]();
+      } catch (e) {}
+      if (i < jobs.length) {
+        setTimeout(next, 80);
+      }
+    }
+    next();
+  }
+
+  function runTrackWhenIdle(fn) {
+    if (typeof fn !== 'function') return;
+    if (_authGetInFlight.size > 0 || Date.now() - _pageBootAt < TRACK_BOOT_QUIET_MS) {
+      _trackQueue.push(fn);
+      scheduleTrackFlush();
+      return;
+    }
+    fn();
+  }
 
   function extractApiActionHint(url, opts) {
     var action = '';
@@ -1589,6 +1703,19 @@
       if (existing) {
         return existing;
       }
+      if (isShortCacheableGetUrl(url) && !opts.cacheBust) {
+        var cachedRes = readAuthGetShortCache(url);
+        if (cachedRes) {
+          try {
+            cachedRes.__perfNetMs = 0;
+            cachedRes.__perfRoute = '';
+            cachedRes.__fromShortCache = true;
+          } catch (eC) {}
+          return Promise.resolve(cachedRes);
+        }
+      }
+    } else if (method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') {
+      invalidateAuthGetShortCache();
     }
     var reqStart =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -1617,6 +1744,18 @@
           total_ms: netMs,
           http_status: r.status
         });
+      }
+      if (method === 'GET' && isShortCacheableGetUrl(url) && r.status === 200) {
+        return r
+          .clone()
+          .text()
+          .then(function (text) {
+            writeAuthGetShortCache(url, r, text);
+            return r;
+          })
+          .catch(function () {
+            return r;
+          });
       }
       if (r.status === 401) {
         return r.text().then(function (text) {
@@ -1670,6 +1809,7 @@
         if (_authGetInFlight.get(coalesceKey) === shared) {
           _authGetInFlight.delete(coalesceKey);
         }
+        scheduleTrackFlush();
       });
       _authGetInFlight.set(coalesceKey, shared);
       return shared;
@@ -1730,11 +1870,13 @@
         client_id: typeof getOrCreateClientDeviceId === 'function' ? getOrCreateClientDeviceId() : ''
       };
       if (!payload.route_key) return;
-      if (typeof fireTrack === 'function' && hasUserToken()) {
-        fireTrack('track_api_perf', '/event/api_perf', payload);
-      } else if (typeof firePublicTrack === 'function') {
-        firePublicTrack('track_api_perf', '/event/api_perf', payload);
-      }
+      runTrackWhenIdle(function () {
+        if (typeof fireTrack === 'function' && hasUserToken()) {
+          fireTrack('track_api_perf', '/event/api_perf', payload);
+        } else if (typeof firePublicTrack === 'function') {
+          firePublicTrack('track_api_perf', '/event/api_perf', payload);
+        }
+      });
     } catch (e) {}
   }
 
@@ -1917,12 +2059,14 @@
     var headers = Object.assign({}, authHeaders(), {
       'X-Page-Path': normalizeTrackPath(pagePath || '/event/' + act)
     });
-    fetch('api/user', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(payload),
-      keepalive: true
-    }).catch(function () {});
+    runTrackWhenIdle(function () {
+      fetch('api/user', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(function () {});
+    });
   }
 
   /** 未登录也可上报（注册页等），走 auth.php#track_* */
@@ -1941,12 +2085,14 @@
       headers = Object.assign(headers, getClientDeviceHeaders());
     }
     headers['X-Page-Path'] = normalizeTrackPath(pagePath || '/event/' + act);
-    fetch('api/auth', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(payload),
-      keepalive: true
-    }).catch(function () {});
+    runTrackWhenIdle(function () {
+      fetch('api/auth', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(function () {});
+    });
   }
 
   function firstText(node) {
@@ -2107,7 +2253,7 @@
     if (currentPageName() === 'admin_panel.html') return;
     if (document.querySelector('script[data-fast-nav-js]')) return;
     var s = document.createElement('script');
-    s.src = '/js/fast-nav.js?v=20260721a-consult-bust';
+    s.src = '/js/fast-nav.js?v=20260721d-bonus';
     s.setAttribute('data-fast-nav-js', '1');
     s.async = true;
     document.head.appendChild(s);

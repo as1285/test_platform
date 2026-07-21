@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260720-api-opt"></script>
+    <script src="/js/auth.js?v=20260721-perf-fix"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1339,8 +1339,8 @@
                 <span id="taxPasteImportTitle">粘贴导入税务信息</span>
                 <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">解析引擎 v0721。支持：① 个税 APP 月明细（收入/税额或已申报税额）；② 聊天摘要（公司/税号/入职、全年区间、月薪、分红）。标签可带【】[]。可一次粘贴多家公司。</p>
-            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;2025年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万&#10;2024年2月2号发2万提成&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
+            <p class="batch-ms-modal-hint">解析引擎 v0721d。支持：① 个税 APP 月明细；② 聊天摘要（公司/税号/入职、全年区间、月薪、奖金、每月专项扣除三险一金）。标签可带【】[]。可一次粘贴多家公司；「改为」「数字改为」会覆盖原金额。</p>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万（改为20000—23000区间）&#10;2024年2月2号发2万提成（改为21350.5）&#10;每月专项扣除&#10;基本养老保险：800&#10;基本医疗保险：200&#10;失业保险：50&#10;住房公积金：1200&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
             <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
             <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
                 <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
@@ -2560,7 +2560,7 @@
                 /* 用户资料不挡税务列表首屏 */
                 setTimeout(function () {
                     loadUserInfoFromApi();
-                }, 400);
+                }, 1200);
             } catch (err) {
                 console.error('initHeader', err);
             }
@@ -5797,6 +5797,73 @@
                 .replace(/申报税额/g, '税额');
         }
 
+        /**
+         * 聊天摘要里常见的「改为 / 数字改为」覆盖原金额，便于运营改数后直接粘贴。
+         * 例：月薪税前2万（改为20000—23000区间）；发2万提成（改为21350.5）；奖金22000元—数字改为22621
+         */
+        function applyTaxPasteGaiweiOverrides(text) {
+            var s = String(text || '');
+            s = s.replace(
+                /发\s*[\d.]+\s*万\s*(提成|分红|奖金|年终奖)?\s*[（(]\s*改为\s*([\d,.]+)\s*(?:元)?\s*[）)]/g,
+                function (_m, kind, amt) {
+                    return '发' + String(amt).replace(/,/g, '') + '元' + (kind || '提成');
+                }
+            );
+            s = s.replace(
+                /发\s*[\d,.]+\s*(?:元)?\s*(提成|分红|奖金|年终奖)?\s*[（(]\s*改为\s*([\d,.]+)\s*(?:元)?\s*[）)]/g,
+                function (_m, kind, amt) {
+                    return '发' + String(amt).replace(/,/g, '') + '元' + (kind || '提成');
+                }
+            );
+            s = s.replace(
+                /正常工资薪金\s*[：:][^\n]*?[（(]\s*改为\s*([\d,.]+)\s*[—\-–~～到至]+\s*([\d,.]+)\s*(?:元)?(?:区间)?\s*[）)]/g,
+                function (_m, a, b) {
+                    return '正常工资薪金：' + a + '—' + b + '元';
+                }
+            );
+            s = s.replace(
+                /(全年一次性奖金(?:收入)?\s*)([\d,.]+)(\s*元)/g,
+                function (full, pre, _amt, yuan, offset, str) {
+                    var after = str.slice(offset + full.length, offset + full.length + 48);
+                    var gai = after.match(/^[）)]?\s*[—\-–]?\s*数字改为\s*([\d,.]+)/);
+                    if (gai) {
+                        return pre + String(gai[1]).replace(/,/g, '') + yuan;
+                    }
+                    return full;
+                }
+            );
+            s = s.replace(/[）)]?\s*[—\-–]?\s*数字改为\s*[\d,.]+/g, '');
+            return s;
+        }
+
+        /** 解析每月专项扣除：养老 / 医疗 / 失业 / 公积金（绝对金额，元/月） */
+        function parseTaxPasteMonthlySpecials(block) {
+            var out = {
+                pension: null,
+                medical: null,
+                unemployment: null,
+                fund: null
+            };
+            function pickAmount(labelAlts) {
+                var re = new RegExp(
+                    '(?:' +
+                        labelAlts.join('|') +
+                        ')\\s*[：:]?\\s*([\\d,.]+)\\s*元?',
+                    'i'
+                );
+                var m = String(block || '').match(re);
+                if (!m) {
+                    return null;
+                }
+                return parseFlexibleMoney(m[1]);
+            }
+            out.pension = pickAmount(['基本养老保险费', '基本养老保险', '养老保险费', '养老保险']);
+            out.medical = pickAmount(['基本医疗保险费', '基本医疗保险', '医疗保险费', '医疗保险']);
+            out.unemployment = pickAmount(['失业保险费', '失业保险']);
+            out.fund = pickAmount(['住房公积金', '住房公积', '公积金']);
+            return out;
+        }
+
         function splitTaxPasteEmployerBlocks(text) {
             var trimmed = String(text || '').trim();
             if (!trimmed) {
@@ -5945,10 +6012,32 @@
             while ((m = reYuan.exec(block)) !== null) {
                 pushBonus(m[1], m[2], m[4]);
             }
+            /* 发21350.5提成 / 发182662.15分红（金额后可无「元」） */
+            var reFaTi =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[号日]?\s*发\s*([\d,.]+)\s*(?:元)?\s*(?:提成|分红|奖金|年终奖)/g;
+            while ((m = reFaTi.exec(block)) !== null) {
+                pushBonus(m[1], m[2], m[4]);
+            }
+            var reFaTiNoDay =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月(?:份)?\s*发\s*([\d,.]+)\s*(?:元|万)?\s*(?:提成|分红|奖金|年终奖)/g;
+            while ((m = reFaTiNoDay.exec(block)) !== null) {
+                var amtRaw = m[3];
+                var slice = block.slice(m.index, m.index + m[0].length);
+                var amt =
+                    /万/.test(slice) && !/元/.test(String(amtRaw))
+                        ? parseFlexibleMoney(amtRaw + '万')
+                        : parseFlexibleMoney(amtRaw);
+                pushBonus(m[1], m[2], amt);
+            }
             var reBonusLine =
                 /(\d{4})\s*年\s*(\d{1,2})\s*月(?:份)?[^\n]{0,30}?(?:分红|提成|年终奖|奖金)[^\n]{0,20}?([\d.]+)\s*万/g;
             while ((m = reBonusLine.exec(block)) !== null) {
                 pushBonus(m[1], m[2], parseFlexibleMoney(m[3] + '万'));
+            }
+            var reBonusLineYuan =
+                /(\d{4})\s*年\s*(\d{1,2})\s*月(?:份)?[^\n]{0,30}?(?:分红|提成|年终奖|奖金)[^\n]{0,20}?([\d,.]+)\s*元/g;
+            while ((m = reBonusLineYuan.exec(block)) !== null) {
+                pushBonus(m[1], m[2], m[3]);
             }
             bonuses.sort(function (a, b) {
                 if (a.year !== b.year) return a.year - b.year;
@@ -6152,6 +6241,7 @@
                 : '';
             var salaryInfo = parseTaxPasteSalaryRange(block);
             var bonuses = parseTaxPasteBonuses(block);
+            var specials = parseTaxPasteMonthlySpecials(block);
             var detailMonths = parseTaxPasteDetailMonths(block);
             var range = null;
             var months = [];
@@ -6219,6 +6309,11 @@
                 salary: salaryInfo.salary,
                 salary_max: salaryInfo.salary_max,
                 bonuses: bonuses,
+                specials: specials,
+                pension: specials.pension,
+                medical: specials.medical,
+                unemployment: specials.unemployment,
+                fund: specials.fund,
                 range: range,
                 months: months
             });
@@ -6228,11 +6323,13 @@
          * 解析粘贴的个税 APP / 聊天记录文本（可含多家公司）。
          */
         function parseTaxPasteText(rawText) {
-            var text = normalizeTaxPasteLabels(
-                String(rawText || '')
-                    .replace(/\u00a0/g, ' ')
-                    .replace(/\r\n/g, '\n')
-                    .replace(/\r/g, '\n')
+            var text = applyTaxPasteGaiweiOverrides(
+                normalizeTaxPasteLabels(
+                    String(rawText || '')
+                        .replace(/\u00a0/g, ' ')
+                        .replace(/\r\n/g, '\n')
+                        .replace(/\r/g, '\n')
+                )
             );
             if (!String(text).trim()) {
                 return { ok: false, error: '请先粘贴税务信息文本' };
@@ -6335,6 +6432,22 @@
                                 .join('；')
                     );
                 }
+                var spBits = [];
+                if (emp.pension != null && emp.pension > 0) {
+                    spBits.push('养老 ' + emp.pension);
+                }
+                if (emp.medical != null && emp.medical > 0) {
+                    spBits.push('医疗 ' + emp.medical);
+                }
+                if (emp.unemployment != null && emp.unemployment > 0) {
+                    spBits.push('失业 ' + emp.unemployment);
+                }
+                if (emp.fund != null && emp.fund > 0) {
+                    spBits.push('公积金 ' + emp.fund);
+                }
+                if (spBits.length) {
+                    lines.push('每月专项扣除：' + spBits.join('；') + '（元）');
+                }
                 if (emp.mode === 'detail') {
                     lines.push('收入合计：' + emp.income_sum + ' 元；税额合计：' + emp.tax_sum + ' 元');
                     var sample = emp.months.slice(0, 2).map(function (r) {
@@ -6425,6 +6538,12 @@
             var bonuses = Array.isArray(emp.bonuses) ? emp.bonuses.slice() : [];
             var primary = bonuses.length ? bonuses[0] : null;
             var extra = bonuses.length > 1 ? bonuses.slice(1) : [];
+            var pension = emp.pension != null ? emp.pension : 0;
+            var medical = emp.medical != null ? emp.medical : 0;
+            var unemployment = emp.unemployment != null ? emp.unemployment : 0;
+            var fund = emp.fund != null ? emp.fund : 0;
+            var hasSpecials = pension > 0 || medical > 0 || unemployment > 0 || fund > 0;
+            /* 粘贴为绝对月扣额时不填缴费基数，避免比例联动覆盖解析结果 */
             setBatchEmpRowValues(row, {
                 company: emp.company,
                 company_tax_id: emp.company_tax_id || '',
@@ -6441,11 +6560,12 @@
                 medical_ratio: 2,
                 unemployment_ratio: 0.5,
                 fund_ratio: 12,
-                pension: 0,
-                medical: 0,
-                unemployment: 0,
-                fund: 0,
+                pension: pension,
+                medical: medical,
+                unemployment: unemployment,
+                fund: fund,
                 special: 0,
+                deductOpen: hasSpecials,
                 yearEndBonus: primary ? primary.amount : 0,
                 bonusYear: primary ? primary.year : '',
                 bonusMonth: primary ? primary.month : 12,
@@ -8272,20 +8392,20 @@
             initBatchCompanyHistoryUi();
             initTabs();
             setDefaultMsgDate();
-            /* 首屏：优先税务列表；安装包/用户资料用缓存或延后，降低 4G 并发排队 */
-            Promise.all([
-                refreshConsultInstallPackageUrls(),
-                refreshRecordList({ force: false }).then(function () {
+            /* 首屏只拉税务列表，再串行任职；安装包延后，避免 4G 连接排队把 records 拖到数秒 */
+            refreshRecordList({ force: false })
+                .then(function () {
                     return refreshEmployerList();
                 })
-            ])
                 .catch(function () {})
                 .finally(function () {
                     applyConsultBatchAbUi();
                     if (typeof window.appPageLoadingDispatchConsultDone === 'function') {
                         window.appPageLoadingDispatchConsultDone();
                     }
-                    /* 消息列表改为进入消息 Tab 时懒加载，避免开机与 tax 并发抢连接 */
+                    setTimeout(function () {
+                        refreshConsultInstallPackageUrls();
+                    }, 600);
                 });
             tryEditFromUrl();
         }

@@ -11,7 +11,7 @@
 
   var TAB_PAGES = ['shouye.html', 'daiban.html', 'bancha.html', 'message.html', 'mine.html'];
   var WARM_JS = [
-    '/js/auth.js?v=20260720-api-opt',
+    '/js/auth.js?v=20260721-perf-fix',
     '/js/page-loading.js?v=20260720-detail-speed',
     '/js/theme-loader.js?v=20260720-nav-speed',
     '/js/toast-duration.js?v=20260529-toast-3s'
@@ -99,7 +99,7 @@
     });
     var here = currentPageName();
     if (here === 'mine.html' || here === 'shouye.html') {
-      prefetchDocument('consult.html?v=20260721a');
+      prefetchDocument('consult.html?v=20260721d-bonus');
       prefetchDocument('purchase.html');
       prefetchDocument('chat.html');
     }

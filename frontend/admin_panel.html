@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260721-p2"></script>
+    <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理控制台</title>
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260721-p2">
@@ -1820,7 +1820,7 @@
                 </table>
             </div>
             <h3 class="section-subhead">慢请求异常（≥3 秒）</h3>
-            <p class="hint mb-8 mt-0" id="apiSlowSummaryHint">服务端与客户端（网络+渲染）上报；仅写入超过阈值的明细。</p>
+            <p class="hint mb-8 mt-0" id="apiSlowSummaryHint">「网络」列为客户端整段等待（含 4G/Cloudflare 排队），不等于服务端 SQL。若来源几乎全是「客户端」而服务端日均仅数毫秒，属弱网/并发问题而非接口算力。服务端处理≥3s 才会记「服务端」。</p>
             <div class="scroll-x mb-12">
                 <table>
                     <thead><tr><th>接口标识</th><th>异常次数</th><th>平均总耗时</th><th>最大总耗时</th></tr></thead>
@@ -2028,6 +2028,6 @@
     <script src="/js/admin/loader.js?v=20260721-p2"></script>
     <script src="/js/admin/nav.js?v=20260721-p2"></script>
     <script src="/js/admin-analytics-period.js?v=20260721-custom-today"></script>
-    <script src="/js/admin_panel.js?v=20260721-p2"></script>
+    <script src="/js/admin_panel.js?v=20260721-perf-fix"></script>
 </body>
 </html>

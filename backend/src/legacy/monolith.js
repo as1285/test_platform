@@ -481,11 +481,13 @@ var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 90000;
 var _salesPromoChannelCache = new Map();
 var SALES_PROMO_CHANNEL_CACHE_MS = 30000;
 var _taxRecordsListCache = new Map();
-var TAX_RECORDS_LIST_CACHE_MS = 20000;
+var TAX_RECORDS_LIST_CACHE_MS = 30000;
 var _userInfoApiCache = new Map();
-var USER_INFO_API_CACHE_MS = 5000;
+var USER_INFO_API_CACHE_MS = 30000;
 var _userSummaryApiCache = new Map();
-var USER_SUMMARY_API_CACHE_MS = 10000;
+var USER_SUMMARY_API_CACHE_MS = 30000;
+var _employersApiCache = new Map();
+var EMPLOYERS_API_CACHE_MS = 30000;
 var _messageListCache = new Map();
 var MESSAGE_LIST_CACHE_MS = 10000;
 var _taxBatchLocks = new Map();
@@ -1300,11 +1302,13 @@ function invalidateUserInfoApiCache(userId) {
   if (userId == null || String(userId).trim() === '') {
     _userInfoApiCache.clear();
     _userSummaryApiCache.clear();
+    _employersApiCache.clear();
     return;
   }
   var uid = String(userId).trim();
   _userInfoApiCache.delete(uid);
   _userSummaryApiCache.delete(uid);
+  _employersApiCache.delete(uid);
 }
 
 function invalidateMessageListCache(userId) {
@@ -5945,6 +5949,11 @@ async function listEmployersForUser(userId) {
     return [];
   }
   const uid = String(userId).trim();
+  var now = Date.now();
+  var cached = _employersApiCache.get(uid);
+  if (cached && now - cached.t < EMPLOYERS_API_CACHE_MS) {
+    return cached.v;
+  }
   const conn = await pool.getConnection();
   try {
     const [employerRows] = await conn.execute(
@@ -5952,7 +5961,12 @@ async function listEmployersForUser(userId) {
        FROM employers WHERE user_id = ?`,
       [uid]
     );
-    return employerRows || [];
+    var list = employerRows || [];
+    _employersApiCache.set(uid, { v: list, t: now });
+    if (_employersApiCache.size > 800) {
+      _employersApiCache.clear();
+    }
+    return list;
   } finally {
     conn.release();
   }
@@ -6473,6 +6487,7 @@ async function handleUserPost(req, res) {
       await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
       
       conn.release();
+      invalidateUserInfoApiCache(userId);
       
       return res.json({ code: 200, data: { success: true, employer: employerData } });
     }
@@ -6503,6 +6518,7 @@ async function handleUserPost(req, res) {
         if (!updRows || !updRows.affectedRows) {
           return res.status(404).json({ code: 404, msg: '任职受雇记录不存在' });
         }
+        invalidateUserInfoApiCache(userId);
         return res.json({
           code: 200,
           data: {
@@ -7140,6 +7156,7 @@ async function handleUserPost(req, res) {
         await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
         
         conn.release();
+        invalidateUserInfoApiCache(userId);
         
         return res.json({ code: 200, data: { success: true } });
       }
@@ -15577,7 +15594,12 @@ async function handlePublicInstallPackages(req, res) {
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
     if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
-      res.setHeader('Cache-Control', 'private, max-age=90');
+      /* anon 无渠道时可被边缘缓存；带用户/渠道则 private */
+      if (!uid && !qCh) {
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
+      } else {
+        res.setHeader('Cache-Control', 'private, max-age=90');
+      }
       return res.json(hit.body);
     }
 
@@ -15619,7 +15641,11 @@ async function handlePublicInstallPackages(req, res) {
     if (_installPackagesResponseCache.size > 500) {
       _installPackagesResponseCache.clear();
     }
-    res.setHeader('Cache-Control', 'private, max-age=90');
+    if (!uid && !qCh) {
+      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
+    } else {
+      res.setHeader('Cache-Control', 'private, max-age=90');
+    }
     return res.json(body);
   } catch (e) {
     console.error(e);

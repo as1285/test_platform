@@ -1463,6 +1463,9 @@
                         var slow = api.data.slow || {};
                         var ss = slow.summary || {};
                         if (slowHintEl) {
+                            var clientHeavy =
+                                (ss.client_cnt || 0) > 0 &&
+                                (ss.server_cnt || 0) === 0;
                             slowHintEl.textContent =
                                 '阈值 ≥ ' +
                                 (ss.threshold_ms != null ? ss.threshold_ms : 3000) +
@@ -1479,7 +1482,10 @@
                                 (ss.max_total_ms
                                     ? '；最大 ' + formatApiLatencyMs(ss.max_total_ms)
                                     : '') +
-                                '。';
+                                '。' +
+                                (clientHeavy
+                                    ? '当前几乎全是客户端网络等待（4G/Cloudflare 排队），服务端处理通常仅数毫秒，不属于 SQL 慢查询。'
+                                    : '「网络」列为客户端整段等待，不等于服务端耗时。');
                         }
                         if (slowTopEl) {
                             var sth = '';
@@ -2835,11 +2841,16 @@
             if (ownerHint) {
                 html += '<p class="hint" style="margin:0 0 12px;">激活与注册均仅计入主管理员账号' + ownerHint + '，不含其他子管理员名下用户。</p>';
             }
+            if (data.segments.alipay) {
+                html += renderDailyConversionSegmentBlock('支付宝激活', data.segments.alipay, data, {
+                    activationOnly: true,
+                    channelLabel: '支付宝'
+                });
+            }
             html += renderDailyConversionSegmentBlock('自有流量', data.segments.own, data);
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
             [
                 { key: 'xianyu', title: '闲鱼激活', label: '闲鱼' },
-                { key: 'alipay', title: '支付宝激活', label: '支付宝' },
                 { key: 'kufaka', title: '酷发卡激活', label: '酷发卡' }
             ].forEach(function (ch) {
                 if (!data.segments[ch.key]) return;
