@@ -81,7 +81,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260721-stamp-font');
+    return loadScript('/js/najilu.js?v=20260721-stamp-std');
   }
 
   function ensureModule(name) {
