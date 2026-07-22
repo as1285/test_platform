@@ -4878,7 +4878,7 @@ function getAlipayProductConfig() {
   var cfg = alipay.getConfig();
   var amount = alipay.normalizeAmount(cfg.productAmount);
   return {
-    subject: String(cfg.productTitle || '商品').slice(0, 128),
+    subject: String(cfg.productTitle || '激活码').slice(0, 128),
     amount: amount
   };
 }

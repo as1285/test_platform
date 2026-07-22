@@ -86,7 +86,7 @@ services:
       ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
       ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-}
-      ALIPAY_PRODUCT_TITLE: ${ALIPAY_PRODUCT_TITLE:-商品}
+      ALIPAY_PRODUCT_TITLE: ${ALIPAY_PRODUCT_TITLE:-激活码}
       ALIPAY_PRODUCT_AMOUNT: ${ALIPAY_PRODUCT_AMOUNT:-}
       ALIPAY_GATEWAY: ${ALIPAY_GATEWAY:-https://openapi.alipay.com/gateway.do}
       # 在线客服 AI（OpenAI 兼容协议，如 DeepSeek；密钥只从未提交的 .env 读取）
