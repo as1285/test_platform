@@ -10878,7 +10878,7 @@ async function handleAuthPost(req, res) {
             await registerGuard.markRegisterAttemptFail(rateChk.keys, 'register_fail:captcha');
           }
           await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:captcha');
-          return res.status(400).json({ code: 400, msg: '验证码错误或已过期，请刷新后重试' });
+          return res.status(400).json({ code: 400, msg: '注册校验失败或已过期，请重试' });
         }
         regGuardKeys = rateChk.keys;
       }
