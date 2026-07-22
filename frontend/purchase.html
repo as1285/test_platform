@@ -456,6 +456,20 @@
             background: #1677ff;
             color: #fff;
         }
+        .download-box {
+            border: 1px solid #dbeafe;
+            background: linear-gradient(180deg, #f5f9ff 0%, #fff 70%);
+        }
+        .download-box .card-hint {
+            margin-bottom: 14px;
+        }
+        .btn-download {
+            background: #1e6fff;
+            color: #fff;
+        }
+        .card#cardDownloadApp[hidden] {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -470,6 +484,12 @@
         <div class="hero">
             <h1>开通完整功能</h1>
             <p>支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。</p>
+        </div>
+
+        <div class="card download-box" id="cardDownloadApp">
+            <div class="card-title">下载 App</div>
+            <p class="card-hint">安装官方 App 后使用更流畅；付款开通后账号权益会同步到当前登录账号。</p>
+            <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
         </div>
 
         <div class="card purchase-invite-card" id="purchaseInviteCard" hidden>
@@ -1720,6 +1740,22 @@
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
     bindPurchaseInviteActions();
     loadPurchaseInviteOverview();
+
+    (function initPurchaseDownload() {
+        var card = document.getElementById('cardDownloadApp');
+        var btn = document.getElementById('btnPurchaseDownload');
+        var inApp =
+            isEmbeddedInAppShell() ||
+            (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell());
+        if (inApp) {
+            if (card) card.hidden = true;
+            return;
+        }
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            trackPurchase('track_purchase_download_click');
+        });
+    })();
     var alipaySkuListEl = document.getElementById('alipaySkuList');
     if (alipaySkuListEl) {
         alipaySkuListEl.addEventListener('click', function (e) {
