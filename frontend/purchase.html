@@ -501,9 +501,7 @@
             </div>
             <div class="purchase-invite-actions">
                 <button type="button" class="purchase-invite-action" id="btnPurchaseInviteCopy">复制链接</button>
-                <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInviteSavePoster">保存海报</button>
                 <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInviteSharePoster">分享海报</button>
-                <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInvitePreviewPoster">预览二维码</button>
             </div>
             <p class="purchase-invite-stats" id="purchaseInviteStats"></p>
             <div id="purchaseInviteTransferCodes" class="purchase-invite-transfer" hidden></div>
@@ -1600,15 +1598,6 @@
                 }
             });
         }
-        var btnSave = document.getElementById('btnPurchaseInviteSavePoster');
-        if (btnSave) {
-            btnSave.addEventListener('click', function () {
-                withPurchaseInvitePoster(function (dataUrl) {
-                    downloadPurchaseInvitePoster(dataUrl);
-                    showToast('海报已保存，可发到朋友圈或微信');
-                });
-            });
-        }
         var btnShare = document.getElementById('btnPurchaseInviteSharePoster');
         if (btnShare) {
             btnShare.addEventListener('click', function () {
@@ -1638,14 +1627,6 @@
                     }
                     openPurchaseInvitePosterModal(dataUrl);
                     showToast('请长按海报保存图片后，发到微信或朋友圈');
-                });
-            });
-        }
-        var btnPreview = document.getElementById('btnPurchaseInvitePreviewPoster');
-        if (btnPreview) {
-            btnPreview.addEventListener('click', function () {
-                withPurchaseInvitePoster(function (dataUrl) {
-                    openPurchaseInvitePosterModal(dataUrl);
                 });
             });
         }
