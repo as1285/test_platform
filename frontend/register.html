@@ -136,42 +136,6 @@
         }
         .field-msg.is-error { color: #dc2626; }
         .field-msg.is-ok { color: #16a34a; }
-        .captcha-row {
-            display: flex;
-            gap: 8px;
-            align-items: stretch;
-        }
-        .captcha-row input {
-            flex: 1;
-            min-width: 0;
-        }
-        .captcha-chip {
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 84px;
-            padding: 0 12px;
-            border-radius: 12px;
-            background: #eef5ff;
-            color: #1e6fff;
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-        }
-        .btn-refresh {
-            flex-shrink: 0;
-            padding: 0 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            background: #fff;
-            font-size: 13px;
-            color: #64748b;
-            cursor: pointer;
-            font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .btn-refresh:active { background: #f8fafc; }
         .soft-tip {
             margin: 0 0 14px;
             font-size: 12px;
@@ -209,11 +173,6 @@
         }
         .optional-block[open] > summary::after { content: ' ˅'; }
         .optional-block .field { margin-top: 10px; margin-bottom: 0; }
-        .captcha-chip {
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .captcha-chip:active { opacity: 0.85; }
         .disclaimer {
             margin: 16px 18px 0;
             text-align: center;
@@ -378,15 +337,6 @@
                     <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
                 </div>
             </div>
-            <div class="field">
-                <label for="captchaAnswer">验证一下</label>
-                <div class="captcha-row">
-                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="算出右侧答案" maxlength="4" autocomplete="off" required>
-                    <span class="captcha-chip" id="captchaQuestion" title="点这里换一题" role="button" tabindex="0">加载中…</span>
-                </div>
-                <div class="hint">看不清或算错了？点算式换一题</div>
-            </div>
-
             <details class="optional-block" id="optionalSourceBlock">
                 <summary>选填 · 从哪了解到的？</summary>
                 <div class="field">
@@ -561,52 +511,6 @@
             return h;
         }
 
-        function loadRegisterCaptcha() {
-            return fetch('api/auth?action=register_captcha', { method: 'GET' })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code === 200 && data.data) {
-                        regCaptchaId = data.data.captcha_id || '';
-                        var q = document.getElementById('captchaQuestion');
-                        if (q) q.textContent = data.data.question || '—';
-                        var ans = document.getElementById('captchaAnswer');
-                        if (ans) {
-                            ans.value = '';
-                            markInvalid(ans, false);
-                        }
-                        return;
-                    }
-                    throw new Error(data.msg || '验证码加载失败');
-                });
-        }
-
-        loadRegisterCaptcha().catch(function () {
-            var q = document.getElementById('captchaQuestion');
-            if (q) q.textContent = '加载失败';
-        });
-
-        function refreshCaptchaWithFeedback() {
-            loadRegisterCaptcha()
-                .then(function () {
-                    showToast('已换一题');
-                })
-                .catch(function () {
-                    showErr('验证题加载失败，请稍后再试');
-                });
-        }
-
-        (function bindCaptchaRefresh() {
-            var chip = document.getElementById('captchaQuestion');
-            if (!chip) return;
-            chip.addEventListener('click', refreshCaptchaWithFeedback);
-            chip.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    refreshCaptchaWithFeedback();
-                }
-            });
-        })();
-
         document.querySelectorAll('.pwd-toggle').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-target');
@@ -663,7 +567,6 @@
         function submitRegister() {
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
-            var captchaEl = document.getElementById('captchaAnswer');
             var channelEl = document.getElementById('registerSourceChannel');
             var otherEl = document.getElementById('registerSourceChannelOther');
 
@@ -672,7 +575,6 @@
             showErr('');
             markInvalid(usernameEl, false);
             markInvalid(passwordEl, false);
-            markInvalid(captchaEl, false);
             if (channelEl) markInvalid(channelEl, false);
             if (otherEl) markInvalid(otherEl, false);
 
@@ -680,12 +582,6 @@
                 showErr('请先填写账号和密码');
                 if (!username) markInvalid(usernameEl, true);
                 if (!password) markInvalid(passwordEl, true);
-                return;
-            }
-            var captchaAns = captchaEl.value.trim();
-            if (!regCaptchaId || !captchaAns) {
-                showErr('请填写右侧算式的答案');
-                markInvalid(captchaEl, true);
                 return;
             }
             var sourceChannel = channelEl ? channelEl.value.trim() : '';
@@ -753,8 +649,6 @@
                         typeof window.getRegisterInviteCode === 'function'
                             ? window.getRegisterInviteCode() || undefined
                             : undefined,
-                    captcha_id: regCaptchaId,
-                    captcha_answer: captchaAns,
                     client_id: regClientId || undefined,
                     guest_username: regGuestUsername || undefined
                 })
@@ -851,7 +745,6 @@
                         return;
                     }
                     showErr(formatRegisterFailMsg(data));
-                    loadRegisterCaptcha().catch(function () {});
                 })
                 .catch(function () {
                     showErr('网络不太稳，请稍后再试');

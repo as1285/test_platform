@@ -11320,13 +11320,6 @@ async function handleAuthPost(req, res) {
             retry_after_ms: rateChk.backoff_ms || 0
           });
         }
-        if (!registerGuard.verifyRegisterCaptcha(body.captcha_id, body.captcha_answer)) {
-          if (rateChk.keys) {
-            await registerGuard.markRegisterAttemptFail(rateChk.keys, 'register_fail:captcha');
-          }
-          await recordUserRegistrationAttempt(regUser, false, req, 'register_fail:captcha');
-          return res.status(400).json({ code: 400, msg: '验证码错误或已过期，请刷新后重试' });
-        }
         regGuardKeys = rateChk.keys;
       }
       incrementApiDailyCounter('EVENT register_submit', '认证注册');
