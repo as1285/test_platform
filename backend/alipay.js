@@ -32,7 +32,7 @@ function getConfig() {
     notifyUrl: envText('ALIPAY_NOTIFY_URL'),
     returnUrl: envText('ALIPAY_RETURN_URL'),
     gateway: envText('ALIPAY_GATEWAY') || 'https://openapi.alipay.com/gateway.do',
-    productTitle: envText('ALIPAY_PRODUCT_TITLE') || '个税记录平台激活码',
+    productTitle: envText('ALIPAY_PRODUCT_TITLE') || '激活码',
     productAmount: amount
   };
 }

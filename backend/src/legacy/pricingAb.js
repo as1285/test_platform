@@ -10,7 +10,7 @@ var SKU_CONTROL_199_PERM = {
   id: 'sku_199_perm_legacy',
   amount: '199.00',
   label: '永久激活',
-  subject: '个税记录平台永久激活',
+  subject: '激活码',
   grant_kind: 'permanent',
   grant_hours: 0,
   grant_days: 0
@@ -20,7 +20,7 @@ var SKU_49_24H = {
   id: 'sku_49_24h',
   amount: '49.00',
   label: '24小时',
-  subject: '个税记录平台24小时试用',
+  subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 24,
   grant_days: 0
@@ -30,7 +30,7 @@ var SKU_99_3D = {
   id: 'sku_99_3d',
   amount: '99.00',
   label: '3天',
-  subject: '个税记录平台3天试用',
+  subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 3
@@ -40,7 +40,7 @@ var SKU_199_1Y = {
   id: 'sku_199_1y',
   amount: '199.00',
   label: '1年',
-  subject: '个税记录平台1年使用',
+  subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 365
@@ -50,7 +50,7 @@ var SKU_499_PERM = {
   id: 'sku_499_perm',
   amount: '499.00',
   label: '永久',
-  subject: '个税记录平台永久激活',
+  subject: '激活码',
   grant_kind: 'permanent',
   grant_hours: 0,
   grant_days: 0

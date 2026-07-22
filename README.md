@@ -228,7 +228,7 @@ ALIPAY_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 ALIPAY_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
 ALIPAY_NOTIFY_URL=https://www.geshui.vip/api/payments/alipay/notify
 ALIPAY_RETURN_URL=https://www.geshui.vip/purchase.html
-ALIPAY_PRODUCT_TITLE=个税记录平台激活码
+ALIPAY_PRODUCT_TITLE=激活码
 ALIPAY_PRODUCT_AMOUNT=199
 ```
 

@@ -964,7 +964,7 @@
                                 id: 'sku_199_perm_legacy',
                                 amount: data.amount,
                                 label: '永久激活',
-                                subject: data.subject || '个税记录平台激活码',
+                                subject: data.subject || '激活码',
                                 grant_kind: 'permanent'
                             }
                         ];
@@ -979,7 +979,7 @@
                         hint.textContent =
                             (selected && selected.subject
                                 ? selected.subject
-                                : data.subject || '个税记录平台激活码') +
+                                : data.subject || '激活码') +
                             '，支付 ' +
                             (selected ? selected.amount : data.amount || '') +
                             ' 元后自动开通当前登录账号。';
