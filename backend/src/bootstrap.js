@@ -2,6 +2,7 @@
  * 应用装配：创建 Express app → 按域注册路由 → 启动。
  */
 const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy/monolith');
+const sbdyDemo = require('./admin/sbdyDemo');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -15,7 +16,7 @@ const { registerPlatformRoutes } = require('./platform/routes');
 function buildApp() {
   const app = createApp();
   const deps = {
-    handlers: getHandlers(),
+    handlers: Object.assign({}, getHandlers(), sbdyDemo.getHandlers()),
     middleware: getMiddleware()
   };
 

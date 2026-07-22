@@ -16,7 +16,8 @@
     settings: '/js/admin/modules/settings.js?v=20260721-p2',
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
-    monitor: '/js/admin/modules/monitor.js?v=20260721-p2'
+    monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260722-sbdy-sample'
   };
 
   var PAGE_MODULE = {
@@ -24,6 +25,7 @@
     'install-guide': 'settings',
     appearance: 'settings',
     codes: 'codes',
+    'sbdy-demo': 'sbdy-demo',
     'admin-accounts': 'accounts',
     users: 'users',
     'guest-users': 'users',
@@ -39,6 +41,8 @@
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-register': 'analytics',
+    'analytics-invite': 'analytics',
+    'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
     'analytics-devices': 'analytics',
     'install-guide-stats': 'analytics',

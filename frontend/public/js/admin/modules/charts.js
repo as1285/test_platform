@@ -139,6 +139,7 @@
         }
 
         var REGISTER_TIME_PERIOD_COLORS = {
+            late_night: '#64748b',
             morning: '#f5a623',
             afternoon: '#1e6fff',
             evening: '#6b4ce6'

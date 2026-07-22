@@ -11,6 +11,8 @@ function registerGrowthRoutes(app, deps) {
   app.get('/api/public/conversion-config', h.handlePublicConversionConfig);
   app.get('/api/public/landing-ab-config', h.handlePublicLandingAbConfig);
   app.post('/api/public/guest-session', h.handlePublicGuestSession);
+  app.get('/api/public/sbdy-demo/verify', h.handlePublicSbdyDemoVerify);
+  app.get('/api/public/sbdy-demo/show/:token', h.handlePublicSbdyDemoShow);
 }
 
 module.exports = { registerGrowthRoutes };

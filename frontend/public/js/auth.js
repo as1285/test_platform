@@ -1688,10 +1688,11 @@
   }
 
   var API_PERF_SLOW_MS = 3000;
+  var AUTH_FETCH_TIMEOUT_MS = 15000;
   var _apiPerfLastReportAt = 0;
   var _authGetInFlight = new Map();
   var _authGetShortCache = new Map();
-  var AUTH_GET_SHORT_CACHE_MS = 8000;
+  var AUTH_GET_SHORT_CACHE_MS = 20000;
   var _trackQueue = [];
   var _trackFlushTimer = null;
   var _pageBootAt = Date.now();
@@ -1850,90 +1851,140 @@
     var pathHint = String(url || '').split('?')[0];
     var actionHint = extractApiActionHint(url, opts);
     var routeHint = actionHint ? pathHint + '#' + actionHint : pathHint;
-    var p = fetch(url, opts).then(function (r) {
-      var reqEnd =
-        typeof performance !== 'undefined' && typeof performance.now === 'function'
-          ? performance.now()
-          : Date.now();
-      var netMs = Math.max(0, Math.round(reqEnd - reqStart));
-      try {
-        r.__perfNetMs = netMs;
-        r.__perfRoute = routeHint;
-      } catch (ePerf) {}
-      if (netMs >= API_PERF_SLOW_MS) {
-        reportApiPerf({
-          route_key: routeHint,
-          method: method,
-          action: actionHint || undefined,
-          net_ms: netMs,
-          render_ms: 0,
-          total_ms: netMs,
-          http_status: r.status
-        });
-      }
-      if (method === 'GET' && isShortCacheableGetUrl(url) && r.status === 200) {
-        return r
-          .clone()
-          .text()
-          .then(function (text) {
-            writeAuthGetShortCache(url, r, text);
-            return r;
-          })
-          .catch(function () {
-            return r;
+    var controller = null;
+    var timeoutId = null;
+    var fetchOpts = opts;
+    var timeoutMs =
+      opts.timeoutMs != null && isFinite(Number(opts.timeoutMs))
+        ? Math.max(1000, Math.min(Math.round(Number(opts.timeoutMs)), 120000))
+        : AUTH_FETCH_TIMEOUT_MS;
+    if (typeof AbortController === 'function' && !opts.signal) {
+      controller = new AbortController();
+      fetchOpts = Object.assign({}, opts, { signal: controller.signal });
+      timeoutId = setTimeout(function () {
+        try {
+          controller.abort();
+        } catch (eAbort) {}
+      }, timeoutMs);
+    }
+    var p = fetch(url, fetchOpts)
+      .then(function (r) {
+        var reqEnd =
+          typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now()
+            : Date.now();
+        var netMs = Math.max(0, Math.round(reqEnd - reqStart));
+        try {
+          r.__perfNetMs = netMs;
+          r.__perfRoute = routeHint;
+        } catch (ePerf) {}
+        if (netMs >= API_PERF_SLOW_MS) {
+          reportApiPerf({
+            route_key: routeHint,
+            method: method,
+            action: actionHint || undefined,
+            net_ms: netMs,
+            render_ms: 0,
+            total_ms: netMs,
+            http_status: r.status
           });
-      }
-      if (r.status === 401) {
-        return r.text().then(function (text) {
-          clearSession();
-          var j = null;
-          try {
-            j = JSON.parse(text);
-          } catch (e) {}
-          if (j && j.banned) {
-            try {
-              alert('账号已被封禁');
-            } catch (e2) {}
-          } else if (j && j.activation_expired) {
-            try {
-              alert('试用已过期，请重新登录');
-            } catch (eExp) {}
-          } else if (j && j.session_revoked) {
-            try {
-              alert('登录已失效，请重新登录');
-            } catch (e3) {}
-          }
-          window.location.href = LOGIN_PAGE;
-          return Promise.reject(new Error('unauthorized'));
-        });
-      }
-      if (r.status === 403) {
-        return r.text().then(function (text) {
-          var j = null;
-          try {
-            j = JSON.parse(text);
-          } catch (e) {}
-          if (j && j.banned) {
+        }
+        if (method === 'GET' && isShortCacheableGetUrl(url) && r.status === 200) {
+          return r
+            .clone()
+            .text()
+            .then(function (text) {
+              writeAuthGetShortCache(url, r, text);
+              return r;
+            })
+            .catch(function () {
+              return r;
+            });
+        }
+        if (r.status === 401) {
+          return r.text().then(function (text) {
             clearSession();
+            var j = null;
             try {
-              alert('账号已被封禁');
-            } catch (e4) {}
+              j = JSON.parse(text);
+            } catch (e) {}
+            if (j && j.banned) {
+              try {
+                alert('账号已被封禁');
+              } catch (e2) {}
+            } else if (j && j.activation_expired) {
+              try {
+                alert('试用已过期，请重新登录');
+              } catch (eExp) {}
+            } else if (j && j.session_revoked) {
+              try {
+                alert('登录已失效，请重新登录');
+              } catch (e3) {}
+            }
             window.location.href = LOGIN_PAGE;
-            return Promise.reject(new Error('banned'));
-          }
-          if (j && j.need_activation) {
+            return Promise.reject(new Error('unauthorized'));
+          });
+        }
+        if (r.status === 403) {
+          return r.text().then(function (text) {
+            var j = null;
             try {
-              localStorage.setItem('account_active', '0');
-            } catch (e2) {}
-            var err = new Error('need_activation');
-            err.need_activation = true;
-            return Promise.reject(err);
-          }
-          return Promise.reject(new Error('forbidden'));
-        });
-      }
-      return r;
-    });
+              j = JSON.parse(text);
+            } catch (e) {}
+            if (j && j.banned) {
+              clearSession();
+              try {
+                alert('账号已被封禁');
+              } catch (e4) {}
+              window.location.href = LOGIN_PAGE;
+              return Promise.reject(new Error('banned'));
+            }
+            if (j && j.need_activation) {
+              try {
+                localStorage.setItem('account_active', '0');
+              } catch (e2) {}
+              var err = new Error('need_activation');
+              err.need_activation = true;
+              return Promise.reject(err);
+            }
+            return Promise.reject(new Error('forbidden'));
+          });
+        }
+        return r;
+      })
+      .catch(function (err) {
+        var reqEnd =
+          typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now()
+            : Date.now();
+        var netMs = Math.max(0, Math.round(reqEnd - reqStart));
+        var aborted =
+          (err && err.name === 'AbortError') ||
+          (controller && controller.signal && controller.signal.aborted);
+        if (aborted || netMs >= API_PERF_SLOW_MS) {
+          reportApiPerf({
+            route_key: routeHint,
+            method: method,
+            action: actionHint || undefined,
+            net_ms: netMs,
+            render_ms: 0,
+            total_ms: netMs,
+            http_status: aborted ? 408 : 0
+          });
+        }
+        if (aborted) {
+          var timeoutErr = new Error('network_timeout');
+          timeoutErr.timeout = true;
+          timeoutErr.route = routeHint;
+          return Promise.reject(timeoutErr);
+        }
+        return Promise.reject(err);
+      })
+      .finally(function () {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
     if (coalesceKey) {
       var shared = p.finally(function () {
         if (_authGetInFlight.get(coalesceKey) === shared) {

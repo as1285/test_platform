@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>购买激活</title>
     <style>
@@ -1048,6 +1048,50 @@
         skus: [],
         selectedSkuId: ''
     };
+    /** treatment 多档新方案时收起激活码与其它渠道，避免干扰支付宝选购 */
+    var purchaseUiMode = 'legacy';
+
+    function applyPurchaseUiMode() {
+        var isNew = purchaseUiMode === 'treatment';
+        var activateBox = document.querySelector('.activate-box');
+        var otherLabel = document.getElementById('otherChannelsLabel');
+        var otherCard = document.getElementById('cardOtherChannels');
+        var heroP = document.querySelector('.hero p');
+        var steps = document.querySelector('.steps');
+        var cardAlipay = document.getElementById('cardAlipay');
+        var page = document.querySelector('.page');
+
+        if (activateBox) activateBox.hidden = isNew;
+        if (otherLabel) otherLabel.hidden = isNew;
+        if (otherCard) otherCard.hidden = isNew;
+
+        if (heroP) {
+            heroP.textContent = isNew
+                ? '选择下方套餐，支付宝扫码付款后自动开通当前账号。'
+                : '支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。';
+        }
+        if (steps) {
+            if (isNew) {
+                steps.innerHTML =
+                    '<li>选择套餐并点「生成付款二维码」</li>' +
+                    '<li>用支付宝扫码完成付款</li>' +
+                    '<li>付款成功后自动开通，无需填写激活码</li>';
+            } else {
+                steps.innerHTML =
+                    '<li>支付宝：扫码付款成功后自动开通当前账号</li>' +
+                    '<li>酷发卡 / 微信 / 闲鱼：付款后领取激活码</li>' +
+                    '<li>回到本页顶部输入激活码，点击「确认激活」</li>';
+            }
+        }
+
+        /* 新方案把支付宝区置顶，紧接说明文案 */
+        if (isNew && page && cardAlipay && heroP && heroP.parentNode === page) {
+            var hero = document.querySelector('.hero');
+            if (hero && hero.nextSibling !== cardAlipay) {
+                page.insertBefore(cardAlipay, hero.nextSibling);
+            }
+        }
+    }
 
     function formatSkuDuration(sku) {
         if (!sku) return '';
@@ -1144,6 +1188,7 @@
                     if (variant === 'treatment' && skus.length > 1) {
                         hint.textContent =
                             '可选试用或永久套餐；购买更长档将覆盖当前更短试用。付款成功后自动开通。';
+                        purchaseUiMode = 'treatment';
                     } else {
                         hint.textContent =
                             (selected && selected.subject
@@ -1152,7 +1197,9 @@
                             '，支付 ' +
                             (selected ? selected.amount : data.amount || '') +
                             ' 元后自动开通当前登录账号。';
+                        purchaseUiMode = 'legacy';
                     }
+                    applyPurchaseUiMode();
                     trackPurchase(
                         variant === 'treatment'
                             ? 'track_pricing_ab_expose_treatment'
@@ -1162,11 +1209,16 @@
                             sku_count: skus.length
                         }
                     );
+                } else {
+                    purchaseUiMode = 'legacy';
+                    applyPurchaseUiMode();
                 }
                 return checkAlipayLatestOrder();
             })
             .catch(function () {
                 document.getElementById('cardAlipay').hidden = true;
+                purchaseUiMode = 'legacy';
+                applyPurchaseUiMode();
             });
     }
 
@@ -1200,6 +1252,7 @@
         var showQqAdd = data.show_qq_add !== false && !!cfg.qqAdd;
         document.getElementById('rowQqGroup').hidden = !showQqGroup;
         document.getElementById('rowQqAdd').hidden = !showQqAdd;
+        applyPurchaseUiMode();
     }
 
     function trackPurchasePageViewWithChannels() {

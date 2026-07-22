@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -967,9 +967,19 @@
                 body: JSON.stringify(payload)
             })
                 .then(function (r) {
-                    return r.json();
+                    return r.json().then(function (data) {
+                        return { http: r.status, data: data };
+                    });
                 })
-                .then(function (data) {
+                .then(function (pack) {
+                    var data = pack.data || {};
+                    if (pack.http === 402 || data.code === 402) {
+                        alert(
+                            (data.msg || '改名需支付费用') +
+                                '\n请到「我的」页修改姓名，按提示完成 ¥10 支付后再保存。'
+                        );
+                        return;
+                    }
                     if (data.code === 200) {
                         if (onOk) {
                             onOk();
@@ -1206,6 +1216,6 @@
 
         loadUserInfo();
     </script>
-    <script src="/js/watermark.js?v=20260721-wm-soft"></script>
+    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>
 </html>

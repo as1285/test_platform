@@ -57,6 +57,18 @@ app.get(
   h.handleAdminAnalyticsPricingAb
 );
 app.get(
+  '/api/admin/analytics/purchase-events',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion', 'analytics-tracking']),
+  h.handleAdminAnalyticsPurchaseEvents
+);
+app.get(
+  '/api/admin/analytics/purchase-events/users',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-purchase', 'analytics', 'analytics-conversion', 'analytics-tracking']),
+  h.handleAdminAnalyticsPurchaseEventUsers
+);
+app.get(
   '/api/admin/analytics/daily-conversion',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
@@ -109,6 +121,12 @@ app.post(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
   h.handleAdminMessagesBulk
+);
+app.get(
+  '/api/admin/analytics/invite-registrations',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-invite', 'analytics', 'analytics-register']),
+  h.handleAdminInviteRegistrations
 );
 app.get(
   '/api/admin/analytics/register-time',
@@ -271,6 +289,18 @@ app.post('/api/admin/accounts/update', mw.requireAdminAuth, h.handleAdminAccount
 app.post('/api/admin/accounts/delete', mw.requireAdminAuth, h.handleAdminAccountsDelete);
 app.get('/api/admin/monitor/overview', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorOverview);
 app.post('/api/admin/monitor/test-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorTestEmail);
+app.post(
+  '/api/admin/sbdy-demo/generate',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('sbdy-demo'),
+  h.handleAdminSbdyDemoGenerate
+);
+app.get(
+  '/api/admin/sbdy-demo/list',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('sbdy-demo'),
+  h.handleAdminSbdyDemoList
+);
 }
 
 module.exports = { registerAdminRoutes };

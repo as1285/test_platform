@@ -26,89 +26,11 @@
                 <div id="page-settings" class="page-panel" role="tabpanel">
                     <section>
                         <h2>增长与触达配置</h2>
-                        <p class="hint mt-0">集中配置转化/定价实验、邀请有礼、未激活弹窗，以及 QQ / 微信等用户触达入口。效果请到「转化与触达」查看。</p>
-                    </section>
-                    <section>
-                        <h2>QQ 添加链接（个人中心顶栏）</h2>
-                        <p class="hint">用户在「我要咨询 / 个人中心」页顶栏点击「添加QQ号」时打开此链接（如 QQ 好友加号页，须为 https 完整地址）。留空并保存则点击时提示未配置。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label for="qqAddUrl">QQ 添加链接</label>
-                                <input type="text" id="qqAddUrl" class="input-block" maxlength="2048" placeholder="如 https://qm.qq.com/…（个人 QQ）">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveQqAddUrl">保存 QQ 链接</button>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>QQ 用户交流群链接</h2>
-                        <p class="hint">用户在激活成功、填完个税、消息中心、帮助页等场景点击「加入用户交流群」时打开此链接（QQ 加群页，须为 https）。留空则相关入口不展示或点击时提示未配置。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label for="qqGroupUrl">QQ 加群链接</label>
-                                <input type="text" id="qqGroupUrl" class="input-block" maxlength="2048" placeholder="如 https://qm.qq.com/cgi-bin/qm/qr?…">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveQqGroupUrl">保存加群链接</button>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>微信收款码（用户反馈页）</h2>
-                        <p class="hint">上传后将在用户端「购买激活」页与「我要咨询 → 我要反馈」展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不显示。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field form-field-narrow">
-                                <div id="wechatPayQrPreviewWrap" class="img-preview-wrap" hidden>
-                                    <img id="wechatPayQrPreview" class="img-preview" alt="微信收款码预览">
-                                </div>
-                                <label for="wechatPayQrcodeUrl">收款码图片地址</label>
-                                <div class="mine-ui-controls field-gap-top">
-                                    <input type="text" id="wechatPayQrcodeUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
-                                    <input type="file" class="wechat-pay-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
-                                    <button type="button" class="btn-page wechat-pay-qr-pick">上传图片</button>
-                                </div>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveWechatPayQr">保存收款码</button>
-                                <button type="button" class="btn-page" id="btnClearWechatPayQr">清空</button>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>转化 A/B 配置</h2>
-                        <p class="hint">控制用户端激活弹窗文案与税务记录页「30秒体验」按钮。用户按账号哈希分配 A/B 变体，可在接口统计中查看 <code>track_conversion_ab_variant</code>。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label><input type="checkbox" id="convAbEnabled" checked> 启用转化 A/B</label>
-                            </div>
-                            <div class="form-field">
-                                <label for="convAbTitleA">激活弹窗标题 · 变体 A</label>
-                                <input type="text" id="convAbTitleA" class="input-block" maxlength="120">
-                            </div>
-                            <div class="form-field">
-                                <label for="convAbSubtitleA">激活弹窗副标题 · 变体 A</label>
-                                <input type="text" id="convAbSubtitleA" class="input-block" maxlength="200">
-                            </div>
-                            <div class="form-field">
-                                <label for="convAbTitleB">激活弹窗标题 · 变体 B</label>
-                                <input type="text" id="convAbTitleB" class="input-block" maxlength="120">
-                            </div>
-                            <div class="form-field">
-                                <label for="convAbSubtitleB">激活弹窗副标题 · 变体 B</label>
-                                <input type="text" id="convAbSubtitleB" class="input-block" maxlength="200">
-                            </div>
-                            <div class="form-field">
-                                <label><input type="checkbox" id="convAbBatchProminent"> 税务记录页突出「30秒体验」按钮（变体 B 风格引导）</label>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveConversionAb">保存转化配置</button>
-                            </div>
-                        </div>
+                        <p class="hint mt-0">优先配置定价实验与邀请有礼；下方为弹窗与 QQ / 微信触达入口。效果请到「转化与触达」查看。</p>
                     </section>
                     <section>
                         <h2>定价 A/B（支付宝）</h2>
-                        <p class="hint">与转化文案 A/B 独立。启用后：Control 仅「199 永久」；Treatment 为「49/24小时 · 99/3天 · 199/1年 · 499永久」。首期 50/50；短时续买<strong>覆盖为更长档</strong>。启用期间自动暂停转化文案 A/B。主指标：购买区曝光用户人均支付金额。</p>
+                        <p class="hint">启用后：Control 仅「199 永久」；Treatment 为「49/24小时 · 99/3天 · 199/1年 · 499永久」。首期 50/50；短时续买<strong>覆盖为更长档</strong>。主指标：购买区曝光用户人均支付金额。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label><input type="checkbox" id="pricingAbEnabled" checked> 启用定价 A/B</label>
@@ -191,6 +113,53 @@
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveActNudge">保存弹窗配置</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>QQ 添加链接（个人中心顶栏）</h2>
+                        <p class="hint">用户在「我要咨询 / 个人中心」页顶栏点击「添加QQ号」时打开此链接（如 QQ 好友加号页，须为 https 完整地址）。留空并保存则点击时提示未配置。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label for="qqAddUrl">QQ 添加链接</label>
+                                <input type="text" id="qqAddUrl" class="input-block" maxlength="2048" placeholder="如 https://qm.qq.com/…（个人 QQ）">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveQqAddUrl">保存 QQ 链接</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>QQ 用户交流群链接</h2>
+                        <p class="hint">用户在激活成功、填完个税、消息中心、帮助页等场景点击「加入用户交流群」时打开此链接（QQ 加群页，须为 https）。留空则相关入口不展示或点击时提示未配置。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label for="qqGroupUrl">QQ 加群链接</label>
+                                <input type="text" id="qqGroupUrl" class="input-block" maxlength="2048" placeholder="如 https://qm.qq.com/cgi-bin/qm/qr?…">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveQqGroupUrl">保存加群链接</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>微信收款码（用户反馈页）</h2>
+                        <p class="hint">上传后将在用户端「购买激活」页与「我要咨询 → 我要反馈」展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不显示。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field form-field-narrow">
+                                <div id="wechatPayQrPreviewWrap" class="img-preview-wrap" hidden>
+                                    <img id="wechatPayQrPreview" class="img-preview" alt="微信收款码预览">
+                                </div>
+                                <label for="wechatPayQrcodeUrl">收款码图片地址</label>
+                                <div class="mine-ui-controls field-gap-top">
+                                    <input type="text" id="wechatPayQrcodeUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
+                                    <input type="file" class="wechat-pay-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
+                                    <button type="button" class="btn-page wechat-pay-qr-pick">上传图片</button>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveWechatPayQr">保存收款码</button>
+                                <button type="button" class="btn-page" id="btnClearWechatPayQr">清空</button>
                             </div>
                         </div>
                     </section>
@@ -1471,6 +1440,112 @@
         </section>
                 </div>
 
+                </div>
+
+                <div id="page-sbdy-demo" class="page-panel" role="tabpanel">
+        <section>
+            <h2>社保演示生成</h2>
+            <p class="hint mt-0" style="color:#b45309;">生成的是<strong>演示样例</strong>（非正式社会保险参保证明），带水印与本站核验码，不能用于贷款/入职/签证等正式用途。</p>
+            <div class="form-row form-stack" style="max-width:880px;">
+                <div class="form-row flex-wrap gap-10">
+                    <div>
+                        <label for="sbdyName">姓名</label>
+                        <input type="text" id="sbdyName" maxlength="64" placeholder="如：李晓晴">
+                    </div>
+                    <div>
+                        <label for="sbdyIdNumber">证件号码 / 社会保障号</label>
+                        <input type="text" id="sbdyIdNumber" maxlength="32" placeholder="身份证号">
+                    </div>
+                    <div>
+                        <label for="sbdyGender">性别</label>
+                        <select id="sbdyGender" class="filter-select">
+                            <option value="女">女</option>
+                            <option value="男">男</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row flex-wrap gap-10">
+                    <div style="flex:1;min-width:220px;">
+                        <label for="sbdyCompany">参保单位</label>
+                        <input type="text" id="sbdyCompany" maxlength="128" placeholder="单位名称">
+                    </div>
+                    <div>
+                        <label for="sbdyCredit">统一社会信用代码</label>
+                        <input type="text" id="sbdyCredit" maxlength="32" placeholder="9131…">
+                    </div>
+                    <div>
+                        <label for="sbdyArea">参保地</label>
+                        <input type="text" id="sbdyArea" maxlength="32" value="余杭区">
+                    </div>
+                </div>
+                <div class="form-row flex-wrap gap-10">
+                    <div>
+                        <label for="sbdyPeriodStart">缴费起月</label>
+                        <input type="month" id="sbdyPeriodStart">
+                    </div>
+                    <div>
+                        <label for="sbdyPeriodEnd">缴费止月</label>
+                        <input type="month" id="sbdyPeriodEnd">
+                    </div>
+                    <div>
+                        <label for="sbdyBase">缴费基数（元）</label>
+                        <input type="number" id="sbdyBase" value="4986" step="0.01">
+                    </div>
+                    <div>
+                        <label for="sbdyPensionPay">养老个人缴费</label>
+                        <input type="number" id="sbdyPensionPay" value="398.88" step="0.01">
+                    </div>
+                    <div>
+                        <label for="sbdyUnempPay">失业个人缴费</label>
+                        <input type="number" id="sbdyUnempPay" value="24.93" step="0.01">
+                    </div>
+                </div>
+                <div class="form-row flex-wrap gap-10">
+                    <div>
+                        <label for="sbdyStatusPension">养老保险状态</label>
+                        <input type="text" id="sbdyStatusPension" value="暂停缴费">
+                    </div>
+                    <div>
+                        <label for="sbdyStatusInjury">工伤保险状态</label>
+                        <input type="text" id="sbdyStatusInjury" value="暂停缴费">
+                    </div>
+                    <div>
+                        <label for="sbdyStatusUnemp">失业保险状态</label>
+                        <input type="text" id="sbdyStatusUnemp" value="暂停缴费">
+                    </div>
+                    <div>
+                        <label for="sbdyPrintDate">打印时间文案</label>
+                        <input type="text" id="sbdyPrintDate" placeholder="默认今天，如 2026年07月22日">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-page" id="btnSbdyDemoFillSample" onclick="if(window.sbdyDemoFillSample){window.sbdyDemoFillSample();}">填充示例数据</button>
+                    <button type="button" class="btn-primary" id="btnSbdyDemoGenerate" onclick="if(window.sbdyDemoGenerate){window.sbdyDemoGenerate();}else if(window.loadSbdyDemoPage){window.loadSbdyDemoPage();window.sbdyDemoGenerate&&window.sbdyDemoGenerate();}">生成演示样例</button>
+                    <button type="button" class="btn-page" id="btnSbdyDemoRefresh" onclick="if(window.loadSbdyDemoPage){window.loadSbdyDemoPage();}">刷新列表</button>
+                    <span class="hint" id="sbdyDemoStatus" aria-live="polite"></span>
+                </div>
+                <div id="sbdyDemoResult" class="code-result"></div>
+            </div>
+            <h3 class="mt-16">最近生成</h3>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>姓名</th>
+                            <th>证件号</th>
+                            <th>单位</th>
+                            <th>授权码</th>
+                            <th>操作人</th>
+                            <th>链接</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sbdyDemoListTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+                </div>
+
                 <div id="page-analytics-conversion" class="page-panel active" role="tabpanel">
         <section>
             <h2>转化与触达</h2>
@@ -1562,6 +1637,128 @@
         </section>
                 </div>
 
+                <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
+        <section>
+            <h2>支付页埋点</h2>
+            <p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付）。</p>
+            <div class="form-row flex-align-center mt-8">
+                <div>
+                    <label for="analyticsPurchaseDays">统计区间</label>
+                    <select id="analyticsPurchaseDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshPurchaseEvents">刷新统计</button>
+            </div>
+            <div id="analyticsPurchaseMount" class="analytics-conv-wrap" aria-live="polite">
+                <p id="analyticsPurchaseSummary" class="stat">加载中…</p>
+                <div id="analyticsPurchaseFunnelCards" class="user-data-stats mb-12"></div>
+                <h3 class="mt-12">支付宝漏斗（UV）</h3>
+                <div class="scroll-x mb-12">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>浏览</th>
+                                <th>生成付款</th>
+                                <th>打开支付宝</th>
+                                <th>支付成功</th>
+                                <th>浏览→支付</th>
+                                <th>生成→打开</th>
+                                <th>打开→成功</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsPurchaseFunnelTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <h3>事件汇总</h3>
+                <div class="scroll-x mb-12">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>事件</th>
+                                <th>次数</th>
+                                <th>去重用户</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsPurchaseSummaryTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <h3>每日明细</h3>
+                <p id="analyticsPurchaseDailyHint" class="hint mt-0 mb-8">—</p>
+                <div class="scroll-x">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>浏览UV</th>
+                                <th>生成付款</th>
+                                <th>打开支付宝</th>
+                                <th>支付成功</th>
+                                <th>浏览→支付</th>
+                                <th>激活成功</th>
+                                <th>激活失败</th>
+                                <th>已付订单</th>
+                                <th>GMV</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsPurchaseDailyTbody"><tr><td colspan="11">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+                </div>
+
+                <div id="page-analytics-invite" class="page-panel" role="tabpanel">
+        <section>
+            <h2>邀请注册统计</h2>
+            <p class="hint mt-0">按<strong>北京时间</strong>统计通过邀请码注册的用户（<code>user_invites.registered_at</code>）。含每日邀请注册数、邀请人数、激活数、奖励发放，以及邀请链接点击；下方为区间内 Top 邀请人。</p>
+            <div class="form-row flex-align-center mt-8">
+                <div>
+                    <label for="analyticsInviteDays">统计区间</label>
+                    <select id="analyticsInviteDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshInviteStats">刷新统计</button>
+            </div>
+            <div id="analyticsInviteMount" class="analytics-conv-wrap" aria-live="polite">
+                <p id="analyticsInviteSummary" class="stat">加载中…</p>
+                <div id="analyticsInviteCards" class="user-data-stats mb-12"></div>
+                <div class="scroll-x">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>邀请注册</th>
+                                <th>邀请人数</th>
+                                <th>已激活</th>
+                                <th>激活率</th>
+                                <th>奖励已发</th>
+                                <th>奖励待发</th>
+                                <th>链接点击</th>
+                                <th>点击 UV</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsInviteDailyTbody"><tr><td colspan="9">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+                <h3 class="mt-16">Top 邀请人（区间内）</h3>
+                <div class="scroll-x">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>邀请人账号</th>
+                                <th>邀请注册</th>
+                                <th>已激活</th>
+                                <th>激活率</th>
+                                <th>奖励已发</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsInviteTopTbody"><tr><td colspan="6">加载中…</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+                </div>
+
                 <div id="page-analytics-register" class="page-panel" role="tabpanel">
         <section>
             <h2>每日注册 · 安卓 / 苹果占比</h2>
@@ -1596,7 +1793,7 @@
         </section>
         <section>
             <h2>注册时段分析</h2>
-            <p class="hint mt-0">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比上午、下午、晚上哪个时段注册人数最多；下方表格含凌晨细分，柱状图为 24 小时分布。</p>
+            <p class="hint mt-0">按<strong>北京时间</strong>统计用户注册时间（<code>users.created_at</code>），对比凌晨 / 上午 / 下午 / 晚上四个时段哪个注册人数最多；柱状图另含 24 小时分布。</p>
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsRegisterTimeDays">统计区间</label>
@@ -1624,7 +1821,7 @@
                     <p id="registerTimeChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
                     <div class="device-stats-charts register-time-charts-grid">
                         <div class="device-stats-chart-card">
-                            <h4>上午 / 下午 / 晚上</h4>
+                            <h4>凌晨 / 上午 / 下午 / 晚上</h4>
                             <div class="chart-canvas-wrap"><canvas id="registerTimeChartPeriods"></canvas></div>
                         </div>
                         <div class="device-stats-chart-card chart-card-wide">
@@ -2175,9 +2372,9 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260722-chat-window-fix"></script>
+    <script src="/js/admin/loader.js?v=20260722-purchase-track"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin_panel.js?v=20260722-ops-ia"></script>
+    <script src="/js/admin_panel.js?v=20260722-sbdy-sample"></script>
 </body>
 </html>

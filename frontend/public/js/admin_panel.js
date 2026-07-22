@@ -1036,6 +1036,8 @@
         var _adminCodesLoaded = false;
         var _adminAnalyticsActivitySeen = false;
         var _adminAnalyticsRegisterSeen = false;
+        var _adminAnalyticsInviteSeen = false;
+        var _adminAnalyticsPurchaseSeen = false;
         var _adminAnalyticsTrackingSeen = false;
         var _adminAnalyticsDevicesSeen = false;
         var _adminInstallGuideStatsSeen = false;
@@ -1064,6 +1066,7 @@
             }
             var order = [
                 'analytics-conversion',
+                'analytics-purchase',
                 'settings',
                 'codes',
                 'channel-analysis',
@@ -1078,6 +1081,7 @@
                 'user-behavior',
                 'activated-user-analysis',
                 'analytics-register',
+                'analytics-invite',
                 'analytics-activity',
                 'analytics-tracking',
                 'analytics-devices',
@@ -1188,6 +1192,8 @@
                 'analytics-conversion': 1,
                 'analytics-activity': 1,
                 'analytics-register': 1,
+                'analytics-invite': 1,
+                'analytics-purchase': 1,
                 'analytics-tracking': 1,
                 'analytics-devices': 1,
                 'install-guide-stats': 1,
@@ -1195,7 +1201,8 @@
                 'api-analytics': 1,
                 'login-log': 1,
                 'user-login-log': 1,
-                'server-monitor': 1
+                'server-monitor': 1,
+                'sbdy-demo': 1
             };
             if (!ok[k] || !adminHasMenu(k)) {
                 return firstAllowedAdminPage();
@@ -1267,6 +1274,13 @@
                 _adminAnalyticsRegisterSeen = true;
                 loadAnalyticsRegisterPage();
             }
+            if (pageKey === 'analytics-invite' && !_adminAnalyticsInviteSeen) {
+                _adminAnalyticsInviteSeen = true;
+                loadAnalyticsInvitePage();
+            }
+            if (pageKey === 'analytics-purchase') {
+                loadAnalyticsPurchasePage();
+            }
             if (pageKey === 'analytics-tracking' && !_adminAnalyticsTrackingSeen) {
                 _adminAnalyticsTrackingSeen = true;
                 loadAnalyticsTrackingPage();
@@ -1290,6 +1304,17 @@
             if (pageKey === 'server-monitor' && !_adminServerMonitorSeen) {
                 _adminServerMonitorSeen = true;
                 loadServerMonitor();
+            }
+            if (pageKey === 'sbdy-demo') {
+                if (typeof loadSbdyDemoPage === 'function') {
+                    loadSbdyDemoPage();
+                } else if (
+                    window.AdminModules &&
+                    window.AdminModules['sbdy-demo'] &&
+                    typeof window.AdminModules['sbdy-demo'].loadPage === 'function'
+                ) {
+                    window.AdminModules['sbdy-demo'].loadPage();
+                }
             }
             if (pageKey === 'login-log') {
                 loginRecentPage = 1;
@@ -2158,6 +2183,412 @@
             loadAnalyticsRegisterPlatform();
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
+        }
+
+        function loadAnalyticsInvitePage() {
+            var days = analyticsPeriodVal(document.getElementById('analyticsInviteDays'));
+            var summaryEl = document.getElementById('analyticsInviteSummary');
+            var cardsEl = document.getElementById('analyticsInviteCards');
+            var dailyTbody = document.getElementById('analyticsInviteDailyTbody');
+            var topTbody = document.getElementById('analyticsInviteTopTbody');
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (cardsEl) cardsEl.innerHTML = '';
+            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
+            if (topTbody) topTbody.innerHTML = '<tr><td colspan="6">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/invite-registrations?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (res) {
+                    if (!res || res.code !== 200 || !res.data) {
+                        if (summaryEl) summaryEl.textContent = (res && res.msg) || '加载失败';
+                        if (dailyTbody) {
+                            dailyTbody.innerHTML =
+                                '<tr><td colspan="9">' + esc((res && res.msg) || '加载失败') + '</td></tr>';
+                        }
+                        if (topTbody) {
+                            topTbody.innerHTML =
+                                '<tr><td colspan="6">' + esc((res && res.msg) || '加载失败') + '</td></tr>';
+                        }
+                        return;
+                    }
+                    var data = res.data;
+                    var sum = data.summary || {};
+                    if (summaryEl) {
+                        summaryEl.innerHTML =
+                            analyticsPeriodHintHtml(data) +
+                            '区间邀请注册 <strong>' +
+                            esc(String(sum.invite_registered || 0)) +
+                            '</strong> 人，来自 <strong>' +
+                            esc(String(sum.inviters || 0)) +
+                            '</strong> 位邀请人；已激活 <strong>' +
+                            esc(String(sum.activated || 0)) +
+                            '</strong>（' +
+                            esc(String(sum.activate_rate != null ? sum.activate_rate : 0)) +
+                            '%）。';
+                    }
+                    if (cardsEl) {
+                        var cards = [
+                            ['邀请注册', sum.invite_registered || 0],
+                            ['邀请人数', sum.inviters || 0],
+                            ['已激活', sum.activated || 0],
+                            ['激活率', (sum.activate_rate != null ? sum.activate_rate : 0) + '%'],
+                            ['奖励已发', sum.reward_granted || 0],
+                            ['奖励待发', sum.reward_pending || 0],
+                            ['链接点击', sum.link_clicks || 0],
+                            ['点击 UV', sum.link_uv || 0]
+                        ];
+                        var ch = '';
+                        cards.forEach(function (c) {
+                            ch +=
+                                '<div class="user-data-stat-card"><div class="ud-label">' +
+                                esc(c[0]) +
+                                '</div><div class="ud-val">' +
+                                esc(String(c[1])) +
+                                '</div></div>';
+                        });
+                        cardsEl.innerHTML = ch;
+                    }
+                    var daily = Array.isArray(data.daily) ? data.daily : [];
+                    if (dailyTbody) {
+                        if (!daily.length) {
+                            dailyTbody.innerHTML = '<tr><td colspan="9">暂无邀请注册数据</td></tr>';
+                        } else {
+                            var dh = '';
+                            daily.forEach(function (row) {
+                                dh += '<tr>';
+                                dh += '<td>' + esc(row.date || '—') + '</td>';
+                                dh += '<td>' + esc(String(row.invite_registered || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.inviters || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.activated || 0)) + '</td>';
+                                dh +=
+                                    '<td>' +
+                                    esc(String(row.activate_rate != null ? row.activate_rate : 0)) +
+                                    '%</td>';
+                                dh += '<td>' + esc(String(row.reward_granted || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.reward_pending || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.link_clicks || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.link_uv || 0)) + '</td>';
+                                dh += '</tr>';
+                            });
+                            dailyTbody.innerHTML = dh;
+                        }
+                    }
+                    var top = Array.isArray(data.top_inviters) ? data.top_inviters : [];
+                    if (topTbody) {
+                        if (!top.length) {
+                            topTbody.innerHTML = '<tr><td colspan="6">暂无邀请人数据</td></tr>';
+                        } else {
+                            var th = '';
+                            top.forEach(function (row, idx) {
+                                th += '<tr>';
+                                th += '<td>' + esc(String(idx + 1)) + '</td>';
+                                th += '<td class="cell-break">' + esc(row.inviter_username || '—') + '</td>';
+                                th += '<td>' + esc(String(row.invite_registered || 0)) + '</td>';
+                                th += '<td>' + esc(String(row.activated || 0)) + '</td>';
+                                th +=
+                                    '<td>' +
+                                    esc(String(row.activate_rate != null ? row.activate_rate : 0)) +
+                                    '%</td>';
+                                th += '<td>' + esc(String(row.reward_granted || 0)) + '</td>';
+                                th += '</tr>';
+                            });
+                            topTbody.innerHTML = th;
+                        }
+                    }
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="9">网络错误</td></tr>';
+                    if (topTbody) topTbody.innerHTML = '<tr><td colspan="6">网络错误</td></tr>';
+                });
+        }
+
+        var PURCHASE_USERS_PAGE_LIMIT = 20;
+
+        function purchaseDateDomKey(dateStr) {
+            return String(dateStr || '').replace(/[^0-9]/g, '');
+        }
+
+        function renderPurchaseUsersPanel(box, dateStr, data) {
+            if (!box) return;
+            var users = Array.isArray(data.users) ? data.users : [];
+            var page = Number(data.page) || 1;
+            var total = Number(data.total) || 0;
+            var totalPages = Math.max(1, Number(data.total_pages) || 1);
+            box.setAttribute('data-date', dateStr);
+            box.setAttribute('data-page', String(page));
+            box.setAttribute('data-loaded', '1');
+            var html = '<div class="dau-users-panel">';
+            html +=
+                '<div class="dau-users-title">' +
+                esc(dateStr) +
+                ' 支付页用户（共 ' +
+                total +
+                ' 人）</div>';
+            if (!users.length) {
+                html += '<p class="hint">当日暂无用户</p>';
+            } else {
+                html += '<ul class="dau-users-list">';
+                users.forEach(function (u) {
+                    var parts = [];
+                    var ev = u.events || {};
+                    if (ev.track_activate_prompt_open) parts.push('弹窗开 ' + ev.track_activate_prompt_open);
+                    if (ev.track_activate_prompt_confirm) parts.push('确认激活 ' + ev.track_activate_prompt_confirm);
+                    if (ev.track_activate_prompt_cancel) parts.push('弹窗取消 ' + ev.track_activate_prompt_cancel);
+                    if (ev.track_activation_nudge_cta) parts.push('引导去激活 ' + ev.track_activation_nudge_cta);
+                    if (ev.track_purchase_page_view) parts.push('浏览 ' + ev.track_purchase_page_view);
+                    if (ev.track_alipay_payment_start) parts.push('生成付款 ' + ev.track_alipay_payment_start);
+                    if (ev.track_alipay_open_click) parts.push('打开支付宝 ' + ev.track_alipay_open_click);
+                    if (ev.track_alipay_payment_success) parts.push('支付成功 ' + ev.track_alipay_payment_success);
+                    if (ev.track_purchase_activate_success) parts.push('激活成功 ' + ev.track_purchase_activate_success);
+                    if (ev.track_purchase_activate_fail) parts.push('激活失败 ' + ev.track_purchase_activate_fail);
+                    html +=
+                        '<li><strong class="cell-break">' +
+                        esc(u.username || '—') +
+                        '</strong> · 合计 ' +
+                        esc(String(u.total || 0)) +
+                        (parts.length
+                            ? '<div class="hint mt-0 mb-0" style="font-size:12px;">' +
+                              esc(parts.join(' · ')) +
+                              '</div>'
+                            : '') +
+                        '</li>';
+                });
+                html += '</ul>';
+            }
+            if (totalPages > 1) {
+                html +=
+                    '<div class="dau-users-pager">' +
+                    '<button type="button" class="btn-sm purchase-users-prev" data-date="' +
+                    esc(dateStr) +
+                    '"' +
+                    (page <= 1 ? ' disabled' : '') +
+                    '>上一页</button> ' +
+                    '<span>' +
+                    page +
+                    ' / ' +
+                    totalPages +
+                    '</span> ' +
+                    '<button type="button" class="btn-sm purchase-users-next" data-date="' +
+                    esc(dateStr) +
+                    '"' +
+                    (page >= totalPages ? ' disabled' : '') +
+                    '>下一页</button></div>';
+            }
+            html += '</div>';
+            box.innerHTML = html;
+        }
+
+        function loadPurchaseUsersForDate(dateStr, page, box) {
+            if (!box) return;
+            box.removeAttribute('data-loaded');
+            box.innerHTML = '<div class="dau-users-panel" style="color:#888;">加载中…</div>';
+            adminFetch(
+                'api/admin/analytics/purchase-events/users?date=' +
+                    encodeURIComponent(dateStr) +
+                    '&page=' +
+                    encodeURIComponent(String(page || 1)) +
+                    '&limit=' +
+                    encodeURIComponent(String(PURCHASE_USERS_PAGE_LIMIT))
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        box.innerHTML =
+                            '<div class="dau-users-panel" style="color:#c00;">' +
+                            esc(j.msg || '加载失败') +
+                            '</div>';
+                        return;
+                    }
+                    renderPurchaseUsersPanel(box, dateStr, j.data);
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="dau-users-panel" style="color:#c00;">网络错误</div>';
+                });
+        }
+
+        function loadAnalyticsPurchasePage() {
+            var days = analyticsPeriodVal(document.getElementById('analyticsPurchaseDays'));
+            var summaryEl = document.getElementById('analyticsPurchaseSummary');
+            var cardsEl = document.getElementById('analyticsPurchaseFunnelCards');
+            var funnelTbody = document.getElementById('analyticsPurchaseFunnelTbody');
+            var summaryTbody = document.getElementById('analyticsPurchaseSummaryTbody');
+            var dailyTbody = document.getElementById('analyticsPurchaseDailyTbody');
+            var dailyHint = document.getElementById('analyticsPurchaseDailyHint');
+            if (summaryEl) summaryEl.textContent = '加载中…';
+            if (cardsEl) cardsEl.innerHTML = '';
+            if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/purchase-events?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (res) {
+                    if (!res || res.code !== 200 || !res.data) {
+                        var msg = (res && res.msg) || '加载失败';
+                        if (summaryEl) summaryEl.textContent = msg;
+                        if (funnelTbody) {
+                            funnelTbody.innerHTML = '<tr><td colspan="7">' + esc(msg) + '</td></tr>';
+                        }
+                        if (summaryTbody) {
+                            summaryTbody.innerHTML = '<tr><td colspan="3">' + esc(msg) + '</td></tr>';
+                        }
+                        if (dailyTbody) {
+                            dailyTbody.innerHTML = '<tr><td colspan="11">' + esc(msg) + '</td></tr>';
+                        }
+                        return;
+                    }
+                    var data = res.data;
+                    var funnel = data.funnel || {};
+                    var pay = data.payments || {};
+                    if (summaryEl) {
+                        summaryEl.innerHTML =
+                            analyticsPeriodHintHtml(data) +
+                            '激活弹窗 UV <strong>' +
+                            esc(String(funnel.prompt_open_uv || 0)) +
+                            '</strong>；确认激活 UV <strong>' +
+                            esc(String(funnel.prompt_confirm_uv || 0)) +
+                            '</strong>；购买页浏览 UV <strong>' +
+                            esc(String(funnel.view_uv || 0)) +
+                            '</strong>；支付宝支付成功 UV <strong>' +
+                            esc(String(funnel.alipay_success_uv || 0)) +
+                            '</strong>（浏览→支付 ' +
+                            esc(String(funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0)) +
+                            '%）；已付订单 <strong>' +
+                            esc(String(pay.paid_orders || 0)) +
+                            '</strong>，GMV ¥' +
+                            esc(String(pay.gmv != null ? pay.gmv : 0)) +
+                            '。';
+                    }
+                    if (cardsEl) {
+                        var cards = [
+                            ['激活弹窗 UV', funnel.prompt_open_uv || 0],
+                            ['确认激活 UV', funnel.prompt_confirm_uv || 0],
+                            ['浏览 UV', funnel.view_uv || 0],
+                            ['定价曝光 UV', funnel.expose_uv || 0],
+                            ['生成付款 UV', funnel.alipay_start_uv || 0],
+                            ['打开支付宝 UV', funnel.alipay_open_uv || 0],
+                            ['支付成功 UV', funnel.alipay_success_uv || 0],
+                            ['浏览→支付', (funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0) + '%'],
+                            ['激活成功 UV', funnel.activate_ok_uv || 0],
+                            ['已付订单', pay.paid_orders || 0],
+                            ['GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)]
+                        ];
+                        var ch = '';
+                        cards.forEach(function (c) {
+                            ch +=
+                                '<div class="user-data-stat-card"><div class="ud-label">' +
+                                esc(c[0]) +
+                                '</div><div class="ud-val">' +
+                                esc(String(c[1])) +
+                                '</div></div>';
+                        });
+                        cardsEl.innerHTML = ch;
+                    }
+                    if (funnelTbody) {
+                        funnelTbody.innerHTML =
+                            '<tr>' +
+                            '<td>' +
+                            esc(String(funnel.view_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(funnel.alipay_start_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(funnel.alipay_open_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(funnel.alipay_success_uv || 0)) +
+                            '</td>' +
+                            '<td>' +
+                            esc(String(funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0)) +
+                            '%</td>' +
+                            '<td>' +
+                            esc(String(funnel.start_to_open_pct != null ? funnel.start_to_open_pct : 0)) +
+                            '%</td>' +
+                            '<td>' +
+                            esc(String(funnel.open_to_success_pct != null ? funnel.open_to_success_pct : 0)) +
+                            '%</td>' +
+                            '</tr>';
+                    }
+                    var summary = Array.isArray(data.summary) ? data.summary : [];
+                    if (summaryTbody) {
+                        if (!summary.length) {
+                            summaryTbody.innerHTML = '<tr><td colspan="3">暂无事件</td></tr>';
+                        } else {
+                            var sh = '';
+                            summary.forEach(function (row) {
+                                if (!(row.total > 0)) return;
+                                sh +=
+                                    '<tr><td>' +
+                                    esc(row.label || row.event_key || '—') +
+                                    '<div class="hint mt-0 mb-0" style="font-size:11px;color:#94a3b8;">' +
+                                    esc(row.event_key || '') +
+                                    '</div></td><td><strong>' +
+                                    esc(String(row.total || 0)) +
+                                    '</strong></td><td>' +
+                                    esc(String(row.unique_users || 0)) +
+                                    '</td></tr>';
+                            });
+                            summaryTbody.innerHTML = sh || '<tr><td colspan="3">暂无事件</td></tr>';
+                        }
+                    }
+                    var byDay = Array.isArray(data.by_day) ? data.by_day : [];
+                    if (dailyHint) {
+                        dailyHint.textContent =
+                            '共 ' +
+                            (data.total_events != null ? data.total_events : 0) +
+                            ' 次事件，' +
+                            byDay.length +
+                            ' 天有记录。可展开查看当日账号。';
+                    }
+                    if (dailyTbody) {
+                        if (!byDay.length) {
+                            dailyTbody.innerHTML = '<tr><td colspan="11">暂无每日数据</td></tr>';
+                        } else {
+                            var dh = '';
+                            byDay.forEach(function (row) {
+                                var dk = purchaseDateDomKey(row.date);
+                                dh += '<tr class="purchase-summary-row">';
+                                dh += '<td>' + esc(row.date || '—') + '</td>';
+                                dh += '<td>' + esc(String(row.view_uv || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.alipay_start_uv || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.alipay_open_uv || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.alipay_success_uv || 0)) + '</td>';
+                                dh +=
+                                    '<td>' +
+                                    esc(String(row.view_to_pay_pct != null ? row.view_to_pay_pct : 0)) +
+                                    '%</td>';
+                                dh += '<td>' + esc(String(row.activate_ok_uv || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.activate_fail_uv || 0)) + '</td>';
+                                dh += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+                                dh += '<td>¥' + esc(String(row.gmv != null ? row.gmv : 0)) + '</td>';
+                                dh +=
+                                    '<td><button type="button" class="btn-sm btn-detail btn-purchase-users-toggle" data-date="' +
+                                    esc(row.date) +
+                                    '">查看用户</button></td>';
+                                dh += '</tr>';
+                                dh +=
+                                    '<tr id="purchase_users_row_' +
+                                    dk +
+                                    '" class="purchase-users-detail-row" style="display:none;"><td colspan="11"><div id="purchase_users_box_' +
+                                    dk +
+                                    '" class="activate-users-box">点击「查看用户」加载列表…</div></td></tr>';
+                            });
+                            dailyTbody.innerHTML = dh;
+                        }
+                    }
+                })
+                .catch(function () {
+                    if (summaryEl) summaryEl.textContent = '网络错误';
+                    if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
+                    if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
+                });
         }
 
         function loadAnalyticsActivityPage() {
@@ -3461,7 +3892,7 @@
             }
             html += '</tbody></table></div>';
             html +=
-                '<p class="stat" style="margin:0 0 8px;">已打开 App 未注册（最多 100）</p>';
+                '<p class="stat" style="margin:0 0 8px;">已打开 App 未注册（最多 10）</p>';
             html +=
                 '<p class="hint" style="margin:0 0 10px;">同 client_id 有首次打开或注册弹窗、且无注册成功回传。可用于盯「稍后」与召回。</p>';
             html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
@@ -6492,15 +6923,18 @@
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计（旧）',
             'analytics-conversion': '转化与触达',
+            'analytics-purchase': '支付页埋点',
             'analytics-activity': '用户活跃',
             'analytics-register': '注册分析',
+            'analytics-invite': '邀请注册统计',
             'analytics-tracking': '埋点分析',
             'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
             'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
-            'server-monitor': '服务器监控'
+            'server-monitor': '服务器监控',
+            'sbdy-demo': '社保演示生成'
         };
 
         function applyMenuDefsFromServer(defs) {
@@ -7510,23 +7944,6 @@
                         if (qqGroupEl && data.data.qq_group_url != null) {
                             qqGroupEl.value = String(data.data.qq_group_url);
                         }
-                        var ab = data.data.conversion_ab;
-                        if (ab) {
-                            var enEl = document.getElementById('convAbEnabled');
-                            if (enEl) enEl.checked = ab.enabled !== false;
-                            var map = [
-                                ['convAbTitleA', 'activate_title_a'],
-                                ['convAbSubtitleA', 'activate_subtitle_a'],
-                                ['convAbTitleB', 'activate_title_b'],
-                                ['convAbSubtitleB', 'activate_subtitle_b']
-                            ];
-                            map.forEach(function (pair) {
-                                var el = document.getElementById(pair[0]);
-                                if (el && ab[pair[1]] != null) el.value = String(ab[pair[1]]);
-                            });
-                            var bp = document.getElementById('convAbBatchProminent');
-                            if (bp) bp.checked = ab.batch_example_prominent === true;
-                        }
                         var landingAb = data.data.landing_ab;
                         if (landingAb) {
                             var landingEnabled = document.getElementById('landingAbEnabled');
@@ -7704,43 +8121,6 @@
                     });
             });
         }
-        var btnSaveConversionAb = document.getElementById('btnSaveConversionAb');
-        if (btnSaveConversionAb) {
-            btnSaveConversionAb.addEventListener('click', function () {
-                var btn = btnSaveConversionAb;
-                btn.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        conversion_ab: {
-                            enabled: !!document.getElementById('convAbEnabled').checked,
-                            activate_title_a: document.getElementById('convAbTitleA').value,
-                            activate_subtitle_a: document.getElementById('convAbSubtitleA').value,
-                            activate_title_b: document.getElementById('convAbTitleB').value,
-                            activate_subtitle_b: document.getElementById('convAbSubtitleB').value,
-                            batch_example_prominent: !!document.getElementById('convAbBatchProminent').checked
-                        }
-                    })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('转化配置已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btn.disabled = false;
-                    });
-            });
-        }
 
         var btnSavePricingAb = document.getElementById('btnSavePricingAb');
         if (btnSavePricingAb) {
@@ -7766,7 +8146,7 @@
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('定价 A/B 已保存' + (data.data && data.data.pricing_ab && data.data.pricing_ab.enabled ? '（转化文案 A/B 将自动暂停）' : ''));
+                            alert('定价 A/B 已保存');
                             loadAdminSettings();
                         } else {
                             alert(data.msg || '保存失败');
@@ -8333,6 +8713,30 @@
                 loadInstallGuideStats();
             });
         }
+        var btnRefreshInviteStats = document.getElementById('btnRefreshInviteStats');
+        if (btnRefreshInviteStats) {
+            btnRefreshInviteStats.onclick = function () {
+                loadAnalyticsInvitePage();
+            };
+        }
+        var analyticsInviteDays = document.getElementById('analyticsInviteDays');
+        if (analyticsInviteDays) {
+            analyticsInviteDays.addEventListener('change', function () {
+                loadAnalyticsInvitePage();
+            });
+        }
+        var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');
+        if (btnRefreshPurchaseEvents) {
+            btnRefreshPurchaseEvents.onclick = function () {
+                loadAnalyticsPurchasePage();
+            };
+        }
+        var analyticsPurchaseDays = document.getElementById('analyticsPurchaseDays');
+        if (analyticsPurchaseDays) {
+            analyticsPurchaseDays.addEventListener('change', function () {
+                loadAnalyticsPurchasePage();
+            });
+        }
         var btnRefreshConversionKpis = document.getElementById('btnRefreshConversionKpis');
         if (btnRefreshConversionKpis) {
             btnRefreshConversionKpis.onclick = function () {
@@ -8630,6 +9034,49 @@
                 }
                 var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
                 loadActivateUsersForDate(dateN, pageN, boxN);
+                return;
+            }
+            var purchaseToggle = e.target.closest('.btn-purchase-users-toggle');
+            if (purchaseToggle) {
+                var datePu = purchaseToggle.getAttribute('data-date');
+                var keyPu = purchaseDateDomKey(datePu);
+                var rowPu = document.getElementById('purchase_users_row_' + keyPu);
+                var boxPu = document.getElementById('purchase_users_box_' + keyPu);
+                if (!rowPu || !boxPu) return;
+                var openingPu = rowPu.style.display === 'none';
+                if (!openingPu) {
+                    rowPu.style.display = 'none';
+                    purchaseToggle.textContent = '查看用户';
+                    return;
+                }
+                rowPu.style.display = '';
+                purchaseToggle.textContent = '收起';
+                if (boxPu.getAttribute('data-loaded') === '1') return;
+                loadPurchaseUsersForDate(datePu, 1, boxPu);
+                return;
+            }
+            var purchasePrev = e.target.closest('.purchase-users-prev');
+            if (purchasePrev && !purchasePrev.disabled) {
+                var datePp = purchasePrev.getAttribute('data-date');
+                var boxPp = purchasePrev.closest('.activate-users-box');
+                if (!boxPp || !datePp) return;
+                loadPurchaseUsersForDate(
+                    datePp,
+                    (parseInt(boxPp.getAttribute('data-page'), 10) || 1) - 1,
+                    boxPp
+                );
+                return;
+            }
+            var purchaseNext = e.target.closest('.purchase-users-next');
+            if (purchaseNext && !purchaseNext.disabled) {
+                var datePn = purchaseNext.getAttribute('data-date');
+                var boxPn = purchaseNext.closest('.activate-users-box');
+                if (!boxPn || !datePn) return;
+                loadPurchaseUsersForDate(
+                    datePn,
+                    (parseInt(boxPn.getAttribute('data-page'), 10) || 1) + 1,
+                    boxPn
+                );
             }
         });
         document.getElementById('btnGotoLoginLog').addEventListener('click', function () {
@@ -8913,7 +9360,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v1';
+                var MENU_TREE_VER = 'ops-ia-v3-sbdy-demo';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

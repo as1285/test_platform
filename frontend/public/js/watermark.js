@@ -33,8 +33,8 @@
             line2: 'Unactivated',
             font1: '16px Arial, sans-serif',
             font2: '11px Arial, sans-serif',
-            color1: 'rgba(160, 0, 0, 0.14)',
-            color2: 'rgba(160, 0, 0, 0.10)',
+            color1: 'rgba(200, 16, 16, 0.28)',
+            color2: 'rgba(200, 16, 16, 0.22)',
             line2OffsetY: 18
         };
     }

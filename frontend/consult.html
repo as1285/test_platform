@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-invite-reg-first"></script>
+    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1951,7 +1951,7 @@
     </div>
 
     <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
-    <script src="/js/watermark.js?v=20260721-wm-soft"></script>
+    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -4588,10 +4588,80 @@
             updateBatchEmpMonthSalaryBadge(row);
         }
 
-        var BATCH_EXAMPLE_COMPANY_NAMES = ['北京华示例软件有限公司', '示例科技有限公司'];
+        /** 示例公司池（名称均含「示例」，便于识别与清理） */
+        var BATCH_EXAMPLE_COMPANY_POOL = [
+            {
+                company: '北京华示例软件有限公司',
+                company_tax_id: '91110108MA01ABCD2X',
+                tax_authority: '国家税务总局北京市海淀区税务局'
+            },
+            {
+                company: '示例科技有限公司',
+                company_tax_id: '91110108MA01EFGH7Y',
+                tax_authority: '国家税务总局北京市朝阳区税务局'
+            },
+            {
+                company: '上海云示例网络科技有限公司',
+                company_tax_id: '91310000MA1K2B3C4D',
+                tax_authority: '国家税务总局上海市浦东新区税务局'
+            },
+            {
+                company: '深圳创示例智能有限公司',
+                company_tax_id: '91440300MA5F6G7H8J',
+                tax_authority: '国家税务总局深圳市南山区税务局'
+            },
+            {
+                company: '杭州数示例信息技术有限公司',
+                company_tax_id: '91330108MA2B9C0D1E',
+                tax_authority: '国家税务总局杭州市西湖区税务局'
+            },
+            {
+                company: '成都汇示例商贸有限公司',
+                company_tax_id: '91510100MA6K3L4M5N',
+                tax_authority: '国家税务总局成都市高新区税务局'
+            },
+            {
+                company: '广州联示例电子有限公司',
+                company_tax_id: '91440101MA9P2Q3R4S',
+                tax_authority: '国家税务总局广州市天河区税务局'
+            },
+            {
+                company: '南京智示例软件有限公司',
+                company_tax_id: '91320105MA7T8U9V0W',
+                tax_authority: '国家税务总局南京市鼓楼区税务局'
+            }
+        ];
+        var BATCH_EXAMPLE_COMPANY_NAMES = BATCH_EXAMPLE_COMPANY_POOL.map(function (x) {
+            return x.company;
+        });
 
         function isBatchExampleCompanyName(name) {
-            return BATCH_EXAMPLE_COMPANY_NAMES.indexOf(String(name || '').trim()) >= 0;
+            var n = String(name || '').trim();
+            if (!n) return false;
+            if (BATCH_EXAMPLE_COMPANY_NAMES.indexOf(n) >= 0) return true;
+            return n.indexOf('示例') >= 0;
+        }
+
+        function pickRandomBatchExampleOrg() {
+            var pool = BATCH_EXAMPLE_COMPANY_POOL;
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        /** 随机月薪：常见档位；约半数再给上限形成区间 */
+        function pickRandomBatchExampleSalary() {
+            var bases = [8000, 9000, 10000, 12000, 13000, 15000, 16000, 18000, 20000, 22000, 25000, 28000, 30000];
+            var salary = bases[Math.floor(Math.random() * bases.length)];
+            var salaryMax = '';
+            if (Math.random() < 0.55) {
+                var bumps = [1500, 2000, 3000, 4000, 5000, 6000, 8000];
+                salaryMax = String(salary + bumps[Math.floor(Math.random() * bumps.length)]);
+            }
+            return { salary: salary, salary_max: salaryMax };
+        }
+
+        function pickRandomBatchExampleSpecial() {
+            var opts = [0, 1000, 1500, 2000, 2500, 3000];
+            return opts[Math.floor(Math.random() * opts.length)];
         }
 
         function batchEmploymentsIncludeOwnCompany(employments) {
@@ -4724,33 +4794,35 @@
             return { ok: true, employments: employments };
         }
 
-        /** 示例填写：一段完整公司工作经历（不自动提交） */
+        /** 示例填写：一段完整公司工作经历（不自动提交；公司名与月薪每次随机） */
         function fillBatchTaxExample() {
             var list = document.getElementById('batch_employment_list');
             if (!list) return;
             var d = new Date();
             var cy = d.getFullYear();
             var cm = d.getMonth() + 1;
+            var org = pickRandomBatchExampleOrg();
+            var sal = pickRandomBatchExampleSalary();
             list.innerHTML = '';
             addBatchEmpRow();
             var row = list.querySelector('.batch-emp-row');
             setBatchEmpRowValues(row, {
-                company: '北京华示例软件有限公司',
-                company_tax_id: '91110108MA01ABCD2X',
-                tax_authority: '国家税务总局北京市海淀区税务局',
+                company: org.company,
+                company_tax_id: org.company_tax_id,
+                tax_authority: org.tax_authority,
                 sy: cy,
                 sm: 1,
                 ey: cy,
                 em: cm,
-                salary: 15000,
-                salary_max: '',
+                salary: sal.salary,
+                salary_max: sal.salary_max,
                 ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
                 medical_ratio: 2,
                 unemployment_ratio: 0.5,
                 fund_ratio: 12,
-                special: 2000
+                special: pickRandomBatchExampleSpecial()
             });
             var card = document.getElementById('batchTaxCard');
             if (card) {
@@ -4771,19 +4843,21 @@
             var d = new Date();
             var cy = d.getFullYear();
             var cm = d.getMonth() + 1;
+            var org = pickRandomBatchExampleOrg();
+            var sal = pickRandomBatchExampleSalary();
             list.innerHTML = '';
             addBatchEmpRow();
             var row = list.querySelector('.batch-emp-row');
             setBatchEmpRowValues(row, {
-                company: '示例科技有限公司',
-                company_tax_id: '91110108MA01ABCD2X',
-                tax_authority: '国家税务总局北京市海淀区税务局',
+                company: org.company,
+                company_tax_id: org.company_tax_id,
+                tax_authority: org.tax_authority,
                 sy: cy,
                 sm: cm,
                 ey: cy,
                 em: cm,
-                salary: 10000,
-                salary_max: '',
+                salary: sal.salary,
+                salary_max: sal.salary_max,
                 ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
@@ -4805,26 +4879,28 @@
             var d = new Date();
             var cy = d.getFullYear();
             var cm = d.getMonth() + 1;
+            var org = pickRandomBatchExampleOrg();
+            var sal = pickRandomBatchExampleSalary();
             list.innerHTML = '';
             addBatchEmpRow();
             var row = list.querySelector('.batch-emp-row');
             setBatchEmpRowValues(row, {
-                company: '北京华示例软件有限公司',
-                company_tax_id: '91110108MA01ABCD2X',
-                tax_authority: '国家税务总局北京市海淀区税务局',
+                company: org.company,
+                company_tax_id: org.company_tax_id,
+                tax_authority: org.tax_authority,
                 sy: cy,
                 sm: 1,
                 ey: cy,
                 em: cm,
-                salary: 12000,
-                salary_max: '',
+                salary: sal.salary,
+                salary_max: sal.salary_max,
                 ss_base: '',
                 fund_base: '',
                 pension_ratio: 8,
                 medical_ratio: 2,
                 unemployment_ratio: 0.5,
                 fund_ratio: 12,
-                special: 1500
+                special: pickRandomBatchExampleSpecial()
             });
             var card = document.getElementById('batchTaxCard');
             if (card) {
@@ -7107,9 +7183,18 @@
                         body: JSON.stringify(profilePayload)
                     })
                         .then(function (r) {
-                            return r.json();
+                            return r.json().then(function (data) {
+                                return { http: r.status, data: data };
+                            });
                         })
-                        .then(function (data) {
+                        .then(function (pack) {
+                            var data = pack.data || {};
+                            if (pack.http === 402 || data.code === 402) {
+                                throw new Error(
+                                    (data.msg || '改名需支付费用') +
+                                        '；请到「我的」页修改姓名并完成 ¥10 支付后再试'
+                                );
+                            }
                             if (!data || data.code !== 200) {
                                 throw new Error((data && data.msg) || '保存个人资料失败');
                             }

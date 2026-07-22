@@ -284,17 +284,24 @@ function buildActivationBatchChannelsPayload(customLabels) {
   return builtins.concat(customs);
 }
 
-/** 用户辅助：channel analysis label */
-function userChannelAnalysisLabel(registerChannel, activationChannel) {
+/** 用户辅助：channel analysis label（邀请注册优先展示邀请人） */
+function userChannelAnalysisLabel(registerChannel, activationChannel, invitedBy) {
+  var inv = invitedBy != null ? String(invitedBy).trim() : '';
   var reg = registerSourceChannelLabel(registerChannel);
   var act = activationSourceChannelLabel(activationChannel);
+  var parts = [];
+  if (inv) {
+    parts.push('邀请人：' + inv);
+  }
   if (act && reg && reg !== act) {
-    return '注册：' + reg + '；激活：' + act;
+    parts.push('注册：' + reg);
+    parts.push('激活：' + act);
+  } else if (act) {
+    parts.push(act);
+  } else if (reg) {
+    parts.push(reg);
   }
-  if (act) {
-    return act;
-  }
-  return reg || '—';
+  return parts.length ? parts.join('；') : '—';
 }
 
 const REGISTER_SOURCE_OTHER_MAX = 64;
@@ -302,8 +309,9 @@ const REGISTER_SOURCE_OTHER_MAX = 64;
 /** 规范化注册来源渠道入参 */
 function normalizeRegisterSourceChannelInput(channel, otherText) {
   var c = channel != null ? String(channel).trim() : '';
+  /* 来源渠道改为可选，降低注册摩擦 */
   if (!c) {
-    return { err: '请选择来源渠道' };
+    return { value: null };
   }
   if (c === 'other') {
     var custom = otherText != null ? String(otherText).trim() : '';
@@ -321,11 +329,11 @@ function normalizeRegisterSourceChannelInput(channel, otherText) {
   return { value: c };
 }
 
-/** 校验注册来源渠道是否合法 */
+/** 校验注册来源渠道是否合法（空值允许） */
 function validateRegisterSourceChannel(channel) {
   var c = channel != null ? String(channel).trim() : '';
   if (!c) {
-    return '请选择来源渠道';
+    return null;
   }
   if (c.indexOf('other:') === 0) {
     var custom = c.slice(6).trim();
@@ -687,7 +695,18 @@ function invalidateTestCompanyNameCache() {
 
 /** 获取：user data analytics excluded companies */
 function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
-  var names = ['1', '北京华示示例软件有限公司', '北京华示例软件有限公司', '示例科技有限公司'];
+  var names = [
+    '1',
+    '北京华示示例软件有限公司',
+    '北京华示例软件有限公司',
+    '示例科技有限公司',
+    '上海云示例网络科技有限公司',
+    '深圳创示例智能有限公司',
+    '杭州数示例信息技术有限公司',
+    '成都汇示例商贸有限公司',
+    '广州联示例电子有限公司',
+    '南京智示例软件有限公司'
+  ];
   var tc = testCompanyName != null ? String(testCompanyName).trim() : '';
   if (tc) {
     names.push(tc);
@@ -1196,8 +1215,9 @@ async function queryRegistrationFunnelSegment(conn, period, admin, segment, agen
   appendConversionAnalyticsRegistrationScope(where, params, admin, 'u.username');
   var whereSql = ' WHERE ' + where.join(' AND ');
   var ownerAdmin = conversionAnalyticsOwnerAdmin(admin);
+  // actOwnerSql 的 ? 在 SELECT 的 EXISTS 里，早于 WHERE，owner 必须排在参数最前
   var actOwnerSql = ownerAdmin ? ' AND ac.owner_admin_username = ?' : '';
-  var funnelParams = ownerAdmin ? params.concat([ownerAdmin]) : params.slice();
+  var funnelParams = ownerAdmin ? [ownerAdmin].concat(params) : params.slice();
 
   const [sumRows] = await conn.query(
     `SELECT COUNT(*) AS registered,
@@ -2267,6 +2287,35 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS sbdy_demo_certs (
+      id BIGINT NOT NULL AUTO_INCREMENT,
+      auth_code VARCHAR(32) NOT NULL COMMENT '演示核验授权码',
+      token VARCHAR(64) NOT NULL COMMENT '展示页路径令牌',
+      payload_json MEDIUMTEXT NOT NULL,
+      created_by_admin VARCHAR(64) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_sbdy_auth (auth_code),
+      UNIQUE KEY uk_sbdy_token (token),
+      INDEX idx_sbdy_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_rename_credits (
+      id BIGINT NOT NULL AUTO_INCREMENT,
+      username VARCHAR(255) NOT NULL,
+      payment_order_id BIGINT NULL,
+      out_trade_no VARCHAR(64) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      consumed_at DATETIME NULL,
+      PRIMARY KEY (id),
+      KEY idx_rename_credit_user_free (username, consumed_at),
+      KEY idx_rename_credit_order (payment_order_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS messages (
       id VARCHAR(255) PRIMARY KEY,
       user_id VARCHAR(255) NOT NULL,
@@ -3087,6 +3136,8 @@ async function createTables() {
     'analytics-conversion',
     'analytics-activity',
     'analytics-register',
+    'analytics-invite',
+    'analytics-purchase',
     'analytics-tracking',
     'analytics-devices'
   ];
@@ -3097,6 +3148,22 @@ async function createTables() {
       [analyticsSplitMenus[asi]]
     );
   }
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'analytics-invite' FROM admin_account_menus WHERE menu_key = 'analytics-register'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'analytics-purchase' FROM admin_account_menus
+     WHERE menu_key IN ('analytics-conversion', 'analytics-tracking', 'analytics')`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'codes'`
+  );
 
   conn.release();
 }
@@ -4837,6 +4904,96 @@ function plainPaymentOrder(row) {
   };
 }
 
+/** 中高频用户改名收费：近 30 天活跃≥2 天，且历史改名≥5 次后，每次再改名需支付 */
+var RENAME_FEE_SKU_ID = 'sku_rename_fee_10';
+var RENAME_FEE_AMOUNT = '10.00';
+var RENAME_FEE_SUBJECT = '改名服务（单次）';
+var RENAME_FREE_LIMIT = 5;
+var RENAME_FREQ_WINDOW_DAYS = 30;
+var RENAME_FREQ_MIN_ACTIVE_DAYS = 2;
+
+function isRenameFeeSkuId(skuId) {
+  return String(skuId || '') === RENAME_FEE_SKU_ID;
+}
+
+/** 统计用户历史改名次数 */
+async function countUserRealNameChanges(userId) {
+  if (!userId) return 0;
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM user_profile_change_logs
+     WHERE username = ? AND field_key = 'real_name'`,
+    [String(userId)]
+  );
+  return Number((rows[0] || {}).c) || 0;
+}
+
+/** 近 N 天活跃天数（含今天） */
+async function countUserActiveDaysRecent(userId, days) {
+  if (!userId) return 0;
+  var d = Math.max(1, Math.min(90, parseInt(days, 10) || RENAME_FREQ_WINDOW_DAYS));
+  const [rows] = await pool.execute(
+    `SELECT COUNT(DISTINCT activity_date) AS c
+     FROM user_daily_activity
+     WHERE username = ?
+       AND activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+    [String(userId), d - 1]
+  );
+  return Number((rows[0] || {}).c) || 0;
+}
+
+/** 未消耗的改名次数 */
+async function countUnusedRenameCredits(userId) {
+  if (!userId) return 0;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS c FROM user_rename_credits
+       WHERE username = ? AND consumed_at IS NULL`,
+      [String(userId)]
+    );
+    return Number((rows[0] || {}).c) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** 改名收费策略 */
+async function getRenameFeePolicy(userId) {
+  var nameChanges = await countUserRealNameChanges(userId);
+  var activeDays = await countUserActiveDaysRecent(userId, RENAME_FREQ_WINDOW_DAYS);
+  var unused = await countUnusedRenameCredits(userId);
+  var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
+  var needFee = isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
+  return {
+    need_fee: needFee,
+    can_rename_now: !needFee || unused > 0,
+    unused_credits: unused,
+    name_change_count: nameChanges,
+    free_limit: RENAME_FREE_LIMIT,
+    active_days: activeDays,
+    activity_window_days: RENAME_FREQ_WINDOW_DAYS,
+    is_mid_high_frequency: isMidHigh,
+    fee_amount: RENAME_FEE_AMOUNT,
+    fee_subject: RENAME_FEE_SUBJECT,
+    sku_id: RENAME_FEE_SKU_ID
+  };
+}
+
+/** 在事务中消耗一次改名额度；失败返回 false */
+async function consumeRenameCreditInConn(conn, userId) {
+  const [rows] = await conn.execute(
+    `SELECT id FROM user_rename_credits
+     WHERE username = ? AND consumed_at IS NULL
+     ORDER BY id ASC LIMIT 1 FOR UPDATE`,
+    [String(userId)]
+  );
+  if (!rows.length) return false;
+  await conn.execute(
+    `UPDATE user_rename_credits SET consumed_at = CURRENT_TIMESTAMP WHERE id = ? AND consumed_at IS NULL`,
+    [rows[0].id]
+  );
+  return true;
+}
+
 /** 返回支付宝公开配置（含定价 A/B SKU 列表） */
 async function handleAlipayConfig(req, res) {
   var envProduct = getAlipayProductConfig();
@@ -4907,6 +5064,103 @@ async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
     return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
   }
+  var body = req.body && typeof req.body === 'object' ? req.body : {};
+  var product = body.product != null ? String(body.product).trim() : '';
+  var skuIdReq = body.sku_id != null ? String(body.sku_id).trim() : '';
+  var isRenameFee =
+    product === 'rename_fee' || isRenameFeeSkuId(skuIdReq) || skuIdReq === 'rename_fee';
+
+  /* —— 改名单次费用（不走开通激活逻辑） —— */
+  if (isRenameFee) {
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    var renameAmount = alipay.normalizeAmount(RENAME_FEE_AMOUNT);
+    if (!renameAmount) {
+      return res.status(503).json({ code: 503, msg: '改名费用配置无效' });
+    }
+    const connRen = await pool.getConnection();
+    var renameOrder = null;
+    try {
+      await connRen.beginTransaction();
+      const [existingRen] = await connRen.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, RENAME_FEE_SKU_ID]
+      );
+      if (existingRen.length) {
+        renameOrder = existingRen[0];
+      } else {
+        renameOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: RENAME_FEE_SUBJECT,
+          amount: renameAmount,
+          status: 'pending',
+          pricing_variant: 'rename',
+          sku_id: RENAME_FEE_SKU_ID,
+          grant_kind: 'rename_credit',
+          grant_days: 0,
+          grant_hours: 0
+        };
+        await connRen.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+          [
+            renameOrder.out_trade_no,
+            req.authUserId,
+            renameOrder.subject,
+            renameOrder.amount,
+            renameOrder.pricing_variant,
+            renameOrder.sku_id,
+            renameOrder.grant_kind,
+            renameOrder.grant_days,
+            renameOrder.grant_hours
+          ]
+        );
+      }
+      await connRen.commit();
+    } catch (eRenDb) {
+      try {
+        await connRen.rollback();
+      } catch (eRb) {}
+      console.error('create rename fee order db', eRenDb);
+      try {
+        connRen.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建改名订单失败' });
+    }
+    try {
+      var renPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(renameOrder.out_trade_no),
+        subject: String(renameOrder.subject),
+        amount: alipay.normalizeAmount(renameOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(renameOrder),
+          qr_code: renPre.qrCode,
+          payment_url: renPre.qrCode,
+          pricing_variant: 'rename',
+          sku_id: RENAME_FEE_SKU_ID,
+          product: 'rename_fee'
+        }
+      });
+    } catch (eRenPay) {
+      console.error('create rename fee precreate', eRenPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝改名订单失败' });
+    } finally {
+      try {
+        connRen.release();
+      } catch (eRel2) {}
+    }
+  }
+
   if (req.authUserRow && isUserPermanentActive(req.authUserRow)) {
     return res.status(409).json({ code: 409, msg: '当前账号已永久激活，无需重复购买' });
   }
@@ -4914,8 +5168,6 @@ async function handleAlipayCreateOrder(req, res) {
   if (!envProduct.amount) {
     return res.status(503).json({ code: 503, msg: '支付宝商品金额配置无效' });
   }
-  var body = req.body && typeof req.body === 'object' ? req.body : {};
-  var skuIdReq = body.sku_id != null ? String(body.sku_id).trim() : '';
   var offer;
   try {
     offer = await getPricingAb().resolveOfferForUser(
@@ -5044,7 +5296,8 @@ async function handleAlipayLatestOrder(req, res) {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.execute(
-      `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no
+      `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
+              pricing_variant, sku_id, grant_kind, grant_days, grant_hours
        FROM payment_orders WHERE username = ?
        ORDER BY id DESC LIMIT 1`,
       [req.authUserId]
@@ -5071,7 +5324,8 @@ async function handleAlipayLatestOrder(req, res) {
               source: 'query_sync'
             });
             const [fresh] = await conn.execute(
-              `SELECT out_trade_no, subject, amount, status, paid_at
+              `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
+                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours
                FROM payment_orders WHERE id = ? LIMIT 1`,
               [order.id]
             );
@@ -5082,10 +5336,14 @@ async function handleAlipayLatestOrder(req, res) {
         console.warn('alipay trade query sync', syncErr && syncErr.message);
       }
     }
-    var paidNow = !!(order && String(order.status) === 'paid');
+    var isRenameOrder =
+      order &&
+      (isRenameFeeSkuId(order.sku_id) || String(order.grant_kind || '') === 'rename_credit');
+    var paidActivation =
+      !!(order && String(order.status) === 'paid' && !isRenameOrder);
     var freshToken = null;
-    if (paidNow && req.authUserId) {
-      /* 付款开通后签发新 JWT，避免客户端仍拿着 act=0 的旧令牌 */
+    if (paidActivation && req.authUserId) {
+      /* 付款开通后签发新 JWT，避免客户端仍拿着 act=0 的旧令牌（改名费订单不发开通令牌） */
       var urow = await getUserRowByUsername(req.authUserId);
       if (urow) {
         freshToken = signAccessToken({
@@ -5100,7 +5358,7 @@ async function handleAlipayLatestOrder(req, res) {
       code: 200,
       data: {
         order: order ? plainPaymentOrder(order) : null,
-        account_active: paidNow,
+        account_active: paidActivation,
         token: freshToken
       }
     });
@@ -5170,7 +5428,6 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
         info.tradeStatus || 'TRADE_SUCCESS'
       ]
     );
-    var activationCode = randomActivationCodePlain();
     const [orderMetaRows] = await conn.execute(
       `SELECT pricing_variant, sku_id, grant_kind, grant_days, grant_hours, subject
        FROM payment_orders WHERE id = ? LIMIT 1`,
@@ -5178,6 +5435,32 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     );
     var meta = orderMetaRows[0] || {};
     var grantKind = meta.grant_kind != null ? String(meta.grant_kind) : 'permanent';
+
+    /* 改名费用：只发改名次数，不开通账号 */
+    if (isRenameFeeSkuId(meta.sku_id) || grantKind === 'rename_credit') {
+      await conn.execute(
+        `INSERT INTO user_rename_credits (username, payment_order_id, out_trade_no)
+         VALUES (?, ?, ?)`,
+        [
+          locked.username,
+          locked.id,
+          String(locked.out_trade_no || order.out_trade_no || '')
+        ]
+      );
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInv) {}
+      return true;
+    }
+
+    var activationCode = randomActivationCodePlain();
     var grantDays = meta.grant_days != null ? parseInt(meta.grant_days, 10) : 0;
     var grantHours = meta.grant_hours != null ? parseInt(meta.grant_hours, 10) : 0;
     if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
@@ -5813,7 +6096,10 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
   if (srcErr) {
     throw new Error(srcErr);
   }
-  registerSourceChannel = String(registerSourceChannel).trim();
+  registerSourceChannel =
+    registerSourceChannel != null && String(registerSourceChannel).trim()
+      ? String(registerSourceChannel).trim()
+      : null;
   salesPromoChannel = sanitizeSalesChannelId(salesPromoChannel);
   username = username.trim();
   if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
@@ -6096,9 +6382,56 @@ async function seedGuestSampleTaxRecords(conn, userId) {
     }
     months.push({ year: y, month: m });
   }
-  var company = '北京华示例软件有限公司';
-  var companyTaxId = '91110108MA01ABCD2X';
-  var taxAuthority = '国家税务总局北京市海淀区税务局';
+  var guestOrgs = [
+    {
+      company: '北京华示例软件有限公司',
+      companyTaxId: '91110108MA01ABCD2X',
+      taxAuthority: '国家税务总局北京市海淀区税务局'
+    },
+    {
+      company: '示例科技有限公司',
+      companyTaxId: '91110108MA01EFGH7Y',
+      taxAuthority: '国家税务总局北京市朝阳区税务局'
+    },
+    {
+      company: '上海云示例网络科技有限公司',
+      companyTaxId: '91310000MA1K2B3C4D',
+      taxAuthority: '国家税务总局上海市浦东新区税务局'
+    },
+    {
+      company: '深圳创示例智能有限公司',
+      companyTaxId: '91440300MA5F6G7H8J',
+      taxAuthority: '国家税务总局深圳市南山区税务局'
+    },
+    {
+      company: '杭州数示例信息技术有限公司',
+      companyTaxId: '91330108MA2B9C0D1E',
+      taxAuthority: '国家税务总局杭州市西湖区税务局'
+    },
+    {
+      company: '成都汇示例商贸有限公司',
+      companyTaxId: '91510100MA6K3L4M5N',
+      taxAuthority: '国家税务总局成都市高新区税务局'
+    },
+    {
+      company: '广州联示例电子有限公司',
+      companyTaxId: '91440101MA9P2Q3R4S',
+      taxAuthority: '国家税务总局广州市天河区税务局'
+    },
+    {
+      company: '南京智示例软件有限公司',
+      companyTaxId: '91320105MA7T8U9V0W',
+      taxAuthority: '国家税务总局南京市鼓楼区税务局'
+    }
+  ];
+  var org = guestOrgs[Math.floor(Math.random() * guestOrgs.length)];
+  var incomeBases = [8000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000];
+  var incomeBase = incomeBases[Math.floor(Math.random() * incomeBases.length)];
+  var specialOpts = [0, 1000, 1500, 2000, 2500, 3000];
+  var special = specialOpts[Math.floor(Math.random() * specialOpts.length)];
+  var company = org.company;
+  var companyTaxId = org.companyTaxId;
+  var taxAuthority = org.taxAuthority;
   var inserted = 0;
   for (var mi = 0; mi < months.length; mi++) {
     var ym = months[mi];
@@ -6108,8 +6441,10 @@ async function seedGuestSampleTaxRecords(conn, userId) {
       '_' +
       ym.year +
       String(ym.month).padStart(2, '0');
-    var income = 15000;
-    var taxReported = 595;
+    /* 各月在基准上下小幅浮动，避免三条完全一样 */
+    var jitter = Math.floor(Math.random() * 5) * 200 - 400;
+    var income = Math.max(5000, incomeBase + jitter);
+    var taxReported = Math.max(0, Math.round((income - 5000 - special) * 0.03));
     var period = ym.year + '-' + String(ym.month).padStart(2, '0');
     var reportDate =
       ym.year +
@@ -6147,13 +6482,13 @@ async function seedGuestSampleTaxRecords(conn, userId) {
           income,
           0,
           5000,
-          2000,
+          special,
           0,
           0,
-          1200,
-          300,
-          75,
-          1800
+          Math.round(income * 0.08),
+          Math.round(income * 0.02),
+          Math.round(income * 0.005),
+          Math.round(income * 0.12)
         ]
       );
       inserted += 1;
@@ -6939,6 +7274,7 @@ async function handleUserGet(req, res) {
     action !== 'info' &&
     action !== 'summary' &&
     action !== 'invite_overview' &&
+    action !== 'rename_policy' &&
     action !== 'employers' &&
     action !== 'family_members' &&
     action !== 'family_member' &&
@@ -6955,6 +7291,10 @@ async function handleUserGet(req, res) {
     if (action === 'invite_overview') {
       var overview = await getInviteReward().getInviteOverviewForUser(userId);
       return res.json({ code: 200, data: overview });
+    }
+    if (action === 'rename_policy') {
+      var renamePol = await getRenameFeePolicy(userId);
+      return res.json({ code: 200, data: renamePol });
     }
     if (action === 'summary') {
       var summary = await getUserSummaryForApi(userId);
@@ -7110,6 +7450,8 @@ async function handleUserPost(req, res) {
         }
         
         const conn = await pool.getConnection();
+        try {
+        await conn.beginTransaction();
         const [userRows] = await conn.execute('SELECT * FROM users WHERE username = ?', [userId]);
         
         if (userRows.length === 0) {
@@ -7119,7 +7461,7 @@ async function handleUserPost(req, res) {
           `, [userId, '', '', userId, USER_TYPE_NORMAL, '自动创建']);
         }
         
-        const [userRows2] = await conn.execute('SELECT * FROM users WHERE username = ?', [userId]);
+        const [userRows2] = await conn.execute('SELECT * FROM users WHERE username = ? FOR UPDATE', [userId]);
         const profileUser = userRows2.length ? userRows2[0] : null;
         const isTestProfile = profileUser && rowUserTypeIsTest(profileUser);
         
@@ -7232,12 +7574,31 @@ async function handleUserPost(req, res) {
           if (body.real_name != null) {
             newRealName = String(body.real_name);
           }
+          var renaming =
+            newRealName != null && String(newRealName).trim() !== String(oldRealName).trim();
+          var renamePolicy = null;
+          if (renaming) {
+            renamePolicy = await getRenameFeePolicy(userId);
+            if (renamePolicy.need_fee) {
+              var consumed = await consumeRenameCreditInConn(conn, userId);
+              if (!consumed) {
+                await conn.rollback();
+                return res.status(402).json({
+                  code: 402,
+                  msg:
+                    '中高频用户改名已超过免费 ' +
+                    RENAME_FREE_LIMIT +
+                    ' 次，请支付 ¥' +
+                    RENAME_FEE_AMOUNT +
+                    ' 后再修改',
+                  data: Object.assign({ need_rename_fee: true }, renamePolicy)
+                });
+              }
+            }
+          }
           updateParams.push(userId);
           await conn.execute(`UPDATE users SET ${updateFields.join(', ')} WHERE username = ?`, updateParams);
-          if (
-            newRealName != null &&
-            String(newRealName).trim() !== String(oldRealName).trim()
-          ) {
+          if (renaming) {
             try {
               await conn.execute(
                 `INSERT INTO user_profile_change_logs (username, field_key, before_value, after_value)
@@ -7254,10 +7615,21 @@ async function handleUserPost(req, res) {
           }
         }
         
-        conn.release();
+        await conn.commit();
         invalidateUserInfoApiCache(userId);
         
         return res.json({ code: 200, data: { success: true } });
+        } catch (eProfSave) {
+          try {
+            await conn.rollback();
+          } catch (eRbProf) {}
+          console.error('save_profile', eProfSave);
+          return res.status(500).json({ code: 500, msg: '保存失败' });
+        } finally {
+          try {
+            conn.release();
+          } catch (eRelProf) {}
+        }
       }
 
       if (action === 'add_family_member') {
@@ -7967,6 +8339,11 @@ function maybeRecordClientApiPerfTrack(req, action, meta) {
   var m = meta && typeof meta === 'object' ? meta : {};
   var routeKey = sanitizeSlowRouteKey(m.route_key || m.route || m.url || '');
   if (!routeKey) {
+    return true;
+  }
+  // 长轮询本身会挂很久，不当作「慢接口」噪声
+  var rkLower = String(routeKey).toLowerCase();
+  if (rkLower.indexOf('chat#poll') >= 0 || /\/api\/chat.*poll/.test(rkLower)) {
     return true;
   }
   var clientId = '';
@@ -12150,6 +12527,161 @@ async function handleAdminActivationChannelFunnel(req, res) {
 }
 
 /** 安装引导统计 */
+/**
+ * 邀请注册日统计：user_invites.registered_at（北京时间）+ 链接点击 / Top 邀请人
+ */
+async function handleAdminInviteRegistrations(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 365);
+    var cnInviteDay = 'DATE(DATE_ADD(registered_at, INTERVAL 8 HOUR))';
+    var invitePf = analyticsPeriodCnDateFilter(cnInviteDay, period);
+    var cnClickDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var clickPf = analyticsPeriodCnDateFilter(cnClickDay, period);
+    const conn = await pool.getConnection();
+    try {
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnInviteDay} AS d,
+                COUNT(*) AS invite_registered,
+                COUNT(DISTINCT inviter_username) AS inviters,
+                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted,
+                SUM(CASE WHEN reward_status = 'pending' THEN 1 ELSE 0 END) AS reward_pending,
+                SUM(CASE WHEN reward_status = 'rejected' THEN 1 ELSE 0 END) AS reward_rejected
+         FROM user_invites
+         WHERE ${invitePf.sql}
+         GROUP BY ${cnInviteDay}
+         ORDER BY d DESC`,
+        invitePf.params
+      );
+      const [clickDailyRows] = await conn.query(
+        `SELECT ${cnClickDay} AS d,
+                COUNT(*) AS link_clicks,
+                COUNT(DISTINCT COALESCE(NULLIF(visitor_client_id, ''), visitor_ip)) AS link_uv
+         FROM invite_link_clicks
+         WHERE ${clickPf.sql}
+         GROUP BY ${cnClickDay}
+         ORDER BY d DESC`,
+        clickPf.params
+      );
+      const [summaryRows] = await conn.query(
+        `SELECT COUNT(*) AS invite_registered,
+                COUNT(DISTINCT inviter_username) AS inviters,
+                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted,
+                SUM(CASE WHEN reward_status = 'pending' THEN 1 ELSE 0 END) AS reward_pending
+         FROM user_invites
+         WHERE ${invitePf.sql}`,
+        invitePf.params
+      );
+      const [clickSummaryRows] = await conn.query(
+        `SELECT COUNT(*) AS link_clicks,
+                COUNT(DISTINCT COALESCE(NULLIF(visitor_client_id, ''), visitor_ip)) AS link_uv
+         FROM invite_link_clicks
+         WHERE ${clickPf.sql}`,
+        clickPf.params
+      );
+      const [topInviterRows] = await conn.query(
+        `SELECT inviter_username,
+                COUNT(*) AS invite_registered,
+                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted
+         FROM user_invites
+         WHERE ${invitePf.sql}
+         GROUP BY inviter_username
+         ORDER BY invite_registered DESC, activated DESC
+         LIMIT 30`,
+        invitePf.params
+      );
+      var clickByDay = {};
+      (clickDailyRows || []).forEach(function (r) {
+        var dk = formatDateKey(r.d);
+        if (!dk) return;
+        clickByDay[dk] = {
+          link_clicks: Number(r.link_clicks) || 0,
+          link_uv: Number(r.link_uv) || 0
+        };
+      });
+      var daily = (dailyRows || []).map(function (r) {
+        var dk = formatDateKey(r.d);
+        var clicks = clickByDay[dk] || { link_clicks: 0, link_uv: 0 };
+        var reg = Number(r.invite_registered) || 0;
+        var act = Number(r.activated) || 0;
+        return {
+          date: dk,
+          invite_registered: reg,
+          inviters: Number(r.inviters) || 0,
+          activated: act,
+          activate_rate: reg > 0 ? Math.round((act / reg) * 1000) / 10 : 0,
+          reward_granted: Number(r.reward_granted) || 0,
+          reward_pending: Number(r.reward_pending) || 0,
+          reward_rejected: Number(r.reward_rejected) || 0,
+          link_clicks: clicks.link_clicks,
+          link_uv: clicks.link_uv
+        };
+      });
+      /* 补齐仅有点击、无邀请注册的日期 */
+      Object.keys(clickByDay).forEach(function (dk) {
+        var found = daily.some(function (row) {
+          return row.date === dk;
+        });
+        if (!found) {
+          daily.push({
+            date: dk,
+            invite_registered: 0,
+            inviters: 0,
+            activated: 0,
+            activate_rate: 0,
+            reward_granted: 0,
+            reward_pending: 0,
+            reward_rejected: 0,
+            link_clicks: clickByDay[dk].link_clicks,
+            link_uv: clickByDay[dk].link_uv
+          });
+        }
+      });
+      daily.sort(function (a, b) {
+        return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+      });
+      var sum = summaryRows && summaryRows[0] ? summaryRows[0] : {};
+      var clickSum = clickSummaryRows && clickSummaryRows[0] ? clickSummaryRows[0] : {};
+      var totalReg = Number(sum.invite_registered) || 0;
+      var totalAct = Number(sum.activated) || 0;
+      return res.json({
+        code: 200,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
+          summary: {
+            invite_registered: totalReg,
+            inviters: Number(sum.inviters) || 0,
+            activated: totalAct,
+            activate_rate: totalReg > 0 ? Math.round((totalAct / totalReg) * 1000) / 10 : 0,
+            reward_granted: Number(sum.reward_granted) || 0,
+            reward_pending: Number(sum.reward_pending) || 0,
+            link_clicks: Number(clickSum.link_clicks) || 0,
+            link_uv: Number(clickSum.link_uv) || 0
+          },
+          daily: daily,
+          top_inviters: (topInviterRows || []).map(function (r) {
+            var ir = Number(r.invite_registered) || 0;
+            var ia = Number(r.activated) || 0;
+            return {
+              inviter_username: r.inviter_username != null ? String(r.inviter_username) : '',
+              invite_registered: ir,
+              activated: ia,
+              activate_rate: ir > 0 ? Math.round((ia / ir) * 1000) / 10 : 0,
+              reward_granted: Number(r.reward_granted) || 0
+            };
+          })
+        })
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[admin invite-registrations]', e);
+    return res.status(500).json({ code: 500, msg: '加载邀请注册统计失败' });
+  }
+}
+
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -12427,7 +12959,7 @@ async function handleAdminInstallGuideStats(req, res) {
              AND reg.client_id <> ''
          )
          ORDER BY base.last_at DESC
-         LIMIT 100`,
+         LIMIT 10`,
         sinceParams.concat(sinceParams).concat(sinceParams)
       );
 
@@ -12966,35 +13498,8 @@ async function handleAdminInstallGuideStats(req, res) {
         ],
         totalHourPv
       );
-      var hourPeriods = withHourPct(
-        [
-          {
-            key: 'morning',
-            label: '上午',
-            range: '06:00-11:59',
-            page_views: hourDetailBuckets[1].page_views,
-            unique_visitors: hourDetailBuckets[1].unique_visitors,
-            registered: hourDetailBuckets[1].registered
-          },
-          {
-            key: 'afternoon',
-            label: '下午',
-            range: '12:00-17:59',
-            page_views: hourDetailBuckets[2].page_views,
-            unique_visitors: hourDetailBuckets[2].unique_visitors,
-            registered: hourDetailBuckets[2].registered
-          },
-          {
-            key: 'evening',
-            label: '晚上',
-            range: '18:00-次日05:59',
-            page_views: hourDetailBuckets[3].page_views + hourDetailBuckets[0].page_views,
-            unique_visitors: hourDetailBuckets[3].unique_visitors + hourDetailBuckets[0].unique_visitors,
-            registered: hourDetailBuckets[3].registered + hourDetailBuckets[0].registered
-          }
-        ],
-        totalHourPv
-      );
+      /* 与明细一致：凌晨 / 上午 / 下午 / 晚上 */
+      var hourPeriods = hourDetailBuckets.slice();
       var peakHourPeriod = null;
       hourPeriods.forEach(function (p) {
         if (!peakHourPeriod || p.page_views > peakHourPeriod.page_views) {
@@ -13674,6 +14179,7 @@ async function handleAdminRegisterTimeDistribution(req, res) {
         return s;
       }
 
+      /* 卡片 / 表格 / 峰值统一为 4 段（北京时间，不跨日） */
       var detailBuckets = [
         { key: 'late_night', label: '凌晨', range: '00:00-05:59', count: sumHours(0, 5) },
         { key: 'morning', label: '上午', range: '06:00-11:59', count: sumHours(6, 11) },
@@ -13681,26 +14187,7 @@ async function handleAdminRegisterTimeDistribution(req, res) {
         { key: 'evening', label: '晚上', range: '18:00-23:59', count: sumHours(18, 23) }
       ];
 
-      var periods = [
-        {
-          key: 'morning',
-          label: '上午',
-          range: '06:00-11:59',
-          count: detailBuckets[1].count
-        },
-        {
-          key: 'afternoon',
-          label: '下午',
-          range: '12:00-17:59',
-          count: detailBuckets[2].count
-        },
-        {
-          key: 'evening',
-          label: '晚上',
-          range: '18:00-次日05:59',
-          count: detailBuckets[3].count + detailBuckets[0].count
-        }
-      ];
+      var periods = detailBuckets.slice();
 
       function withPct(rows) {
         return rows.map(function (row) {
@@ -14908,7 +15395,7 @@ async function handleAdminUsers(req, res) {
         const [pageRows] = await conn.query(
           `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
-                  activation_source_channel, user_type, sales_promo_channel,
+                  activation_source_channel, user_type, sales_promo_channel, invited_by,
                   (SELECT ac.owner_admin_username
                    FROM activation_codes ac
                    WHERE ac.used_by_username = users.username
@@ -14931,7 +15418,7 @@ async function handleAdminUsers(req, res) {
         `
       SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
-             activation_source_channel, user_type, sales_promo_channel,
+             activation_source_channel, user_type, sales_promo_channel, invited_by,
              (SELECT ac.owner_admin_username
               FROM activation_codes ac
               WHERE ac.used_by_username = users.username
@@ -19233,6 +19720,448 @@ async function handleAdminAnalyticsApi(req, res) {
 var ANALYTICS_TRACK_EVENT_SQL =
   "(route_key LIKE 'EVENT %' OR route_key LIKE '%#track\\_%')";
 
+/** C 端支付页 + 前链路激活弹窗/引导埋点（含跨页 track_activate_prompt_*） */
+var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
+  'track_activate_prompt_open',
+  'track_activate_prompt_cancel',
+  'track_activate_prompt_confirm',
+  'track_activation_nudge_show',
+  'track_activation_nudge_dismiss',
+  'track_activation_nudge_cta',
+  'track_purchase_page_view',
+  'track_pricing_ab_expose_control',
+  'track_pricing_ab_expose_treatment',
+  'track_alipay_payment_start',
+  'track_alipay_open_click',
+  'track_alipay_payment_success',
+  'track_purchase_activate_success',
+  'track_purchase_activate_fail',
+  'track_kufaka_purchase_click',
+  'track_purchase_wechat_view',
+  'track_purchase_wechat_expand',
+  'track_xianyu_purchase_click',
+  'track_online_chat_click',
+  'track_qq_group_click',
+  'track_qq_add_click',
+  'track_purchase_back_click'
+];
+
+var PURCHASE_PAGE_TRACK_EVENT_KEY_SET = {};
+PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k) {
+  PURCHASE_PAGE_TRACK_EVENT_KEY_SET[k] = true;
+});
+
+var PURCHASE_PAGE_TRACK_EVENT_SQL =
+  '(' +
+  PURCHASE_PAGE_TRACK_EVENT_KEYS.map(function (k) {
+    return "route_key LIKE '%#" + k + "'";
+  }).join(' OR ') +
+  ')';
+
+function isPurchasePageTrackEventKey(eventKey) {
+  return !!PURCHASE_PAGE_TRACK_EVENT_KEY_SET[String(eventKey || '').trim()];
+}
+
+function purchasePageTrackEventLabel(eventKey) {
+  var labels = {
+    track_activate_prompt_open: '激活弹窗打开',
+    track_activate_prompt_cancel: '激活弹窗-取消',
+    track_activate_prompt_confirm: '确认激活',
+    track_activation_nudge_show: '激活引导-展示',
+    track_activation_nudge_dismiss: '激活引导-关闭',
+    track_activation_nudge_cta: '激活引导-去激活',
+    track_purchase_page_view: '购买页浏览',
+    track_pricing_ab_expose_control: '定价A/B曝光·对照',
+    track_pricing_ab_expose_treatment: '定价A/B曝光·实验',
+    track_alipay_payment_start: '生成支付宝付款',
+    track_alipay_open_click: '打开支付宝',
+    track_alipay_payment_success: '支付宝支付成功',
+    track_purchase_activate_success: '激活码开通成功',
+    track_purchase_activate_fail: '激活码开通失败',
+    track_kufaka_purchase_click: '酷发卡购买',
+    track_purchase_wechat_view: '微信购买入口',
+    track_purchase_wechat_expand: '展开微信收款码',
+    track_xianyu_purchase_click: '闲鱼购买',
+    track_online_chat_click: '在线客服',
+    track_qq_group_click: '加入QQ群',
+    track_qq_add_click: '添加QQ号',
+    track_purchase_back_click: '购买页返回'
+  };
+  return labels[eventKey] || eventKey;
+}
+
+/**
+ * 支付页埋点汇总：漏斗 UV + 事件次数 + 分日 + 已支付订单
+ */
+async function handleAdminAnalyticsPurchaseEvents(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var cnPaidDay = 'DATE(DATE_ADD(COALESCE(paid_at, created_at), INTERVAL 8 HOUR))';
+    var paidPf = analyticsPeriodCnDateFilter(cnPaidDay, period);
+    const conn = await pool.getConnection();
+    try {
+      const [rows] = await conn.execute(
+        `SELECT ${cnDay} AS stat_date, username,
+                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
+                COUNT(*) AS cnt
+         FROM user_page_events
+         WHERE ${pf.sql}
+           AND ${PURCHASE_PAGE_TRACK_EVENT_SQL}
+         GROUP BY ${cnDay}, username, event_key
+         ORDER BY stat_date DESC`,
+        pf.params
+      );
+
+      var eventTotals = {};
+      var eventUsers = {};
+      PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k) {
+        eventTotals[k] = 0;
+        eventUsers[k] = {};
+      });
+      var dayMap = {};
+      var funnelUsers = {
+        prompt_open: {},
+        prompt_confirm: {},
+        view: {},
+        expose: {},
+        alipay_start: {},
+        alipay_open: {},
+        alipay_success: {},
+        activate_ok: {},
+        activate_fail: {}
+      };
+
+      rows.forEach(function (r) {
+        var ek = String(r.event_key || '').trim();
+        if (!isPurchasePageTrackEventKey(ek)) return;
+        var c = Number(r.cnt) || 0;
+        if (c <= 0) return;
+        var uname = r.username != null ? String(r.username).trim() : '';
+        eventTotals[ek] = (eventTotals[ek] || 0) + c;
+        if (uname) eventUsers[ek][uname] = true;
+
+        var d = formatDateKey(r.stat_date);
+        if (!d) return;
+        if (!dayMap[d]) {
+          dayMap[d] = {
+            date: d,
+            events: {},
+            event_users: {},
+            total: 0,
+            user_set: {},
+            funnel: {
+              prompt_open: {},
+              prompt_confirm: {},
+              view: {},
+              expose: {},
+              alipay_start: {},
+              alipay_open: {},
+              alipay_success: {},
+              activate_ok: {},
+              activate_fail: {}
+            }
+          };
+          PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k2) {
+            dayMap[d].events[k2] = 0;
+            dayMap[d].event_users[k2] = {};
+          });
+        }
+        dayMap[d].events[ek] = (dayMap[d].events[ek] || 0) + c;
+        dayMap[d].total += c;
+        if (uname) {
+          dayMap[d].user_set[uname] = true;
+          dayMap[d].event_users[ek][uname] = true;
+        }
+
+        function markFunnel(bucket) {
+          if (!uname) return;
+          funnelUsers[bucket][uname] = true;
+          dayMap[d].funnel[bucket][uname] = true;
+        }
+        if (ek === 'track_activate_prompt_open') markFunnel('prompt_open');
+        if (ek === 'track_activate_prompt_confirm') markFunnel('prompt_confirm');
+        if (ek === 'track_purchase_page_view') markFunnel('view');
+        if (
+          ek === 'track_pricing_ab_expose_control' ||
+          ek === 'track_pricing_ab_expose_treatment'
+        ) {
+          markFunnel('expose');
+        }
+        if (ek === 'track_alipay_payment_start') markFunnel('alipay_start');
+        if (ek === 'track_alipay_open_click') markFunnel('alipay_open');
+        if (ek === 'track_alipay_payment_success') markFunnel('alipay_success');
+        if (ek === 'track_purchase_activate_success') markFunnel('activate_ok');
+        if (ek === 'track_purchase_activate_fail') markFunnel('activate_fail');
+      });
+
+      function pctRate(n, d) {
+        if (!d || d <= 0) return 0;
+        return Math.round((n / d) * 1000) / 10;
+      }
+      function countSet(obj) {
+        return Object.keys(obj || {}).length;
+      }
+
+      var viewUv = countSet(funnelUsers.view);
+      var funnel = {
+        prompt_open_uv: countSet(funnelUsers.prompt_open),
+        prompt_confirm_uv: countSet(funnelUsers.prompt_confirm),
+        prompt_to_view_pct: pctRate(viewUv, countSet(funnelUsers.prompt_open)),
+        view_uv: viewUv,
+        expose_uv: countSet(funnelUsers.expose),
+        alipay_start_uv: countSet(funnelUsers.alipay_start),
+        alipay_open_uv: countSet(funnelUsers.alipay_open),
+        alipay_success_uv: countSet(funnelUsers.alipay_success),
+        activate_ok_uv: countSet(funnelUsers.activate_ok),
+        activate_fail_uv: countSet(funnelUsers.activate_fail),
+        view_to_start_pct: pctRate(countSet(funnelUsers.alipay_start), viewUv),
+        start_to_open_pct: pctRate(
+          countSet(funnelUsers.alipay_open),
+          countSet(funnelUsers.alipay_start)
+        ),
+        open_to_success_pct: pctRate(
+          countSet(funnelUsers.alipay_success),
+          countSet(funnelUsers.alipay_open)
+        ),
+        view_to_pay_pct: pctRate(countSet(funnelUsers.alipay_success), viewUv),
+        view_to_activate_pct: pctRate(countSet(funnelUsers.activate_ok), viewUv)
+      };
+
+      var summary = PURCHASE_PAGE_TRACK_EVENT_KEYS.map(function (k) {
+        return {
+          event_key: k,
+          label: purchasePageTrackEventLabel(k),
+          total: eventTotals[k] || 0,
+          unique_users: countSet(eventUsers[k])
+        };
+      });
+
+      var paidDailyMap = {};
+      var paidSummary = {
+        paid_orders: 0,
+        paid_users: 0,
+        gmv: 0
+      };
+      try {
+        const [paidDaily] = await conn.execute(
+          `SELECT ${cnPaidDay} AS d,
+                  COUNT(*) AS paid_orders,
+                  COUNT(DISTINCT username) AS paid_users,
+                  ROUND(SUM(amount), 2) AS gmv
+           FROM payment_orders
+           WHERE status = 'paid' AND ${paidPf.sql}
+           GROUP BY ${cnPaidDay}
+           ORDER BY d DESC`,
+          paidPf.params
+        );
+        (paidDaily || []).forEach(function (r) {
+          var dk = formatDateKey(r.d);
+          if (!dk) return;
+          paidDailyMap[dk] = {
+            paid_orders: Number(r.paid_orders) || 0,
+            paid_users: Number(r.paid_users) || 0,
+            gmv: Number(r.gmv) || 0
+          };
+          paidSummary.paid_orders += Number(r.paid_orders) || 0;
+          paidSummary.gmv += Number(r.gmv) || 0;
+        });
+        const [paidUsersRow] = await conn.execute(
+          `SELECT COUNT(DISTINCT username) AS paid_users
+           FROM payment_orders
+           WHERE status = 'paid' AND ${paidPf.sql}`,
+          paidPf.params
+        );
+        paidSummary.paid_users = Number((paidUsersRow[0] || {}).paid_users) || 0;
+        paidSummary.gmv = Math.round(paidSummary.gmv * 100) / 100;
+      } catch (ePay) {
+        console.error('[admin purchase-events] payment_orders', ePay && ePay.message);
+      }
+
+      var byDay = Object.keys(dayMap)
+        .concat(
+          Object.keys(paidDailyMap).filter(function (dk) {
+            return !dayMap[dk];
+          })
+        )
+        .filter(function (v, i, a) {
+          return a.indexOf(v) === i;
+        })
+        .sort()
+        .reverse()
+        .map(function (d) {
+          var o = dayMap[d] || {
+            date: d,
+            events: {},
+            event_users: {},
+            total: 0,
+            user_set: {},
+            funnel: {
+              prompt_open: {},
+              prompt_confirm: {},
+              view: {},
+              expose: {},
+              alipay_start: {},
+              alipay_open: {},
+              alipay_success: {},
+              activate_ok: {},
+              activate_fail: {}
+            }
+          };
+          PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k2) {
+            if (o.events[k2] == null) o.events[k2] = 0;
+          });
+          var f = o.funnel;
+          var dayView = countSet(f.view);
+          var pay = paidDailyMap[d] || { paid_orders: 0, paid_users: 0, gmv: 0 };
+          return {
+            date: d,
+            events: o.events,
+            total: o.total,
+            unique_users: countSet(o.user_set),
+            prompt_open_uv: countSet(f.prompt_open),
+            prompt_confirm_uv: countSet(f.prompt_confirm),
+            view_uv: dayView,
+            expose_uv: countSet(f.expose),
+            alipay_start_uv: countSet(f.alipay_start),
+            alipay_open_uv: countSet(f.alipay_open),
+            alipay_success_uv: countSet(f.alipay_success),
+            activate_ok_uv: countSet(f.activate_ok),
+            activate_fail_uv: countSet(f.activate_fail),
+            view_to_pay_pct: pctRate(countSet(f.alipay_success), dayView),
+            paid_orders: pay.paid_orders,
+            paid_users: pay.paid_users,
+            gmv: pay.gmv
+          };
+        });
+
+      var grandTotal = 0;
+      summary.forEach(function (s) {
+        grandTotal += s.total;
+      });
+
+      return res.json({
+        code: 200,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
+          event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
+          funnel: funnel,
+          payments: paidSummary,
+          summary: summary,
+          total_events: grandTotal,
+          by_day: byDay
+        })
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[admin purchase-events]', e);
+    return res.status(500).json({ code: 500, msg: '加载支付页埋点失败' });
+  }
+}
+
+/** 支付页埋点：某日用户明细 */
+async function handleAdminAnalyticsPurchaseEventUsers(req, res) {
+  try {
+    var dateStr = req.query.date != null ? String(req.query.date).trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res.status(400).json({ code: 400, msg: 'date required (YYYY-MM-DD)' });
+    }
+    var eventKey = req.query.event_key != null ? String(req.query.event_key).trim() : '';
+    if (eventKey && !isPurchasePageTrackEventKey(eventKey)) {
+      return res.status(400).json({ code: 400, msg: 'invalid event_key' });
+    }
+    var page = parseInt(req.query.page, 10) || 1;
+    var limit = parseInt(req.query.limit, 10) || 20;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 20;
+    if (limit > 100) limit = 100;
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    const conn = await pool.getConnection();
+    try {
+      var eventFilterSql = PURCHASE_PAGE_TRACK_EVENT_SQL;
+      var params = [dateStr];
+      if (eventKey) {
+        eventFilterSql = 'route_key LIKE ?';
+        params = [dateStr, '%#' + eventKey];
+      }
+      const [aggRows] = await conn.execute(
+        `SELECT username,
+                SUBSTRING_INDEX(route_key, '#', -1) AS event_key,
+                COUNT(*) AS cnt,
+                MAX(created_at) AS last_at
+         FROM user_page_events
+         WHERE ${cnDay} = ?
+           AND ${eventFilterSql}
+         GROUP BY username, event_key`,
+        params
+      );
+      var userMap = {};
+      aggRows.forEach(function (r) {
+        var ek = String(r.event_key || '').trim();
+        if (!isPurchasePageTrackEventKey(ek)) return;
+        var uname = String(r.username || '').trim();
+        if (!uname) return;
+        if (!userMap[uname]) {
+          userMap[uname] = {
+            username: uname,
+            total: 0,
+            events: {},
+            last_at: null
+          };
+          PURCHASE_PAGE_TRACK_EVENT_KEYS.forEach(function (k) {
+            userMap[uname].events[k] = 0;
+          });
+        }
+        var c = Number(r.cnt) || 0;
+        userMap[uname].events[ek] = (userMap[uname].events[ek] || 0) + c;
+        userMap[uname].total += c;
+        var at = r.last_at ? new Date(r.last_at).getTime() : 0;
+        if (!userMap[uname].last_at || at > userMap[uname].last_at) {
+          userMap[uname].last_at = at;
+        }
+      });
+      var list = Object.keys(userMap)
+        .map(function (k) {
+          return userMap[k];
+        })
+        .sort(function (a, b) {
+          return b.total - a.total || String(a.username).localeCompare(String(b.username));
+        });
+      var total = list.length;
+      var totalPages = Math.max(1, Math.ceil(total / limit));
+      if (page > totalPages) page = totalPages;
+      var slice = list.slice((page - 1) * limit, page * limit).map(function (u) {
+        return {
+          username: u.username,
+          total: u.total,
+          events: u.events,
+          last_at: u.last_at ? new Date(u.last_at).toISOString() : null
+        };
+      });
+      return res.json({
+        code: 200,
+        data: {
+          date: dateStr,
+          event_key: eventKey || '',
+          event_keys: PURCHASE_PAGE_TRACK_EVENT_KEYS.slice(),
+          page: page,
+          limit: limit,
+          total: total,
+          total_pages: totalPages,
+          users: slice
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[admin purchase-events/users]', e);
+    return res.status(500).json({ code: 500, msg: '加载支付页用户明细失败' });
+  }
+}
+
 /** 激活弹窗 / 购买页相关埋点（单独统计，不计入通用 C 端埋点列表） */
 var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_page_view',
@@ -20599,6 +21528,9 @@ function getHandlers() {
     handleAdminRegistrationFunnel,
     handleAdminChannelRegistrationFunnel,
     handleAdminActivationChannelFunnel,
+    handleAdminInviteRegistrations,
+    handleAdminAnalyticsPurchaseEvents,
+    handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
     handleAdminInstallTrackStats,
     handleAdminConversionKpis,

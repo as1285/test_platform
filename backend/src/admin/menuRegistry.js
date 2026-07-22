@@ -10,6 +10,7 @@ const ADMIN_MENU_GROUPS = [
   { id: 'ops-desk', label: '运营工作台', order: 10 },
   { id: 'ops-config', label: '运营配置', order: 20 },
   { id: 'users', label: '用户与客服', order: 30 },
+  { id: 'cert-tools', label: '证明工具', order: 35 },
   { id: 'insights', label: '数据洞察', order: 40 },
   { id: 'system', label: '系统与安全', order: 50 }
 ];
@@ -36,6 +37,14 @@ const ADMIN_PAGE_DEFS = [
     group: 'ops-desk',
     module: 'analytics',
     order: 10
+  },
+  {
+    page: 'analytics-purchase',
+    menu_key: 'analytics-purchase',
+    label: '支付页埋点',
+    group: 'ops-desk',
+    module: 'analytics',
+    order: 15
   },
   {
     page: 'channel-analysis',
@@ -113,6 +122,16 @@ const ADMIN_PAGE_DEFS = [
     order: 80
   },
 
+  /* —— 证明工具 —— */
+  {
+    page: 'sbdy-demo',
+    menu_key: 'sbdy-demo',
+    label: '社保演示生成',
+    group: 'cert-tools',
+    module: 'sbdy-demo',
+    order: 10
+  },
+
   /* —— 数据洞察 —— */
   {
     page: 'analytics-register',
@@ -121,6 +140,14 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 10
+  },
+  {
+    page: 'analytics-invite',
+    menu_key: 'analytics-invite',
+    label: '邀请注册统计',
+    group: 'insights',
+    module: 'analytics',
+    order: 15
   },
   {
     page: 'analytics-activity',

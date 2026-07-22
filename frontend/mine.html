@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-trial-expire-login"></script>
+    <script src="/js/auth.js?v=20260722-rename-fee"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1213,6 +1213,22 @@
         </div>
     </div>
 
+    <div id="mineRenamePayModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineRenamePayTitle">
+        <div class="activate-modal-mask" id="mineRenamePayMask"></div>
+        <div class="activate-modal-panel">
+            <p class="activate-modal-title" id="mineRenamePayTitle">改名需支付 ¥10</p>
+            <p class="activate-modal-hint" id="mineRenamePayHint" style="display:block;margin:0 0 12px;font-size:13px;color:#666;line-height:1.5;">
+                中高频用户改名超过 5 次后，每次再改名需支付 10 元。
+            </p>
+            <div id="mineRenamePayQrWrap" style="text-align:center;min-height:160px;margin:8px 0 12px;"></div>
+            <p id="mineRenamePayStatus" style="font-size:12px;color:#888;text-align:center;margin:0 0 10px;">—</p>
+            <div class="activate-modal-actions">
+                <button type="button" class="activate-modal-btn" id="btnMineRenamePayCancel">取消</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineRenamePayRefresh">我已支付</button>
+            </div>
+        </div>
+    </div>
+
     <div class="bottom-nav" aria-label="主导航">
         <a class="nav-item" data-icon="sy" href="shouye.html">
             <span class="nav-icon"><img src="caidan/sy2.png" alt=""></span>
@@ -1236,7 +1252,8 @@
         </a>
     </div>
 
-    <script src="/js/watermark.js?v=20260721-wm-soft"></script>
+    <script src="/js/vendor/qrcode.min.js"></script>
+    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -1541,19 +1558,242 @@
                     alert('请输入纳税人识别号');
                     return;
                 }
-                setMineDisplayName(realName);
-                localStorage.setItem('real_name', realName);
-                mineCurrentTaxIdRaw = taxId;
-                mineTaxRevealState = false;
-                localStorage.setItem('tax_id', taxId);
-                localStorage.setItem('gender', gender);
-                applyAvatarGender(gender);
-                if (mineRenderTaxIdFn) mineRenderTaxIdFn();
-                closeMineProfileEditModal();
+                var prevName = '';
+                try {
+                    prevName = String(localStorage.getItem('real_name') || '').trim();
+                } catch (ePrev) {}
+                var nameChanged = realName !== prevName;
+                var payload = {
+                    action: 'save_profile',
+                    user_id: mineCurrentUserId(),
+                    real_name: realName,
+                    tax_id: taxId,
+                    gender: gender
+                };
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
 
-                var userId = mineCurrentUserId();
-                if (!userId) return;
+                function applyLocalAndClose() {
+                    setMineDisplayName(realName);
+                    localStorage.setItem('real_name', realName);
+                    mineCurrentTaxIdRaw = taxId;
+                    mineTaxRevealState = false;
+                    localStorage.setItem('tax_id', taxId);
+                    localStorage.setItem('gender', gender);
+                    applyAvatarGender(gender);
+                    if (mineRenderTaxIdFn) mineRenderTaxIdFn();
+                    closeMineProfileEditModal();
+                    try {
+                        sessionStorage.removeItem('mine_summary_cache_v1');
+                    } catch (eClr) {}
+                }
 
+                function postSave() {
+                    var userId = mineCurrentUserId();
+                    if (!userId) return;
+                    fetchFn('api/user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (data) {
+                                return { http: r.status, data: data };
+                            });
+                        })
+                        .then(function (pack) {
+                            var data = pack.data || {};
+                            if (pack.http === 402 || data.code === 402) {
+                                openMineRenamePayModal(payload, data.data || data);
+                                return;
+                            }
+                            if (data.code !== 200) {
+                                alert('保存失败：' + (data.msg || '未知错误'));
+                                return;
+                            }
+                            applyLocalAndClose();
+                        })
+                        .catch(function () {
+                            alert('网络异常，请稍后重试');
+                        });
+                }
+
+                if (!nameChanged) {
+                    postSave();
+                    return;
+                }
+                fetchFn('api/user?action=rename_policy')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        var pol = j && j.code === 200 ? j.data : null;
+                        if (pol && pol.need_fee && !(pol.unused_credits > 0)) {
+                            openMineRenamePayModal(payload, pol);
+                            return;
+                        }
+                        postSave();
+                    })
+                    .catch(function () {
+                        postSave();
+                    });
+            }
+
+            var __mineRenamePayPayload = null;
+            var __mineRenamePayPollTimer = null;
+            var __mineRenamePayOutTradeNo = '';
+
+            function closeMineRenamePayModal() {
+                var root = document.getElementById('mineRenamePayModal');
+                if (root) root.classList.remove('is-open');
+                if (__mineRenamePayPollTimer) {
+                    clearInterval(__mineRenamePayPollTimer);
+                    __mineRenamePayPollTimer = null;
+                }
+                __mineRenamePayPayload = null;
+                __mineRenamePayOutTradeNo = '';
+            }
+
+            function setMineRenamePayStatus(msg) {
+                var el = document.getElementById('mineRenamePayStatus');
+                if (el) el.textContent = msg || '—';
+            }
+
+            function openMineRenamePayModal(payload, policy) {
+                __mineRenamePayPayload = payload;
+                var root = document.getElementById('mineRenamePayModal');
+                var hint = document.getElementById('mineRenamePayHint');
+                var qrWrap = document.getElementById('mineRenamePayQrWrap');
+                if (hint && policy) {
+                    hint.textContent =
+                        '近 ' +
+                        (policy.activity_window_days || 30) +
+                        ' 天活跃 ' +
+                        (policy.active_days != null ? policy.active_days : '—') +
+                        ' 天，已改名 ' +
+                        (policy.name_change_count != null ? policy.name_change_count : '—') +
+                        ' 次（免费 ' +
+                        (policy.free_limit || 5) +
+                        ' 次）。请支付 ¥' +
+                        (policy.fee_amount || '10.00') +
+                        ' 获得 1 次改名。';
+                }
+                if (qrWrap) qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">正在生成付款码…</p>';
+                setMineRenamePayStatus('等待支付');
+                if (root) root.classList.add('is-open');
+                startMineRenamePay();
+            }
+
+            function startMineRenamePay() {
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
+                var qrWrap = document.getElementById('mineRenamePayQrWrap');
+                fetchFn('api/payments/alipay/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product: 'rename_fee', sku_id: 'sku_rename_fee_10' })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (!j || j.code !== 200 || !j.data) {
+                            setMineRenamePayStatus((j && j.msg) || '创建订单失败');
+                            if (qrWrap) {
+                                qrWrap.innerHTML =
+                                    '<p style="color:#b91c1c;font-size:13px;">' +
+                                    ((j && j.msg) || '创建订单失败') +
+                                    '</p>';
+                            }
+                            return;
+                        }
+                        var qr = j.data.qr_code || j.data.payment_url || '';
+                        __mineRenamePayOutTradeNo =
+                            j.data.order && j.data.order.out_trade_no ? String(j.data.order.out_trade_no) : '';
+                        if (qrWrap) {
+                            if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function' && qr) {
+                                qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">生成二维码中…</p>';
+                                QRCode.toDataURL(
+                                    qr,
+                                    { width: 180, margin: 2, errorCorrectionLevel: 'M' },
+                                    function (err, dataUrl) {
+                                        if (err || !dataUrl) {
+                                            qrWrap.innerHTML =
+                                                '<p style="font-size:12px;word-break:break-all;">请在支付宝打开：<br>' +
+                                                qr +
+                                                '</p>';
+                                            return;
+                                        }
+                                        qrWrap.innerHTML =
+                                            '<img src="' +
+                                            dataUrl +
+                                            '" alt="改名付款码" style="width:180px;height:180px;background:#fff;">';
+                                    }
+                                );
+                            } else if (qr) {
+                                qrWrap.innerHTML =
+                                    '<p style="font-size:12px;word-break:break-all;">请复制到支付宝打开：<br>' +
+                                    qr +
+                                    '</p>';
+                            }
+                        }
+                        setMineRenamePayStatus('请使用支付宝扫码支付 ¥10');
+                        if (__mineRenamePayPollTimer) clearInterval(__mineRenamePayPollTimer);
+                        __mineRenamePayPollTimer = setInterval(pollMineRenamePay, 2500);
+                    })
+                    .catch(function () {
+                        setMineRenamePayStatus('网络错误');
+                    });
+            }
+
+            function pollMineRenamePay() {
+                var fetchFn =
+                    typeof authFetch === 'function'
+                        ? authFetch
+                        : function (url, opts) {
+                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                          };
+                fetchFn('api/payments/alipay/latest')
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        var ord = j && j.code === 200 && j.data ? j.data.order || j.data : null;
+                        if (!ord) return;
+                        var st = String(ord.status || '');
+                        var sku = String(ord.sku_id || '');
+                        var otn = String(ord.out_trade_no || '');
+                        if (
+                            st === 'paid' &&
+                            (sku === 'sku_rename_fee_10' ||
+                                !__mineRenamePayOutTradeNo ||
+                                otn === __mineRenamePayOutTradeNo)
+                        ) {
+                            setMineRenamePayStatus('支付成功，正在保存姓名…');
+                            if (__mineRenamePayPollTimer) {
+                                clearInterval(__mineRenamePayPollTimer);
+                                __mineRenamePayPollTimer = null;
+                            }
+                            finishMineRenameAfterPay();
+                        }
+                    })
+                    .catch(function () {});
+            }
+
+            function finishMineRenameAfterPay() {
+                if (!__mineRenamePayPayload) {
+                    closeMineRenamePayModal();
+                    return;
+                }
+                var payload = __mineRenamePayPayload;
                 var fetchFn =
                     typeof authFetch === 'function'
                         ? authFetch
@@ -1563,28 +1803,38 @@
                 fetchFn('api/user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'save_profile',
-                        user_id: userId,
-                        real_name: realName,
-                        tax_id: taxId,
-                        gender: gender
-                    })
+                    body: JSON.stringify(payload)
                 })
                     .then(function (r) {
                         return r.json();
                     })
                     .then(function (data) {
                         if (data.code !== 200) {
-                            alert('保存失败：' + (data.msg || '未知错误'));
-                        } else {
-                            try {
-                                sessionStorage.removeItem('mine_summary_cache_v1');
-                            } catch (eClr) {}
+                            alert('支付已到账，但保存失败：' + (data.msg || '请再点保存'));
+                            closeMineRenamePayModal();
+                            return;
                         }
+                        try {
+                            setMineDisplayName(payload.real_name);
+                            localStorage.setItem('real_name', payload.real_name);
+                            if (payload.tax_id) {
+                                mineCurrentTaxIdRaw = payload.tax_id;
+                                localStorage.setItem('tax_id', payload.tax_id);
+                            }
+                            if (payload.gender != null) {
+                                localStorage.setItem('gender', String(payload.gender));
+                                applyAvatarGender(payload.gender);
+                            }
+                            if (mineRenderTaxIdFn) mineRenderTaxIdFn();
+                            sessionStorage.removeItem('mine_summary_cache_v1');
+                        } catch (eOk) {}
+                        closeMineProfileEditModal();
+                        closeMineRenamePayModal();
+                        alert('改名成功');
                     })
                     .catch(function () {
-                        alert('网络异常，已保存到本地');
+                        alert('网络异常，支付可能已成功，请稍后重试保存');
+                        closeMineRenamePayModal();
                     });
             }
 
@@ -2221,6 +2471,16 @@
             }
             if (profileEditMask) {
                 profileEditMask.addEventListener('click', closeMineProfileEditModal);
+            }
+            var renamePayCancel = document.getElementById('btnMineRenamePayCancel');
+            var renamePayMask = document.getElementById('mineRenamePayMask');
+            var renamePayRefresh = document.getElementById('btnMineRenamePayRefresh');
+            if (renamePayCancel) renamePayCancel.addEventListener('click', closeMineRenamePayModal);
+            if (renamePayMask) renamePayMask.addEventListener('click', closeMineRenamePayModal);
+            if (renamePayRefresh) {
+                renamePayRefresh.addEventListener('click', function () {
+                    pollMineRenamePay();
+                });
             }
             if (profileEditNameInp) {
                 profileEditNameInp.addEventListener('keydown', function (e) {

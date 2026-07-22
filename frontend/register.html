@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-invite-reg-first"></script>
+    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>注册账号</title>
+    <title>创建账号</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -42,12 +42,12 @@
         .header h1 {
             font-size: 20px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             letter-spacing: 0.02em;
         }
         .header p {
-            font-size: 13px;
-            opacity: 0.9;
+            font-size: 12px;
+            opacity: 0.88;
         }
         .card {
             background: #fff;
@@ -172,21 +172,54 @@
             -webkit-tap-highlight-color: transparent;
         }
         .btn-refresh:active { background: #f8fafc; }
-        .info-banner {
-            margin: 2px 0 16px;
-            padding: 12px 14px;
-            border-radius: 12px;
-            background: #f0f6ff;
-            border: 1px solid #dbeafe;
-        }
-        .info-banner p {
+        .soft-tip {
+            margin: 0 0 14px;
             font-size: 12px;
-            color: #475569;
-            line-height: 1.55;
+            color: #64748b;
+            line-height: 1.5;
         }
-        .info-banner p + p {
-            margin-top: 6px;
+        .guest-tip {
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            font-size: 12px;
+            color: #166534;
+            line-height: 1.5;
+        }
+        .guest-tip[hidden] { display: none !important; }
+        .optional-block {
+            margin: 0 0 14px;
+            border: none;
+        }
+        .optional-block > summary {
+            list-style: none;
+            cursor: pointer;
+            font-size: 13px;
+            color: #64748b;
+            padding: 6px 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .optional-block > summary::-webkit-details-marker { display: none; }
+        .optional-block > summary::after {
+            content: ' ›';
             color: #94a3b8;
+        }
+        .optional-block[open] > summary::after { content: ' ˅'; }
+        .optional-block .field { margin-top: 10px; margin-bottom: 0; }
+        .captcha-chip {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .captcha-chip:active { opacity: 0.85; }
+        .disclaimer {
+            margin: 16px 18px 0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.5;
         }
         .btn-submit {
             width: 100%;
@@ -320,79 +353,72 @@
             <img src="/jt.png" alt="" width="9" decoding="async">
             <span>返回</span>
         </a>
-        <h1>注册账号</h1>
-        <p>个人所得税服务平台</p>
+        <h1>创建账号</h1>
+        <p>账号、密码填好就能用，大约半分钟</p>
     </div>
 
     <div class="invite-reg-banner" id="inviteRegBanner" hidden>
-        <strong>好友邀请你注册</strong>
-        · 请先完成注册，成功后再下载 App 使用
+        <strong>好友邀请你加入</strong>
+        · 创建账号后即可下载 App
     </div>
 
     <div class="card">
         <form id="regForm" autocomplete="on">
+            <p class="guest-tip" id="guestRegTip" hidden>你刚才体验留下的内容会自动带到新账号，不用重新填。</p>
             <div class="field">
-                <label for="username">账号 <span class="req">*</span></label>
-                <input type="text" id="username" name="username" placeholder="手机号或自定义账号（1～32位）" maxlength="32" autocomplete="username" required>
-                <div class="hint">支持数字、字母及 . _ - @</div>
+                <label for="username">账号</label>
+                <input type="text" id="username" name="username" placeholder="手机号或自定义均可" maxlength="32" autocomplete="username" required>
+                <div class="hint">建议用手机号，方便记住</div>
                 <div class="field-msg" id="usernameMsg"></div>
             </div>
             <div class="field">
-                <label for="password">登录密码 <span class="req">*</span></label>
+                <label for="password">密码</label>
                 <div class="input-wrap has-toggle">
-                    <input type="password" id="password" name="password" placeholder="请输入登录密码" minlength="1" maxlength="64" autocomplete="new-password" required>
+                    <input type="password" id="password" name="password" placeholder="设一个好记的密码" minlength="1" maxlength="64" autocomplete="new-password" required>
                     <button type="button" class="pwd-toggle" data-target="password" aria-label="显示密码">显示</button>
                 </div>
             </div>
             <div class="field">
-                <label for="password2">确认密码 <span class="req">*</span></label>
-                <div class="input-wrap has-toggle">
-                    <input type="password" id="password2" name="password2" placeholder="再次输入密码" minlength="1" maxlength="64" autocomplete="new-password" required>
-                    <button type="button" class="pwd-toggle" data-target="password2" aria-label="显示密码">显示</button>
-                </div>
-                <div class="field-msg" id="passwordMsg"></div>
-            </div>
-            <div class="field">
-                <label for="registerSourceChannel">来源渠道 <span class="req">*</span></label>
-                <select id="registerSourceChannel" name="register_source_channel" required>
-                    <option value="">请选择来源渠道</option>
-                    <option value="douyin">抖音</option>
-                    <option value="bilibili">B站</option>
-                    <option value="tieba">百度贴吧</option>
-                    <option value="zhihu">知乎</option>
-                    <option value="friend">朋友介绍</option>
-                    <option value="github">GitHub</option>
-                    <option value="other">其他</option>
-                </select>
-            </div>
-            <div class="field" id="registerSourceOtherWrap" hidden>
-                <label for="registerSourceChannelOther">请填写渠道 <span class="req">*</span></label>
-                <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="例如：小红书、微信群" maxlength="64" autocomplete="off">
-                <div class="hint">选择「其他」时请填写具体来源</div>
-            </div>
-            <div class="field">
-                <label for="captchaAnswer">验证码 <span class="req">*</span></label>
+                <label for="captchaAnswer">验证一下</label>
                 <div class="captcha-row">
-                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" autocomplete="off" required>
-                    <span class="captcha-chip" id="captchaQuestion">加载中…</span>
-                    <button type="button" class="btn-refresh" id="btnCaptchaRefresh">换一题</button>
+                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="算出右侧答案" maxlength="4" autocomplete="off" required>
+                    <span class="captcha-chip" id="captchaQuestion" title="点这里换一题" role="button" tabindex="0">加载中…</span>
                 </div>
+                <div class="hint">看不清或算错了？点算式换一题</div>
             </div>
 
-            <div class="info-banner">
-                <p>注册成功后账号为<strong>未激活</strong>状态，请登录后在<strong>个人中心</strong>使用激活码开通完整功能。</p>
-                <p>本应用为界面演示与学习参考，非官方申报渠道。</p>
-            </div>
+            <details class="optional-block" id="optionalSourceBlock">
+                <summary>选填 · 从哪了解到的？</summary>
+                <div class="field">
+                    <select id="registerSourceChannel" name="register_source_channel">
+                        <option value="">暂不选择</option>
+                        <option value="douyin">抖音</option>
+                        <option value="bilibili">B站</option>
+                        <option value="tieba">百度贴吧</option>
+                        <option value="zhihu">知乎</option>
+                        <option value="friend">朋友介绍</option>
+                        <option value="github">GitHub</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="field" id="registerSourceOtherWrap" hidden style="margin-top:10px;">
+                    <label for="registerSourceChannelOther">具体来源</label>
+                    <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="如：小红书、微信群" maxlength="64" autocomplete="off">
+                </div>
+            </details>
 
-            <button type="submit" class="btn-submit" id="btnSubmit">注册</button>
+            <p class="soft-tip">创建后即可登录使用；需要完整功能时，在个人中心填写激活码即可。</p>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">创建账号</button>
         </form>
-        <p class="footer-link">已有账号？<a href="login.html">去登录</a></p>
+        <p class="footer-link">已有账号？<a href="login.html">直接登录</a></p>
     </div>
+    <p class="disclaimer">仅供界面演示与学习参考，并非官方个税申报渠道。</p>
     <div class="ok-toast" id="regToast" role="status"></div>
     <div class="err-modal" id="errModal" role="dialog" aria-modal="true" aria-labelledby="errModalTitle" hidden>
         <div class="err-modal-mask" id="errModalMask"></div>
         <div class="err-modal-panel">
-            <h2 class="err-modal-title" id="errModalTitle">注册失败</h2>
+            <h2 class="err-modal-title" id="errModalTitle">没创建成功</h2>
             <p class="err-modal-msg" id="errModalMsg"></p>
             <button type="button" class="err-modal-btn" id="errModalOk">知道了</button>
         </div>
@@ -425,6 +451,31 @@
                         sessionStorage.setItem('invite_next_download_v1', '1');
                     } catch (eNd) {}
                 }
+                var goDownloadCta = false;
+                try {
+                    goDownloadCta =
+                        sessionStorage.getItem('invite_next_download_v1') === '1' || !!inviteCode;
+                } catch (eCta) {
+                    goDownloadCta = !!inviteCode;
+                }
+                var btnSubmit = document.getElementById('btnSubmit');
+                if (btnSubmit && goDownloadCta) {
+                    btnSubmit.textContent = '创建并下载';
+                }
+                var channelEl = document.getElementById('registerSourceChannel');
+                if (channelEl && inviteCode && !channelEl.value) {
+                    channelEl.value = 'friend';
+                }
+                var guestTip = document.getElementById('guestRegTip');
+                if (guestTip) {
+                    var isGuest = false;
+                    try {
+                        isGuest =
+                            localStorage.getItem('landing_guest_v1') === '1' ||
+                            !!(localStorage.getItem('guest_username_v1') || '').match(/^__guest_/);
+                    } catch (eG) {}
+                    guestTip.hidden = !isGuest;
+                }
             } catch (e) {}
         })();
 
@@ -455,11 +506,11 @@
         }
 
         function formatRegisterFailMsg(data) {
-            var msg = (data && data.msg) || '注册失败';
+            var msg = (data && data.msg) || '没创建成功，请稍后再试';
             var s = String(msg).trim();
             /* 兼容旧后端短文案：仅「请 N 秒后再试」时补上原因说明 */
             if (/^请\s*\d+\s*秒后再试$/.test(s)) {
-                return '因上次注册失败（如验证码错误、账号已存在）触发冷却。\n' + s;
+                return '操作太频繁了，稍等一下再试。\n' + s;
             }
             return s;
         }
@@ -534,15 +585,27 @@
             if (q) q.textContent = '加载失败';
         });
 
-        document.getElementById('btnCaptchaRefresh').addEventListener('click', function () {
+        function refreshCaptchaWithFeedback() {
             loadRegisterCaptcha()
                 .then(function () {
                     showToast('已换一题');
                 })
                 .catch(function () {
-                    showErr('验证码加载失败，请稍后重试');
+                    showErr('验证题加载失败，请稍后再试');
                 });
-        });
+        }
+
+        (function bindCaptchaRefresh() {
+            var chip = document.getElementById('captchaQuestion');
+            if (!chip) return;
+            chip.addEventListener('click', refreshCaptchaWithFeedback);
+            chip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    refreshCaptchaWithFeedback();
+                }
+            });
+        })();
 
         document.querySelectorAll('.pwd-toggle').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -563,38 +626,18 @@
             if (!sel || !wrap || !otherInput) return;
             var isOther = sel.value === 'other';
             wrap.hidden = !isOther;
-            otherInput.required = isOther;
             if (!isOther) {
                 otherInput.value = '';
             }
             markInvalid(sel, false);
+            if (isOther) {
+                var block = document.getElementById('optionalSourceBlock');
+                if (block) block.open = true;
+            }
         }
 
         document.getElementById('registerSourceChannel').addEventListener('change', syncRegisterSourceOtherField);
         syncRegisterSourceOtherField();
-
-        function validatePasswordMatch() {
-            var p1 = document.getElementById('password');
-            var p2 = document.getElementById('password2');
-            if (!p1 || !p2) return true;
-            if (!p2.value) {
-                setFieldMsg('passwordMsg', '');
-                markInvalid(p2, false);
-                return true;
-            }
-            if (p1.value !== p2.value) {
-                setFieldMsg('passwordMsg', '两次输入的密码不一致', false);
-                markInvalid(p2, true);
-                return false;
-            }
-            setFieldMsg('passwordMsg', '密码一致', true);
-            markInvalid(p2, false);
-            p2.classList.add('is-valid');
-            return true;
-        }
-
-        document.getElementById('password').addEventListener('input', validatePasswordMatch);
-        document.getElementById('password2').addEventListener('input', validatePasswordMatch);
 
         document.getElementById('username').addEventListener('blur', function () {
             var v = this.value.trim();
@@ -604,12 +647,12 @@
                 return;
             }
             if (v.length > 32) {
-                setFieldMsg('usernameMsg', '账号不能超过 32 位', false);
+                setFieldMsg('usernameMsg', '账号不能超过 32 个字符', false);
                 markInvalid(this, true);
                 return;
             }
             if (!/^[A-Za-z0-9._\-@]+$/.test(v)) {
-                setFieldMsg('usernameMsg', '仅支持数字、字母及 . _ - @', false);
+                setFieldMsg('usernameMsg', '只能用数字、字母和 . _ - @', false);
                 markInvalid(this, true);
                 return;
             }
@@ -620,51 +663,40 @@
         function submitRegister() {
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
-            var password2El = document.getElementById('password2');
             var captchaEl = document.getElementById('captchaAnswer');
             var channelEl = document.getElementById('registerSourceChannel');
             var otherEl = document.getElementById('registerSourceChannelOther');
 
             var username = usernameEl.value.trim();
             var password = passwordEl.value;
-            var password2 = password2El.value;
             showErr('');
             markInvalid(usernameEl, false);
             markInvalid(passwordEl, false);
-            markInvalid(password2El, false);
             markInvalid(captchaEl, false);
-            markInvalid(channelEl, false);
+            if (channelEl) markInvalid(channelEl, false);
+            if (otherEl) markInvalid(otherEl, false);
 
             if (!username || !password) {
-                showErr('请填写账号和密码');
+                showErr('请先填写账号和密码');
                 if (!username) markInvalid(usernameEl, true);
                 if (!password) markInvalid(passwordEl, true);
                 return;
             }
-            if (password !== password2) {
-                showErr('两次输入的密码不一致');
-                markInvalid(password2El, true);
-                validatePasswordMatch();
-                return;
-            }
             var captchaAns = captchaEl.value.trim();
             if (!regCaptchaId || !captchaAns) {
-                showErr('请填写验证码');
+                showErr('请填写右侧算式的答案');
                 markInvalid(captchaEl, true);
                 return;
             }
-            var sourceChannel = channelEl.value.trim();
-            if (!sourceChannel) {
-                showErr('请选择来源渠道');
-                markInvalid(channelEl, true);
-                return;
-            }
+            var sourceChannel = channelEl ? channelEl.value.trim() : '';
             var sourceChannelOther = '';
             if (sourceChannel === 'other') {
-                sourceChannelOther = otherEl.value.trim();
+                sourceChannelOther = otherEl ? otherEl.value.trim() : '';
                 if (!sourceChannelOther) {
-                    showErr('请填写其他来源渠道');
-                    markInvalid(otherEl, true);
+                    showErr('选了「其他」的话，请写一下具体来源');
+                    if (otherEl) markInvalid(otherEl, true);
+                    var block = document.getElementById('optionalSourceBlock');
+                    if (block) block.open = true;
                     return;
                 }
             }
@@ -686,7 +718,7 @@
             var btn = document.getElementById('btnSubmit');
             btn.disabled = true;
             var oldText = btn.textContent;
-            btn.textContent = '注册中…';
+            btn.textContent = '创建中…';
 
             var regClientId = '';
             var regGuestUsername = '';
@@ -709,8 +741,8 @@
                     action: 'register',
                     username: username,
                     password: password,
-                    register_source_channel: sourceChannel,
-                    register_source_channel_other: sourceChannelOther,
+                    register_source_channel: sourceChannel || undefined,
+                    register_source_channel_other: sourceChannelOther || undefined,
                     from_install_guide: fromInstallGuide ? 1 : 0,
                     landing_variant:
                         typeof window.getLandingAbVariant === 'function'
@@ -796,20 +828,20 @@
                         try {
                             sessionStorage.setItem('tax_tutorial_post_login_pending', '1');
                         } catch (ePending) {}
-                        showToast('注册成功，接下来请下载 App');
+                        var goDownload = false;
+                        try {
+                            goDownload =
+                                sessionStorage.getItem('invite_next_download_v1') === '1' ||
+                                !!(
+                                    typeof window.getRegisterInviteCode === 'function' &&
+                                    window.getRegisterInviteCode()
+                                );
+                            sessionStorage.removeItem('invite_next_download_v1');
+                        } catch (eGo) {
+                            goDownload = false;
+                        }
+                        showToast(goDownload ? '创建成功，马上带你去下载' : '创建成功，欢迎加入');
                         setTimeout(function () {
-                            var goDownload = false;
-                            try {
-                                goDownload =
-                                    sessionStorage.getItem('invite_next_download_v1') === '1' ||
-                                    !!(
-                                        typeof window.getRegisterInviteCode === 'function' &&
-                                        window.getRegisterInviteCode()
-                                    );
-                                sessionStorage.removeItem('invite_next_download_v1');
-                            } catch (eGo) {
-                                goDownload = false;
-                            }
                             if (goDownload) {
                                 window.location.href = 'install_guide.html?download=1#download';
                             } else {
@@ -822,7 +854,7 @@
                     loadRegisterCaptcha().catch(function () {});
                 })
                 .catch(function () {
-                    showErr('网络错误，请稍后重试');
+                    showErr('网络不太稳，请稍后再试');
                 })
                 .finally(function () {
                     btn.disabled = false;
