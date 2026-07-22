@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>管理控制台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260721-p2">
+    <title>运营控制台</title>
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260722-ops">
 </head>
 <body>
     <div class="layout">
         <aside class="sidebar" aria-label="功能导航">
-            <div class="sidebar-brand">管理控制台</div>
+            <div class="sidebar-brand">运营控制台</div>
             <nav id="adminSidebarNav" class="sidebar-nav" aria-live="polite">
                 <!-- 侧栏由 /api/admin/me 的 menu_tree 渲染（阶段 2） -->
             </nav>
@@ -18,12 +18,16 @@
         <div class="main-area">
             <div class="top">
                 <div class="top-inner">
-                    <h1 id="pageTitle">系统设置</h1>
+                    <h1 id="pageTitle">转化与触达</h1>
                     <button type="button" class="btn-logout" id="btnAdminLogout">退出管理</button>
                 </div>
             </div>
             <div class="wrap">
-                <div id="page-settings" class="page-panel active" role="tabpanel">
+                <div id="page-settings" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>增长与触达配置</h2>
+                        <p class="hint mt-0">集中配置转化/定价实验、邀请有礼、未激活弹窗，以及 QQ / 微信等用户触达入口。效果请到「转化与触达」查看。</p>
+                    </section>
                     <section>
                         <h2>QQ 添加链接（个人中心顶栏）</h2>
                         <p class="hint">用户在「我要咨询 / 个人中心」页顶栏点击「添加QQ号」时打开此链接（如 QQ 好友加号页，须为 https 完整地址）。留空并保存则点击时提示未配置。</p>
@@ -1467,7 +1471,11 @@
         </section>
                 </div>
 
-                <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
+                <div id="page-analytics-conversion" class="page-panel active" role="tabpanel">
+        <section>
+            <h2>转化与触达</h2>
+            <p class="hint mt-0">运营日常首页：看转化 KPI、定价实验、未激活用户，并可一键群发站内信。增长实验开关在左侧「增长与触达配置」。</p>
+        </section>
         <section>
             <h2>定价 A/B</h2>
             <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。Control=199 永久；Treatment=四档阶梯。曝光来自购买页 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p>
@@ -2168,8 +2176,8 @@
         </div>
     </div>
     <script src="/js/admin/loader.js?v=20260722-chat-window-fix"></script>
-    <script src="/js/admin/nav.js?v=20260721-p2"></script>
+    <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin_panel.js?v=20260722-pricing-ab"></script>
+    <script src="/js/admin_panel.js?v=20260722-ops-ia"></script>
 </body>
 </html>

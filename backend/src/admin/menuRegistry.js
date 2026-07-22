@@ -3,14 +3,15 @@
  * - menu_key：写入 admin_account_menus、用于 requireAdminMenu
  * - page：前端 hash / data-page（可与 menu_key 不同，如 users-deleted）
  * - module：前端懒加载模块名
+ *
+ * 信息架构以「运营」为中心：工作台 → 配置 → 用户客服 → 数据洞察 → 系统与安全
  */
 const ADMIN_MENU_GROUPS = [
-  { id: 'config', label: '系统配置', order: 10 },
-  { id: 'accounts', label: '账号权限', order: 20 },
-  { id: 'users', label: '用户管理', order: 30 },
-  { id: 'logs', label: '日志审计', order: 40 },
-  { id: 'ops', label: '系统运维', order: 50 },
-  { id: 'stats', label: '数据统计', order: 60 }
+  { id: 'ops-desk', label: '运营工作台', order: 10 },
+  { id: 'ops-config', label: '运营配置', order: 20 },
+  { id: 'users', label: '用户与客服', order: 30 },
+  { id: 'insights', label: '数据洞察', order: 40 },
+  { id: 'system', label: '系统与安全', order: 50 }
 ];
 
 /**
@@ -27,39 +28,97 @@ const ADMIN_MENU_GROUPS = [
 
 /** @type {AdminPageDef[]} */
 const ADMIN_PAGE_DEFS = [
-  { page: 'settings', menu_key: 'settings', label: '系统设置', group: 'config', module: 'settings', order: 10 },
-  { page: 'install-guide', menu_key: 'install-guide', label: '引导安装', group: 'config', module: 'settings', order: 20 },
-  { page: 'appearance', menu_key: 'appearance', label: '用户端外观', group: 'config', module: 'settings', order: 30 },
-  { page: 'codes', menu_key: 'codes', label: '激活码', group: 'config', module: 'codes', order: 40 },
+  /* —— 运营工作台 —— */
+  {
+    page: 'analytics-conversion',
+    menu_key: 'analytics-conversion',
+    label: '转化与触达',
+    group: 'ops-desk',
+    module: 'analytics',
+    order: 10
+  },
+  {
+    page: 'channel-analysis',
+    menu_key: 'channel-analysis',
+    label: '渠道分析',
+    group: 'ops-desk',
+    module: 'analytics',
+    order: 20
+  },
+  { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
 
-  { page: 'admin-accounts', menu_key: 'admin-accounts', label: '后台账号权限', group: 'accounts', module: 'accounts', order: 10 },
+  /* —— 运营配置 —— */
+  {
+    page: 'settings',
+    menu_key: 'settings',
+    label: '增长与触达配置',
+    group: 'ops-config',
+    module: 'settings',
+    order: 10
+  },
+  {
+    page: 'install-guide',
+    menu_key: 'install-guide',
+    label: '引导安装',
+    group: 'ops-config',
+    module: 'settings',
+    order: 20
+  },
+  {
+    page: 'install-guide-stats',
+    menu_key: 'install-guide-stats',
+    label: '安装页统计',
+    group: 'ops-config',
+    module: 'analytics',
+    order: 30
+  },
 
+  /* —— 用户与客服 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
-  { page: 'guest-users', menu_key: 'guest-users', label: '游客用户', group: 'users', module: 'users', order: 20, super_only: true },
-  { page: 'users-deleted', menu_key: 'users', label: '已删除账号', group: 'users', module: 'users', order: 30, assignable: false },
-  { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 40 },
-  { page: 'user-behavior', menu_key: 'user-behavior', label: '用户行为', group: 'users', module: 'user-data', order: 50 },
+  {
+    page: 'guest-users',
+    menu_key: 'guest-users',
+    label: '游客用户',
+    group: 'users',
+    module: 'users',
+    order: 20,
+    super_only: true
+  },
+  {
+    page: 'users-deleted',
+    menu_key: 'users',
+    label: '已删除账号',
+    group: 'users',
+    module: 'users',
+    order: 30,
+    assignable: false
+  },
+  { page: 'feedback', menu_key: 'feedback', label: '用户反馈', group: 'users', module: 'feedback', order: 40 },
+  { page: 'chat', menu_key: 'chat', label: '在线客服', group: 'users', module: 'chat', order: 50 },
+  { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
+  {
+    page: 'user-behavior',
+    menu_key: 'user-behavior',
+    label: '用户行为',
+    group: 'users',
+    module: 'user-data',
+    order: 70
+  },
   {
     page: 'activated-user-analysis',
     menu_key: 'activated-user-analysis',
     label: '激活用户分析',
     group: 'users',
     module: 'user-data',
-    order: 60
+    order: 80
   },
-  { page: 'feedback', menu_key: 'feedback', label: '用户反馈', group: 'users', module: 'feedback', order: 70 },
-  { page: 'chat', menu_key: 'chat', label: '在线客服', group: 'users', module: 'chat', order: 80 },
 
-  { page: 'login-log', menu_key: 'login-log', label: '管理账号登录流水', group: 'logs', module: 'logs', order: 10 },
-  { page: 'user-login-log', menu_key: 'login-log', label: '普通用户登录流水', group: 'logs', module: 'logs', order: 20, assignable: false },
-
-  { page: 'server-monitor', menu_key: 'server-monitor', label: '服务器监控', group: 'ops', module: 'monitor', order: 10 },
-
+  /* —— 数据洞察 —— */
   {
-    page: 'analytics-conversion',
-    menu_key: 'analytics-conversion',
-    label: '转化分析',
-    group: 'stats',
+    page: 'analytics-register',
+    menu_key: 'analytics-register',
+    label: '注册分析',
+    group: 'insights',
     module: 'analytics',
     order: 10
   },
@@ -67,51 +126,87 @@ const ADMIN_PAGE_DEFS = [
     page: 'analytics-activity',
     menu_key: 'analytics-activity',
     label: '用户活跃',
-    group: 'stats',
+    group: 'insights',
     module: 'analytics',
     order: 20
-  },
-  {
-    page: 'analytics-register',
-    menu_key: 'analytics-register',
-    label: '注册分析',
-    group: 'stats',
-    module: 'analytics',
-    order: 30
   },
   {
     page: 'analytics-tracking',
     menu_key: 'analytics-tracking',
     label: '埋点分析',
-    group: 'stats',
+    group: 'insights',
     module: 'analytics',
-    order: 40
+    order: 30
   },
   {
     page: 'analytics-devices',
     menu_key: 'analytics-devices',
     label: '设备分析',
-    group: 'stats',
+    group: 'insights',
+    module: 'analytics',
+    order: 40
+  },
+  {
+    page: 'api-analytics',
+    menu_key: 'api-analytics',
+    label: '接口统计',
+    group: 'insights',
     module: 'analytics',
     order: 50
   },
+
+  /* —— 系统与安全 —— */
   {
-    page: 'install-guide-stats',
-    menu_key: 'install-guide-stats',
-    label: '安装页统计',
-    group: 'stats',
-    module: 'analytics',
-    order: 60
+    page: 'appearance',
+    menu_key: 'appearance',
+    label: '用户端外观',
+    group: 'system',
+    module: 'settings',
+    order: 10
   },
   {
-    page: 'channel-analysis',
-    menu_key: 'channel-analysis',
-    label: '渠道分析',
-    group: 'stats',
-    module: 'analytics',
-    order: 70
+    page: 'admin-accounts',
+    menu_key: 'admin-accounts',
+    label: '后台账号权限',
+    group: 'system',
+    module: 'accounts',
+    order: 20
   },
-  { page: 'api-analytics', menu_key: 'api-analytics', label: '接口统计', group: 'stats', module: 'analytics', order: 80 }
+  {
+    page: 'login-log',
+    menu_key: 'login-log',
+    label: '管理账号登录流水',
+    group: 'system',
+    module: 'logs',
+    order: 30
+  },
+  {
+    page: 'user-login-log',
+    menu_key: 'login-log',
+    label: '普通用户登录流水',
+    group: 'system',
+    module: 'logs',
+    order: 40,
+    assignable: false
+  },
+  {
+    page: 'server-monitor',
+    menu_key: 'server-monitor',
+    label: '服务器监控',
+    group: 'system',
+    module: 'monitor',
+    order: 50
+  }
+];
+
+/** 登录后优先进入的运营页（有权限则取第一个） */
+const ADMIN_PREFERRED_FIRST_PAGES = [
+  'analytics-conversion',
+  'settings',
+  'codes',
+  'channel-analysis',
+  'users',
+  'chat'
 ];
 
 const ADMIN_MENU_KEYS = (function () {
@@ -246,11 +341,20 @@ function buildMenuTreeForAdmin(admin) {
   return { menu_tree: tree, pages: pages };
 }
 
-/** 辅助函数：firstAllowedPage */
+/** 辅助函数：firstAllowedPage — 运营页优先 */
 function firstAllowedPage(admin) {
+  var i;
+  for (i = 0; i < ADMIN_PREFERRED_FIRST_PAGES.length; i++) {
+    if (adminProfileCanAccessPage(admin, ADMIN_PREFERRED_FIRST_PAGES[i])) {
+      return ADMIN_PREFERRED_FIRST_PAGES[i];
+    }
+  }
   var built = buildMenuTreeForAdmin(admin);
+  if (built.menu_tree.length && built.menu_tree[0].items && built.menu_tree[0].items.length) {
+    return built.menu_tree[0].items[0].page;
+  }
   if (built.pages.length) return built.pages[0].page;
-  return 'settings';
+  return 'analytics-conversion';
 }
 
 /** 构建：AdminSessionPayload */
@@ -273,6 +377,7 @@ function buildAdminSessionPayload(admin) {
 module.exports = {
   ADMIN_MENU_GROUPS,
   ADMIN_PAGE_DEFS,
+  ADMIN_PREFERRED_FIRST_PAGES,
   ADMIN_MENU_KEYS,
   ADMIN_MENU_LABELS,
   getAssignableMenuDefs,

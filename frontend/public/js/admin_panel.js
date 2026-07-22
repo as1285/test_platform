@@ -1062,12 +1062,37 @@
                 var items = tree[g].items || [];
                 if (items.length && items[0].page) return items[0].page;
             }
-            var order = ['settings', 'install-guide', 'appearance', 'codes', 'admin-accounts', 'users', 'guest-users', 'users-deleted', 'user-data', 'user-behavior', 'activated-user-analysis', 'feedback', 'chat', 'login-log', 'user-login-log', 'server-monitor', 'analytics-conversion', 'analytics-activity', 'analytics-register', 'analytics-tracking', 'analytics-devices', 'install-guide-stats', 'channel-analysis', 'api-analytics'];
+            var order = [
+                'analytics-conversion',
+                'settings',
+                'codes',
+                'channel-analysis',
+                'install-guide',
+                'install-guide-stats',
+                'users',
+                'guest-users',
+                'users-deleted',
+                'feedback',
+                'chat',
+                'user-data',
+                'user-behavior',
+                'activated-user-analysis',
+                'analytics-register',
+                'analytics-activity',
+                'analytics-tracking',
+                'analytics-devices',
+                'api-analytics',
+                'appearance',
+                'admin-accounts',
+                'login-log',
+                'user-login-log',
+                'server-monitor'
+            ];
             for (var i = 0; i < order.length; i++) {
                 if (order[i] === 'guest-users' && !(currentAdminProfile && currentAdminProfile.is_super)) continue;
                 if (adminHasMenu(order[i])) return order[i];
             }
-            return 'settings';
+            return 'analytics-conversion';
         }
 
         function readAdminProfileCache() {
@@ -6452,7 +6477,7 @@
         }
 
         var ADMIN_MENU_LABELS = {
-            settings: '系统设置',
+            settings: '增长与触达配置',
             'install-guide': '引导安装',
             appearance: '用户端外观',
             codes: '激活码',
@@ -6466,7 +6491,7 @@
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计（旧）',
-            'analytics-conversion': '转化分析',
+            'analytics-conversion': '转化与触达',
             'analytics-activity': '用户活跃',
             'analytics-register': '注册分析',
             'analytics-tracking': '埋点分析',
@@ -8888,6 +8913,11 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
+                var MENU_TREE_VER = 'ops-ia-v1';
+                if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
+                    localStorage.removeItem('admin_menu_tree');
+                    localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
+                }
                 var cachedTree = JSON.parse(localStorage.getItem('admin_menu_tree') || 'null');
                 if (cachedTree && window.AdminNav) AdminNav.setMenuTree(cachedTree);
             } catch (e1) {}
