@@ -11010,27 +11010,29 @@ async function handleAuthPost(req, res) {
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);
       recordUserLoginAttempt(out2.username, true, req, 'ok').catch(function () {});
-      try {
-        var loginMig = await maybeMigrateGuestSandboxForRequest(
-          req,
-          out2.username,
-          body.client_id || body.clientId,
-          body.guest_username || body.guestUsername
-        );
-        if (loginMig && loginMig.migrated) {
-          out2.guest_data_migrated = true;
-          out2.guest_migrate_summary = loginMig.summary || {};
-          out2.merged_from_guest = loginMig.guest_username || '';
-          recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
-            page: 'login',
-            guest_username: loginMig.guest_username || '',
-            registered_username: out2.username,
-            summary: loginMig.summary || {}
+      /*
+       * 游客沙盒合并可能扫多表、持连接较久；若 await 会拖慢登录响应，
+       * 偶发触达 nginx/代理超时并返回 HTML，前端 JSON 解析失败会误报「网络错误」。
+       * 登录成功后异步合并，不阻塞签发 token。
+       */
+      var loginClientId = body.client_id || body.clientId;
+      var loginGuestUsername = body.guest_username || body.guestUsername;
+      setImmediate(function () {
+        maybeMigrateGuestSandboxForRequest(req, out2.username, loginClientId, loginGuestUsername)
+          .then(function (loginMig) {
+            if (loginMig && loginMig.migrated) {
+              recordInstallGuideTrackEvent(req, 'track_guest_data_migrated', {
+                page: 'login',
+                guest_username: loginMig.guest_username || '',
+                registered_username: out2.username,
+                summary: loginMig.summary || {}
+              });
+            }
+          })
+          .catch(function (eLoginMig) {
+            console.error('login guest migrate', eLoginMig);
           });
-        }
-      } catch (eLoginMig) {
-        console.error('login guest migrate', eLoginMig);
-      }
+      });
       return res.json({ code: 200, data: out2 });
     }
     return res.status(400).json({ code: 400, msg: 'unknown action' });

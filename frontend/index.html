@@ -901,9 +901,67 @@
             if (mask) mask.addEventListener('click', closeLoginErrorModal);
         })();
 
+        var _loginInFlight = false;
+
+        function parseAuthResponse(r) {
+            return r.text().then(function (text) {
+                var data = null;
+                if (text) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (eParse) {
+                        data = null;
+                    }
+                }
+                return { status: r.status, ok: r.ok, data: data };
+            });
+        }
+
+        function shouldRetryLogin(status, data, err) {
+            if (err) return true;
+            if (data) return false;
+            return !status || status === 408 || status === 425 || status === 429 || status >= 500;
+        }
+
+        function applyLoginSuccess(d, username) {
+            if (d.token) {
+                localStorage.setItem('token', d.token);
+            }
+            localStorage.removeItem('landing_guest_v1');
+            try {
+                localStorage.removeItem('guest_username_v1');
+                localStorage.removeItem('guest_sample_tax_seeded_v1');
+            } catch (eClrLg) {}
+            localStorage.setItem('userName', d.username || username);
+            localStorage.setItem('user_id', d.user_id || username);
+            localStorage.setItem('real_name', d.real_name || username);
+            if (d.guest_data_migrated) {
+                try {
+                    sessionStorage.setItem(
+                        'guest_data_migrated_notice',
+                        JSON.stringify({
+                            msg: '您在游客模式下填写的资料已同步到当前账号'
+                        })
+                    );
+                } catch (eMigN) {}
+            }
+            var act = d.account_active === true || d.account_active === 1;
+            localStorage.setItem('account_active', act ? '1' : '0');
+            localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+            if (
+                !act &&
+                window.TutorialVideoPrompt &&
+                typeof window.TutorialVideoPrompt.markPostLoginPending === 'function'
+            ) {
+                window.TutorialVideoPrompt.markPostLoginPending();
+            }
+            window.location.href = 'mine.html';
+        }
+
         function doLogin() {
             var username = document.getElementById('loginUsername').value.trim();
             var password = document.getElementById('loginPassword').value;
+            var loginBtn = document.getElementById('loginSubmitBtn');
             showLoginFormTip('');
 
             if (!username) {
@@ -917,6 +975,9 @@
             if (!isLoginSliderVerified()) {
                 showLoginFormTip('请先按住滑块，拖动到最右边完成验证');
                 warnLoginSlider();
+                return;
+            }
+            if (_loginInFlight) {
                 return;
             }
 
@@ -934,60 +995,69 @@
                 var lgU = localStorage.getItem('guest_username_v1') || '';
                 if (lgU && lgU.indexOf('__guest_') === 0) loginGuestUsername = lgU;
             } catch (eLg) {}
-            fetch('api/auth', {
-                method: 'POST',
-                headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'login',
-                    username: username,
-                    password: password,
-                    client_id: loginClientId || undefined,
-                    guest_username: loginGuestUsername || undefined
+
+            var payload = {
+                action: 'login',
+                username: username,
+                password: password,
+                client_id: loginClientId || undefined,
+                guest_username: loginGuestUsername || undefined
+            };
+
+            function finishLoginUi() {
+                _loginInFlight = false;
+                if (loginBtn) loginBtn.disabled = false;
+            }
+
+            function postLogin(attempt) {
+                return fetch('/api/auth', {
+                    method: 'POST',
+                    headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 })
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code === 200 && data.data) {
-                        var d = data.data;
-                        if (d.token) {
-                            localStorage.setItem('token', d.token);
+                    .then(parseAuthResponse)
+                    .then(function (x) {
+                        var data = x.data;
+                        if (data && data.code === 200 && data.data) {
+                            applyLoginSuccess(data.data, username);
+                            return;
                         }
-                        localStorage.removeItem('landing_guest_v1');
-                        try {
-                            localStorage.removeItem('guest_username_v1');
-                            localStorage.removeItem('guest_sample_tax_seeded_v1');
-                        } catch (eClrLg) {}
-                        localStorage.setItem('userName', d.username || username);
-                        localStorage.setItem('user_id', d.user_id || username);
-                        localStorage.setItem('real_name', d.real_name || username);
-                        if (d.guest_data_migrated) {
-                            try {
-                                sessionStorage.setItem(
-                                    'guest_data_migrated_notice',
-                                    JSON.stringify({
-                                        msg: '您在游客模式下填写的资料已同步到当前账号'
-                                    })
-                                );
-                            } catch (eMigN) {}
+                        if (shouldRetryLogin(x.status, data, null) && attempt < 1) {
+                            return new Promise(function (resolve) {
+                                setTimeout(resolve, 500);
+                            }).then(function () {
+                                return postLogin(attempt + 1);
+                            });
                         }
-                        var act = d.account_active === true || d.account_active === 1;
-                        localStorage.setItem('account_active', act ? '1' : '0');
-                        localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
-                        if (
-                            !act &&
-                            window.TutorialVideoPrompt &&
-                            typeof window.TutorialVideoPrompt.markPostLoginPending === 'function'
-                        ) {
-                            window.TutorialVideoPrompt.markPostLoginPending();
+                        if (data && data.msg) {
+                            showLoginErrorModal(data.msg);
+                            return;
                         }
-                        window.location.href = 'mine.html';
-                        return;
-                    }
-                    showLoginErrorModal(data.msg || '登录失败');
-                })
-                .catch(function () {
-                    alert('网络错误，请检查服务是否可用');
-                });
+                        if (x.status === 429) {
+                            showLoginErrorModal('登录过于频繁，请稍后再试');
+                            return;
+                        }
+                        if (x.status >= 500 || !data) {
+                            showLoginErrorModal('网络繁忙，请稍后重试');
+                            return;
+                        }
+                        showLoginErrorModal('登录失败');
+                    })
+                    .catch(function () {
+                        if (attempt < 1) {
+                            return new Promise(function (resolve) {
+                                setTimeout(resolve, 500);
+                            }).then(function () {
+                                return postLogin(attempt + 1);
+                            });
+                        }
+                        showLoginErrorModal('网络错误，请检查服务是否可用');
+                    });
+            }
+
+            _loginInFlight = true;
+            if (loginBtn) loginBtn.disabled = true;
+            postLogin(0).then(finishLoginUi, finishLoginUi);
         }
 
     </script>
