@@ -1307,3 +1307,23 @@
             );
         }
 
+        window.destroyDeviceStatsCharts = destroyDeviceStatsCharts;
+        window.destroyRegisterTimeCharts = destroyRegisterTimeCharts;
+        window.destroyRegisterGenderCharts = destroyRegisterGenderCharts;
+        window.destroyInstallGuideCharts = destroyInstallGuideCharts;
+        window.destroyGuestUsersCharts = destroyGuestUsersCharts;
+        window.destroyChannelAnalysisCharts = destroyChannelAnalysisCharts;
+        window.loadChannelAnalysis = loadChannelAnalysis;
+        window.loadAnalyticsRegisterGender = loadAnalyticsRegisterGender;
+        window.loadAnalyticsRegisterPlatform = loadAnalyticsRegisterPlatform;
+        window.loadAnalyticsRegisterTime = loadAnalyticsRegisterTime;
+        window.renderDeviceStatsCharts = renderDeviceStatsCharts;
+        window.renderRegisterGenderAnalysis = renderRegisterGenderAnalysis;
+        window.renderChannelAnalysis = renderChannelAnalysis;
+        window.renderRegisterTimeAnalysis = renderRegisterTimeAnalysis;
+        window.renderRegisterPlatformAnalysis = renderRegisterPlatformAnalysis;
+        window.statIconHtml = statIconHtml;
+        window.deviceStatRowHtml = deviceStatRowHtml;
+        window.AdminModules = window.AdminModules || {};
+        window.AdminModules.charts = { ready: true };
+

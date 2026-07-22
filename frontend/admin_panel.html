@@ -104,26 +104,34 @@
                     </section>
                     <section>
                         <h2>邀请有礼</h2>
-                        <p class="hint">开启后：被邀请人<strong>注册成功</strong>即计奖，邀请人在延迟后获得时效时长（被邀请人不送体验）。永久邀请人改为发放可转赠时效码。月封顶与天数/小时可在此调整。</p>
+                        <p class="hint">开启后：被邀请人<strong>注册成功</strong>→邀请人立即获得注册奖励（默认 30 分钟）；被邀请人<strong>支付宝付费永久激活</strong>→邀请人再立即获得付费奖励（默认 3 天）。永久邀请人改为发放可转赠时效码。月封顶可调。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label><input type="checkbox" id="inviteEnabled"> 启用邀请有礼</label>
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="inviteRewardDays">每次奖励天数</label>
-                                <input type="number" id="inviteRewardDays" min="0" max="365" step="1" value="7">
+                                <label for="inviteRewardMinutes">注册奖励（分钟）</label>
+                                <input type="number" id="inviteRewardMinutes" min="0" max="1440" step="1" value="30">
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="inviteRewardHours">每次奖励小时</label>
+                                <label for="inviteRewardDays">注册奖励（天）</label>
+                                <input type="number" id="inviteRewardDays" min="0" max="365" step="1" value="0">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="inviteRewardHours">注册奖励（小时）</label>
                                 <input type="number" id="inviteRewardHours" min="0" max="720" step="1" value="0">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="invitePayRewardDays">付费永久激活奖励（天）</label>
+                                <input type="number" id="invitePayRewardDays" min="0" max="365" step="1" value="3">
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="inviteMonthlyCap">每月最多计奖次数</label>
                                 <input type="number" id="inviteMonthlyCap" min="0" max="100" step="1" value="4">
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="inviteGrantDelayHours">发奖延迟（小时）</label>
-                                <input type="number" id="inviteGrantDelayHours" min="0" max="720" step="1" value="48">
+                                <label for="inviteGrantDelayHours">注册发奖延迟（小时，0=立即）</label>
+                                <input type="number" id="inviteGrantDelayHours" min="0" max="720" step="1" value="0">
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveInviteReward">保存邀请配置</button>
@@ -580,6 +588,7 @@
                         <option value="">全部渠道</option>
                         <option value="闲鱼">闲鱼</option>
                         <option value="酷发卡">酷发卡</option>
+                        <option value="支付宝" selected>支付宝</option>
                     </select>
                 </div>
                 <div>
@@ -1125,7 +1134,7 @@
                 <div id="page-activated-user-analysis" class="page-panel" role="tabpanel">
         <section>
             <h2>激活用户分析</h2>
-            <p class="hint">聚焦<strong>已激活</strong>账号：工资收入（近6月平均）、个税记录填写、日活与使用频率。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
+            <p class="hint">聚焦<strong>已激活</strong>账号：工资收入（近6月平均）、个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
             <div class="form-row flex-align-center mb-8">
                 <div>
                     <label for="auaOverviewDays">日活趋势天数</label>
@@ -1229,6 +1238,8 @@
                             <th class="col-w-72">姓名</th>
                             <th class="col-w-100">近6月平均工资</th>
                             <th class="col-w-72">个税条数</th>
+                            <th class="col-w-56">改名</th>
+                            <th class="col-w-72">改个税</th>
                             <th class="col-w-56">活跃天</th>
                             <th class="col-w-56">行为数</th>
                             <th class="col-w-72">次/活跃天</th>
@@ -1238,7 +1249,7 @@
                             <th class="col-ops">操作</th>
                         </tr>
                     </thead>
-                    <tbody id="auaUsersTbody"><tr><td colspan="11">进入本页后加载…</td></tr></tbody>
+                    <tbody id="auaUsersTbody"><tr><td colspan="13">进入本页后加载…</td></tr></tbody>
                 </table>
             </div>
             <div class="pagination" id="auaUsersPagination">
@@ -1396,7 +1407,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="installGuideStatsDays">统计区间</label>
-                    <select id="installGuideStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="1"></select>
+                    <select id="installGuideStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshInstallGuideStats">刷新统计</button>
             </div>
@@ -1423,7 +1434,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsFunnelDays">统计区间</label>
-                    <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
             </div>
@@ -1435,7 +1446,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsConversionKpiDays">统计区间</label>
-                    <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="1"></select>
+                    <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshConversionKpis">刷新 KPI</button>
             </div>
@@ -1456,7 +1467,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsRegisterPlatformDays">统计区间</label>
-                    <select id="analyticsRegisterPlatformDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="7"></select>
+                    <select id="analyticsRegisterPlatformDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegisterPlatform">刷新平台占比</button>
             </div>
@@ -1487,7 +1498,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsRegisterTimeDays">统计区间</label>
-                    <select id="analyticsRegisterTimeDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="1"></select>
+                    <select id="analyticsRegisterTimeDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90,180,365" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegisterTime">刷新时段分析</button>
             </div>
@@ -1528,7 +1539,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsRegisterGenderDays">统计范围</label>
-                    <select id="analyticsRegisterGenderDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="1"></select>
+                    <select id="analyticsRegisterGenderDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshRegisterGender">刷新性别统计</button>
             </div>
@@ -1567,7 +1578,7 @@
             <div class="form-row flex-align-center">
                 <div>
                     <label for="analyticsOverviewDays">统计区间</label>
-                    <select id="analyticsOverviewDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="analyticsOverviewDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshAnalytics">刷新统计</button>
                 <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
@@ -1606,7 +1617,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsInstallTrackDays">统计区间</label>
-                    <select id="analyticsInstallTrackDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="1"></select>
+                    <select id="analyticsInstallTrackDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshInstallTrack">刷新安装埋点</button>
             </div>
@@ -1616,7 +1627,7 @@
             <div class="form-row flex-align-center mb-8">
                 <div>
                     <label for="analyticsTrackingDays">行为埋点统计区间</label>
-                    <select id="analyticsTrackingDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="analyticsTrackingDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
             </div>
@@ -1743,7 +1754,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="channelAnalysisDays">统计范围</label>
-                    <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="1"></select>
+                    <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshChannelAnalysis">刷新分析</button>
             </div>
@@ -1811,7 +1822,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsChannelFunnelDays">统计区间</label>
-                    <select id="analyticsChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="analyticsChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshChannelFunnel">刷新渠道漏斗</button>
             </div>
@@ -1823,7 +1834,7 @@
             <div class="form-row flex-align-center mt-8">
                 <div>
                     <label for="analyticsActivationChannelFunnelDays">统计区间</label>
-                    <select id="analyticsActivationChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="analyticsActivationChannelFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-page" id="btnRefreshActivationChannelFunnel">刷新激活渠道漏斗</button>
             </div>
@@ -1838,7 +1849,7 @@
             <div class="form-row flex-align-center">
                 <div>
                     <label for="apiAnalyticsDays">统计区间</label>
-                    <select id="apiAnalyticsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="1"></select>
+                    <select id="apiAnalyticsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                 </div>
                 <button type="button" class="btn-primary" id="btnRefreshApiAnalytics">刷新</button>
             </div>
@@ -2062,9 +2073,9 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260721-p2"></script>
+    <script src="/js/admin/loader.js?v=20260722-chat-window-fix"></script>
     <script src="/js/admin/nav.js?v=20260721-p2"></script>
-    <script src="/js/admin-analytics-period.js?v=20260721-custom-today"></script>
-    <script src="/js/admin_panel.js?v=20260722-invite-on-register"></script>
+    <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
+    <script src="/js/admin_panel.js?v=20260722-invite-30m-3d"></script>
 </body>
 </html>

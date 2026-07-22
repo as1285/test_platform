@@ -446,6 +446,8 @@ async function countBotPurgeCandidates(conn, criteria) {
 /** 删除用户及其关联业务数据 */
 async function deleteUserAndRelated(conn, username) {
   await conn.execute('DELETE FROM tax_records WHERE user_id = ?', [username]);
+  await conn.execute('DELETE FROM tax_record_change_logs WHERE user_id = ?', [username]);
+  await conn.execute('DELETE FROM user_profile_change_logs WHERE username = ?', [username]);
   await conn.execute('DELETE FROM tax_issue_applications WHERE user_id = ?', [username]);
   await conn.execute('DELETE FROM employers WHERE user_id = ?', [username]);
   await conn.execute('DELETE FROM family_members WHERE user_id = ?', [username]);

@@ -441,3 +441,14 @@
                 });
         }
 
+        window.stopAdminChatPoll = stopAdminChatPoll;
+        window.startAdminChatPoll = startAdminChatPoll;
+        window.loadAdminChatAutoReply = loadAdminChatAutoReply;
+        window.loadAdminChatConversations = loadAdminChatConversations;
+        window.loadAdminChatThread = loadAdminChatThread;
+        window.sendAdminChatMessage = sendAdminChatMessage;
+        window.resumeAdminChatAi = resumeAdminChatAi;
+        window.saveAdminChatAutoReply = saveAdminChatAutoReply;
+        window.AdminModules = window.AdminModules || {};
+        window.AdminModules.chat = { ready: true };
+

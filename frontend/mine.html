@@ -1930,10 +1930,17 @@
                             var rewardBits = [];
                             if (d.reward_days) rewardBits.push(d.reward_days + ' 天');
                             if (d.reward_hours) rewardBits.push(d.reward_hours + ' 小时');
+                            if (d.reward_minutes) rewardBits.push(d.reward_minutes + ' 分钟');
+                            var payBits =
+                                d.pay_reward_days != null && Number(d.pay_reward_days) > 0
+                                    ? Number(d.pay_reward_days) + ' 天'
+                                    : '3 天';
                             desc.textContent =
-                                '好友扫码先注册、再下载 App；注册成功后你可获得 ' +
-                                (rewardBits.length ? rewardBits.join(' ') : '7 天') +
-                                ' 使用权（每月最多 ' +
+                                '好友扫码先注册、再下载 App；注册成功你得 ' +
+                                (rewardBits.length ? rewardBits.join(' ') : '30 分钟') +
+                                '，好友付费永久激活后再得 ' +
+                                payBits +
+                                '（每月最多 ' +
                                 (d.monthly_cap || 4) +
                                 ' 次）。';
                         }
@@ -1969,8 +1976,14 @@
                                                 '<div>' +
                                                 String(c.code || '') +
                                                 '（' +
-                                                (c.days || '') +
-                                                '天）</div>'
+                                                (function () {
+                                                    var bits = [];
+                                                    if (c.days) bits.push(c.days + '天');
+                                                    if (c.minutes) bits.push(c.minutes + '分钟');
+                                                    if (c.kind === 'pay') bits.push('付费奖');
+                                                    return bits.length ? bits.join('') : '试用';
+                                                })() +
+                                                '）</div>'
                                             );
                                         })
                                         .join('');
@@ -1983,7 +1996,13 @@
                                 var bits = [];
                                 if (d.reward_days) bits.push(d.reward_days + '天');
                                 if (d.reward_hours) bits.push(d.reward_hours + '小时');
-                                return bits.length ? bits.join('') : '7天';
+                                if (d.reward_minutes) bits.push(d.reward_minutes + '分钟');
+                                var reg = bits.length ? bits.join('') : '30分钟';
+                                var pay =
+                                    d.pay_reward_days != null && Number(d.pay_reward_days) > 0
+                                        ? Number(d.pay_reward_days) + '天'
+                                        : '3天';
+                                return reg + '（付费再得' + pay + '）';
                             })();
                         window.__mineInvitePosterDataUrl = '';
                     })

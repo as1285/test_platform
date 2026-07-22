@@ -5025,15 +5025,20 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
        WHERE username = ?`,
       [locked.username]
     );
-    if (wasFirstPayActivation && beforeUserRows[0].invited_by) {
+    if (beforeUserRows[0].invited_by) {
       try {
         await getInviteReward().markInviteeActivatedInConn(
           conn,
           locked.username,
           beforeUserRows[0].invited_by
         );
+        await getInviteReward().grantInvitePayRewardInConn(
+          conn,
+          locked.username,
+          beforeUserRows[0].invited_by
+        );
       } catch (eInvPay) {
-        console.error('alipay invite mark', eInvPay);
+        console.error('alipay invite mark/pay reward', eInvPay);
       }
     }
     await conn.execute(
@@ -5613,6 +5618,7 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
 var GUEST_MIGRATE_USER_TABLES = [
   ['tax_records', 'user_id'],
   ['tax_record_change_logs', 'user_id'],
+  ['user_profile_change_logs', 'username'],
   ['tax_issue_applications', 'user_id'],
   ['messages', 'user_id'],
   ['employers', 'user_id'],
@@ -6966,8 +6972,32 @@ async function handleUserPost(req, res) {
         }
         
         if (updateFields.length > 0) {
+          var oldRealName =
+            profileUser && profileUser.real_name != null ? String(profileUser.real_name) : '';
+          var newRealName = null;
+          if (body.real_name != null) {
+            newRealName = String(body.real_name);
+          }
           updateParams.push(userId);
           await conn.execute(`UPDATE users SET ${updateFields.join(', ')} WHERE username = ?`, updateParams);
+          if (
+            newRealName != null &&
+            String(newRealName).trim() !== String(oldRealName).trim()
+          ) {
+            try {
+              await conn.execute(
+                `INSERT INTO user_profile_change_logs (username, field_key, before_value, after_value)
+                 VALUES (?, 'real_name', ?, ?)`,
+                [
+                  userId,
+                  String(oldRealName).substring(0, 512),
+                  String(newRealName).substring(0, 512)
+                ]
+              );
+            } catch (eNameLog) {
+              console.error('user_profile_change_logs insert', eNameLog);
+            }
+          }
         }
         
         conn.release();
@@ -11124,6 +11154,21 @@ function chinaDatePartsNow() {
   return { year: p[0], month: p[1], day: p[2], todayKey: todayKey };
 }
 
+/** 项目统计起始日（2026-04 上线，更早日期不纳入可选区间） */
+var ANALYTICS_PROJECT_START_YMD = '2026-04-01';
+var ANALYTICS_PROJECT_START_YM = 2026 * 12 + 4;
+
+function analyticsYmKey(y, m) {
+  return y * 12 + m;
+}
+
+function analyticsClampStartYmd(ymd) {
+  if (!ymd || String(ymd) < ANALYTICS_PROJECT_START_YMD) {
+    return ANALYTICS_PROJECT_START_YMD;
+  }
+  return String(ymd);
+}
+
 /** 是否：valid analytics ymd */
 function isValidAnalyticsYmd(ymd) {
   var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -11131,9 +11176,18 @@ function isValidAnalyticsYmd(ymd) {
   var y = parseInt(m[1], 10);
   var mo = parseInt(m[2], 10);
   var d = parseInt(m[3], 10);
-  if (y < 2019 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  if (y < 2026 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
   var dt = new Date(Date.UTC(y, mo - 1, d));
-  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+    return false;
+  }
+  var key =
+    y +
+    '-' +
+    String(mo).padStart(2, '0') +
+    '-' +
+    String(d).padStart(2, '0');
+  return key >= ANALYTICS_PROJECT_START_YMD;
 }
 
 /** analytics ymd day count */
@@ -11149,14 +11203,22 @@ function analyticsYmdDayCount(startYmd, endYmd) {
   );
 }
 
-/** analytics period fallback days */
+/** analytics period fallback：默认当天（自定义） */
 function analyticsPeriodFallbackDays() {
+  var cn = chinaDatePartsNow();
+  var start = analyticsClampStartYmd(cn.todayKey);
+  var end = cn.todayKey < ANALYTICS_PROJECT_START_YMD ? ANALYTICS_PROJECT_START_YMD : cn.todayKey;
+  if (start > end) {
+    start = ANALYTICS_PROJECT_START_YMD;
+    end = ANALYTICS_PROJECT_START_YMD;
+  }
   return {
-    mode: 'days',
-    days: 1,
-    span: 0,
-    label: '最近 1 天',
-    period_key: '1'
+    mode: 'range',
+    start: start,
+    end: end,
+    label: '自定义',
+    period_key: 'range_' + start + '_' + end,
+    days: analyticsYmdDayCount(start, end)
   };
 }
 
@@ -11167,17 +11229,17 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
   var s = raw != null ? String(raw).trim() : '';
   if (s === 'month_current') {
     var cn = chinaDatePartsNow();
-    var start = cn.year + '-' + String(cn.month).padStart(2, '0') + '-01';
+    if (analyticsYmKey(cn.year, cn.month) < ANALYTICS_PROJECT_START_YM) {
+      return analyticsPeriodFallbackDays();
+    }
+    var start = analyticsClampStartYmd(cn.year + '-' + String(cn.month).padStart(2, '0') + '-01');
     return {
       mode: 'range',
       start: start,
-      end: cn.todayKey,
+      end: cn.todayKey < start ? start : cn.todayKey,
       label: '当月',
       period_key: s,
-      days:
-        Math.floor(
-          (Date.UTC(cn.year, cn.month - 1, cn.day) - Date.UTC(cn.year, cn.month - 1, 1)) / 86400000
-        ) + 1
+      days: analyticsYmdDayCount(start, cn.todayKey < start ? start : cn.todayKey)
     };
   }
   if (s === 'month_prev' || s === 'month_prev2') {
@@ -11186,6 +11248,9 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
     var dt = new Date(cn2.year, cn2.month - 1 - offset, 1);
     var y = dt.getFullYear();
     var m = dt.getMonth() + 1;
+    if (analyticsYmKey(y, m) < ANALYTICS_PROJECT_START_YM) {
+      return analyticsPeriodFallbackDays();
+    }
     var start2 = y + '-' + String(m).padStart(2, '0') + '-01';
     var lastDay = new Date(y, m, 0).getDate();
     var end2 = y + '-' + String(m).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
@@ -11202,7 +11267,7 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
   if (fixedMonth) {
     var fy = parseInt(fixedMonth[1], 10);
     var fm = parseInt(fixedMonth[2], 10);
-    if (fm >= 1 && fm <= 12 && fy >= 2019 && fy <= 2100) {
+    if (fm >= 1 && fm <= 12 && analyticsYmKey(fy, fm) >= ANALYTICS_PROJECT_START_YM && fy <= 2100) {
       var fStart = fy + '-' + String(fm).padStart(2, '0') + '-01';
       var fLastDay = new Date(fy, fm, 0).getDate();
       var fEnd = fy + '-' + String(fm).padStart(2, '0') + '-' + String(fLastDay).padStart(2, '0');
@@ -11215,6 +11280,7 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
         days: fLastDay
       };
     }
+    return analyticsPeriodFallbackDays();
   }
   var customRange = s.match(/^range_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
   if (customRange) {
@@ -11224,6 +11290,7 @@ function parseConversionAnalyticsPeriod(raw, maxDays) {
       return analyticsPeriodFallbackDays();
     }
     var todayKey = chinaDatePartsNow().todayKey;
+    cStart = analyticsClampStartYmd(cStart);
     if (cEnd > todayKey) cEnd = todayKey;
     if (cStart > cEnd) {
       return analyticsPeriodFallbackDays();
@@ -15928,6 +15995,8 @@ async function handleAdminSettingsGet(req, res) {
         invite_enabled: inviteCfg.enabled,
         invite_reward_days: inviteCfg.reward_days,
         invite_reward_hours: inviteCfg.reward_hours,
+        invite_reward_minutes: inviteCfg.reward_minutes,
+        invite_pay_reward_days: inviteCfg.pay_reward_days,
         invite_monthly_cap: inviteCfg.monthly_cap,
         invite_grant_delay_hours: inviteCfg.grant_delay_hours
       }
@@ -15956,6 +16025,8 @@ async function handleAdminSettingsPost(req, res) {
     Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_reward_days') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_reward_hours') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_reward_minutes') ||
+    Object.prototype.hasOwnProperty.call(body, 'invite_pay_reward_days') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours');
   if (
@@ -16259,6 +16330,8 @@ async function handleAdminSettingsPost(req, res) {
     outData.invite_enabled = inviteAfter.enabled;
     outData.invite_reward_days = inviteAfter.reward_days;
     outData.invite_reward_hours = inviteAfter.reward_hours;
+    outData.invite_reward_minutes = inviteAfter.reward_minutes;
+    outData.invite_pay_reward_days = inviteAfter.pay_reward_days;
     outData.invite_monthly_cap = inviteAfter.monthly_cap;
     outData.invite_grant_delay_hours = inviteAfter.grant_delay_hours;
     return res.json({ code: 200, data: outData });
@@ -17173,6 +17246,26 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
         scope.params.concat([actSpan])
       );
 
+      const [[nameChangeRow]] = await conn.query(
+        `SELECT COUNT(*) AS total_changes, COUNT(DISTINCT upc.username) AS users_changed
+         FROM user_profile_change_logs upc
+         INNER JOIN users u ON u.username = upc.username` +
+          scopeJoin +
+          ` AND upc.field_key = 'real_name'`,
+        scope.params
+      );
+      const [[taxEditRow]] = await conn.query(
+        `SELECT COUNT(*) AS total_edits, COUNT(DISTINCT tcl.user_id) AS users_edited
+         FROM tax_record_change_logs tcl
+         INNER JOIN users u ON u.username = tcl.user_id` +
+          scopeJoin,
+        scope.params
+      );
+      var totalNameChanges = Number((nameChangeRow || {}).total_changes) || 0;
+      var usersRenamed = Number((nameChangeRow || {}).users_changed) || 0;
+      var totalTaxEdits = Number((taxEditRow || {}).total_edits) || 0;
+      var usersTaxEdited = Number((taxEditRow || {}).users_edited) || 0;
+
       return res.json({
         code: 200,
         data: {
@@ -17188,6 +17281,10 @@ async function handleAdminActivatedUserAnalysisOverview(req, res) {
           salary_median_6m_label: salaryMedian != null ? formatAvgSalary6mLabel(salaryMedian, 0) : '—',
           total_tax_records: totalTaxRecords,
           dau_today: todayDau,
+          total_name_changes: totalNameChanges,
+          users_renamed: usersRenamed,
+          total_tax_edits: totalTaxEdits,
+          users_tax_edited: usersTaxEdited,
           salary_buckets: salaryBuckets,
           tax_record_buckets: taxRecordBuckets,
           activity_frequency: activityFreq,
@@ -17321,6 +17418,35 @@ async function handleAdminActivatedUserAnalysisUsers(req, res) {
           ? null
           : await loadActivatedUserActivityMap(conn, pageNames, activityDays);
       var eventMap = await loadPageEventsForUsers(conn, pageNames, 400);
+      var nameChangeMap = {};
+      var taxEditMap = {};
+      if (pageNames.length) {
+        var phNames = pageNames
+          .map(function () {
+            return '?';
+          })
+          .join(',');
+        const [nameCntRows] = await conn.query(
+          `SELECT username, COUNT(*) AS cnt FROM user_profile_change_logs
+           WHERE field_key = 'real_name' AND username IN (` +
+            phNames +
+            `) GROUP BY username`,
+          pageNames
+        );
+        nameCntRows.forEach(function (r) {
+          nameChangeMap[String(r.username)] = Number(r.cnt) || 0;
+        });
+        const [taxCntEditRows] = await conn.query(
+          `SELECT user_id, COUNT(*) AS cnt FROM tax_record_change_logs
+           WHERE user_id IN (` +
+            phNames +
+            `) GROUP BY user_id`,
+          pageNames
+        );
+        taxCntEditRows.forEach(function (r) {
+          taxEditMap[String(r.user_id)] = Number(r.cnt) || 0;
+        });
+      }
 
       var items = rows.map(function (r) {
         var uname = String(r.username);
@@ -17349,6 +17475,8 @@ async function handleAdminActivatedUserAnalysisUsers(req, res) {
           salary_month_count: sal.salary_month_count || 0,
           tax_record_count: bd.tax_record_count || 0,
           has_tax_records: (bd.tax_record_count || 0) > 0,
+          name_change_count: nameChangeMap[uname] || 0,
+          tax_edit_count: taxEditMap[uname] || 0,
           active_days: act.active_days,
           event_count: act.event_count,
           events_per_active_day: freqPerDay,

@@ -27,6 +27,13 @@ const PURGE_TARGETS = [
     defaultDays: 365
   },
   {
+    table: 'user_profile_change_logs',
+    dateColumn: 'created_at',
+    label: '用户资料变更（改名）',
+    envVar: 'DB_RETAIN_USER_PROFILE_CHANGE_LOGS_DAYS',
+    defaultDays: 365
+  },
+  {
     table: 'install_guide_track_events',
     dateColumn: 'created_at',
     label: '安装引导追踪',

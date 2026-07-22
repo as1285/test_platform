@@ -63,7 +63,9 @@ async function runMigrations(pool) {
       var parts = sql
         .split(/;\s*\n/)
         .map(function (s) {
-          return s.trim();
+          return s
+            .replace(/^\s*--[^\n]*\n/gm, '')
+            .trim();
         })
         .filter(function (s) {
           return s && !/^--/.test(s);

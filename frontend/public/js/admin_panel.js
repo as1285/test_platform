@@ -11,29 +11,84 @@
         }
 
         /** 设备统计图标（与接口 icon_key 对应，含机型品牌分析） */
-        /* charts: /js/admin/modules/charts.js (lazy) */
+        /* charts: /js/admin/modules/charts.js (lazy) — 挂 window 供懒加载覆盖 */
         var _deviceStatsChartInstances = [];
         var _registerTimeChartInstances = [];
         var _registerGenderChartInstances = [];
         var _installGuideChartInstances = [];
         var _guestUsersChartInstances = [];
-        function destroyDeviceStatsCharts() {}
-        function destroyRegisterTimeCharts() {}
-        function destroyRegisterGenderCharts() {}
-        function destroyInstallGuideCharts() {}
-        function destroyGuestUsersCharts() {}
-        function destroyChannelAnalysisCharts() {}
-        function loadChannelAnalysis() {}
-        function loadAnalyticsRegisterGender() {}
-        function loadAnalyticsRegisterPlatform() {}
-        function loadAnalyticsRegisterTime() {}
-        function renderDeviceStatsCharts() {}
-        function renderRegisterGenderAnalysis() {}
-        function renderChannelAnalysis() {}
-        function renderRegisterTimeAnalysis() {}
-        function renderRegisterPlatformAnalysis() {}
-        function statIconHtml() { return ''; }
-        function deviceStatRowHtml() { return ''; }
+        window.destroyDeviceStatsCharts = function () {};
+        window.destroyRegisterTimeCharts = function () {};
+        window.destroyRegisterGenderCharts = function () {};
+        window.destroyInstallGuideCharts = function () {};
+        window.destroyGuestUsersCharts = function () {};
+        window.destroyChannelAnalysisCharts = function () {};
+        window.loadChannelAnalysis = function () {};
+        window.loadAnalyticsRegisterGender = function () {};
+        window.loadAnalyticsRegisterPlatform = function () {};
+        window.loadAnalyticsRegisterTime = function () {};
+        window.renderDeviceStatsCharts = function () {};
+        window.renderRegisterGenderAnalysis = function () {};
+        window.renderChannelAnalysis = function () {};
+        window.renderRegisterTimeAnalysis = function () {};
+        window.renderRegisterPlatformAnalysis = function () {};
+        window.statIconHtml = function () {
+            return '';
+        };
+        window.deviceStatRowHtml = function () {
+            return '';
+        };
+        function destroyDeviceStatsCharts() {
+            return window.destroyDeviceStatsCharts.apply(this, arguments);
+        }
+        function destroyRegisterTimeCharts() {
+            return window.destroyRegisterTimeCharts.apply(this, arguments);
+        }
+        function destroyRegisterGenderCharts() {
+            return window.destroyRegisterGenderCharts.apply(this, arguments);
+        }
+        function destroyInstallGuideCharts() {
+            return window.destroyInstallGuideCharts.apply(this, arguments);
+        }
+        function destroyGuestUsersCharts() {
+            return window.destroyGuestUsersCharts.apply(this, arguments);
+        }
+        function destroyChannelAnalysisCharts() {
+            return window.destroyChannelAnalysisCharts.apply(this, arguments);
+        }
+        function loadChannelAnalysis() {
+            return window.loadChannelAnalysis.apply(this, arguments);
+        }
+        function loadAnalyticsRegisterGender() {
+            return window.loadAnalyticsRegisterGender.apply(this, arguments);
+        }
+        function loadAnalyticsRegisterPlatform() {
+            return window.loadAnalyticsRegisterPlatform.apply(this, arguments);
+        }
+        function loadAnalyticsRegisterTime() {
+            return window.loadAnalyticsRegisterTime.apply(this, arguments);
+        }
+        function renderDeviceStatsCharts() {
+            return window.renderDeviceStatsCharts.apply(this, arguments);
+        }
+        function renderRegisterGenderAnalysis() {
+            return window.renderRegisterGenderAnalysis.apply(this, arguments);
+        }
+        function renderChannelAnalysis() {
+            return window.renderChannelAnalysis.apply(this, arguments);
+        }
+        function renderRegisterTimeAnalysis() {
+            return window.renderRegisterTimeAnalysis.apply(this, arguments);
+        }
+        function renderRegisterPlatformAnalysis() {
+            return window.renderRegisterPlatformAnalysis.apply(this, arguments);
+        }
+        function statIconHtml() {
+            return window.statIconHtml.apply(this, arguments);
+        }
+        function deviceStatRowHtml() {
+            return window.deviceStatRowHtml.apply(this, arguments);
+        }
 
         function formatDt(iso) {
             if (iso == null || String(iso).trim() === '') return '—';
@@ -128,8 +183,10 @@
 
         var _activationBatchChannelsCache = [
             { key: 'xianyu', label: '闲鱼', builtin: true },
-            { key: 'kufaka', label: '酷发卡', builtin: true }
+            { key: 'kufaka', label: '酷发卡', builtin: true },
+            { key: 'alipay', label: '支付宝', builtin: true }
         ];
+        var XIANYU_CODE_DEFAULT_CHANNEL = '支付宝';
 
         function fillBatchChannelSelects(channels, preferredLabel) {
             var list =
@@ -143,6 +200,10 @@
                 if (!sel) return;
                 var prev = prefer || String(sel.value || '').trim();
                 var keepAll = id === 'xianyuCodeChannelFilter';
+                /* 渠道批量码列表默认支付宝；发放下拉仍用首项或原值 */
+                if (!prev && keepAll) {
+                    prev = XIANYU_CODE_DEFAULT_CHANNEL;
+                }
                 sel.innerHTML = '';
                 if (keepAll) {
                     var optAll = document.createElement('option');
@@ -170,7 +231,9 @@
                             break;
                         }
                     }
-                    if (!found && !keepAll) {
+                    if (!found && keepAll && prev === XIANYU_CODE_DEFAULT_CHANNEL) {
+                        sel.value = '';
+                    } else if (!found && !keepAll) {
                         var optExtra = document.createElement('option');
                         optExtra.value = prev;
                         optExtra.textContent = prev;
@@ -195,7 +258,7 @@
                     return true;
                 }
             }
-            return lab === '闲鱼' || lab === '酷发卡' || lab === 'xianyu' || lab === 'kufaka';
+            return lab === '闲鱼' || lab === '酷发卡' || lab === '支付宝' || lab === 'xianyu' || lab === 'kufaka' || lab === 'alipay';
         }
 
         function updateBatchChannelRemoveButton() {
@@ -1247,7 +1310,7 @@
         var feedbackAdminLastItems = [];
         var feedbackReplyEditingId = null;
 
-        /* chat: /js/admin/modules/chat.js (lazy) */
+        /* chat: /js/admin/modules/chat.js (lazy) — 必须挂 window，供懒加载覆盖；勿改成仅局部 function */
         var chatAdminPage = 1;
         var chatAdminLimit = 20;
         var chatAdminActiveId = 0;
@@ -1262,13 +1325,35 @@
                 chatAdminPollTimer = null;
             }
         }
-        function startAdminChatPoll() {}
-        function loadAdminChatAutoReply() {}
-        function loadAdminChatConversations() {}
-        function loadAdminChatThread() {}
-        function sendAdminChatMessage() {}
-        function resumeAdminChatAi() {}
-        function saveAdminChatAutoReply() {}
+        window.stopAdminChatPoll = stopAdminChatPoll;
+        window.startAdminChatPoll = function () {};
+        window.loadAdminChatAutoReply = function () {};
+        window.loadAdminChatConversations = function () {};
+        window.loadAdminChatThread = function () {};
+        window.sendAdminChatMessage = function () {};
+        window.resumeAdminChatAi = function () {};
+        window.saveAdminChatAutoReply = function () {};
+        function startAdminChatPoll() {
+            return window.startAdminChatPoll.apply(this, arguments);
+        }
+        function loadAdminChatAutoReply() {
+            return window.loadAdminChatAutoReply.apply(this, arguments);
+        }
+        function loadAdminChatConversations() {
+            return window.loadAdminChatConversations.apply(this, arguments);
+        }
+        function loadAdminChatThread() {
+            return window.loadAdminChatThread.apply(this, arguments);
+        }
+        function sendAdminChatMessage() {
+            return window.sendAdminChatMessage.apply(this, arguments);
+        }
+        function resumeAdminChatAi() {
+            return window.resumeAdminChatAi.apply(this, arguments);
+        }
+        function saveAdminChatAutoReply() {
+            return window.saveAdminChatAutoReply.apply(this, arguments);
+        }
 
         function closeFeedbackReplyModal() {
             var bd = document.getElementById('feedbackReplyBackdrop');
@@ -4604,7 +4689,17 @@
                 { label: '平均工资', val: data.salary_avg_6m_label || '—' },
                 { label: '工资中位数', val: data.salary_median_6m_label || '—' },
                 { label: '今日日活', val: data.dau_today },
-                { label: '个税总条数', val: data.total_tax_records }
+                { label: '个税总条数', val: data.total_tax_records },
+                {
+                    label: '改名总次数',
+                    val: data.total_name_changes,
+                    hint: data.users_renamed != null ? '涉及 ' + data.users_renamed + ' 人' : ''
+                },
+                {
+                    label: '改个税总次数',
+                    val: data.total_tax_edits,
+                    hint: data.users_tax_edited != null ? '涉及 ' + data.users_tax_edited + ' 人' : ''
+                }
             ];
             var html = '';
             cards.forEach(function (c) {
@@ -4613,7 +4708,11 @@
                     esc(c.label) +
                     '</div><div class="ud-val">' +
                     esc(String(c.val != null ? c.val : '—')) +
-                    '</div></div>';
+                    '</div>' +
+                    (c.hint
+                        ? '<div class="hint" style="margin-top:4px;font-size:12px;">' + esc(c.hint) + '</div>'
+                        : '') +
+                    '</div>';
             });
             wrap.innerHTML = html;
             if (tablesWrap) tablesWrap.style.display = '';
@@ -4785,7 +4884,7 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="7">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="13">' + esc(j.msg || '加载失败') + '</td></tr>';
                         return;
                     }
                     var d = j.data;
@@ -4822,6 +4921,8 @@
                             esc(row.avg_salary_6m_label || '未填写') +
                             '</td>';
                         html += '<td>' + esc(row.has_tax_records ? row.tax_record_count : '未填') + '</td>';
+                        html += '<td>' + esc(row.name_change_count != null ? row.name_change_count : 0) + '</td>';
+                        html += '<td>' + esc(row.tax_edit_count != null ? row.tax_edit_count : 0) + '</td>';
                         html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
                         html += '<td>' + esc(row.event_count != null ? row.event_count : 0) + '</td>';
                         html += '<td>' + esc(row.events_per_active_day != null ? row.events_per_active_day : 0) + '</td>';
@@ -7122,7 +7223,7 @@
                 var xyCodeExact = document.getElementById('xianyuCodeCodeExact');
                 if (xyCodeExact) xyCodeExact.checked = false;
                 var xyChannel = document.getElementById('xianyuCodeChannelFilter');
-                if (xyChannel) xyChannel.value = '';
+                if (xyChannel) xyChannel.value = XIANYU_CODE_DEFAULT_CHANNEL;
                 loadXianyuCodes(1);
             });
         }
@@ -7350,6 +7451,14 @@
                         if (inviteHours && data.data.invite_reward_hours != null) {
                             inviteHours.value = String(data.data.invite_reward_hours);
                         }
+                        var inviteMinutes = document.getElementById('inviteRewardMinutes');
+                        if (inviteMinutes && data.data.invite_reward_minutes != null) {
+                            inviteMinutes.value = String(data.data.invite_reward_minutes);
+                        }
+                        var invitePayDays = document.getElementById('invitePayRewardDays');
+                        if (invitePayDays && data.data.invite_pay_reward_days != null) {
+                            invitePayDays.value = String(data.data.invite_pay_reward_days);
+                        }
                         var inviteCap = document.getElementById('inviteMonthlyCap');
                         if (inviteCap && data.data.invite_monthly_cap != null) {
                             inviteCap.value = String(data.data.invite_monthly_cap);
@@ -7555,18 +7664,30 @@
             btnSaveInviteReward.addEventListener('click', function () {
                 var days = parseInt(document.getElementById('inviteRewardDays').value, 10);
                 var hours = parseInt(document.getElementById('inviteRewardHours').value, 10);
+                var minutesEl = document.getElementById('inviteRewardMinutes');
+                var minutes = minutesEl ? parseInt(minutesEl.value, 10) : 30;
+                var payDaysEl = document.getElementById('invitePayRewardDays');
+                var payDays = payDaysEl ? parseInt(payDaysEl.value, 10) : 3;
                 var cap = parseInt(document.getElementById('inviteMonthlyCap').value, 10);
                 var delay = parseInt(document.getElementById('inviteGrantDelayHours').value, 10);
                 if (!isFinite(days) || days < 0 || days > 365) {
-                    alert('奖励天数请输入 0–365');
+                    alert('注册奖励天数请输入 0–365');
                     return;
                 }
                 if (!isFinite(hours) || hours < 0 || hours > 720) {
-                    alert('奖励小时请输入 0–720');
+                    alert('注册奖励小时请输入 0–720');
                     return;
                 }
-                if (!days && !hours) {
-                    alert('奖励天数与小时不能同时为 0');
+                if (!isFinite(minutes) || minutes < 0 || minutes > 1440) {
+                    alert('注册奖励分钟请输入 0–1440');
+                    return;
+                }
+                if (!isFinite(payDays) || payDays < 0 || payDays > 365) {
+                    alert('付费奖励天数请输入 0–365');
+                    return;
+                }
+                if (!days && !hours && !minutes) {
+                    alert('注册奖励的天/小时/分钟不能全为 0');
                     return;
                 }
                 if (!isFinite(cap) || cap < 0 || cap > 100) {
@@ -7584,6 +7705,8 @@
                         invite_enabled: !!document.getElementById('inviteEnabled').checked,
                         invite_reward_days: days,
                         invite_reward_hours: hours,
+                        invite_reward_minutes: minutes,
+                        invite_pay_reward_days: payDays,
                         invite_monthly_cap: cap,
                         invite_grant_delay_hours: delay
                     })

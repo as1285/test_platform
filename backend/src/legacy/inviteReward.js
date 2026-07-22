@@ -7,6 +7,8 @@
 var SETTING_INVITE_ENABLED = 'invite_enabled';
 var SETTING_INVITE_REWARD_DAYS = 'invite_reward_days';
 var SETTING_INVITE_REWARD_HOURS = 'invite_reward_hours';
+var SETTING_INVITE_REWARD_MINUTES = 'invite_reward_minutes';
+var SETTING_INVITE_PAY_REWARD_DAYS = 'invite_pay_reward_days';
 var SETTING_INVITE_MONTHLY_CAP = 'invite_monthly_cap';
 var SETTING_INVITE_GRANT_DELAY_HOURS = 'invite_grant_delay_hours';
 
@@ -87,23 +89,31 @@ function createInviteReward(deps) {
     const conn = await pool.getConnection();
     try {
       var enabled = await readSetting(conn, SETTING_INVITE_ENABLED, '0');
-      var days = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_DAYS, '7'), 10);
+      var days = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_DAYS, '0'), 10);
       var hours = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_HOURS, '0'), 10);
+      var minutes = parseInt(await readSetting(conn, SETTING_INVITE_REWARD_MINUTES, '30'), 10);
+      var payDays = parseInt(await readSetting(conn, SETTING_INVITE_PAY_REWARD_DAYS, '3'), 10);
       var cap = parseInt(await readSetting(conn, SETTING_INVITE_MONTHLY_CAP, '4'), 10);
-      var delay = parseInt(await readSetting(conn, SETTING_INVITE_GRANT_DELAY_HOURS, '48'), 10);
-      if (!isFinite(days) || days < 0) days = 7;
+      var delay = parseInt(await readSetting(conn, SETTING_INVITE_GRANT_DELAY_HOURS, '0'), 10);
+      if (!isFinite(days) || days < 0) days = 0;
       if (days > 365) days = 365;
       if (!isFinite(hours) || hours < 0) hours = 0;
       if (hours > 24 * 30) hours = 24 * 30;
-      if (!days && !hours) days = 7;
+      if (!isFinite(minutes) || minutes < 0) minutes = 30;
+      if (minutes > 24 * 60) minutes = 24 * 60;
+      if (!days && !hours && !minutes) minutes = 30;
+      if (!isFinite(payDays) || payDays < 0) payDays = 3;
+      if (payDays > 365) payDays = 365;
       if (!cap || cap < 0) cap = 4;
       if (cap > 100) cap = 100;
-      if (!isFinite(delay) || delay < 0) delay = 48;
+      if (!isFinite(delay) || delay < 0) delay = 0;
       if (delay > 24 * 30) delay = 24 * 30;
       _settingsCache = {
         enabled: enabled === '1' || enabled === 'true',
         reward_days: days,
         reward_hours: hours,
+        reward_minutes: minutes,
+        pay_reward_days: payDays,
         monthly_cap: cap,
         grant_delay_hours: delay
       };
@@ -193,12 +203,14 @@ function createInviteReward(deps) {
   }
 
   /** 在连接内叠加 trial 时长；已永久则不变并返回 permanent */
-  async function addTrialDurationInConn(conn, username, days, hours, source, refId) {
+  async function addTrialDurationInConn(conn, username, days, hours, source, refId, minutes) {
     var d = parseInt(days, 10) || 0;
     var h = parseInt(hours, 10) || 0;
+    var m = parseInt(minutes, 10) || 0;
     if (d < 0) d = 0;
     if (h < 0) h = 0;
-    if (d < 1 && h < 1) throw new Error('奖励时长无效');
+    if (m < 0) m = 0;
+    if (d < 1 && h < 1 && m < 1) throw new Error('奖励时长无效');
     const [rows] = await conn.execute(
       `SELECT account_active, activation_kind, active_until FROM users WHERE username = ? FOR UPDATE`,
       [username]
@@ -214,8 +226,9 @@ function createInviteReward(deps) {
       var prev = new Date(rec.active_until).getTime();
       if (isFinite(prev) && prev > base) base = prev;
     }
-    var until = new Date(base + d * 86400000 + h * 3600000);
-    var grantDaysLog = d + (h > 0 ? Math.round((h / 24) * 1000) / 1000 : 0);
+    var until = new Date(base + d * 86400000 + h * 3600000 + m * 60000);
+    var grantDaysLog =
+      d + (h > 0 ? h / 24 : 0) + (m > 0 ? m / 1440 : 0);
     await conn.execute(
       `UPDATE users SET account_active = 1, activation_kind = 'trial', active_until = ? WHERE username = ?`,
       [until, username]
@@ -223,13 +236,19 @@ function createInviteReward(deps) {
     await conn.execute(
       `INSERT INTO activation_grants (username, days, source, ref_id, active_until_after)
        VALUES (?, ?, ?, ?, ?)`,
-      [username, grantDaysLog || d || 1, source || 'trial', refId != null ? String(refId) : null, until]
+      [
+        username,
+        grantDaysLog || d || m / 1440 || 1,
+        source || 'trial',
+        refId != null ? String(refId) : null,
+        until
+      ]
     );
     return { kind: 'trial', active_until: until, skipped: false };
   }
 
   async function addTrialDaysInConn(conn, username, days, source, refId) {
-    return addTrialDurationInConn(conn, username, days, 0, source, refId);
+    return addTrialDurationInConn(conn, username, days, 0, source, refId, 0);
   }
 
   /** 应用激活码：支持 grant_days 时效码与永久码 */
@@ -242,7 +261,7 @@ function createInviteReward(deps) {
     try {
       await conn.beginTransaction();
       const [rows] = await conn.execute(
-        'SELECT id, max_uses, used_count, note, grant_days, grant_hours FROM activation_codes WHERE code = ? FOR UPDATE',
+        'SELECT id, max_uses, used_count, note, grant_days, grant_hours, grant_minutes FROM activation_codes WHERE code = ? FOR UPDATE',
         [code]
       );
       if (!rows.length) {
@@ -269,8 +288,10 @@ function createInviteReward(deps) {
       }
       var grantDays = r.grant_days != null ? parseInt(r.grant_days, 10) : 0;
       var grantHours = r.grant_hours != null ? parseInt(r.grant_hours, 10) : 0;
+      var grantMinutes = r.grant_minutes != null ? parseInt(r.grant_minutes, 10) : 0;
       if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
       if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
+      if (!isFinite(grantMinutes) || grantMinutes < 0) grantMinutes = 0;
       var wasFirstActivation = false;
       const [urows] = await conn.execute(
         `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
@@ -282,15 +303,17 @@ function createInviteReward(deps) {
       }
       var beforeActive = isUserEffectivelyActive(urows[0]);
       wasFirstActivation = !beforeActive;
+      var isPermanentCode = !(grantDays > 0 || grantHours > 0 || grantMinutes > 0);
 
-      if (grantDays > 0 || grantHours > 0) {
+      if (!isPermanentCode) {
         await addTrialDurationInConn(
           conn,
           username,
           grantDays,
           grantHours,
           'trial_code',
-          String(r.id)
+          String(r.id),
+          grantMinutes
         );
         if (actChannel) {
           await conn.execute(
@@ -304,6 +327,9 @@ function createInviteReward(deps) {
 
       if (wasFirstActivation) {
         await markInviteeActivatedInConn(conn, username, urows[0].invited_by);
+      }
+      if (isPermanentCode) {
+        await grantInvitePayRewardInConn(conn, username, urows[0].invited_by);
       }
 
       await conn.commit();
@@ -322,17 +348,78 @@ function createInviteReward(deps) {
 
   async function countInviterGrantsThisMonth(conn, inviter) {
     const [rows] = await conn.execute(
-      `SELECT COUNT(*) AS c FROM user_invites
-       WHERE inviter_username = ? AND reward_status = 'granted'
-         AND granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00')`,
-      [inviter]
+      `SELECT
+         (SELECT COUNT(*) FROM user_invites
+          WHERE inviter_username = ? AND reward_status = 'granted'
+            AND granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00'))
+         +
+         (SELECT COUNT(*) FROM user_invites
+          WHERE inviter_username = ? AND pay_reward_status = 'granted'
+            AND pay_granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00'))
+         AS c`,
+      [inviter, inviter]
     );
     return rows.length ? Number(rows[0].c) || 0 : 0;
   }
 
+  function formatRewardDurationLabel(days, hours, minutes) {
+    var bits = [];
+    if (days) bits.push(days + '天');
+    if (hours) bits.push(hours + '小时');
+    if (minutes) bits.push(minutes + '分钟');
+    return bits.length ? bits.join('') : '试用';
+  }
+
   /**
-   * 被邀请人首次激活时补记 first_activated_at。
-   * 发奖已改为注册成功即排队；此处仅兼容旧数据 status=none 的补发。
+   * 向邀请人发放一次奖励（注册奖或付费奖）。
+   * 永久邀请人 → 可转赠时效码；否则直接叠加 trial。
+   */
+  async function deliverInviteRewardToInviterInConn(conn, opts) {
+    var inviter = String(opts.inviter || '').trim();
+    var days = parseInt(opts.days, 10) || 0;
+    var hours = parseInt(opts.hours, 10) || 0;
+    var minutes = parseInt(opts.minutes, 10) || 0;
+    var source = opts.source || 'invite_reward';
+    var refId = opts.refId != null ? String(opts.refId) : null;
+    var notePrefix = opts.notePrefix || '邀请奖励可转赠';
+    if (!inviter) throw new Error('邀请人无效');
+    if (days < 1 && hours < 1 && minutes < 1) throw new Error('奖励时长无效');
+
+    const [invRows] = await conn.execute(
+      `SELECT activation_kind, account_active, active_until FROM users WHERE username = ? FOR UPDATE`,
+      [inviter]
+    );
+    if (!invRows.length) {
+      return { ok: false, reason: 'inviter_missing' };
+    }
+
+    var invKind = invRows[0].activation_kind != null ? String(invRows[0].activation_kind) : '';
+    var transferable = null;
+    if (invKind === 'permanent' || (isUserEffectivelyActive(invRows[0]) && invKind !== 'trial')) {
+      transferable = randomActivationCodePlain();
+      var label = formatRewardDurationLabel(days, hours, minutes);
+      await conn.execute(
+        `INSERT INTO activation_codes
+         (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, owner_admin_username)
+         VALUES (?, 1, 0, NULL, ?, ?, ?, ?, ?)`,
+        [
+          transferable,
+          days || null,
+          hours || null,
+          minutes || null,
+          notePrefix + (label ? '（' + label + '）' : ''),
+          inviter
+        ]
+      );
+      return { ok: true, transferable: transferable, applied: false };
+    }
+
+    await addTrialDurationInConn(conn, inviter, days, hours, source, refId, minutes);
+    return { ok: true, transferable: null, applied: true };
+  }
+
+  /**
+   * 被邀请人首次激活时补记 first_activated_at（发奖已改为注册成功即计注册奖）。
    */
   async function markInviteeActivatedInConn(conn, inviteeUsername, invitedBy) {
     var invitee = String(inviteeUsername || '').trim();
@@ -344,22 +431,10 @@ function createInviteReward(deps) {
     if (!cfg.enabled) return;
 
     const [existing] = await conn.execute(
-      'SELECT id, reward_status FROM user_invites WHERE invitee_username = ? LIMIT 1',
+      'SELECT id FROM user_invites WHERE invitee_username = ? LIMIT 1',
       [invitee]
     );
     if (existing.length) {
-      var st = String(existing[0].reward_status || '');
-      if (st === 'none') {
-        var delayMs = cfg.grant_delay_hours * 3600 * 1000;
-        var grantAt = new Date(Date.now() + delayMs);
-        await conn.execute(
-          `UPDATE user_invites SET first_activated_at = CURRENT_TIMESTAMP,
-           reward_status = 'pending', reward_days = ?, grant_at = ?, reject_reason = NULL
-           WHERE id = ?`,
-          [cfg.reward_days, grantAt, existing[0].id]
-        );
-        return;
-      }
       await conn.execute(
         `UPDATE user_invites SET first_activated_at = COALESCE(first_activated_at, CURRENT_TIMESTAMP)
          WHERE id = ?`,
@@ -368,17 +443,101 @@ function createInviteReward(deps) {
       return;
     }
 
-    var delayMsNew = cfg.grant_delay_hours * 3600 * 1000;
-    var grantAtNew = new Date(Date.now() + delayMsNew);
     await conn.execute(
       `INSERT INTO user_invites
-       (inviter_username, invitee_username, first_activated_at, reward_status, reward_days, grant_at)
-       VALUES (?, ?, CURRENT_TIMESTAMP, 'pending', ?, ?)`,
-      [inviter, invitee, cfg.reward_days, grantAtNew]
+       (inviter_username, invitee_username, first_activated_at, reward_status, reward_days, reward_minutes)
+       VALUES (?, ?, CURRENT_TIMESTAMP, 'none', ?, ?)`,
+      [inviter, invitee, cfg.reward_days, cfg.reward_minutes]
     );
   }
 
-  /** 注册成功即绑定邀请人并进入发奖排队（可配置延迟） */
+  /**
+   * 被邀请人付费永久激活成功 → 邀请人立即获得付费奖励天数。
+   */
+  async function grantInvitePayRewardInConn(conn, inviteeUsername, invitedBy) {
+    var invitee = String(inviteeUsername || '').trim();
+    var inviter = invitedBy != null ? String(invitedBy).trim() : '';
+    if (!invitee || !inviter) return { ok: false, reason: 'no_invite' };
+    if (invitee.toLowerCase() === inviter.toLowerCase()) return { ok: false, reason: 'self' };
+
+    var cfg = await loadInviteSettings(true);
+    if (!cfg.enabled) return { ok: false, reason: 'disabled' };
+    var payDays = cfg.pay_reward_days || 3;
+    if (payDays < 1) return { ok: false, reason: 'zero_days' };
+
+    const [existing] = await conn.execute(
+      `SELECT id, inviter_username, pay_reward_status FROM user_invites WHERE invitee_username = ? LIMIT 1 FOR UPDATE`,
+      [invitee]
+    );
+
+    var rowId = null;
+    if (existing.length) {
+      rowId = existing[0].id;
+      inviter = String(existing[0].inviter_username || inviter);
+      var st = String(existing[0].pay_reward_status || 'none');
+      if (st === 'granted' || st === 'skipped_cap' || st === 'rejected') {
+        await conn.execute(
+          `UPDATE user_invites SET first_activated_at = COALESCE(first_activated_at, CURRENT_TIMESTAMP)
+           WHERE id = ?`,
+          [rowId]
+        );
+        return { ok: false, reason: 'already_' + st };
+      }
+    } else {
+      const [ins] = await conn.execute(
+        `INSERT INTO user_invites
+         (inviter_username, invitee_username, first_activated_at, reward_status, reward_days, reward_minutes,
+          pay_reward_status, pay_reward_days)
+         VALUES (?, ?, CURRENT_TIMESTAMP, 'none', ?, ?, 'none', ?)`,
+        [inviter, invitee, cfg.reward_days, cfg.reward_minutes, payDays]
+      );
+      rowId = ins.insertId;
+    }
+
+    await conn.execute(
+      `UPDATE user_invites SET first_activated_at = COALESCE(first_activated_at, CURRENT_TIMESTAMP),
+       pay_reward_days = ? WHERE id = ?`,
+      [payDays, rowId]
+    );
+
+    var monthCount = await countInviterGrantsThisMonth(conn, inviter);
+    if (monthCount >= cfg.monthly_cap) {
+      await conn.execute(
+        `UPDATE user_invites SET pay_reward_status = 'skipped_cap', reject_reason = COALESCE(reject_reason, 'monthly_cap_pay')
+         WHERE id = ?`,
+        [rowId]
+      );
+      return { ok: false, reason: 'monthly_cap' };
+    }
+
+    var delivered = await deliverInviteRewardToInviterInConn(conn, {
+      inviter: inviter,
+      days: payDays,
+      hours: 0,
+      minutes: 0,
+      source: 'invite_pay_reward',
+      refId: 'pay:' + rowId,
+      notePrefix: '邀请付费奖励可转赠'
+    });
+    if (!delivered.ok) {
+      await conn.execute(
+        `UPDATE user_invites SET pay_reward_status = 'rejected', reject_reason = ? WHERE id = ?`,
+        [delivered.reason || 'grant_failed', rowId]
+      );
+      return delivered;
+    }
+
+    await conn.execute(
+      `UPDATE user_invites SET pay_reward_status = 'granted', pay_granted_at = CURRENT_TIMESTAMP,
+       pay_transferable_code = ?, pay_reward_days = ? WHERE id = ?`,
+      [delivered.transferable || null, payDays, rowId]
+    );
+    invalidateUserAuthCache(inviter);
+    invalidateUserInfoApiCache(inviter);
+    return { ok: true, transferable: delivered.transferable || null };
+  }
+
+  /** 注册成功即绑定邀请人并进入发奖（默认立即生效） */
   async function bindInvitedByOnRegister(username, inviteCode, clientId) {
     var cfg = await loadInviteSettings();
     if (!cfg.enabled) return null;
@@ -398,16 +557,15 @@ function createInviteReward(deps) {
           [String(clientId).trim()]
         );
         if (dup.length) {
-          /* 同设备已作为被邀请人计过关系：仍可写 invited_by 但标记拒绝发奖 */
           await conn.execute(
             `UPDATE users SET invited_by = COALESCE(invited_by, ?) WHERE username = ?`,
             [inviter, u]
           );
           await conn.execute(
             `INSERT IGNORE INTO user_invites
-             (inviter_username, invitee_username, invitee_client_id, reward_status, reject_reason, reward_days)
-             VALUES (?, ?, ?, 'rejected', 'duplicate_client', ?)`,
-            [inviter, u, String(clientId).trim(), cfg.reward_days]
+             (inviter_username, invitee_username, invitee_client_id, reward_status, reject_reason, reward_days, reward_minutes)
+             VALUES (?, ?, ?, 'rejected', 'duplicate_client', ?, ?)`,
+            [inviter, u, String(clientId).trim(), cfg.reward_days, cfg.reward_minutes]
           );
           return inviter;
         }
@@ -418,9 +576,16 @@ function createInviteReward(deps) {
       );
       await conn.execute(
         `INSERT IGNORE INTO user_invites
-         (inviter_username, invitee_username, invitee_client_id, reward_status, reward_days, grant_at)
-         VALUES (?, ?, ?, 'pending', ?, ?)`,
-        [inviter, u, clientId ? String(clientId).trim() : null, cfg.reward_days, grantAt]
+         (inviter_username, invitee_username, invitee_client_id, reward_status, reward_days, reward_minutes, grant_at)
+         VALUES (?, ?, ?, 'pending', ?, ?, ?)`,
+        [
+          inviter,
+          u,
+          clientId ? String(clientId).trim() : null,
+          cfg.reward_days,
+          cfg.reward_minutes,
+          grantAt
+        ]
       );
       return inviter;
     } finally {
@@ -435,7 +600,7 @@ function createInviteReward(deps) {
     var processed = 0;
     try {
       const [rows] = await conn.execute(
-        `SELECT id, inviter_username, invitee_username, reward_days
+        `SELECT id, inviter_username, invitee_username, reward_days, reward_minutes
          FROM user_invites
          WHERE reward_status = 'pending' AND grant_at IS NOT NULL AND grant_at <= CURRENT_TIMESTAMP
          ORDER BY grant_at ASC LIMIT 40`
@@ -446,7 +611,7 @@ function createInviteReward(deps) {
         try {
           await conn.beginTransaction();
           const [locked] = await conn.execute(
-            `SELECT id, inviter_username, invitee_username, reward_days, reward_status
+            `SELECT id, inviter_username, invitee_username, reward_days, reward_minutes, reward_status
              FROM user_invites WHERE id = ? FOR UPDATE`,
             [row.id]
           );
@@ -457,6 +622,7 @@ function createInviteReward(deps) {
           var inviter = String(locked[0].inviter_username);
           var days = cfg.reward_days;
           var hours = cfg.reward_hours;
+          var minutes = cfg.reward_minutes;
           var monthCount = await countInviterGrantsThisMonth(conn, inviter);
           if (monthCount >= cfg.monthly_cap) {
             await conn.execute(
@@ -469,50 +635,30 @@ function createInviteReward(deps) {
             continue;
           }
 
-          const [invRows] = await conn.execute(
-            `SELECT activation_kind, account_active, active_until FROM users WHERE username = ? FOR UPDATE`,
-            [inviter]
-          );
-          if (!invRows.length) {
+          var delivered = await deliverInviteRewardToInviterInConn(conn, {
+            inviter: inviter,
+            days: days,
+            hours: hours,
+            minutes: minutes,
+            source: 'invite_reward',
+            refId: String(row.id),
+            notePrefix: '邀请注册奖励可转赠'
+          });
+          if (!delivered.ok) {
             await conn.execute(
-              `UPDATE user_invites SET reward_status = 'rejected', reject_reason = 'inviter_missing' WHERE id = ?`,
-              [row.id]
+              `UPDATE user_invites SET reward_status = 'rejected', reject_reason = ? WHERE id = ?`,
+              [delivered.reason || 'grant_failed', row.id]
             );
             await conn.commit();
             processed += 1;
             continue;
           }
 
-          var invKind = invRows[0].activation_kind != null ? String(invRows[0].activation_kind) : '';
-          var transferable = null;
-          if (invKind === 'permanent' || (isUserEffectivelyActive(invRows[0]) && invKind !== 'trial')) {
-            transferable = randomActivationCodePlain();
-            var noteBits = [];
-            if (days) noteBits.push(days + '天');
-            if (hours) noteBits.push(hours + '小时');
-            await conn.execute(
-              `INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username)
-               VALUES (?, 1, 0, NULL, ?, ?, ?, ?)`,
-              [
-                transferable,
-                days || null,
-                hours || null,
-                '邀请奖励可转赠' + (noteBits.length ? '（' + noteBits.join('') + '）' : ''),
-                inviter
-              ]
-            );
-            await conn.execute(
-              `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP,
-               transferable_code = ?, reward_days = ? WHERE id = ?`,
-              [transferable, days, row.id]
-            );
-          } else {
-            await addTrialDurationInConn(conn, inviter, days, hours, 'invite_reward', String(row.id));
-            await conn.execute(
-              `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP, reward_days = ? WHERE id = ?`,
-              [days, row.id]
-            );
-          }
+          await conn.execute(
+            `UPDATE user_invites SET reward_status = 'granted', granted_at = CURRENT_TIMESTAMP,
+             transferable_code = ?, reward_days = ?, reward_minutes = ? WHERE id = ?`,
+            [delivered.transferable || null, days, minutes, row.id]
+          );
           await conn.commit();
           invalidateUserAuthCache(inviter);
           invalidateUserInfoApiCache(inviter);
@@ -592,9 +738,12 @@ function createInviteReward(deps) {
       const [stats] = await conn.execute(
         `SELECT
            SUM(CASE WHEN reward_status IN ('pending','granted','skipped_cap') THEN 1 ELSE 0 END) AS invited_activated,
-           SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS rewarded,
+           SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END)
+             + SUM(CASE WHEN pay_reward_status = 'granted' THEN 1 ELSE 0 END) AS rewarded,
            SUM(CASE WHEN reward_status = 'pending' THEN 1 ELSE 0 END) AS pending,
-           SUM(CASE WHEN reward_status = 'granted' AND granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00') THEN 1 ELSE 0 END) AS rewarded_month
+           SUM(CASE WHEN reward_status = 'granted' AND granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00') THEN 1 ELSE 0 END)
+             + SUM(CASE WHEN pay_reward_status = 'granted' AND pay_granted_at >= DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-01 00:00:00') THEN 1 ELSE 0 END)
+             AS rewarded_month
          FROM user_invites WHERE inviter_username = ?`,
         [u]
       );
@@ -608,11 +757,19 @@ function createInviteReward(deps) {
       );
       var cs = clickStats[0] || {};
       const [codes] = await conn.execute(
-        `SELECT transferable_code, granted_at, reward_days, invitee_username
-         FROM user_invites
-         WHERE inviter_username = ? AND transferable_code IS NOT NULL AND reward_status = 'granted'
+        `SELECT code, granted_at, days, minutes, invitee_username, kind FROM (
+           SELECT transferable_code AS code, granted_at, reward_days AS days, reward_minutes AS minutes,
+                  invitee_username, 'register' AS kind
+           FROM user_invites
+           WHERE inviter_username = ? AND transferable_code IS NOT NULL AND reward_status = 'granted'
+           UNION ALL
+           SELECT pay_transferable_code AS code, pay_granted_at AS granted_at, pay_reward_days AS days, 0 AS minutes,
+                  invitee_username, 'pay' AS kind
+           FROM user_invites
+           WHERE inviter_username = ? AND pay_transferable_code IS NOT NULL AND pay_reward_status = 'granted'
+         ) AS t
          ORDER BY granted_at DESC LIMIT 20`,
-        [u]
+        [u, u]
       );
       return {
         enabled: cfg.enabled,
@@ -627,7 +784,10 @@ function createInviteReward(deps) {
           : '',
         reward_days: cfg.reward_days,
         reward_hours: cfg.reward_hours,
+        reward_minutes: cfg.reward_minutes,
+        pay_reward_days: cfg.pay_reward_days,
         monthly_cap: cfg.monthly_cap,
+        grant_delay_hours: cfg.grant_delay_hours,
         rewarded_this_month: Number(s.rewarded_month) || 0,
         invited_activated: Number(s.invited_activated) || 0,
         rewarded_total: Number(s.rewarded) || 0,
@@ -636,8 +796,10 @@ function createInviteReward(deps) {
         link_visitors: Number(cs.visitors) || 0,
         transferable_codes: (codes || []).map(function (c) {
           return {
-            code: c.transferable_code,
-            days: c.reward_days,
+            code: c.code,
+            days: c.days,
+            minutes: c.minutes,
+            kind: c.kind,
             invitee: c.invitee_username,
             granted_at: c.granted_at
           };
@@ -661,7 +823,7 @@ function createInviteReward(deps) {
       }
       if (Object.prototype.hasOwnProperty.call(body, 'invite_reward_days')) {
         var d = parseInt(body.invite_reward_days, 10);
-        if (!isFinite(d) || d < 0) d = 7;
+        if (!isFinite(d) || d < 0) d = 0;
         if (d > 365) d = 365;
         await upsertAppSetting(conn, SETTING_INVITE_REWARD_DAYS, String(d));
       }
@@ -671,6 +833,18 @@ function createInviteReward(deps) {
         if (rh > 24 * 30) rh = 24 * 30;
         await upsertAppSetting(conn, SETTING_INVITE_REWARD_HOURS, String(rh));
       }
+      if (Object.prototype.hasOwnProperty.call(body, 'invite_reward_minutes')) {
+        var rm = parseInt(body.invite_reward_minutes, 10);
+        if (!isFinite(rm) || rm < 0) rm = 30;
+        if (rm > 24 * 60) rm = 24 * 60;
+        await upsertAppSetting(conn, SETTING_INVITE_REWARD_MINUTES, String(rm));
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'invite_pay_reward_days')) {
+        var pd = parseInt(body.invite_pay_reward_days, 10);
+        if (!isFinite(pd) || pd < 0) pd = 3;
+        if (pd > 365) pd = 365;
+        await upsertAppSetting(conn, SETTING_INVITE_PAY_REWARD_DAYS, String(pd));
+      }
       if (Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap')) {
         var c = parseInt(body.invite_monthly_cap, 10);
         if (!isFinite(c) || c < 0) c = 4;
@@ -679,7 +853,7 @@ function createInviteReward(deps) {
       }
       if (Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours')) {
         var h = parseInt(body.invite_grant_delay_hours, 10);
-        if (!isFinite(h) || h < 0) h = 48;
+        if (!isFinite(h) || h < 0) h = 0;
         if (h > 24 * 30) h = 24 * 30;
         await upsertAppSetting(conn, SETTING_INVITE_GRANT_DELAY_HOURS, String(h));
       }
@@ -701,6 +875,7 @@ function createInviteReward(deps) {
     applyActivationCodeExtended: applyActivationCodeExtended,
     bindInvitedByOnRegister: bindInvitedByOnRegister,
     markInviteeActivatedInConn: markInviteeActivatedInConn,
+    grantInvitePayRewardInConn: grantInvitePayRewardInConn,
     processPendingInviteRewards: processPendingInviteRewards,
     recordInviteLinkClick: recordInviteLinkClick,
     getInviteOverviewForUser: getInviteOverviewForUser,
@@ -709,6 +884,8 @@ function createInviteReward(deps) {
     SETTING_INVITE_ENABLED: SETTING_INVITE_ENABLED,
     SETTING_INVITE_REWARD_DAYS: SETTING_INVITE_REWARD_DAYS,
     SETTING_INVITE_REWARD_HOURS: SETTING_INVITE_REWARD_HOURS,
+    SETTING_INVITE_REWARD_MINUTES: SETTING_INVITE_REWARD_MINUTES,
+    SETTING_INVITE_PAY_REWARD_DAYS: SETTING_INVITE_PAY_REWARD_DAYS,
     SETTING_INVITE_MONTHLY_CAP: SETTING_INVITE_MONTHLY_CAP,
     SETTING_INVITE_GRANT_DELAY_HOURS: SETTING_INVITE_GRANT_DELAY_HOURS
   };

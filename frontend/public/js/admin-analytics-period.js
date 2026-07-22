@@ -3,6 +3,10 @@
 
     var CUSTOM_MAX_DAYS = 366;
     var RANGE_RE = /^range_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/;
+    /** 项目上线日起：统计不可选更早日期 */
+    var PROJECT_START_YMD = '2026-04-01';
+    var PROJECT_START_YEAR = 2026;
+    var PROJECT_START_MONTH = 4;
 
     function pad2(n) {
         return n < 10 ? '0' + n : String(n);
@@ -20,15 +24,27 @@
         return cn.year + '-' + pad2(cn.month) + '-' + pad2(cn.day);
     }
 
+    function ymKey(y, m) {
+        return y * 12 + m;
+    }
+
+    function isOnOrAfterProjectStartYm(y, m) {
+        return ymKey(y, m) >= ymKey(PROJECT_START_YEAR, PROJECT_START_MONTH);
+    }
+
     function isValidYmd(ymd) {
         var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (!m) return false;
         var y = parseInt(m[1], 10);
         var mo = parseInt(m[2], 10);
         var d = parseInt(m[3], 10);
-        if (y < 2019 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+        if (y < PROJECT_START_YEAR || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
         var dt = new Date(Date.UTC(y, mo - 1, d));
-        return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+        if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+            return false;
+        }
+        var key = y + '-' + pad2(mo) + '-' + pad2(d);
+        return key >= PROJECT_START_YMD;
     }
 
     function dayCount(startYmd, endYmd) {
@@ -44,8 +60,23 @@
         );
     }
 
-    /** 指定月份列表最早年份（不含 2023–2025 等更早月份） */
-    var FIXED_MONTH_MIN_YEAR = 2026;
+    function buildRelativeMonthOptions() {
+        var cn = chinaNowParts();
+        var defs = [
+            { value: 'month_current', label: '当月', offset: 0 },
+            { value: 'month_prev', label: '上月', offset: 1 },
+            { value: 'month_prev2', label: '上上月', offset: 2 }
+        ];
+        var html = '';
+        defs.forEach(function (def) {
+            var dt = new Date(cn.year, cn.month - 1 - def.offset, 1);
+            var y = dt.getFullYear();
+            var m = dt.getMonth() + 1;
+            if (!isOnOrAfterProjectStartYm(y, m)) return;
+            html += '<option value="' + def.value + '">' + def.label + '</option>';
+        });
+        return html;
+    }
 
     function buildFixedMonthOptions(count) {
         count = count || 24;
@@ -55,7 +86,7 @@
         for (var i = 0; i < count; i++) {
             var y = dt.getFullYear();
             var m = dt.getMonth() + 1;
-            if (y < FIXED_MONTH_MIN_YEAR) break;
+            if (!isOnOrAfterProjectStartYm(y, m)) break;
             html +=
                 '<option value="month_' +
                 y +
@@ -100,7 +131,17 @@
 
     function defaultCustomRange() {
         var today = chinaTodayYmd();
+        if (today < PROJECT_START_YMD) {
+            return { start: PROJECT_START_YMD, end: PROJECT_START_YMD };
+        }
         return { start: today, end: today };
+    }
+
+    function applyDateBounds(input) {
+        if (!input) return;
+        var today = chinaTodayYmd();
+        input.min = PROJECT_START_YMD;
+        input.max = today < PROJECT_START_YMD ? PROJECT_START_YMD : today;
     }
 
     function ensureCustomControls(el) {
@@ -138,10 +179,10 @@
         wrap.appendChild(endLab);
 
         var defs = defaultCustomRange();
+        applyDateBounds(startInput);
+        applyDateBounds(endInput);
         startInput.value = defs.start;
         endInput.value = defs.end;
-        endInput.max = chinaTodayYmd();
-        startInput.max = chinaTodayYmd();
 
         if (el.nextSibling) {
             parent.insertBefore(wrap, el.nextSibling);
@@ -160,7 +201,11 @@
                 el._analyticsCustomEnd && el._analyticsCustomEnd.value
             );
             if (!encoded) {
-                alert('请选择有效的起止日期（起 ≤ 止，跨度不超过 366 天，且不超过今天）');
+                alert(
+                    '请选择有效的起止日期（起 ≤ 止，不早于 ' +
+                        PROJECT_START_YMD +
+                        '，不超过今天，跨度不超过 366 天）'
+                );
             }
             try {
                 el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -185,13 +230,14 @@
         wrap.style.display = isCustom ? 'inline-flex' : 'none';
         wrap.setAttribute('aria-hidden', isCustom ? 'false' : 'true');
         if (isCustom) {
-            var today = chinaTodayYmd();
-            el._analyticsCustomEnd.max = today;
-            el._analyticsCustomStart.max = today;
-            if (!el._analyticsCustomStart.value || !el._analyticsCustomEnd.value) {
-                var defs = defaultCustomRange();
-                if (!el._analyticsCustomStart.value) el._analyticsCustomStart.value = defs.start;
-                if (!el._analyticsCustomEnd.value) el._analyticsCustomEnd.value = defs.end;
+            applyDateBounds(el._analyticsCustomStart);
+            applyDateBounds(el._analyticsCustomEnd);
+            var defs = defaultCustomRange();
+            if (!el._analyticsCustomStart.value || el._analyticsCustomStart.value < PROJECT_START_YMD) {
+                el._analyticsCustomStart.value = defs.start;
+            }
+            if (!el._analyticsCustomEnd.value || el._analyticsCustomEnd.value < PROJECT_START_YMD) {
+                el._analyticsCustomEnd.value = defs.end;
             }
         }
     }
@@ -215,6 +261,7 @@
     function encodeCustomRange(start, end) {
         var today = chinaTodayYmd();
         if (!isValidYmd(start) || !isValidYmd(end)) return null;
+        if (start < PROJECT_START_YMD) start = PROJECT_START_YMD;
         if (end > today) end = today;
         if (start > end) return null;
         var n = dayCount(start, end);
@@ -226,7 +273,10 @@
         if (!el) return;
         opts = opts || {};
         var dayValues = opts.dayValues || parseDayValues(el.getAttribute('data-day-options'));
-        var selected = opts.defaultValue != null ? opts.defaultValue : el.getAttribute('data-default') || el.value || '1';
+        var selected =
+            opts.defaultValue != null
+                ? opts.defaultValue
+                : el.getAttribute('data-default') || el.value || 'custom';
         var fixedCount = opts.fixedMonthCount != null ? opts.fixedMonthCount : 24;
 
         var customStart = null;
@@ -238,15 +288,16 @@
             selected = 'custom';
         }
 
-        var html =
-            '<optgroup label="按月">' +
-            '<option value="month_current">当月</option>' +
-            '<option value="month_prev">上月</option>' +
-            '<option value="month_prev2">上上月</option>' +
-            '</optgroup>' +
-            '<optgroup label="指定月份">' +
-            buildFixedMonthOptions(fixedCount) +
-            '</optgroup>' +
+        var relativeMonths = buildRelativeMonthOptions();
+        var fixedMonths = buildFixedMonthOptions(fixedCount);
+        var html = '';
+        if (relativeMonths) {
+            html += '<optgroup label="按月">' + relativeMonths + '</optgroup>';
+        }
+        if (fixedMonths) {
+            html += '<optgroup label="指定月份">' + fixedMonths + '</optgroup>';
+        }
+        html +=
             '<optgroup label="按天">' +
             buildDayOptions(dayValues, selected === 'custom' ? '' : selected) +
             '</optgroup>' +
@@ -259,17 +310,24 @@
         el.innerHTML = html;
         if (selected) {
             el.value = selected;
-            if (el.value !== selected && selected !== 'custom') {
-                el.value = dayValues[0] != null ? String(dayValues[0]) : '1';
+            if (el.value !== selected) {
+                el.value = 'custom';
             }
+        } else {
+            el.value = 'custom';
         }
 
         ensureCustomControls(el);
-        if (customStart && el._analyticsCustomStart) {
+        if (customStart && el._analyticsCustomStart && isValidYmd(customStart)) {
             el._analyticsCustomStart.value = customStart;
         }
-        if (customEnd && el._analyticsCustomEnd) {
+        if (customEnd && el._analyticsCustomEnd && isValidYmd(customEnd)) {
             el._analyticsCustomEnd.value = customEnd;
+        }
+        if (String(el.value) === 'custom') {
+            var defs = defaultCustomRange();
+            if (!el._analyticsCustomStart.value) el._analyticsCustomStart.value = defs.start;
+            if (!el._analyticsCustomEnd.value) el._analyticsCustomEnd.value = defs.end;
         }
         syncCustomVisibility(el);
 
@@ -286,22 +344,26 @@
         var scope = root && root.querySelectorAll ? root : document;
         scope.querySelectorAll('.js-analytics-period-select').forEach(function (el) {
             initSelect(el, {
-                defaultValue: el.getAttribute('data-default') || el.value || '1',
+                defaultValue: el.getAttribute('data-default') || 'custom',
                 prependHtml: el.getAttribute('data-prepend-options') || ''
             });
         });
     }
 
     function getValue(el) {
-        if (!el) return '1';
-        var v = String(el.value || '1');
+        if (!el) {
+            var d = defaultCustomRange();
+            return 'range_' + d.start + '_' + d.end;
+        }
+        var v = String(el.value || 'custom');
         if (v !== 'custom') return v;
         ensureCustomControls(el);
         var start = el._analyticsCustomStart && el._analyticsCustomStart.value;
         var end = el._analyticsCustomEnd && el._analyticsCustomEnd.value;
         var encoded = encodeCustomRange(start, end);
         if (encoded) return encoded;
-        return el.getAttribute('data-default') || '1';
+        var defs = defaultCustomRange();
+        return 'range_' + defs.start + '_' + defs.end;
     }
 
     function hintHtml(data) {
@@ -325,6 +387,7 @@
         initSelect: initSelect,
         initAll: initAll,
         getValue: getValue,
-        hintHtml: hintHtml
+        hintHtml: hintHtml,
+        PROJECT_START_YMD: PROJECT_START_YMD
     };
 })(typeof window !== 'undefined' ? window : this);

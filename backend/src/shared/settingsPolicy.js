@@ -23,6 +23,8 @@ const OPS_SETTING_KEYS = [
   'invite_enabled',
   'invite_reward_days',
   'invite_reward_hours',
+  'invite_reward_minutes',
+  'invite_pay_reward_days',
   'invite_monthly_cap',
   'invite_grant_delay_hours'
 ];

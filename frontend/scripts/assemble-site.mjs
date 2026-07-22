@@ -106,16 +106,22 @@ function shouldSkipJs(name) {
 }
 
 async function minifyJs(code, fileLabel) {
+  // 管理端主脚本与懒加载模块通过同名全局函数互相覆盖（如 chat.js → loadAdminChatConversations）。
+  // minifyIdentifiers 会把主脚本内的调用改成局部短名，导致懒加载无法覆盖，页面一直停在「进入本页后加载…」。
+  const keepIds =
+    fileLabel === 'js/admin_panel.js' ||
+    fileLabel.startsWith('js/admin/') ||
+    fileLabel.includes('admin_panel') ||
+    fileLabel.includes('/admin/');
   const r = await esbuild.transform(code, {
     loader: 'js',
     minify: true,
-    minifyIdentifiers: true,
+    minifyIdentifiers: !keepIds,
     minifySyntax: true,
     minifyWhitespace: true,
     legalComments: 'none',
     sourcemap: false,
-    target: ['es2018'],
-    // 保留可能被动态访问的名字的风险：IIFE + window.* 赋值不受影响
+    target: ['es2018']
   });
   if (r.warnings && r.warnings.length) {
     console.warn('[protect] esbuild warn', fileLabel, r.warnings[0].text);
