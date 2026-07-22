@@ -9,7 +9,7 @@
   var MIN_DISPLAY_MS = 40;
   var ABSOLUTE_MAX_MS = 6000;
   var ABSOLUTE_MAX_DATA_PAGE_MS = 15000;
-  var THEME_WAIT_MS = 2500;
+  var THEME_WAIT_MS = 1200;
   var count = 0;
   var queue = [];
 

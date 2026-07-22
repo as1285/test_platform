@@ -27,21 +27,47 @@
     } catch (e) {}
   }
 
+  function currentPageName() {
+    try {
+      return String(window.location.pathname || '')
+        .split('/')
+        .pop()
+        .toLowerCase();
+    } catch (e0) {
+      return '';
+    }
+  }
+
   function preloadConfiguredAssets(cfg) {
     if (!cfg) {
       return;
     }
-    [
+    /* 只预加载当前页需要的图，避免在「我的」抢带宽下载首页/待办大图 */
+    var page = currentPageName();
+    var list = [
       cfg.nav_sy_1, cfg.nav_sy_2,
       cfg.nav_db_1, cfg.nav_db_2,
       cfg.nav_bc_1, cfg.nav_bc_2,
       cfg.nav_xx_1, cfg.nav_xx_2,
-      cfg.nav_w_1, cfg.nav_w_2,
-      cfg.header_male, cfg.header_female,
-      cfg.icon_family, cfg.icon_employer, cfg.icon_bank,
-      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb,
-      cfg.daiban_header, cfg.bancha_header, cfg.message_header
-    ].forEach(preloadAsset);
+      cfg.nav_w_1, cfg.nav_w_2
+    ];
+    if (page === 'mine.html') {
+      list = list.concat([
+        cfg.header_male, cfg.header_female,
+        cfg.icon_family, cfg.icon_employer, cfg.icon_bank
+      ]);
+    } else if (page === 'shouye.html') {
+      list = list.concat([cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb]);
+    } else if (page === 'daiban.html') {
+      list = list.concat([cfg.daiban_header]);
+    } else if (page === 'bancha.html') {
+      list = list.concat([cfg.bancha_header]);
+    } else if (page === 'message.html') {
+      list = list.concat([cfg.message_header]);
+    } else if (page.indexOf('piaojia') >= 0) {
+      list = list.concat([cfg.piaojia_goumai, cfg.piaojia_xiaoshou]);
+    }
+    list.forEach(preloadAsset);
   }
 
   function applyBottomNavFromConfig(cfg) {

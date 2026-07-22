@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-trial-expire-login"></script>
+    <script src="/js/auth.js?v=20260722-mine-speed"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -14,7 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css?v=20260722-invite">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <script src="/js/theme-loader.js?v=20260722-preload-scope" defer></script>
     <style>
         * {
             margin: 0;
@@ -1170,7 +1170,7 @@
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="header-bg">
-        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
+        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑" width="900" height="588" decoding="async" fetchpriority="high">
         <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
     </div>
 
@@ -1352,7 +1352,6 @@
         </a>
     </div>
 
-    <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/watermark.js?v=20260721-wm-soft"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
@@ -2500,10 +2499,39 @@
             });
 
             loadUserInfo();
-            loadMineInviteOverview();
+            /* 邀请接口不阻塞首屏：空闲后再拉 */
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback(function () {
+                    loadMineInviteOverview();
+                }, { timeout: 2500 });
+            } else {
+                setTimeout(loadMineInviteOverview, 400);
+            }
             syncMineProfileEditGate();
-            fetchMineXianyuUrl();
+            /* 闲鱼文案仅激活弹窗需要，延后拉取 */
+            setTimeout(fetchMineXianyuUrl, 800);
             installLegacyActivatePromptShim();
+
+            function ensureQrcodeLib() {
+                if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function') {
+                    return Promise.resolve();
+                }
+                if (window.__mineQrcodeLoading) return window.__mineQrcodeLoading;
+                window.__mineQrcodeLoading = new Promise(function (resolve, reject) {
+                    var s = document.createElement('script');
+                    s.src = '/js/vendor/qrcode.min.js';
+                    s.async = true;
+                    s.onload = function () {
+                        resolve();
+                    };
+                    s.onerror = function () {
+                        window.__mineQrcodeLoading = null;
+                        reject(new Error('qrcode_load'));
+                    };
+                    document.head.appendChild(s);
+                });
+                return window.__mineQrcodeLoading;
+            }
 
             function getMineInviteAbsoluteUrl() {
                 var path = window.__mineInvitePath || '';
@@ -2552,6 +2580,7 @@
                 if (window.__mineInvitePosterDataUrl) {
                     return Promise.resolve(window.__mineInvitePosterDataUrl);
                 }
+                return ensureQrcodeLib().then(function () {
                 if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
                     return Promise.reject(new Error('no_qrcode'));
                 }
@@ -2653,6 +2682,7 @@
                     ctx.arcTo(x, y, x + width, y, r);
                     ctx.closePath();
                 }
+                });
             }
 
             function withMineInvitePoster(thenFn) {
