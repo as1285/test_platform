@@ -26,6 +26,7 @@ const settingsPolicy = require('../shared/settingsPolicy');
 const {
   createInviteReward,
   isUserEffectivelyActive,
+  isTrialExpired,
   activationFieldsForApi
 } = require('./inviteReward');
 const { createPricingAb } = require('./pricingAb');
@@ -5635,6 +5636,19 @@ async function requireAuth(req, res, next) {
     }
     if ((tokSrv === null || isNaN(tokSrv)) && dbSrv > 0) {
       return res.status(401).json({ code: 401, msg: '登录已失效，请重新登录', session_revoked: true });
+    }
+    /* 令牌签发时仍为已激活，但试用已过期 → 强制 C 端重新登录 */
+    var tokAct = payload.act != null && payload.act !== '' ? Number(payload.act) : null;
+    if (
+      tokAct === 1 &&
+      !rowUserTypeIsGuest(row) &&
+      isTrialExpired(row)
+    ) {
+      return res.status(401).json({
+        code: 401,
+        msg: '试用已过期，请重新登录',
+        activation_expired: true
+      });
     }
     req.authUserRow = row;
     /* 游客不计入日活；仍同步设备，便于管理后台「游客模式」查看机型 */

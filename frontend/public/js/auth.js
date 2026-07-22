@@ -1894,6 +1894,10 @@
             try {
               alert('账号已被封禁');
             } catch (e2) {}
+          } else if (j && j.activation_expired) {
+            try {
+              alert('试用已过期，请重新登录');
+            } catch (eExp) {}
           } else if (j && j.session_revoked) {
             try {
               alert('登录已失效，请重新登录');

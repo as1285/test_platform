@@ -29,6 +29,16 @@ function isUserEffectivelyActive(row) {
   return false;
 }
 
+/** 时效试用已过期（仍记为 trial，但 active_until 已过） */
+function isTrialExpired(row) {
+  if (!row) return false;
+  var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+  if (kind !== 'trial') return false;
+  if (!row.active_until) return true;
+  var t = new Date(row.active_until).getTime();
+  return !isFinite(t) || t <= Date.now();
+}
+
 /** 组装 API 用的激活字段 */
 function activationFieldsForApi(row) {
   var kind = row && row.activation_kind != null ? String(row.activation_kind).trim() : '';
@@ -894,5 +904,6 @@ function createInviteReward(deps) {
 module.exports = {
   createInviteReward: createInviteReward,
   isUserEffectivelyActive: isUserEffectivelyActive,
+  isTrialExpired: isTrialExpired,
   activationFieldsForApi: activationFieldsForApi
 };

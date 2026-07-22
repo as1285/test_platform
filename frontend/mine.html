@@ -1856,13 +1856,9 @@
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
                 }
-                var kind = user && user.activation_kind != null ? String(user.activation_kind) : '';
-                var days = user && user.active_days_left != null ? Number(user.active_days_left) : NaN;
                 if (btn) {
-                    if (active && kind === 'trial' && isFinite(days)) {
-                        btn.style.display = 'inline-flex';
-                        btn.textContent = '剩' + days + '天';
-                    } else if (active) {
+                    if (active) {
+                        /* 已激活（含试用）不展示「剩X天」按钮 */
                         btn.style.display = 'none';
                         btn.textContent = '已激活';
                     } else {
