@@ -51,6 +51,12 @@ app.get(
   h.handleAdminUserDataDetail
 );
 app.get(
+  '/api/admin/analytics/pricing-ab',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
+  h.handleAdminAnalyticsPricingAb
+);
+app.get(
   '/api/admin/analytics/daily-conversion',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
@@ -97,6 +103,12 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
   h.handleAdminUsersPendingActivate24h
+);
+app.post(
+  '/api/admin/messages/bulk',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['analytics-conversion', 'analytics', 'users']),
+  h.handleAdminMessagesBulk
 );
 app.get(
   '/api/admin/analytics/register-time',

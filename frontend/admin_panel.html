@@ -103,6 +103,22 @@
                         </div>
                     </section>
                     <section>
+                        <h2>定价 A/B（支付宝）</h2>
+                        <p class="hint">与转化文案 A/B 独立。启用后：Control 仅「199 永久」；Treatment 为「49/24小时 · 99/3天 · 199/1年 · 499永久」。首期 50/50；短时续买<strong>覆盖为更长档</strong>。启用期间自动暂停转化文案 A/B。主指标：购买区曝光用户人均支付金额。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用定价 A/B</label>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="pricingAbTreatmentPercent">Treatment 流量占比 %</label>
+                                <input type="number" id="pricingAbTreatmentPercent" min="0" max="100" step="1" value="50">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存定价 A/B</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
                         <h2>邀请有礼</h2>
                         <p class="hint">开启后：被邀请人<strong>注册成功</strong>→邀请人立即获得注册奖励（默认 30 分钟）；被邀请人<strong>支付宝付费永久激活</strong>→邀请人再立即获得付费奖励（默认 3 天）。永久邀请人改为发放可转赠时效码。月封顶可调。</p>
                         <div class="form-row form-stack">
@@ -135,6 +151,42 @@
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveInviteReward">保存邀请配置</button>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <h2>未激活引导弹窗</h2>
+                        <p class="hint">对未激活用户在 App 内弹出引导（默认每日最多 1 次）。关闭后当日不再弹出；可配置注册满多少小时后才提示。</p>
+                        <div class="form-row form-stack">
+                            <div class="form-field">
+                                <label><input type="checkbox" id="actNudgeEnabled" checked> 启用激活引导弹窗</label>
+                            </div>
+                            <div class="form-field">
+                                <label for="actNudgeTitle">标题</label>
+                                <input type="text" id="actNudgeTitle" maxlength="80" value="开通完整功能">
+                            </div>
+                            <div class="form-field">
+                                <label for="actNudgeBody">正文</label>
+                                <textarea id="actNudgeBody" class="textarea-block" rows="3" maxlength="400">您的账号尚未激活。激活后可去除水印，完整使用收入明细与纳税记录等功能。</textarea>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="actNudgeCta">主按钮文案</label>
+                                <input type="text" id="actNudgeCta" maxlength="40" value="去激活">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="actNudgeDismiss">关闭文案</label>
+                                <input type="text" id="actNudgeDismiss" maxlength="40" value="今日不再提示">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="actNudgeLink">跳转页面</label>
+                                <input type="text" id="actNudgeLink" maxlength="200" value="purchase.html">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="actNudgeMinHours">注册满多少小时后提示</label>
+                                <input type="number" id="actNudgeMinHours" min="0" max="720" step="1" value="24">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveActNudge">保存弹窗配置</button>
                             </div>
                         </div>
                     </section>
@@ -1417,6 +1469,18 @@
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
         <section>
+            <h2>定价 A/B</h2>
+            <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。Control=199 永久；Treatment=四档阶梯。曝光来自购买页 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p>
+            <div class="form-row flex-align-center mt-8">
+                <div>
+                    <label for="analyticsPricingAbDays">统计区间</label>
+                    <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                </div>
+                <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新定价 A/B</button>
+            </div>
+            <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">定价 A/B 加载中…</div>
+        </section>
+        <section>
             <h2>注册转化率</h2>
             <p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>代理推广</strong>：注册链接/表单显式带了「引导安装 → 代理推广渠道」中的 <code>ch</code>；<strong>闲鱼 / 支付宝 / 酷发卡激活</strong>：分别统计对应码/渠道激活的用户数。</p>
             <div class="form-row flex-align-center mt-8">
@@ -1457,6 +1521,36 @@
             <p class="hint mt-0">注册已满 24 小时且仍未激活的账号，便于客服/运营跟进（演示环境）。</p>
             <button type="button" class="btn-page mb-10" id="btnRefreshPendingActivate24h">刷新列表</button>
             <div id="analyticsPendingActivate24h" class="analytics-conv-wrap" aria-live="polite">列表加载中…</div>
+        </section>
+        <section>
+            <h2>未激活用户站内信群发</h2>
+            <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。</p>
+            <div class="form-row form-stack">
+                <div class="form-field">
+                    <label for="bulkMsgAudience">发送对象</label>
+                    <select id="bulkMsgAudience" class="filter-select">
+                        <option value="pending_activate_24h" selected>注册超 24h 未激活</option>
+                        <option value="all_inactive">全部未激活</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="bulkMsgTitle">标题</label>
+                    <input type="text" id="bulkMsgTitle" maxlength="120" value="开通提醒：激活后去除水印">
+                </div>
+                <div class="form-field">
+                    <label for="bulkMsgContent">正文</label>
+                    <textarea id="bulkMsgContent" class="textarea-block" rows="4" maxlength="4000">您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。</textarea>
+                </div>
+                <div class="form-field form-field-narrow">
+                    <label for="bulkMsgLink">跳转页面</label>
+                    <input type="text" id="bulkMsgLink" maxlength="200" value="purchase.html">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-page" id="btnBulkMsgPreview">预览人数</button>
+                    <button type="button" class="btn-primary" id="btnBulkMsgSend">确认群发</button>
+                    <span class="hint" id="bulkMsgStatus" aria-live="polite"></span>
+                </div>
+            </div>
         </section>
                 </div>
 
@@ -2076,6 +2170,6 @@
     <script src="/js/admin/loader.js?v=20260722-chat-window-fix"></script>
     <script src="/js/admin/nav.js?v=20260721-p2"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin_panel.js?v=20260722-invite-30m-3d"></script>
+    <script src="/js/admin_panel.js?v=20260722-pricing-ab"></script>
 </body>
 </html>

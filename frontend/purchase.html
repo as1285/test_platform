@@ -168,6 +168,44 @@
             background: #1677ff;
             color: #fff;
         }
+        .pricing-sku-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
+        .pricing-sku-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+        }
+        .pricing-sku-item.is-selected {
+            border-color: #1677ff;
+            background: #f0f7ff;
+            box-shadow: inset 0 0 0 1px #1677ff;
+        }
+        .pricing-sku-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1677ff;
+            min-width: 72px;
+        }
+        .pricing-sku-label {
+            flex: 1;
+            font-size: 14px;
+            color: #222;
+        }
+        .pricing-sku-tag {
+            font-size: 11px;
+            color: #888;
+        }
         .btn:disabled {
             opacity: 0.55;
             cursor: not-allowed;
@@ -330,6 +368,7 @@
                 <span class="badge-auto">付款后自动开通</span>
             </div>
             <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
+            <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
             <div class="qr-wrap" id="alipayQrWrap" hidden>
                 <img id="alipayQrImg" src="" alt="支付宝付款二维码">
@@ -835,6 +874,80 @@
         startAlipayOrderPolling();
     }
 
+    var alipayPricing = {
+        variant: 'control',
+        skus: [],
+        selectedSkuId: ''
+    };
+
+    function formatSkuDuration(sku) {
+        if (!sku) return '';
+        if (sku.grant_kind === 'permanent') return '永久开通';
+        var bits = [];
+        if (sku.grant_days) bits.push(sku.grant_days + '天');
+        if (sku.grant_hours) bits.push(sku.grant_hours + '小时');
+        return bits.length ? bits.join('') : (sku.label || '');
+    }
+
+    function renderAlipaySkus(skus, variant) {
+        var list = document.getElementById('alipaySkuList');
+        if (!list) return;
+        alipayPricing.variant = variant || 'control';
+        alipayPricing.skus = Array.isArray(skus) ? skus : [];
+        if (!alipayPricing.skus.length) {
+            list.hidden = true;
+            list.innerHTML = '';
+            alipayPricing.selectedSkuId = '';
+            return;
+        }
+        if (alipayPricing.skus.length === 1) {
+            list.hidden = true;
+            list.innerHTML = '';
+            alipayPricing.selectedSkuId = alipayPricing.skus[0].id;
+            return;
+        }
+        if (
+            !alipayPricing.selectedSkuId ||
+            !alipayPricing.skus.some(function (s) {
+                return s.id === alipayPricing.selectedSkuId;
+            })
+        ) {
+            alipayPricing.selectedSkuId = alipayPricing.skus[alipayPricing.skus.length - 1].id;
+        }
+        list.hidden = false;
+        list.innerHTML = alipayPricing.skus
+            .map(function (s) {
+                var selected = s.id === alipayPricing.selectedSkuId ? ' is-selected' : '';
+                return (
+                    '<button type="button" class="pricing-sku-item' +
+                    selected +
+                    '" data-sku-id="' +
+                    String(s.id).replace(/"/g, '') +
+                    '">' +
+                    '<span class="pricing-sku-price">¥' +
+                    String(s.amount || '') +
+                    '</span>' +
+                    '<span class="pricing-sku-label">' +
+                    String(s.label || s.subject || '') +
+                    '</span>' +
+                    '<span class="pricing-sku-tag">' +
+                    formatSkuDuration(s) +
+                    '</span>' +
+                    '</button>'
+                );
+            })
+            .join('');
+    }
+
+    function getSelectedAlipaySku() {
+        var id = alipayPricing.selectedSkuId;
+        var i;
+        for (i = 0; i < alipayPricing.skus.length; i++) {
+            if (alipayPricing.skus[i].id === id) return alipayPricing.skus[i];
+        }
+        return alipayPricing.skus[0] || null;
+    }
+
     function loadAlipayPurchase() {
         return paymentFetch('/api/payments/alipay/config')
             .then(function (x) {
@@ -843,12 +956,43 @@
                 var card = document.getElementById('cardAlipay');
                 card.hidden = !enabled;
                 if (enabled) {
+                    var variant = data.pricing_variant || 'control';
+                    var skus = Array.isArray(data.skus) ? data.skus : [];
+                    if (!skus.length && data.amount) {
+                        skus = [
+                            {
+                                id: 'sku_199_perm_legacy',
+                                amount: data.amount,
+                                label: '永久激活',
+                                subject: data.subject || '个税记录平台激活码',
+                                grant_kind: 'permanent'
+                            }
+                        ];
+                    }
+                    renderAlipaySkus(skus, variant);
+                    var selected = getSelectedAlipaySku();
                     var hint = document.getElementById('alipayPurchaseHint');
-                    hint.textContent =
-                        (data.subject || '个税记录平台激活码') +
-                        '，支付 ' +
-                        (data.amount || '') +
-                        ' 元后自动开通当前登录账号。';
+                    if (variant === 'treatment' && skus.length > 1) {
+                        hint.textContent =
+                            '可选试用或永久套餐；购买更长档将覆盖当前更短试用。付款成功后自动开通。';
+                    } else {
+                        hint.textContent =
+                            (selected && selected.subject
+                                ? selected.subject
+                                : data.subject || '个税记录平台激活码') +
+                            '，支付 ' +
+                            (selected ? selected.amount : data.amount || '') +
+                            ' 元后自动开通当前登录账号。';
+                    }
+                    trackPurchase(
+                        variant === 'treatment'
+                            ? 'track_pricing_ab_expose_treatment'
+                            : 'track_pricing_ab_expose_control',
+                        {
+                            pricing_variant: variant,
+                            sku_count: skus.length
+                        }
+                    );
                 }
                 return checkAlipayLatestOrder();
             })
@@ -1061,14 +1205,32 @@
     });
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
+    var alipaySkuListEl = document.getElementById('alipaySkuList');
+    if (alipaySkuListEl) {
+        alipaySkuListEl.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-sku-id]');
+            if (!btn) return;
+            alipayPricing.selectedSkuId = btn.getAttribute('data-sku-id') || '';
+            renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
+        });
+    }
     document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
         var btn = this;
+        var sku = getSelectedAlipaySku();
+        if (!sku || !sku.id) {
+            showToast('请选择套餐');
+            return;
+        }
         btn.disabled = true;
-        trackPurchase('track_alipay_payment_start');
+        trackPurchase('track_alipay_payment_start', {
+            pricing_variant: alipayPricing.variant,
+            sku_id: sku.id,
+            amount: sku.amount
+        });
         setAlipayStatus('正在创建付款订单…', true);
         paymentFetch('/api/payments/alipay/create', {
             method: 'POST',
-            body: JSON.stringify({})
+            body: JSON.stringify({ sku_id: sku.id })
         })
             .then(function (x) {
                 if (x.status !== 200 || !x.body || !x.body.data) {

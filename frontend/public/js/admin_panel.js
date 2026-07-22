@@ -2047,10 +2047,86 @@
         }
 
         function loadAnalyticsConversionPage() {
+            loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
             loadRegistrationFunnel();
             loadConversionKpis();
             loadPendingActivate24h(1);
+        }
+
+        function loadAnalyticsPricingAb() {
+            var box = document.getElementById('analyticsPricingAb');
+            if (!box) return;
+            var days = analyticsPeriodVal(document.getElementById('analyticsPricingAbDays'));
+            box.innerHTML = '加载中…';
+            adminFetch('api/admin/analytics/pricing-ab?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (body) {
+                    if (!body || body.code !== 200 || !body.data) {
+                        box.innerHTML = esc((body && body.msg) || '加载失败');
+                        return;
+                    }
+                    var d = body.data;
+                    var html = analyticsPeriodHintHtml(d);
+                    html +=
+                        '<p class="hint">实验' +
+                        (d.pricing_ab && d.pricing_ab.enabled ? '进行中' : '已关闭') +
+                        ' · Treatment ' +
+                        (d.pricing_ab ? d.pricing_ab.treatment_percent : 50) +
+                        '% · 主指标：' +
+                        esc(d.primary_metric_label || 'ARPU') +
+                        '</p>';
+                    html +=
+                        '<div class="scroll-x"><table><thead><tr>' +
+                        '<th>分组</th><th>曝光人数</th><th>支付人数</th><th>支付笔数</th><th>GMV</th>' +
+                        '<th>人均支付(主指标)</th><th>支付转化%</th></tr></thead><tbody>';
+                    (d.arms || []).forEach(function (a) {
+                        if (a.variant === 'unknown' && !a.exposed_users && !a.paid_orders) return;
+                        html +=
+                            '<tr><td>' +
+                            esc(a.variant) +
+                            '</td><td>' +
+                            esc(String(a.exposed_users)) +
+                            '</td><td>' +
+                            esc(String(a.paid_users)) +
+                            '</td><td>' +
+                            esc(String(a.paid_orders)) +
+                            '</td><td>' +
+                            esc(String(a.gmv)) +
+                            '</td><td><strong>' +
+                            esc(String(a.arpu_exposed)) +
+                            '</strong></td><td>' +
+                            esc(String(a.pay_cvr)) +
+                            '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    if (d.sku_breakdown && d.sku_breakdown.length) {
+                        html +=
+                            '<p class="stat mt-12">SKU 拆分</p><div class="scroll-x"><table><thead><tr>' +
+                            '<th>分组</th><th>SKU</th><th>笔数</th><th>人数</th><th>GMV</th></tr></thead><tbody>';
+                        d.sku_breakdown.forEach(function (s) {
+                            html +=
+                                '<tr><td>' +
+                                esc(s.variant) +
+                                '</td><td>' +
+                                esc(s.sku_id) +
+                                '</td><td>' +
+                                esc(String(s.paid_orders)) +
+                                '</td><td>' +
+                                esc(String(s.paid_users)) +
+                                '</td><td>' +
+                                esc(String(s.gmv)) +
+                                '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                    }
+                    box.innerHTML = html;
+                })
+                .catch(function () {
+                    box.innerHTML = '网络错误';
+                });
         }
 
         function loadAnalyticsRegisterPage() {
@@ -7436,6 +7512,17 @@
                             );
                             updateLandingAbSplitHint();
                         }
+                        var pricingAb = data.data.pricing_ab;
+                        if (pricingAb) {
+                            var pricingEn = document.getElementById('pricingAbEnabled');
+                            var pricingPct = document.getElementById('pricingAbTreatmentPercent');
+                            if (pricingEn) pricingEn.checked = pricingAb.enabled !== false;
+                            if (pricingPct) {
+                                pricingPct.value = String(
+                                    pricingAb.treatment_percent != null ? pricingAb.treatment_percent : 50
+                                );
+                            }
+                        }
                         var inviteEn = document.getElementById('inviteEnabled');
                         if (inviteEn) {
                             inviteEn.checked =
@@ -7466,6 +7553,25 @@
                         var inviteDelay = document.getElementById('inviteGrantDelayHours');
                         if (inviteDelay && data.data.invite_grant_delay_hours != null) {
                             inviteDelay.value = String(data.data.invite_grant_delay_hours);
+                        }
+                        var nudge = data.data.activation_nudge;
+                        if (nudge) {
+                            var nEn = document.getElementById('actNudgeEnabled');
+                            if (nEn) nEn.checked = nudge.enabled !== false;
+                            var nTitle = document.getElementById('actNudgeTitle');
+                            if (nTitle && nudge.title != null) nTitle.value = String(nudge.title);
+                            var nBody = document.getElementById('actNudgeBody');
+                            if (nBody && nudge.body != null) nBody.value = String(nudge.body);
+                            var nCta = document.getElementById('actNudgeCta');
+                            if (nCta && nudge.cta_text != null) nCta.value = String(nudge.cta_text);
+                            var nDis = document.getElementById('actNudgeDismiss');
+                            if (nDis && nudge.dismiss_text != null) nDis.value = String(nudge.dismiss_text);
+                            var nLink = document.getElementById('actNudgeLink');
+                            if (nLink && nudge.link_url != null) nLink.value = String(nudge.link_url);
+                            var nHours = document.getElementById('actNudgeMinHours');
+                            if (nHours && nudge.min_hours_since_register != null) {
+                                nHours.value = String(nudge.min_hours_since_register);
+                            }
                         }
                     }
                     if (data.code === 200 && data.data) {
@@ -7611,6 +7717,45 @@
             });
         }
 
+        var btnSavePricingAb = document.getElementById('btnSavePricingAb');
+        if (btnSavePricingAb) {
+            btnSavePricingAb.addEventListener('click', function () {
+                var btn = btnSavePricingAb;
+                var pct = parseInt(document.getElementById('pricingAbTreatmentPercent').value, 10);
+                if (!isFinite(pct) || pct < 0 || pct > 100) {
+                    alert('Treatment 占比请输入 0–100');
+                    return;
+                }
+                btn.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        pricing_ab: {
+                            enabled: !!document.getElementById('pricingAbEnabled').checked,
+                            treatment_percent: pct
+                        }
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('定价 A/B 已保存' + (data.data && data.data.pricing_ab && data.data.pricing_ab.enabled ? '（转化文案 A/B 将自动暂停）' : ''));
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
         function updateLandingAbSplitHint() {
             var input = document.getElementById('landingAbCPercent');
             var hint = document.getElementById('landingAbSplitHint');
@@ -7727,6 +7872,60 @@
                     })
                     .finally(function () {
                         btnSaveInviteReward.disabled = false;
+                    });
+            });
+        }
+
+        var btnSaveActNudge = document.getElementById('btnSaveActNudge');
+        if (btnSaveActNudge) {
+            btnSaveActNudge.addEventListener('click', function () {
+                var minH = parseInt(document.getElementById('actNudgeMinHours').value, 10);
+                if (!isFinite(minH) || minH < 0 || minH > 720) {
+                    alert('注册满小时数请输入 0–720');
+                    return;
+                }
+                var title = String(document.getElementById('actNudgeTitle').value || '').trim();
+                var body = String(document.getElementById('actNudgeBody').value || '').trim();
+                if (!title || !body) {
+                    alert('请填写标题和正文');
+                    return;
+                }
+                btnSaveActNudge.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        activation_nudge: {
+                            enabled: !!document.getElementById('actNudgeEnabled').checked,
+                            title: title,
+                            body: body,
+                            cta_text: String(document.getElementById('actNudgeCta').value || '').trim() || '去激活',
+                            dismiss_text:
+                                String(document.getElementById('actNudgeDismiss').value || '').trim() ||
+                                '今日不再提示',
+                            link_url:
+                                String(document.getElementById('actNudgeLink').value || '').trim() ||
+                                'purchase.html',
+                            min_hours_since_register: minH,
+                            max_per_day: 1
+                        }
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('激活引导弹窗配置已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnSaveActNudge.disabled = false;
                     });
             });
         }
@@ -8019,6 +8218,18 @@
         document.getElementById('analyticsConversionDays').addEventListener('change', function () {
             loadAnalyticsDailyConversion();
         });
+        var btnRefreshPricingAb = document.getElementById('btnRefreshPricingAb');
+        if (btnRefreshPricingAb) {
+            btnRefreshPricingAb.addEventListener('click', function () {
+                loadAnalyticsPricingAb();
+            });
+        }
+        var analyticsPricingAbDays = document.getElementById('analyticsPricingAbDays');
+        if (analyticsPricingAbDays) {
+            analyticsPricingAbDays.addEventListener('change', function () {
+                loadAnalyticsPricingAb();
+            });
+        }
         var btnRefreshRegistrationFunnel = document.getElementById('btnRefreshRegistrationFunnel');
         if (btnRefreshRegistrationFunnel) {
             btnRefreshRegistrationFunnel.addEventListener('click', function () {
@@ -8115,6 +8326,117 @@
                 loadPendingActivate24h(1);
             };
         }
+
+        function bulkMsgPayload(dryRun) {
+            return {
+                audience: String(
+                    (document.getElementById('bulkMsgAudience') || {}).value || 'pending_activate_24h'
+                ),
+                title: String((document.getElementById('bulkMsgTitle') || {}).value || '').trim(),
+                content: String((document.getElementById('bulkMsgContent') || {}).value || '').trim(),
+                link_url: String((document.getElementById('bulkMsgLink') || {}).value || '').trim() || 'purchase.html',
+                dry_run: !!dryRun
+            };
+        }
+
+        function setBulkMsgStatus(text) {
+            var el = document.getElementById('bulkMsgStatus');
+            if (el) el.textContent = text || '';
+        }
+
+        var btnBulkMsgPreview = document.getElementById('btnBulkMsgPreview');
+        if (btnBulkMsgPreview) {
+            btnBulkMsgPreview.addEventListener('click', function () {
+                setBulkMsgStatus('预览中…');
+                btnBulkMsgPreview.disabled = true;
+                adminFetch('api/admin/messages/bulk', {
+                    method: 'POST',
+                    body: JSON.stringify(bulkMsgPayload(true))
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (j.code !== 200 || !j.data) {
+                            setBulkMsgStatus(j.msg || '预览失败');
+                            return;
+                        }
+                        setBulkMsgStatus('匹配 ' + (j.data.matched != null ? j.data.matched : 0) + ' 人');
+                    })
+                    .catch(function () {
+                        setBulkMsgStatus('预览失败');
+                    })
+                    .finally(function () {
+                        btnBulkMsgPreview.disabled = false;
+                    });
+            });
+        }
+
+        var btnBulkMsgSend = document.getElementById('btnBulkMsgSend');
+        if (btnBulkMsgSend) {
+            btnBulkMsgSend.addEventListener('click', function () {
+                var payload = bulkMsgPayload(false);
+                if (!payload.title || !payload.content) {
+                    alert('请填写标题和正文');
+                    return;
+                }
+                setBulkMsgStatus('核对人数…');
+                btnBulkMsgSend.disabled = true;
+                adminFetch('api/admin/messages/bulk', {
+                    method: 'POST',
+                    body: JSON.stringify(bulkMsgPayload(true))
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (prev) {
+                        if (prev.code !== 200 || !prev.data) {
+                            throw new Error(prev.msg || '预览失败');
+                        }
+                        var n = Number(prev.data.matched) || 0;
+                        if (
+                            !window.confirm(
+                                '确认向「' +
+                                    (payload.audience === 'all_inactive'
+                                        ? '全部未激活'
+                                        : '注册超 24h 未激活') +
+                                    '」群发站内信？\n预计 ' +
+                                    n +
+                                    ' 人。'
+                            )
+                        ) {
+                            setBulkMsgStatus('已取消');
+                            return null;
+                        }
+                        setBulkMsgStatus('发送中…');
+                        return adminFetch('api/admin/messages/bulk', {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        }).then(function (r2) {
+                            return r2.json();
+                        });
+                    })
+                    .then(function (j) {
+                        if (j == null) return;
+                        if (j.code !== 200 || !j.data) {
+                            setBulkMsgStatus(j.msg || '发送失败');
+                            alert(j.msg || '发送失败');
+                            return;
+                        }
+                        var msg = '已发送 ' + (j.data.sent != null ? j.data.sent : 0) + ' 条';
+                        setBulkMsgStatus(msg);
+                        alert(msg);
+                    })
+                    .catch(function (e) {
+                        setBulkMsgStatus(e && e.message ? e.message : '发送失败');
+                        alert(e && e.message ? e.message : '发送失败');
+                    })
+                    .finally(function () {
+                        btnBulkMsgSend.disabled = false;
+                    });
+            });
+        }
+
         var btnRefreshRegisterTime = document.getElementById('btnRefreshRegisterTime');
         if (btnRefreshRegisterTime) {
             btnRefreshRegisterTime.addEventListener('click', function () {

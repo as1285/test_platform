@@ -2338,7 +2338,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260720-guest-funnel';
+    s.src = '/js/conversion-guide.js?v=20260722-act-nudge2';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;

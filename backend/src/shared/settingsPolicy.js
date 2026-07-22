@@ -14,6 +14,8 @@ const OPS_SETTING_KEYS = [
   'wechat_pay_qrcode_url',
   'conversion_ab_json',
   'landing_ab_json',
+  'pricing_ab_json',
+  'activation_nudge_json',
   'activation_batch_channels_json',
   'chat_auto_reply_welcome',
   'chat_auto_reply_reply',

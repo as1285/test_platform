@@ -10,6 +10,9 @@
   var DETAIL_EMPTY_VISIT_KEY = 'cg_detail_empty_visits';
   var DETAIL_RECOVERY_DISMISS_KEY = 'cg_detail_recovery_dismissed';
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
+  var ACT_NUDGE_DAY_KEY = 'cg_act_nudge_day_v1';
+  var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
+  var hoursSinceRegisterCached = 0;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
   var EDIT_HINT = '数据可随时在「我要咨询 → 税务记录」中修改或补充。';
@@ -19,7 +22,7 @@
   var SCREENSHOT_MODE_CLASS = 'cg-screenshot-mode';
   var TAX_EDIT_MODE_KEY = 'cg_tax_edit_mode';
   var TAX_EDIT_OFF_CLASS = 'cg-tax-edit-off';
-  var PROFILE_CACHE_KEY = 'cg_profile_summary_v1';
+  var PROFILE_CACHE_KEY = 'cg_profile_summary_v2';
   var PROFILE_CACHE_TTL_MS = 3 * 60 * 1000;
   /** 纯展示 Tab：不阻塞首屏，延后拉用户摘要 */
   var LIGHT_SHELL_PAGES = {
@@ -313,6 +316,9 @@
         localStorage.setItem('employer_count', String(Number(u.employer_count) || 0));
       } catch (e2) {}
     }
+    if (u.hours_since_register != null) {
+      hoursSinceRegisterCached = Number(u.hours_since_register) || 0;
+    }
     removeMineConversionUi();
   }
 
@@ -337,7 +343,8 @@
           t: Date.now(),
           account_active: u.account_active,
           tax_record_count: u.tax_record_count,
-          employer_count: u.employer_count
+          employer_count: u.employer_count,
+          hours_since_register: u.hours_since_register
         })
       );
     } catch (e) {}
@@ -350,8 +357,13 @@
     }
     var cached = readProfileCache();
     if (cached && !opts.force) {
-      applyProfileSummary(cached);
-      return Promise.resolve();
+      /* v2 起弹窗依赖 hours_since_register；旧缓存缺字段时强制刷新 */
+      if (cached.hours_since_register == null) {
+        opts = Object.assign({}, opts, { force: true });
+      } else {
+        applyProfileSummary(cached);
+        return Promise.resolve();
+      }
     }
     if (profileFetchInFlight && !opts.force) {
       return profileFetchInFlight;
@@ -414,6 +426,15 @@
       'body.cg-has-value-bar .page-root{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       'body.cg-has-value-bar .list{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
       'body.cg-has-value-bar .preview-page{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}' +
+      '.cg-act-nudge-root{position:fixed;inset:0;z-index:920;display:flex;align-items:center;justify-content:center;padding:20px}' +
+      '.cg-act-nudge-mask{position:absolute;inset:0;background:rgba(0,0,0,.45)}' +
+      '.cg-act-nudge-panel{position:relative;z-index:1;width:100%;max-width:320px;background:#fff;border-radius:12px;padding:22px 20px 18px;box-shadow:0 8px 32px rgba(0,0,0,.12)}' +
+      '.cg-act-nudge-title{margin:0 0 10px;font-size:17px;font-weight:600;color:#333;text-align:center}' +
+      '.cg-act-nudge-body{margin:0;font-size:14px;line-height:1.65;color:#555;text-align:center;white-space:pre-wrap}' +
+      '.cg-act-nudge-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}' +
+      '.cg-act-nudge-btn{display:block;width:100%;height:44px;border:none;border-radius:8px;font-size:16px;font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}' +
+      '.cg-act-nudge-btn.primary{background:#1e6fff;color:#fff}' +
+      '.cg-act-nudge-btn.secondary{background:#f5f6fa;color:#666}' +
       '.cg-inline-hint{margin:12px 16px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412;line-height:1.45}' +
       'body.page-shuiming > .content > #cg-shuiming-hint{margin:10px 16px 0;}' +
       '.cg-about-nudge{margin:12px 16px;padding:12px;background:#eef6ff;border-radius:10px;font-size:13px;color:#333;line-height:1.5}' +
@@ -1457,6 +1478,7 @@
         renderShuimingHint();
         renderAboutUpdateNudge();
         renderCareVersionHint();
+        setTimeout(maybeShowActivationNudge, 600);
       } else {
         renderAboutUpdateNudge();
       }
@@ -1530,6 +1552,119 @@
       '关怀版已简化导航。建议先 <a href="consult.html?tab=records&onboarding=tax" style="color:#1e6fff;font-weight:600;">添加税务演示数据</a>，再查看收入明细。';
     wrap.parentNode.insertBefore(hint, wrap);
     track('track_conversion_care_hint_shown', {});
+  }
+
+  function beijingDayKey() {
+    try {
+      return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    } catch (e) {
+      var d = new Date();
+      var utc = d.getTime() + d.getTimezoneOffset() * 60000;
+      var cn = new Date(utc + 8 * 3600000);
+      var y = cn.getFullYear();
+      var m = cn.getMonth() + 1;
+      var day = cn.getDate();
+      return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+    }
+  }
+
+  function sanitizeNudgeLink(raw) {
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return 'purchase.html';
+    if (/^[a-zA-Z0-9_./?-]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
+      return s;
+    }
+    if (/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(s)) return s;
+    return 'purchase.html';
+  }
+
+  function markActNudgeShownToday() {
+    var day = beijingDayKey();
+    try {
+      localStorage.setItem(ACT_NUDGE_DAY_KEY, day);
+      localStorage.setItem(ACT_NUDGE_COUNT_KEY, '1');
+    } catch (e) {}
+  }
+
+  function canShowActNudgeToday(maxPerDay) {
+    var day = beijingDayKey();
+    var maxN = Math.max(1, Number(maxPerDay) || 1);
+    try {
+      var savedDay = localStorage.getItem(ACT_NUDGE_DAY_KEY) || '';
+      var count = parseInt(localStorage.getItem(ACT_NUDGE_COUNT_KEY) || '0', 10) || 0;
+      if (savedDay !== day) return true;
+      return count < maxN;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function maybeShowActivationNudge() {
+    if (!isLoggedIn() || skipConversionPromo() || isLandingGuest()) return;
+    if (isLightShellPage()) return;
+    if (currentPage() === 'purchase.html') return;
+    var nudge = conversionCfg && conversionCfg.activation_nudge;
+    if (!nudge || nudge.enabled === false) return;
+    if (!canShowActNudgeToday(nudge.max_per_day)) return;
+    var minH = Number(nudge.min_hours_since_register);
+    if (!isFinite(minH)) minH = 24;
+    if (hoursSinceRegisterCached < minH) return;
+    if (document.getElementById('cg-act-nudge-root')) return;
+    if (document.querySelector('.activate-modal-root.is-open')) return;
+
+    ensureGateStyles();
+    markActNudgeShownToday();
+
+    var title = String(nudge.title || '开通完整功能');
+    var body = String(nudge.body || '');
+    var cta = String(nudge.cta_text || '去激活');
+    var dismiss = String(nudge.dismiss_text || '今日不再提示');
+    var link = sanitizeNudgeLink(nudge.link_url);
+
+    var root = document.createElement('div');
+    root.id = 'cg-act-nudge-root';
+    root.className = 'cg-act-nudge-root';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.innerHTML =
+      '<div class="cg-act-nudge-mask" data-act="dismiss"></div>' +
+      '<div class="cg-act-nudge-panel">' +
+      '<p class="cg-act-nudge-title"></p>' +
+      '<p class="cg-act-nudge-body"></p>' +
+      '<div class="cg-act-nudge-actions">' +
+      '<button type="button" class="cg-act-nudge-btn primary" data-act="cta"></button>' +
+      '<button type="button" class="cg-act-nudge-btn secondary" data-act="dismiss"></button>' +
+      '</div></div>';
+    root.querySelector('.cg-act-nudge-title').textContent = title;
+    root.querySelector('.cg-act-nudge-body').textContent = body;
+    root.querySelector('[data-act="cta"]').textContent = cta;
+    root.querySelectorAll('[data-act="dismiss"]').forEach(function (el) {
+      if (el.tagName === 'BUTTON') el.textContent = dismiss;
+    });
+
+    function close() {
+      if (root.parentNode) root.parentNode.removeChild(root);
+    }
+
+    root.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var act = t.getAttribute('data-act');
+      if (act === 'dismiss') {
+        track('track_activation_nudge_dismiss', { page: currentPage() });
+        close();
+      } else if (act === 'cta') {
+        track('track_activation_nudge_cta', { page: currentPage(), link: link });
+        close();
+        window.location.href = link;
+      }
+    });
+
+    document.body.appendChild(root);
+    track('track_activation_nudge_show', {
+      page: currentPage(),
+      hours: hoursSinceRegisterCached
+    });
   }
 
   window.ConversionGuide = {

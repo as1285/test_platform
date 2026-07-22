@@ -28,6 +28,7 @@ const {
   isUserEffectivelyActive,
   activationFieldsForApi
 } = require('./inviteReward');
+const { createPricingAb } = require('./pricingAb');
 
 const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES = config.JWT_EXPIRES;
@@ -408,6 +409,8 @@ const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 const SETTING_KEY_LANDING_AB = 'landing_ab_json';
+const SETTING_KEY_PRICING_AB = 'pricing_ab_json';
+const SETTING_KEY_ACTIVATION_NUDGE = 'activation_nudge_json';
 const SETTING_KEY_CHAT_AUTO_REPLY_WELCOME = 'chat_auto_reply_welcome';
 const SETTING_KEY_CHAT_AUTO_REPLY_REPLY = 'chat_auto_reply_reply';
 const SETTING_KEY_CHAT_AI_ENABLED = 'chat_ai_enabled';
@@ -439,6 +442,23 @@ const DEFAULT_LANDING_AB = {
   c_percent: 50
 };
 
+/** 未激活用户每日激活引导弹窗（C 端） */
+const DEFAULT_ACTIVATION_NUDGE = {
+  enabled: true,
+  title: '开通完整功能',
+  body: '您的账号尚未激活。激活后可去除水印，完整使用收入明细与纳税记录等功能。',
+  cta_text: '去激活',
+  dismiss_text: '今日不再提示',
+  link_url: 'purchase.html',
+  min_hours_since_register: 24,
+  max_per_day: 1
+};
+
+/** 站内信运营群发标记（写入 messages.company_name） */
+const MSG_COMPANY_SYSTEM_NOTICE = '系统通知';
+const MSG_BULK_MAX_USERS = 5000;
+const MSG_BULK_INSERT_CHUNK = 80;
+
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
 const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
 
@@ -455,6 +475,8 @@ const DEFAULT_MINE_UI = {
 let pool;
 /** 时效激活 / 邀请有礼 API（pool 就绪后懒初始化） */
 var inviteRewardApi = null;
+/** 定价 A/B */
+var pricingAbApi = null;
 
 function getInviteReward() {
   if (!inviteRewardApi) {
@@ -471,6 +493,34 @@ function getInviteReward() {
     });
   }
   return inviteRewardApi;
+}
+
+function getPricingAb() {
+  if (!pricingAbApi) {
+    if (!pool) {
+      throw new Error('database pool not ready');
+    }
+    pricingAbApi = createPricingAb({
+      pool: pool,
+      upsertAppSetting: upsertAppSetting,
+      alipayNormalizeAmount: function (v) {
+        return alipay.normalizeAmount(v);
+      }
+    });
+  }
+  return pricingAbApi;
+}
+
+function isUserPermanentActive(row) {
+  if (!row) return false;
+  var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+  if (kind === 'permanent') return true;
+  if (kind === 'trial') return false;
+  return (
+    row.account_active === 1 ||
+    row.account_active === true ||
+    Number(row.account_active) === 1
+  );
 }
 /** @type {{ v: string, t: number }|null} */
 var _testCompanyNameCache = null;
@@ -4779,21 +4829,76 @@ function plainPaymentOrder(row) {
     subject: String(row.subject || ''),
     amount: row.amount != null ? String(row.amount) : '',
     status: String(row.status || ''),
-    paid_at: paidAt
+    paid_at: paidAt,
+    pricing_variant: row.pricing_variant != null ? String(row.pricing_variant) : '',
+    sku_id: row.sku_id != null ? String(row.sku_id) : '',
+    grant_kind: row.grant_kind != null ? String(row.grant_kind) : ''
   };
 }
 
-/** 返回支付宝公开配置 */
+/** 返回支付宝公开配置（含定价 A/B SKU 列表） */
 async function handleAlipayConfig(req, res) {
-  var product = getAlipayProductConfig();
-  return res.json({
-    code: 200,
-    data: {
-      enabled: alipay.isConfigured() && !!product.amount,
-      subject: product.subject,
-      amount: product.amount
-    }
-  });
+  var envProduct = getAlipayProductConfig();
+  var baseEnabled = alipay.isConfigured() && !!envProduct.amount;
+  if (!baseEnabled) {
+    return res.json({
+      code: 200,
+      data: { enabled: false, subject: envProduct.subject, amount: envProduct.amount, skus: [] }
+    });
+  }
+  try {
+    var offer = await getPricingAb().resolveOfferForUser(
+      req.authUserId || '',
+      envProduct.amount,
+      envProduct.subject
+    );
+    var skus = (offer.skus || []).map(function (s) {
+      return {
+        id: s.id,
+        amount: s.amount,
+        label: s.label,
+        subject: s.subject,
+        grant_kind: s.grant_kind,
+        grant_days: s.grant_days,
+        grant_hours: s.grant_hours
+      };
+    });
+    var primary = skus[0] || null;
+    return res.json({
+      code: 200,
+      data: {
+        enabled: true,
+        subject: primary ? primary.subject : envProduct.subject,
+        amount: primary ? primary.amount : envProduct.amount,
+        pricing_variant: offer.variant,
+        pricing_ab_enabled: !!offer.pricing_ab_enabled,
+        skus: skus
+      }
+    });
+  } catch (e) {
+    console.error('alipay config pricing_ab', e);
+    return res.json({
+      code: 200,
+      data: {
+        enabled: true,
+        subject: envProduct.subject,
+        amount: envProduct.amount,
+        pricing_variant: 'control',
+        pricing_ab_enabled: false,
+        skus: [
+          {
+            id: 'sku_199_perm_legacy',
+            amount: envProduct.amount,
+            label: '永久激活',
+            subject: envProduct.subject,
+            grant_kind: 'permanent',
+            grant_days: 0,
+            grant_hours: 0
+          }
+        ]
+      }
+    });
+  }
 }
 
 /** 创建支付宝当面付预下单 */
@@ -4801,36 +4906,95 @@ async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
     return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
   }
-  if (req.authUserRow && isUserEffectivelyActive(req.authUserRow)) {
-    return res.status(409).json({ code: 409, msg: '当前账号已激活，无需重复购买' });
+  if (req.authUserRow && isUserPermanentActive(req.authUserRow)) {
+    return res.status(409).json({ code: 409, msg: '当前账号已永久激活，无需重复购买' });
   }
-  var product = getAlipayProductConfig();
-  if (!product.amount) {
+  var envProduct = getAlipayProductConfig();
+  if (!envProduct.amount) {
     return res.status(503).json({ code: 503, msg: '支付宝商品金额配置无效' });
   }
+  var body = req.body && typeof req.body === 'object' ? req.body : {};
+  var skuIdReq = body.sku_id != null ? String(body.sku_id).trim() : '';
+  var offer;
+  try {
+    offer = await getPricingAb().resolveOfferForUser(
+      req.authUserId || '',
+      envProduct.amount,
+      envProduct.subject
+    );
+  } catch (eOffer) {
+    console.error('pricing offer', eOffer);
+    return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
+  }
+  var sku = getPricingAb().pickSkuFromOffer(offer, skuIdReq);
+  if (!sku) {
+    return res.status(400).json({ code: 400, msg: '请选择要购买的套餐' });
+  }
+  var amount = alipay.normalizeAmount(sku.amount);
+  if (!amount) {
+    return res.status(503).json({ code: 503, msg: '商品金额无效' });
+  }
+  /* 覆盖规则：若当前试用剩余更长，拒绝购买更短档 */
+  if (req.authUserRow && sku.grant_kind !== 'permanent') {
+    var coverPreview = getPricingAb().resolveCoverLongerGrant(req.authUserRow, sku);
+    if (coverPreview.reason === 'keep_longer_existing') {
+      return res.status(409).json({
+        code: 409,
+        msg: '当前试用剩余时间更长，请选择更长时效或永久套餐'
+      });
+    }
+  }
+
   const conn = await pool.getConnection();
+  var order = null;
   try {
     await conn.beginTransaction();
     const [existingRows] = await conn.execute(
-      `SELECT out_trade_no, subject, amount, status, paid_at
+      `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+              grant_kind, grant_days, grant_hours
        FROM payment_orders
        WHERE username = ? AND status = 'pending'
          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
        ORDER BY id DESC LIMIT 1 FOR UPDATE`,
       [req.authUserId]
     );
-    var order = existingRows.length ? existingRows[0] : null;
+    if (existingRows.length) {
+      var ex = existingRows[0];
+      var sameSku = String(ex.sku_id || '') === String(sku.id);
+      var sameAmt = alipay.normalizeAmount(ex.amount) === amount;
+      if (sameSku && sameAmt) {
+        order = ex;
+      } else {
+        await conn.execute(`UPDATE payment_orders SET status = 'closed' WHERE id = ?`, [ex.id]);
+      }
+    }
     if (!order) {
       order = {
         out_trade_no: createAlipayOutTradeNo(),
-        subject: product.subject,
-        amount: product.amount,
-        status: 'pending'
+        subject: String(sku.subject || envProduct.subject).slice(0, 128),
+        amount: amount,
+        status: 'pending',
+        pricing_variant: offer.variant,
+        sku_id: sku.id,
+        grant_kind: sku.grant_kind,
+        grant_days: sku.grant_days || 0,
+        grant_hours: sku.grant_hours || 0
       };
       await conn.execute(
-        `INSERT INTO payment_orders (out_trade_no, username, subject, amount, status)
-         VALUES (?, ?, ?, ?, 'pending')`,
-        [order.out_trade_no, req.authUserId, order.subject, order.amount]
+        `INSERT INTO payment_orders
+         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+        [
+          order.out_trade_no,
+          req.authUserId,
+          order.subject,
+          order.amount,
+          order.pricing_variant,
+          order.sku_id,
+          order.grant_kind,
+          order.grant_days,
+          order.grant_hours
+        ]
       );
     }
     await conn.commit();
@@ -4855,7 +5019,9 @@ async function handleAlipayCreateOrder(req, res) {
       data: {
         order: plainPaymentOrder(order),
         qr_code: precreate.qrCode,
-        payment_url: precreate.qrCode
+        payment_url: precreate.qrCode,
+        pricing_variant: order.pricing_variant || offer.variant,
+        sku_id: order.sku_id || sku.id
       }
     });
   } catch (e) {
@@ -5004,41 +5170,110 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       ]
     );
     var activationCode = randomActivationCodePlain();
+    const [orderMetaRows] = await conn.execute(
+      `SELECT pricing_variant, sku_id, grant_kind, grant_days, grant_hours, subject
+       FROM payment_orders WHERE id = ? LIMIT 1`,
+      [locked.id]
+    );
+    var meta = orderMetaRows[0] || {};
+    var grantKind = meta.grant_kind != null ? String(meta.grant_kind) : 'permanent';
+    var grantDays = meta.grant_days != null ? parseInt(meta.grant_days, 10) : 0;
+    var grantHours = meta.grant_hours != null ? parseInt(meta.grant_hours, 10) : 0;
+    if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
+    if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
+    /* 无 SKU 快照的历史订单：按永久处理 */
+    if (!meta.sku_id && grantKind !== 'trial') {
+      grantKind = 'permanent';
+    }
+    var skuSnapshot = {
+      id: meta.sku_id || 'sku_199_perm_legacy',
+      grant_kind: grantKind === 'trial' ? 'trial' : 'permanent',
+      grant_days: grantDays,
+      grant_hours: grantHours
+    };
     const [beforeUserRows] = await conn.execute(
       `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
       [locked.username]
     );
-    var wasFirstPayActivation =
-      beforeUserRows.length && !isUserEffectivelyActive(beforeUserRows[0]);
+    var beforeRow = beforeUserRows[0] || null;
+    var wasPermanentBefore = beforeRow && isUserPermanentActive(beforeRow);
+    var cover = getPricingAb().resolveCoverLongerGrant(beforeRow, skuSnapshot);
+    var noteBits = ['支付宝自动发卡'];
+    if (meta.sku_id) noteBits.push(String(meta.sku_id));
+    if (meta.pricing_variant) noteBits.push(String(meta.pricing_variant));
     const [codeResult] = await conn.execute(
       `INSERT INTO activation_codes
-       (code, max_uses, used_count, expires_at, note, last_used_at, used_by_username, owner_admin_username)
-       VALUES (?, 1, 1, NULL, '支付宝自动发卡', CURRENT_TIMESTAMP, ?, ?)`,
-      [activationCode, locked.username, ADMIN_PANEL_USER]
+       (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, last_used_at, used_by_username, owner_admin_username)
+       VALUES (?, 1, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+      [
+        activationCode,
+        grantKind === 'trial' ? grantDays || null : null,
+        grantKind === 'trial' ? grantHours || null : null,
+        noteBits.join(' '),
+        locked.username,
+        ADMIN_PANEL_USER
+      ]
     );
-    await conn.execute(
-      `UPDATE users
-       SET account_active = 1,
-           activation_kind = 'permanent',
-           active_until = NULL,
-           activation_source_channel = CASE WHEN account_active = 0 THEN 'alipay' ELSE activation_source_channel END
-       WHERE username = ?`,
-      [locked.username]
-    );
-    if (beforeUserRows[0].invited_by) {
+    if (cover.kind === 'permanent') {
+      await conn.execute(
+        `UPDATE users
+         SET account_active = 1,
+             activation_kind = 'permanent',
+             active_until = NULL,
+             activation_source_channel = CASE
+               WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
+               ELSE activation_source_channel END
+         WHERE username = ?`,
+        [locked.username]
+      );
+    } else if (cover.applied && cover.kind === 'trial') {
+      await conn.execute(
+        `UPDATE users
+         SET account_active = 1,
+             activation_kind = 'trial',
+             active_until = ?,
+             activation_source_channel = CASE
+               WHEN activation_source_channel IS NULL OR activation_source_channel = '' THEN 'alipay'
+               ELSE activation_source_channel END
+         WHERE username = ?`,
+        [cover.active_until, locked.username]
+      );
+      await conn.execute(
+        `INSERT INTO activation_grants (username, days, source, ref_id, active_until_after)
+         VALUES (?, ?, 'alipay', ?, ?)`,
+        [
+          locked.username,
+          (grantDays || 0) + (grantHours || 0) / 24,
+          String(locked.id),
+          cover.active_until
+        ]
+      );
+    }
+    /* 仅永久履约计邀请付费奖 */
+    if (cover.kind === 'permanent' && !wasPermanentBefore && beforeRow && beforeRow.invited_by) {
       try {
         await getInviteReward().markInviteeActivatedInConn(
           conn,
           locked.username,
-          beforeUserRows[0].invited_by
+          beforeRow.invited_by
         );
         await getInviteReward().grantInvitePayRewardInConn(
           conn,
           locked.username,
-          beforeUserRows[0].invited_by
+          beforeRow.invited_by
         );
       } catch (eInvPay) {
         console.error('alipay invite mark/pay reward', eInvPay);
+      }
+    } else if (cover.applied && beforeRow && beforeRow.invited_by) {
+      try {
+        await getInviteReward().markInviteeActivatedInConn(
+          conn,
+          locked.username,
+          beforeRow.invited_by
+        );
+      } catch (eInvMark) {
+        console.error('alipay invite mark', eInvMark);
       }
     }
     await conn.execute(
@@ -6172,7 +6407,8 @@ async function getUserSummaryForApi(userId) {
   try {
     const [rows] = await conn.execute(
       `SELECT real_name, tax_id, gender, account_active, employer_count, family_count, bank_card_count, user_type,
-              activation_kind, active_until
+              activation_kind, active_until, created_at,
+              TIMESTAMPDIFF(HOUR, created_at, UTC_TIMESTAMP()) AS hours_since_register
        FROM users WHERE username = ? LIMIT 1`,
       [uid]
     );
@@ -6191,7 +6427,9 @@ async function getUserSummaryForApi(userId) {
         bank_card_count: 0,
         tax_record_count: 0,
         user_type: USER_TYPE_NORMAL,
-        is_guest: false
+        is_guest: false,
+        created_at: null,
+        hours_since_register: 0
       };
       _userSummaryApiCache.set(uid, { v: empty, t: now });
       return empty;
@@ -6218,7 +6456,9 @@ async function getUserSummaryForApi(userId) {
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
       user_type: ut,
       is_test_account: ut === USER_TYPE_TEST,
-      is_guest: ut === USER_TYPE_GUEST
+      is_guest: ut === USER_TYPE_GUEST,
+      created_at: rec.created_at ? rec.created_at.toISOString() : null,
+      hours_since_register: Number(rec.hours_since_register) || 0
     };
     _userSummaryApiCache.set(uid, { v: out, t: now });
     if (_userSummaryApiCache.size > 800) {
@@ -9082,17 +9322,23 @@ async function handleMessageGet(req, res) {
     }
     const conn = await pool.getConnection();
     const [rows] = await conn.execute(
-      'SELECT id, title, company_name, msg_date, is_read FROM messages WHERE user_id = ? ORDER BY msg_date DESC, created_at DESC LIMIT 200',
+      'SELECT id, title, company_name, msg_date, is_read, content FROM messages WHERE user_id = ? ORDER BY msg_date DESC, created_at DESC LIMIT 200',
       [uidMsg]
     );
     conn.release();
     var out = rows.map(function (r) {
+      var contentRaw = r.content != null ? String(r.content) : '';
+      var contentPreview = contentRaw.replace(/\n@@link:\S+\s*$/, '').trim();
+      if (contentPreview.length > 120) {
+        contentPreview = contentPreview.substring(0, 120);
+      }
       return {
         id: r.id,
         title: r.title,
         company_name: r.company_name,
         msg_date: r.msg_date,
-        is_read: r.is_read != null ? Number(r.is_read) : 0
+        is_read: r.is_read != null ? Number(r.is_read) : 0,
+        content: contentPreview
       };
     });
     _messageListCache.set(uidMsg, { t: nowMsg, v: out });
@@ -11671,6 +11917,9 @@ async function handlePublicLandingAbConfig(req, res) {
 async function handlePublicConversionConfig(req, res) {
   try {
     var cfg = await loadConversionAbParsed();
+    var pricingCfg = await getPricingAb().loadPricingAbParsed();
+    /* 定价 A/B 实验期暂停文案 A/B，避免交互干扰 */
+    var enabled = cfg.enabled !== false && !(pricingCfg && pricingCfg.enabled);
     var seed = '';
     if (req.authUserId) {
       seed = String(req.authUserId);
@@ -11682,16 +11931,28 @@ async function handlePublicConversionConfig(req, res) {
       } catch (e0) {}
     }
     var variant = resolveConversionAbVariant(seed);
+    var nudge = await loadActivationNudgeParsed();
     return res.json({
       code: 200,
       data: {
-        enabled: cfg.enabled !== false,
+        enabled: enabled,
         variant: variant,
         activate_title:
           variant === 'b' ? String(cfg.activate_title_b || '') : String(cfg.activate_title_a || ''),
         activate_subtitle:
           variant === 'b' ? String(cfg.activate_subtitle_b || '') : String(cfg.activate_subtitle_a || ''),
-        batch_example_prominent: cfg.batch_example_prominent === true
+        batch_example_prominent: cfg.batch_example_prominent === true,
+        paused_by_pricing_ab: !!(pricingCfg && pricingCfg.enabled),
+        activation_nudge: {
+          enabled: nudge.enabled !== false,
+          title: String(nudge.title || ''),
+          body: String(nudge.body || ''),
+          cta_text: String(nudge.cta_text || ''),
+          dismiss_text: String(nudge.dismiss_text || ''),
+          link_url: String(nudge.link_url || 'purchase.html'),
+          min_hours_since_register: Number(nudge.min_hours_since_register) || 0,
+          max_per_day: Number(nudge.max_per_day) || 1
+        }
       }
     });
   } catch (e) {
@@ -13146,6 +13407,199 @@ async function handleAdminUsersPendingActivate24h(req, res) {
               hours_since_register: Number(r.hours_since_register) || 0
             };
           })
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 净化站内信跳转链接（仅相对页或本站 https） */
+function sanitizeInAppMessageLink(raw) {
+  var s = raw != null ? String(raw).trim() : '';
+  if (!s) return 'purchase.html';
+  if (/^[a-zA-Z0-9_./?-]+$/.test(s) && s.indexOf('..') < 0 && !/^[a-zA-Z]+:/.test(s)) {
+    return s.substring(0, 200);
+  }
+  if (/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(s)) {
+    return s.substring(0, 500);
+  }
+  return 'purchase.html';
+}
+
+/** 组装运营站内信正文（含可选跳转标记） */
+function buildOpsMessageContent(bodyText, linkUrl) {
+  var body = bodyText != null ? String(bodyText).trim() : '';
+  if (body.length > 4000) body = body.substring(0, 4000);
+  var link = sanitizeInAppMessageLink(linkUrl);
+  if (body.indexOf('【前往激活】') < 0) {
+    body = body + (body ? '\n\n' : '') + '【前往激活】';
+  }
+  return body + '\n@@link:' + link;
+}
+
+/** 加载激活引导弹窗配置 */
+async function loadActivationNudgeParsed() {
+  if (!pool) {
+    return Object.assign({}, DEFAULT_ACTIVATION_NUDGE);
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1', [
+      SETTING_KEY_ACTIVATION_NUDGE
+    ]);
+    if (!rows.length || rows[0].setting_value == null || String(rows[0].setting_value).trim() === '') {
+      return Object.assign({}, DEFAULT_ACTIVATION_NUDGE);
+    }
+    var parsed = JSON.parse(String(rows[0].setting_value));
+    var merged = Object.assign({}, DEFAULT_ACTIVATION_NUDGE, parsed && typeof parsed === 'object' ? parsed : {});
+    merged.enabled = merged.enabled !== false;
+    merged.title = String(merged.title || DEFAULT_ACTIVATION_NUDGE.title).substring(0, 80);
+    merged.body = String(merged.body || DEFAULT_ACTIVATION_NUDGE.body).substring(0, 400);
+    merged.cta_text = String(merged.cta_text || DEFAULT_ACTIVATION_NUDGE.cta_text).substring(0, 40);
+    merged.dismiss_text = String(merged.dismiss_text || DEFAULT_ACTIVATION_NUDGE.dismiss_text).substring(0, 40);
+    merged.link_url = sanitizeInAppMessageLink(merged.link_url);
+    var minH = parseInt(merged.min_hours_since_register, 10);
+    merged.min_hours_since_register = isFinite(minH) ? Math.max(0, Math.min(720, minH)) : 24;
+    var maxD = parseInt(merged.max_per_day, 10);
+    merged.max_per_day = isFinite(maxD) ? Math.max(1, Math.min(5, maxD)) : 1;
+    return merged;
+  } catch (e) {
+    return Object.assign({}, DEFAULT_ACTIVATION_NUDGE);
+  } finally {
+    conn.release();
+  }
+}
+
+/** 保存激活引导弹窗配置 */
+async function saveActivationNudgeFromAdmin(bodyObj) {
+  var prev = await loadActivationNudgeParsed();
+  var inc = bodyObj && typeof bodyObj === 'object' ? bodyObj : {};
+  var merged = Object.assign({}, prev);
+  if (inc.enabled === true || inc.enabled === false) merged.enabled = inc.enabled === true;
+  if (inc.title != null) merged.title = String(inc.title).substring(0, 80);
+  if (inc.body != null) merged.body = String(inc.body).substring(0, 400);
+  if (inc.cta_text != null) merged.cta_text = String(inc.cta_text).substring(0, 40);
+  if (inc.dismiss_text != null) merged.dismiss_text = String(inc.dismiss_text).substring(0, 40);
+  if (inc.link_url != null) merged.link_url = sanitizeInAppMessageLink(inc.link_url);
+  if (inc.min_hours_since_register != null) {
+    var minH = parseInt(inc.min_hours_since_register, 10);
+    if (isFinite(minH)) merged.min_hours_since_register = Math.max(0, Math.min(720, minH));
+  }
+  if (inc.max_per_day != null) {
+    var maxD = parseInt(inc.max_per_day, 10);
+    if (isFinite(maxD)) merged.max_per_day = Math.max(1, Math.min(5, maxD));
+  }
+  const conn = await pool.getConnection();
+  try {
+    await upsertAppSetting(conn, SETTING_KEY_ACTIVATION_NUDGE, JSON.stringify(merged));
+  } finally {
+    conn.release();
+  }
+  return merged;
+}
+
+/**
+ * 未激活用户站内信群发
+ * audience: pending_activate_24h | all_inactive
+ */
+async function handleAdminMessagesBulk(req, res) {
+  try {
+    var body = req.body || {};
+    var audience = body.audience != null ? String(body.audience).trim() : 'pending_activate_24h';
+    if (audience !== 'pending_activate_24h' && audience !== 'all_inactive') {
+      return res.status(400).json({ code: 400, msg: 'audience 须为 pending_activate_24h 或 all_inactive' });
+    }
+    var title = body.title != null ? String(body.title).trim() : '';
+    var content = body.content != null ? String(body.content).trim() : '';
+    var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
+    if (!dryRun) {
+      if (!title) {
+        return res.status(400).json({ code: 400, msg: '请填写标题' });
+      }
+      if (!content) {
+        return res.status(400).json({ code: 400, msg: '请填写正文' });
+      }
+    }
+    if (title.length > 120) title = title.substring(0, 120);
+    var linkUrl = sanitizeInAppMessageLink(body.link_url || 'purchase.html');
+    var fullContent = dryRun ? '' : buildOpsMessageContent(content, linkUrl);
+
+    var where = ['(u.account_active IS NULL OR u.account_active = 0)'];
+    var params = [];
+    if (audience === 'pending_activate_24h') {
+      where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
+    }
+    appendAdminUserScope(where, params, req.admin, 'u.username');
+    var whereSql = ' WHERE ' + where.join(' AND ');
+
+    const conn = await pool.getConnection();
+    try {
+      const [countRows] = await conn.query(
+        'SELECT COUNT(*) AS total FROM users u' + whereSql,
+        params
+      );
+      var total = Number(countRows[0] && countRows[0].total) || 0;
+      if (dryRun) {
+        return res.json({
+          code: 200,
+          data: { dry_run: true, audience: audience, matched: total, max: MSG_BULK_MAX_USERS }
+        });
+      }
+      if (total <= 0) {
+        return res.json({ code: 200, data: { sent: 0, matched: 0, audience: audience } });
+      }
+      if (total > MSG_BULK_MAX_USERS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
+        });
+      }
+
+      const [userRows] = await conn.query(
+        'SELECT u.username FROM users u' + whereSql + ' ORDER BY u.created_at DESC LIMIT ?',
+        params.concat([MSG_BULK_MAX_USERS])
+      );
+      var usernames = (userRows || [])
+        .map(function (r) {
+          return r.username != null ? String(r.username) : '';
+        })
+        .filter(Boolean);
+      var msgDate = new Date().toISOString().slice(0, 10);
+      var batchId = 'bulk_' + Date.now().toString(36);
+      var sent = 0;
+      var i;
+      for (i = 0; i < usernames.length; i += MSG_BULK_INSERT_CHUNK) {
+        var chunk = usernames.slice(i, i + MSG_BULK_INSERT_CHUNK);
+        var placeholders = [];
+        var values = [];
+        chunk.forEach(function (uname, j) {
+          var mid = 'msg_' + batchId + '_' + (i + j);
+          placeholders.push('(?, ?, ?, ?, ?, ?, 0)');
+          values.push(mid, uname, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate);
+        });
+        await conn.query(
+          'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES ' +
+            placeholders.join(', '),
+          values
+        );
+        chunk.forEach(function (uname) {
+          invalidateMessageListCache(uname);
+        });
+        sent += chunk.length;
+      }
+      return res.json({
+        code: 200,
+        data: {
+          sent: sent,
+          matched: total,
+          audience: audience,
+          batch_id: batchId,
+          link_url: linkUrl
         }
       });
     } finally {
@@ -15977,6 +16431,7 @@ async function handleAdminSettingsGet(req, res) {
     var conversionAb = await loadConversionAbParsed();
     var landingAb = await loadLandingAbParsed();
     var inviteCfg = await getInviteReward().loadInviteSettings(true);
+    var activationNudge = await loadActivationNudgeParsed();
     return res.json({
       code: 200,
       data: {
@@ -15992,13 +16447,15 @@ async function handleAdminSettingsGet(req, res) {
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
         conversion_ab: conversionAb,
         landing_ab: landingAb,
+        pricing_ab: await getPricingAb().loadPricingAbParsed(true),
         invite_enabled: inviteCfg.enabled,
         invite_reward_days: inviteCfg.reward_days,
         invite_reward_hours: inviteCfg.reward_hours,
         invite_reward_minutes: inviteCfg.reward_minutes,
         invite_pay_reward_days: inviteCfg.pay_reward_days,
         invite_monthly_cap: inviteCfg.monthly_cap,
-        invite_grant_delay_hours: inviteCfg.grant_delay_hours
+        invite_grant_delay_hours: inviteCfg.grant_delay_hours,
+        activation_nudge: activationNudge
       }
     });
   } catch (e) {
@@ -16021,6 +16478,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
   var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
+  var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
   var hasInvite =
     Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_reward_days') ||
@@ -16029,6 +16487,7 @@ async function handleAdminSettingsPost(req, res) {
     Object.prototype.hasOwnProperty.call(body, 'invite_pay_reward_days') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap') ||
     Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours');
+  var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
     !hasAndroid &&
@@ -16041,11 +16500,13 @@ async function handleAdminSettingsPost(req, res) {
     !hasWechatPayQr &&
     !hasConversionAb &&
     !hasLandingAb &&
-    !hasInvite
+    !hasPricingAb &&
+    !hasInvite &&
+    !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置、邀请有礼配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -16295,8 +16756,16 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasPricingAb) {
+      await getPricingAb().savePricingAbFromAdmin(body.pricing_ab);
+    }
+
     if (hasInvite) {
       await getInviteReward().saveInviteSettingsFromAdmin(body);
+    }
+
+    if (hasActivationNudge) {
+      await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
 
     if (
@@ -16326,6 +16795,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
+    outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
     var inviteAfter = await getInviteReward().loadInviteSettings(true);
     outData.invite_enabled = inviteAfter.enabled;
     outData.invite_reward_days = inviteAfter.reward_days;
@@ -16334,6 +16804,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.invite_pay_reward_days = inviteAfter.pay_reward_days;
     outData.invite_monthly_cap = inviteAfter.monthly_cap;
     outData.invite_grant_delay_hours = inviteAfter.grant_delay_hours;
+    outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
     console.error(e);
@@ -18766,7 +19237,10 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_online_chat_click',
   'track_qq_group_click',
   'track_qq_add_click',
-  'track_purchase_back_click'
+  'track_purchase_back_click',
+  'track_activation_nudge_show',
+  'track_activation_nudge_dismiss',
+  'track_activation_nudge_cta'
 ];
 
 var ACTIVATE_TRACK_EVENT_KEY_SET = {};
@@ -18803,6 +19277,9 @@ function activateTrackEventLabel(eventKey) {
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_purchase_back_click: '购买页返回',
+    track_activation_nudge_show: '激活引导弹窗-展示',
+    track_activation_nudge_dismiss: '激活引导弹窗-关闭',
+    track_activation_nudge_cta: '激活引导弹窗-去激活',
     track_alipay_payment_start: '生成支付宝付款码',
     track_alipay_open_click: '打开支付宝付款',
     track_alipay_payment_success: '支付宝付款开通成功'
@@ -18905,6 +19382,112 @@ async function handleAdminAnalyticsEvents(req, res) {
           },
           conversionAnalyticsPeriodMeta(period)
         )
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 定价 A/B：购买区曝光人均支付（主指标）+ 分臂/SKU */
+async function handleAdminAnalyticsPricingAb(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var pf = analyticsPeriodLoginDatetimeFilter(period);
+    const conn = await pool.getConnection();
+    try {
+      const [exposeRows] = await conn.execute(
+        `SELECT
+           CASE
+             WHEN route_key LIKE '%track_pricing_ab_expose_treatment%' THEN 'treatment'
+             WHEN route_key LIKE '%track_pricing_ab_expose_control%' THEN 'control'
+             ELSE 'unknown'
+           END AS variant,
+           COUNT(DISTINCT username) AS exposed_users,
+           COUNT(*) AS expose_events
+         FROM user_page_events
+         WHERE ${pf.sql}
+           AND (
+             route_key LIKE '%track_pricing_ab_expose_control%'
+             OR route_key LIKE '%track_pricing_ab_expose_treatment%'
+           )
+         GROUP BY variant`,
+        pf.params
+      );
+      const [payRows] = await conn.execute(
+        `SELECT
+           COALESCE(NULLIF(pricing_variant, ''), 'unknown') AS variant,
+           COALESCE(NULLIF(sku_id, ''), 'unknown') AS sku_id,
+           COUNT(*) AS paid_orders,
+           COUNT(DISTINCT username) AS paid_users,
+           ROUND(SUM(amount), 2) AS gmv
+         FROM payment_orders
+         WHERE status = 'paid' AND ${pf.sql}
+         GROUP BY variant, sku_id
+         ORDER BY variant, gmv DESC`,
+        pf.params
+      );
+      const [payByVariant] = await conn.execute(
+        `SELECT
+           COALESCE(NULLIF(pricing_variant, ''), 'unknown') AS variant,
+           COUNT(*) AS paid_orders,
+           COUNT(DISTINCT username) AS paid_users,
+           ROUND(SUM(amount), 2) AS gmv
+         FROM payment_orders
+         WHERE status = 'paid' AND ${pf.sql}
+         GROUP BY variant`,
+        pf.params
+      );
+      var exposeMap = {};
+      (exposeRows || []).forEach(function (r) {
+        exposeMap[String(r.variant)] = {
+          exposed_users: Number(r.exposed_users) || 0,
+          expose_events: Number(r.expose_events) || 0
+        };
+      });
+      var arms = ['control', 'treatment', 'unknown'].map(function (v) {
+        var ex = exposeMap[v] || { exposed_users: 0, expose_events: 0 };
+        var pay = null;
+        for (var i = 0; i < (payByVariant || []).length; i++) {
+          if (String(payByVariant[i].variant) === v) {
+            pay = payByVariant[i];
+            break;
+          }
+        }
+        var gmv = pay ? Number(pay.gmv) || 0 : 0;
+        var exposed = ex.exposed_users;
+        return {
+          variant: v,
+          exposed_users: exposed,
+          expose_events: ex.expose_events,
+          paid_orders: pay ? Number(pay.paid_orders) || 0 : 0,
+          paid_users: pay ? Number(pay.paid_users) || 0 : 0,
+          gmv: gmv,
+          arpu_exposed: exposed > 0 ? Math.round((gmv / exposed) * 100) / 100 : 0,
+          pay_cvr: exposed > 0 ? Math.round(((pay ? Number(pay.paid_users) || 0 : 0) / exposed) * 1000) / 10 : 0
+        };
+      });
+      var cfg = await getPricingAb().loadPricingAbParsed(true);
+      return res.json({
+        code: 200,
+        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
+          pricing_ab: cfg,
+          primary_metric: 'arpu_exposed',
+          primary_metric_label: '购买区曝光用户人均支付金额',
+          arms: arms,
+          sku_breakdown: (payRows || []).map(function (r) {
+            return {
+              variant: String(r.variant),
+              sku_id: String(r.sku_id),
+              paid_orders: Number(r.paid_orders) || 0,
+              paid_users: Number(r.paid_users) || 0,
+              gmv: Number(r.gmv) || 0
+            };
+          })
+        })
       });
     } finally {
       conn.release();
@@ -20006,6 +20589,7 @@ function getHandlers() {
     handleAdminInstallTrackStats,
     handleAdminConversionKpis,
     handleAdminUsersPendingActivate24h,
+    handleAdminMessagesBulk,
     handleAdminRegisterTimeDistribution,
     handleAdminRegisterGenderStats,
     handleAdminRegisterChannelStats,
@@ -20038,6 +20622,7 @@ function getHandlers() {
     handleAdminAnalyticsDevices,
     handleAdminAnalyticsDeviceStats,
     handleAdminAnalyticsLoginRecent,
+    handleAdminAnalyticsPricingAb,
     handleAdminLoginLogs,
     handleAdminOperationLogs,
     handleAdminFeedbackList,

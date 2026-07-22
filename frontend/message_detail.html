@@ -292,13 +292,23 @@
             );
         }
 
-        function renderDetail(title, timeText, bodyText, bodyHtmlLink, titleHtml) {
+        function renderDetail(title, timeText, bodyText, bodyHtmlLink, titleHtml, linkUrl) {
             var root = document.getElementById('detailRoot');
             var bodyHtml = escapeHtml(bodyText);
             if (bodyHtmlLink) {
                 bodyHtml = bodyHtml.replace(
                     /【收入纳税明细】/g,
                     '<a href="shuiming.html">【收入纳税明细】</a>'
+                );
+                var href = linkUrl || 'purchase.html';
+                if (!/^[a-zA-Z0-9_./?-]+$/.test(href) || href.indexOf('..') >= 0) {
+                    if (!/^https:\/\/(www\.)?geshui\.vip(\/|$)/i.test(href)) {
+                        href = 'purchase.html';
+                    }
+                }
+                bodyHtml = bodyHtml.replace(
+                    /【前往激活】/g,
+                    '<a href="' + escapeHtml(href) + '">【前往激活】</a>'
                 );
             }
             var titleBlock = titleHtml || escapeHtml(title);
@@ -312,6 +322,21 @@
                 '<div class="detail-body">' +
                 bodyHtml +
                 '</div>';
+        }
+
+        function parseOpsMessageContent(raw) {
+            var text = raw != null ? String(raw) : '';
+            var link = 'purchase.html';
+            var m = text.match(/\n@@link:(\S+)\s*$/);
+            if (m) {
+                link = m[1];
+                text = text.slice(0, m.index);
+            }
+            return { text: text.trim(), link: link };
+        }
+
+        function isSystemNoticeMessage(msg) {
+            return String((msg && msg.company_name) || '').trim() === '系统通知';
         }
 
         function renderDemoMaintDetail() {
@@ -379,6 +404,18 @@
                     var isMaint = String(msg.title || '').indexOf('演示数据维护') >= 0;
                     if (isMaint) {
                         renderDetail(msg.title, formatDisplayTime(msg), msg.content || '', false);
+                        return;
+                    }
+                    if (isSystemNoticeMessage(msg)) {
+                        var parsed = parseOpsMessageContent(msg.content || '');
+                        renderDetail(
+                            msg.title || '系统通知',
+                            formatDisplayTime(msg),
+                            parsed.text,
+                            true,
+                            null,
+                            parsed.link
+                        );
                         return;
                     }
                     renderDetail(
