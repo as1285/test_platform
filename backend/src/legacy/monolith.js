@@ -9054,6 +9054,74 @@ function displayUserAgentFromDevice(req) {
   return userAgentShortForStore(req);
 }
 
+/** 注册满 N 天后禁止在未绑定过的新设备登录（天） */
+var AGED_ACCOUNT_NEW_DEVICE_LOGIN_DAYS = 30;
+
+/**
+ * 注册超过 AGED_ACCOUNT_NEW_DEVICE_LOGIN_DAYS 天的账号：仅允许已出现在 user_devices 的设备登录。
+ * 尚无任何设备记录的历史账号允许本次登录以绑定首台设备，避免误锁死。
+ * 游客账号跳过。
+ */
+async function assertLoginDeviceAllowedForAgedAccount(username, req) {
+  if (!pool || !username) {
+    return;
+  }
+  var uname = String(username).trim();
+  if (!uname) {
+    return;
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      `SELECT user_type,
+              TIMESTAMPDIFF(DAY, created_at, UTC_TIMESTAMP()) AS days_since_register
+       FROM users WHERE username = ? LIMIT 1`,
+      [uname]
+    );
+    if (!urows.length) {
+      return;
+    }
+    var ut = urows[0].user_type != null ? Number(urows[0].user_type) : USER_TYPE_NORMAL;
+    if (ut === USER_TYPE_GUEST) {
+      return;
+    }
+    var days = Number(urows[0].days_since_register);
+    if (!Number.isFinite(days) || days < AGED_ACCOUNT_NEW_DEVICE_LOGIN_DAYS) {
+      return;
+    }
+
+    var fp = computeDeviceFingerprint(req);
+    var ex = req.clientDevicePayload;
+    var clientId =
+      ex && ex.client_id != null && String(ex.client_id).trim() !== ''
+        ? String(ex.client_id).trim().substring(0, 128)
+        : '';
+
+    const [devs] = await conn.execute(
+      'SELECT device_fp, client_id FROM user_devices WHERE username = ?',
+      [uname]
+    );
+    if (!devs.length) {
+      return;
+    }
+    for (var i = 0; i < devs.length; i++) {
+      if (String(devs[i].device_fp || '') === fp) {
+        return;
+      }
+      if (
+        clientId &&
+        devs[i].client_id != null &&
+        String(devs[i].client_id).trim() === clientId
+      ) {
+        return;
+      }
+    }
+    throw new Error('该账号注册已超过30天，禁止在新设备登录，请使用常用设备登录');
+  } finally {
+    conn.release();
+  }
+}
+
 /** sync user device from client json */
 function syncUserDeviceFromClientJson(req, username) {
   if (!pool || !username) {
@@ -9180,6 +9248,7 @@ function normalizeUserLoginFailReason(rawMsg) {
   if (msg.indexOf('账号或密码错误') >= 0) return 'invalid_credentials';
   if (msg.indexOf('已注册') >= 0 || msg.indexOf('账号已存在') >= 0) return 'register_fail:duplicate';
   if (msg.indexOf('请求过于频繁') >= 0 || msg.indexOf('rate_limited') >= 0) return 'rate_limited';
+  if (msg.indexOf('禁止在新设备登录') >= 0) return 'new_device_blocked';
   if (
     msg.indexOf('账号仅支持') >= 0 ||
     msg.indexOf('账号长度') >= 0 ||
@@ -9271,6 +9340,7 @@ const USER_LOGIN_REASON_LABELS = {
   wrong_password: '密码错误',
   invalid_username: '账号格式错误',
   rate_limited: '登录过于频繁',
+  new_device_blocked: '新设备登录受限',
   other_error: '其他错误',
   unknown_error: '未知错误',
   register_ok: '注册成功',
@@ -11383,6 +11453,7 @@ async function handleAuthPost(req, res) {
         return sendRateLimited(res, loginRate, '登录过于频繁，请稍后再试');
       }
       var out2 = await loginUser(body.username, body.password);
+      await assertLoginDeviceAllowedForAgedAccount(out2.username, req);
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);
