@@ -338,6 +338,124 @@
             transition: opacity 0.2s ease;
         }
         .purchase-toast.show { opacity: 1; }
+
+        .purchase-invite-card .card-title { margin-bottom: 6px; }
+        .purchase-invite-desc {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.45;
+            margin: 0 0 10px;
+        }
+        .purchase-invite-code-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #333;
+        }
+        .purchase-invite-label { color: #888; }
+        .purchase-invite-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .purchase-invite-action {
+            border: none;
+            background: #1677ff;
+            color: #fff;
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            line-height: 1.2;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .purchase-invite-action.is-secondary {
+            background: #fff;
+            color: #1677ff;
+            border: 1px solid #1677ff;
+        }
+        .purchase-invite-stats {
+            margin: 10px 0 0;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .purchase-invite-transfer {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #444;
+            word-break: break-all;
+        }
+        .invite-modal-root {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            box-sizing: border-box;
+        }
+        .invite-modal-root.is-open { display: block; }
+        .invite-modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+        .invite-modal-panel {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            width: calc(100% - 32px);
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 16px 14px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+            text-align: center;
+        }
+        .invite-modal-title {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .invite-modal-img {
+            width: 100%;
+            max-width: 280px;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto 12px;
+            background: #f5f6f8;
+        }
+        .invite-modal-hint {
+            display: block;
+            margin: 0 0 12px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.45;
+        }
+        .invite-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .invite-modal-btn {
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            font-size: 14px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        .invite-modal-btn.primary {
+            border-color: #1677ff;
+            background: #1677ff;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -352,6 +470,23 @@
         <div class="hero">
             <h1>开通完整功能</h1>
             <p>支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。</p>
+        </div>
+
+        <div class="card purchase-invite-card" id="purchaseInviteCard" hidden>
+            <div class="card-title">邀请好友得试用</div>
+            <p class="purchase-invite-desc" id="purchaseInviteDesc">好友扫码或打开链接先注册，再下载 App；注册成功后你可获得时效使用权。</p>
+            <div class="purchase-invite-code-row">
+                <span class="purchase-invite-label">邀请码</span>
+                <strong id="purchaseInviteCodeText">—</strong>
+            </div>
+            <div class="purchase-invite-actions">
+                <button type="button" class="purchase-invite-action" id="btnPurchaseInviteCopy">复制链接</button>
+                <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInviteSavePoster">保存海报</button>
+                <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInviteSharePoster">分享海报</button>
+                <button type="button" class="purchase-invite-action is-secondary" id="btnPurchaseInvitePreviewPoster">预览二维码</button>
+            </div>
+            <p class="purchase-invite-stats" id="purchaseInviteStats"></p>
+            <div id="purchaseInviteTransferCodes" class="purchase-invite-transfer" hidden></div>
         </div>
 
         <div class="card activate-box">
@@ -455,6 +590,20 @@
 
     <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
 
+    <div id="purchaseInvitePosterModal" class="invite-modal-root" role="dialog" aria-modal="true" aria-labelledby="purchaseInvitePosterTitle">
+        <div class="invite-modal-mask" id="purchaseInvitePosterMask"></div>
+        <div class="invite-modal-panel">
+            <p class="invite-modal-title" id="purchaseInvitePosterTitle">邀请海报</p>
+            <img class="invite-modal-img" id="purchaseInvitePosterImg" alt="邀请二维码海报">
+            <p class="invite-modal-hint">好友微信扫一扫先完成注册，再下载 App</p>
+            <div class="invite-modal-actions">
+                <button type="button" class="invite-modal-btn" id="btnPurchaseInvitePosterClose">关闭</button>
+                <button type="button" class="invite-modal-btn primary" id="btnPurchaseInvitePosterSave">保存图片</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -1080,6 +1229,368 @@
             });
     }
 
+    function loadPurchaseInviteOverview() {
+        var card = document.getElementById('purchaseInviteCard');
+        if (!card) return;
+        try {
+            if (localStorage.getItem('account_active') === '1') {
+                card.hidden = true;
+                return;
+            }
+        } catch (eAct) {}
+        var fetchFn =
+            typeof authFetch === 'function'
+                ? authFetch
+                : function (url, opts) {
+                      return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+                  };
+        fetchFn('api/user?action=invite_overview')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (data) {
+                if (data.code !== 200 || !data.data || !data.data.enabled) {
+                    card.hidden = true;
+                    return;
+                }
+                var d = data.data;
+                if (d.account_active === true || d.account_active === 1 || d.account_active === '1') {
+                    card.hidden = true;
+                    return;
+                }
+                card.hidden = false;
+                var codeEl = document.getElementById('purchaseInviteCodeText');
+                if (codeEl) codeEl.textContent = d.invite_code || '—';
+                var desc = document.getElementById('purchaseInviteDesc');
+                if (desc) {
+                    var rewardBits = [];
+                    if (d.reward_days) rewardBits.push(d.reward_days + ' 天');
+                    if (d.reward_hours) rewardBits.push(d.reward_hours + ' 小时');
+                    if (d.reward_minutes) rewardBits.push(d.reward_minutes + ' 分钟');
+                    var payBits =
+                        d.pay_reward_days != null && Number(d.pay_reward_days) > 0
+                            ? Number(d.pay_reward_days) + ' 天'
+                            : '3 天';
+                    desc.textContent =
+                        '好友扫码先注册、再下载 App；注册成功你得 ' +
+                        (rewardBits.length ? rewardBits.join(' ') : '30 分钟') +
+                        '，好友付费永久激活后再得 ' +
+                        payBits +
+                        '（每月最多 ' +
+                        (d.monthly_cap || 4) +
+                        ' 次）。';
+                }
+                var stats = document.getElementById('purchaseInviteStats');
+                if (stats) {
+                    stats.textContent =
+                        '链接点击 ' +
+                        (d.link_clicks || 0) +
+                        '（约 ' +
+                        (d.link_visitors || 0) +
+                        ' 人）· 本月已获奖 ' +
+                        (d.rewarded_this_month || 0) +
+                        '/' +
+                        (d.monthly_cap || 4) +
+                        ' · 累计注册 ' +
+                        (d.invited_activated || 0) +
+                        ' 人 · 待到账 ' +
+                        (d.pending_rewards || 0);
+                }
+                var transfer = document.getElementById('purchaseInviteTransferCodes');
+                if (transfer) {
+                    var list = d.transferable_codes || [];
+                    if (!list.length) {
+                        transfer.hidden = true;
+                        transfer.innerHTML = '';
+                    } else {
+                        transfer.hidden = false;
+                        transfer.innerHTML =
+                            '<div>可转赠时效码：</div>' +
+                            list
+                                .map(function (c) {
+                                    return (
+                                        '<div>' +
+                                        String(c.code || '') +
+                                        '（' +
+                                        (function () {
+                                            var bits = [];
+                                            if (c.days) bits.push(c.days + '天');
+                                            if (c.minutes) bits.push(c.minutes + '分钟');
+                                            if (c.kind === 'pay') bits.push('付费奖');
+                                            return bits.length ? bits.join('') : '试用';
+                                        })() +
+                                        '）</div>'
+                                    );
+                                })
+                                .join('');
+                    }
+                }
+                window.__purchaseInvitePath = d.invite_path || '';
+                window.__purchaseInviteCode = d.invite_code || '';
+                window.__purchaseInviteRewardText = (function () {
+                    var bits = [];
+                    if (d.reward_days) bits.push(d.reward_days + '天');
+                    if (d.reward_hours) bits.push(d.reward_hours + '小时');
+                    if (d.reward_minutes) bits.push(d.reward_minutes + '分钟');
+                    var reg = bits.length ? bits.join('') : '30分钟';
+                    var pay =
+                        d.pay_reward_days != null && Number(d.pay_reward_days) > 0
+                            ? Number(d.pay_reward_days) + '天'
+                            : '3天';
+                    return reg + '（付费再得' + pay + '）';
+                })();
+                window.__purchaseInvitePosterDataUrl = '';
+            })
+            .catch(function () {
+                card.hidden = true;
+            });
+    }
+
+    function getPurchaseInviteAbsoluteUrl() {
+        var path = window.__purchaseInvitePath || '';
+        if (!path) return '';
+        return window.location.origin.replace(/\/$/, '') + '/' + String(path).replace(/^\//, '');
+    }
+
+    function getPurchaseInviteShareText() {
+        var url = getPurchaseInviteAbsoluteUrl();
+        var reward = window.__purchaseInviteRewardText || '试用';
+        return (
+            '我在用个税演示工具，请先扫码/打开链接完成注册，再下载 App。你注册成功后我可获得' +
+            reward +
+            '使用权：\n' +
+            url
+        );
+    }
+
+    function downloadPurchaseInvitePoster(dataUrl) {
+        if (!dataUrl) return;
+        var a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = '邀请注册海报.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function openPurchaseInvitePosterModal(dataUrl) {
+        var root = document.getElementById('purchaseInvitePosterModal');
+        var img = document.getElementById('purchaseInvitePosterImg');
+        if (img) img.src = dataUrl || '';
+        if (root) root.classList.add('is-open');
+    }
+
+    function closePurchaseInvitePosterModal() {
+        var root = document.getElementById('purchaseInvitePosterModal');
+        if (root) root.classList.remove('is-open');
+    }
+
+    function buildPurchaseInvitePosterDataUrl() {
+        var url = getPurchaseInviteAbsoluteUrl();
+        if (!url) return Promise.reject(new Error('no_url'));
+        if (window.__purchaseInvitePosterDataUrl) {
+            return Promise.resolve(window.__purchaseInvitePosterDataUrl);
+        }
+        if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
+            return Promise.reject(new Error('no_qrcode'));
+        }
+        return new Promise(function (resolve, reject) {
+            QRCode.toDataURL(
+                url,
+                {
+                    width: 420,
+                    margin: 2,
+                    errorCorrectionLevel: 'M',
+                    color: { dark: '#111111', light: '#ffffff' }
+                },
+                function (err, qrDataUrl) {
+                    if (err || !qrDataUrl) {
+                        reject(err || new Error('qr_fail'));
+                        return;
+                    }
+                    var img = new Image();
+                    img.onload = function () {
+                        try {
+                            var canvas = document.createElement('canvas');
+                            var w = 750;
+                            var h = 1120;
+                            canvas.width = w;
+                            canvas.height = h;
+                            var ctx = canvas.getContext('2d');
+                            var g = ctx.createLinearGradient(0, 0, 0, h);
+                            g.addColorStop(0, '#0b3d91');
+                            g.addColorStop(0.45, '#1677ff');
+                            g.addColorStop(1, '#e8f1ff');
+                            ctx.fillStyle = g;
+                            ctx.fillRect(0, 0, w, h);
+
+                            ctx.fillStyle = 'rgba(255,255,255,0.96)';
+                            roundRect(ctx, 48, 72, w - 96, h - 160, 28);
+                            ctx.fill();
+
+                            ctx.fillStyle = '#0b3d91';
+                            ctx.font = 'bold 44px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('个税演示', w / 2, 160);
+
+                            ctx.fillStyle = '#1a1a1a';
+                            ctx.font = 'bold 36px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                            ctx.fillText('邀请你先注册', w / 2, 230);
+
+                            ctx.fillStyle = '#666';
+                            ctx.font = '26px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                            ctx.fillText('扫码注册 → 再下载 App', w / 2, 280);
+
+                            var qrSize = 380;
+                            var qrX = (w - qrSize) / 2;
+                            var qrY = 320;
+                            ctx.fillStyle = '#fff';
+                            roundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 16);
+                            ctx.fill();
+                            ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+
+                            ctx.fillStyle = '#333';
+                            ctx.font = '24px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                            ctx.fillText('微信扫一扫，先注册再下载', w / 2, qrY + qrSize + 70);
+
+                            var code = window.__purchaseInviteCode || '';
+                            if (code) {
+                                ctx.fillStyle = '#888';
+                                ctx.font = '22px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                                ctx.fillText('邀请码 ' + code, w / 2, qrY + qrSize + 112);
+                            }
+
+                            var reward = window.__purchaseInviteRewardText || '';
+                            if (reward) {
+                                ctx.fillStyle = '#1677ff';
+                                ctx.font = 'bold 24px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+                                ctx.fillText('好友注册成功，你得 ' + reward + ' 试用', w / 2, h - 120);
+                            }
+
+                            var dataUrl = canvas.toDataURL('image/png');
+                            window.__purchaseInvitePosterDataUrl = dataUrl;
+                            resolve(dataUrl);
+                        } catch (ePaint) {
+                            reject(ePaint);
+                        }
+                    };
+                    img.onerror = function () {
+                        reject(new Error('qr_img'));
+                    };
+                    img.src = qrDataUrl;
+                }
+            );
+        });
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            var r = Math.min(radius, width / 2, height / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + width, y, x + width, y + height, r);
+            ctx.arcTo(x + width, y + height, x, y + height, r);
+            ctx.arcTo(x, y + height, x, y, r);
+            ctx.arcTo(x, y, x + width, y, r);
+            ctx.closePath();
+        }
+    }
+
+    function withPurchaseInvitePoster(thenFn) {
+        buildPurchaseInvitePosterDataUrl()
+            .then(function (dataUrl) {
+                thenFn(dataUrl);
+            })
+            .catch(function () {
+                showToast('海报生成失败，请稍后重试或改用复制链接');
+            });
+    }
+
+    function bindPurchaseInviteActions() {
+        var btnCopy = document.getElementById('btnPurchaseInviteCopy');
+        if (btnCopy) {
+            btnCopy.addEventListener('click', function () {
+                var text = getPurchaseInviteShareText();
+                if (!getPurchaseInviteAbsoluteUrl()) {
+                    showToast('邀请链接暂不可用');
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(
+                        function () {
+                            showToast('邀请文案与链接已复制');
+                        },
+                        function () {
+                            prompt('复制邀请内容', text);
+                        }
+                    );
+                } else {
+                    prompt('复制邀请内容', text);
+                }
+            });
+        }
+        var btnSave = document.getElementById('btnPurchaseInviteSavePoster');
+        if (btnSave) {
+            btnSave.addEventListener('click', function () {
+                withPurchaseInvitePoster(function (dataUrl) {
+                    downloadPurchaseInvitePoster(dataUrl);
+                    showToast('海报已保存，可发到朋友圈或微信');
+                });
+            });
+        }
+        var btnShare = document.getElementById('btnPurchaseInviteSharePoster');
+        if (btnShare) {
+            btnShare.addEventListener('click', function () {
+                withPurchaseInvitePoster(function (dataUrl) {
+                    var shareText = getPurchaseInviteShareText();
+                    if (navigator.share) {
+                        fetch(dataUrl)
+                            .then(function (r) {
+                                return r.blob();
+                            })
+                            .then(function (blob) {
+                                var file = new File([blob], 'invite-register.png', { type: 'image/png' });
+                                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    return navigator.share({
+                                        files: [file],
+                                        title: '邀请先注册再下载',
+                                        text: shareText
+                                    });
+                                }
+                                throw new Error('share_unsupported');
+                            })
+                            .catch(function () {
+                                openPurchaseInvitePosterModal(dataUrl);
+                                showToast('当前环境不支持直接分享图片，请长按海报保存后发到微信/朋友圈');
+                            });
+                        return;
+                    }
+                    openPurchaseInvitePosterModal(dataUrl);
+                    showToast('请长按海报保存图片后，发到微信或朋友圈');
+                });
+            });
+        }
+        var btnPreview = document.getElementById('btnPurchaseInvitePreviewPoster');
+        if (btnPreview) {
+            btnPreview.addEventListener('click', function () {
+                withPurchaseInvitePoster(function (dataUrl) {
+                    openPurchaseInvitePosterModal(dataUrl);
+                });
+            });
+        }
+        var btnClose = document.getElementById('btnPurchaseInvitePosterClose');
+        if (btnClose) btnClose.addEventListener('click', closePurchaseInvitePosterModal);
+        var mask = document.getElementById('purchaseInvitePosterMask');
+        if (mask) mask.addEventListener('click', closePurchaseInvitePosterModal);
+        var btnPosterSave = document.getElementById('btnPurchaseInvitePosterSave');
+        if (btnPosterSave) {
+            btnPosterSave.addEventListener('click', function () {
+                withPurchaseInvitePoster(function (dataUrl) {
+                    downloadPurchaseInvitePoster(dataUrl);
+                    showToast('海报已保存');
+                });
+            });
+        }
+    }
+
     function submitActivate() {
         var input = document.getElementById('purchaseActivateCode');
         var code = input ? String(input.value || '').trim() : '';
@@ -1114,6 +1625,8 @@
                     if (typeof window.refreshWatermarkFromApi === 'function') {
                         window.refreshWatermarkFromApi();
                     }
+                    var inviteCardDone = document.getElementById('purchaseInviteCard');
+                    if (inviteCardDone) inviteCardDone.hidden = true;
                     if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
                         window.ConversionGuide.afterActivateSuccess();
                     } else {
@@ -1205,6 +1718,8 @@
     });
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
+    bindPurchaseInviteActions();
+    loadPurchaseInviteOverview();
     var alipaySkuListEl = document.getElementById('alipaySkuList');
     if (alipaySkuListEl) {
         alipaySkuListEl.addEventListener('click', function (e) {
