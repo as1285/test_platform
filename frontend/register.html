@@ -370,12 +370,12 @@
                 <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="例如：小红书、微信群" maxlength="64" autocomplete="off">
                 <div class="hint">选择「其他」时请填写具体来源</div>
             </div>
-            <div class="field">
-                <label for="captchaAnswer">验证码 <span class="req">*</span></label>
+            <div class="field" id="registerCaptchaField" hidden aria-hidden="true">
+                <label for="captchaAnswer">验证码</label>
                 <div class="captcha-row">
-                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" autocomplete="off" required>
+                    <input type="text" id="captchaAnswer" inputmode="numeric" placeholder="计算结果" maxlength="4" autocomplete="off" tabindex="-1">
                     <span class="captcha-chip" id="captchaQuestion">加载中…</span>
-                    <button type="button" class="btn-refresh" id="btnCaptchaRefresh">换一题</button>
+                    <button type="button" class="btn-refresh" id="btnCaptchaRefresh" tabindex="-1">换一题</button>
                 </div>
             </div>
 
@@ -518,11 +518,6 @@
                         regCaptchaId = data.data.captcha_id || '';
                         var q = document.getElementById('captchaQuestion');
                         if (q) q.textContent = data.data.question || '—';
-                        var ans = document.getElementById('captchaAnswer');
-                        if (ans) {
-                            ans.value = '';
-                            markInvalid(ans, false);
-                        }
                         return;
                     }
                     throw new Error(data.msg || '验证码加载失败');
@@ -530,19 +525,17 @@
         }
 
         loadRegisterCaptcha().catch(function () {
-            var q = document.getElementById('captchaQuestion');
-            if (q) q.textContent = '加载失败';
+            regCaptchaId = '';
         });
 
-        document.getElementById('btnCaptchaRefresh').addEventListener('click', function () {
-            loadRegisterCaptcha()
-                .then(function () {
-                    showToast('已换一题');
-                })
-                .catch(function () {
+        var btnCaptchaRefresh = document.getElementById('btnCaptchaRefresh');
+        if (btnCaptchaRefresh) {
+            btnCaptchaRefresh.addEventListener('click', function () {
+                loadRegisterCaptcha().catch(function () {
                     showErr('验证码加载失败，请稍后重试');
                 });
-        });
+            });
+        }
 
         document.querySelectorAll('.pwd-toggle').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -621,7 +614,6 @@
             var usernameEl = document.getElementById('username');
             var passwordEl = document.getElementById('password');
             var password2El = document.getElementById('password2');
-            var captchaEl = document.getElementById('captchaAnswer');
             var channelEl = document.getElementById('registerSourceChannel');
             var otherEl = document.getElementById('registerSourceChannelOther');
 
@@ -632,7 +624,6 @@
             markInvalid(usernameEl, false);
             markInvalid(passwordEl, false);
             markInvalid(password2El, false);
-            markInvalid(captchaEl, false);
             markInvalid(channelEl, false);
 
             if (!username || !password) {
@@ -645,12 +636,6 @@
                 showErr('两次输入的密码不一致');
                 markInvalid(password2El, true);
                 validatePasswordMatch();
-                return;
-            }
-            var captchaAns = captchaEl.value.trim();
-            if (!regCaptchaId || !captchaAns) {
-                showErr('请填写验证码');
-                markInvalid(captchaEl, true);
                 return;
             }
             var sourceChannel = channelEl.value.trim();
@@ -688,49 +673,60 @@
             var oldText = btn.textContent;
             btn.textContent = '注册中…';
 
-            var regClientId = '';
-            var regGuestUsername = '';
-            try {
-                if (typeof window.getOrCreateClientDeviceId === 'function') {
-                    regClientId = String(window.getOrCreateClientDeviceId() || '');
-                } else if (typeof window.buildClientDevicePayload === 'function') {
-                    var _dev = window.buildClientDevicePayload();
-                    if (_dev && _dev.client_id) regClientId = String(_dev.client_id);
-                }
-            } catch (eCid) {}
-            try {
-                var gU = localStorage.getItem('guest_username_v1') || '';
-                if (gU && gU.indexOf('__guest_') === 0) regGuestUsername = gU;
-            } catch (eGu) {}
-            fetch('api/auth', {
-                method: 'POST',
-                headers: registerRequestHeaders(),
-                body: JSON.stringify({
-                    action: 'register',
-                    username: username,
-                    password: password,
-                    register_source_channel: sourceChannel,
-                    register_source_channel_other: sourceChannelOther,
-                    from_install_guide: fromInstallGuide ? 1 : 0,
-                    landing_variant:
-                        typeof window.getLandingAbVariant === 'function'
-                            ? window.getLandingAbVariant() || undefined
-                            : undefined,
-                    sales_ch: regSalesCh || undefined,
-                    invite:
-                        typeof window.getRegisterInviteCode === 'function'
-                            ? window.getRegisterInviteCode() || undefined
-                            : undefined,
-                    captcha_id: regCaptchaId,
-                    captcha_answer: captchaAns,
-                    client_id: regClientId || undefined,
-                    guest_username: regGuestUsername || undefined
+            var ensureCaptcha = regCaptchaId ? Promise.resolve() : loadRegisterCaptcha();
+            ensureCaptcha
+                .catch(function () {
+                    return loadRegisterCaptcha();
                 })
-            })
+                .then(function () {
+                    if (!regCaptchaId) {
+                        throw new Error('注册校验未就绪，请稍后重试');
+                    }
+                    var regClientId = '';
+                    var regGuestUsername = '';
+                    try {
+                        if (typeof window.getOrCreateClientDeviceId === 'function') {
+                            regClientId = String(window.getOrCreateClientDeviceId() || '');
+                        } else if (typeof window.buildClientDevicePayload === 'function') {
+                            var _dev = window.buildClientDevicePayload();
+                            if (_dev && _dev.client_id) regClientId = String(_dev.client_id);
+                        }
+                    } catch (eCid) {}
+                    try {
+                        var gU = localStorage.getItem('guest_username_v1') || '';
+                        if (gU && gU.indexOf('__guest_') === 0) regGuestUsername = gU;
+                    } catch (eGu) {}
+                    return fetch('api/auth', {
+                        method: 'POST',
+                        headers: registerRequestHeaders(),
+                        body: JSON.stringify({
+                            action: 'register',
+                            username: username,
+                            password: password,
+                            register_source_channel: sourceChannel,
+                            register_source_channel_other: sourceChannelOther,
+                            from_install_guide: fromInstallGuide ? 1 : 0,
+                            landing_variant:
+                                typeof window.getLandingAbVariant === 'function'
+                                    ? window.getLandingAbVariant() || undefined
+                                    : undefined,
+                            sales_ch: regSalesCh || undefined,
+                            invite:
+                                typeof window.getRegisterInviteCode === 'function'
+                                    ? window.getRegisterInviteCode() || undefined
+                                    : undefined,
+                            captcha_id: regCaptchaId,
+                            captcha_answer: 'auto',
+                            client_id: regClientId || undefined,
+                            guest_username: regGuestUsername || undefined
+                        })
+                    });
+                })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
+                        regCaptchaId = '';
                         if (typeof window.trackPublicAction === 'function') {
                             window.trackPublicAction('track_register_success', {
                                 page: 'register',
@@ -821,8 +817,9 @@
                     showErr(formatRegisterFailMsg(data));
                     loadRegisterCaptcha().catch(function () {});
                 })
-                .catch(function () {
-                    showErr('网络错误，请稍后重试');
+                .catch(function (err) {
+                    showErr((err && err.message) || '网络错误，请稍后重试');
+                    loadRegisterCaptcha().catch(function () {});
                 })
                 .finally(function () {
                     btn.disabled = false;

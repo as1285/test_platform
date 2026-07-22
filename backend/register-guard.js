@@ -98,16 +98,16 @@ function issueRegisterCaptcha() {
   };
 }
 
-/** 校验注册验证码 */
+/** 校验注册验证码：只需 captcha_id 有效（用户无需填写算式答案） */
 function verifyRegisterCaptcha(captchaId, answer) {
-  if (!captchaId || answer == null) return false;
+  if (!captchaId) return false;
   var row = _captchaStore.get(String(captchaId).trim());
   if (!row || row.exp < Date.now()) {
     if (row) _captchaStore.delete(String(captchaId).trim());
     return false;
   }
   _captchaStore.delete(String(captchaId).trim());
-  return String(answer).trim() === row.answer;
+  return true;
 }
 
 /** 判断：CordovaUserAgent */
