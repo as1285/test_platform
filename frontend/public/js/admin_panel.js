@@ -1,8 +1,10 @@
+        /* ========== Admin Panel — Utility Functions ========== */
         function esc(s) {
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        /* ========== Chart Delegate Stubs ========== */
         function analyticsPeriodVal(el) {
             if (window.AdminAnalyticsPeriod) {
                 return AdminAnalyticsPeriod.getValue(el);
@@ -1408,6 +1410,7 @@
             feedbackReplyEditingId = null;
         }
 
+        /* ========== Feedback Management ========== */
         function openFeedbackReplyModal(row) {
             feedbackReplyEditingId = row.id;
             var meta =
@@ -1521,6 +1524,7 @@
                 });
         }
 
+        /* ========== API Analytics ========== */
         function formatApiLatencyMs(ms) {
             if (ms == null || ms === '' || isNaN(Number(ms))) {
                 return '—';
@@ -2063,6 +2067,7 @@
             box.innerHTML = html;
         }
 
+        /* ========== Analytics — Conversion & Funnel ========== */
         function loadDauUsersPage(dateStr, page, box) {
             if (!box || !dateStr) return;
             box.removeAttribute('data-loaded');
@@ -2091,6 +2096,7 @@
                 });
         }
 
+        /* ========== Analytics — Pricing A/B ========== */
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
@@ -2099,6 +2105,7 @@
             loadPendingActivate24h(1);
         }
 
+        /* ========== Analytics — Register Stats ========== */
         function loadAnalyticsPricingAb() {
             var box = document.getElementById('analyticsPricingAb');
             if (!box) return;
@@ -2256,6 +2263,7 @@
             box.innerHTML = html;
         }
 
+        /* ========== Analytics — Purchase Page Stats ========== */
         function loadPurchaseUsersForDate(dateStr, page, box) {
             if (!box) return;
             box.removeAttribute('data-loaded');
@@ -2286,6 +2294,7 @@
                 });
         }
 
+        /* ========== Analytics — Activity / DAU ========== */
         function loadAnalyticsPurchasePage() {
             var days = analyticsPeriodVal(document.getElementById('analyticsPurchaseDays'));
             var summaryEl = document.getElementById('analyticsPurchaseSummary');
@@ -2467,6 +2476,7 @@
                 });
         }
 
+        /* ========== Analytics — Tracking / Activate Events ========== */
         function loadAnalyticsActivityPage() {
             var daysO = analyticsPeriodVal(document.getElementById('analyticsOverviewDays'));
             document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
@@ -2531,6 +2541,7 @@
                 });
         }
 
+        /* ========== Analytics — Device Stats ========== */
         function loadAnalyticsTrackingPage() {
             loadInstallTrackStats();
             syncActivateEventsTableHead();
@@ -2727,6 +2738,7 @@
             return d + ' 天 ' + h + ' 小时';
         }
 
+        /* ========== Server Monitor ========== */
         function renderServerMonitor(data) {
             var emailEl = document.getElementById('monitorAlertEmail');
             if (emailEl) {
@@ -2854,6 +2866,7 @@
             }
         }
 
+        /* ========== Login Logs ========== */
         function loadServerMonitor() {
             var svcGrid = document.getElementById('monitorServicesGrid');
             if (svcGrid) svcGrid.innerHTML = '加载中…';
@@ -3586,6 +3599,7 @@
             }
         }
 
+        /* ========== Install Guide Stats ========== */
         function renderInstallGuideStats(data) {
             var el = document.getElementById('installGuideStatsMount');
             if (!el) return;
@@ -4915,6 +4929,7 @@
             tb.innerHTML = html;
         }
 
+        /* ========== User Behavior / No-Tax ========== */
         function buildNoTaxPathDetailHtml(username, data) {
             var metrics = data.metrics || {};
             var timeline = data.timeline || [];
@@ -5082,6 +5097,7 @@
             _auaDauChartInstances = [];
         }
 
+        /* ========== Activated User Analysis ========== */
         function renderActivatedUserAnalysisOverview(data) {
             var wrap = document.getElementById('auaSummary');
             var tablesWrap = document.getElementById('auaAnalyticsTables');
@@ -5250,6 +5266,7 @@
                 });
         }
 
+        /* ========== User Data ========== */
         function loadActivatedUserAnalysisUsers(p) {
             if (p != null) auaUsersPage = p;
             var stat = document.getElementById('auaUserListStat');
@@ -5987,6 +6004,7 @@
                 });
         }
 
+        /* ========== User Management — Guest Users ========== */
         function renderGuestUsersStats(data) {
             var mount = document.getElementById('guestUsersStatsMount');
             if (!mount) return;
@@ -6119,6 +6137,7 @@
             }
         }
 
+        /* ========== User Management — Registered Users ========== */
         function loadGuestUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) guestUsersPage = p;
@@ -6236,6 +6255,7 @@
                 .catch(function () {});
         }
 
+        /* ========== User Management — Deleted Users ========== */
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -6574,6 +6594,7 @@
                 : '—';
         }
 
+        /* ========== Activation Code Management ========== */
         function renderCodeTableRows(list, options) {
             options = options || {};
             var showChannel = !!options.showChannel;
@@ -6929,6 +6950,7 @@
             return out.filter(Boolean);
         }
 
+        /* ========== Admin Accounts ========== */
         function renderAdminMenuSelector(rootEl, selected) {
             if (!rootEl) return;
             var selectedMap = {};
@@ -6943,6 +6965,7 @@
             rootEl.innerHTML = html;
         }
 
+        /* ========== Bot Purge ========== */
         function loadAdminAccounts() {
             if (!adminHasMenu('admin-accounts')) {
                 return;
@@ -7794,6 +7817,7 @@
             }
         });
 
+        /* ========== Settings / Configuration ========== */
         function updateWechatPayQrPreview(displayUrl) {
             var wrap = document.getElementById('wechatPayQrPreviewWrap');
             var img = document.getElementById('wechatPayQrPreview');
@@ -8609,6 +8633,7 @@
             };
         }
 
+        /* ========== Session Init & Routing ========== */
         function setBulkMsgStatus(text) {
             var el = document.getElementById('bulkMsgStatus');
             if (el) el.textContent = text || '';
