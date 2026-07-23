@@ -671,16 +671,16 @@ def render(payload, auth_code, qr_url, out_path):
                 y_table,
                 section_title,
             )
-            if page_idx == total_pages:
-                draw_cert_footer(
-                    page,
-                    font_body,
-                    body_name,
-                    auth_code,
-                    '',  # 页脚验证链接用官方平台；二维码另见 qr_url
-                    p.get('print_date') or '',
-                    y3_end,
-                )
+            # 每一页底部备注文案与电子印章相同（与官方多页证明一致）
+            draw_cert_footer(
+                page,
+                font_body,
+                body_name,
+                auth_code,
+                '',  # 页脚验证链接用官方平台；二维码另见 qr_url
+                p.get('print_date') or '',
+                y3_end,
+            )
 
         doc.save(out_path, deflate=True, garbage=4)
         doc.close()

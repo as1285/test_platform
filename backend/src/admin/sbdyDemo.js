@@ -593,7 +593,8 @@ function renderCertHtml(payload, links, opts) {
       paymentTableHeadHtml() +
       rowChunks[pi] +
       '</table>' +
-      (isLast ? tailHtml() : '') +
+      /* 每一页底部文案与电子印章相同（与官方多页证明一致） */
+      tailHtml() +
       '</div>';
   }
 
