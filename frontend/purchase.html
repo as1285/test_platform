@@ -1044,7 +1044,7 @@
         skus: [],
         selectedSkuId: ''
     };
-    /** legacy=全入口；treatment=仅支付宝多档；code_only=落地页 C：仅激活码+下载 */
+    /** legacy=全入口；treatment=仅支付宝多档；code_only=支付页 C：下载+激活码+联系方式 */
     var purchaseUiMode = 'legacy';
 
     function applyPurchaseUiMode() {
@@ -1065,11 +1065,13 @@
         if (otherCard) otherCard.hidden = isNew || isCodeOnly;
         if (cardDownload) cardDownload.hidden = false;
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
-        if (isCodeOnly && salesCard) salesCard.hidden = true;
+        /* C：联系方式由 applySalesAgentCard 控制；非 C 一律隐藏 */
+        if (!isCodeOnly && salesCard) salesCard.hidden = true;
 
         if (heroP) {
             if (isCodeOnly) {
-                heroP.textContent = '下载 App 后更流畅；若已有激活码，在下方填写即可开通。';
+                heroP.textContent =
+                    '下载 App 后更流畅；可联系专属客服协助开通，或已有激活码在下方填写。';
             } else if (isNew) {
                 heroP.textContent = '选择下方套餐，支付宝扫码付款后自动开通当前账号。';
             } else {
@@ -1081,7 +1083,7 @@
             if (isCodeOnly) {
                 steps.innerHTML =
                     '<li>点击「立即下载」安装官方 App</li>' +
-                    '<li>在本页输入激活码，点击「确认激活」</li>' +
+                    '<li>可联系下方客服协助开通，或输入激活码确认激活</li>' +
                     '<li>开通后账号权益将同步到当前登录账号</li>';
             } else if (isNew) {
                 steps.innerHTML =
@@ -1103,7 +1105,7 @@
                 page.insertBefore(cardAlipay, hero.nextSibling);
             }
         }
-        /* C 方案：下载与激活码置顶 */
+        /* C 方案：下载 → 激活码 → 联系方式 */
         if (isCodeOnly && page) {
             var heroEl = document.querySelector('.hero');
             if (heroEl && cardDownload && cardDownload.parentNode === page) {
@@ -1111,6 +1113,9 @@
             }
             if (activateBox && activateBox.parentNode === page && cardDownload) {
                 page.insertBefore(activateBox, cardDownload.nextSibling);
+            }
+            if (salesCard && !salesCard.hidden && salesCard.parentNode === page && activateBox) {
+                page.insertBefore(salesCard, activateBox.nextSibling);
             }
         }
     }
@@ -1267,8 +1272,8 @@
         var card = document.getElementById('salesAgentCard');
         if (!card) return false;
         salesAgentCfg = agent && agent.has_contact ? agent : null;
-        /* 落地页 C：购买页仅激活码+下载，不再展示销售代理 / 其它支付入口 */
-        var useAgent = false;
+        /* 仅支付页 C 方案展示「联系方式配置」；A/B 不展示 */
+        var useAgent = !!(isPurchaseVariantC() && salesAgentCfg);
         card.hidden = !useAgent;
         if (!useAgent) {
             var qrWrapOff = document.getElementById('salesAgentQrWrap');
@@ -1280,7 +1285,7 @@
         var hint = document.getElementById('salesAgentHint');
         if (hint) {
             hint.textContent =
-                '添加' + (agent.display_name || '专属客服') + '联系方式，协助开通（支付宝仍可自助扫码）';
+                '添加' + (agent.display_name || '专属客服') + '联系方式，协助开通';
         }
         var btnWx = document.getElementById('btnSalesAgentCopyWechat');
         var wxLabel = document.getElementById('salesAgentWechatLabel');
@@ -1326,11 +1331,15 @@
 
     function applyConfig(data) {
         data = data || {};
-        applySalesAgentCard(data.sales_agent || null);
         if (isPurchaseVariantC()) {
             purchaseUiMode = 'code_only';
         }
+        applySalesAgentCard(data.sales_agent || null);
         applyPurchaseUiMode();
+        /* 布局调整后再次确保 C 方案联系卡可见状态正确 */
+        if (isPurchaseVariantC()) {
+            applySalesAgentCard(data.sales_agent || null);
+        }
     }
 
     function trackPurchasePageViewWithChannels() {

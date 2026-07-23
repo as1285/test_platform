@@ -33,7 +33,7 @@
                         <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
                             <strong>A</strong>：支付宝仅「199 永久」+ 其它渠道 + 激活码（落地页 B）；
                             <strong>B</strong>：支付宝多档价，收起其它渠道（落地页 B）；
-                            <strong>C</strong>：仅「下载 App」+ 激活码（落地页游客沙盒）。
+                            <strong>C</strong>：下载 App + 激活码 +「联系方式配置」中的专属客服（落地页游客沙盒；无支付宝/其它购买渠道）。
                             A+B+C 必须为 100%。
                         </p>
                         <div class="form-row form-stack">
@@ -133,6 +133,7 @@
                 <div id="page-sales-contacts" class="page-panel" role="tabpanel">
                     <section>
                         <h2>联系方式配置</h2>
+                        <p class="hint mt-0">仅在支付页 <strong>C 方案</strong>展示（下载 App + 激活码旁的专属客服卡片）。A/B 方案购买页不展示此处配置。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label for="salesAgentDisplayName">展示名</label>
@@ -175,7 +176,7 @@
                     </section>
                     <section>
                         <h2>落地页 B/C（跟随支付页 A/B/C）</h2>
-                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页仅展示「下载 App」与「激活码输入」。</p>
+                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页展示「下载 App」「激活码」以及「联系方式配置」中的专属客服。</p>
                     </section>
                     <section>
                         <h2>安装包下载（用户端）</h2>
@@ -660,6 +661,78 @@
                             <button type="button" class="btn-page" id="xianyuCodePrev">上一页</button>
                             <span id="xianyuCodePageInfo">第 1 页</span>
                             <button type="button" class="btn-page" id="xianyuCodeNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-weekly-codes" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>周卡激活码</h2>
+                        <p class="hint mt-0">本页<strong>只能生成周卡</strong>（激活后开通 <strong>7 天</strong>试用时效）。不可生成永久码或其它天数。</p>
+                        <div class="form-row flex-wrap gap-10" style="align-items:flex-end;margin-bottom:10px;">
+                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyCode">生成 1 个周卡码</button>
+                            <div>
+                                <label for="weeklyBatchCount">批量数量</label>
+                                <input class="filter-select input-w-100 mt-6" type="number" id="weeklyBatchCount" min="1" max="5000" value="100" inputmode="numeric">
+                            </div>
+                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyBatch">批量生成周卡码</button>
+                        </div>
+                        <div class="code-result" id="weeklyIssueOut"></div>
+                        <div class="form-row mb-12 flex-wrap">
+                            <div>
+                                <label for="weeklyCodeCodeFilter">激活码</label>
+                                <input type="text" id="weeklyCodeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeOwnerAdminFilter">管理员账号</label>
+                                <input type="text" id="weeklyCodeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeUsedByFilter">使用账号</label>
+                                <input type="text" id="weeklyCodeUsedByFilter" placeholder="按使用账号查询">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeUsageFilter">使用状态</label>
+                                <select id="weeklyCodeUsageFilter" class="filter-select">
+                                    <option value="">全部</option>
+                                    <option value="unused">未使用</option>
+                                    <option value="used">已使用</option>
+                                </select>
+                            </div>
+                            <div class="flex-row-end filter-tools-row">
+                                <label class="inline-check-label nowrap">
+                                    <input type="checkbox" id="weeklyCodeCodeExact"> 激活码精准查询
+                                </label>
+                                <label class="inline-check-label nowrap">
+                                    <input type="checkbox" id="weeklyCodeUsedByExact"> 使用账号精准查询
+                                </label>
+                            </div>
+                            <div class="flex-row-end">
+                                <button type="button" class="btn-primary" id="btnSearchWeeklyCodes">查询</button>
+                                <button type="button" class="btn-page" id="btnResetWeeklyCodesFilter">重置</button>
+                                <button type="button" class="btn-primary" id="btnRefreshWeeklyCodes">刷新列表</button>
+                            </div>
+                        </div>
+                        <p class="stat" id="weeklyCodeListStat"></p>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>激活码</th>
+                                        <th>复制</th>
+                                        <th>类型</th>
+                                        <th>归属管理员</th>
+                                        <th>使用账号</th>
+                                        <th>使用时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="weeklyCodeTbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="weeklyCodePagination">
+                            <button type="button" class="btn-page" id="weeklyCodePrev">上一页</button>
+                            <span id="weeklyCodePageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="weeklyCodeNext">下一页</button>
                         </div>
                     </section>
                 </div>
@@ -2342,6 +2415,6 @@
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260723-hide-chat-ai"></script>
+    <script src="/js/admin_panel.js?v=20260723-weekly-codes"></script>
 </body>
 </html>

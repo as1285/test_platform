@@ -302,7 +302,7 @@
 			<key>Precomposed</key>
 			<true/>
 			<key>URL</key>
-			<string>https://lkj.qiyun888.top</string>
+			<string>http://localhost</string>
 		</dict>
 	</array>
 	<key>PayloadDisplayName</key>

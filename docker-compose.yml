@@ -36,8 +36,9 @@ services:
       # 管理员发激活码：POST api/auth.php action=admin_issue_code，请求体带 admin_key 与同值；未设置则无法发码
       ADMIN_ACTIVATION_KEY: ${ADMIN_ACTIVATION_KEY:-}
       # 管理后台登录（务必在生产修改密码）
-      ADMIN_PANEL_USER: ${ADMIN_PANEL_USER:-admin}
+      ADMIN_PANEL_USER: ${ADMIN_PANEL_USER:-naicha6832}
       ADMIN_PANEL_PASSWORD: ${ADMIN_PANEL_PASSWORD:-640810}
+      ADMIN_PANEL_FULL_NAME: ${ADMIN_PANEL_FULL_NAME:-奶茶}
       # 管理端 IP 黑名单（逗号分隔）；经 CF 的真实访客 IP
       ADMIN_IP_DENYLIST: ${ADMIN_IP_DENYLIST:-}
       # 用户注册/登录时写入 plain_password，供管理后台「用户管理」展示密码（设为 0 可关闭）

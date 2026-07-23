@@ -55,6 +55,14 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
+  {
+    page: 'weekly-codes',
+    menu_key: 'weekly-codes',
+    label: '周卡激活码',
+    group: 'ops-desk',
+    module: 'codes',
+    order: 35
+  },
 
   /* —— 运营配置 —— */
   {

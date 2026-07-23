@@ -131,6 +131,10 @@ def company_display(p):
     return c or code or ''
 
 
+ROWS_PER_PAGE = 24
+MAX_MONTHS = 48
+
+
 def ensure_months(p):
     months = list(p.get('months') or [])
     area = str(p.get('area') or '')
@@ -158,7 +162,26 @@ def ensure_months(p):
                 'remark': str(r.get('remark') or ''),
             }
         )
+    if len(out) > MAX_MONTHS:
+        out = out[-MAX_MONTHS:]
     return out
+
+
+def chunk_months(months, size=ROWS_PER_PAGE):
+    """按每页 size 行切分；不足补空行，保证每页表格等高。"""
+    rows = list(months or [])
+    if not rows:
+        return [[None] * size]
+    chunks = []
+    i = 0
+    while i < len(rows):
+        part = list(rows[i : i + size])
+        while len(part) < size:
+            part.append(None)
+        chunks.append(part)
+        i += size
+    return chunks
+
 
 
 def draw_hline(page, y, width=0.6):
@@ -268,15 +291,19 @@ BOLD_LABEL_CHARS = (
     '姓名社会保障号证件类型证件号码性别'
     '参加社会保险基本情况'
     '险　　种养老保险工伤保险失业保险参保状态参保单位'
-    '出具证明前12个月缴费情况'
+    '出具证明前个月缴费情况（续）'
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
+    '共页第'
 )
 
 
 def collect_text_blob(p, months, auth_code):
+    n = len([m for m in (months or []) if m])
+    page_n = max(1, (n + ROWS_PER_PAGE - 1) // ROWS_PER_PAGE) if n else 1
     parts = [
         '浙江省社会保险参保证明（个人专用）',
-        '共1页，第1页',
+        '共%d页，第1页' % page_n,
+        '出具证明前%d个月缴费情况' % (n or 12),
         BOLD_LABEL_CHARS,
         '（盖章）',
         '打印时间：',
@@ -323,24 +350,182 @@ def collect_text_blob(p, months, auth_code):
     return ''.join(norm_text(x) for x in parts)
 
 
-def render(payload, auth_code, verify_url, out_path):
+def draw_title_chrome(page, font_body, body_name, font_title, title_name, qr_path, page_idx, total_pages):
+    title = '浙江省社会保险参保证明（个人专用）'
+    tsize = 21.4
+    tw = text_width(font_title, title, tsize)
+    page.insert_text(
+        ((PAGE_W - tw) / 2.0, 72.0),
+        title,
+        fontname=title_name,
+        fontsize=tsize,
+        color=(0, 0, 0),
+    )
+    if qr_path and os.path.isfile(qr_path):
+        page.insert_image(fitz.Rect(497.8, 10.4, 582.9, 101.1), filename=qr_path)
+    page.insert_text(
+        (496.5, 112.0),
+        '共%d页，第%d页' % (total_pages, page_idx),
+        fontname=body_name,
+        fontsize=10.7,
+        color=(0, 0, 0),
+    )
+
+
+def draw_payment_table(
+    page,
+    font_body,
+    body_name,
+    font_title,
+    title_name,
+    month_chunk,
+    y3_0,
+    section_title,
+):
+    """画缴费明细表（固定 ROWS_PER_PAGE 行），返回表底 y。"""
+    y3_h1 = y3_0 + 14.7
+    y3_h2 = y3_0 + 40.9
+    row_h = 14.45
+    n_body = ROWS_PER_PAGE
+    y3_end = y3_h2 + row_h * n_body
+    draw_rect(page, y3_0, y3_end)
+    draw_hline(page, y3_h1)
+    draw_hline(page, y3_h2)
+    for i in range(1, n_body):
+        draw_hline(page, y3_h2 + row_h * i)
+    for x in COL_X:
+        draw_vline(page, x, y3_0, y3_end)
+
+    # 区段标题压在表上方外：由调用方画；此处画表头
+    cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
+    cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
+    cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
+    cell_center(page, font_title, title_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
+    cell_center(page, font_title, title_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
+    cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
+    twoline_specs = [
+        (3, '参保地', None),
+        (4, '缴费基', '数(元)'),
+        (5, '个人缴', '费(元)'),
+        (6, '缴费', '状况'),
+        (7, '参保地', None),
+        (8, '缴费基', '数(元)'),
+        (9, '个人缴', '费(元)'),
+        (10, '缴费', '状况'),
+    ]
+    for ci, a, b in twoline_specs:
+        if b:
+            cell_twoline(page, font_title, title_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
+        else:
+            cell_center(page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
+
+    for i in range(n_body):
+        y0 = y3_h2 + row_h * i
+        y1 = y0 + row_h
+        r = month_chunk[i] if i < len(month_chunk) else None
+        if not r:
+            continue
+        vals = [
+            r['year'],
+            r['month'],
+            r['unit_code'],
+            r['area'],
+            money(r['pension_base']),
+            money(r['pension_pay']),
+            r['pension_status'],
+            r['unemp_area'],
+            money(r['unemp_base']),
+            money(r['unemp_pay']),
+            r['unemp_status'],
+            r.get('remark') or '',
+        ]
+        for ci, val in enumerate(vals):
+            cell_box(
+                page,
+                font_body,
+                body_name,
+                val,
+                COL_X[ci],
+                COL_X[ci + 1],
+                y0,
+                y1,
+                size=9.6,
+                align='center',
+                min_size=6.5,
+            )
+    return y3_end
+
+
+def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_date, y_top):
+    auth = str(auth_code or '')
+    validate = 'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate'
+    notes = [
+        '备注：1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
+        '2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：%s，' % auth,
+        None,
+        '3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
+        '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
+    ]
+    ny = y_top + 10.0
+    line_h = 13.4
+    for i, line in enumerate(notes):
+        x = 34.3 if i == 0 else 60.0
+        y = ny + i * line_h
+        if i == 2:
+            prefix = '验证平台：'
+            page.insert_text((x, y), prefix, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+            px = x + text_width(font_body, prefix, 8.6)
+            url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', 8.6))
+            us = fit_fontsize(font_body, validate, url_max, 8.6, min_size=5.5)
+            page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
+            uw = min(text_width(font_body, validate, us), url_max)
+            page.insert_link(
+                {
+                    'kind': fitz.LINK_URI,
+                    'from': fitz.Rect(px, y - 10, px + uw, y + 2),
+                    'uri': verify_url or validate,
+                }
+            )
+            page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+        else:
+            page.insert_text((x, y), line, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+
+    stamp_y = ny + 5 * line_h + 8
+    page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+    pd = '打印时间：' + str(print_date or '')
+    pdw = text_width(font_body, pd, 8.6)
+    page.insert_text(
+        ((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0)
+    )
+    if os.path.isfile(SEAL_PNG):
+        page.insert_image(
+            fitz.Rect(430, stamp_y - 55, 575, stamp_y + 90),
+            filename=SEAL_PNG,
+            keep_proportion=True,
+            overlay=True,
+        )
+
+
+def render(payload, auth_code, qr_url, out_path):
     p = payload or {}
     months = ensure_months(p)
-    if len(months) > 12:
-        months = months[-12:]
-    while len(months) < 12:
-        months.append(None)
+    month_chunks = chunk_months(months, ROWS_PER_PAGE)
+    total_pages = len(month_chunks)
+    real_count = len([m for m in months if m])
+    period = p.get('period_label') or ''
+    section_title = '出具证明前%d个月缴费情况（%s）' % (real_count or 12, period)
 
     blob = collect_text_blob(p, months, auth_code)
-    # 正文 Regular；标题与表头/标签 Bold（不加描边）
     full_body = ensure_full_cjk_font()
     full_title = ensure_bold_cjk_font()
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_body_')
     bold_blob = (
         '浙江省社会保险参保证明（个人专用）'
         + BOLD_LABEL_CHARS
+        + section_title
         + str(p.get('period_label') or '')
         + '0123456789（）()-—'
+        + ''.join('共%d页，第%d页' % (total_pages, i + 1) for i in range(total_pages))
     )
     subset_title = (
         make_subset_font(full_title, bold_blob, prefix='sbdy_title_')
@@ -354,237 +539,149 @@ def render(payload, auth_code, verify_url, out_path):
 
     try:
         doc = fitz.open()
-        page = doc.new_page(width=PAGE_W, height=PAGE_H)
-        body_name, title_name = register_fonts(page, font_body, font_title)
-
-        title = '浙江省社会保险参保证明（个人专用）'
-        tsize = 21.4
-        tw = text_width(font_title, title, tsize)
-        page.insert_text(
-            ((PAGE_W - tw) / 2.0, 72.0),
-            title,
-            fontname=title_name,
-            fontsize=tsize,
-            color=(0, 0, 0),
-        )
-
         qr_path = os.path.join(tempfile.gettempdir(), 'sbdy_qr_%s.png' % os.getpid())
-        make_qr_png(verify_url, qr_path)
-        page.insert_image(fitz.Rect(497.8, 10.4, 582.9, 101.1), filename=qr_path)
+        # 二维码内容：PDF 样例页 URL，扫码直接打开本证明
+        make_qr_png(qr_url, qr_path)
 
-        page.insert_text((496.5, 112.0), '共1页，第1页', fontname=body_name, fontsize=10.7, color=(0, 0, 0))
+        for page_idx, chunk in enumerate(month_chunks, start=1):
+            page = doc.new_page(width=PAGE_W, height=PAGE_H)
+            body_name, title_name = register_fonts(page, font_body, font_title)
+            draw_title_chrome(
+                page, font_body, body_name, font_title, title_name, qr_path, page_idx, total_pages
+            )
 
-        # —— 个人信息表 ——
-        y_t1_0, y_t1_1, y_t1_2 = 120.8, 135.5, 149.7
-        draw_rect(page, y_t1_0, y_t1_2)
-        draw_hline(page, y_t1_1)
-        info_xs = [34.3, 62.4, 112.1, 181.1, 259.8, 305.3, 362.0, 415.5, 493.6, 536.9, 560.2]
-        info_labels = ['姓名', '社会保障号', '证件类型', '证件号码', '性别']
-        info_vals = [
-            p.get('name') or '',
-            p.get('id_number') or '',
-            p.get('id_type') or '居民身份证',
-            p.get('id_number') or '',
-            p.get('gender') or '',
-        ]
-        for i in range(11):
-            draw_vline(page, info_xs[i], y_t1_0, y_t1_1)
-        for i in range(5):
-            cell_center(page, font_title, title_name, info_labels[i], info_xs[i * 2], info_xs[i * 2 + 1], y_t1_0, y_t1_1, 9.6)
-            cell_center(page, font_body, body_name, info_vals[i], info_xs[i * 2 + 1], info_xs[i * 2 + 2], y_t1_0, y_t1_1, 9.6)
-        cell_center(page, font_title, title_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6)
-
-        # —— 参保基本情况 ——
-        y2 = [149.7, 164.4, 178.8, 193.3, 207.5]
-        draw_rect(page, y2[0], y2[-1])
-        for y in y2[1:-1]:
-            draw_hline(page, y)
-        bx = [34.3, 112.1, 259.8, 415.5, 560.2]
-        # 左右边框与「参保单位」标签竖线贯通；险种中间竖线止于参保单位行上方
-        draw_vline(page, bx[0], y2[0], y2[3])
-        draw_vline(page, bx[1], y2[0], y2[3])
-        draw_vline(page, bx[2], y2[0], y2[2])
-        draw_vline(page, bx[3], y2[0], y2[2])
-        draw_vline(page, bx[4], y2[0], y2[3])
-        rows2 = [
-            ('险　　种', '养老保险', '工伤保险', '失业保险'),
-            (
-                '参保状态',
-                p.get('status_pension') or '',
-                p.get('status_injury') or p.get('status_medical') or '',
-                p.get('status_unemployment') or '',
-            ),
-        ]
-        for ri, row in enumerate(rows2):
-            for ci, val in enumerate(row):
-                # 险种表头行加粗；参保状态行仅左侧标签加粗
-                use_bold = ri == 0 or ci == 0
+            if page_idx == 1:
+                # —— 个人信息表 ——
+                y_t1_0, y_t1_1, y_t1_2 = 120.8, 135.5, 149.7
+                draw_rect(page, y_t1_0, y_t1_2)
+                draw_hline(page, y_t1_1)
+                info_xs = [34.3, 62.4, 112.1, 181.1, 259.8, 305.3, 362.0, 415.5, 493.6, 536.9, 560.2]
+                info_labels = ['姓名', '社会保障号', '证件类型', '证件号码', '性别']
+                info_vals = [
+                    p.get('name') or '',
+                    p.get('id_number') or '',
+                    p.get('id_type') or '居民身份证',
+                    p.get('id_number') or '',
+                    p.get('gender') or '',
+                ]
+                for i in range(11):
+                    draw_vline(page, info_xs[i], y_t1_0, y_t1_1)
+                for i in range(5):
+                    cell_center(
+                        page,
+                        font_title,
+                        title_name,
+                        info_labels[i],
+                        info_xs[i * 2],
+                        info_xs[i * 2 + 1],
+                        y_t1_0,
+                        y_t1_1,
+                        9.6,
+                    )
+                    cell_center(
+                        page,
+                        font_body,
+                        body_name,
+                        info_vals[i],
+                        info_xs[i * 2 + 1],
+                        info_xs[i * 2 + 2],
+                        y_t1_0,
+                        y_t1_1,
+                        9.6,
+                    )
                 cell_center(
-                    page,
-                    font_title if use_bold else font_body,
-                    title_name if use_bold else body_name,
-                    val,
-                    bx[ci],
-                    bx[ci + 1],
-                    y2[ri],
-                    y2[ri + 1],
-                    9.6,
+                    page, font_title, title_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6
                 )
-        cell_center(page, font_title, title_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
-        # 参保单位：居中溢出框，字号自适应，不穿出格线
-        cell_box(
-            page,
-            font_body,
-            body_name,
-            company_display(p),
-            bx[1],
-            bx[4],
-            y2[2],
-            y2[3],
-            size=9.6,
-            align='center',
-            pad=3.0,
-            min_size=7.2,
-        )
-        period = p.get('period_label') or ''
-        cell_center(
-            page,
-            font_title,
-            title_name,
-            '出具证明前12个月缴费情况（%s）' % period,
-            X0,
-            X1,
-            y2[3],
-            y2[4],
-            9.6,
-        )
 
-        # —— 缴费明细（含下方空白溢出行，对齐参考稿）——
-        y3_0 = 207.5
-        y3_h1 = 222.2
-        y3_h2 = 248.4
-        row_h = 14.45
-        n_body = 24  # 12 个月数据 + 空白行，形成参考稿同款大表格框
-        y3_end = y3_h2 + row_h * n_body
-        draw_rect(page, y3_0, y3_end)
-        draw_hline(page, y3_h1)
-        draw_hline(page, y3_h2)
-        for i in range(1, n_body):
-            draw_hline(page, y3_h2 + row_h * i)
-        for x in COL_X:
-            draw_vline(page, x, y3_0, y3_end)
-
-        cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
-        cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
-        cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
-        cell_center(page, font_title, title_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
-        cell_center(page, font_title, title_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
-        cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
-
-        # 子表头：与参考稿一致两行折行，避免挤出格
-        twoline_specs = [
-            (3, '参保地', None),
-            (4, '缴费基', '数(元)'),
-            (5, '个人缴', '费(元)'),
-            (6, '缴费', '状况'),
-            (7, '参保地', None),
-            (8, '缴费基', '数(元)'),
-            (9, '个人缴', '费(元)'),
-            (10, '缴费', '状况'),
-        ]
-        for ci, a, b in twoline_specs:
-            if b:
-                cell_twoline(page, font_title, title_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
-            else:
-                cell_center(page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
-
-        for i in range(12):
-            y0 = y3_h2 + row_h * i
-            y1 = y0 + row_h
-            r = months[i]
-            if not r:
-                continue
-            vals = [
-                r['year'],
-                r['month'],
-                r['unit_code'],
-                r['area'],
-                money(r['pension_base']),
-                money(r['pension_pay']),
-                r['pension_status'],
-                r['unemp_area'],
-                money(r['unemp_base']),
-                money(r['unemp_pay']),
-                r['unemp_status'],
-                r.get('remark') or '',
-            ]
-            for ci, val in enumerate(vals):
-                # 单位编号等长串：溢出框内自适应字号
+                # —— 参保基本情况 ——
+                y2 = [149.7, 164.4, 178.8, 193.3, 207.5]
+                draw_rect(page, y2[0], y2[-1])
+                for y in y2[1:-1]:
+                    draw_hline(page, y)
+                bx = [34.3, 112.1, 259.8, 415.5, 560.2]
+                draw_vline(page, bx[0], y2[0], y2[3])
+                draw_vline(page, bx[1], y2[0], y2[3])
+                draw_vline(page, bx[2], y2[0], y2[2])
+                draw_vline(page, bx[3], y2[0], y2[2])
+                draw_vline(page, bx[4], y2[0], y2[3])
+                rows2 = [
+                    ('险　　种', '养老保险', '工伤保险', '失业保险'),
+                    (
+                        '参保状态',
+                        p.get('status_pension') or '',
+                        p.get('status_injury') or p.get('status_medical') or '',
+                        p.get('status_unemployment') or '',
+                    ),
+                ]
+                for ri, row in enumerate(rows2):
+                    for ci, val in enumerate(row):
+                        use_bold = ri == 0 or ci == 0
+                        cell_center(
+                            page,
+                            font_title if use_bold else font_body,
+                            title_name if use_bold else body_name,
+                            val,
+                            bx[ci],
+                            bx[ci + 1],
+                            y2[ri],
+                            y2[ri + 1],
+                            9.6,
+                        )
+                cell_center(page, font_title, title_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
                 cell_box(
                     page,
                     font_body,
                     body_name,
-                    val,
-                    COL_X[ci],
-                    COL_X[ci + 1],
-                    y0,
-                    y1,
+                    company_display(p),
+                    bx[1],
+                    bx[4],
+                    y2[2],
+                    y2[3],
                     size=9.6,
                     align='center',
-                    min_size=6.5,
+                    pad=3.0,
+                    min_size=7.2,
                 )
-
-        auth = str(auth_code or '')
-        validate = 'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate'
-        notes = [
-            '备注：1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
-            '2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：%s，' % auth,
-            None,  # 验证平台行单独处理
-            '3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
-            '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
-        ]
-        # 备注紧贴大表底部（保留空白溢出行）
-        ny = y3_end + 10.0
-        line_h = 13.4
-        for i, line in enumerate(notes):
-            x = 34.3 if i == 0 else 60.0
-            y = ny + i * line_h
-            if i == 2:
-                prefix = '验证平台：'
-                page.insert_text((x, y), prefix, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
-                px = x + text_width(font_body, prefix, 8.6)
-                url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', 8.6))
-                us = fit_fontsize(font_body, validate, url_max, 8.6, min_size=5.5)
-                page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
-                uw = min(text_width(font_body, validate, us), url_max)
-                page.insert_link(
-                    {
-                        'kind': fitz.LINK_URI,
-                        'from': fitz.Rect(px, y - 10, px + uw, y + 2),
-                        'uri': verify_url or validate,
-                    }
+                cell_center(
+                    page, font_title, title_name, section_title, X0, X1, y2[3], y2[4], 9.6
                 )
-                page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+                y_table = 207.5
             else:
-                page.insert_text((x, y), line, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+                # 续页：表紧跟标题区
+                cell_center(
+                    page,
+                    font_title,
+                    title_name,
+                    section_title + '（续）',
+                    X0,
+                    X1,
+                    118.0,
+                    134.0,
+                    9.6,
+                )
+                y_table = 134.0
 
-        stamp_y = ny + 5 * line_h + 8
-        page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
-        print_date = str(p.get('print_date') or '')
-        pd = '打印时间：' + print_date
-        pdw = text_width(font_body, pd, 8.6)
-        page.insert_text(
-            ((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0)
-        )
-        if os.path.isfile(SEAL_PNG):
-            page.insert_image(
-                fitz.Rect(430, stamp_y - 55, 575, stamp_y + 90),
-                filename=SEAL_PNG,
-                keep_proportion=True,
-                overlay=True,
+            y3_end = draw_payment_table(
+                page,
+                font_body,
+                body_name,
+                font_title,
+                title_name,
+                chunk,
+                y_table,
+                section_title,
             )
+            if page_idx == total_pages:
+                draw_cert_footer(
+                    page,
+                    font_body,
+                    body_name,
+                    auth_code,
+                    '',  # 页脚验证链接用官方平台；二维码另见 qr_url
+                    p.get('print_date') or '',
+                    y3_end,
+                )
 
-        # 字体已按本文子集嵌入，无需再跑 MuPDF subset（CFF 上常失败且体积暴涨）
         doc.save(out_path, deflate=True, garbage=4)
         doc.close()
         doc = None
@@ -603,6 +700,7 @@ def render(payload, auth_code, verify_url, out_path):
                     pass
 
 
+
 def main():
     if len(sys.argv) < 3:
         print('usage: sbdy_render_pdf.py <payload.json> <out.pdf>', file=sys.stderr)
@@ -612,7 +710,7 @@ def main():
     render(
         data.get('payload') or {},
         data.get('auth_code') or '',
-        data.get('verify_url') or '',
+        data.get('qr_url') or data.get('verify_url') or '',
         sys.argv[2],
     )
     return 0

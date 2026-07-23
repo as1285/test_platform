@@ -1014,6 +1014,8 @@
         })();
         var codePage = 1;
         var codeLimit = 10;
+        var weeklyCodePage = 1;
+        var weeklyCodeLimit = 10;
         var xianyuCodePage = 1;
         var xianyuCodeLimit = 10;
         var loginLogMode = 'admin-login';
@@ -1036,6 +1038,7 @@
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
+        var _adminWeeklyCodesLoaded = false;
         var _adminAnalyticsActivitySeen = false;
         var _adminAnalyticsRegisterSeen = false;
         var _adminAnalyticsPurchaseSeen = false;
@@ -1261,6 +1264,10 @@
                 if (currentAdminProfile && currentAdminProfile.is_super) {
                     loadXianyuCodes(1);
                 }
+            }
+            if (pageKey === 'weekly-codes' && !_adminWeeklyCodesLoaded) {
+                _adminWeeklyCodesLoaded = true;
+                loadWeeklyCodes(1);
             }
             if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
                 _adminAccountsLoaded = true;
@@ -6714,6 +6721,7 @@
         function renderCodeTableRows(list, options) {
             options = options || {};
             var showChannel = !!options.showChannel;
+            var showWeeklyType = !!options.showWeeklyType;
             var html = '';
             list.forEach(function (c) {
                 var usedAt =
@@ -6727,6 +6735,9 @@
                 html += '<tr>';
                 html += '<td>' + esc(c.code) + '</td>';
                 html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
+                if (showWeeklyType) {
+                    html += '<td>周卡·7天</td>';
+                }
                 html += '<td>' + codeOwnerLabel(c) + '</td>';
                 html += '<td>' + usedBy + '</td>';
                 if (showChannel) {
@@ -6819,6 +6830,65 @@
                     var html = renderCodeTableRows(list, { showChannel: false });
                     document.getElementById('codeTbody').innerHTML =
                         html || '<tr><td colspan="5">暂无激活码</td></tr>';
+                })
+                .catch(function () {});
+        }
+
+        function loadWeeklyCodes(p) {
+            if (p != null) weeklyCodePage = p;
+            var ownerAdmin = '';
+            var ownerInput = document.getElementById('weeklyCodeOwnerAdminFilter');
+            if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
+            var usedBy = '';
+            var usedInput = document.getElementById('weeklyCodeUsedByFilter');
+            if (usedInput) usedBy = String(usedInput.value || '').trim();
+            var usedExactEl = document.getElementById('weeklyCodeUsedByExact');
+            var usedExact = !!(usedExactEl && usedExactEl.checked);
+            var usageFilterEl = document.getElementById('weeklyCodeUsageFilter');
+            var usageStatus = usageFilterEl ? String(usageFilterEl.value || '').trim() : '';
+            var codeQ = '';
+            var codeInput = document.getElementById('weeklyCodeCodeFilter');
+            if (codeInput) codeQ = String(codeInput.value || '').trim();
+            var codeExactEl = document.getElementById('weeklyCodeCodeExact');
+            var codeExact = !!(codeExactEl && codeExactEl.checked);
+            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
+            var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
+            var limit = isSuper && !hasFilter ? 20 : weeklyCodeLimit;
+            var q = 'api/admin/codes?page=' + weeklyCodePage + '&limit=' + limit + '&scope=weekly';
+            if (ownerAdmin) q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
+            if (usedBy) {
+                q += '&used_by=' + encodeURIComponent(usedBy);
+                if (usedExact) q += '&used_by_exact=1';
+            }
+            if (usageStatus) q += '&usage_status=' + encodeURIComponent(usageStatus);
+            if (codeQ) {
+                q += '&code=' + encodeURIComponent(codeQ);
+                if (codeExact) q += '&code_exact=1';
+            }
+            adminFetch(q)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.code !== 200 || !data.data) return;
+                    var list = data.data.codes || [];
+                    var total = data.data.total || 0;
+                    var statEl = document.getElementById('weeklyCodeListStat');
+                    if (statEl) {
+                        statEl.textContent = '共 ' + total + ' 条周卡激活码（7 天时效）';
+                    }
+                    var totalPages = Math.ceil(total / limit) || 1;
+                    var pageInfo = document.getElementById('weeklyCodePageInfo');
+                    var prevBtn = document.getElementById('weeklyCodePrev');
+                    var nextBtn = document.getElementById('weeklyCodeNext');
+                    if (pageInfo) pageInfo.textContent = '第 ' + weeklyCodePage + ' 页 / 共 ' + totalPages + ' 页';
+                    if (prevBtn) prevBtn.disabled = weeklyCodePage <= 1;
+                    if (nextBtn) nextBtn.disabled = weeklyCodePage >= totalPages;
+                    var tbody = document.getElementById('weeklyCodeTbody');
+                    if (tbody) {
+                        var html = renderCodeTableRows(list, { showWeeklyType: true });
+                        tbody.innerHTML = html || '<tr><td colspan="6">暂无周卡激活码</td></tr>';
+                    }
                 })
                 .catch(function () {});
         }
@@ -7513,6 +7583,122 @@
         }
         bindCodeCopyDelegation('codeTbody');
         bindCodeCopyDelegation('xianyuCodeTbody');
+        bindCodeCopyDelegation('weeklyCodeTbody');
+
+        var weeklyCodePrev = document.getElementById('weeklyCodePrev');
+        var weeklyCodeNext = document.getElementById('weeklyCodeNext');
+        if (weeklyCodePrev) {
+            weeklyCodePrev.onclick = function () {
+                if (weeklyCodePage > 1) loadWeeklyCodes(weeklyCodePage - 1);
+            };
+        }
+        if (weeklyCodeNext) {
+            weeklyCodeNext.onclick = function () {
+                loadWeeklyCodes(weeklyCodePage + 1);
+            };
+        }
+
+        var btnIssueWeeklyCode = document.getElementById('btnIssueWeeklyCode');
+        if (btnIssueWeeklyCode) {
+            btnIssueWeeklyCode.addEventListener('click', function () {
+                btnIssueWeeklyCode.disabled = true;
+                adminFetch('api/admin/issue-weekly-code', {
+                    method: 'POST',
+                    body: JSON.stringify({})
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.code) {
+                            var el = document.getElementById('weeklyIssueOut');
+                            if (el) {
+                                el.textContent =
+                                    '周卡激活码：' + data.data.code + '（时效 7 天、仅可激活一个账号）';
+                                el.classList.add('show');
+                            }
+                            loadWeeklyCodes(1);
+                        } else {
+                            alert(data.msg || '生成失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnIssueWeeklyCode.disabled = false;
+                    });
+            });
+        }
+
+        var btnIssueWeeklyBatch = document.getElementById('btnIssueWeeklyBatch');
+        if (btnIssueWeeklyBatch) {
+            btnIssueWeeklyBatch.addEventListener('click', function () {
+                var countEl = document.getElementById('weeklyBatchCount');
+                var count = countEl ? parseInt(countEl.value, 10) : 0;
+                if (!count || count < 1) {
+                    alert('请输入大于 0 的批量数量');
+                    return;
+                }
+                if (count > 5000) {
+                    alert('单次批量数量不能超过 5000');
+                    return;
+                }
+                if (
+                    !confirm(
+                        '将一次性生成 ' +
+                            count +
+                            ' 个周卡激活码（固定 7 天时效），写入数据库并下载 TXT。是否继续？'
+                    )
+                ) {
+                    return;
+                }
+                btnIssueWeeklyBatch.disabled = true;
+                adminFetch('api/admin/issue-weekly-code-batch', {
+                    method: 'POST',
+                    body: JSON.stringify({ count: count })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.codes && data.data.codes.length) {
+                            var el = document.getElementById('weeklyIssueOut');
+                            if (el) {
+                                el.textContent =
+                                    '已批量生成 ' + data.data.count + ' 个周卡激活码，正在下载 TXT…';
+                                el.classList.add('show');
+                            }
+                            downloadActivationCodesTxt(data.data.codes, {
+                                channel_label: '周卡',
+                                note: data.data.note || '周卡批量',
+                                filename:
+                                    'weekly-activation-codes-' +
+                                    formatLocalDateTimeForExport(new Date()).replace(/[:\s]/g, '-') +
+                                    '.txt',
+                                generated_at: formatLocalDateTimeForExport(
+                                    data.data.generated_at
+                                        ? new Date(data.data.generated_at)
+                                        : new Date()
+                                ),
+                                owner_admin:
+                                    currentAdminProfile && currentAdminProfile.username
+                                        ? String(currentAdminProfile.username)
+                                        : '—'
+                            });
+                            loadWeeklyCodes(1);
+                        } else {
+                            alert(data.msg || '批量生成失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnIssueWeeklyBatch.disabled = false;
+                    });
+            });
+        }
 
         document.getElementById('btnIssue').addEventListener('click', function () {
             var btn = document.getElementById('btnIssue');
@@ -7769,6 +7955,36 @@
             if (codeExactReset) codeExactReset.checked = false;
             loadCodes(1);
         });
+        var btnSearchWeeklyCodes = document.getElementById('btnSearchWeeklyCodes');
+        if (btnSearchWeeklyCodes) {
+            btnSearchWeeklyCodes.addEventListener('click', function () {
+                loadWeeklyCodes(1);
+            });
+        }
+        var btnRefreshWeeklyCodes = document.getElementById('btnRefreshWeeklyCodes');
+        if (btnRefreshWeeklyCodes) {
+            btnRefreshWeeklyCodes.addEventListener('click', function () {
+                loadWeeklyCodes(1);
+            });
+        }
+        var btnResetWeeklyCodesFilter = document.getElementById('btnResetWeeklyCodesFilter');
+        if (btnResetWeeklyCodesFilter) {
+            btnResetWeeklyCodesFilter.addEventListener('click', function () {
+                var input = document.getElementById('weeklyCodeOwnerAdminFilter');
+                if (input) input.value = '';
+                var usedInput = document.getElementById('weeklyCodeUsedByFilter');
+                if (usedInput) usedInput.value = '';
+                var usedExactEl = document.getElementById('weeklyCodeUsedByExact');
+                if (usedExactEl) usedExactEl.checked = false;
+                var usageFilterReset = document.getElementById('weeklyCodeUsageFilter');
+                if (usageFilterReset) usageFilterReset.value = '';
+                var codeFilterReset = document.getElementById('weeklyCodeCodeFilter');
+                if (codeFilterReset) codeFilterReset.value = '';
+                var codeExactReset = document.getElementById('weeklyCodeCodeExact');
+                if (codeExactReset) codeExactReset.checked = false;
+                loadWeeklyCodes(1);
+            });
+        }
         var btnResetXianyuCodesFilter = document.getElementById('btnResetXianyuCodesFilter');
         if (btnResetXianyuCodesFilter) {
             btnResetXianyuCodesFilter.addEventListener('click', function () {

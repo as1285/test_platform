@@ -25,6 +25,7 @@
     'install-guide': 'settings',
     appearance: 'settings',
     codes: 'codes',
+    'weekly-codes': 'codes',
     'sbdy-demo': 'sbdy-demo',
     'admin-accounts': 'accounts',
     users: 'users',
