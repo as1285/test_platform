@@ -137,6 +137,6 @@ html.app-cordova-xiaomi-2410 .bottom-nav .nav-item {
     padding-bottom: 10px;
 }
 
-html.app-cordova-xiaomi-2410 body.page-mine {
+html.app-cordova-xiaomi-2410 body.page-mine .content-wrapper {
     padding-bottom: var(--bottom-nav-clearance) !important;
 }
