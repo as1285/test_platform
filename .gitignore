@@ -25,6 +25,9 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# 本机部署生成物（域名 site-config 等）
+deploy/runtime/
+
 # Database backups (local + import staging)
 data/db-backups/
 *.sql.gz

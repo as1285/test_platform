@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/site-config.js"></script>
     <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -992,7 +993,7 @@
                         <div id="iosInstallSection">
                             <p class="hint ios-cert-hint" id="iosCertHint" style="margin-bottom:10px;line-height:1.55;">
                                 若打开 App 时提示「<strong>此连接非私人连接</strong>」，请点页面底部「<strong>访问此网站</strong>」继续；或删除桌面图标后，用
-                                <a href="https://geshui.vip/install_guide.html">https://geshui.vip/install_guide.html</a>
+                                <a href="/install_guide.html" id="lpShareInstallLink">/install_guide.html</a>
                                 重新下载描述文件。
                             </p>
                             <p class="video-label"><strong>建议先看再安装：</strong>下方为 iPhone / iPad 安装描述文件步骤演示</p>
@@ -1047,14 +1048,36 @@
 
     <script>
         function installPageOrigin() {
+            if (typeof window.sitePublicOrigin === 'function') {
+                var fromCfg = String(window.sitePublicOrigin() || '').replace(/\/+$/, '');
+                if (fromCfg) {
+                    return fromCfg;
+                }
+            }
             try {
                 var origin = window.location.origin || '';
                 if (origin) {
                     return origin;
                 }
             } catch (e) {}
-            return 'https://geshui.vip';
+            return '';
         }
+
+        (function fillShareInstallLink() {
+            function apply() {
+                var a = document.getElementById('lpShareInstallLink');
+                if (!a) return;
+                var href = installPageOrigin().replace(/\/+$/, '') + '/install_guide.html';
+                if (!href || href.charAt(0) === '/') return;
+                a.href = href;
+                a.textContent = href;
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', apply, { once: true });
+            } else {
+                apply();
+            }
+        })();
 
         function toAbsoluteDownloadUrl(u) {
             if (!u || !String(u).trim()) {
@@ -1083,10 +1106,9 @@
                     var ph = String(parsed.hostname || '').toLowerCase();
                     if (
                         ph === host ||
-                        ph === 'geshui.vip' ||
-                        ph === 'www.geshui.vip' ||
                         ph === 'localhost' ||
-                        ph === '127.0.0.1'
+                        ph === '127.0.0.1' ||
+                        (typeof window.siteIsTrustedHost === 'function' && window.siteIsTrustedHost(ph))
                     ) {
                         return parsed.pathname + (parsed.search || '');
                     }

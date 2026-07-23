@@ -76,6 +76,9 @@ services:
       # 上传：本地卷为默认；可设 PUBLIC_ASSET_BASE_URL 指向 CDN
       PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
       UPLOAD_STORAGE_BACKEND: ${UPLOAD_STORAGE_BACKEND:-local}
+      # 多机域名：与前端 site-config / APP_URL 保持一致（见 .env.example）
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-${APP_URL:-}}
+      SITE_TRUSTED_HOSTS: ${SITE_TRUSTED_HOSTS:-}
       # QQ 邮箱 SMTP（发件邮箱与 SMTP_PASS 授权码，未配置时仅后台展示监控、不发邮件）
       SMTP_HOST: ${SMTP_HOST:-smtp.qq.com}
       SMTP_PORT: ${SMTP_PORT:-465}
@@ -113,12 +116,18 @@ services:
       context: ./frontend
     container_name: frontend-container
     ports:
-      # Cloudflare Flexible：源站只暴露 HTTP:80；HTTPS/证书由 CF 处理，勿映射 443（避 525/526）
+      # 本机域名直连：对外 HTTP + HTTPS（证书挂载自 ./certs）
       - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     depends_on:
       - backend
     volumes:
       - uploads_static:/usr/share/nginx/html/uploads
+      - ./certs:/etc/nginx/certs:ro
+      - ./certbot-webroot:/var/www/certbot:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # 部署脚本按 .env 生成到 deploy/runtime/；改域名后无需重建前端镜像
+      - ./deploy/runtime/site-config.js:/usr/share/nginx/html/js/site-config.js:ro
     networks:
       - test_platform_default
     restart: unless-stopped

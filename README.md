@@ -202,7 +202,25 @@ https://www.installguide1.top/
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
 
-环境变量与数据库初始化见 `docker-compose.yml` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
+环境变量与数据库初始化见 `docker-compose.yml`、`.env.example` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
+
+### 多域名 / 多服务器（同一套代码）
+
+不要为每个域名拉长期分支。三台机都跟踪 `master`，用本机 `.env` 区分对外地址：
+
+```bash
+cp .env.example .env
+# 编辑 PUBLIC_SITE_URL / APP_URL，例如：
+#   https://lkj.qiyun888.top
+#   https://www.geshui.vip
+#   http://85.137.247.81
+./scripts/deploy.sh
+```
+
+- 前端：`scripts/render-site-config.sh` 生成 `site-config.js`（分享链接 / 受信 Host）
+- 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
+- Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
+- Cordova 壳内 `APP_ORIGIN` 仍需按渠道打包时修改（与 H5 多域名无关）
 
 ### 在线客服 AI 自动回复
 
@@ -226,8 +244,8 @@ CHAT_AI_MODEL=deepseek-chat
 ALIPAY_APP_ID=你的支付宝应用AppID
 ALIPAY_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 ALIPAY_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-ALIPAY_NOTIFY_URL=https://www.geshui.vip/api/payments/alipay/notify
-ALIPAY_RETURN_URL=https://www.geshui.vip/purchase.html
+ALIPAY_NOTIFY_URL=https://你的域名/api/payments/alipay/notify
+ALIPAY_RETURN_URL=https://你的域名/purchase.html
 ALIPAY_PRODUCT_TITLE=个税记录平台激活码
 ALIPAY_PRODUCT_AMOUNT=199
 ```

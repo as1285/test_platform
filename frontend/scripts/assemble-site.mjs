@@ -230,6 +230,16 @@ function shellSnippet(manifest) {
   ].join('\n    ');
 }
 
+function injectSiteConfig(html) {
+  if (/\/js\/site-config\.js/i.test(html)) return html;
+  const tag = '<script src="/js/site-config.js"></script>';
+  const authRe = /(<script[^>]*\/js\/auth\.js[^>]*><\/script>)/i;
+  if (authRe.test(html)) {
+    return html.replace(authRe, `${tag}\n    $1`);
+  }
+  return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
+}
+
 function injectShell(html, snippet) {
   const markerStart = '<!-- TAX_APP_SHELL_START -->';
   const markerEnd = '<!-- TAX_APP_SHELL_END -->';
@@ -332,6 +342,7 @@ async function main() {
   for (const abs of htmlFiles) {
     const page = path.basename(abs);
     let html = fs.readFileSync(abs, 'utf8');
+    html = injectSiteConfig(html);
     if (PRIORITY_PAGES.includes(page)) {
       html = addShellBodyClass(html);
       html = injectShell(html, snippet);

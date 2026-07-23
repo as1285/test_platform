@@ -821,6 +821,35 @@ function sanitizeInstallDownloadUrl(raw) {
   return '';
 }
 
+/** 本站受信 Host：环境变量 + PUBLIC_SITE_URL 推导 + 常见本地 */
+function isTrustedPublicHost(hostname) {
+  var host = String(hostname || '').toLowerCase();
+  if (!host) {
+    return false;
+  }
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return true;
+  }
+  var list = Array.isArray(config.SITE_TRUSTED_HOSTS) ? config.SITE_TRUSTED_HOSTS : [];
+  var i;
+  for (i = 0; i < list.length; i++) {
+    if (list[i] === host) {
+      return true;
+    }
+  }
+  try {
+    var origin = String(config.PUBLIC_SITE_URL || '').replace(/\/+$/, '');
+    if (origin) {
+      var ou = new URL(origin);
+      var oh = String(ou.hostname || '').toLowerCase();
+      if (host === oh || host === 'www.' + oh || 'www.' + host === oh) {
+        return true;
+      }
+    }
+  } catch (eTrust) {}
+  return false;
+}
+
 /** to public install download url */
 function toPublicInstallDownloadUrl(raw) {
   var s = sanitizeInstallDownloadUrl(raw);
@@ -831,7 +860,7 @@ function toPublicInstallDownloadUrl(raw) {
     if (/^https?:\/\//i.test(s)) {
       var u = new URL(s);
       var host = String(u.hostname || '').toLowerCase();
-      if (host === 'geshui.vip' || host === 'www.geshui.vip') {
+      if (isTrustedPublicHost(host)) {
         s = u.pathname + (u.search || '');
       } else {
         return s;

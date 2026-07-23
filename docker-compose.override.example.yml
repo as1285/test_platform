@@ -1,0 +1,15 @@
+# 复制为 docker-compose.override.yml（已 gitignore）按本机调整端口/证书。
+# 示例 A：本机直连 HTTPS（如 lkj.qiyun888.top）
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#
+# 示例 B：Cloudflare Flexible 源站（如 www.geshui.vip）——只暴露 80，可删掉 443 段
+# 示例 C：仅 IP HTTP（如 85.137.247.81）——同样只保留 80 即可
+
+services:
+  frontend:
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./certbot-webroot:/var/www/certbot:ro

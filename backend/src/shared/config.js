@@ -28,6 +28,16 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(BACKEND_ROOT, 'uploads');
 /** 可选 CDN / 对象存储公网前缀，如 https://cdn.example.com；空则走同源 /uploads */
 const PUBLIC_ASSET_BASE_URL = String(process.env.PUBLIC_ASSET_BASE_URL || '').replace(/\/+$/, '');
+/** 对外站点根（无尾斜杠），多机部署用 .env 区分域名；空则按请求 Host 推导 */
+const PUBLIC_SITE_URL = String(process.env.PUBLIC_SITE_URL || process.env.APP_URL || '').replace(
+  /\/+$/,
+  ''
+);
+/** 受信 Host（逗号分隔），用于把本站绝对下载 URL 收成相对路径 */
+const SITE_TRUSTED_HOSTS = String(process.env.SITE_TRUSTED_HOSTS || '')
+  .split(/[,\s;]+/)
+  .map((s) => String(s || '').trim().toLowerCase())
+  .filter(Boolean);
 /** local | s3 | oss … 当前仅 local 写入；用于文档与未来切换 */
 const UPLOAD_STORAGE_BACKEND = String(process.env.UPLOAD_STORAGE_BACKEND || 'local').trim() || 'local';
 const LOGIN_RATE_PER_IP_MIN = parseInt(process.env.LOGIN_RATE_PER_IP_MIN || '20', 10);
@@ -55,6 +65,8 @@ module.exports = {
   PORT,
   UPLOAD_DIR,
   PUBLIC_ASSET_BASE_URL,
+  PUBLIC_SITE_URL,
+  SITE_TRUSTED_HOSTS,
   UPLOAD_STORAGE_BACKEND,
   LOGIN_RATE_PER_IP_MIN,
   LOGIN_RATE_PER_USER_MIN,

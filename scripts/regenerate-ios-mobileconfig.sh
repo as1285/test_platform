@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # 从已签名的 个人.mobileconfig 解出 plist，更新 WebClip URL 后写出未签名 XML（供 Nginx 分发）。
-# 用法：APP_URL=https://geshui.vip ./scripts/regenerate-ios-mobileconfig.sh
+# 用法：APP_URL=https://你的域名 ./scripts/regenerate-ios-mobileconfig.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "${ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
+fi
 SRC="${ROOT}/个人.mobileconfig"
 OUT_FRONTEND="${ROOT}/frontend/个人.mobileconfig"
 OUT_ROOT="${ROOT}/个人.mobileconfig"
-APP_URL="${APP_URL:-${HTTPS_APP_URL:-https://geshui.vip}}"
+APP_URL="${APP_URL:-${HTTPS_APP_URL:-${PUBLIC_SITE_URL:-}}}"
+if [[ -z "${APP_URL}" ]]; then
+  echo "[mobileconfig] ERROR: 请设置 APP_URL 或 PUBLIC_SITE_URL（见 .env.example）" >&2
+  exit 1
+fi
 TMP_PLIST="$(mktemp)"
 
 cleanup() { rm -f "$TMP_PLIST"; }

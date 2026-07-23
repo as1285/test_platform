@@ -1084,19 +1084,19 @@
   }
 
   function certificatePublicOrigin() {
+    if (typeof window.sitePublicOrigin === 'function') {
+      var fromCfg = String(window.sitePublicOrigin() || '').replace(/\/+$/, '');
+      if (fromCfg) {
+        return fromCfg;
+      }
+    }
     try {
       var origin = String(window.location.origin || '');
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
-        return 'https://geshui.vip';
-      }
-      if (/^https?:\/\/\d{1,3}(\.\d{1,3}){3}(:\d+)?$/i.test(origin)) {
-        return 'https://geshui.vip';
-      }
       if (origin) {
         return origin;
       }
     } catch (e0) {}
-    return 'https://geshui.vip';
+    return '';
   }
 
   function buildCertificateVerifyUrl(app) {

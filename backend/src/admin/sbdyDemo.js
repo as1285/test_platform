@@ -7,6 +7,7 @@
  */
 const crypto = require('crypto');
 const { getPool } = require('../shared/db');
+const { PUBLIC_SITE_URL } = require('../shared/config');
 
 function escHtml(s) {
   return String(s == null ? '' : s)
@@ -186,15 +187,18 @@ function normalizePayload(body) {
 }
 
 function publicOriginFromReq(req) {
+  var configured = String(PUBLIC_SITE_URL || '').replace(/\/+$/, '');
   var xfProto = req.headers && (req.headers['x-forwarded-proto'] || req.headers['x-forwarded-protocol']);
   var proto = String(xfProto || req.protocol || 'https').split(',')[0].trim() || 'https';
-  var host =
-    (req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || 'geshui.vip';
+  var host = (req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '';
   host = String(host).split(',')[0].trim();
   if (/localhost|127\.0\.0\.1|:\d+$/i.test(host) || /^\d+\.\d+\.\d+\.\d+/.test(host)) {
-    return 'https://geshui.vip';
+    return configured || proto + '://' + host;
   }
-  return proto + '://' + host;
+  if (host) {
+    return proto + '://' + host;
+  }
+  return configured || 'http://127.0.0.1';
 }
 
 function buildLinks(req, authCode, token) {

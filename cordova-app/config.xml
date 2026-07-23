@@ -5,11 +5,19 @@
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
 
+    <access origin="https://lkj.qiyun888.top" />
+    <access origin="http://lkj.qiyun888.top" />
+    <!-- 兼容旧域名包；WebView 仅允许受信本站，外链用 allow-intent / _system -->
     <access origin="https://geshui.vip" />
     <access origin="http://geshui.vip" />
-    <!-- WebView 仅允许本站；外链用 allow-intent / _system，避免被劫持跳到第三方色情站 -->
+    <access origin="https://www.geshui.vip" />
+    <access origin="http://www.geshui.vip" />
+    <allow-navigation href="https://lkj.qiyun888.top/*" />
+    <allow-navigation href="http://lkj.qiyun888.top/*" />
     <allow-navigation href="https://geshui.vip/*" />
     <allow-navigation href="http://geshui.vip/*" />
+    <allow-navigation href="https://www.geshui.vip/*" />
+    <allow-navigation href="http://www.geshui.vip/*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
