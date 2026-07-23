@@ -17081,7 +17081,7 @@ async function handleAdminSettingsPost(req, res) {
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加/加群链接、转化 A/B 配置、落地页 A/B 配置、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 

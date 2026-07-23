@@ -7940,10 +7940,6 @@
                         if (qqEl && data.data.qq_add_url != null) {
                             qqEl.value = String(data.data.qq_add_url);
                         }
-                        var qqGroupEl = document.getElementById('qqGroupUrl');
-                        if (qqGroupEl && data.data.qq_group_url != null) {
-                            qqGroupEl.value = String(data.data.qq_group_url);
-                        }
                         var landingAb = data.data.landing_ab;
                         if (landingAb) {
                             var landingEnabled = document.getElementById('landingAbEnabled');
@@ -8092,36 +8088,6 @@
                     btn.disabled = false;
                 });
         });
-        var btnSaveQqGroupUrl = document.getElementById('btnSaveQqGroupUrl');
-        if (btnSaveQqGroupUrl) {
-            btnSaveQqGroupUrl.addEventListener('click', function () {
-                var btn = btnSaveQqGroupUrl;
-                var url = document.getElementById('qqGroupUrl').value.trim();
-                btn.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({ qq_group_url: url })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('QQ 加群链接已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btn.disabled = false;
-                    });
-            });
-        }
-
         var btnSavePricingAb = document.getElementById('btnSavePricingAb');
         if (btnSavePricingAb) {
             btnSavePricingAb.addEventListener('click', function () {
