@@ -47,6 +47,40 @@
     }
   }
 
+  /** DB created_at 按 UTC 存，列表展示北京时间（+8） */
+  function formatBjTime(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return '—';
+    s = s.replace('T', ' ').replace(/\.\d+Z?$/, '').replace(/Z$/, '');
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+    if (!m) return s.slice(0, 19);
+    var utcMs = Date.UTC(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6])
+    );
+    var bj = new Date(utcMs + 8 * 3600 * 1000);
+    function p2(n) {
+      return String(n).padStart(2, '0');
+    }
+    return (
+      bj.getUTCFullYear() +
+      '-' +
+      p2(bj.getUTCMonth() + 1) +
+      '-' +
+      p2(bj.getUTCDate()) +
+      ' ' +
+      p2(bj.getUTCHours()) +
+      ':' +
+      p2(bj.getUTCMinutes()) +
+      ':' +
+      p2(bj.getUTCSeconds())
+    );
+  }
+
   function fillDefaults() {
     var now = new Date();
     var endY = now.getFullYear();
@@ -84,7 +118,7 @@
       html +=
         '<tr>' +
         '<td>' +
-        esc(row.created_at ? String(row.created_at).replace('T', ' ').slice(0, 19) : '—') +
+        esc(formatBjTime(row.created_at)) +
         '</td>' +
         '<td>' +
         esc(row.name || '—') +
