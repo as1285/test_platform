@@ -118,11 +118,7 @@
 
                 <div id="page-sales-contacts" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>联系方式配置（销售代理）</h2>
-                        <p class="hint mt-0">
-                            供落地页 <strong>C 方案</strong>购买页展示的代理联系方式。与「增长与触达配置」里的原微信收款码、闲鱼文案、QQ 链接<strong>相互独立</strong>，互不覆盖。
-                            B 方案用户仍走原联系方式；C 方案用户看到此处配置。留空字段在购买页不展示。
-                        </p>
+                        <h2>联系方式配置</h2>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label for="salesAgentDisplayName">展示名</label>
@@ -134,7 +130,7 @@
                             </div>
                             <div class="form-field form-field-narrow">
                                 <div id="salesAgentQrPreviewWrap" class="img-preview-wrap" hidden>
-                                    <img id="salesAgentQrPreview" class="img-preview" alt="销售代理微信二维码预览">
+                                    <img id="salesAgentQrPreview" class="img-preview" alt="微信二维码预览">
                                 </div>
                                 <label for="salesAgentWechatQrUrl">微信二维码图片</label>
                                 <div class="mine-ui-controls field-gap-top">
@@ -151,10 +147,6 @@
                                 <label for="salesAgentPhone">手机号（可选）</label>
                                 <input class="input-block" type="text" id="salesAgentPhone" maxlength="32" placeholder="手机号" autocomplete="off">
                             </div>
-                            <div class="form-field">
-                                <label for="salesAgentXianyuText">闲鱼文案（可选）</label>
-                                <input class="input-block" type="text" id="salesAgentXianyuText" maxlength="2048" placeholder="C 方案用户点击闲鱼时复制的文案">
-                            </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-primary" id="btnSaveSalesAgent">保存联系方式</button>
                             </div>
@@ -169,7 +161,7 @@
                     </section>
                     <section>
                         <h2>落地页 B/C A/B Test</h2>
-                        <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。<strong>C 方案用户打开购买页时，人工入口使用「联系方式配置」中的代理联系方式</strong>（不改动本页下方闲鱼 / 增长配置里的原微信收款码 / QQ）。支付宝两端均保留。按设备 <code>client_id</code> 稳定分流；调整比例只影响尚未分配的新访客。</p>
+                        <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。<strong>C 方案用户打开购买页时，仅展示「下载 App」与「激活码输入」</strong>（无支付宝 / 其它购买方式）。按设备 <code>client_id</code> 稳定分流；调整比例只影响尚未分配的新访客。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label><input type="checkbox" id="landingAbEnabled" checked> 启用 B/C A/B Test</label>
@@ -2307,6 +2299,7 @@
             </div>
         </div>
     </div>
+    <div id="userPasswordBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">修改用户密码</h2>
             <p class="hint admin-modal-meta" id="userPasswordMeta"></p>
@@ -2348,6 +2341,6 @@
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260723-rename-count"></script>
+    <script src="/js/admin_panel.js?v=20260723-sales-contacts-ui"></script>
 </body>
 </html>

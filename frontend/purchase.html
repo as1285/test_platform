@@ -491,7 +491,7 @@
                 <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
                     <span class="channel-icon kufaka">酷</span>
                     <span class="channel-body">
-                        <strong>酷发卡购买</strong>
+                        <strong>微信支付宝购买</strong>
                         <span>跳转商品页下单获取激活码</span>
                     </span>
                     <span class="channel-arrow">›</span>
@@ -983,30 +983,46 @@
         skus: [],
         selectedSkuId: ''
     };
-    /** treatment 多档新方案时收起激活码与其它渠道，避免干扰支付宝选购 */
+    /** legacy=全入口；treatment=仅支付宝多档；code_only=落地页 C：仅激活码+下载 */
     var purchaseUiMode = 'legacy';
 
     function applyPurchaseUiMode() {
         var isNew = purchaseUiMode === 'treatment';
+        var isCodeOnly = purchaseUiMode === 'code_only';
         var activateBox = document.querySelector('.activate-box');
         var otherLabel = document.getElementById('otherChannelsLabel');
         var otherCard = document.getElementById('cardOtherChannels');
         var heroP = document.querySelector('.hero p');
         var steps = document.querySelector('.steps');
         var cardAlipay = document.getElementById('cardAlipay');
+        var cardDownload = document.getElementById('cardDownloadApp');
+        var salesCard = document.getElementById('salesAgentCard');
         var page = document.querySelector('.page');
 
         if (activateBox) activateBox.hidden = isNew;
-        if (otherLabel) otherLabel.hidden = isNew;
-        if (otherCard) otherCard.hidden = isNew;
+        if (otherLabel) otherLabel.hidden = isNew || isCodeOnly;
+        if (otherCard) otherCard.hidden = isNew || isCodeOnly;
+        if (cardDownload) cardDownload.hidden = false;
+        if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
+        if (isCodeOnly && salesCard) salesCard.hidden = true;
 
         if (heroP) {
-            heroP.textContent = isNew
-                ? '选择下方套餐，支付宝扫码付款后自动开通当前账号。'
-                : '支付宝可扫码付款后自动开通；也可通过酷发卡购买激活码后在本页确认。';
+            if (isCodeOnly) {
+                heroP.textContent = '下载 App 后更流畅；若已有激活码，在下方填写即可开通。';
+            } else if (isNew) {
+                heroP.textContent = '选择下方套餐，支付宝扫码付款后自动开通当前账号。';
+            } else {
+                heroP.textContent =
+                    '支付宝可扫码付款后自动开通；也可通过微信支付宝购买激活码后在本页确认。';
+            }
         }
         if (steps) {
-            if (isNew) {
+            if (isCodeOnly) {
+                steps.innerHTML =
+                    '<li>点击「立即下载」安装官方 App</li>' +
+                    '<li>在本页输入激活码，点击「确认激活」</li>' +
+                    '<li>开通后账号权益将同步到当前登录账号</li>';
+            } else if (isNew) {
                 steps.innerHTML =
                     '<li>选择套餐并点「生成付款二维码」</li>' +
                     '<li>用支付宝扫码完成付款</li>' +
@@ -1014,7 +1030,7 @@
             } else {
                 steps.innerHTML =
                     '<li>支付宝：扫码付款成功后自动开通当前账号</li>' +
-                    '<li>酷发卡：付款后领取激活码</li>' +
+                    '<li>微信支付宝购买：付款后领取激活码</li>' +
                     '<li>回到本页顶部输入激活码，点击「确认激活」</li>';
             }
         }
@@ -1024,6 +1040,16 @@
             var hero = document.querySelector('.hero');
             if (hero && hero.nextSibling !== cardAlipay) {
                 page.insertBefore(cardAlipay, hero.nextSibling);
+            }
+        }
+        /* C 方案：下载与激活码置顶 */
+        if (isCodeOnly && page) {
+            var heroEl = document.querySelector('.hero');
+            if (heroEl && cardDownload && cardDownload.parentNode === page) {
+                page.insertBefore(cardDownload, heroEl.nextSibling);
+            }
+            if (activateBox && activateBox.parentNode === page && cardDownload) {
+                page.insertBefore(activateBox, cardDownload.nextSibling);
             }
         }
     }
@@ -1121,7 +1147,10 @@
                     renderAlipaySkus(skus, variant);
                     var selected = getSelectedAlipaySku();
                     var hint = document.getElementById('alipayPurchaseHint');
-                    if (variant === 'treatment' && skus.length > 1) {
+                    if (isLandingVariantC()) {
+                        purchaseUiMode = 'code_only';
+                        if (card) card.hidden = true;
+                    } else if (variant === 'treatment' && skus.length > 1) {
                         hint.textContent =
                             '可选试用或永久套餐；购买更长档将覆盖当前更短试用。付款成功后自动开通。';
                         purchaseUiMode = 'treatment';
@@ -1133,17 +1162,19 @@
                         purchaseUiMode = 'legacy';
                     }
                     applyPurchaseUiMode();
-                    trackPurchase(
-                        variant === 'treatment'
-                            ? 'track_pricing_ab_expose_treatment'
-                            : 'track_pricing_ab_expose_control',
-                        {
-                            pricing_variant: variant,
-                            sku_count: skus.length
-                        }
-                    );
+                    if (!isLandingVariantC()) {
+                        trackPurchase(
+                            variant === 'treatment'
+                                ? 'track_pricing_ab_expose_treatment'
+                                : 'track_pricing_ab_expose_control',
+                            {
+                                pricing_variant: variant,
+                                sku_count: skus.length
+                            }
+                        );
+                    }
                 } else {
-                    purchaseUiMode = 'legacy';
+                    purchaseUiMode = isLandingVariantC() ? 'code_only' : 'legacy';
                     alipayPricing.variant = 'control';
                     applyPurchaseUiMode();
                 }
@@ -1151,7 +1182,7 @@
             })
             .catch(function () {
                 document.getElementById('cardAlipay').hidden = true;
-                purchaseUiMode = 'legacy';
+                purchaseUiMode = isLandingVariantC() ? 'code_only' : 'legacy';
                 alipayPricing.variant = 'control';
                 applyPurchaseUiMode();
             });
@@ -1163,7 +1194,8 @@
         var card = document.getElementById('salesAgentCard');
         if (!card) return false;
         salesAgentCfg = agent && agent.has_contact ? agent : null;
-        var useAgent = !!(isLandingVariantC() && salesAgentCfg);
+        /* 落地页 C：购买页仅激活码+下载，不再展示销售代理 / 其它支付入口 */
+        var useAgent = false;
         card.hidden = !useAgent;
         if (!useAgent) {
             var qrWrapOff = document.getElementById('salesAgentQrWrap');
@@ -1221,7 +1253,10 @@
 
     function applyConfig(data) {
         data = data || {};
-        var useSalesAgent = applySalesAgentCard(data.sales_agent || null);
+        applySalesAgentCard(data.sales_agent || null);
+        if (isLandingVariantC()) {
+            purchaseUiMode = 'code_only';
+        }
         applyPurchaseUiMode();
     }
 
@@ -1232,9 +1267,10 @@
         var cardSales = document.getElementById('salesAgentCard');
         trackPurchase('track_purchase_page_view', {
             alipay: !!(cardAlipay && !cardAlipay.hidden),
-            kufaka: true,
-            online_chat: true,
-            sales_agent: !!(cardSales && !cardSales.hidden)
+            kufaka: !!(document.getElementById('rowKufaka') && purchaseUiMode === 'legacy'),
+            online_chat: !!(document.getElementById('rowOnlineChat') && purchaseUiMode === 'legacy'),
+            sales_agent: !!(cardSales && !cardSales.hidden),
+            code_only: purchaseUiMode === 'code_only'
         });
     }
 
@@ -1431,8 +1467,8 @@
             /* 壳内 WebView 必须外开，target=_blank 在华为 Cordova 常无效 */
             if (isEmbeddedInAppShell() || (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell())) {
                 ev.preventDefault();
-                showToast('正在打开酷发卡…');
-                openExternalUrlOrHint(KUFAKA_PURCHASE_URL, '酷发卡链接已复制，请到系统浏览器打开');
+                showToast('正在打开购买页…');
+                openExternalUrlOrHint(KUFAKA_PURCHASE_URL, '购买链接已复制，请到系统浏览器打开');
             }
         });
     }

@@ -7960,13 +7960,11 @@
                             var saQr = document.getElementById('salesAgentWechatQrUrl');
                             var saQq = document.getElementById('salesAgentQq');
                             var saPhone = document.getElementById('salesAgentPhone');
-                            var saXy = document.getElementById('salesAgentXianyuText');
                             if (saName) saName.value = salesAgent.display_name != null ? String(salesAgent.display_name) : '专属客服';
                             if (saWx) saWx.value = salesAgent.wechat_id != null ? String(salesAgent.wechat_id) : '';
                             if (saQr) saQr.value = salesAgent.wechat_qr_url != null ? String(salesAgent.wechat_qr_url) : '';
                             if (saQq) saQq.value = salesAgent.qq != null ? String(salesAgent.qq) : '';
                             if (saPhone) saPhone.value = salesAgent.phone != null ? String(salesAgent.phone) : '';
-                            if (saXy) saXy.value = salesAgent.xianyu_text != null ? String(salesAgent.xianyu_text) : '';
                             updateSalesAgentQrPreview(
                                 salesAgent.wechat_qr_display_url ||
                                     (saQr && saQr.value ? '/' + String(saQr.value).replace(/^\//, '') : '')
@@ -8193,7 +8191,7 @@
                             wechat_qr_url: (document.getElementById('salesAgentWechatQrUrl') || {}).value || '',
                             qq: (document.getElementById('salesAgentQq') || {}).value || '',
                             phone: (document.getElementById('salesAgentPhone') || {}).value || '',
-                            xianyu_text: (document.getElementById('salesAgentXianyuText') || {}).value || ''
+                            xianyu_text: ''
                         }
                     })
                 })
@@ -8202,7 +8200,7 @@
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('联系方式已保存（仅影响 C 方案购买页，不改原微信/闲鱼/QQ）');
+                            alert('联系方式已保存');
                             loadAdminSettings();
                         } else {
                             alert(data.msg || '保存失败');

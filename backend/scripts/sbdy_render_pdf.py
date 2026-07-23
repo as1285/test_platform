@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """按参考 show.pdf（PD4ML A4）坐标生成浙江省社保参保证明演示 PDF。
 
-字体：Noto Serif CJK SC（宋体观感）。用 fontTools 按本文字集裁切（retain_gids），
-再 insert_font 绘制；避免整份 20MB+ 字库入 PDF，也避免错误子集导致缺字/乱码。
+字体：正文 Noto Serif CJK SC Regular（贴近官方 NSimSun，不加描边）；
+标题用 Bold。字库按本文裁切（retain_gids）后绘制。
 
-单元格（溢出框）：优先缩小字号适配边距；仍超宽则 textbox 限制在格线内。
+单元格（溢出框）：缩字号适配边距；仍超宽则 textbox 限制在格线内。
 """
 from __future__ import print_function
 
@@ -49,7 +49,7 @@ def _extract_sc_face(ttc_path, out_path):
 
 
 def ensure_full_cjk_font():
-    """准备完整简体 Serif CJK（优先系统 TTC 抽面，避免仓库塞 24MB）。"""
+    """正文：完整简体 Serif Regular。"""
     global _FULL_FONT_PATH
     if _FULL_FONT_PATH and os.path.isfile(_FULL_FONT_PATH):
         return _FULL_FONT_PATH
@@ -64,7 +64,7 @@ def ensure_full_cjk_font():
 
 
 def ensure_bold_cjk_font():
-    """标题用 Bold 近似小标宋。"""
+    """标题：Serif Bold（仅标题，正文不用以免糊成一团）。"""
     global _BOLD_FONT_PATH
     if _BOLD_FONT_PATH and os.path.isfile(_BOLD_FONT_PATH):
         return _BOLD_FONT_PATH
@@ -220,10 +220,10 @@ def cell_box(
     size=9.6,
     color=(0, 0, 0),
     align='center',
-    pad=1.6,
+    pad=1.8,
     min_size=6.0,
 ):
-    """溢出框：缩字号使文本落入单元格（含边距）；极端超宽时 textbox 限制在框内。"""
+    """溢出框：缩字号使文本落入单元格；极端超宽则 textbox 限制在格内。"""
     text = norm_text(text)
     if not text:
         return
@@ -243,7 +243,12 @@ def cell_box(
     align_code = {'left': 0, 'center': 1, 'right': 2}.get(align, 1)
     rect = fitz.Rect(x0 + pad, y0 + 0.5, x1 - pad, y1 - 0.5)
     page.insert_textbox(
-        rect, text, fontname=fontname, fontsize=max(min_size, s - 0.5), color=color, align=align_code
+        rect,
+        text,
+        fontname=fontname,
+        fontsize=max(min_size, s - 0.5),
+        color=color,
+        align=align_code,
     )
 
 
@@ -340,6 +345,7 @@ def render(payload, auth_code, verify_url, out_path):
         months.append(None)
 
     blob = collect_text_blob(p, months, auth_code)
+    # 正文 Regular（贴近第二张官方图）；标题 Bold，均不加描边
     full_body = ensure_full_cjk_font()
     full_title = ensure_bold_cjk_font()
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_body_')
@@ -416,7 +422,7 @@ def render(payload, auth_code, verify_url, out_path):
             for ci, val in enumerate(row):
                 cell_center(page, font_body, body_name, val, bx[ci], bx[ci + 1], y2[ri], y2[ri + 1], 9.6)
         cell_center(page, font_body, body_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
-        # 单位名称可能很长：溢出框内缩字号 / 裁剪
+        # 参保单位：居中溢出框，字号自适应，不穿出格线
         cell_box(
             page,
             font_body,
@@ -428,7 +434,8 @@ def render(payload, auth_code, verify_url, out_path):
             y2[3],
             size=9.6,
             align='center',
-            min_size=7.0,
+            pad=3.0,
+            min_size=7.2,
         )
         period = p.get('period_label') or ''
         cell_center(
@@ -537,7 +544,6 @@ def render(payload, auth_code, verify_url, out_path):
                 prefix = '验证平台：'
                 page.insert_text((x, y), prefix, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
                 px = x + text_width(font_body, prefix, 8.6)
-                # URL + 句号须落在表宽内
                 url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', 8.6))
                 us = fit_fontsize(font_body, validate, url_max, 8.6, min_size=5.5)
                 page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
@@ -558,7 +564,9 @@ def render(payload, auth_code, verify_url, out_path):
         print_date = str(p.get('print_date') or '')
         pd = '打印时间：' + print_date
         pdw = text_width(font_body, pd, 8.6)
-        page.insert_text(((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+        page.insert_text(
+            ((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0)
+        )
         if os.path.isfile(SEAL_PNG):
             page.insert_image(
                 fitz.Rect(430, stamp_y - 55, 575, stamp_y + 90),
