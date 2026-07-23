@@ -109,7 +109,7 @@
     var tbody = document.getElementById('sbdyDemoListTbody');
     if (!tbody) return;
     if (!list || !list.length) {
-      tbody.innerHTML = '<tr><td colspan="7">暂无记录</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6">暂无记录</td></tr>';
       return;
     }
     var html = '';
@@ -132,9 +132,6 @@
         '<td class="cell-break"><code>' +
         esc(row.auth_code || '') +
         '</code></td>' +
-        '<td>' +
-        esc(row.created_by_admin || '—') +
-        '</td>' +
         '<td class="cell-break">' +
         (links.show_url
           ? '<a href="' + esc(links.show_url) + '" target="_blank" rel="noopener">样例</a> · '
