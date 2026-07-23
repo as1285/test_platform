@@ -1,5 +1,5 @@
 /**
- * 定价 A/B：Control=199 永久；Treatment=49/24h · 99/3天 · 199/1年 · 499永久
+ * 定价 A/B：Control=199 永久；Treatment=9.9/30分钟 · 49/24h · 99/3天 · 199/1年 · 499永久
  * 分流与 conversion_ab / landing_ab 独立。
  */
 'use strict';
@@ -13,7 +13,19 @@ var SKU_CONTROL_199_PERM = {
   subject: '激活码',
   grant_kind: 'permanent',
   grant_hours: 0,
-  grant_days: 0
+  grant_days: 0,
+  grant_minutes: 0
+};
+
+var SKU_9_9_30M = {
+  id: 'sku_9_9_30m',
+  amount: '9.90',
+  label: '体验30分钟',
+  subject: '激活码',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 0,
+  grant_minutes: 30
 };
 
 var SKU_49_24H = {
@@ -23,7 +35,8 @@ var SKU_49_24H = {
   subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 24,
-  grant_days: 0
+  grant_days: 0,
+  grant_minutes: 0
 };
 
 var SKU_99_3D = {
@@ -33,7 +46,8 @@ var SKU_99_3D = {
   subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 3
+  grant_days: 3,
+  grant_minutes: 0
 };
 
 var SKU_199_1Y = {
@@ -43,7 +57,8 @@ var SKU_199_1Y = {
   subject: '激活码',
   grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 365
+  grant_days: 365,
+  grant_minutes: 0
 };
 
 var SKU_499_PERM = {
@@ -53,14 +68,15 @@ var SKU_499_PERM = {
   subject: '激活码',
   grant_kind: 'permanent',
   grant_hours: 0,
-  grant_days: 0
+  grant_days: 0,
+  grant_minutes: 0
 };
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
   treatment_percent: 50,
   control_skus: [SKU_CONTROL_199_PERM],
-  treatment_skus: [SKU_49_24H, SKU_99_3D, SKU_199_1Y, SKU_499_PERM]
+  treatment_skus: [SKU_9_9_30M, SKU_49_24H, SKU_99_3D, SKU_199_1Y, SKU_499_PERM]
 };
 
 function cloneSku(s) {
@@ -71,7 +87,8 @@ function cloneSku(s) {
     subject: String(s.subject || ''),
     grant_kind: s.grant_kind === 'permanent' ? 'permanent' : 'trial',
     grant_hours: parseInt(s.grant_hours, 10) || 0,
-    grant_days: parseInt(s.grant_days, 10) || 0
+    grant_days: parseInt(s.grant_days, 10) || 0,
+    grant_minutes: parseInt(s.grant_minutes, 10) || 0
   };
 }
 
@@ -102,7 +119,8 @@ function grantDurationMs(sku) {
   if (!sku || sku.grant_kind === 'permanent') return Infinity;
   var days = parseInt(sku.grant_days, 10) || 0;
   var hours = parseInt(sku.grant_hours, 10) || 0;
-  return days * 86400000 + hours * 3600000;
+  var minutes = parseInt(sku.grant_minutes, 10) || 0;
+  return days * 86400000 + hours * 3600000 + minutes * 60000;
 }
 
 function findSkuById(cfg, skuId) {

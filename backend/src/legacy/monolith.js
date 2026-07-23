@@ -5018,7 +5018,8 @@ async function handleAlipayConfig(req, res) {
         subject: s.subject,
         grant_kind: s.grant_kind,
         grant_days: s.grant_days,
-        grant_hours: s.grant_hours
+        grant_hours: s.grant_hours,
+        grant_minutes: s.grant_minutes || 0
       };
     });
     var primary = skus[0] || null;
@@ -5051,7 +5052,8 @@ async function handleAlipayConfig(req, res) {
             subject: envProduct.subject,
             grant_kind: 'permanent',
             grant_days: 0,
-            grant_hours: 0
+            grant_hours: 0,
+            grant_minutes: 0
           }
         ]
       }
@@ -5085,7 +5087,7 @@ async function handleAlipayCreateOrder(req, res) {
       await connRen.beginTransaction();
       const [existingRen] = await connRen.execute(
         `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
-                grant_kind, grant_days, grant_hours
+                grant_kind, grant_days, grant_hours, grant_minutes
          FROM payment_orders
          WHERE username = ? AND status = 'pending' AND sku_id = ?
            AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
@@ -5104,12 +5106,13 @@ async function handleAlipayCreateOrder(req, res) {
           sku_id: RENAME_FEE_SKU_ID,
           grant_kind: 'rename_credit',
           grant_days: 0,
-          grant_hours: 0
+          grant_hours: 0,
+          grant_minutes: 0
         };
         await connRen.execute(
           `INSERT INTO payment_orders
-           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours)
-           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
           [
             renameOrder.out_trade_no,
             req.authUserId,
@@ -5119,7 +5122,8 @@ async function handleAlipayCreateOrder(req, res) {
             renameOrder.sku_id,
             renameOrder.grant_kind,
             renameOrder.grant_days,
-            renameOrder.grant_hours
+            renameOrder.grant_hours,
+            renameOrder.grant_minutes
           ]
         );
       }
@@ -5204,7 +5208,7 @@ async function handleAlipayCreateOrder(req, res) {
     await conn.beginTransaction();
     const [existingRows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
-              grant_kind, grant_days, grant_hours
+              grant_kind, grant_days, grant_hours, grant_minutes
        FROM payment_orders
        WHERE username = ? AND status = 'pending'
          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
@@ -5231,12 +5235,13 @@ async function handleAlipayCreateOrder(req, res) {
         sku_id: sku.id,
         grant_kind: sku.grant_kind,
         grant_days: sku.grant_days || 0,
-        grant_hours: sku.grant_hours || 0
+        grant_hours: sku.grant_hours || 0,
+        grant_minutes: sku.grant_minutes || 0
       };
       await conn.execute(
         `INSERT INTO payment_orders
-         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours)
-         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
         [
           order.out_trade_no,
           req.authUserId,
@@ -5246,7 +5251,8 @@ async function handleAlipayCreateOrder(req, res) {
           order.sku_id,
           order.grant_kind,
           order.grant_days,
-          order.grant_hours
+          order.grant_hours,
+          order.grant_minutes
         ]
       );
     }
@@ -5297,7 +5303,7 @@ async function handleAlipayLatestOrder(req, res) {
   try {
     const [rows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-              pricing_variant, sku_id, grant_kind, grant_days, grant_hours
+              pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
        FROM payment_orders WHERE username = ?
        ORDER BY id DESC LIMIT 1`,
       [req.authUserId]
@@ -5325,7 +5331,7 @@ async function handleAlipayLatestOrder(req, res) {
             });
             const [fresh] = await conn.execute(
               `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours
+                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
                FROM payment_orders WHERE id = ? LIMIT 1`,
               [order.id]
             );
@@ -5429,7 +5435,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       ]
     );
     const [orderMetaRows] = await conn.execute(
-      `SELECT pricing_variant, sku_id, grant_kind, grant_days, grant_hours, subject
+      `SELECT pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes, subject
        FROM payment_orders WHERE id = ? LIMIT 1`,
       [locked.id]
     );
@@ -5463,8 +5469,10 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     var activationCode = randomActivationCodePlain();
     var grantDays = meta.grant_days != null ? parseInt(meta.grant_days, 10) : 0;
     var grantHours = meta.grant_hours != null ? parseInt(meta.grant_hours, 10) : 0;
+    var grantMinutes = meta.grant_minutes != null ? parseInt(meta.grant_minutes, 10) : 0;
     if (!isFinite(grantDays) || grantDays < 0) grantDays = 0;
     if (!isFinite(grantHours) || grantHours < 0) grantHours = 0;
+    if (!isFinite(grantMinutes) || grantMinutes < 0) grantMinutes = 0;
     /* 无 SKU 快照的历史订单：按永久处理 */
     if (!meta.sku_id && grantKind !== 'trial') {
       grantKind = 'permanent';
@@ -5473,7 +5481,8 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       id: meta.sku_id || 'sku_199_perm_legacy',
       grant_kind: grantKind === 'trial' ? 'trial' : 'permanent',
       grant_days: grantDays,
-      grant_hours: grantHours
+      grant_hours: grantHours,
+      grant_minutes: grantMinutes
     };
     const [beforeUserRows] = await conn.execute(
       `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
@@ -5487,12 +5496,13 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
     if (meta.pricing_variant) noteBits.push(String(meta.pricing_variant));
     const [codeResult] = await conn.execute(
       `INSERT INTO activation_codes
-       (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, last_used_at, used_by_username, owner_admin_username)
-       VALUES (?, 1, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+       (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, last_used_at, used_by_username, owner_admin_username)
+       VALUES (?, 1, 1, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
       [
         activationCode,
         grantKind === 'trial' ? grantDays || null : null,
         grantKind === 'trial' ? grantHours || null : null,
+        grantKind === 'trial' ? grantMinutes || null : null,
         noteBits.join(' '),
         locked.username,
         ADMIN_PANEL_USER
@@ -5527,7 +5537,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
          VALUES (?, ?, 'alipay', ?, ?)`,
         [
           locked.username,
-          (grantDays || 0) + (grantHours || 0) / 24,
+          (grantDays || 0) + (grantHours || 0) / 24 + (grantMinutes || 0) / 1440,
           String(locked.id),
           cover.active_until
         ]

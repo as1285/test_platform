@@ -1097,6 +1097,7 @@
         var bits = [];
         if (sku.grant_days) bits.push(sku.grant_days + '天');
         if (sku.grant_hours) bits.push(sku.grant_hours + '小时');
+        if (sku.grant_minutes) bits.push(sku.grant_minutes + '分钟');
         return bits.length ? bits.join('') : (sku.label || '');
     }
 
