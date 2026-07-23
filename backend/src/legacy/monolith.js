@@ -3157,27 +3157,12 @@ async function createTables() {
   );
   var rootAdminId = 0;
   if (!adminRows.length) {
-    /* 兼容：旧默认账号 admin → 新顶级管理员用户名，保留原密码哈希 */
-    const [legacyRows] = await conn.execute(
-      "SELECT id, salt, hash FROM admin_accounts WHERE username = 'admin' LIMIT 1"
+    /* 不再把保留账号 admin 改名为环境变量用户名，避免丢失独立超管 admin */
+    const [insRoot] = await conn.execute(
+      'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 1, 0)',
+      [rootAdmin, rootFullName, rootSaltHex, rootHash]
     );
-    if (legacyRows.length && rootAdmin.toLowerCase() !== 'admin') {
-      rootAdminId = Number(legacyRows[0].id) || 0;
-      await conn.execute(
-        'UPDATE admin_accounts SET username = ?, full_name = ?, is_super = 1, banned = 0 WHERE id = ?',
-        [rootAdmin, rootFullName, rootAdminId]
-      );
-      await conn.execute(
-        'UPDATE activation_codes SET owner_admin_username = ? WHERE owner_admin_username = ?',
-        [rootAdmin, 'admin']
-      );
-    } else {
-      const [insRoot] = await conn.execute(
-        'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 1, 0)',
-        [rootAdmin, rootFullName, rootSaltHex, rootHash]
-      );
-      rootAdminId = insRoot.insertId ? Number(insRoot.insertId) : 0;
-    }
+    rootAdminId = insRoot.insertId ? Number(insRoot.insertId) : 0;
   } else {
     rootAdminId = Number(adminRows[0].id) || 0;
     var keepHash = verifyPasswordBySaltHash(rootPassword, adminRows[0].salt, adminRows[0].hash);
@@ -3201,6 +3186,30 @@ async function createTables() {
         [rootAdminId, ADMIN_MENU_KEYS[mi]]
       );
     }
+  }
+
+  /* 保留账号 admin：超级管理员，可见全部注册用户与业务数据 */
+  async function ensureNamedSuperAdmin(username) {
+    var uname = String(username || '').trim();
+    if (!uname) return;
+    const [namedRows] = await conn.execute(
+      'SELECT id FROM admin_accounts WHERE username = ? LIMIT 1',
+      [uname]
+    );
+    if (!namedRows.length) return;
+    var namedId = Number(namedRows[0].id) || 0;
+    if (namedId <= 0) return;
+    await conn.execute('UPDATE admin_accounts SET is_super = 1, banned = 0 WHERE id = ?', [namedId]);
+    await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [namedId]);
+    for (var nmi = 0; nmi < ADMIN_MENU_KEYS.length; nmi++) {
+      await conn.execute(
+        'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+        [namedId, ADMIN_MENU_KEYS[nmi]]
+      );
+    }
+  }
+  if (rootAdmin.toLowerCase() !== 'admin') {
+    await ensureNamedSuperAdmin('admin');
   }
 
   await conn.execute(
@@ -11734,8 +11743,11 @@ async function handleAdminAccountsCreate(req, res) {
   if (!menus.length) {
     return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
   }
-  if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
-    return res.status(400).json({ code: 400, msg: '保留账号请直接使用 admin' });
+  if (
+    username.toLowerCase() === 'admin' ||
+    username.toLowerCase() === String(ADMIN_PANEL_USER || '').toLowerCase()
+  ) {
+    return res.status(400).json({ code: 400, msg: '保留超级管理员账号不可新建，请直接登录 admin' });
   }
   try {
     const conn = await pool.getConnection();
@@ -15441,14 +15453,8 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
     if (!qGuest) {
-      /*
-       * 默认按激活码归属隔离：超管列表不含其它子管理员名下开通用户。
-       * 但超管按「账号」搜索时放开归属，便于从登录流水定位任意用户。
-       */
-      var skipOwnerScopeForSuperSearch = !!(req.admin && req.admin.is_super && qUsername);
-      if (!skipOwnerScopeForSuperSearch) {
-        appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
-      }
+      /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
+      appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
     }
 
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
@@ -15723,19 +15729,8 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  var owner = conversionAnalyticsOwnerAdmin(admin);
-  if (!owner) return;
-  if (admin.is_super) {
-    whereClauses.push(
-      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-        userCol +
-        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
-        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
-        ' AND ac.owner_admin_username <> ?)'
-    );
-    params.push(owner);
-    return;
-  }
+  /* 超级管理员：全部注册用户（含各子账号激活码开通的用户） */
+  if (admin.is_super) return;
   whereClauses.push(
     'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       userCol +
@@ -15744,13 +15739,13 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   params.push(admin.username);
 }
 
-/** conversion analytics owner admin */
+/** conversion analytics owner admin；超管返回 null 表示全站（不按归属过滤） */
 function conversionAnalyticsOwnerAdmin(admin) {
   if (!admin || !admin.username) {
     return null;
   }
   if (admin.is_super) {
-    return String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+    return null;
   }
   return String(admin.username).trim();
 }
@@ -15775,17 +15770,6 @@ function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, u
   whereParts.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
-    return;
-  }
-  if (admin.is_super) {
-    whereParts.push(
-      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-        userCol +
-        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
-        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
-        ' AND ac.owner_admin_username <> ?)'
-    );
-    params.push(owner);
     return;
   }
   whereParts.push(
