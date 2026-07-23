@@ -274,7 +274,6 @@
             font-weight: 700;
             color: #fff;
         }
-        .channel-icon.wechat { background: #07c160; }
         .channel-icon.xianyu { background: #ff6a00; }
         .channel-icon.kufaka { background: #0f766e; }
         .channel-icon.chat { background: #1e6fff; }
@@ -301,12 +300,6 @@
             color: #c7c7cc;
             font-size: 16px;
         }
-        .wechat-panel {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #f1f5f9;
-        }
-        .wechat-panel[hidden] { display: none !important; }
         .channel-icon.sales { background: #07c160; }
         .sales-agent-card {
             margin: 0 0 10px;
@@ -409,7 +402,7 @@
     <div class="page">
         <div class="hero">
             <h1>开通完整功能</h1>
-            <p>支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。</p>
+            <p>支付宝可扫码付款后自动开通；也可通过酷发卡购买激活码后在本页确认。</p>
         </div>
 
         <div class="card download-box" id="cardDownloadApp">
@@ -504,30 +497,6 @@
                     <span class="channel-arrow">›</span>
                 </a>
 
-                <button type="button" class="channel-row" id="rowWechat" hidden>
-                    <span class="channel-icon wechat">微</span>
-                    <span class="channel-body">
-                        <strong>微信购买</strong>
-                        <span>扫码付款后获取激活码</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </button>
-                <div class="wechat-panel" id="wechatPanel" hidden>
-                    <div class="qr-wrap">
-                        <img id="wechatQrImg" src="" alt="微信收款二维码">
-                        <div class="qr-caption">使用微信扫一扫完成购买</div>
-                    </div>
-                </div>
-
-                <button type="button" class="channel-row" id="rowXianyu" hidden>
-                    <span class="channel-icon xianyu">闲</span>
-                    <span class="channel-body">
-                        <strong>闲鱼购买</strong>
-                        <span>复制文案，打开闲鱼联系卖家</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </button>
-
                 <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase">
                     <span class="channel-icon chat">客</span>
                     <span class="channel-body">
@@ -536,24 +505,6 @@
                     </span>
                     <span class="channel-arrow">›</span>
                 </a>
-
-                <button type="button" class="channel-row" id="rowQqGroup" hidden>
-                    <span class="channel-icon qq">群</span>
-                    <span class="channel-body">
-                        <strong>加入 QQ 交流群</strong>
-                        <span>向群内客服咨询购买</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </button>
-
-                <button type="button" class="channel-row" id="rowQqAdd" hidden>
-                    <span class="channel-icon qq">QQ</span>
-                    <span class="channel-body">
-                        <strong>添加 QQ 号</strong>
-                        <span>一对一咨询购买开通</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </button>
             </div>
         </div>
 
@@ -561,7 +512,7 @@
             <div class="card-title">购买说明</div>
             <ol class="steps">
                 <li>支付宝：扫码付款成功后自动开通当前账号</li>
-                <li>酷发卡 / 微信 / 闲鱼：付款后领取激活码</li>
+                <li>酷发卡：付款后领取激活码</li>
                 <li>回到本页顶部输入激活码，点击「确认激活」</li>
             </ol>
         </div>
@@ -584,9 +535,6 @@
     var KUFAKA_PURCHASE_URL = 'https://www.kufaka.com/item/bftacz';
 
     var cfg = {
-        xianyu: '',
-        qqGroup: '',
-        qqAdd: '',
         kufaka: KUFAKA_PURCHASE_URL
     };
     var purchasePageViewTracked = false;
@@ -1055,7 +1003,7 @@
         if (heroP) {
             heroP.textContent = isNew
                 ? '选择下方套餐，支付宝扫码付款后自动开通当前账号。'
-                : '支付宝可扫码付款后自动开通；也可通过微信、闲鱼、酷发卡购买激活码后在本页确认。';
+                : '支付宝可扫码付款后自动开通；也可通过酷发卡购买激活码后在本页确认。';
         }
         if (steps) {
             if (isNew) {
@@ -1066,7 +1014,7 @@
             } else {
                 steps.innerHTML =
                     '<li>支付宝：扫码付款成功后自动开通当前账号</li>' +
-                    '<li>酷发卡 / 微信 / 闲鱼：付款后领取激活码</li>' +
+                    '<li>酷发卡：付款后领取激活码</li>' +
                     '<li>回到本页顶部输入激活码，点击「确认激活」</li>';
             }
         }
@@ -1274,59 +1222,19 @@
     function applyConfig(data) {
         data = data || {};
         var useSalesAgent = applySalesAgentCard(data.sales_agent || null);
-
-        var showWechat = !useSalesAgent && data.show_wechat_pay_qrcode !== false;
-        var qr =
-            data.wechat_pay_qrcode_display_url ||
-            data.wechat_pay_qrcode_url ||
-            '';
-        qr = String(qr || '').trim();
-        var rowWechat = document.getElementById('rowWechat');
-        var img = document.getElementById('wechatQrImg');
-        if (showWechat && qr) {
-            img.src = qr;
-            rowWechat.hidden = false;
-            trackPurchase('track_purchase_wechat_view');
-        } else {
-            rowWechat.hidden = true;
-            document.getElementById('wechatPanel').hidden = true;
-        }
-
-        cfg.xianyu =
-            data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
-        if (useSalesAgent && salesAgentCfg && salesAgentCfg.xianyu_text) {
-            cfg.xianyu = String(salesAgentCfg.xianyu_text).trim();
-        }
-        var showXy = !useSalesAgent && data.show_xianyu_purchase !== false && !!cfg.xianyu;
-        document.getElementById('rowXianyu').hidden = !showXy;
-
-        cfg.qqGroup = data.qq_group_url != null ? String(data.qq_group_url).trim() : '';
-        cfg.qqAdd = data.qq_add_url != null ? String(data.qq_add_url).trim() : '';
-        var showQqGroup = !useSalesAgent && data.show_qq_group !== false && !!cfg.qqGroup;
-        var showQqAdd = !useSalesAgent && data.show_qq_add !== false && !!cfg.qqAdd;
-        document.getElementById('rowQqGroup').hidden = !showQqGroup;
-        document.getElementById('rowQqAdd').hidden = !showQqAdd;
         applyPurchaseUiMode();
     }
 
     function trackPurchasePageViewWithChannels() {
         if (purchasePageViewTracked) return;
         purchasePageViewTracked = true;
-        var rowWechat = document.getElementById('rowWechat');
-        var rowXianyu = document.getElementById('rowXianyu');
-        var rowQqGroup = document.getElementById('rowQqGroup');
-        var rowQqAdd = document.getElementById('rowQqAdd');
         var cardAlipay = document.getElementById('cardAlipay');
-        var salesCard = document.getElementById('salesAgentCard');
+        var cardSales = document.getElementById('salesAgentCard');
         trackPurchase('track_purchase_page_view', {
             alipay: !!(cardAlipay && !cardAlipay.hidden),
-            wechat: !!(rowWechat && !rowWechat.hidden),
-            xianyu: !!(rowXianyu && !rowXianyu.hidden),
             kufaka: true,
-            qq_group: !!(rowQqGroup && !rowQqGroup.hidden),
-            qq_add: !!(rowQqAdd && !rowQqAdd.hidden),
             online_chat: true,
-            sales_agent: !!(salesCard && !salesCard.hidden)
+            sales_agent: !!(cardSales && !cardSales.hidden)
         });
     }
 
@@ -1417,18 +1325,6 @@
             });
     }
 
-    document.getElementById('rowWechat').addEventListener('click', function () {
-        var panel = document.getElementById('wechatPanel');
-        panel.hidden = !panel.hidden;
-        trackPurchase('track_purchase_wechat_expand', { open: !panel.hidden });
-        if (!panel.hidden) {
-            showToast('请使用微信扫一扫下方收款码');
-            try {
-                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            } catch (e4) {}
-        }
-    });
-
     (function bindSalesAgentActions() {
         var btnWx = document.getElementById('btnSalesAgentCopyWechat');
         if (btnWx) {
@@ -1503,9 +1399,9 @@
         if (btnXy) {
             btnXy.addEventListener('click', function () {
                 var text =
-                    (salesAgentCfg && salesAgentCfg.xianyu_text
+                    salesAgentCfg && salesAgentCfg.xianyu_text
                         ? String(salesAgentCfg.xianyu_text).trim()
-                        : '') || cfg.xianyu;
+                        : '';
                 trackPurchase('track_purchase_sales_agent_xianyu');
                 if (!text) {
                     showToast('暂未配置闲鱼文案');
@@ -1528,22 +1424,6 @@
         }
     })();
 
-    document.getElementById('rowXianyu').addEventListener('click', function () {
-        trackPurchase('track_xianyu_purchase_click');
-        var text = cfg.xianyu;
-        if (!text) {
-            showToast('暂未配置闲鱼购买文案');
-            return;
-        }
-        if (typeof copyXianyuPurchaseText === 'function') {
-            copyXianyuPurchaseText(text).catch(function () {
-                showToast('复制失败，请手动复制');
-            });
-        } else {
-            showToast(text);
-        }
-    });
-
     var rowKufaka = document.getElementById('rowKufaka');
     if (rowKufaka) {
         rowKufaka.addEventListener('click', function (ev) {
@@ -1559,26 +1439,6 @@
 
     document.getElementById('rowOnlineChat').addEventListener('click', function () {
         trackPurchase('track_online_chat_click');
-    });
-
-    document.getElementById('rowQqGroup').addEventListener('click', function () {
-        trackPurchase('track_qq_group_click');
-        if (!cfg.qqGroup) {
-            showToast('暂未配置 QQ 群链接');
-            return;
-        }
-        showToast('正在打开 QQ…');
-        openExternalUrlOrHint(cfg.qqGroup, 'QQ 群链接已复制，请到系统浏览器打开');
-    });
-
-    document.getElementById('rowQqAdd').addEventListener('click', function () {
-        trackPurchase('track_qq_add_click');
-        if (!cfg.qqAdd) {
-            showToast('暂未配置 QQ 添加链接');
-            return;
-        }
-        showToast('正在打开 QQ…');
-        openExternalUrlOrHint(cfg.qqAdd, 'QQ 链接已复制，请到系统浏览器打开');
     });
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);

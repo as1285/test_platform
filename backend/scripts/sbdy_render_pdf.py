@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""按参考 show.pdf（PD4ML A4）坐标生成浙江省社保参保证明演示 PDF。"""
+"""按参考 show.pdf（PD4ML A4）坐标生成浙江省社保参保证明演示 PDF。
+
+字体：Noto Serif CJK SC（宋体观感）。用 fontTools 按本文字集裁切（retain_gids），
+再 insert_font 绘制；避免整份 20MB+ 字库入 PDF，也避免错误子集导致缺字/乱码。
+
+单元格（溢出框）：优先缩小字号适配边距；仍超宽则 textbox 限制在格线内。
+"""
 from __future__ import print_function
 
 import json
@@ -17,8 +23,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, '..', 'assets', 'sbdy')
 SEAL_PNG = os.path.join(ASSETS, 'seal.png')
 NOTO_TTC = '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc'
+NOTO_BOLD_TTC = '/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc'
 NOTO_SC_OTF = os.path.join(ASSETS, 'NotoSerifCJKsc-Regular.otf')
 NOTO_SC_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Regular.otf')
+NOTO_BOLD_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Bold.otf')
 
 PAGE_W, PAGE_H = 595.0, 842.0
 X0, X1 = 34.3, 560.2
@@ -27,7 +35,17 @@ X0, X1 = 34.3, 560.2
 COL_X = [34.5, 62.4, 79.5, 167.8, 234.6, 274.2, 318.1, 371.6, 416.5, 454.5, 511.2, 542.3, 560.5]
 
 _FULL_FONT_PATH = None
+_BOLD_FONT_PATH = None
 _FONT_CACHE = {}
+
+
+def _extract_sc_face(ttc_path, out_path):
+    ttc = TTCollection(ttc_path)
+    # Noto Serif CJK: JP=0 KR=1 SC=2 TC=3 HK=4
+    face = ttc.fonts[2]
+    face.flavor = None
+    face.save(out_path)
+    return out_path
 
 
 def ensure_full_cjk_font():
@@ -40,32 +58,48 @@ def ensure_full_cjk_font():
             _FULL_FONT_PATH = path
             return path
     if os.path.isfile(NOTO_TTC):
-        ttc = TTCollection(NOTO_TTC)
-        # Noto Serif CJK: JP=0 KR=1 SC=2 TC=3 HK=4
-        face = ttc.fonts[2]
-        face.flavor = None
-        face.save(NOTO_SC_CACHE)
-        _FULL_FONT_PATH = NOTO_SC_CACHE
-        return NOTO_SC_CACHE
+        _FULL_FONT_PATH = _extract_sc_face(NOTO_TTC, NOTO_SC_CACHE)
+        return _FULL_FONT_PATH
     raise RuntimeError('missing CJK font: install fonts-noto-cjk or place NotoSerifCJKsc-Regular.otf')
 
 
-def make_subset_font(text_blob):
-    """按本文字集裁切字体，控制 PDF 体积。"""
-    src = ensure_full_cjk_font()
-    # 保底 ASCII + 常用标点，避免缺字
-    text_blob = (text_blob or '') + '0123456789.-/():（）%，第页共年月 '
+def ensure_bold_cjk_font():
+    """标题用 Bold 近似小标宋。"""
+    global _BOLD_FONT_PATH
+    if _BOLD_FONT_PATH and os.path.isfile(_BOLD_FONT_PATH):
+        return _BOLD_FONT_PATH
+    if os.path.isfile(NOTO_BOLD_CACHE) and os.path.getsize(NOTO_BOLD_CACHE) > 1_000_000:
+        _BOLD_FONT_PATH = NOTO_BOLD_CACHE
+        return _BOLD_FONT_PATH
+    if os.path.isfile(NOTO_BOLD_TTC):
+        _BOLD_FONT_PATH = _extract_sc_face(NOTO_BOLD_TTC, NOTO_BOLD_CACHE)
+        return _BOLD_FONT_PATH
+    return ensure_full_cjk_font()
+
+
+def make_subset_font(src_path, text_blob, prefix='sbdy_sub_'):
+    """裁切 CJK CFF 字库；retain_gids 避免 MuPDF 缺字/乱码。"""
+    text_blob = (text_blob or '') + (
+        ' 0123456789.-/():（）%，第页共年月授权码验证平台：、'
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    )
     opts = ft_subset.Options()
     opts.layout_closure = False
+    opts.layout_features = []  # 去掉替换特征，减少竖排/异体干扰
     opts.name_IDs = ['*']
     opts.name_languages = ['*']
     opts.notdef_outline = True
     opts.recalc_bounds = True
-    font = TTFont(src)
+    opts.retain_gids = True
+    opts.ignore_missing_unicodes = True
+    font = TTFont(src_path)
     subsetter = ft_subset.Subsetter(options=opts)
     subsetter.populate(text=text_blob)
     subsetter.subset(font)
-    fd, path = tempfile.mkstemp(suffix='.otf', prefix='sbdy_sub_')
+    for tag in ('VORG', 'vhea', 'vmtx'):
+        if tag in font:
+            del font[tag]
+    fd, path = tempfile.mkstemp(suffix='.otf', prefix=prefix)
     os.close(fd)
     font.save(path)
     return path
@@ -79,6 +113,12 @@ def money(n):
     if abs(x - round(x)) < 1e-9:
         return str(int(round(x)))
     return '%.2f' % x
+
+
+def norm_text(text):
+    if text is None:
+        return ''
+    return str(text)
 
 
 def company_display(p):
@@ -139,36 +179,83 @@ def _font_obj(path):
     return _FONT_CACHE[path]
 
 
-def insert_cjk(page, point, text, font_path, fontsize=9, color=(0, 0, 0)):
-    text = '' if text is None else str(text)
-    if not text:
-        return
-    fo = _font_obj(font_path)
-    tw = fitz.TextWriter(page.rect, color=color)
-    tw.append(point, text, font=fo, fontsize=fontsize)
-    tw.write_text(page)
-
-
 def text_width(font_path, text, size):
     fo = _font_obj(font_path)
-    if fo is None:
-        return size * max(len(text), 1) * 0.5
-    return fo.text_length(text, fontsize=size)
-
-
-def cell_center(page, font, text, x0, x1, y0, y1, size=9, color=(0, 0, 0)):
-    text = '' if text is None else str(text)
-    if not text:
-        return
-    tw = text_width(font, text, size)
-    x = x0 + max(0, (x1 - x0 - tw) / 2)
-    y = y0 + (y1 - y0) * 0.72
-    insert_cjk(page, fitz.Point(x, y), text, font, fontsize=size, color=color)
+    return fo.text_length('' if text is None else str(text), fontsize=size)
 
 
 def make_qr_png(url, path):
     img = qrcode.make(url or 'https://geshui.vip/', border=1, box_size=6)
     img.save(path)
+
+
+def register_fonts(page, body_path, title_path):
+    page.insert_font(fontname='sbdybody', fontfile=body_path)
+    if title_path == body_path:
+        return 'sbdybody', 'sbdybody'
+    page.insert_font(fontname='sbdytitle', fontfile=title_path)
+    return 'sbdybody', 'sbdytitle'
+
+
+def fit_fontsize(font_path, text, max_w, size, min_size=6.0):
+    """字号缩小直到文本宽度落入 max_w。"""
+    text = '' if text is None else str(text)
+    if not text or max_w <= 1:
+        return size
+    s = float(size)
+    while s > min_size and text_width(font_path, text, s) > max_w:
+        s -= 0.3
+    return s
+
+
+def cell_box(
+    page,
+    font_path,
+    fontname,
+    text,
+    x0,
+    x1,
+    y0,
+    y1,
+    size=9.6,
+    color=(0, 0, 0),
+    align='center',
+    pad=1.6,
+    min_size=6.0,
+):
+    """溢出框：缩字号使文本落入单元格（含边距）；极端超宽时 textbox 限制在框内。"""
+    text = norm_text(text)
+    if not text:
+        return
+    max_w = max(1.0, (x1 - x0) - pad * 2)
+    s = fit_fontsize(font_path, text, max_w, size, min_size=min_size)
+    tw = text_width(font_path, text, s)
+    if tw <= max_w + 0.5:
+        if align == 'left':
+            x = x0 + pad
+        elif align == 'right':
+            x = x1 - pad - tw
+        else:
+            x = x0 + (x1 - x0 - tw) / 2.0
+        y = (y0 + y1) / 2.0 + s * 0.35
+        page.insert_text((x, y), text, fontname=fontname, fontsize=s, color=color)
+        return
+    align_code = {'left': 0, 'center': 1, 'right': 2}.get(align, 1)
+    rect = fitz.Rect(x0 + pad, y0 + 0.5, x1 - pad, y1 - 0.5)
+    page.insert_textbox(
+        rect, text, fontname=fontname, fontsize=max(min_size, s - 0.5), color=color, align=align_code
+    )
+
+
+def cell_center(page, font_path, fontname, text, x0, x1, y0, y1, size=9.6, color=(0, 0, 0)):
+    cell_box(page, font_path, fontname, text, x0, x1, y0, y1, size=size, color=color, align='center')
+
+
+def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=8.0):
+    """表头两行（缴费基数 / 数(元)），均在框内。"""
+    mid = (y0 + y1) / 2.0
+    cell_box(page, font_path, fontname, line1, x0, x1, y0, mid + 0.5, size=size, align='center', min_size=6.0)
+    cell_box(page, font_path, fontname, line2, x0, x1, mid - 0.5, y1, size=size, align='center', min_size=6.0)
 
 
 def collect_text_blob(p, months, auth_code):
@@ -192,17 +279,20 @@ def collect_text_blob(p, months, auth_code):
         '月',
         '单位编号',
         '参保地',
-        '缴费基数(元)',
-        '个人缴费(元)',
-        '缴费状况',
+        '缴费基',
+        '数(元)',
+        '个人缴',
+        '费(元)',
+        '缴费',
+        '状况',
         '备注',
         '（盖章）',
         '打印时间：',
-        '备注：1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
-        '2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：',
+        '本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
+        '本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：',
         '验证平台：',
-        '3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
-        '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
+        '本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
+        '本证明妥善保管，最终解释权由参保地社保经办机构所有。',
         'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate',
         company_display(p),
         str(p.get('name') or ''),
@@ -217,6 +307,7 @@ def collect_text_blob(p, months, auth_code):
         str(auth_code or ''),
         str(p.get('area') or ''),
         str(p.get('credit_code') or ''),
+        str(p.get('company_name') or ''),
     ]
     for r in months:
         if not r:
@@ -237,7 +328,7 @@ def collect_text_blob(p, months, auth_code):
                 r.get('remark') or '',
             ]
         )
-    return ''.join(str(x) for x in parts)
+    return ''.join(norm_text(x) for x in parts)
 
 
 def render(payload, auth_code, verify_url, out_path):
@@ -248,26 +339,43 @@ def render(payload, auth_code, verify_url, out_path):
     while len(months) < 12:
         months.append(None)
 
-    subset_path = make_subset_font(collect_text_blob(p, months, auth_code))
-    font_body = subset_path
-    font_title = subset_path
+    blob = collect_text_blob(p, months, auth_code)
+    full_body = ensure_full_cjk_font()
+    full_title = ensure_bold_cjk_font()
+    subset_body = make_subset_font(full_body, blob, prefix='sbdy_body_')
+    subset_title = (
+        make_subset_font(full_title, '浙江省社会保险参保证明（个人专用）', prefix='sbdy_title_')
+        if full_title != full_body
+        else subset_body
+    )
+    font_body = subset_body
+    font_title = subset_title
     qr_path = None
+    doc = None
 
     try:
         doc = fitz.open()
         page = doc.new_page(width=PAGE_W, height=PAGE_H)
+        body_name, title_name = register_fonts(page, font_body, font_title)
 
         title = '浙江省社会保险参保证明（个人专用）'
         tsize = 21.4
         tw = text_width(font_title, title, tsize)
-        insert_cjk(page, fitz.Point((PAGE_W - tw) / 2.0, 68.5), title, font_title, fontsize=tsize)
+        page.insert_text(
+            ((PAGE_W - tw) / 2.0, 72.0),
+            title,
+            fontname=title_name,
+            fontsize=tsize,
+            color=(0, 0, 0),
+        )
 
         qr_path = os.path.join(tempfile.gettempdir(), 'sbdy_qr_%s.png' % os.getpid())
         make_qr_png(verify_url, qr_path)
         page.insert_image(fitz.Rect(497.8, 10.4, 582.9, 101.1), filename=qr_path)
 
-        insert_cjk(page, fitz.Point(496.5, 112.0), '共1页，第1页', font_body, fontsize=9.0)
+        page.insert_text((496.5, 112.0), '共1页，第1页', fontname=body_name, fontsize=10.7, color=(0, 0, 0))
 
+        # —— 个人信息表 ——
         y_t1_0, y_t1_1, y_t1_2 = 120.8, 135.5, 149.7
         draw_rect(page, y_t1_0, y_t1_2)
         draw_hline(page, y_t1_1)
@@ -283,10 +391,11 @@ def render(payload, auth_code, verify_url, out_path):
         for i in range(11):
             draw_vline(page, info_xs[i], y_t1_0, y_t1_1)
         for i in range(5):
-            cell_center(page, font_body, info_labels[i], info_xs[i * 2], info_xs[i * 2 + 1], y_t1_0, y_t1_1, 9.0)
-            cell_center(page, font_body, info_vals[i], info_xs[i * 2 + 1], info_xs[i * 2 + 2], y_t1_0, y_t1_1, 9.0)
-        cell_center(page, font_body, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 10.0)
+            cell_center(page, font_body, body_name, info_labels[i], info_xs[i * 2], info_xs[i * 2 + 1], y_t1_0, y_t1_1, 9.6)
+            cell_center(page, font_body, body_name, info_vals[i], info_xs[i * 2 + 1], info_xs[i * 2 + 2], y_t1_0, y_t1_1, 9.6)
+        cell_center(page, font_body, body_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6)
 
+        # —— 参保基本情况 ——
         y2 = [149.7, 164.4, 178.8, 193.3, 207.5]
         draw_rect(page, y2[0], y2[-1])
         for y in y2[1:-1]:
@@ -305,26 +414,41 @@ def render(payload, auth_code, verify_url, out_path):
         ]
         for ri, row in enumerate(rows2):
             for ci, val in enumerate(row):
-                cell_center(page, font_body, val, bx[ci], bx[ci + 1], y2[ri], y2[ri + 1], 9.0)
-        cell_center(page, font_body, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.0)
-        cell_center(page, font_body, company_display(p), bx[1], bx[4], y2[2], y2[3], 9.0)
+                cell_center(page, font_body, body_name, val, bx[ci], bx[ci + 1], y2[ri], y2[ri + 1], 9.6)
+        cell_center(page, font_body, body_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
+        # 单位名称可能很长：溢出框内缩字号 / 裁剪
+        cell_box(
+            page,
+            font_body,
+            body_name,
+            company_display(p),
+            bx[1],
+            bx[4],
+            y2[2],
+            y2[3],
+            size=9.6,
+            align='center',
+            min_size=7.0,
+        )
         period = p.get('period_label') or ''
         cell_center(
             page,
             font_body,
+            body_name,
             '出具证明前12个月缴费情况（%s）' % period,
             X0,
             X1,
             y2[3],
             y2[4],
-            10.0,
+            9.6,
         )
 
+        # —— 缴费明细（含下方空白溢出行，对齐参考稿）——
         y3_0 = 207.5
         y3_h1 = 222.2
         y3_h2 = 248.4
         row_h = 14.45
-        n_body = 24
+        n_body = 24  # 12 个月数据 + 空白行，形成参考稿同款大表格框
         y3_end = y3_h2 + row_h * n_body
         draw_rect(page, y3_0, y3_end)
         draw_hline(page, y3_h1)
@@ -334,17 +458,29 @@ def render(payload, auth_code, verify_url, out_path):
         for x in COL_X:
             draw_vline(page, x, y3_0, y3_end)
 
-        cell_center(page, font_body, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.0)
-        cell_center(page, font_body, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.0)
-        cell_center(page, font_body, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.0)
-        cell_center(page, font_body, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.0)
-        cell_center(page, font_body, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.0)
-        cell_center(page, font_body, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.0)
+        cell_center(page, font_body, body_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
+        cell_center(page, font_body, body_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
+        cell_center(page, font_body, body_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
+        cell_center(page, font_body, body_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
+        cell_center(page, font_body, body_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
+        cell_center(page, font_body, body_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
 
-        sub = ['参保地', '缴费基数(元)', '个人缴费(元)', '缴费状况']
-        for i, lab in enumerate(sub):
-            cell_center(page, font_body, lab, COL_X[3 + i], COL_X[4 + i], y3_h1, y3_h2, 8.0)
-            cell_center(page, font_body, lab, COL_X[7 + i], COL_X[8 + i], y3_h1, y3_h2, 8.0)
+        # 子表头：与参考稿一致两行折行，避免挤出格
+        twoline_specs = [
+            (3, '参保地', None),
+            (4, '缴费基', '数(元)'),
+            (5, '个人缴', '费(元)'),
+            (6, '缴费', '状况'),
+            (7, '参保地', None),
+            (8, '缴费基', '数(元)'),
+            (9, '个人缴', '费(元)'),
+            (10, '缴费', '状况'),
+        ]
+        for ci, a, b in twoline_specs:
+            if b:
+                cell_twoline(page, font_body, body_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
+            else:
+                cell_center(page, font_body, body_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
 
         for i in range(12):
             y0 = y3_h2 + row_h * i
@@ -367,49 +503,82 @@ def render(payload, auth_code, verify_url, out_path):
                 r.get('remark') or '',
             ]
             for ci, val in enumerate(vals):
-                cell_center(page, font_body, val, COL_X[ci], COL_X[ci + 1], y0, y1, 8.6)
+                # 单位编号等长串：溢出框内自适应字号
+                cell_box(
+                    page,
+                    font_body,
+                    body_name,
+                    val,
+                    COL_X[ci],
+                    COL_X[ci + 1],
+                    y0,
+                    y1,
+                    size=9.6,
+                    align='center',
+                    min_size=6.5,
+                )
 
         auth = str(auth_code or '')
         validate = 'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate'
         notes = [
             '备注：1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
             '2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：%s，' % auth,
-            '验证平台：%s。' % validate,
+            None,  # 验证平台行单独处理
             '3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
             '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
         ]
-        ny = 605.0
+        # 备注紧贴大表底部（保留空白溢出行）
+        ny = y3_end + 10.0
+        line_h = 13.4
         for i, line in enumerate(notes):
             x = 34.3 if i == 0 else 60.0
+            y = ny + i * line_h
             if i == 2:
                 prefix = '验证平台：'
-                insert_cjk(page, fitz.Point(x, ny + i * 13.5), prefix, font_body, fontsize=9.0)
-                px = x + text_width(font_body, prefix, 9.0)
-                insert_cjk(page, fitz.Point(px, ny + i * 13.5), validate, font_body, fontsize=9.0, color=(0, 0, 1))
-                uw = text_width(font_body, validate, 9.0)
+                page.insert_text((x, y), prefix, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+                px = x + text_width(font_body, prefix, 8.6)
+                # URL + 句号须落在表宽内
+                url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', 8.6))
+                us = fit_fontsize(font_body, validate, url_max, 8.6, min_size=5.5)
+                page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
+                uw = min(text_width(font_body, validate, us), url_max)
                 page.insert_link(
                     {
                         'kind': fitz.LINK_URI,
-                        'from': fitz.Rect(px, ny + i * 13.5 - 10, px + uw, ny + i * 13.5 + 2),
+                        'from': fitz.Rect(px, y - 10, px + uw, y + 2),
                         'uri': verify_url or validate,
                     }
                 )
+                page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
             else:
-                insert_cjk(page, fitz.Point(x, ny + i * 13.5), line, font_body, fontsize=9.0)
+                page.insert_text((x, y), line, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
 
-        insert_cjk(page, fitz.Point(492.2, 683.0), '（盖章）', font_body, fontsize=10.0)
+        stamp_y = ny + 5 * line_h + 8
+        page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
         print_date = str(p.get('print_date') or '')
         pd = '打印时间：' + print_date
-        pdw = text_width(font_body, pd, 10.0)
-        insert_cjk(page, fitz.Point((PAGE_W - pdw) / 2.0, 698.0), pd, font_body, fontsize=10.0)
+        pdw = text_width(font_body, pd, 8.6)
+        page.insert_text(((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
         if os.path.isfile(SEAL_PNG):
-            page.insert_image(fitz.Rect(430, 620, 575, 765), filename=SEAL_PNG, keep_proportion=True, overlay=True)
+            page.insert_image(
+                fitz.Rect(430, stamp_y - 55, 575, stamp_y + 90),
+                filename=SEAL_PNG,
+                keep_proportion=True,
+                overlay=True,
+            )
 
+        # 字体已按本文子集嵌入，无需再跑 MuPDF subset（CFF 上常失败且体积暴涨）
         doc.save(out_path, deflate=True, garbage=4)
         doc.close()
+        doc = None
     finally:
-        _FONT_CACHE.pop(subset_path, None)
-        for path in (subset_path, qr_path):
+        if doc is not None:
+            try:
+                doc.close()
+            except Exception:
+                pass
+        _FONT_CACHE.clear()
+        for path in (qr_path, subset_body, subset_title if subset_title != subset_body else None):
             if path:
                 try:
                     os.remove(path)
