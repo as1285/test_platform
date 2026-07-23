@@ -146,9 +146,10 @@
       base_amount: num('sbdyBase', 4986),
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
-      status_pension: val('sbdyStatusPension') || '暂停缴费',
-      status_injury: val('sbdyStatusInjury') || '暂停缴费',
-      status_unemployment: val('sbdyStatusUnemp') || '暂停缴费',
+      status_pension: val('sbdyStatusPension') || '正常参保',
+      status_medical: val('sbdyStatusInjury') || '正常参保',
+      status_injury: val('sbdyStatusInjury') || '正常参保',
+      status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
     if (!body.name || !body.id_number) {
@@ -296,9 +297,9 @@
     setField('sbdyBase', sample.base);
     setField('sbdyPensionPay', sample.pension);
     setField('sbdyUnempPay', sample.unemp);
-    setField('sbdyStatusPension', '暂停缴费');
-    setField('sbdyStatusInjury', '暂停缴费');
-    setField('sbdyStatusUnemp', '暂停缴费');
+    setField('sbdyStatusPension', '正常参保');
+    setField('sbdyStatusInjury', '正常参保');
+    setField('sbdyStatusUnemp', '正常参保');
     setField('sbdyPrintDate', printDate);
     setStatus('已填充示例：' + sample.name + '（可再点生成）', false);
   }
