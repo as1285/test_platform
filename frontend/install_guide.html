@@ -859,21 +859,6 @@
             color: #94a3b8;
             font-weight: 500;
         }
-        .lp-invite-banner {
-            margin: 12px 16px 0;
-            padding: 12px 14px;
-            border-radius: 12px;
-            background: #eef5ff;
-            border: 1px solid #c9ddff;
-            color: #1a3a6b;
-            font-size: 13px;
-            line-height: 1.45;
-        }
-        .lp-invite-banner strong { color: #0b3d91; }
-        .lp-invite-banner a {
-            color: #1677ff;
-            font-weight: 600;
-            text-decoration: none;
             margin-left: 6px;
         }
     </style>
@@ -886,32 +871,10 @@
                 if (q.get('download') === '1' || String(window.location.hash || '') === '#download') {
                     document.body.classList.add('is-download-intent');
                 }
-                var inviteRaw = String(q.get('invite') || q.get('invite_code') || '').trim();
-                if (inviteRaw) {
-                    document.body.classList.add('is-invite-landing');
-                    /* 未登录带邀请码进入下载页：统一先去注册 */
-                    var hasToken = false;
-                    try {
-                        hasToken = !!localStorage.getItem('token');
-                    } catch (eTok) {}
-                    if (!hasToken) {
-                        var next =
-                            'register.html?invite=' +
-                            encodeURIComponent(inviteRaw) +
-                            '&from=install_guide&next_download=1';
-                        window.location.replace(next);
-                        return;
-                    }
-                }
             } catch (e) {}
         })();
     </script>
     <div class="lp-wrap">
-        <div class="lp-invite-banner" id="lpInviteBanner" hidden>
-            <strong>好友邀请你来体验</strong>
-            · 请先注册账号，注册后再下载 App
-            <a href="register.html?from=install_guide" class="install-register-link" id="lpInviteRegisterLink">去注册</a>
-        </div>
         <!-- 1. Hero -->
         <section class="lp-hero" id="lpHero">
             <h1 class="lp-hero-brand">模拟器app</h1>
@@ -1158,34 +1121,8 @@
         }
 
         function bindInstallRegisterLinks() {
-            var inviteCode =
-                typeof window.getRegisterInviteCode === 'function' ? window.getRegisterInviteCode() : '';
-            var inviteBanner = document.getElementById('lpInviteBanner');
-            if (inviteBanner && inviteCode) {
-                inviteBanner.hidden = false;
-            }
             document.querySelectorAll('.install-register-link').forEach(function (link) {
                 var href = link.getAttribute('href') || link.href || '';
-                if (inviteCode && href) {
-                    try {
-                        var u = new URL(href, window.location.origin);
-                        if (!u.searchParams.get('invite') && !u.searchParams.get('invite_code')) {
-                            u.searchParams.set('invite', inviteCode);
-                        }
-                        href = u.pathname.replace(/^\//, '') + u.search + u.hash;
-                        if (href.indexOf('register.html') !== 0 && href.indexOf('/') === 0) {
-                            href = href.replace(/^\//, '');
-                        }
-                        link.setAttribute('href', href);
-                    } catch (eInviteHref) {
-                        if (href.indexOf('invite=') < 0) {
-                            link.setAttribute(
-                                'href',
-                                href + (href.indexOf('?') >= 0 ? '&' : '?') + 'invite=' + encodeURIComponent(inviteCode)
-                            );
-                        }
-                    }
-                }
                 if (typeof window.appendSalesChannelToUrl === 'function') {
                     href = link.getAttribute('href') || link.href;
                     if (href) {
@@ -1207,9 +1144,6 @@
                             if (salesCh) {
                                 meta.sales_ch = salesCh;
                             }
-                        }
-                        if (inviteCode) {
-                            meta.invite = inviteCode;
                         }
                         if (link.classList.contains('install-register-showcase')) {
                             meta.source = 'showcase';

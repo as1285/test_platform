@@ -285,15 +285,11 @@ function buildActivationBatchChannelsPayload(customLabels) {
   return builtins.concat(customs);
 }
 
-/** 用户辅助：channel analysis label（邀请注册优先展示邀请人） */
-function userChannelAnalysisLabel(registerChannel, activationChannel, invitedBy) {
-  var inv = invitedBy != null ? String(invitedBy).trim() : '';
+/** 用户辅助：渠道分析标签（注册 / 激活来源） */
+function userChannelAnalysisLabel(registerChannel, activationChannel) {
   var reg = registerSourceChannelLabel(registerChannel);
   var act = activationSourceChannelLabel(activationChannel);
   var parts = [];
-  if (inv) {
-    parts.push('邀请人：' + inv);
-  }
   if (act && reg && reg !== act) {
     parts.push('注册：' + reg);
     parts.push('激活：' + act);
@@ -495,7 +491,7 @@ const DEFAULT_MINE_UI = {
 };
 
 let pool;
-/** 时效激活 / 邀请有礼 API（pool 就绪后懒初始化） */
+/** 时效激活 API（pool 就绪后懒初始化） */
 var inviteRewardApi = null;
 /** 定价 A/B */
 var pricingAbApi = null;
@@ -3190,7 +3186,6 @@ async function createTables() {
     'analytics-conversion',
     'analytics-activity',
     'analytics-register',
-    'analytics-invite',
     'analytics-purchase',
     'analytics-tracking',
     'analytics-devices'
@@ -3202,11 +3197,6 @@ async function createTables() {
       [analyticsSplitMenus[asi]]
     );
   }
-
-  await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'analytics-invite' FROM admin_account_menus WHERE menu_key = 'analytics-register'`
-  );
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
@@ -5545,7 +5535,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       grant_minutes: grantMinutes
     };
     const [beforeUserRows] = await conn.execute(
-      `SELECT account_active, activation_kind, active_until, invited_by FROM users WHERE username = ? FOR UPDATE`,
+      `SELECT account_active, activation_kind, active_until FROM users WHERE username = ? FOR UPDATE`,
       [locked.username]
     );
     var beforeRow = beforeUserRows[0] || null;
@@ -5602,33 +5592,6 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
           cover.active_until
         ]
       );
-    }
-    /* 仅永久履约计邀请付费奖 */
-    if (cover.kind === 'permanent' && !wasPermanentBefore && beforeRow && beforeRow.invited_by) {
-      try {
-        await getInviteReward().markInviteeActivatedInConn(
-          conn,
-          locked.username,
-          beforeRow.invited_by
-        );
-        await getInviteReward().grantInvitePayRewardInConn(
-          conn,
-          locked.username,
-          beforeRow.invited_by
-        );
-      } catch (eInvPay) {
-        console.error('alipay invite mark/pay reward', eInvPay);
-      }
-    } else if (cover.applied && beforeRow && beforeRow.invited_by) {
-      try {
-        await getInviteReward().markInviteeActivatedInConn(
-          conn,
-          locked.username,
-          beforeRow.invited_by
-        );
-      } catch (eInvMark) {
-        console.error('alipay invite mark', eInvMark);
-      }
     }
     await conn.execute(
       `UPDATE payment_orders
@@ -6948,7 +6911,7 @@ async function getUserInfoForApi(userId) {
             account_active, user_type, id_type, birth_date, nationality,
             huji_area, huji_detail, living_area, living_detail,
             contact_area, contact_detail, education, ethnicity, email,
-            activation_kind, active_until, invite_code
+            activation_kind, active_until
      FROM users WHERE username = ? LIMIT 1`,
     [uid]
   );
@@ -7355,7 +7318,6 @@ async function handleUserGet(req, res) {
   if (
     action !== 'info' &&
     action !== 'summary' &&
-    action !== 'invite_overview' &&
     action !== 'rename_policy' &&
     action !== 'employers' &&
     action !== 'family_members' &&
@@ -7370,10 +7332,6 @@ async function handleUserGet(req, res) {
     return res.status(400).json({ code: 400, msg: 'user_id required' });
   }
   try {
-    if (action === 'invite_overview') {
-      var overview = await getInviteReward().getInviteOverviewForUser(userId);
-      return res.json({ code: 200, data: overview });
-    }
     if (action === 'rename_policy') {
       var renamePol = await getRenameFeePolicy(userId);
       return res.json({ code: 200, data: renamePol });
@@ -11343,31 +11301,6 @@ async function handleAuthPost(req, res) {
       recordInstallGuideTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
-    if (action === 'invite_link_click') {
-      var inviteClickCode =
-        body.invite != null
-          ? body.invite
-          : body.invite_code != null
-            ? body.invite_code
-            : '';
-      var inviteClickClient =
-        body.client_id != null
-          ? body.client_id
-          : body.clientId != null
-            ? body.clientId
-            : req.headers['x-client-id'] || '';
-      var inviteClickPath =
-        body.page_path != null
-          ? body.page_path
-          : req.headers['x-page-path'] || '';
-      var clickOut = await getInviteReward().recordInviteLinkClick({
-        inviteCode: inviteClickCode,
-        clientId: inviteClickClient,
-        pagePath: inviteClickPath,
-        ip: typeof getClientIp === 'function' ? getClientIp(req) : ''
-      });
-      return res.json({ code: 200, data: clickOut });
-    }
     if (action === 'admin_issue_code') {
       var adm = body.admin_key || req.headers['x-admin-key'];
       if (!ADMIN_ACTIVATION_KEY || adm !== ADMIN_ACTIVATION_KEY) {
@@ -11436,35 +11369,6 @@ async function handleAuthPost(req, res) {
           parseFromInstallGuideFlag(body),
           regSalesCh
         );
-        try {
-          var inviteRaw =
-            body.invite != null
-              ? body.invite
-              : body.invite_code != null
-                ? body.invite_code
-                : '';
-          await getInviteReward().bindInvitedByOnRegister(
-            out.username,
-            inviteRaw,
-            body.client_id || body.clientId || ''
-          );
-          var connInvite = await pool.getConnection();
-          try {
-            await getInviteReward().ensureUserInviteCode(connInvite, out.username);
-          } finally {
-            connInvite.release();
-          }
-          /* 延迟为 0 时尽快发奖，不等定时任务 */
-          setImmediate(function () {
-            getInviteReward()
-              .processPendingInviteRewards()
-              .catch(function (e) {
-                console.error('processPendingInviteRewards after register', e);
-              });
-          });
-        } catch (eInvite) {
-          console.error('bind invite on register', eInvite);
-        }
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);
         }
@@ -12753,161 +12657,6 @@ async function handleAdminActivationChannelFunnel(req, res) {
 }
 
 /** 安装引导统计 */
-/**
- * 邀请注册日统计：user_invites.registered_at（北京时间）+ 链接点击 / Top 邀请人
- */
-async function handleAdminInviteRegistrations(req, res) {
-  try {
-    var period = parseAnalyticsPeriod(req.query.days, 365);
-    var cnInviteDay = 'DATE(DATE_ADD(registered_at, INTERVAL 8 HOUR))';
-    var invitePf = analyticsPeriodCnDateFilter(cnInviteDay, period);
-    var cnClickDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
-    var clickPf = analyticsPeriodCnDateFilter(cnClickDay, period);
-    const conn = await pool.getConnection();
-    try {
-      const [dailyRows] = await conn.query(
-        `SELECT ${cnInviteDay} AS d,
-                COUNT(*) AS invite_registered,
-                COUNT(DISTINCT inviter_username) AS inviters,
-                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
-                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted,
-                SUM(CASE WHEN reward_status = 'pending' THEN 1 ELSE 0 END) AS reward_pending,
-                SUM(CASE WHEN reward_status = 'rejected' THEN 1 ELSE 0 END) AS reward_rejected
-         FROM user_invites
-         WHERE ${invitePf.sql}
-         GROUP BY ${cnInviteDay}
-         ORDER BY d DESC`,
-        invitePf.params
-      );
-      const [clickDailyRows] = await conn.query(
-        `SELECT ${cnClickDay} AS d,
-                COUNT(*) AS link_clicks,
-                COUNT(DISTINCT COALESCE(NULLIF(visitor_client_id, ''), visitor_ip)) AS link_uv
-         FROM invite_link_clicks
-         WHERE ${clickPf.sql}
-         GROUP BY ${cnClickDay}
-         ORDER BY d DESC`,
-        clickPf.params
-      );
-      const [summaryRows] = await conn.query(
-        `SELECT COUNT(*) AS invite_registered,
-                COUNT(DISTINCT inviter_username) AS inviters,
-                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
-                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted,
-                SUM(CASE WHEN reward_status = 'pending' THEN 1 ELSE 0 END) AS reward_pending
-         FROM user_invites
-         WHERE ${invitePf.sql}`,
-        invitePf.params
-      );
-      const [clickSummaryRows] = await conn.query(
-        `SELECT COUNT(*) AS link_clicks,
-                COUNT(DISTINCT COALESCE(NULLIF(visitor_client_id, ''), visitor_ip)) AS link_uv
-         FROM invite_link_clicks
-         WHERE ${clickPf.sql}`,
-        clickPf.params
-      );
-      const [topInviterRows] = await conn.query(
-        `SELECT inviter_username,
-                COUNT(*) AS invite_registered,
-                SUM(CASE WHEN first_activated_at IS NOT NULL THEN 1 ELSE 0 END) AS activated,
-                SUM(CASE WHEN reward_status = 'granted' THEN 1 ELSE 0 END) AS reward_granted
-         FROM user_invites
-         WHERE ${invitePf.sql}
-         GROUP BY inviter_username
-         ORDER BY invite_registered DESC, activated DESC
-         LIMIT 30`,
-        invitePf.params
-      );
-      var clickByDay = {};
-      (clickDailyRows || []).forEach(function (r) {
-        var dk = formatDateKey(r.d);
-        if (!dk) return;
-        clickByDay[dk] = {
-          link_clicks: Number(r.link_clicks) || 0,
-          link_uv: Number(r.link_uv) || 0
-        };
-      });
-      var daily = (dailyRows || []).map(function (r) {
-        var dk = formatDateKey(r.d);
-        var clicks = clickByDay[dk] || { link_clicks: 0, link_uv: 0 };
-        var reg = Number(r.invite_registered) || 0;
-        var act = Number(r.activated) || 0;
-        return {
-          date: dk,
-          invite_registered: reg,
-          inviters: Number(r.inviters) || 0,
-          activated: act,
-          activate_rate: reg > 0 ? Math.round((act / reg) * 1000) / 10 : 0,
-          reward_granted: Number(r.reward_granted) || 0,
-          reward_pending: Number(r.reward_pending) || 0,
-          reward_rejected: Number(r.reward_rejected) || 0,
-          link_clicks: clicks.link_clicks,
-          link_uv: clicks.link_uv
-        };
-      });
-      /* 补齐仅有点击、无邀请注册的日期 */
-      Object.keys(clickByDay).forEach(function (dk) {
-        var found = daily.some(function (row) {
-          return row.date === dk;
-        });
-        if (!found) {
-          daily.push({
-            date: dk,
-            invite_registered: 0,
-            inviters: 0,
-            activated: 0,
-            activate_rate: 0,
-            reward_granted: 0,
-            reward_pending: 0,
-            reward_rejected: 0,
-            link_clicks: clickByDay[dk].link_clicks,
-            link_uv: clickByDay[dk].link_uv
-          });
-        }
-      });
-      daily.sort(function (a, b) {
-        return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
-      });
-      var sum = summaryRows && summaryRows[0] ? summaryRows[0] : {};
-      var clickSum = clickSummaryRows && clickSummaryRows[0] ? clickSummaryRows[0] : {};
-      var totalReg = Number(sum.invite_registered) || 0;
-      var totalAct = Number(sum.activated) || 0;
-      return res.json({
-        code: 200,
-        data: Object.assign(conversionAnalyticsPeriodMeta(period), {
-          summary: {
-            invite_registered: totalReg,
-            inviters: Number(sum.inviters) || 0,
-            activated: totalAct,
-            activate_rate: totalReg > 0 ? Math.round((totalAct / totalReg) * 1000) / 10 : 0,
-            reward_granted: Number(sum.reward_granted) || 0,
-            reward_pending: Number(sum.reward_pending) || 0,
-            link_clicks: Number(clickSum.link_clicks) || 0,
-            link_uv: Number(clickSum.link_uv) || 0
-          },
-          daily: daily,
-          top_inviters: (topInviterRows || []).map(function (r) {
-            var ir = Number(r.invite_registered) || 0;
-            var ia = Number(r.activated) || 0;
-            return {
-              inviter_username: r.inviter_username != null ? String(r.inviter_username) : '',
-              invite_registered: ir,
-              activated: ia,
-              activate_rate: ir > 0 ? Math.round((ia / ir) * 1000) / 10 : 0,
-              reward_granted: Number(r.reward_granted) || 0
-            };
-          })
-        })
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error('[admin invite-registrations]', e);
-    return res.status(500).json({ code: 500, msg: '加载邀请注册统计失败' });
-  }
-}
-
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -15668,6 +15417,26 @@ async function handleAdminUsers(req, res) {
     });
     var riskMaps = await buildUserLoginRiskMaps(conn, usernamesForRisk);
     var taxFlagsToday = await loadTaxRecordFlagsForUsernames(conn, usernamesForRisk, todayKey);
+    var nameChangeCountMap = {};
+    if (usernamesForRisk.length) {
+      var nameChangePlaceholders = usernamesForRisk
+        .map(function () {
+          return '?';
+        })
+        .join(',');
+      const [nameChangeRows] = await conn.query(
+        `SELECT username, COUNT(*) AS cnt
+         FROM user_profile_change_logs
+         WHERE field_key = 'real_name' AND username IN (` +
+          nameChangePlaceholders +
+          `)
+         GROUP BY username`,
+        usernamesForRisk
+      );
+      (nameChangeRows || []).forEach(function (row) {
+        nameChangeCountMap[String(row.username || '')] = Number(row.cnt) || 0;
+      });
+    }
     conn.release();
 
     var out = rows.map(function (r) {
@@ -15702,6 +15471,7 @@ async function handleAdminUsers(req, res) {
         id: r.id,
         username: r.username,
         real_name: r.real_name,
+        name_change_count: nameChangeCountMap[uname] || 0,
         tax_id: r.tax_id,
         account_active: r.account_active === 1 || r.account_active === true,
         banned: r.banned === 1 || r.banned === true,
@@ -17172,7 +16942,6 @@ async function handleAdminSettingsGet(req, res) {
     var qrRef = await getWechatPayQrcodeUrl();
     var conversionAb = await loadConversionAbParsed();
     var landingAb = await loadLandingAbParsed();
-    var inviteCfg = await getInviteReward().loadInviteSettings(true);
     var activationNudge = await loadActivationNudgeParsed();
     return res.json({
       code: 200,
@@ -17191,13 +16960,6 @@ async function handleAdminSettingsGet(req, res) {
         landing_ab: landingAb,
         sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
-        invite_enabled: inviteCfg.enabled,
-        invite_reward_days: inviteCfg.reward_days,
-        invite_reward_hours: inviteCfg.reward_hours,
-        invite_reward_minutes: inviteCfg.reward_minutes,
-        invite_pay_reward_days: inviteCfg.pay_reward_days,
-        invite_monthly_cap: inviteCfg.monthly_cap,
-        invite_grant_delay_hours: inviteCfg.grant_delay_hours,
         activation_nudge: activationNudge
       }
     });
@@ -17223,14 +16985,6 @@ async function handleAdminSettingsPost(req, res) {
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
   var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
-  var hasInvite =
-    Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_reward_days') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_reward_hours') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_reward_minutes') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_pay_reward_days') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_monthly_cap') ||
-    Object.prototype.hasOwnProperty.call(body, 'invite_grant_delay_hours');
   var hasActivationNudge = body.activation_nudge != null && typeof body.activation_nudge === 'object';
   if (
     !hasMineUi &&
@@ -17246,12 +17000,11 @@ async function handleAdminSettingsPost(req, res) {
     !hasLandingAb &&
     !hasSalesAgent &&
     !hasPricingAb &&
-    !hasInvite &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -17554,10 +17307,6 @@ async function handleAdminSettingsPost(req, res) {
       await getPricingAb().savePricingAbFromAdmin(body.pricing_ab);
     }
 
-    if (hasInvite) {
-      await getInviteReward().saveInviteSettingsFromAdmin(body);
-    }
-
     if (hasActivationNudge) {
       await saveActivationNudgeFromAdmin(body.activation_nudge);
     }
@@ -17594,14 +17343,6 @@ async function handleAdminSettingsPost(req, res) {
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
-    var inviteAfter = await getInviteReward().loadInviteSettings(true);
-    outData.invite_enabled = inviteAfter.enabled;
-    outData.invite_reward_days = inviteAfter.reward_days;
-    outData.invite_reward_hours = inviteAfter.reward_hours;
-    outData.invite_reward_minutes = inviteAfter.reward_minutes;
-    outData.invite_pay_reward_days = inviteAfter.pay_reward_days;
-    outData.invite_monthly_cap = inviteAfter.monthly_cap;
-    outData.invite_grant_delay_hours = inviteAfter.grant_delay_hours;
     outData.activation_nudge = await loadActivationNudgeParsed();
     return res.json({ code: 200, data: outData });
   } catch (e) {
@@ -21845,7 +21586,6 @@ function getHandlers() {
     handleAdminRegistrationFunnel,
     handleAdminChannelRegistrationFunnel,
     handleAdminActivationChannelFunnel,
-    handleAdminInviteRegistrations,
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
@@ -21929,20 +21669,6 @@ async function startServer() {
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
   serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
-  setInterval(function () {
-    getInviteReward()
-      .processPendingInviteRewards()
-      .catch(function (e) {
-        console.error('processPendingInviteRewards', e);
-      });
-  }, 60000);
-  setTimeout(function () {
-    getInviteReward()
-      .processPendingInviteRewards()
-      .catch(function (e) {
-        console.error('processPendingInviteRewards', e);
-      });
-  }, 8000);
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });

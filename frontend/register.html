@@ -292,18 +292,6 @@
             max-width: calc(100% - 40px);
         }
         .ok-toast.show { opacity: 1; }
-        .invite-reg-banner {
-            margin: 0 20px 12px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: #eef5ff;
-            border: 1px solid #c9ddff;
-            color: #1a3a6b;
-            font-size: 13px;
-            line-height: 1.45;
-        }
-        .invite-reg-banner strong { color: #0b3d91; }
-        .invite-reg-banner[hidden] { display: none !important; }
     </style>
 </head>
 <body class="page-register">
@@ -316,10 +304,6 @@
         <p>账号、密码填好就能用，大约半分钟</p>
     </div>
 
-    <div class="invite-reg-banner" id="inviteRegBanner" hidden>
-        <strong>好友邀请你加入</strong>
-        · 创建账号后即可下载 App
-    </div>
 
     <div class="card">
         <form id="regForm" autocomplete="on">
@@ -385,34 +369,20 @@
                 if (back && q.get('from') === 'install_guide') {
                     back.setAttribute('href', 'install_guide.html');
                 }
-                var inviteCode =
-                    typeof window.getRegisterInviteCode === 'function' ? window.getRegisterInviteCode() : '';
-                if (!inviteCode) {
-                    inviteCode = String(q.get('invite') || q.get('invite_code') || '').trim().toUpperCase();
-                }
-                var banner = document.getElementById('inviteRegBanner');
-                if (banner && inviteCode) {
-                    banner.hidden = false;
-                }
                 if (q.get('next_download') === '1') {
                     try {
-                        sessionStorage.setItem('invite_next_download_v1', '1');
+                        sessionStorage.setItem('reg_next_download_v1', '1');
                     } catch (eNd) {}
                 }
                 var goDownloadCta = false;
                 try {
-                    goDownloadCta =
-                        sessionStorage.getItem('invite_next_download_v1') === '1' || !!inviteCode;
+                    goDownloadCta = sessionStorage.getItem('reg_next_download_v1') === '1';
                 } catch (eCta) {
-                    goDownloadCta = !!inviteCode;
+                    goDownloadCta = false;
                 }
                 var btnSubmit = document.getElementById('btnSubmit');
                 if (btnSubmit && goDownloadCta) {
                     btnSubmit.textContent = '创建并下载';
-                }
-                var channelEl = document.getElementById('registerSourceChannel');
-                if (channelEl && inviteCode && !channelEl.value) {
-                    channelEl.value = 'friend';
                 }
                 var guestTip = document.getElementById('guestRegTip');
                 if (guestTip) {
@@ -643,10 +613,6 @@
                             ? window.getLandingAbVariant() || undefined
                             : undefined,
                     sales_ch: regSalesCh || undefined,
-                    invite:
-                        typeof window.getRegisterInviteCode === 'function'
-                            ? window.getRegisterInviteCode() || undefined
-                            : undefined,
                     client_id: regClientId || undefined,
                     guest_username: regGuestUsername || undefined
                 })
@@ -722,13 +688,8 @@
                         } catch (ePending) {}
                         var goDownload = false;
                         try {
-                            goDownload =
-                                sessionStorage.getItem('invite_next_download_v1') === '1' ||
-                                !!(
-                                    typeof window.getRegisterInviteCode === 'function' &&
-                                    window.getRegisterInviteCode()
-                                );
-                            sessionStorage.removeItem('invite_next_download_v1');
+                            goDownload = sessionStorage.getItem('reg_next_download_v1') === '1';
+                            sessionStorage.removeItem('reg_next_download_v1');
                         } catch (eGo) {
                             goDownload = false;
                         }

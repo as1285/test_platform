@@ -41,7 +41,6 @@
     'analytics-conversion': 'analytics',
     'analytics-activity': 'analytics',
     'analytics-register': 'analytics',
-    'analytics-invite': 'analytics',
     'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
     'analytics-devices': 'analytics',

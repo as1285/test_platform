@@ -150,14 +150,6 @@ const ADMIN_PAGE_DEFS = [
     order: 10
   },
   {
-    page: 'analytics-invite',
-    menu_key: 'analytics-invite',
-    label: '邀请注册统计',
-    group: 'insights',
-    module: 'analytics',
-    order: 15
-  },
-  {
     page: 'analytics-activity',
     menu_key: 'analytics-activity',
     label: '用户活跃',

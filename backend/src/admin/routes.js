@@ -133,12 +133,6 @@ app.post(
   h.handleAdminMessagesBulk
 );
 app.get(
-  '/api/admin/analytics/invite-registrations',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-invite', 'analytics', 'analytics-register']),
-  h.handleAdminInviteRegistrations
-);
-app.get(
   '/api/admin/analytics/register-time',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-register', 'analytics']),

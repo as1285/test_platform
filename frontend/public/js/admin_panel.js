@@ -1036,7 +1036,6 @@
         var _adminCodesLoaded = false;
         var _adminAnalyticsActivitySeen = false;
         var _adminAnalyticsRegisterSeen = false;
-        var _adminAnalyticsInviteSeen = false;
         var _adminAnalyticsPurchaseSeen = false;
         var _adminAnalyticsTrackingSeen = false;
         var _adminAnalyticsDevicesSeen = false;
@@ -1082,8 +1081,7 @@
                 'user-behavior',
                 'activated-user-analysis',
                 'analytics-register',
-                'analytics-invite',
-                'analytics-activity',
+                                'analytics-activity',
                 'analytics-tracking',
                 'analytics-devices',
                 'api-analytics',
@@ -1194,8 +1192,7 @@
                 'analytics-conversion': 1,
                 'analytics-activity': 1,
                 'analytics-register': 1,
-                'analytics-invite': 1,
-                'analytics-purchase': 1,
+                                'analytics-purchase': 1,
                 'analytics-tracking': 1,
                 'analytics-devices': 1,
                 'install-guide-stats': 1,
@@ -1275,10 +1272,6 @@
             if (pageKey === 'analytics-register' && !_adminAnalyticsRegisterSeen) {
                 _adminAnalyticsRegisterSeen = true;
                 loadAnalyticsRegisterPage();
-            }
-            if (pageKey === 'analytics-invite' && !_adminAnalyticsInviteSeen) {
-                _adminAnalyticsInviteSeen = true;
-                loadAnalyticsInvitePage();
             }
             if (pageKey === 'analytics-purchase') {
                 loadAnalyticsPurchasePage();
@@ -2185,125 +2178,6 @@
             loadAnalyticsRegisterPlatform();
             loadAnalyticsRegisterTime();
             loadAnalyticsRegisterGender();
-        }
-
-        function loadAnalyticsInvitePage() {
-            var days = analyticsPeriodVal(document.getElementById('analyticsInviteDays'));
-            var summaryEl = document.getElementById('analyticsInviteSummary');
-            var cardsEl = document.getElementById('analyticsInviteCards');
-            var dailyTbody = document.getElementById('analyticsInviteDailyTbody');
-            var topTbody = document.getElementById('analyticsInviteTopTbody');
-            if (summaryEl) summaryEl.textContent = '加载中…';
-            if (cardsEl) cardsEl.innerHTML = '';
-            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
-            if (topTbody) topTbody.innerHTML = '<tr><td colspan="6">加载中…</td></tr>';
-            adminFetch('api/admin/analytics/invite-registrations?days=' + encodeURIComponent(days))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (res) {
-                    if (!res || res.code !== 200 || !res.data) {
-                        if (summaryEl) summaryEl.textContent = (res && res.msg) || '加载失败';
-                        if (dailyTbody) {
-                            dailyTbody.innerHTML =
-                                '<tr><td colspan="9">' + esc((res && res.msg) || '加载失败') + '</td></tr>';
-                        }
-                        if (topTbody) {
-                            topTbody.innerHTML =
-                                '<tr><td colspan="6">' + esc((res && res.msg) || '加载失败') + '</td></tr>';
-                        }
-                        return;
-                    }
-                    var data = res.data;
-                    var sum = data.summary || {};
-                    if (summaryEl) {
-                        summaryEl.innerHTML =
-                            analyticsPeriodHintHtml(data) +
-                            '区间邀请注册 <strong>' +
-                            esc(String(sum.invite_registered || 0)) +
-                            '</strong> 人，来自 <strong>' +
-                            esc(String(sum.inviters || 0)) +
-                            '</strong> 位邀请人；已激活 <strong>' +
-                            esc(String(sum.activated || 0)) +
-                            '</strong>（' +
-                            esc(String(sum.activate_rate != null ? sum.activate_rate : 0)) +
-                            '%）。';
-                    }
-                    if (cardsEl) {
-                        var cards = [
-                            ['邀请注册', sum.invite_registered || 0],
-                            ['邀请人数', sum.inviters || 0],
-                            ['已激活', sum.activated || 0],
-                            ['激活率', (sum.activate_rate != null ? sum.activate_rate : 0) + '%'],
-                            ['奖励已发', sum.reward_granted || 0],
-                            ['奖励待发', sum.reward_pending || 0],
-                            ['链接点击', sum.link_clicks || 0],
-                            ['点击 UV', sum.link_uv || 0]
-                        ];
-                        var ch = '';
-                        cards.forEach(function (c) {
-                            ch +=
-                                '<div class="user-data-stat-card"><div class="ud-label">' +
-                                esc(c[0]) +
-                                '</div><div class="ud-val">' +
-                                esc(String(c[1])) +
-                                '</div></div>';
-                        });
-                        cardsEl.innerHTML = ch;
-                    }
-                    var daily = Array.isArray(data.daily) ? data.daily : [];
-                    if (dailyTbody) {
-                        if (!daily.length) {
-                            dailyTbody.innerHTML = '<tr><td colspan="9">暂无邀请注册数据</td></tr>';
-                        } else {
-                            var dh = '';
-                            daily.forEach(function (row) {
-                                dh += '<tr>';
-                                dh += '<td>' + esc(row.date || '—') + '</td>';
-                                dh += '<td>' + esc(String(row.invite_registered || 0)) + '</td>';
-                                dh += '<td>' + esc(String(row.inviters || 0)) + '</td>';
-                                dh += '<td>' + esc(String(row.activated || 0)) + '</td>';
-                                dh +=
-                                    '<td>' +
-                                    esc(String(row.activate_rate != null ? row.activate_rate : 0)) +
-                                    '%</td>';
-                                dh += '<td>' + esc(String(row.reward_granted || 0)) + '</td>';
-                                dh += '<td>' + esc(String(row.reward_pending || 0)) + '</td>';
-                                dh += '<td>' + esc(String(row.link_clicks || 0)) + '</td>';
-                                dh += '<td>' + esc(String(row.link_uv || 0)) + '</td>';
-                                dh += '</tr>';
-                            });
-                            dailyTbody.innerHTML = dh;
-                        }
-                    }
-                    var top = Array.isArray(data.top_inviters) ? data.top_inviters : [];
-                    if (topTbody) {
-                        if (!top.length) {
-                            topTbody.innerHTML = '<tr><td colspan="6">暂无邀请人数据</td></tr>';
-                        } else {
-                            var th = '';
-                            top.forEach(function (row, idx) {
-                                th += '<tr>';
-                                th += '<td>' + esc(String(idx + 1)) + '</td>';
-                                th += '<td class="cell-break">' + esc(row.inviter_username || '—') + '</td>';
-                                th += '<td>' + esc(String(row.invite_registered || 0)) + '</td>';
-                                th += '<td>' + esc(String(row.activated || 0)) + '</td>';
-                                th +=
-                                    '<td>' +
-                                    esc(String(row.activate_rate != null ? row.activate_rate : 0)) +
-                                    '%</td>';
-                                th += '<td>' + esc(String(row.reward_granted || 0)) + '</td>';
-                                th += '</tr>';
-                            });
-                            topTbody.innerHTML = th;
-                        }
-                    }
-                })
-                .catch(function () {
-                    if (summaryEl) summaryEl.textContent = '网络错误';
-                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="9">网络错误</td></tr>';
-                    if (topTbody) topTbody.innerHTML = '<tr><td colspan="6">网络错误</td></tr>';
-                });
         }
 
         var PURCHASE_USERS_PAGE_LIMIT = 20;
@@ -6457,9 +6331,21 @@
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
+                        var nameChangeCount = Number(u.name_change_count) || 0;
+                        var nameChangeBadge =
+                            '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
+                            'background:' +
+                            (nameChangeCount > 0 ? '#fff3e0;color:#b45309;' : '#f3f4f6;color:#999;') +
+                            'font-size:11px;white-space:nowrap;" title="姓名历史修改次数">改名' +
+                            esc(String(nameChangeCount)) +
+                            '次</span>';
                         html += '<td class="cell-break">' + esc(u.username) + '</td>';
                         html += '<td class="col-tax-mod">' + taxModBadge + '</td>';
-                        html += '<td class="cell-break">' + esc(u.real_name) + '</td>';
+                        html +=
+                            '<td class="cell-break">' +
+                            esc(u.real_name || '—') +
+                            nameChangeBadge +
+                            '</td>';
                         html +=
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
@@ -6929,7 +6815,6 @@
             'analytics-purchase': '支付页埋点',
             'analytics-activity': '用户活跃',
             'analytics-register': '注册分析',
-            'analytics-invite': '邀请注册统计',
             'analytics-tracking': '埋点分析',
             'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
@@ -7983,37 +7868,6 @@
                                 );
                             }
                         }
-                        var inviteEn = document.getElementById('inviteEnabled');
-                        if (inviteEn) {
-                            inviteEn.checked =
-                                data.data.invite_enabled === true ||
-                                data.data.invite_enabled === 1 ||
-                                data.data.invite_enabled === '1';
-                        }
-                        var inviteDays = document.getElementById('inviteRewardDays');
-                        if (inviteDays && data.data.invite_reward_days != null) {
-                            inviteDays.value = String(data.data.invite_reward_days);
-                        }
-                        var inviteHours = document.getElementById('inviteRewardHours');
-                        if (inviteHours && data.data.invite_reward_hours != null) {
-                            inviteHours.value = String(data.data.invite_reward_hours);
-                        }
-                        var inviteMinutes = document.getElementById('inviteRewardMinutes');
-                        if (inviteMinutes && data.data.invite_reward_minutes != null) {
-                            inviteMinutes.value = String(data.data.invite_reward_minutes);
-                        }
-                        var invitePayDays = document.getElementById('invitePayRewardDays');
-                        if (invitePayDays && data.data.invite_pay_reward_days != null) {
-                            invitePayDays.value = String(data.data.invite_pay_reward_days);
-                        }
-                        var inviteCap = document.getElementById('inviteMonthlyCap');
-                        if (inviteCap && data.data.invite_monthly_cap != null) {
-                            inviteCap.value = String(data.data.invite_monthly_cap);
-                        }
-                        var inviteDelay = document.getElementById('inviteGrantDelayHours');
-                        if (inviteDelay && data.data.invite_grant_delay_hours != null) {
-                            inviteDelay.value = String(data.data.invite_grant_delay_hours);
-                        }
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
                             var nEn = document.getElementById('actNudgeEnabled');
@@ -8280,79 +8134,6 @@
                     });
             });
         }
-
-        var btnSaveInviteReward = document.getElementById('btnSaveInviteReward');
-        if (btnSaveInviteReward) {
-            btnSaveInviteReward.addEventListener('click', function () {
-                var days = parseInt(document.getElementById('inviteRewardDays').value, 10);
-                var hours = parseInt(document.getElementById('inviteRewardHours').value, 10);
-                var minutesEl = document.getElementById('inviteRewardMinutes');
-                var minutes = minutesEl ? parseInt(minutesEl.value, 10) : 30;
-                var payDaysEl = document.getElementById('invitePayRewardDays');
-                var payDays = payDaysEl ? parseInt(payDaysEl.value, 10) : 3;
-                var cap = parseInt(document.getElementById('inviteMonthlyCap').value, 10);
-                var delay = parseInt(document.getElementById('inviteGrantDelayHours').value, 10);
-                if (!isFinite(days) || days < 0 || days > 365) {
-                    alert('注册奖励天数请输入 0–365');
-                    return;
-                }
-                if (!isFinite(hours) || hours < 0 || hours > 720) {
-                    alert('注册奖励小时请输入 0–720');
-                    return;
-                }
-                if (!isFinite(minutes) || minutes < 0 || minutes > 1440) {
-                    alert('注册奖励分钟请输入 0–1440');
-                    return;
-                }
-                if (!isFinite(payDays) || payDays < 0 || payDays > 365) {
-                    alert('付费奖励天数请输入 0–365');
-                    return;
-                }
-                if (!days && !hours && !minutes) {
-                    alert('注册奖励的天/小时/分钟不能全为 0');
-                    return;
-                }
-                if (!isFinite(cap) || cap < 0 || cap > 100) {
-                    alert('月封顶请输入 0–100');
-                    return;
-                }
-                if (!isFinite(delay) || delay < 0 || delay > 720) {
-                    alert('发奖延迟请输入 0–720 小时');
-                    return;
-                }
-                btnSaveInviteReward.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        invite_enabled: !!document.getElementById('inviteEnabled').checked,
-                        invite_reward_days: days,
-                        invite_reward_hours: hours,
-                        invite_reward_minutes: minutes,
-                        invite_pay_reward_days: payDays,
-                        invite_monthly_cap: cap,
-                        invite_grant_delay_hours: delay
-                    })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('邀请有礼配置已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnSaveInviteReward.disabled = false;
-                    });
-            });
-        }
-
         var btnSaveActNudge = document.getElementById('btnSaveActNudge');
         if (btnSaveActNudge) {
             btnSaveActNudge.addEventListener('click', function () {
@@ -8783,18 +8564,6 @@
         if (installGuideStatsDays) {
             installGuideStatsDays.addEventListener('change', function () {
                 loadInstallGuideStats();
-            });
-        }
-        var btnRefreshInviteStats = document.getElementById('btnRefreshInviteStats');
-        if (btnRefreshInviteStats) {
-            btnRefreshInviteStats.onclick = function () {
-                loadAnalyticsInvitePage();
-            };
-        }
-        var analyticsInviteDays = document.getElementById('analyticsInviteDays');
-        if (analyticsInviteDays) {
-            analyticsInviteDays.addEventListener('change', function () {
-                loadAnalyticsInvitePage();
             });
         }
         var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');
