@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-rename-fee"></script>
+    <script src="/js/auth.js?v=20260723-nav-lower"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -13,7 +13,7 @@
     <script src="/js/tutorial-video-prompt.js?v=20260705-huawei-modal-fix" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的</title>
-    <link rel="stylesheet" href="css/nav.css?v=20260723-mine-nav">
+    <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -416,7 +416,8 @@
             margin-right: 0;
         }
 
-        /* 灰底圆角面板：与原版一致，白卡片浮在灰底上；底栏避让与其它 TAB 一致放在内容区 */
+        /* 灰底圆角面板：与原版一致，白卡片浮在灰底上；底栏避让与其它 TAB 一致放在内容区。
+         * 勿加 overflow-x:clip/hidden：会连带裁切上移的 .user-card（margin-top 负值）。 */
         .content-wrapper {
             background: #f5f6fa;
             border-radius: 20px 20px 0 0;
@@ -425,7 +426,6 @@
             z-index: 10;
             padding-top: 10px;
             padding-bottom: var(--bottom-nav-clearance, calc(98px + env(safe-area-inset-bottom, 0px)));
-            overflow-x: clip;
         }
 
         .user-card {
@@ -1041,7 +1041,7 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: calc(var(--bottom-nav-height, 72px) + var(--bottom-nav-bottom, 10px));
+            bottom: calc(var(--bottom-nav-height, 72px) + var(--bottom-nav-bottom, 2px));
             z-index: 50;
             align-items: center;
             gap: 10px;

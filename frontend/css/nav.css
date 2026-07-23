@@ -3,7 +3,7 @@
 :root {
     --bottom-nav-height: 72px;
     --bottom-nav-side: 16px;
-    --bottom-nav-gap: 10px;
+    --bottom-nav-gap: 2px;
     /*
      * 悬浮胶囊贴视觉底部（gap），不要再用 safe-area 整段上抬。
      * iPhone 上用 safe 抬高后，「我的」等短页空隙会特别明显；
@@ -17,7 +17,7 @@
 
 /*
  * 高优先级锁：覆盖各页内联 / 机型补丁，保证切 TAB 时 bottom 一致。
- * 位置只由 --bottom-nav-bottom 决定（默认 10px；Cordova 2410 为 32px）。
+ * 位置只由 --bottom-nav-bottom 决定（默认 2px；Cordova 2410 为 32px）。
  */
 html body .bottom-nav,
 html body > .bottom-nav,

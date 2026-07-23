@@ -571,12 +571,12 @@
   }
 
   /**
-   * 底栏位置锁：各 TAB / 机型只认 --bottom-nav-bottom（默认 10px；Cordova 2410=32px）。
+   * 底栏位置锁：各 TAB / 机型只认 --bottom-nav-bottom（默认 2px；Cordova 2410=32px）。
    * 用 html body … 高优先级覆盖页内硬编码（如「我的」曾写死 10px 导致切页跳动）。
    */
   function ensureBottomNavLockStyle(opts) {
     opts = opts || {};
-    var bottom = opts.cordovaXiaomi2410 ? '32px' : '10px';
+    var bottom = opts.cordovaXiaomi2410 ? '32px' : '2px';
     try {
       document.documentElement.style.setProperty('--bottom-nav-bottom', bottom);
       if (opts.cordovaXiaomi2410) {
@@ -601,7 +601,7 @@
       'position:fixed!important;' +
       'left:var(--bottom-nav-side,16px)!important;' +
       'right:var(--bottom-nav-side,16px)!important;' +
-      'bottom:var(--bottom-nav-bottom,10px)!important;' +
+      'bottom:var(--bottom-nav-bottom,2px)!important;' +
       'z-index:200!important;margin:0!important;animation:none!important;' +
       'transform:none!important;-webkit-transform:none!important;' +
       'view-transition-name:none!important;}' +
