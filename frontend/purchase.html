@@ -1205,9 +1205,19 @@
                             sku_count: skus.length
                         }
                     );
+                    /* 定价 A（control）隐藏邀请；B（treatment）再拉邀请概览 */
+                    if (variant === 'control') {
+                        var inviteCardA = document.getElementById('purchaseInviteCard');
+                        if (inviteCardA) inviteCardA.hidden = true;
+                    } else {
+                        loadPurchaseInviteOverview();
+                    }
                 } else {
                     purchaseUiMode = 'legacy';
+                    alipayPricing.variant = 'control';
                     applyPurchaseUiMode();
+                    var inviteCardOff = document.getElementById('purchaseInviteCard');
+                    if (inviteCardOff) inviteCardOff.hidden = true;
                 }
                 return checkAlipayLatestOrder();
             })
