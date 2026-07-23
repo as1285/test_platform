@@ -3157,7 +3157,7 @@ async function createTables() {
   );
   var rootAdminId = 0;
   if (!adminRows.length) {
-    /* 不再把保留账号 admin 改名为环境变量用户名，避免丢失独立超管 admin */
+    /* 不再把保留账号 admin 改名为环境变量用户名；admin 为普通管理员，超管仅根账号 */
     const [insRoot] = await conn.execute(
       'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 1, 0)',
       [rootAdmin, rootFullName, rootSaltHex, rootHash]
@@ -3188,28 +3188,41 @@ async function createTables() {
     }
   }
 
-  /* 保留账号 admin：超级管理员，可见全部注册用户与业务数据 */
-  async function ensureNamedSuperAdmin(username) {
-    var uname = String(username || '').trim();
-    if (!uname) return;
-    const [namedRows] = await conn.execute(
-      'SELECT id FROM admin_accounts WHERE username = ? LIMIT 1',
-      [uname]
-    );
-    if (!namedRows.length) return;
-    var namedId = Number(namedRows[0].id) || 0;
-    if (namedId <= 0) return;
-    await conn.execute('UPDATE admin_accounts SET is_super = 1, banned = 0 WHERE id = ?', [namedId]);
-    await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [namedId]);
-    for (var nmi = 0; nmi < ADMIN_MENU_KEYS.length; nmi++) {
-      await conn.execute(
-        'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-        [namedId, ADMIN_MENU_KEYS[nmi]]
-      );
-    }
-  }
+  /* 仅环境变量根账号为超级管理员；其它账号（含保留名 admin）一律降为子管理员 */
+  await conn.execute(
+    'UPDATE admin_accounts SET is_super = 0 WHERE username <> ? AND is_super = 1',
+    [rootAdmin]
+  );
+
+  /* 保留账号 admin：普通管理员（可分配菜单），不可再升为超管 */
+  var subAdminMenus = adminMenuRegistry
+    .getAssignableMenuDefs()
+    .filter(function (d) {
+      return d && d.key && !d.super_only && d.key !== 'admin-accounts';
+    })
+    .map(function (d) {
+      return String(d.key);
+    });
   if (rootAdmin.toLowerCase() !== 'admin') {
-    await ensureNamedSuperAdmin('admin');
+    const [namedAdminRows] = await conn.execute(
+      "SELECT id FROM admin_accounts WHERE username = 'admin' LIMIT 1"
+    );
+    if (namedAdminRows.length) {
+      var namedAdminId = Number(namedAdminRows[0].id) || 0;
+      if (namedAdminId > 0) {
+        await conn.execute(
+          'UPDATE admin_accounts SET is_super = 0, banned = 0 WHERE id = ?',
+          [namedAdminId]
+        );
+        await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [namedAdminId]);
+        for (var sami = 0; sami < subAdminMenus.length; sami++) {
+          await conn.execute(
+            'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+            [namedAdminId, subAdminMenus[sami]]
+          );
+        }
+      }
+    }
   }
 
   await conn.execute(
@@ -11747,7 +11760,7 @@ async function handleAdminAccountsCreate(req, res) {
     username.toLowerCase() === 'admin' ||
     username.toLowerCase() === String(ADMIN_PANEL_USER || '').toLowerCase()
   ) {
-    return res.status(400).json({ code: 400, msg: '保留超级管理员账号不可新建，请直接登录 admin' });
+    return res.status(400).json({ code: 400, msg: '保留账号不可新建' });
   }
   try {
     const conn = await pool.getConnection();
