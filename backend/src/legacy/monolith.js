@@ -481,6 +481,22 @@ const MSG_BULK_INSERT_CHUNK = 80;
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
 const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
 
+/**
+ * 运营子账号 admin：注册用户页可看「从此刻起」新注册用户（UTC）。
+ * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖，格式 YYYY-MM-DD HH:MM:SS（UTC）。
+ */
+const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
+  process.env.ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00'
+).trim();
+
+function isOpsNamedAdmin(admin) {
+  return !!(admin && String(admin.username || '').trim().toLowerCase() === 'admin');
+}
+
+function adminOpsSeeRegisteredSinceUtc() {
+  return ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00';
+}
+
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
   theme: 'blue',
@@ -3188,21 +3204,13 @@ async function createTables() {
     }
   }
 
-  /* 仅环境变量根账号为超级管理员；其它账号（含保留名 admin）一律降为子管理员 */
+  /* 仅环境变量根账号（naicha）为超级管理员；其余账号一律降为普通管理员 */
   await conn.execute(
     'UPDATE admin_accounts SET is_super = 0 WHERE username <> ? AND is_super = 1',
     [rootAdmin]
   );
 
-  /* 保留账号 admin：普通管理员（可分配菜单），不可再升为超管 */
-  var subAdminMenus = adminMenuRegistry
-    .getAssignableMenuDefs()
-    .filter(function (d) {
-      return d && d.key && !d.super_only && d.key !== 'admin-accounts';
-    })
-    .map(function (d) {
-      return String(d.key);
-    });
+  /* 保留账号 admin：普通管理员；无菜单时写入默认可分配菜单（不含超管专属） */
   if (rootAdmin.toLowerCase() !== 'admin') {
     const [namedAdminRows] = await conn.execute(
       "SELECT id FROM admin_accounts WHERE username = 'admin' LIMIT 1"
@@ -3214,11 +3222,31 @@ async function createTables() {
           'UPDATE admin_accounts SET is_super = 0, banned = 0 WHERE id = ?',
           [namedAdminId]
         );
-        await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [namedAdminId]);
-        for (var sami = 0; sami < subAdminMenus.length; sami++) {
+        const [namedMenuCnt] = await conn.execute(
+          'SELECT COUNT(*) AS c FROM admin_account_menus WHERE admin_id = ?',
+          [namedAdminId]
+        );
+        var namedMenus = namedMenuCnt.length ? Number(namedMenuCnt[0].c) || 0 : 0;
+        if (namedMenus <= 0) {
+          var subAdminMenus = adminMenuRegistry
+            .getAssignableMenuDefs()
+            .filter(function (d) {
+              return d && d.key && !d.super_only && d.key !== 'admin-accounts';
+            })
+            .map(function (d) {
+              return String(d.key);
+            });
+          for (var sami = 0; sami < subAdminMenus.length; sami++) {
+            await conn.execute(
+              'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+              [namedAdminId, subAdminMenus[sami]]
+            );
+          }
+        } else {
+          /* 去掉超管专属菜单键，避免子账号侧栏残留无效入口 */
           await conn.execute(
-            'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-            [namedAdminId, subAdminMenus[sami]]
+            "DELETE FROM admin_account_menus WHERE admin_id = ? AND menu_key IN ('guest-users', 'admin-accounts')",
+            [namedAdminId]
           );
         }
       }
@@ -5994,7 +6022,16 @@ async function adminCanAccessTargetUser(conn, admin, username) {
      LIMIT 1`,
     [admin.username, username]
   );
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+  /* 运营子账号 admin：可操作「新注册可见」期内的注册用户（仅配合注册用户页） */
+  if (isOpsNamedAdmin(admin)) {
+    const [nu] = await conn.execute(
+      'SELECT id FROM users WHERE username = ? AND created_at >= ? LIMIT 1',
+      [String(username), adminOpsSeeRegisteredSinceUtc()]
+    );
+    return nu.length > 0;
+  }
+  return false;
 }
 
 /** 要求管理员已登录 */
@@ -15718,6 +15755,27 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
   /* 超级管理员：全部注册用户（含各子账号激活码开通的用户） */
   if (admin.is_super) return;
+  /*
+   * 运营子账号 admin：本人激活码开通用户 ∪ 截止时间后新注册用户。
+   * 仅用于「注册用户」列表；其它数据页仍走 appendAdminUserScope（仅激活码归属）。
+   */
+  if (isOpsNamedAdmin(admin)) {
+    var createdCol = String(userCol || 'users.username').replace(/\.username\s*$/i, '.created_at');
+    if (createdCol === String(userCol || '')) {
+      createdCol = 'users.created_at';
+    }
+    whereClauses.push(
+      '(' +
+        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+        userCol +
+        ' AND ac.owner_admin_username = ?) OR ' +
+        createdCol +
+        ' >= ?' +
+        ')'
+    );
+    params.push(admin.username, adminOpsSeeRegisteredSinceUtc());
+    return;
+  }
   whereClauses.push(
     'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
       userCol +
