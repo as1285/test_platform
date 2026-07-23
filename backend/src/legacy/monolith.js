@@ -1992,6 +1992,20 @@ function getClientIp(req) {
   return ra ? String(ra).replace(/^::ffff:/, '') : '';
 }
 
+/** IP 是否在封禁黑名单 */
+async function isIpBlocked(ip) {
+  if (!ip) return false;
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute('SELECT 1 FROM blocked_ips WHERE ip = ?', [ip]);
+    conn.release();
+    return rows.length > 0;
+  } catch (e) {
+    console.error('isIpBlocked error', e);
+    return false;
+  }
+}
+
 /** 管理端 IP 是否在拒绝列表 */
 function isAdminIpDenied(req) {
   if (!ADMIN_IP_DENYLIST.length) return false;
@@ -2901,6 +2915,17 @@ async function createTables() {
       throw e;
     }
   }
+
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS blocked_ips (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      ip VARCHAR(128) NOT NULL,
+      blocked_by VARCHAR(255) NOT NULL,
+      reason VARCHAR(255) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_ip (ip)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS admin_login_events (
@@ -11344,6 +11369,14 @@ async function handleAuthPost(req, res) {
         }
         regGuardKeys = rateChk.keys;
       }
+      var regClientIp = getClientIp(req);
+      if (regClientIp) {
+        var ipBlocked = await isIpBlocked(regClientIp);
+        if (ipBlocked) {
+          await recordUserRegistrationAttempt(regUser, false, req, 'ip_blocked');
+          return res.status(403).json({ code: 403, msg: '当前 IP 已被封禁，无法注册' });
+        }
+      }
       incrementApiDailyCounter('EVENT register_submit', '认证注册');
       try {
         var regSourceNorm = normalizeRegisterSourceChannelInput(
@@ -11437,6 +11470,16 @@ async function handleAuthPost(req, res) {
           recordUserLoginAttempt(loginUserName, false, req, 'rate_limited').catch(function () {});
         }
         return sendRateLimited(res, loginRate, '登录过于频繁，请稍后再试');
+      }
+      var loginClientIp = getClientIp(req);
+      if (loginClientIp) {
+        var loginIpBlocked = await isIpBlocked(loginClientIp);
+        if (loginIpBlocked) {
+          if (loginUserName) {
+            recordUserLoginAttempt(loginUserName, false, req, 'ip_blocked').catch(function () {});
+          }
+          return res.status(403).json({ code: 403, msg: '当前 IP 已被封禁，无法登录' });
+        }
       }
       var out2 = await loginUser(body.username, body.password);
       await assertLoginDeviceAllowedForAgedAccount(out2.username, req);
@@ -15377,7 +15420,10 @@ async function handleAdminUsers(req, res) {
                      AND ac.owner_admin_username IS NOT NULL
                      AND TRIM(ac.owner_admin_username) <> ''
                    ORDER BY ac.last_used_at DESC, ac.id DESC
-                   LIMIT 1) AS upline_admin_username
+                   LIMIT 1) AS upline_admin_username,
+                  (SELECT ule.ip FROM user_login_events ule
+                   WHERE ule.username = users.username AND ule.ip IS NOT NULL
+                   ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
            FROM users WHERE username IN (` +
             ph +
             ') ORDER BY id DESC',
@@ -15400,7 +15446,10 @@ async function handleAdminUsers(req, res) {
                 AND ac.owner_admin_username IS NOT NULL
                 AND TRIM(ac.owner_admin_username) <> ''
               ORDER BY ac.last_used_at DESC, ac.id DESC
-              LIMIT 1) AS upline_admin_username
+              LIMIT 1) AS upline_admin_username,
+             (SELECT ule.ip FROM user_login_events ule
+              WHERE ule.username = users.username AND ule.ip IS NOT NULL
+              ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
       FROM users ${whereSql} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}
     `,
         params
@@ -15478,6 +15527,7 @@ async function handleAdminUsers(req, res) {
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
+        ip_last: r.ip_last != null ? String(r.ip_last).trim() : '',
         upline_admin: upline,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password:
@@ -16918,6 +16968,58 @@ async function handleAdminBan(req, res) {
     conn.release();
     invalidateUserAuthCache(target);
     return res.json({ code: 200, data: { username: target, banned: ban, session_revoked: !!ban } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 封禁 IP */
+async function handleAdminBlockIp(req, res) {
+  var body = req.body || {};
+  var ip = body.ip != null ? String(body.ip).trim() : '';
+  var reason = body.reason != null ? String(body.reason).trim() : '';
+  if (!ip) {
+    return res.status(400).json({ code: 400, msg: 'ip required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    await conn.execute('INSERT IGNORE INTO blocked_ips (ip, blocked_by, reason) VALUES (?, ?, ?)', [ip, req.admin, reason || null]);
+    conn.release();
+    return res.json({ code: 200, data: { ip: ip, blocked: true } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 解封 IP */
+async function handleAdminUnblockIp(req, res) {
+  var body = req.body || {};
+  var ip = body.ip != null ? String(body.ip).trim() : '';
+  if (!ip) {
+    return res.status(400).json({ code: 400, msg: 'ip required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    await conn.execute('DELETE FROM blocked_ips WHERE ip = ?', [ip]);
+    conn.release();
+    return res.json({ code: 200, data: { ip: ip, blocked: false } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 获取 IP 黑名单列表 */
+async function handleAdminBlockedIpsList(req, res) {
+  try {
+    const conn = await pool.getConnection();
+    const [rows] = await conn.execute(
+      'SELECT id, ip, blocked_by, reason, created_at FROM blocked_ips ORDER BY created_at DESC LIMIT 500'
+    );
+    conn.release();
+    return res.json({ code: 200, data: rows || [] });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });

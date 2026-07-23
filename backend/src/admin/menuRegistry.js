@@ -223,6 +223,14 @@ const ADMIN_PAGE_DEFS = [
     group: 'system',
     module: 'monitor',
     order: 50
+  },
+  {
+    page: 'blocked-ips',
+    menu_key: 'blocked-ips',
+    label: 'IP 黑名单',
+    group: 'system',
+    module: 'users',
+    order: 60
   }
 ];
 

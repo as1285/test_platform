@@ -222,6 +222,9 @@ app.get('/api/admin/codes', mw.requireAdminAuth, mw.requireAdminMenu('codes'), h
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);
+app.post('/api/admin/block-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockIp);
+app.post('/api/admin/unblock-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUnblockIp);
+app.get('/api/admin/blocked-ips', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockedIpsList);
 app.post('/api/admin/user-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeleteUser);
 app.post('/api/admin/user-refund', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRefund);
 app.post('/api/admin/user-restore', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRestore);

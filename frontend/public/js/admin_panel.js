@@ -1045,6 +1045,7 @@
         var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
+        var _adminBlockedIpsSeen = false;
         var _channelAnalysisChartInstances = [];
 
         function adminHasMenu(menuKey) {
@@ -1203,7 +1204,8 @@
                 'login-log': 1,
                 'user-login-log': 1,
                 'server-monitor': 1,
-                'sbdy-demo': 1
+                'sbdy-demo': 1,
+                'blocked-ips': 1
             };
             if (!ok[k] || !adminHasMenu(k)) {
                 return firstAllowedAdminPage();
@@ -1301,6 +1303,10 @@
             if (pageKey === 'server-monitor' && !_adminServerMonitorSeen) {
                 _adminServerMonitorSeen = true;
                 loadServerMonitor();
+            }
+            if (pageKey === 'blocked-ips' && !_adminBlockedIpsSeen) {
+                _adminBlockedIpsSeen = true;
+                loadBlockedIps();
             }
             if (pageKey === 'sbdy-demo') {
                 if (typeof loadSbdyDemoPage === 'function') {
@@ -2887,6 +2893,57 @@
                     if (svcGrid) {
                         svcGrid.innerHTML = '<p class="stat" style="color:#c00;">网络错误</p>';
                     }
+                });
+        }
+
+        function loadBlockedIps() {
+            var tbody = document.getElementById('blockedIpsTbody');
+            var statEl = document.getElementById('blockedIpsStat');
+            if (statEl) statEl.textContent = '加载中…';
+            adminFetch('api/admin/blocked-ips')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.code !== 200) {
+                        if (statEl) statEl.textContent = d.msg || '加载失败';
+                        return;
+                    }
+                    var list = Array.isArray(d.data) ? d.data : [];
+                    if (statEl) statEl.textContent = '共 ' + list.length + ' 条记录';
+                    var html = '';
+                    list.forEach(function (item) {
+                        html += '<tr>';
+                        html += '<td><code>' + esc(item.ip) + '</code></td>';
+                        html += '<td>' + esc(item.blocked_by || '—') + '</td>';
+                        html += '<td>' + esc(item.reason || '—') + '</td>';
+                        html += '<td>' + formatDt(item.created_at) + '</td>';
+                        html += '<td><button type="button" class="btn-sm btn-unban btn-unblock-ip" data-ip="' + esc(item.ip) + '">解封</button></td>';
+                        html += '</tr>';
+                    });
+                    if (tbody) {
+                        tbody.innerHTML = html || '<tr><td colspan="5">暂无封禁记录</td></tr>';
+                        tbody.querySelectorAll('.btn-unblock-ip').forEach(function (btn) {
+                            btn.onclick = function () {
+                                var ip = btn.getAttribute('data-ip');
+                                if (!confirm('确定解封 IP「' + ip + '」？')) return;
+                                adminFetch('api/admin/unblock-ip', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ ip: ip })
+                                })
+                                    .then(function (r) { return r.json(); })
+                                    .then(function (d2) {
+                                        if (d2.code === 200) {
+                                            loadBlockedIps();
+                                        } else {
+                                            alert(d2.msg || '解封失败');
+                                        }
+                                    })
+                                    .catch(function () { alert('网络错误'); });
+                            };
+                        });
+                    }
+                })
+                .catch(function () {
+                    if (statEl) statEl.textContent = '加载失败';
                 });
         }
 
@@ -6337,9 +6394,11 @@
                                 esc(u.username) +
                                 '">激活</button> ';
                         }
+                        var ipLast = u.ip_last || '';
                         ops += (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
+                            + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
@@ -6412,6 +6471,38 @@
                                 .then(function (r) { return r.json(); })
                                 .then(function (d) {
                                     if (d.code === 200) {
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-block-ip-act').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var ip = btn.getAttribute('data-ip');
+                            var msg = '确定封禁 IP 地址「' + (ip || '未知') + '」关联的账号「' + name + '」？\n封禁后该 IP 下的所有用户将无法登录和注册。';
+                            if (ip) {
+                                msg += '\n\nIP: ' + ip;
+                            } else {
+                                msg += '\n\n该用户暂无最近 IP 记录，请手动输入要封禁的 IP 地址。';
+                            }
+                            if (!confirm(msg)) return;
+                            var targetIp = ip;
+                            if (!targetIp) {
+                                targetIp = prompt('请输入要封禁的 IP 地址：');
+                                if (!targetIp) return;
+                            }
+                            adminFetch('api/admin/block-ip', {
+                                method: 'POST',
+                                body: JSON.stringify({ ip: targetIp, reason: '封禁用户 ' + name })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        alert('IP ' + targetIp + ' 已封禁');
                                         loadUsers();
                                     } else {
                                         alert(d.msg || '操作失败');
@@ -8471,6 +8562,37 @@
         if (btnRefreshServerMonitor) {
             btnRefreshServerMonitor.addEventListener('click', function () {
                 loadServerMonitor();
+            });
+        }
+        var btnAddBlockedIp = document.getElementById('btnAddBlockedIp');
+        if (btnAddBlockedIp) {
+            btnAddBlockedIp.addEventListener('click', function () {
+                var ip = document.getElementById('blockedIpInput');
+                var reason = document.getElementById('blockedIpReasonInput');
+                if (!ip || !ip.value.trim()) {
+                    alert('请输入 IP 地址');
+                    return;
+                }
+                var ipVal = ip.value.trim();
+                if (!confirm('确定封禁 IP「' + ipVal + '」？封禁后该 IP 下的所有用户将无法登录和注册。')) return;
+                adminFetch('api/admin/block-ip', {
+                    method: 'POST',
+                    body: JSON.stringify({ ip: ipVal, reason: reason ? reason.value.trim() : '' })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.code === 200) {
+                            alert('IP ' + ipVal + ' 已封禁');
+                            ip.value = '';
+                            if (reason) reason.value = '';
+                            if (document.getElementById('page-blocked-ips').classList.contains('active')) {
+                                loadBlockedIps();
+                            }
+                        } else {
+                            alert(d.msg || '操作失败');
+                        }
+                    })
+                    .catch(function () { alert('网络错误'); });
             });
         }
         var btnMonitorTestEmail = document.getElementById('btnMonitorTestEmail');

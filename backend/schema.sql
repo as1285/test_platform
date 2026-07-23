@@ -287,6 +287,16 @@ CREATE TABLE IF NOT EXISTS user_login_events (
     INDEX idx_u_created (username, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- IP 封禁黑名单
+CREATE TABLE IF NOT EXISTS blocked_ips (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ip VARCHAR(128) NOT NULL,
+    blocked_by VARCHAR(255) NOT NULL COMMENT '操作的管理员',
+    reason VARCHAR(255) NULL COMMENT '封禁原因',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_ip (ip)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 账号维度设备（登录 + 每次已登录接口携带 X-Client-Device 同步）
 CREATE TABLE IF NOT EXISTS user_devices (
     username VARCHAR(255) NOT NULL,

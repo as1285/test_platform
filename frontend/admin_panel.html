@@ -2277,10 +2277,36 @@
                         </div>
                     </section>
                 </div>
+                <div id="page-blocked-ips" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>IP 黑名单</h2>
+                        <p class="hint">封禁 IP 地址后，该 IP 下的所有用户将无法登录和注册。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <label for="blockedIpInput" class="mr-6">IP 地址：</label>
+                            <input type="text" id="blockedIpInput" class="filter-text-wide" placeholder="如 192.168.1.1" style="width:200px;">
+                            <input type="text" id="blockedIpReasonInput" class="filter-text-wide" placeholder="封禁原因（可选）" style="width:250px;">
+                            <button type="button" class="btn-primary" id="btnAddBlockedIp">手动封禁</button>
+                        </div>
+                        <p class="stat" id="blockedIpsStat">加载中…</p>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>IP 地址</th>
+                                        <th>操作管理员</th>
+                                        <th>原因</th>
+                                        <th>封禁时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="blockedIpsTbody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
-    <div id="userPasswordBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">修改用户密码</h2>
             <p class="hint admin-modal-meta" id="userPasswordMeta"></p>
