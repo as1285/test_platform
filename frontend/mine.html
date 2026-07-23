@@ -31,6 +31,11 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* 底栏避让改到 .content-wrapper，避免与 app-shell 的 body padding 叠高 */
+        body.page-mine.tax-app-shell.has-bottom-nav {
+            padding-bottom: 0 !important;
+        }
+
         /* 底栏位置统一由 nav.css / auth 锁控制，勿在此写死 bottom（会与机型 inset 冲突导致切页跳动） */
 
         /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
