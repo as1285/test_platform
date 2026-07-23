@@ -418,6 +418,8 @@ const SETTING_KEY_QQ_GROUP_URL = 'qq_group_url';
 const SETTING_KEY_WECHAT_PAY_QRCODE = 'wechat_pay_qrcode_url';
 const SETTING_KEY_CONVERSION_AB = 'conversion_ab_json';
 const SETTING_KEY_LANDING_AB = 'landing_ab_json';
+/** C 方案购买页：专属销售代理联系方式（JSON） */
+const SETTING_KEY_SALES_AGENT = 'sales_agent_json';
 const SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 const SETTING_KEY_ACTIVATION_NUDGE = 'activation_nudge_json';
 const SETTING_KEY_CHAT_AUTO_REPLY_WELCOME = 'chat_auto_reply_welcome';
@@ -449,6 +451,16 @@ const DEFAULT_CONVERSION_AB = {
 const DEFAULT_LANDING_AB = {
   enabled: true,
   c_percent: 50
+};
+
+/** 落地页 C 方案：购买页人工销售联系方式 */
+const DEFAULT_SALES_AGENT = {
+  display_name: '专属客服',
+  wechat_id: '',
+  wechat_qr_url: '',
+  qq: '',
+  phone: '',
+  xianyu_text: ''
 };
 
 /** 未激活用户每日激活引导弹窗（C 端） */
@@ -2711,6 +2723,10 @@ async function createTables() {
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_LANDING_AB,
     JSON.stringify(DEFAULT_LANDING_AB)
+  ]);
+  await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
+    SETTING_KEY_SALES_AGENT,
+    JSON.stringify(DEFAULT_SALES_AGENT)
   ]);
   await conn.execute(`INSERT IGNORE INTO app_settings (setting_key, setting_value) VALUES (?, ?)`, [
     SETTING_KEY_CHAT_AUTO_REPLY_WELCOME,
@@ -12359,6 +12375,75 @@ async function loadLandingAbParsed() {
   }
 }
 
+/** 规范化销售代理配置 */
+function normalizeSalesAgentConfig(raw) {
+  var src = raw && typeof raw === 'object' ? raw : {};
+  var qr = '';
+  if (src.wechat_qr_url != null && String(src.wechat_qr_url).trim() !== '') {
+    qr = sanitizeMineUiImageRef(String(src.wechat_qr_url).trim()) || '';
+  }
+  var xianyu = '';
+  if (src.xianyu_text != null) {
+    xianyu = sanitizeXianyuPurchaseText(src.xianyu_text);
+  }
+  return {
+    display_name: String(src.display_name != null ? src.display_name : DEFAULT_SALES_AGENT.display_name)
+      .trim()
+      .substring(0, 64) || DEFAULT_SALES_AGENT.display_name,
+    wechat_id: String(src.wechat_id != null ? src.wechat_id : '')
+      .trim()
+      .substring(0, 64),
+    wechat_qr_url: qr,
+    qq: String(src.qq != null ? src.qq : '')
+      .trim()
+      .substring(0, 32),
+    phone: String(src.phone != null ? src.phone : '')
+      .trim()
+      .substring(0, 32),
+    xianyu_text: xianyu
+  };
+}
+
+/** 公开/管理端用的销售代理载荷 */
+function salesAgentPublicPayload(cfg) {
+  var c = normalizeSalesAgentConfig(cfg);
+  var hasContact = !!(c.wechat_id || c.wechat_qr_url || c.qq || c.phone || c.xianyu_text);
+  return {
+    display_name: c.display_name,
+    wechat_id: c.wechat_id,
+    wechat_qr_url: c.wechat_qr_url,
+    wechat_qr_display_url: resolvePublicAssetUrl(c.wechat_qr_url),
+    qq: c.qq,
+    phone: c.phone,
+    xianyu_text: c.xianyu_text,
+    has_contact: hasContact
+  };
+}
+
+/** 加载：sales agent parsed */
+async function loadSalesAgentParsed() {
+  if (!pool) {
+    return Object.assign({}, DEFAULT_SALES_AGENT);
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1', [
+      SETTING_KEY_SALES_AGENT
+    ]);
+    var parsed = null;
+    if (rows.length && rows[0].setting_value != null && String(rows[0].setting_value).trim() !== '') {
+      parsed = JSON.parse(String(rows[0].setting_value));
+    }
+    return normalizeSalesAgentConfig(
+      Object.assign({}, DEFAULT_SALES_AGENT, parsed && typeof parsed === 'object' ? parsed : {})
+    );
+  } catch (e) {
+    return Object.assign({}, DEFAULT_SALES_AGENT);
+  } finally {
+    conn.release();
+  }
+}
+
 /** 公开落地页 A/B 配置 */
 async function handlePublicLandingAbConfig(req, res) {
   try {
@@ -15579,10 +15664,15 @@ async function handleAdminUsers(req, res) {
           r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '',
         activation_source_channel_label: activationSourceChannelLabel(r.activation_source_channel),
         sales_promo_channel: salesCh,
+        invited_by:
+          r.invited_by != null && String(r.invited_by).trim() !== ''
+            ? String(r.invited_by).trim()
+            : '',
         channel_analysis_label: (function () {
           var base = userChannelAnalysisLabel(
             r.register_source_channel,
-            r.activation_source_channel
+            r.activation_source_channel,
+            r.invited_by
           );
           if (ut === USER_TYPE_GUEST && salesCh) {
             return (base && base !== '—' ? base + '；' : '') + '推广：' + salesCh;
@@ -17005,6 +17095,7 @@ async function handleAdminSettingsGet(req, res) {
     var qrRef = await getWechatPayQrcodeUrl();
     var conversionAb = await loadConversionAbParsed();
     var landingAb = await loadLandingAbParsed();
+    var salesAgent = await loadSalesAgentParsed();
     var inviteCfg = await getInviteReward().loadInviteSettings(true);
     var activationNudge = await loadActivationNudgeParsed();
     return res.json({
@@ -17022,6 +17113,7 @@ async function handleAdminSettingsGet(req, res) {
         wechat_pay_qrcode_display_url: resolvePublicAssetUrl(qrRef),
         conversion_ab: conversionAb,
         landing_ab: landingAb,
+        sales_agent: salesAgentPublicPayload(salesAgent),
         pricing_ab: await getPricingAb().loadPricingAbParsed(true),
         invite_enabled: inviteCfg.enabled,
         invite_reward_days: inviteCfg.reward_days,
@@ -17053,6 +17145,7 @@ async function handleAdminSettingsPost(req, res) {
   var hasWechatPayQr = Object.prototype.hasOwnProperty.call(body, 'wechat_pay_qrcode_url');
   var hasConversionAb = body.conversion_ab != null && typeof body.conversion_ab === 'object';
   var hasLandingAb = body.landing_ab != null && typeof body.landing_ab === 'object';
+  var hasSalesAgent = body.sales_agent != null && typeof body.sales_agent === 'object';
   var hasPricingAb = body.pricing_ab != null && typeof body.pricing_ab === 'object';
   var hasInvite =
     Object.prototype.hasOwnProperty.call(body, 'invite_enabled') ||
@@ -17075,13 +17168,14 @@ async function handleAdminSettingsPost(req, res) {
     !hasWechatPayQr &&
     !hasConversionAb &&
     !hasLandingAb &&
+    !hasSalesAgent &&
     !hasPricingAb &&
     !hasInvite &&
     !hasActivationNudge
   ) {
     return res.status(400).json({
       code: 400,
-      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
+      msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
     });
   }
 
@@ -17331,6 +17425,29 @@ async function handleAdminSettingsPost(req, res) {
       );
     }
 
+    if (hasSalesAgent) {
+      var prevSalesAgent = await loadSalesAgentParsed();
+      var mergedSalesAgent = normalizeSalesAgentConfig(
+        Object.assign({}, prevSalesAgent, body.sales_agent)
+      );
+      if (
+        body.sales_agent.wechat_qr_url != null &&
+        String(body.sales_agent.wechat_qr_url).trim() !== '' &&
+        !mergedSalesAgent.wechat_qr_url
+      ) {
+        return res.status(400).json({
+          code: 400,
+          msg: '销售代理微信二维码地址无效（请上传图片或填写 uploads/… 或 https 链接）'
+        });
+      }
+      await conn.execute(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [SETTING_KEY_SALES_AGENT, JSON.stringify(mergedSalesAgent)]
+      );
+      invalidateInstallPackagesResponseCache();
+    }
+
     if (hasPricingAb) {
       await getPricingAb().savePricingAbFromAdmin(body.pricing_ab);
     }
@@ -17370,6 +17487,7 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
+    outData.sales_agent = salesAgentPublicPayload(await loadSalesAgentParsed());
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
     var inviteAfter = await getInviteReward().loadInviteSettings(true);
     outData.invite_enabled = inviteAfter.enabled;
@@ -17471,6 +17589,7 @@ async function handlePublicInstallPackages(req, res) {
       }
     }
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
+    var salesAgentPub = salesAgentPublicPayload(await loadSalesAgentParsed());
     var body = {
       code: 200,
       data: {
@@ -17485,7 +17604,8 @@ async function handlePublicInstallPackages(req, res) {
         qq_add_url: qq,
         qq_group_url: qqGroup,
         show_qq_group: !!qqGroup,
-        show_qq_add: !!qq
+        show_qq_add: !!qq,
+        sales_agent: salesAgentPub
       }
     };
     _installPackagesResponseCache.set(cacheKey, { t: now, body: body });
@@ -19814,6 +19934,12 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_purchase_wechat_view',
   'track_purchase_wechat_expand',
   'track_xianyu_purchase_click',
+  'track_purchase_sales_agent_view',
+  'track_purchase_sales_agent_copy_wechat',
+  'track_purchase_sales_agent_qr',
+  'track_purchase_sales_agent_copy_phone',
+  'track_purchase_sales_agent_copy_qq',
+  'track_purchase_sales_agent_xianyu',
   'track_online_chat_click',
   'track_qq_group_click',
   'track_qq_add_click',
@@ -19856,6 +19982,12 @@ function purchasePageTrackEventLabel(eventKey) {
     track_purchase_wechat_view: '微信购买入口',
     track_purchase_wechat_expand: '展开微信收款码',
     track_xianyu_purchase_click: '闲鱼购买',
+    track_purchase_sales_agent_view: 'C·销售代理入口',
+    track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
+    track_purchase_sales_agent_qr: 'C·销售微信二维码',
+    track_purchase_sales_agent_copy_phone: 'C·复制销售手机',
+    track_purchase_sales_agent_copy_qq: 'C·复制销售QQ',
+    track_purchase_sales_agent_xianyu: 'C·销售闲鱼',
     track_online_chat_click: '在线客服',
     track_qq_group_click: '加入QQ群',
     track_qq_add_click: '添加QQ号',
@@ -20251,6 +20383,9 @@ var ACTIVATE_TRACK_EVENT_KEYS = [
   'track_purchase_wechat_view',
   'track_purchase_wechat_expand',
   'track_xianyu_purchase_click',
+  'track_purchase_sales_agent_view',
+  'track_purchase_sales_agent_copy_wechat',
+  'track_purchase_sales_agent_qr',
   'track_online_chat_click',
   'track_qq_group_click',
   'track_qq_add_click',
@@ -20291,6 +20426,9 @@ function activateTrackEventLabel(eventKey) {
     track_purchase_page_view: '购买页浏览',
     track_purchase_wechat_view: '微信购买入口展示',
     track_purchase_wechat_expand: '展开微信收款码',
+    track_purchase_sales_agent_view: 'C·销售代理入口',
+    track_purchase_sales_agent_copy_wechat: 'C·复制销售微信',
+    track_purchase_sales_agent_qr: 'C·销售微信二维码',
     track_purchase_activate_success: '激活码开通成功',
     track_purchase_activate_fail: '激活码开通失败',
     track_purchase_back_click: '购买页返回',

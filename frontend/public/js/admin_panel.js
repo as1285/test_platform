@@ -7950,6 +7950,25 @@
                             );
                             updateLandingAbSplitHint();
                         }
+                        var salesAgent = data.data.sales_agent;
+                        if (salesAgent) {
+                            var saName = document.getElementById('salesAgentDisplayName');
+                            var saWx = document.getElementById('salesAgentWechatId');
+                            var saQr = document.getElementById('salesAgentWechatQrUrl');
+                            var saQq = document.getElementById('salesAgentQq');
+                            var saPhone = document.getElementById('salesAgentPhone');
+                            var saXy = document.getElementById('salesAgentXianyuText');
+                            if (saName) saName.value = salesAgent.display_name != null ? String(salesAgent.display_name) : '专属客服';
+                            if (saWx) saWx.value = salesAgent.wechat_id != null ? String(salesAgent.wechat_id) : '';
+                            if (saQr) saQr.value = salesAgent.wechat_qr_url != null ? String(salesAgent.wechat_qr_url) : '';
+                            if (saQq) saQq.value = salesAgent.qq != null ? String(salesAgent.qq) : '';
+                            if (saPhone) saPhone.value = salesAgent.phone != null ? String(salesAgent.phone) : '';
+                            if (saXy) saXy.value = salesAgent.xianyu_text != null ? String(salesAgent.xianyu_text) : '';
+                            updateSalesAgentQrPreview(
+                                salesAgent.wechat_qr_display_url ||
+                                    (saQr && saQr.value ? '/' + String(saQr.value).replace(/^\//, '') : '')
+                            );
+                        }
                         var pricingAb = data.data.pricing_ab;
                         if (pricingAb) {
                             var pricingEn = document.getElementById('pricingAbEnabled');
@@ -8171,6 +8190,90 @@
                     })
                     .finally(function () {
                         btnSaveLandingAb.disabled = false;
+                    });
+            });
+        }
+
+        function updateSalesAgentQrPreview(url) {
+            var wrap = document.getElementById('salesAgentQrPreviewWrap');
+            var img = document.getElementById('salesAgentQrPreview');
+            if (!wrap || !img) return;
+            var u = url != null ? String(url).trim() : '';
+            if (!u) {
+                wrap.hidden = true;
+                img.removeAttribute('src');
+                return;
+            }
+            img.src = u;
+            wrap.hidden = false;
+        }
+
+        var btnSaveSalesAgent = document.getElementById('btnSaveSalesAgent');
+        if (btnSaveSalesAgent) {
+            btnSaveSalesAgent.addEventListener('click', function () {
+                btnSaveSalesAgent.disabled = true;
+                adminFetch('api/admin/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        sales_agent: {
+                            display_name: (document.getElementById('salesAgentDisplayName') || {}).value || '',
+                            wechat_id: (document.getElementById('salesAgentWechatId') || {}).value || '',
+                            wechat_qr_url: (document.getElementById('salesAgentWechatQrUrl') || {}).value || '',
+                            qq: (document.getElementById('salesAgentQq') || {}).value || '',
+                            phone: (document.getElementById('salesAgentPhone') || {}).value || '',
+                            xianyu_text: (document.getElementById('salesAgentXianyuText') || {}).value || ''
+                        }
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            alert('C 方案销售代理联系方式已保存');
+                            loadAdminSettings();
+                        } else {
+                            alert(data.msg || '保存失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnSaveSalesAgent.disabled = false;
+                    });
+            });
+        }
+        var saQrPick = document.querySelector('.sales-agent-qr-pick');
+        if (saQrPick) {
+            saQrPick.addEventListener('click', function () {
+                var fi = document.querySelector('.sales-agent-qr-file');
+                if (fi) fi.click();
+            });
+        }
+        var saQrFile = document.querySelector('.sales-agent-qr-file');
+        if (saQrFile) {
+            saQrFile.addEventListener('change', function () {
+                var fileInput = document.querySelector('.sales-agent-qr-file');
+                var f = fileInput.files && fileInput.files[0];
+                if (!f) return;
+                fileInput.disabled = true;
+                adminUploadAsset(f)
+                    .then(function (data) {
+                        if (data.code === 200 && data.data && data.data.path) {
+                            document.getElementById('salesAgentWechatQrUrl').value = data.data.path;
+                            updateSalesAgentQrPreview('/' + String(data.data.path).replace(/^\//, ''));
+                            alert('已上传，请点击「保存销售代理联系方式」生效');
+                        } else {
+                            alert(data.msg || '上传失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        fileInput.disabled = false;
+                        fileInput.value = '';
                     });
             });
         }
