@@ -1,0 +1,3 @@
+# 完整 CJK 字体由容器内 fonts-noto-cjk 抽取，勿提交大体积 OTF
+NotoSerifCJKsc-Regular.otf
+*.otf

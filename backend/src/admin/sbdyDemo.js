@@ -1,13 +1,84 @@
 /**
  * 社保参保证明 · 演示样例（非正式证明）
- * 版式对齐浙江省电子参保证明 PDF（个人专用）：基本信息一行表、
- * 「参加社会保险基本情况」、前 12 个月养老/失业缴费明细等。
+ * 版式对齐参考站 show.pdf（浏览器原生 PDF 嵌入）：A4 矢量表格 + 二维码 + 电子章。
  * - 管理端生成 / 列表
- * - 公开核验与展示页（自有域名核验，非正式政务核验）
+ * - 公开核验与展示（/show、/show.pdf → application/pdf）
  */
 const crypto = require('crypto');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
 const { getPool } = require('../shared/db');
 const { PUBLIC_SITE_URL } = require('../shared/config');
+
+const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
+
+function renderSbdyPdfBuffer(payload, authCode, verifyUrl) {
+  return new Promise(function (resolve, reject) {
+    var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sbdy-'));
+    var inJson = path.join(tmpDir, 'in.json');
+    var outPdf = path.join(tmpDir, 'out.pdf');
+    var cleaned = false;
+    function cleanup() {
+      if (cleaned) return;
+      cleaned = true;
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch (e) {}
+    }
+    try {
+      fs.writeFileSync(
+        inJson,
+        JSON.stringify({
+          payload: payload || {},
+          auth_code: authCode || '',
+          verify_url: verifyUrl || ''
+        }),
+        'utf8'
+      );
+    } catch (e) {
+      cleanup();
+      return reject(e);
+    }
+    var py = process.env.SBDY_PYTHON || 'python3';
+    var child = spawn(py, [SBDY_RENDER_SCRIPT, inJson, outPdf], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    var err = '';
+    var settled = false;
+    child.stderr.on('data', function (d) {
+      err += String(d || '');
+    });
+    var timer = setTimeout(function () {
+      try {
+        child.kill('SIGKILL');
+      } catch (e) {}
+    }, 45000);
+    child.on('error', function (e) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      reject(e);
+    });
+    child.on('close', function (code) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        if (code !== 0 || !fs.existsSync(outPdf)) {
+          throw new Error((err || 'pdf render failed').trim() + ' (code=' + code + ')');
+        }
+        resolve(fs.readFileSync(outPdf));
+      } catch (e) {
+        reject(e);
+      } finally {
+        cleanup();
+      }
+    });
+  });
+}
 
 function escHtml(s) {
   return String(s == null ? '' : s)
@@ -205,7 +276,7 @@ function buildLinks(req, authCode, token) {
   var origin = publicOriginFromReq(req);
   return {
     verify_url: origin + '/sbdy_verify.html?code=' + encodeURIComponent(authCode),
-    show_url: origin + '/taxmock/' + encodeURIComponent(token) + '/show',
+    show_url: origin + '/taxmock/' + encodeURIComponent(token) + '/show.pdf',
     show_api_url: origin + '/api/public/sbdy-demo/show/' + encodeURIComponent(token)
   };
 }
@@ -347,13 +418,14 @@ function renderCertHtml(payload, links, opts) {
   var p = payload || {};
   var months = migrateMonthsForShow(p);
   var verifyUrl = (links && links.verify_url) || '';
-  var rowsHtml = padMonthRowsHtml(months, 22);
+  var rowsHtml = padMonthRowsHtml(months, 24);
   var authCode = opts.authCode || '';
   var companyDisp = companyDisplayOf(p);
   var periodLabel = p.period_label || '';
   var officialValidateHint =
     'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate';
 
+  /* 一整张连续 12 列表格（对齐 show.pdf） */
   return (
     '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -363,106 +435,113 @@ function renderCertHtml(payload, links, opts) {
     'html,body{margin:0;padding:0;background:#fff}' +
     'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
     '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    /* 版式对齐 show.pdf：纯白底、无斜纹水印、表格贴合 */
-    '.page{width:210mm;max-width:100%;margin:0 auto;background:#fff;padding:10mm 12mm 12mm;position:relative}' +
-    '.head{position:relative;height:88px;margin:0 0 6px}' +
-    'h1{margin:0;padding:22px 96px 0 0;text-align:center;font-size:21px;font-weight:700;' +
-    'letter-spacing:2px;line-height:1.4}' +
-    '.qr-box{position:absolute;top:0;right:0;width:82px;text-align:center}' +
-    '.qr-box canvas,.qr-box img.qr{width:72px;height:72px;display:block;margin:0 auto}' +
-    '.qr-ph{width:72px;height:72px;border:1px solid #000;margin:0 auto;font:11px/72px sans-serif;color:#999}' +
-    '.page-no{margin-top:1px;font-size:11px;text-align:right;line-height:1.2}' +
-    'table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff}' +
-    'table+table{margin-top:-1px}' +
-    'th,td{border:1px solid #000;padding:3px 2px;text-align:center;vertical-align:middle;font-weight:400;background:#fff}' +
-    'table.info{font-size:12px}' +
-    'table.info th{white-space:nowrap;width:8.2%}' +
-    'table.info td{width:11.8%;word-break:break-all}' +
-    'table.basic{font-size:12px}' +
-    'table.basic th.lab{width:12%;white-space:nowrap}' +
-    'table.basic tr.sec th{font-size:13px;font-weight:700;letter-spacing:3px;padding:5px 4px}' +
-    'table.detail{font-size:10px}' +
-    'table.detail th,table.detail td{padding:2px 1px;line-height:1.25;word-break:break-all}' +
-    'table.detail tr.sec th{font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 2px}' +
-    'table.detail td.unit{font-size:9px}' +
-    'table.detail tr.empty td{height:16px}' +
-    '.tail{position:relative;margin-top:6px;min-height:150px;padding-right:150px}' +
-    '.notes{font-size:11px;line-height:1.7;text-align:left}' +
+    '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
+    'padding:14mm 14mm 16mm;position:relative}' +
+    '.head{position:relative;min-height:96px;margin:0 0 10px}' +
+    'h1{margin:0;padding:26px 100px 0 0;text-align:center;font-size:24px;font-weight:700;' +
+    'letter-spacing:3px;line-height:1.35}' +
+    '.qr-box{position:absolute;top:0;right:0;width:90px;text-align:center}' +
+    '.qr-box canvas,.qr-box img.qr{width:80px;height:80px;display:block;margin:0 auto}' +
+    '.qr-ph{width:80px;height:80px;margin:0 auto}' +
+    '.page-no{margin-top:2px;font-size:12px;text-align:right;white-space:nowrap}' +
+    'table.cert{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;font-size:11px}' +
+    'table.cert th,table.cert td{border:1px solid #000;padding:4px 2px;text-align:center;' +
+    'vertical-align:middle;font-weight:400;background:#fff;word-break:break-all;line-height:1.3}' +
+    'table.cert tr.sec th{font-size:13px;font-weight:700;letter-spacing:2px;padding:6px 4px}' +
+    'table.cert tr.info th{white-space:nowrap;font-size:12px}' +
+    'table.cert tr.info td{font-size:12px}' +
+    'table.cert tr.basic th.lab{white-space:nowrap;font-size:12px}' +
+    'table.cert tr.basic td,table.cert tr.basic th:not(.lab){font-size:12px}' +
+    'table.cert tr.dhead th{font-size:10.5px;padding:3px 1px}' +
+    'table.cert td.unit{font-size:9.5px}' +
+    'table.cert tr.empty td{height:17px;padding:0}' +
+    '.tail{position:relative;margin-top:8px;min-height:160px}' +
+    '.notes{font-size:11px;line-height:1.75;text-align:left;padding-right:150px}' +
     '.notes .lab{font-weight:700}' +
     '.notes .indent{padding-left:2.1em}' +
     '.notes a{color:#00f;text-decoration:underline;word-break:break-all}' +
-    '.print-date{text-align:center;font-size:12px;margin:18px 0 0;letter-spacing:1px}' +
-    '.seal-mark{position:absolute;right:128px;top:36px;font-size:12px;z-index:3}' +
-    '.seal-wrap{position:absolute;right:-8px;top:8px;width:155px;height:155px;z-index:2;pointer-events:none}' +
-    '.seal{width:155px;height:155px;display:block;opacity:.9}' +
-    '.demo-bar{display:none}' +
-    '@media print{.page{padding:8mm 10mm}}' +
-    '@media (max-width:720px){.page{padding:8px}.head{height:auto}' +
-    'h1{padding:4px 0 0;font-size:17px}.qr-box{position:static;margin:0 auto 6px}' +
-    '.page-no{text-align:center}.tail{padding-right:0}' +
-    '.seal-mark{position:static;display:block;text-align:right;margin-top:8px}' +
-    '.seal-wrap{position:relative;right:auto;top:auto;margin:4px 0 0 auto}}' +
+    '.print-date{text-align:center;font-size:13px;margin:22px 40px 0 0;letter-spacing:1px}' +
+    '.seal-mark{position:absolute;right:118px;top:48px;font-size:12px;z-index:3}' +
+    '.seal-wrap{position:absolute;right:0;top:10px;width:160px;height:160px;z-index:2;pointer-events:none}' +
+    '.seal{width:160px;height:160px;display:block;opacity:.92}' +
+    '@media print{.page{padding:12mm;min-height:auto}}' +
+    '@media (max-width:720px){.page{padding:8px;min-height:0}.head{min-height:0}' +
+    'h1{padding:6px 0 0;font-size:18px;letter-spacing:1px}' +
+    '.qr-box{position:static;margin:0 auto 8px}.page-no{text-align:center}' +
+    '.notes{padding-right:0}.seal-mark{position:static;text-align:right;margin-top:8px}' +
+    '.seal-wrap{position:relative;right:auto;top:auto;margin:6px 0 0 auto}}' +
     '</style></head><body>' +
     '<div class="page">' +
     '<div class="head">' +
     '<div class="qr-box">' +
-    '<div class="qr-ph" id="qrPh"> </div>' +
-    '<canvas id="qrCanvas" class="qr" width="72" height="72" style="display:none"></canvas>' +
+    '<div class="qr-ph" id="qrPh"></div>' +
+    '<canvas id="qrCanvas" class="qr" width="80" height="80" style="display:none"></canvas>' +
     '<div class="page-no">共1页，第1页</div>' +
     '</div>' +
     '<h1>浙江省社会保险参保证明（个人专用）</h1>' +
     '</div>' +
-    '<table class="info"><tr>' +
-    '<th>姓名</th><td>' +
+    '<table class="cert">' +
+    '<colgroup>' +
+    '<col style="width:4.2%"><col style="width:3.8%"><col style="width:14.5%">' +
+    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
+    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
+    '<col style="width:5.5%">' +
+    '</colgroup>' +
+    /* 个人信息：12 列拆成 5 组 */
+    '<tr class="info">' +
+    '<th colspan="1">姓名</th><td colspan="1">' +
     escHtml(p.name) +
     '</td>' +
-    '<th>社会保障号</th><td>' +
+    '<th colspan="1">社会保障号</th><td colspan="2">' +
     escHtml(p.id_number) +
     '</td>' +
-    '<th>证件类型</th><td>' +
+    '<th colspan="1">证件类型</th><td colspan="1">' +
     escHtml(p.id_type || '居民身份证') +
     '</td>' +
-    '<th>证件号码</th><td>' +
+    '<th colspan="1">证件号码</th><td colspan="2">' +
     escHtml(p.id_number) +
     '</td>' +
-    '<th>性别</th><td>' +
+    '<th colspan="1">性别</th><td colspan="1">' +
     escHtml(p.gender || '') +
     '</td>' +
-    '</tr></table>' +
-    '<table class="basic">' +
-    '<tr class="sec"><th colspan="4">参加社会保险基本情况</th></tr>' +
-    '<tr><th class="lab">险　　种</th><th>养老保险</th><th>工伤保险</th><th>失业保险</th></tr>' +
-    '<tr><th class="lab">参保状态</th><td>' +
+    '</tr>' +
+    '<tr class="sec"><th colspan="12">参加社会保险基本情况</th></tr>' +
+    '<tr class="basic">' +
+    '<th class="lab" colspan="3">险　　种</th>' +
+    '<th colspan="3">养老保险</th><th colspan="3">工伤保险</th><th colspan="3">失业保险</th>' +
+    '</tr>' +
+    '<tr class="basic">' +
+    '<th class="lab" colspan="3">参保状态</th>' +
+    '<td colspan="3">' +
     escHtml(p.status_pension || '') +
-    '</td><td>' +
+    '</td>' +
+    '<td colspan="3">' +
     escHtml(p.status_injury || p.status_medical || '') +
-    '</td><td>' +
+    '</td>' +
+    '<td colspan="3">' +
     escHtml(p.status_unemployment || '') +
-    '</td></tr>' +
-    '<tr><th class="lab">参保单位</th><td colspan="3">' +
+    '</td>' +
+    '</tr>' +
+    '<tr class="basic">' +
+    '<th class="lab" colspan="3">参保单位</th>' +
+    '<td colspan="9">' +
     escHtml(companyDisp) +
-    '</td></tr>' +
-    '</table>' +
-    '<table class="detail">' +
-    '<thead>' +
+    '</td>' +
+    '</tr>' +
     '<tr class="sec"><th colspan="12">出具证明前12个月缴费情况（' +
     escHtml(periodLabel) +
     '）</th></tr>' +
-    '<tr>' +
-    '<th rowspan="2" style="width:4.2%">年</th>' +
-    '<th rowspan="2" style="width:3.8%">月</th>' +
-    '<th rowspan="2" style="width:15%">单位编号</th>' +
-    '<th colspan="4">养老保险</th>' +
-    '<th colspan="4">失业保险</th>' +
-    '<th rowspan="2" style="width:5%">备注</th>' +
+    '<tr class="dhead">' +
+    '<th rowspan="2">年</th><th rowspan="2">月</th><th rowspan="2">单位编号</th>' +
+    '<th colspan="4">养老保险</th><th colspan="4">失业保险</th>' +
+    '<th rowspan="2">备注</th>' +
     '</tr>' +
-    '<tr>' +
+    '<tr class="dhead">' +
     '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
     '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
     '</tr>' +
-    '</thead><tbody>' +
     rowsHtml +
-    '</tbody></table>' +
+    '</table>' +
     '<div class="tail">' +
     '<div class="notes">' +
     '<div><span class="lab">备注：</span>1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。</div>' +
@@ -491,7 +570,7 @@ function renderCertHtml(payload, links, opts) {
     JSON.stringify(verifyUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
-    'QRCode.toCanvas(c,u,{width:72,margin:1,color:{dark:"#000000",light:"#ffffff"}},function(err){' +
+    'QRCode.toCanvas(c,u,{width:80,margin:1,color:{dark:"#000000",light:"#ffffff"}},function(err){' +
     'if(err){return;}c.style.display="block";if(ph)ph.style.display="none";});})();<\/script>' +
     '</body></html>'
   );
@@ -646,10 +725,22 @@ async function handlePublicSbdyDemoShow(req, res) {
       payload.months = migrateMonthsForShow(payload);
     }
     var links = buildLinks(req, row.auth_code, row.token);
-    var html = renderCertHtml(payload, links, { authCode: row.auth_code });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    var wantHtml =
+      String(req.query.format || '').toLowerCase() === 'html' ||
+      String(req.query.view || '').toLowerCase() === 'html';
+    if (wantHtml) {
+      var html = renderCertHtml(payload, links, { authCode: row.auth_code });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      return res.status(200).send(html);
+    }
+    var pdfBuf = await renderSbdyPdfBuffer(payload, row.auth_code, links.verify_url);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="show.pdf"');
+    res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    return res.status(200).send(html);
+    res.setHeader('Content-Length', String(pdfBuf.length));
+    return res.status(200).end(pdfBuf);
   } catch (e) {
     console.error('[sbdy-demo] show', e);
     return res.status(500).send('error');
