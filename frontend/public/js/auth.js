@@ -10,6 +10,7 @@
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
   var LANDING_AB_ASSIGNMENT_KEY = 'landing_bc_assignment_v1';
+  var PURCHASE_ABC_ASSIGNMENT_KEY = 'purchase_abc_assignment_v1';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
@@ -1515,7 +1516,95 @@
     }
   }
 
+  function getPurchaseAbcAssignment() {
+    try {
+      var raw = localStorage.getItem(PURCHASE_ABC_ASSIGNMENT_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || (parsed.variant !== 'a' && parsed.variant !== 'b' && parsed.variant !== 'c')) {
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getPurchaseAbcVariant() {
+    var assignment = getPurchaseAbcAssignment();
+    return assignment ? assignment.variant : '';
+  }
+
+  function setPurchaseAbcAssignment(variant, source) {
+    var v = String(variant || '').toLowerCase();
+    if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+    var existing = getPurchaseAbcAssignment();
+    if (existing && existing.variant === v) {
+      return existing;
+    }
+    /* sticky：已有不同方案时不覆盖 */
+    if (existing && existing.variant) {
+      return existing;
+    }
+    var next = {
+      experiment: 'purchase_abc_v1',
+      variant: v,
+      assigned_at: Date.now(),
+      source: String(source || 'allocation').substring(0, 32)
+    };
+    try {
+      localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
+    } catch (e) {}
+    /* 同步落地页：C→落地 C，A/B→落地 B */
+    setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc');
+    return next;
+  }
+
+  function migratePurchaseAbcFromLanding() {
+    if (getPurchaseAbcAssignment()) return getPurchaseAbcAssignment();
+    var land = getLandingAbAssignment();
+    if (land && land.variant === 'c') {
+      return setPurchaseAbcAssignment('c', 'migrate_landing');
+    }
+    return null;
+  }
+
+  function allocatePurchaseAbcFromPercents(seed, aPercent, bPercent, cPercent) {
+    var a = Math.max(0, Math.min(100, parseInt(aPercent, 10) || 0));
+    var b = Math.max(0, Math.min(100, parseInt(bPercent, 10) || 0));
+    var c = Math.max(0, Math.min(100, parseInt(cPercent, 10) || 0));
+    var sum = a + b + c;
+    if (sum !== 100 && sum > 0) {
+      a = Math.round((a * 100) / sum);
+      b = Math.round((b * 100) / sum);
+      c = 100 - a - b;
+      if (c < 0) {
+        b = Math.max(0, b + c);
+        c = 0;
+      }
+    } else if (sum <= 0) {
+      a = 100;
+      b = 0;
+      c = 0;
+    }
+    var h = 2166136261;
+    var s = 'purchase_abc|' + String(seed || 'guest');
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    var bucket = (h >>> 0) % 100;
+    if (bucket < a) return 'a';
+    if (bucket < a + b) return 'b';
+    return 'c';
+  }
+
   function getLandingAbVariant() {
+    migratePurchaseAbcFromLanding();
+    var purchase = getPurchaseAbcAssignment();
+    if (purchase) {
+      return purchase.variant === 'c' ? 'c' : 'b';
+    }
     var assignment = getLandingAbAssignment();
     return assignment ? assignment.variant : '';
   }
@@ -1583,7 +1672,12 @@
           user_agent: payload.user_agent
         });
       }
-      return { 'X-Client-Device': j };
+      var headers = { 'X-Client-Device': j };
+      var abc = getPurchaseAbcVariant();
+      if (abc) {
+        headers['X-Purchase-Abc'] = abc;
+      }
+      return headers;
     } catch (e) {
       return {};
     }
@@ -2274,6 +2368,11 @@
   window.getLandingAbAssignment = getLandingAbAssignment;
   window.getLandingAbVariant = getLandingAbVariant;
   window.setLandingAbAssignment = setLandingAbAssignment;
+  window.getPurchaseAbcAssignment = getPurchaseAbcAssignment;
+  window.getPurchaseAbcVariant = getPurchaseAbcVariant;
+  window.setPurchaseAbcAssignment = setPurchaseAbcAssignment;
+  window.migratePurchaseAbcFromLanding = migratePurchaseAbcFromLanding;
+  window.allocatePurchaseAbcFromPercents = allocatePurchaseAbcFromPercents;
   window.markInstallGuideReferral = markInstallGuideReferral;
   window.hasInstallGuideReferral = hasInstallGuideReferral;
   window.clearInstallGuideReferral = clearInstallGuideReferral;

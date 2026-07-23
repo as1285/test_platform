@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/site-config.js"></script>
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth.js?v=20260723-purchase-abc"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -59,34 +59,51 @@
                 .then(function (body) {
                     var cfg = body && body.code === 200 && body.data ? body.data : null;
                     if (!cfg || cfg.enabled === false) {
-                        if (typeof window.setLandingAbAssignment === 'function') {
+                        if (typeof window.setPurchaseAbcAssignment === 'function') {
+                            window.setPurchaseAbcAssignment('a', 'disabled');
+                        } else if (typeof window.setLandingAbAssignment === 'function') {
                             window.setLandingAbAssignment('b', 'disabled');
                         }
                         return reveal('b');
                     }
-                    var existing =
-                        typeof window.getLandingAbAssignment === 'function'
-                            ? window.getLandingAbAssignment()
+                    if (typeof window.migratePurchaseAbcFromLanding === 'function') {
+                        window.migratePurchaseAbcFromLanding();
+                    }
+                    var purchase =
+                        typeof window.getPurchaseAbcAssignment === 'function'
+                            ? window.getPurchaseAbcAssignment()
                             : null;
-                    var variant = existing && (existing.variant === 'b' || existing.variant === 'c')
-                        ? existing.variant
-                        : '';
-                    var isNew = !variant;
-                    if (!variant) {
+                    var abcVariant = purchase && purchase.variant ? purchase.variant : '';
+                    var isNew = !abcVariant;
+                    if (!abcVariant) {
                         var payload =
                             typeof window.buildClientDevicePayload === 'function'
                                 ? window.buildClientDevicePayload()
                                 : {};
-                        var cPercent = Math.max(0, Math.min(100, parseInt(cfg.c_percent, 10) || 0));
-                        variant = hashBucket(payload.client_id || '') < cPercent ? 'c' : 'b';
-                        if (typeof window.setLandingAbAssignment === 'function') {
-                            window.setLandingAbAssignment(variant, 'allocation');
+                        if (typeof window.allocatePurchaseAbcFromPercents === 'function') {
+                            abcVariant = window.allocatePurchaseAbcFromPercents(
+                                payload.client_id || '',
+                                cfg.a_percent,
+                                cfg.b_percent,
+                                cfg.c_percent
+                            );
+                        } else {
+                            var cPercent = Math.max(0, Math.min(100, parseInt(cfg.c_percent, 10) || 0));
+                            abcVariant = hashBucket(payload.client_id || '') < cPercent ? 'c' : 'a';
                         }
+                        if (typeof window.setPurchaseAbcAssignment === 'function') {
+                            window.setPurchaseAbcAssignment(abcVariant, 'allocation');
+                        }
+                    }
+                    var variant = abcVariant === 'c' ? 'c' : 'b';
+                    if (typeof window.setLandingAbAssignment === 'function') {
+                        window.setLandingAbAssignment(variant, 'from_purchase_abc');
                     }
                     if (isNew && typeof window.trackPublicAction === 'function') {
                         window.trackPublicAction('track_landing_ab_assignment', {
                             page: 'install_guide',
                             landing_variant: variant,
+                            purchase_abc: abcVariant,
                             referrer: entry.referrer,
                             utm_source: entry.utm_source,
                             sales_ch: entry.sales_ch

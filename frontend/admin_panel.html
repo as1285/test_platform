@@ -29,18 +29,32 @@
                         <p class="hint mt-0">优先配置定价实验；下方为弹窗与 QQ / 微信触达入口。效果请到「转化与触达」查看。</p>
                     </section>
                     <section>
-                        <h2>定价 A/B（支付宝）</h2>
-                        <p class="hint">启用后：Control 仅「199 永久」；Treatment 为「49/24小时 · 99/3天 · 199/1年 · 499永久」。首期 50/50；短时续买<strong>覆盖为更长档</strong>。主指标：购买区曝光用户人均支付金额。</p>
+                        <h2>定价/支付页 A/B/C</h2>
+                        <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
+                            <strong>A</strong>：支付宝仅「199 永久」+ 其它渠道 + 激活码（落地页 B）；
+                            <strong>B</strong>：支付宝多档价，收起其它渠道（落地页 B）；
+                            <strong>C</strong>：仅「下载 App」+ 激活码（落地页游客沙盒）。
+                            A+B+C 必须为 100%。
+                        </p>
                         <div class="form-row form-stack">
                             <div class="form-field">
-                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用定价 A/B</label>
+                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用支付页 A/B/C</label>
                             </div>
                             <div class="form-field form-field-narrow">
-                                <label for="pricingAbTreatmentPercent">Treatment 流量占比 %</label>
-                                <input type="number" id="pricingAbTreatmentPercent" min="0" max="100" step="1" value="50">
+                                <label for="pricingAbAPercent">A 方案流量占比 %</label>
+                                <input type="number" id="pricingAbAPercent" min="0" max="100" step="1" value="50">
                             </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="pricingAbBPercent">B 方案流量占比 %</label>
+                                <input type="number" id="pricingAbBPercent" min="0" max="100" step="1" value="50">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="pricingAbCPercent">C 方案流量占比 %</label>
+                                <input type="number" id="pricingAbCPercent" min="0" max="100" step="1" value="0">
+                            </div>
+                            <p class="hint mt-6" id="pricingAbcSplitHint">A 50% · B 50% · C 0%</p>
                             <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存定价 A/B</button>
+                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B/C</button>
                             </div>
                         </div>
                     </section>
@@ -160,21 +174,8 @@
                         <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）与「操作教程」（<a href="tutorial_video.html" target="_blank" rel="noopener">在新标签预览</a>）。下方可配置<strong>安装包下载</strong>、<strong>引导视频</strong>与<strong>首屏效果预览</strong>（动图 + 截图横滑）；其它界面配图仍在左侧「用户端外观」。</p>
                     </section>
                     <section>
-                        <h2>落地页 B/C A/B Test</h2>
-                        <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。<strong>C 方案用户打开购买页时，仅展示「下载 App」与「激活码输入」</strong>（无支付宝 / 其它购买方式）。按设备 <code>client_id</code> 稳定分流；调整比例只影响尚未分配的新访客。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label><input type="checkbox" id="landingAbEnabled" checked> 启用 B/C A/B Test</label>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="landingAbCPercent">C 方案流量占比（0–100%）</label>
-                                <input type="number" id="landingAbCPercent" min="0" max="100" step="1" value="50">
-                                <p class="hint mt-6" id="landingAbSplitHint">B 方案 50% · C 方案 50%</p>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveLandingAb">保存分流配置</button>
-                            </div>
-                        </div>
+                        <h2>落地页 B/C（跟随支付页 A/B/C）</h2>
+                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页仅展示「下载 App」与「激活码输入」。</p>
                     </section>
                     <section>
                         <h2>安装包下载（用户端）</h2>
@@ -1326,10 +1327,10 @@
                 <div id="page-chat" class="page-panel" role="tabpanel">
                     <section class="admin-chat-page">
                         <h2>在线客服</h2>
-                        <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起会话。左侧选会话、右侧回复；未读会自动刷新。开启 AI 后，用户发消息将由 AI 先答；人工客服一旦回复，该会话自动暂停机器人以免抢答。</p>
+                        <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起会话。左侧选会话、右侧回复；未读会自动刷新。</p>
 
                         <details class="admin-chat-settings" id="chatAutoReplySettings" open>
-                            <summary>自动回复与 AI 客服设置</summary>
+                            <summary>自动回复设置</summary>
                             <div class="admin-chat-settings-body">
                                 <div class="admin-chat-settings-grid">
                                     <div class="form-stack">
@@ -1339,11 +1340,11 @@
                                             <textarea id="chatAutoReplyWelcome" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送开场话术"></textarea>
                                         </div>
                                         <div class="form-field">
-                                            <label for="chatAutoReplyReply">固定自动回复（AI 关闭或失败时的兜底）</label>
+                                            <label for="chatAutoReplyReply">固定自动回复（用户发消息后的兜底）</label>
                                             <textarea id="chatAutoReplyReply" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送兜底回复"></textarea>
                                         </div>
                                     </div>
-                                    <div class="form-stack">
+                                    <div class="form-stack" id="chatAiSettingsPanel" hidden>
                                         <h3 class="admin-chat-settings-title">AI 自动回复</h3>
                                         <div class="form-field admin-chat-ai-toggle-row">
                                             <label class="admin-chat-check-label" for="chatAiEnabled">
@@ -1541,16 +1542,16 @@
                         <p class="hint mt-0">运营日常首页：看转化 KPI、定价实验、未激活用户，并可一键群发站内信。增长实验开关在左侧「增长与触达配置」。</p>
                     </section>
                     <section>
-                        <h2>定价 A/B</h2>
-                        <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。Control=199 永久；Treatment=四档阶梯。曝光来自购买页 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p>
+                        <h2>支付页 A/B/C</h2>
+                        <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=199 永久全渠道；B=多档支付宝；C=仅下载+激活码。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单（C 通常无支付宝单）。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
                                 <select id="analyticsPricingAbDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新定价 A/B</button>
+                            <button type="button" class="btn-page" id="btnRefreshPricingAb">刷新支付页 A/B/C</button>
                         </div>
-                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">定价 A/B 加载中…</div>
+                        <div id="analyticsPricingAb" class="analytics-conv-wrap" aria-live="polite">支付页 A/B/C 加载中…</div>
                     </section>
                     <section>
                         <h2>注册转化率</h2>
@@ -2341,6 +2342,6 @@
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260723-sales-contacts-ui"></script>
+    <script src="/js/admin_panel.js?v=20260723-hide-chat-ai"></script>
 </body>
 </html>

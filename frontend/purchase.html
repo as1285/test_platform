@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth.js?v=20260723-purchase-abc"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>购买激活</title>
     <style>
@@ -598,23 +598,84 @@
         var payload = meta && typeof meta === 'object' ? Object.assign({}, meta) : {};
         if (!payload.page) payload.page = 'purchase';
         if (!payload.source) payload.source = 'purchase_page';
-        if (!payload.landing_variant) {
-            try {
-                if (typeof window.getLandingAbVariant === 'function') {
-                    var lv = window.getLandingAbVariant();
-                    if (lv) payload.landing_variant = lv;
-                }
-            } catch (eLv) {}
-        }
+        try {
+            if (!payload.purchase_abc && typeof window.getPurchaseAbcVariant === 'function') {
+                var abc = window.getPurchaseAbcVariant();
+                if (abc) payload.purchase_abc = abc;
+            }
+            if (!payload.landing_variant && typeof window.getLandingAbVariant === 'function') {
+                var lv = window.getLandingAbVariant();
+                if (lv) payload.landing_variant = lv;
+            }
+        } catch (eLv) {}
         window.trackUserAction(action, payload);
     }
 
-    function isLandingVariantC() {
+    function getPurchaseAbc() {
         try {
-            return typeof window.getLandingAbVariant === 'function' && window.getLandingAbVariant() === 'c';
-        } catch (e) {
-            return false;
-        }
+            if (typeof window.migratePurchaseAbcFromLanding === 'function') {
+                window.migratePurchaseAbcFromLanding();
+            }
+            if (typeof window.getPurchaseAbcVariant === 'function') {
+                return window.getPurchaseAbcVariant() || '';
+            }
+        } catch (e) {}
+        return '';
+    }
+
+    function isPurchaseVariantC() {
+        return getPurchaseAbc() === 'c';
+    }
+
+    /** 兼容旧调用名 */
+    function isLandingVariantC() {
+        return isPurchaseVariantC();
+    }
+
+    function ensurePurchaseAbcAssigned() {
+        if (getPurchaseAbc()) return Promise.resolve(getPurchaseAbc());
+        return fetch('/api/public/landing-ab-config', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: typeof window.getClientDeviceHeaders === 'function'
+                ? window.getClientDeviceHeaders()
+                : {}
+        })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (body) {
+                var cfg = body && body.code === 200 && body.data ? body.data : null;
+                if (!cfg || cfg.enabled === false) {
+                    if (typeof window.setPurchaseAbcAssignment === 'function') {
+                        window.setPurchaseAbcAssignment('a', 'disabled');
+                    }
+                    return 'a';
+                }
+                var payload =
+                    typeof window.buildClientDevicePayload === 'function'
+                        ? window.buildClientDevicePayload()
+                        : {};
+                var abc =
+                    typeof window.allocatePurchaseAbcFromPercents === 'function'
+                        ? window.allocatePurchaseAbcFromPercents(
+                              payload.client_id || '',
+                              cfg.a_percent,
+                              cfg.b_percent,
+                              cfg.c_percent
+                          )
+                        : 'a';
+                if (typeof window.setPurchaseAbcAssignment === 'function') {
+                    window.setPurchaseAbcAssignment(abc, 'purchase_page');
+                }
+                return abc;
+            })
+            .catch(function () {
+                if (typeof window.setPurchaseAbcAssignment === 'function') {
+                    window.setPurchaseAbcAssignment('a', 'config_error');
+                }
+                return 'a';
+            });
     }
 
     function copyTextFallback(text) {
@@ -1129,6 +1190,22 @@
                 var data = x.body && x.body.data ? x.body.data : {};
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
+                var abc = data.abc_variant || getPurchaseAbc() || '';
+                if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
+                    window.setPurchaseAbcAssignment(abc, 'server_offer');
+                }
+                if (abc === 'c' || isPurchaseVariantC()) {
+                    if (card) card.hidden = true;
+                    purchaseUiMode = 'code_only';
+                    alipayPricing.variant = 'c';
+                    applyPurchaseUiMode();
+                    trackPurchase('track_pricing_ab_expose_code', {
+                        pricing_variant: 'c',
+                        purchase_abc: 'c',
+                        sku_count: 0
+                    });
+                    return checkAlipayLatestOrder();
+                }
                 card.hidden = !enabled;
                 if (enabled) {
                     var variant = data.pricing_variant || 'control';
@@ -1147,10 +1224,7 @@
                     renderAlipaySkus(skus, variant);
                     var selected = getSelectedAlipaySku();
                     var hint = document.getElementById('alipayPurchaseHint');
-                    if (isLandingVariantC()) {
-                        purchaseUiMode = 'code_only';
-                        if (card) card.hidden = true;
-                    } else if (variant === 'treatment' && skus.length > 1) {
+                    if (variant === 'treatment' && skus.length > 1) {
                         hint.textContent =
                             '可选试用或永久套餐；购买更长档将覆盖当前更短试用。付款成功后自动开通。';
                         purchaseUiMode = 'treatment';
@@ -1162,19 +1236,18 @@
                         purchaseUiMode = 'legacy';
                     }
                     applyPurchaseUiMode();
-                    if (!isLandingVariantC()) {
-                        trackPurchase(
-                            variant === 'treatment'
-                                ? 'track_pricing_ab_expose_treatment'
-                                : 'track_pricing_ab_expose_control',
-                            {
-                                pricing_variant: variant,
-                                sku_count: skus.length
-                            }
-                        );
-                    }
+                    trackPurchase(
+                        variant === 'treatment'
+                            ? 'track_pricing_ab_expose_treatment'
+                            : 'track_pricing_ab_expose_control',
+                        {
+                            pricing_variant: variant,
+                            purchase_abc: abc || (variant === 'treatment' ? 'b' : 'a'),
+                            sku_count: skus.length
+                        }
+                    );
                 } else {
-                    purchaseUiMode = isLandingVariantC() ? 'code_only' : 'legacy';
+                    purchaseUiMode = isPurchaseVariantC() ? 'code_only' : 'legacy';
                     alipayPricing.variant = 'control';
                     applyPurchaseUiMode();
                 }
@@ -1182,7 +1255,7 @@
             })
             .catch(function () {
                 document.getElementById('cardAlipay').hidden = true;
-                purchaseUiMode = isLandingVariantC() ? 'code_only' : 'legacy';
+                purchaseUiMode = isPurchaseVariantC() ? 'code_only' : 'legacy';
                 alipayPricing.variant = 'control';
                 applyPurchaseUiMode();
             });
@@ -1254,7 +1327,7 @@
     function applyConfig(data) {
         data = data || {};
         applySalesAgentCard(data.sales_agent || null);
-        if (isLandingVariantC()) {
+        if (isPurchaseVariantC()) {
             purchaseUiMode = 'code_only';
         }
         applyPurchaseUiMode();
@@ -1547,8 +1620,10 @@
         trackPurchase('track_purchase_back_click');
     });
 
-    loadConfig();
-    loadAlipayPurchase();
+    ensurePurchaseAbcAssigned().then(function () {
+        loadConfig();
+        loadAlipayPurchase();
+    });
     /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
     setTimeout(function () {
         try {

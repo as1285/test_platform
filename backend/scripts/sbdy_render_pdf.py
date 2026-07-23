@@ -263,34 +263,21 @@ def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=8
     cell_box(page, font_path, fontname, line2, x0, x1, mid - 0.5, y1, size=size, align='center', min_size=6.0)
 
 
+# 表头/标签加粗用字（不含正文数值）
+BOLD_LABEL_CHARS = (
+    '姓名社会保障号证件类型证件号码性别'
+    '参加社会保险基本情况'
+    '险　　种养老保险工伤保险失业保险参保状态参保单位'
+    '出具证明前12个月缴费情况'
+    '年月单位编号备注参保地缴费基数(元)个人缴费状况'
+)
+
+
 def collect_text_blob(p, months, auth_code):
     parts = [
         '浙江省社会保险参保证明（个人专用）',
         '共1页，第1页',
-        '姓名',
-        '社会保障号',
-        '证件类型',
-        '证件号码',
-        '性别',
-        '参加社会保险基本情况',
-        '险　　种',
-        '养老保险',
-        '工伤保险',
-        '失业保险',
-        '参保状态',
-        '参保单位',
-        '出具证明前12个月缴费情况',
-        '年',
-        '月',
-        '单位编号',
-        '参保地',
-        '缴费基',
-        '数(元)',
-        '个人缴',
-        '费(元)',
-        '缴费',
-        '状况',
-        '备注',
+        BOLD_LABEL_CHARS,
         '（盖章）',
         '打印时间：',
         '本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。',
@@ -345,12 +332,18 @@ def render(payload, auth_code, verify_url, out_path):
         months.append(None)
 
     blob = collect_text_blob(p, months, auth_code)
-    # 正文 Regular（贴近第二张官方图）；标题 Bold，均不加描边
+    # 正文 Regular；标题与表头/标签 Bold（不加描边）
     full_body = ensure_full_cjk_font()
     full_title = ensure_bold_cjk_font()
     subset_body = make_subset_font(full_body, blob, prefix='sbdy_body_')
+    bold_blob = (
+        '浙江省社会保险参保证明（个人专用）'
+        + BOLD_LABEL_CHARS
+        + str(p.get('period_label') or '')
+        + '0123456789（）()-—'
+    )
     subset_title = (
-        make_subset_font(full_title, '浙江省社会保险参保证明（个人专用）', prefix='sbdy_title_')
+        make_subset_font(full_title, bold_blob, prefix='sbdy_title_')
         if full_title != full_body
         else subset_body
     )
@@ -397,9 +390,9 @@ def render(payload, auth_code, verify_url, out_path):
         for i in range(11):
             draw_vline(page, info_xs[i], y_t1_0, y_t1_1)
         for i in range(5):
-            cell_center(page, font_body, body_name, info_labels[i], info_xs[i * 2], info_xs[i * 2 + 1], y_t1_0, y_t1_1, 9.6)
+            cell_center(page, font_title, title_name, info_labels[i], info_xs[i * 2], info_xs[i * 2 + 1], y_t1_0, y_t1_1, 9.6)
             cell_center(page, font_body, body_name, info_vals[i], info_xs[i * 2 + 1], info_xs[i * 2 + 2], y_t1_0, y_t1_1, 9.6)
-        cell_center(page, font_body, body_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6)
+        cell_center(page, font_title, title_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6)
 
         # —— 参保基本情况 ——
         y2 = [149.7, 164.4, 178.8, 193.3, 207.5]
@@ -407,8 +400,12 @@ def render(payload, auth_code, verify_url, out_path):
         for y in y2[1:-1]:
             draw_hline(page, y)
         bx = [34.3, 112.1, 259.8, 415.5, 560.2]
-        for x in bx:
-            draw_vline(page, x, y2[0], y2[3])
+        # 左右边框与「参保单位」标签竖线贯通；险种中间竖线止于参保单位行上方
+        draw_vline(page, bx[0], y2[0], y2[3])
+        draw_vline(page, bx[1], y2[0], y2[3])
+        draw_vline(page, bx[2], y2[0], y2[2])
+        draw_vline(page, bx[3], y2[0], y2[2])
+        draw_vline(page, bx[4], y2[0], y2[3])
         rows2 = [
             ('险　　种', '养老保险', '工伤保险', '失业保险'),
             (
@@ -420,8 +417,20 @@ def render(payload, auth_code, verify_url, out_path):
         ]
         for ri, row in enumerate(rows2):
             for ci, val in enumerate(row):
-                cell_center(page, font_body, body_name, val, bx[ci], bx[ci + 1], y2[ri], y2[ri + 1], 9.6)
-        cell_center(page, font_body, body_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
+                # 险种表头行加粗；参保状态行仅左侧标签加粗
+                use_bold = ri == 0 or ci == 0
+                cell_center(
+                    page,
+                    font_title if use_bold else font_body,
+                    title_name if use_bold else body_name,
+                    val,
+                    bx[ci],
+                    bx[ci + 1],
+                    y2[ri],
+                    y2[ri + 1],
+                    9.6,
+                )
+        cell_center(page, font_title, title_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
         # 参保单位：居中溢出框，字号自适应，不穿出格线
         cell_box(
             page,
@@ -440,8 +449,8 @@ def render(payload, auth_code, verify_url, out_path):
         period = p.get('period_label') or ''
         cell_center(
             page,
-            font_body,
-            body_name,
+            font_title,
+            title_name,
             '出具证明前12个月缴费情况（%s）' % period,
             X0,
             X1,
@@ -465,12 +474,12 @@ def render(payload, auth_code, verify_url, out_path):
         for x in COL_X:
             draw_vline(page, x, y3_0, y3_end)
 
-        cell_center(page, font_body, body_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
-        cell_center(page, font_body, body_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
-        cell_center(page, font_body, body_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
-        cell_center(page, font_body, body_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
-        cell_center(page, font_body, body_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
-        cell_center(page, font_body, body_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
+        cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
+        cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
+        cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
+        cell_center(page, font_title, title_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
+        cell_center(page, font_title, title_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
+        cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
 
         # 子表头：与参考稿一致两行折行，避免挤出格
         twoline_specs = [
@@ -485,9 +494,9 @@ def render(payload, auth_code, verify_url, out_path):
         ]
         for ci, a, b in twoline_specs:
             if b:
-                cell_twoline(page, font_body, body_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
+                cell_twoline(page, font_title, title_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
             else:
-                cell_center(page, font_body, body_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
+                cell_center(page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
 
         for i in range(12):
             y0 = y3_h2 + row_h * i

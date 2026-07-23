@@ -1,10 +1,12 @@
 /**
- * 定价 A/B：Control=199 永久；Treatment=9.9/30分钟 · 49/24h · 99/3天 · 199/1年 · 499永久
- * 分流与 conversion_ab / landing_ab 独立。
+ * 支付页 A/B/C：
+ * A(control)=199 永久 + 全渠道；B(treatment)=多档支付宝；C=仅下载+激活码。
+ * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
 
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
+var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
 var SKU_CONTROL_199_PERM = {
   id: 'sku_199_perm_legacy',
@@ -74,6 +76,9 @@ var SKU_499_PERM = {
 
 var DEFAULT_PRICING_AB = {
   enabled: true,
+  a_percent: 50,
+  b_percent: 50,
+  c_percent: 0,
   treatment_percent: 50,
   control_skus: [SKU_CONTROL_199_PERM],
   treatment_skus: [SKU_9_9_30M, SKU_49_24H, SKU_99_3D, SKU_199_1Y, SKU_499_PERM]
@@ -101,18 +106,113 @@ function normalizeSkuList(list, fallback) {
   });
 }
 
-function resolvePricingAbVariant(seed, treatmentPercent) {
-  var pct = parseInt(treatmentPercent, 10);
-  if (!isFinite(pct) || pct < 0) pct = 50;
-  if (pct > 100) pct = 100;
-  var s = 'pricing|' + String(seed || 'guest');
+function clampPct(v, fallback) {
+  var p = parseInt(v, 10);
+  if (!isFinite(p)) p = fallback;
+  if (p < 0) p = 0;
+  if (p > 100) p = 100;
+  return p;
+}
+
+function hashBucket(seed) {
+  var s = 'purchase_abc|' + String(seed || 'guest');
   var h = 0;
   var i;
   for (i = 0; i < s.length; i++) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
-  var bucket = Math.abs(h) % 100;
-  return bucket < pct ? 'treatment' : 'control';
+  return Math.abs(h) % 100;
+}
+
+/** 三档分桶：a / b / c */
+function resolvePurchaseAbcVariant(seed, aPercent, bPercent, cPercent) {
+  var a = clampPct(aPercent, 0);
+  var b = clampPct(bPercent, 0);
+  var c = clampPct(cPercent, 0);
+  var sum = a + b + c;
+  if (sum !== 100) {
+    if (sum <= 0) {
+      a = 100;
+      b = 0;
+      c = 0;
+    } else {
+      a = Math.round((a * 100) / sum);
+      b = Math.round((b * 100) / sum);
+      c = 100 - a - b;
+      if (c < 0) {
+        b = Math.max(0, b + c);
+        c = 0;
+      }
+    }
+  }
+  var bucket = hashBucket(seed);
+  if (bucket < a) return 'a';
+  if (bucket < a + b) return 'b';
+  return 'c';
+}
+
+/** 兼容旧二档 API：treatment_percent → treatment|control */
+function resolvePricingAbVariant(seed, treatmentPercent) {
+  var abc = resolvePurchaseAbcVariant(seed, 100 - clampPct(treatmentPercent, 50), clampPct(treatmentPercent, 50), 0);
+  return abc === 'b' ? 'treatment' : 'control';
+}
+
+function abcToOfferVariant(abc) {
+  if (abc === 'b') return 'treatment';
+  if (abc === 'c') return 'c';
+  return 'control';
+}
+
+function offerVariantToAbc(v) {
+  var s = String(v || '').toLowerCase();
+  if (s === 'treatment' || s === 'b') return 'b';
+  if (s === 'c') return 'c';
+  if (s === 'a' || s === 'control') return 'a';
+  return '';
+}
+
+function normalizeAbcPercents(raw, landingCPercent) {
+  var hasAbc =
+    raw &&
+    (raw.a_percent != null || raw.b_percent != null || raw.c_percent != null);
+  var a;
+  var b;
+  var c;
+  if (hasAbc) {
+    a = clampPct(raw.a_percent, 0);
+    b = clampPct(raw.b_percent, 0);
+    c = clampPct(raw.c_percent, 0);
+  } else {
+    b = clampPct(raw && raw.treatment_percent != null ? raw.treatment_percent : 50, 50);
+    c = clampPct(landingCPercent != null ? landingCPercent : 0, 0);
+    if (b + c > 100) {
+      c = Math.max(0, 100 - b);
+    }
+    a = 100 - b - c;
+  }
+  var sum = a + b + c;
+  if (sum !== 100) {
+    if (sum <= 0) {
+      a = 100;
+      b = 0;
+      c = 0;
+    } else {
+      a = Math.round((a * 100) / sum);
+      b = Math.round((b * 100) / sum);
+      c = 100 - a - b;
+      if (c < 0) {
+        b = Math.max(0, b + c);
+        c = 0;
+        a = 100 - b - c;
+      }
+    }
+  }
+  return {
+    a_percent: a,
+    b_percent: b,
+    c_percent: c,
+    treatment_percent: b
+  };
 }
 
 function grantDurationMs(sku) {
@@ -138,7 +238,6 @@ function findSkuById(cfg, skuId) {
 
 /**
  * 覆盖为更长档：新权益不短于当前剩余则覆盖；永久覆盖一切。
- * 返回 { kind, active_until|null, applied, reason }
  */
 function resolveCoverLongerGrant(userRow, sku) {
   var now = Date.now();
@@ -177,12 +276,46 @@ function createPricingAb(deps) {
   var alipayNormalizeAmount = deps.alipayNormalizeAmount;
   var _cache = null;
   var _cacheAt = 0;
+  var _tableReady = false;
+
+  async function ensureAssignmentsTable(conn) {
+    if (_tableReady) return;
+    await conn.execute(
+      `CREATE TABLE IF NOT EXISTS pricing_ab_assignments (
+        username VARCHAR(64) NOT NULL,
+        variant VARCHAR(8) NOT NULL,
+        source VARCHAR(32) NULL,
+        assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (username)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+    );
+    _tableReady = true;
+  }
+
+  async function loadLandingCPercentHint(conn) {
+    try {
+      const [rows] = await conn.execute(
+        'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+        [SETTING_KEY_LANDING_AB]
+      );
+      if (!rows.length || !rows[0].setting_value) return 0;
+      var parsed = JSON.parse(String(rows[0].setting_value));
+      if (!parsed || typeof parsed !== 'object') return 0;
+      if (parsed.enabled === false) return 0;
+      return clampPct(parsed.c_percent, 0);
+    } catch (e) {
+      return 0;
+    }
+  }
 
   async function loadPricingAbParsed(force) {
     var now = Date.now();
     if (!force && _cache && now - _cacheAt < 10000) return _cache;
     var out = {
       enabled: DEFAULT_PRICING_AB.enabled,
+      a_percent: DEFAULT_PRICING_AB.a_percent,
+      b_percent: DEFAULT_PRICING_AB.b_percent,
+      c_percent: DEFAULT_PRICING_AB.c_percent,
       treatment_percent: DEFAULT_PRICING_AB.treatment_percent,
       control_skus: DEFAULT_PRICING_AB.control_skus.map(cloneSku),
       treatment_skus: DEFAULT_PRICING_AB.treatment_skus.map(cloneSku)
@@ -202,10 +335,17 @@ function createPricingAb(deps) {
         var parsed = JSON.parse(String(rows[0].setting_value));
         if (parsed && typeof parsed === 'object') {
           out.enabled = parsed.enabled !== false;
-          if (parsed.treatment_percent != null) {
-            var p = parseInt(parsed.treatment_percent, 10);
-            if (isFinite(p) && p >= 0 && p <= 100) out.treatment_percent = p;
+          var landingC = 0;
+          var needsLegacy =
+            parsed.a_percent == null && parsed.b_percent == null && parsed.c_percent == null;
+          if (needsLegacy) {
+            landingC = await loadLandingCPercentHint(conn);
           }
+          var pct = normalizeAbcPercents(parsed, landingC);
+          out.a_percent = pct.a_percent;
+          out.b_percent = pct.b_percent;
+          out.c_percent = pct.c_percent;
+          out.treatment_percent = pct.treatment_percent;
           out.control_skus = normalizeSkuList(parsed.control_skus, DEFAULT_PRICING_AB.control_skus);
           out.treatment_skus = normalizeSkuList(
             parsed.treatment_skus,
@@ -230,19 +370,23 @@ function createPricingAb(deps) {
 
   async function savePricingAbFromAdmin(body) {
     var cur = await loadPricingAbParsed(true);
+    var a = clampPct(body.a_percent != null ? body.a_percent : cur.a_percent, cur.a_percent);
+    var b = clampPct(body.b_percent != null ? body.b_percent : cur.b_percent, cur.b_percent);
+    var c = clampPct(body.c_percent != null ? body.c_percent : cur.c_percent, cur.c_percent);
+    if (a + b + c !== 100) {
+      var err = new Error('A/B/C 流量占比之和必须为 100（当前 ' + (a + b + c) + '）');
+      err.statusCode = 400;
+      throw err;
+    }
     var next = {
       enabled: body.enabled !== false && body.enabled !== 0 && body.enabled !== '0',
-      treatment_percent:
-        body.treatment_percent != null
-          ? parseInt(body.treatment_percent, 10)
-          : cur.treatment_percent,
+      a_percent: a,
+      b_percent: b,
+      c_percent: c,
+      treatment_percent: b,
       control_skus: normalizeSkuList(body.control_skus, cur.control_skus),
       treatment_skus: normalizeSkuList(body.treatment_skus, cur.treatment_skus)
     };
-    if (!isFinite(next.treatment_percent) || next.treatment_percent < 0) {
-      next.treatment_percent = 50;
-    }
-    if (next.treatment_percent > 100) next.treatment_percent = 100;
     const conn = await pool.getConnection();
     try {
       await upsertAppSetting(conn, SETTING_KEY_PRICING_AB, JSON.stringify(next));
@@ -253,11 +397,53 @@ function createPricingAb(deps) {
     return loadPricingAbParsed(true);
   }
 
+  async function getStickyAbc(username) {
+    var u = String(username || '').trim();
+    if (!u || u === 'guest' || !pool) return null;
+    const conn = await pool.getConnection();
+    try {
+      await ensureAssignmentsTable(conn);
+      const [rows] = await conn.execute(
+        'SELECT variant FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
+        [u]
+      );
+      if (!rows.length) return null;
+      var v = String(rows[0].variant || '').toLowerCase();
+      return v === 'a' || v === 'b' || v === 'c' ? v : null;
+    } catch (e) {
+      return null;
+    } finally {
+      conn.release();
+    }
+  }
+
+  async function setStickyAbc(username, abc, source) {
+    var u = String(username || '').trim();
+    var v = String(abc || '').toLowerCase();
+    if (!u || u === 'guest' || (v !== 'a' && v !== 'b' && v !== 'c') || !pool) return null;
+    const conn = await pool.getConnection();
+    try {
+      await ensureAssignmentsTable(conn);
+      await conn.execute(
+        `INSERT INTO pricing_ab_assignments (username, variant, source)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE username = username`,
+        [u, v, String(source || 'allocation').substring(0, 32)]
+      );
+      return v;
+    } catch (e) {
+      console.error('setStickyAbc', e);
+      return null;
+    } finally {
+      conn.release();
+    }
+  }
+
   /**
    * 为用户解析可见 SKU 列表与变体。
-   * envFallbackAmount: 支付宝未配多档时的兜底金额（对照单品）。
+   * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
    */
-  async function resolveOfferForUser(username, envFallbackAmount, envSubject) {
+  async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
     var cfg = await loadPricingAbParsed();
     var seed = String(username || '').trim() || 'guest';
     if (!cfg.enabled) {
@@ -268,22 +454,46 @@ function createPricingAb(deps) {
       return {
         enabled: true,
         variant: 'control',
+        abc_variant: 'a',
         skus: [legacy],
         pricing_ab_enabled: false
       };
     }
-    var variant = resolvePricingAbVariant(seed, cfg.treatment_percent);
-    var skus =
-      variant === 'treatment'
-        ? cfg.treatment_skus.map(cloneSku)
-        : cfg.control_skus.map(cloneSku);
-    if (!skus.length) {
+
+    var abc = null;
+    if (seed !== 'guest') {
+      abc = await getStickyAbc(seed);
+    }
+    if (!abc) {
+      var pref = String(preferredAbc || '').toLowerCase();
+      if (pref === 'a' || pref === 'b' || pref === 'c') {
+        abc = pref;
+      } else {
+        abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, cfg.c_percent);
+      }
+      if (seed !== 'guest') {
+        await setStickyAbc(seed, abc, preferredAbc ? 'client_sticky' : 'allocation');
+      }
+    }
+
+    var variant = abcToOfferVariant(abc);
+    var skus = [];
+    if (abc === 'c') {
+      skus = [];
+    } else if (abc === 'b') {
+      skus = cfg.treatment_skus.map(cloneSku);
+    } else {
+      skus = cfg.control_skus.map(cloneSku);
+    }
+    if (abc !== 'c' && !skus.length) {
       skus = [cloneSku(SKU_CONTROL_199_PERM)];
       variant = 'control';
+      abc = 'a';
     }
     return {
-      enabled: true,
+      enabled: abc !== 'c',
       variant: variant,
+      abc_variant: abc,
       skus: skus,
       pricing_ab_enabled: true
     };
@@ -297,9 +507,23 @@ function createPricingAb(deps) {
         if (offer.skus[i].id === String(skuId)) return offer.skus[i];
       }
     }
-    /* 单 SKU 臂默认第一项；多 SKU 必须显式传 sku_id */
     if (offer.skus.length === 1) return offer.skus[0];
     return null;
+  }
+
+  /** 公开配置：供落地/支付页客户端分流（已分配设备自行 sticky） */
+  async function publicAbcConfig() {
+    var cfg = await loadPricingAbParsed();
+    var enabled = cfg.enabled !== false;
+    return {
+      enabled: enabled,
+      a_percent: enabled ? cfg.a_percent : 100,
+      b_percent: enabled ? cfg.b_percent : 0,
+      c_percent: enabled ? cfg.c_percent : 0,
+      b_landing_percent: enabled ? cfg.a_percent + cfg.b_percent : 100,
+      experiment: 'purchase_abc_v1',
+      delegated: true
+    };
   }
 
   return {
@@ -313,7 +537,13 @@ function createPricingAb(deps) {
     findSkuById: findSkuById,
     resolveCoverLongerGrant: resolveCoverLongerGrant,
     grantDurationMs: grantDurationMs,
-    resolvePricingAbVariant: resolvePricingAbVariant
+    resolvePricingAbVariant: resolvePricingAbVariant,
+    resolvePurchaseAbcVariant: resolvePurchaseAbcVariant,
+    abcToOfferVariant: abcToOfferVariant,
+    offerVariantToAbc: offerVariantToAbc,
+    getStickyAbc: getStickyAbc,
+    setStickyAbc: setStickyAbc,
+    publicAbcConfig: publicAbcConfig
   };
 }
 
@@ -322,5 +552,8 @@ module.exports = {
   SETTING_KEY_PRICING_AB: SETTING_KEY_PRICING_AB,
   DEFAULT_PRICING_AB: DEFAULT_PRICING_AB,
   resolveCoverLongerGrant: resolveCoverLongerGrant,
-  resolvePricingAbVariant: resolvePricingAbVariant
+  resolvePricingAbVariant: resolvePricingAbVariant,
+  resolvePurchaseAbcVariant: resolvePurchaseAbcVariant,
+  abcToOfferVariant: abcToOfferVariant,
+  offerVariantToAbc: offerVariantToAbc
 };

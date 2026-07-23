@@ -5069,7 +5069,21 @@ async function consumeRenameCreditInConn(conn, userId) {
   return true;
 }
 
-/** 返回支付宝公开配置（含定价 A/B SKU 列表） */
+function readPreferredPurchaseAbc(req) {
+  try {
+    var h =
+      (req.headers && (req.headers['x-purchase-abc'] || req.headers['X-Purchase-Abc'])) || '';
+    var v = String(h || '').toLowerCase().trim();
+    if (v === 'a' || v === 'b' || v === 'c') return v;
+    if (req.query && req.query.purchase_abc) {
+      v = String(req.query.purchase_abc).toLowerCase().trim();
+      if (v === 'a' || v === 'b' || v === 'c') return v;
+    }
+  } catch (e0) {}
+  return '';
+}
+
+/** 返回支付宝公开配置（含定价 A/B/C SKU 列表） */
 async function handleAlipayConfig(req, res) {
   var envProduct = getAlipayProductConfig();
   var baseEnabled = alipay.isConfigured() && !!envProduct.amount;
@@ -5083,8 +5097,23 @@ async function handleAlipayConfig(req, res) {
     var offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
       envProduct.amount,
-      envProduct.subject
+      envProduct.subject,
+      readPreferredPurchaseAbc(req)
     );
+    if (offer.abc_variant === 'c' || offer.variant === 'c') {
+      return res.json({
+        code: 200,
+        data: {
+          enabled: false,
+          subject: envProduct.subject,
+          amount: envProduct.amount,
+          pricing_variant: 'c',
+          abc_variant: 'c',
+          pricing_ab_enabled: !!offer.pricing_ab_enabled,
+          skus: []
+        }
+      });
+    }
     var skus = (offer.skus || []).map(function (s) {
       return {
         id: s.id,
@@ -5105,6 +5134,7 @@ async function handleAlipayConfig(req, res) {
         subject: primary ? primary.subject : envProduct.subject,
         amount: primary ? primary.amount : envProduct.amount,
         pricing_variant: offer.variant,
+        abc_variant: offer.abc_variant || (offer.variant === 'treatment' ? 'b' : 'a'),
         pricing_ab_enabled: !!offer.pricing_ab_enabled,
         skus: skus
       }
@@ -5118,6 +5148,7 @@ async function handleAlipayConfig(req, res) {
         subject: envProduct.subject,
         amount: envProduct.amount,
         pricing_variant: 'control',
+        abc_variant: 'a',
         pricing_ab_enabled: false,
         skus: [
           {
@@ -5252,11 +5283,18 @@ async function handleAlipayCreateOrder(req, res) {
     offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
       envProduct.amount,
-      envProduct.subject
+      envProduct.subject,
+      readPreferredPurchaseAbc(req)
     );
   } catch (eOffer) {
     console.error('pricing offer', eOffer);
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
+  }
+  if (offer.abc_variant === 'c' || offer.variant === 'c') {
+    return res.status(403).json({
+      code: 403,
+      msg: '当前方案仅支持激活码开通，请使用下载与激活码入口'
+    });
   }
   var sku = getPricingAb().pickSkuFromOffer(offer, skuIdReq);
   if (!sku) {
@@ -12458,17 +12496,21 @@ async function loadSalesAgentParsed() {
   }
 }
 
-/** 公开落地页 A/B 配置 */
+/** 公开落地页 / 支付页 A/B/C 配置（分流统一由 pricing_ab 控制） */
 async function handlePublicLandingAbConfig(req, res) {
   try {
-    var cfg = await loadLandingAbParsed();
+    var abc = await getPricingAb().publicAbcConfig();
     return res.json({
       code: 200,
       data: {
-        enabled: cfg.enabled !== false,
-        b_percent: cfg.enabled !== false ? 100 - cfg.c_percent : 100,
-        c_percent: cfg.enabled !== false ? cfg.c_percent : 0,
-        experiment: 'landing_bc_v1'
+        enabled: abc.enabled !== false,
+        a_percent: abc.a_percent,
+        b_percent: abc.b_percent,
+        c_percent: abc.c_percent,
+        /* 兼容旧落地页字段名：非 C 合计占比 */
+        b_percent_landing: abc.a_percent + abc.b_percent,
+        experiment: 'purchase_abc_v1',
+        delegated: true
       }
     });
   } catch (e) {
@@ -17406,7 +17448,15 @@ async function handleAdminSettingsPost(req, res) {
     }
 
     if (hasPricingAb) {
-      await getPricingAb().savePricingAbFromAdmin(body.pricing_ab);
+      try {
+        await getPricingAb().savePricingAbFromAdmin(body.pricing_ab);
+      } catch (ePricingSave) {
+        var pricingMsg = ePricingSave && ePricingSave.message ? String(ePricingSave.message) : '保存定价失败';
+        return res.status(ePricingSave && ePricingSave.statusCode === 400 ? 400 : 500).json({
+          code: ePricingSave && ePricingSave.statusCode === 400 ? 400 : 500,
+          msg: pricingMsg
+        });
+      }
     }
 
     if (hasActivationNudge) {
@@ -19873,6 +19923,7 @@ var PURCHASE_PAGE_TRACK_EVENT_KEYS = [
   'track_purchase_page_view',
   'track_pricing_ab_expose_control',
   'track_pricing_ab_expose_treatment',
+  'track_pricing_ab_expose_code',
   'track_alipay_payment_start',
   'track_alipay_open_click',
   'track_alipay_payment_success',
@@ -19919,8 +19970,9 @@ function purchasePageTrackEventLabel(eventKey) {
     track_activation_nudge_dismiss: '激活引导-关闭',
     track_activation_nudge_cta: '激活引导-去激活',
     track_purchase_page_view: '购买页浏览',
-    track_pricing_ab_expose_control: '定价A/B曝光·对照',
-    track_pricing_ab_expose_treatment: '定价A/B曝光·实验',
+    track_pricing_ab_expose_control: '支付页A曝光·对照',
+    track_pricing_ab_expose_treatment: '支付页B曝光·多档',
+    track_pricing_ab_expose_code: '支付页C曝光·激活码',
     track_alipay_payment_start: '生成支付宝付款',
     track_alipay_open_click: '打开支付宝',
     track_alipay_payment_success: '支付宝支付成功',
@@ -20039,7 +20091,8 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
         if (ek === 'track_purchase_page_view') markFunnel('view');
         if (
           ek === 'track_pricing_ab_expose_control' ||
-          ek === 'track_pricing_ab_expose_treatment'
+          ek === 'track_pricing_ab_expose_treatment' ||
+          ek === 'track_pricing_ab_expose_code'
         ) {
           markFunnel('expose');
         }
@@ -20507,6 +20560,7 @@ async function handleAdminAnalyticsPricingAb(req, res) {
            CASE
              WHEN route_key LIKE '%track_pricing_ab_expose_treatment%' THEN 'treatment'
              WHEN route_key LIKE '%track_pricing_ab_expose_control%' THEN 'control'
+             WHEN route_key LIKE '%track_pricing_ab_expose_code%' THEN 'c'
              ELSE 'unknown'
            END AS variant,
            COUNT(DISTINCT username) AS exposed_users,
@@ -20516,6 +20570,7 @@ async function handleAdminAnalyticsPricingAb(req, res) {
            AND (
              route_key LIKE '%track_pricing_ab_expose_control%'
              OR route_key LIKE '%track_pricing_ab_expose_treatment%'
+             OR route_key LIKE '%track_pricing_ab_expose_code%'
            )
          GROUP BY variant`,
         pf.params
@@ -20551,7 +20606,7 @@ async function handleAdminAnalyticsPricingAb(req, res) {
           expose_events: Number(r.expose_events) || 0
         };
       });
-      var arms = ['control', 'treatment', 'unknown'].map(function (v) {
+      var arms = ['control', 'treatment', 'c', 'unknown'].map(function (v) {
         var ex = exposeMap[v] || { exposed_users: 0, expose_events: 0 };
         var pay = null;
         for (var i = 0; i < (payByVariant || []).length; i++) {

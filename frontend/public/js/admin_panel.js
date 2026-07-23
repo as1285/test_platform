@@ -1125,21 +1125,21 @@
                 AdminNav.bindNavClicks(navEl);
                 initNavGroupCollapse();
             } else {
-                document.querySelectorAll('.nav-item').forEach(function (btn) {
-                    var key = btn.getAttribute('data-page');
-                    var on = adminHasMenu(key);
-                    if (key === 'guest-users') {
-                        on = on && currentAdminProfile && currentAdminProfile.is_super;
-                    }
-                    btn.style.display = on ? '' : 'none';
-                });
-                document.querySelectorAll('.nav-group').forEach(function (group) {
-                    var anyVisible = Array.prototype.some.call(
-                        group.querySelectorAll('.nav-item'),
-                        function (btn) { return btn.style.display !== 'none'; }
-                    );
-                    group.style.display = anyVisible ? '' : 'none';
-                });
+            document.querySelectorAll('.nav-item').forEach(function (btn) {
+                var key = btn.getAttribute('data-page');
+                var on = adminHasMenu(key);
+                if (key === 'guest-users') {
+                    on = on && currentAdminProfile && currentAdminProfile.is_super;
+                }
+                btn.style.display = on ? '' : 'none';
+            });
+            document.querySelectorAll('.nav-group').forEach(function (group) {
+                var anyVisible = Array.prototype.some.call(
+                    group.querySelectorAll('.nav-item'),
+                    function (btn) { return btn.style.display !== 'none'; }
+                );
+                group.style.display = anyVisible ? '' : 'none';
+            });
             }
             var batchWrap = document.getElementById('batchIssueWrap');
             if (batchWrap) {
@@ -2131,8 +2131,25 @@
                     html +=
                         '<p class="hint">实验' +
                         (d.pricing_ab && d.pricing_ab.enabled ? '进行中' : '已关闭') +
-                        ' · Treatment ' +
-                        (d.pricing_ab ? d.pricing_ab.treatment_percent : 50) +
+                        ' · A ' +
+                        (d.pricing_ab && d.pricing_ab.a_percent != null
+                            ? d.pricing_ab.a_percent
+                            : Math.max(
+                                  0,
+                                  100 -
+                                      (d.pricing_ab ? d.pricing_ab.treatment_percent || 0 : 50) -
+                                      (d.pricing_ab && d.pricing_ab.c_percent != null
+                                          ? d.pricing_ab.c_percent
+                                          : 0)
+                              )) +
+                        '% · B ' +
+                        (d.pricing_ab
+                            ? d.pricing_ab.b_percent != null
+                                ? d.pricing_ab.b_percent
+                                : d.pricing_ab.treatment_percent
+                            : 50) +
+                        '% · C ' +
+                        (d.pricing_ab && d.pricing_ab.c_percent != null ? d.pricing_ab.c_percent : 0) +
                         '% · 主指标：' +
                         esc(d.primary_metric_label || 'ARPU') +
                         '</p>';
@@ -2142,9 +2159,17 @@
                         '<th>人均支付(主指标)</th><th>支付转化%</th></tr></thead><tbody>';
                     (d.arms || []).forEach(function (a) {
                         if (a.variant === 'unknown' && !a.exposed_users && !a.paid_orders) return;
+                        var armLabel =
+                            a.variant === 'control'
+                                ? 'A·对照'
+                                : a.variant === 'treatment'
+                                  ? 'B·多档'
+                                  : a.variant === 'c'
+                                    ? 'C·激活码'
+                                    : a.variant;
                         html +=
                             '<tr><td>' +
-                            esc(a.variant) +
+                            esc(armLabel) +
                             '</td><td>' +
                             esc(String(a.exposed_users)) +
                             '</td><td>' +
@@ -7072,7 +7097,7 @@
                         applyMenuDefsFromServer(data.data.menu_defs);
                         adminMenuKeyList = data.data.menu_defs.map(function (d) { return d.key; });
                     } else {
-                        adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
+                    adminMenuKeyList = Array.isArray(data.data.menu_keys) ? data.data.menu_keys : [];
                     }
                     renderAdminMenuSelector(document.getElementById('adminAccountMenuSelector'), ['codes']);
                     var list = Array.isArray(data.data.accounts) ? data.data.accounts : [];
@@ -7973,13 +7998,39 @@
                         var pricingAb = data.data.pricing_ab;
                         if (pricingAb) {
                             var pricingEn = document.getElementById('pricingAbEnabled');
-                            var pricingPct = document.getElementById('pricingAbTreatmentPercent');
+                            var pricingA = document.getElementById('pricingAbAPercent');
+                            var pricingB = document.getElementById('pricingAbBPercent');
+                            var pricingC = document.getElementById('pricingAbCPercent');
                             if (pricingEn) pricingEn.checked = pricingAb.enabled !== false;
-                            if (pricingPct) {
-                                pricingPct.value = String(
-                                    pricingAb.treatment_percent != null ? pricingAb.treatment_percent : 50
+                            if (pricingA) {
+                                pricingA.value = String(
+                                    pricingAb.a_percent != null
+                                        ? pricingAb.a_percent
+                                        : Math.max(
+                                              0,
+                                              100 -
+                                                  (pricingAb.treatment_percent != null
+                                                      ? pricingAb.treatment_percent
+                                                      : 50) -
+                                                  (pricingAb.c_percent != null ? pricingAb.c_percent : 0)
+                                          )
                                 );
                             }
+                            if (pricingB) {
+                                pricingB.value = String(
+                                    pricingAb.b_percent != null
+                                        ? pricingAb.b_percent
+                                        : pricingAb.treatment_percent != null
+                                          ? pricingAb.treatment_percent
+                                          : 50
+                                );
+                            }
+                            if (pricingC) {
+                                pricingC.value = String(
+                                    pricingAb.c_percent != null ? pricingAb.c_percent : 0
+                                );
+                            }
+                            updatePricingAbcSplitHint();
                         }
                         var nudge = data.data.activation_nudge;
                         if (nudge) {
@@ -8077,13 +8128,49 @@
                     btn.disabled = false;
                 });
         });
+        function updatePricingAbcSplitHint() {
+            var aEl = document.getElementById('pricingAbAPercent');
+            var bEl = document.getElementById('pricingAbBPercent');
+            var cEl = document.getElementById('pricingAbCPercent');
+            var hint = document.getElementById('pricingAbcSplitHint');
+            if (!hint) return;
+            var a = Math.max(0, Math.min(100, parseInt(aEl && aEl.value, 10) || 0));
+            var b = Math.max(0, Math.min(100, parseInt(bEl && bEl.value, 10) || 0));
+            var c = Math.max(0, Math.min(100, parseInt(cEl && cEl.value, 10) || 0));
+            hint.textContent = 'A ' + a + '% · B ' + b + '% · C ' + c + '%（合计 ' + (a + b + c) + '%）';
+            if (a + b + c !== 100) {
+                hint.textContent += ' — 须等于 100%';
+            }
+        }
+
+        ['pricingAbAPercent', 'pricingAbBPercent', 'pricingAbCPercent'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', updatePricingAbcSplitHint);
+        });
+
         var btnSavePricingAb = document.getElementById('btnSavePricingAb');
         if (btnSavePricingAb) {
             btnSavePricingAb.addEventListener('click', function () {
                 var btn = btnSavePricingAb;
-                var pct = parseInt(document.getElementById('pricingAbTreatmentPercent').value, 10);
-                if (!isFinite(pct) || pct < 0 || pct > 100) {
-                    alert('Treatment 占比请输入 0–100');
+                var a = parseInt(document.getElementById('pricingAbAPercent').value, 10);
+                var b = parseInt(document.getElementById('pricingAbBPercent').value, 10);
+                var c = parseInt(document.getElementById('pricingAbCPercent').value, 10);
+                if (
+                    !isFinite(a) ||
+                    !isFinite(b) ||
+                    !isFinite(c) ||
+                    a < 0 ||
+                    b < 0 ||
+                    c < 0 ||
+                    a > 100 ||
+                    b > 100 ||
+                    c > 100
+                ) {
+                    alert('A/B/C 占比请各输入 0–100 的整数');
+                    return;
+                }
+                if (a + b + c !== 100) {
+                    alert('A+B+C 必须等于 100（当前 ' + (a + b + c) + '）');
                     return;
                 }
                 btn.disabled = true;
@@ -8092,7 +8179,9 @@
                     body: JSON.stringify({
                         pricing_ab: {
                             enabled: !!document.getElementById('pricingAbEnabled').checked,
-                            treatment_percent: pct
+                            a_percent: a,
+                            b_percent: b,
+                            c_percent: c
                         }
                     })
                 })
@@ -8101,7 +8190,7 @@
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('定价 A/B 已保存');
+                            alert('支付页 A/B/C 已保存');
                             loadAdminSettings();
                         } else {
                             alert(data.msg || '保存失败');
@@ -8117,11 +8206,7 @@
         }
 
         function updateLandingAbSplitHint() {
-            var input = document.getElementById('landingAbCPercent');
-            var hint = document.getElementById('landingAbSplitHint');
-            if (!input || !hint) return;
-            var c = Math.max(0, Math.min(100, parseInt(input.value, 10) || 0));
-            hint.textContent = 'B 方案 ' + (100 - c) + '% · C 方案 ' + c + '%';
+            /* 落地页占比已并入支付页 A/B/C，保留空函数避免旧引用报错 */
         }
 
         var landingAbCPercent = document.getElementById('landingAbCPercent');
@@ -8131,36 +8216,7 @@
         var btnSaveLandingAb = document.getElementById('btnSaveLandingAb');
         if (btnSaveLandingAb) {
             btnSaveLandingAb.addEventListener('click', function () {
-                var pct = parseInt(document.getElementById('landingAbCPercent').value, 10);
-                if (!isFinite(pct) || pct < 0 || pct > 100) {
-                    alert('C 方案流量占比请输入 0–100 的整数');
-                    return;
-                }
-                btnSaveLandingAb.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        landing_ab: {
-                            enabled: !!document.getElementById('landingAbEnabled').checked,
-                            c_percent: Math.round(pct)
-                        }
-                    })
-                })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('落地页分流配置已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnSaveLandingAb.disabled = false;
-                    });
+                alert('落地页分流已并入「增长与触达 → 定价/支付页 A/B/C」，请在该处配置');
             });
         }
 
@@ -9381,12 +9437,12 @@
         if (navRoot && window.AdminNav) {
             AdminNav.bindNavClicks(navRoot);
         } else {
-            document.querySelectorAll('.nav-item').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var p = btn.getAttribute('data-page');
+        document.querySelectorAll('.nav-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var p = btn.getAttribute('data-page');
                     if (p) location.hash = p;
-                });
             });
+        });
         }
         var logoutBtn = document.getElementById('btnAdminLogout');
         if (logoutBtn) {
