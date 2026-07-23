@@ -36,6 +36,7 @@ const JWT_EXPIRES = config.JWT_EXPIRES;
 const ADMIN_ACTIVATION_KEY = config.ADMIN_ACTIVATION_KEY;
 const ADMIN_PANEL_USER = config.ADMIN_PANEL_USER;
 const ADMIN_PANEL_PASSWORD = config.ADMIN_PANEL_PASSWORD;
+const ADMIN_IP_DENYLIST = Array.isArray(config.ADMIN_IP_DENYLIST) ? config.ADMIN_IP_DENYLIST : [];
 
 const DB_HOST = config.DB_HOST;
 const DB_PORT = config.DB_PORT;
@@ -1966,6 +1967,14 @@ function getClientIp(req) {
   return ra ? String(ra).replace(/^::ffff:/, '') : '';
 }
 
+/** 管理端 IP 是否在拒绝列表 */
+function isAdminIpDenied(req) {
+  if (!ADMIN_IP_DENYLIST.length) return false;
+  var ip = getClientIp(req);
+  if (!ip) return false;
+  return ADMIN_IP_DENYLIST.indexOf(ip) >= 0;
+}
+
 var memoryRateBuckets = new Map();
 
 /** 清理内存限流桶中的过期项 */
@@ -3179,6 +3188,12 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'codes'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'sales-contacts' FROM admin_account_menus
+     WHERE menu_key IN ('install-guide', 'settings')`
   );
 
   conn.release();
@@ -5821,6 +5836,15 @@ function adminHasMenu(admin, menuKey) {
   return false;
 }
 
+/** 是否可读写全量运营设置（非仅销售联系方式） */
+function adminHasFullSettingsMenu(admin) {
+  return (
+    adminHasMenu(admin, 'settings') ||
+    adminHasMenu(admin, 'install-guide') ||
+    adminHasMenu(admin, 'appearance')
+  );
+}
+
 /** 要求指定管理菜单权限 */
 function requireAdminMenu(menuKey) {
   return function (req, res, next) {
@@ -5865,6 +5889,9 @@ async function adminCanAccessTargetUser(conn, admin, username) {
 
 /** 要求管理员已登录 */
 async function requireAdminAuth(req, res, next) {
+  if (isAdminIpDenied(req)) {
+    return res.status(403).json({ code: 403, msg: '当前网络已被禁止访问管理后台' });
+  }
   var auth = req.headers.authorization || '';
   var m = /^Bearer\s+(\S+)/i.exec(auth);
   var token = m ? m[1] : null;
@@ -9082,13 +9109,19 @@ function displayUserAgentFromDevice(req) {
 
 /** 注册满 N 天后禁止在未绑定过的新设备登录（天） */
 var AGED_ACCOUNT_NEW_DEVICE_LOGIN_DAYS = 30;
+/** 关闭「老账号禁止新设备登录」限制（解禁） */
+var AGED_ACCOUNT_NEW_DEVICE_LOGIN_ENABLED = false;
 
 /**
  * 注册超过 AGED_ACCOUNT_NEW_DEVICE_LOGIN_DAYS 天的账号：仅允许已出现在 user_devices 的设备登录。
  * 尚无任何设备记录的历史账号允许本次登录以绑定首台设备，避免误锁死。
  * 游客账号跳过。
+ * AGED_ACCOUNT_NEW_DEVICE_LOGIN_ENABLED=false 时整段跳过。
  */
 async function assertLoginDeviceAllowedForAgedAccount(username, req) {
+  if (!AGED_ACCOUNT_NEW_DEVICE_LOGIN_ENABLED) {
+    return;
+  }
   if (!pool || !username) {
     return;
   }
@@ -9365,6 +9398,7 @@ const USER_LOGIN_REASON_LABELS = {
   invalid_credentials: '账号或密码错误',
   wrong_password: '密码错误',
   invalid_username: '账号格式错误',
+  ip_denied: 'IP 已封禁',
   rate_limited: '登录过于频繁',
   new_device_blocked: '新设备登录受限',
   other_error: '其他错误',
@@ -11534,6 +11568,10 @@ async function handleAdminLogin(req, res) {
   var body = req.body || {};
   var u = String(body.username || '').trim();
   var p = String(body.password || '');
+  if (isAdminIpDenied(req)) {
+    recordAdminLoginAttempt(u || 'unknown', false, 'ip_denied', req).catch(function () {});
+    return res.status(403).json({ code: 403, msg: '当前网络已被禁止访问管理后台' });
+  }
   var loginRate = consumeMemoryRateLimit('admin-login-ip', getClientIp(req) || 'unknown', ADMIN_LOGIN_RATE_PER_IP_MIN, 60 * 1000);
   if (!loginRate.ok) {
     recordAdminLoginAttempt(u || 'unknown', false, 'rate_limited', req).catch(function () {});
@@ -17090,12 +17128,21 @@ async function handleAdminBan(req, res) {
 /** 读取系统设置 */
 async function handleAdminSettingsGet(req, res) {
   try {
+    var salesAgent = await loadSalesAgentParsed();
+    /* 仅「联系方式配置」：不返回增长/安装/邀请等敏感配置 */
+    if (!adminHasFullSettingsMenu(req.admin)) {
+      return res.json({
+        code: 200,
+        data: {
+          sales_agent: salesAgentPublicPayload(salesAgent)
+        }
+      });
+    }
     var mineUi = await getMineUiForAdminForm();
     var installRaw = await getInstallPackageSettingsFromDb();
     var qrRef = await getWechatPayQrcodeUrl();
     var conversionAb = await loadConversionAbParsed();
     var landingAb = await loadLandingAbParsed();
-    var salesAgent = await loadSalesAgentParsed();
     var inviteCfg = await getInviteReward().loadInviteSettings(true);
     var activationNudge = await loadActivationNudgeParsed();
     return res.json({
@@ -17177,6 +17224,32 @@ async function handleAdminSettingsPost(req, res) {
       code: 400,
       msg: '请提供 mine_ui、安装包下载地址、闲鱼购买链接、闲鱼隐藏渠道、QQ 添加链接、转化 A/B 配置、落地页 A/B 配置、C 方案销售代理、定价 A/B 配置、邀请有礼配置、激活引导弹窗配置或微信收款码（wechat_pay_qrcode_url）'
     });
+  }
+
+  var salesContactsOnly = !adminHasFullSettingsMenu(req.admin);
+  if (salesContactsOnly) {
+    if (
+      !hasSalesAgent ||
+      hasMineUi ||
+      hasAndroid ||
+      hasAgentAndroid ||
+      hasIos ||
+      hasXianyu ||
+      hasXianyuHideChannels ||
+      hasQqAdd ||
+      hasQqGroup ||
+      hasWechatPayQr ||
+      hasConversionAb ||
+      hasLandingAb ||
+      hasPricingAb ||
+      hasInvite ||
+      hasActivationNudge
+    ) {
+      return res.status(403).json({
+        code: 403,
+        msg: '当前账号仅可修改「联系方式配置」中的销售代理联系方式'
+      });
+    }
   }
 
   const conn = await pool.getConnection();
@@ -17473,6 +17546,10 @@ async function handleAdminSettingsPost(req, res) {
     }
 
     var outData = { success: true };
+    outData.sales_agent = salesAgentPublicPayload(await loadSalesAgentParsed());
+    if (salesContactsOnly) {
+      return res.json({ code: 200, data: outData });
+    }
     outData.mine_ui = await getMineUiForAdminForm();
     var installAfter = await getInstallPackageSettingsFromDb();
     outData.android_apk_download_url = installAfter.android;
@@ -17487,7 +17564,6 @@ async function handleAdminSettingsPost(req, res) {
     outData.wechat_pay_qrcode_display_url = resolvePublicAssetUrl(qrAfter);
     outData.conversion_ab = await loadConversionAbParsed();
     outData.landing_ab = await loadLandingAbParsed();
-    outData.sales_agent = salesAgentPublicPayload(await loadSalesAgentParsed());
     outData.pricing_ab = await getPricingAb().loadPricingAbParsed(true);
     var inviteAfter = await getInviteReward().loadInviteSettings(true);
     outData.invite_enabled = inviteAfter.enabled;

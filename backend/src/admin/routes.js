@@ -12,11 +12,16 @@ app.use('/api/admin', mw.adminApiRateLimit);
 
 app.post('/api/admin/login', h.handleAdminLogin);
 app.get('/api/admin/me', mw.requireAdminAuth, h.handleAdminMe);
-app.get('/api/admin/settings', mw.requireAdminAuth, mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), h.handleAdminSettingsGet);
+app.get(
+  '/api/admin/settings',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance', 'sales-contacts']),
+  h.handleAdminSettingsGet
+);
 app.post(
   '/api/admin/upload-asset',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'appearance']),
+  mw.requireAdminAnyMenu(['install-guide', 'appearance', 'sales-contacts']),
   function (req, res, next) {
     mw.adminUpload.single('file')(req, res, function (err) {
       if (err) {
@@ -27,7 +32,12 @@ app.post(
   },
   h.handleAdminUploadAsset
 );
-app.post('/api/admin/settings', mw.requireAdminAuth, mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']), h.handleAdminSettingsPost);
+app.post(
+  '/api/admin/settings',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance', 'sales-contacts']),
+  h.handleAdminSettingsPost
+);
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeletedUsers);
 app.get('/api/admin/guest-users', mw.requireAdminAuth, mw.requireAdminMenu('guest-users'), h.handleAdminGuestUsers);
 app.get('/api/admin/users', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUsers);

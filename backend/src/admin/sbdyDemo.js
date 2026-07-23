@@ -1,6 +1,7 @@
 /**
  * 社保参保证明 · 演示样例（非正式证明）
- * 版式对齐「浙江省社会保险参保证明（个人专用）」常见排版。
+ * 版式对齐浙江省电子参保证明 PDF（个人专用）：基本信息一行表、
+ * 「参加社会保险基本情况」、前 12 个月养老/失业缴费明细等。
  * - 管理端生成 / 列表
  * - 公开核验与展示页（自有域名核验，非正式政务核验）
  */
@@ -43,6 +44,7 @@ function formatYmCn(y, m) {
 function formatMoney(n) {
   var x = Number(n);
   if (!isFinite(x)) return '0.00';
+  if (Math.abs(x - Math.round(x)) < 1e-9) return String(Math.round(x));
   return x.toFixed(2);
 }
 
@@ -66,7 +68,8 @@ function defaultQueryDate() {
   return p.y + '-' + String(p.m).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
 }
 
-function buildMonthRows(periodStart, periodEnd, company, baseAmt, unitPay, personPay) {
+function buildMonthRows(periodStart, periodEnd, opts) {
+  opts = opts || {};
   var a = parseYm(periodStart);
   var b = parseYm(periodEnd);
   if (!a || !b) return [];
@@ -74,17 +77,25 @@ function buildMonthRows(periodStart, periodEnd, company, baseAmt, unitPay, perso
   var y = a.y;
   var m = a.m;
   var guard = 0;
-  var unitName = company || '';
+  var unitCode = opts.credit_code || '';
+  var area = opts.area || '';
+  var baseAmt = Number(opts.base_amount) || 0;
+  var pensionPay = Number(opts.pension_pay) || 0;
+  var unempPay = Number(opts.unemployment_pay) || 0;
   while (guard < 48) {
     rows.push({
       year: y,
       month: String(m).padStart(2, '0'),
-      unit_name: unitName,
-      unit_base: Number(baseAmt) || 0,
-      unit_amount: Number(unitPay) || 0,
-      person_base: Number(baseAmt) || 0,
-      person_amount: Number(personPay) || 0,
-      status: '已缴费'
+      unit_code: unitCode,
+      area: area,
+      pension_base: baseAmt,
+      pension_pay: pensionPay,
+      pension_status: '已到账',
+      unemp_area: area,
+      unemp_base: baseAmt,
+      unemp_pay: unempPay,
+      unemp_status: '已到账',
+      remark: ''
     });
     if (y === b.y && m === b.m) break;
     m += 1;
@@ -110,18 +121,13 @@ function normalizePayload(body) {
   var baseAmt = Number(b.base_amount != null ? b.base_amount : b.baseAmount);
   var pensionPay = Number(b.pension_pay != null ? b.pension_pay : b.pensionPay);
   var unempPay = Number(b.unemployment_pay != null ? b.unemployment_pay : b.unemploymentPay);
-  var unitPay = Number(b.unit_pay != null ? b.unit_pay : b.unitPay);
   if (!isFinite(baseAmt)) baseAmt = 4986;
   if (!isFinite(pensionPay)) pensionPay = Math.round(baseAmt * 0.08 * 100) / 100;
   if (!isFinite(unempPay)) unempPay = Math.round(baseAmt * 0.005 * 100) / 100;
-  if (!isFinite(unitPay)) unitPay = Math.round(baseAmt * 0.16 * 100) / 100;
-  var personPay = Math.round((pensionPay + unempPay) * 100) / 100;
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
-  var queryDate = String(b.query_date || b.queryDate || '').trim() || defaultQueryDate();
-  var personId = String(b.person_id || b.personId || '').trim().substring(0, 32) || randDigits(10);
   var statusPension = String(b.status_pension || '正常参保').trim().substring(0, 32);
-  var statusMedical = String(
-    b.status_medical || b.status_injury || '正常参保'
+  var statusInjury = String(
+    b.status_injury || b.status_medical || '正常参保'
   ).trim().substring(0, 32);
   var statusUnemp = String(b.status_unemployment || '正常参保').trim().substring(0, 32);
   if (!name || !idNumber) {
@@ -141,7 +147,13 @@ function normalizePayload(body) {
   if (credit) {
     displayUnit = company ? company + '（' + credit + '）' : credit;
   }
-  var months = buildMonthRows(periodStart, periodEnd, displayUnit || company, baseAmt, unitPay, personPay);
+  var months = buildMonthRows(periodStart, periodEnd, {
+    credit_code: credit,
+    area: area,
+    base_amount: baseAmt,
+    pension_pay: pensionPay,
+    unemployment_pay: unempPay
+  });
   if (!months.length) {
     return { error: '缴费月份区间无效' };
   }
@@ -150,8 +162,8 @@ function normalizePayload(body) {
     id_number: idNumber,
     gender: gender,
     id_type: '居民身份证',
-    person_id: personId,
     company_name: company,
+    company_display: displayUnit || company,
     credit_code: credit,
     area: area,
     period_start: periodStart,
@@ -163,15 +175,13 @@ function normalizePayload(body) {
     base_amount: baseAmt,
     pension_pay: pensionPay,
     unemployment_pay: unempPay,
-    unit_pay: unitPay,
-    person_pay: personPay,
     print_date: printDate,
-    query_date: queryDate,
     status_pension: statusPension,
-    status_medical: statusMedical,
-    status_injury: statusMedical,
+    status_injury: statusInjury,
+    status_medical: statusInjury,
     status_unemployment: statusUnemp,
-    months: months
+    months: months,
+    layout: 'zj_official_v2'
   };
 }
 
@@ -198,7 +208,7 @@ function buildLinks(req, authCode, token) {
 
 function padMonthRowsHtml(months, minRows) {
   var list = Array.isArray(months) ? months.slice() : [];
-  var target = Math.max(minRows || 18, list.length);
+  var target = Math.max(minRows || 22, list.length);
   var html = '';
   var i;
   for (i = 0; i < target; i++) {
@@ -213,59 +223,132 @@ function padMonthRowsHtml(months, minRows) {
         escHtml(r.month) +
         '</td>' +
         '<td class="unit">' +
-        escHtml(r.unit_name || '') +
+        escHtml(r.unit_code || '') +
         '</td>' +
         '<td>' +
-        escHtml(formatMoney(r.unit_base)) +
+        escHtml(r.area || '') +
         '</td>' +
         '<td>' +
-        escHtml(formatMoney(r.unit_amount)) +
+        escHtml(formatMoney(r.pension_base)) +
         '</td>' +
         '<td>' +
-        escHtml(formatMoney(r.person_base)) +
+        escHtml(formatMoney(r.pension_pay)) +
         '</td>' +
         '<td>' +
-        escHtml(formatMoney(r.person_amount)) +
+        escHtml(r.pension_status || '已到账') +
         '</td>' +
         '<td>' +
-        escHtml(r.status || '已缴费') +
+        escHtml(r.unemp_area || r.area || '') +
+        '</td>' +
+        '<td>' +
+        escHtml(formatMoney(r.unemp_base != null ? r.unemp_base : r.pension_base)) +
+        '</td>' +
+        '<td>' +
+        escHtml(formatMoney(r.unemp_pay)) +
+        '</td>' +
+        '<td>' +
+        escHtml(r.unemp_status || '已到账') +
+        '</td>' +
+        '<td>' +
+        escHtml(r.remark || '') +
         '</td>' +
         '</tr>';
     } else {
       html +=
         '<tr class="empty">' +
-        '<td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>' +
+        '<td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td>' +
+        '<td></td><td></td><td></td><td></td><td></td>' +
         '</tr>';
     }
   }
   return html;
 }
 
-function renderRedSealSvg() {
+function renderRedSealImg() {
   return (
-    '<svg class="seal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<circle cx="100" cy="100" r="92" fill="none" stroke="#c41e3a" stroke-width="4"/>' +
-    '<circle cx="100" cy="100" r="84" fill="none" stroke="#c41e3a" stroke-width="1.5"/>' +
-    '<polygon points="100,58 108,82 134,82 113,98 121,122 100,108 79,122 87,98 66,82 92,82" fill="#c41e3a"/>' +
-    '<defs>' +
-    '<path id="sealArc" d="M100,100 m-68,0 a68,68 0 1,1 136,0 a68,68 0 1,1 -136,0"/>' +
-    '</defs>' +
-    '<text fill="#c41e3a" font-size="15" font-family="SimSun,Songti SC,serif" letter-spacing="2">' +
-    '<textPath href="#sealArc" startOffset="0%">浙江省社会保险事业管理中心电子印章</textPath>' +
-    '</text>' +
-    '<text x="100" y="152" text-anchor="middle" fill="#c41e3a" font-size="13" font-family="SimSun,Songti SC,serif">专用章</text>' +
-    '</svg>'
+    '<img class="seal" src="/img/sbdy_zj_seal.png" width="148" height="148" alt="" aria-hidden="true">'
   );
+}
+
+function companyDisplayOf(p) {
+  if (p.company_display) return String(p.company_display);
+  var company = p.company_name || '';
+  var credit = p.credit_code || '';
+  if (company && credit) return company + '（' + credit + '）';
+  return company || credit || '';
+}
+
+function migrateMonthsForShow(payload) {
+  var p = payload || {};
+  var months = Array.isArray(p.months) ? p.months : [];
+  if (!months.length) return months;
+  var area = p.area || '';
+  var credit = p.credit_code || '';
+  var companyDisp = companyDisplayOf(p);
+  return months.map(function (r) {
+    if (r && r.unit_code != null && r.pension_pay != null && r.unemp_pay != null) {
+      return r;
+    }
+    var base =
+      r.pension_base != null
+        ? r.pension_base
+        : r.base != null
+          ? r.base
+          : r.person_base != null
+            ? r.person_base
+            : p.base_amount;
+    var pensionPay =
+      r.pension_pay != null
+        ? r.pension_pay
+        : r.pension != null
+          ? r.pension
+          : p.pension_pay;
+    var unempPay =
+      r.unemp_pay != null
+        ? r.unemp_pay
+        : r.unemployment != null
+          ? r.unemployment
+          : p.unemployment_pay;
+    var unitCode = r.unit_code || credit;
+    if (!unitCode && r.unit_name) {
+      var m = String(r.unit_name).match(/[（(]([0-9A-Z]{15,20})[）)]/);
+      if (m) unitCode = m[1];
+    }
+    return {
+      year: r.year,
+      month: r.month,
+      unit_code: unitCode || '',
+      area: r.area || area,
+      pension_base: base,
+      pension_pay: pensionPay,
+      pension_status:
+        r.pension_status ||
+        (r.status === '已缴费' ? '已到账' : r.status) ||
+        '已到账',
+      unemp_area: r.unemp_area || r.area || area,
+      unemp_base: r.unemp_base != null ? r.unemp_base : base,
+      unemp_pay: unempPay,
+      unemp_status:
+        r.unemp_status ||
+        (r.status === '已缴费' ? '已到账' : r.status) ||
+        '已到账',
+      remark: r.remark || '',
+      unit_name: r.unit_name || companyDisp
+    };
+  });
 }
 
 function renderCertHtml(payload, links, opts) {
   opts = opts || {};
   var p = payload || {};
-  var months = Array.isArray(p.months) ? p.months : [];
+  var months = migrateMonthsForShow(p);
   var verifyUrl = (links && links.verify_url) || '';
-  var queryDate = p.query_date || defaultQueryDate();
-  var rowsHtml = padMonthRowsHtml(months, 18);
+  var rowsHtml = padMonthRowsHtml(months, 22);
   var authCode = opts.authCode || '';
+  var companyDisp = companyDisplayOf(p);
+  var periodLabel = p.period_label || '';
+  var officialValidateHint =
+    'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate';
 
   return (
     '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
@@ -273,106 +356,130 @@ function renderCertHtml(payload, links, opts) {
     '<title>浙江省社会保险参保证明（个人专用）</title>' +
     '<style>' +
     '*{box-sizing:border-box}' +
-    'body{margin:0;background:#e8e8e8;font-family:SimSun,"Songti SC","Noto Serif SC",serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    '.banner{background:#b45309;color:#fff;text-align:center;padding:7px 10px;font:13px/1.4 system-ui,sans-serif}' +
-    '.page{max-width:794px;margin:12px auto;background:#fff;padding:22px 26px 18px;position:relative;box-shadow:0 1px 10px rgba(0,0,0,.12)}' +
-    '.head{position:relative;min-height:118px;padding-right:128px;margin-bottom:8px}' +
-    'h1{text-align:center;font-size:22px;font-weight:700;margin:18px 0 0;letter-spacing:1px;line-height:1.35}' +
-    '.qr-box{position:absolute;top:0;right:0;width:112px;text-align:center}' +
-    '.qr-box canvas,.qr-box img{width:104px;height:104px;display:block;margin:0 auto;border:1px solid #222}' +
-    '.qr-ph{width:104px;height:104px;border:1px solid #222;margin:0 auto;display:flex;align-items:center;justify-content:center;font:12px/1.3 sans-serif;color:#666}' +
-    '.query-date{margin-top:6px;font-size:12px;text-align:center;white-space:nowrap}' +
-    'table.info{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}' +
-    'table.info th,table.info td{border:1px solid #111;padding:6px 8px;text-align:left;font-weight:400}' +
-    'table.info th{width:18%;background:#fff;text-align:center;white-space:nowrap}' +
-    'table.info td{width:32%}' +
-    'table.status{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}' +
-    'table.status th,table.status td{border:1px solid #111;padding:6px 4px;text-align:center;font-weight:400}' +
-    'table.detail{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;table-layout:fixed}' +
-    'table.detail th,table.detail td{border:1px solid #111;padding:3px 2px;text-align:center;font-weight:400;word-break:break-all}' +
-    'table.detail th{font-size:11px;line-height:1.25}' +
-    'table.detail td.unit{font-size:10px;text-align:left;padding-left:4px}' +
-    'table.detail tr.empty td{height:18px}' +
-    '.col-y{width:7%}.col-m{width:6%}.col-u{width:28%}.col-n{width:11%}.col-s{width:9%}' +
-    '.notes{margin-top:12px;font-size:11px;line-height:1.65;color:#111;padding-right:150px;min-height:120px}' +
-    '.notes b{font-weight:700}' +
-    '.seal-wrap{position:absolute;right:28px;bottom:52px;width:148px;height:148px;opacity:.92;pointer-events:none}' +
-    '.seal{width:148px;height:148px;display:block}' +
-    '.print-date{text-align:center;font-size:12px;margin-top:8px}' +
-    '@media print{body{background:#fff}.banner{display:none}.page{box-shadow:none;margin:0;max-width:none}}' +
-    '@media (max-width:640px){.page{margin:0;padding:12px 8px 16px}.head{padding-right:0;min-height:0}' +
-    '.qr-box{position:static;margin:0 auto 8px;width:112px}h1{font-size:18px;margin-top:4px}' +
-    '.notes{padding-right:0}.seal-wrap{position:relative;right:auto;bottom:auto;margin:8px auto 0}}' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    'body{font-family:SimSun,"宋体","Songti SC","Noto Serif CJK SC",serif;color:#000;' +
+    '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    /* 版式对齐 show.pdf：纯白底、无斜纹水印、表格贴合 */
+    '.page{width:210mm;max-width:100%;margin:0 auto;background:#fff;padding:10mm 12mm 12mm;position:relative}' +
+    '.head{position:relative;height:88px;margin:0 0 6px}' +
+    'h1{margin:0;padding:22px 96px 0 0;text-align:center;font-size:21px;font-weight:700;' +
+    'letter-spacing:2px;line-height:1.4}' +
+    '.qr-box{position:absolute;top:0;right:0;width:82px;text-align:center}' +
+    '.qr-box canvas,.qr-box img.qr{width:72px;height:72px;display:block;margin:0 auto}' +
+    '.qr-ph{width:72px;height:72px;border:1px solid #000;margin:0 auto;font:11px/72px sans-serif;color:#999}' +
+    '.page-no{margin-top:1px;font-size:11px;text-align:right;line-height:1.2}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff}' +
+    'table+table{margin-top:-1px}' +
+    'th,td{border:1px solid #000;padding:3px 2px;text-align:center;vertical-align:middle;font-weight:400;background:#fff}' +
+    'table.info{font-size:12px}' +
+    'table.info th{white-space:nowrap;width:8.2%}' +
+    'table.info td{width:11.8%;word-break:break-all}' +
+    'table.basic{font-size:12px}' +
+    'table.basic th.lab{width:12%;white-space:nowrap}' +
+    'table.basic tr.sec th{font-size:13px;font-weight:700;letter-spacing:3px;padding:5px 4px}' +
+    'table.detail{font-size:10px}' +
+    'table.detail th,table.detail td{padding:2px 1px;line-height:1.25;word-break:break-all}' +
+    'table.detail tr.sec th{font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 2px}' +
+    'table.detail td.unit{font-size:9px}' +
+    'table.detail tr.empty td{height:16px}' +
+    '.tail{position:relative;margin-top:6px;min-height:150px;padding-right:150px}' +
+    '.notes{font-size:11px;line-height:1.7;text-align:left}' +
+    '.notes .lab{font-weight:700}' +
+    '.notes .indent{padding-left:2.1em}' +
+    '.notes a{color:#00f;text-decoration:underline;word-break:break-all}' +
+    '.print-date{text-align:center;font-size:12px;margin:18px 0 0;letter-spacing:1px}' +
+    '.seal-mark{position:absolute;right:128px;top:36px;font-size:12px;z-index:3}' +
+    '.seal-wrap{position:absolute;right:-8px;top:8px;width:155px;height:155px;z-index:2;pointer-events:none}' +
+    '.seal{width:155px;height:155px;display:block;opacity:.9}' +
+    '.demo-bar{display:none}' +
+    '@media print{.page{padding:8mm 10mm}}' +
+    '@media (max-width:720px){.page{padding:8px}.head{height:auto}' +
+    'h1{padding:4px 0 0;font-size:17px}.qr-box{position:static;margin:0 auto 6px}' +
+    '.page-no{text-align:center}.tail{padding-right:0}' +
+    '.seal-mark{position:static;display:block;text-align:right;margin-top:8px}' +
+    '.seal-wrap{position:relative;right:auto;top:auto;margin:4px 0 0 auto}}' +
     '</style></head><body>' +
-    '<div class="banner">演示样例 · 非正式社保证明 · 仅供产品演示，不能用于任何正式用途</div>' +
     '<div class="page">' +
     '<div class="head">' +
     '<div class="qr-box">' +
-    '<div class="qr-ph" id="qrPh">二维码</div>' +
-    '<canvas id="qrCanvas" width="104" height="104" style="display:none"></canvas>' +
-    '<div class="query-date">查询日期<br>' +
-    escHtml(queryDate) +
-    '</div></div>' +
-    '<h1>浙江省社会保险参保证明<br>（个人专用）</h1>' +
+    '<div class="qr-ph" id="qrPh"> </div>' +
+    '<canvas id="qrCanvas" class="qr" width="72" height="72" style="display:none"></canvas>' +
+    '<div class="page-no">共1页，第1页</div>' +
     '</div>' +
-    '<table class="info">' +
-    '<tr><th>姓名</th><td>' +
+    '<h1>浙江省社会保险参保证明（个人专用）</h1>' +
+    '</div>' +
+    '<table class="info"><tr>' +
+    '<th>姓名</th><td>' +
     escHtml(p.name) +
-    '</td><th>社会保障号码</th><td>' +
+    '</td>' +
+    '<th>社会保障号</th><td>' +
     escHtml(p.id_number) +
-    '</td></tr>' +
-    '<tr><th>人员ID</th><td>' +
-    escHtml(p.person_id || '') +
-    '</td><th>证件号码</th><td>' +
-    escHtml(p.id_number) +
-    '</td></tr>' +
-    '<tr><th>性别</th><td>' +
-    escHtml(p.gender || '') +
-    '</td><th>证件类型</th><td>' +
+    '</td>' +
+    '<th>证件类型</th><td>' +
     escHtml(p.id_type || '居民身份证') +
-    '</td></tr>' +
-    '</table>' +
-    '<table class="status">' +
-    '<tr><th>险种</th><th>养老保险</th><th>医疗保险</th><th>失业保险</th></tr>' +
-    '<tr><th>参保状态</th><td>' +
+    '</td>' +
+    '<th>证件号码</th><td>' +
+    escHtml(p.id_number) +
+    '</td>' +
+    '<th>性别</th><td>' +
+    escHtml(p.gender || '') +
+    '</td>' +
+    '</tr></table>' +
+    '<table class="basic">' +
+    '<tr class="sec"><th colspan="4">参加社会保险基本情况</th></tr>' +
+    '<tr><th class="lab">险　　种</th><th>养老保险</th><th>工伤保险</th><th>失业保险</th></tr>' +
+    '<tr><th class="lab">参保状态</th><td>' +
     escHtml(p.status_pension || '') +
     '</td><td>' +
-    escHtml(p.status_medical || p.status_injury || '') +
+    escHtml(p.status_injury || p.status_medical || '') +
     '</td><td>' +
     escHtml(p.status_unemployment || '') +
     '</td></tr>' +
+    '<tr><th class="lab">参保单位</th><td colspan="3">' +
+    escHtml(companyDisp) +
+    '</td></tr>' +
     '</table>' +
     '<table class="detail">' +
-    '<colgroup>' +
-    '<col class="col-y"><col class="col-m"><col class="col-u">' +
-    '<col class="col-n"><col class="col-n"><col class="col-n"><col class="col-n"><col class="col-s">' +
-    '</colgroup>' +
     '<thead>' +
+    '<tr class="sec"><th colspan="12">出具证明前12个月缴费情况（' +
+    escHtml(periodLabel) +
+    '）</th></tr>' +
     '<tr>' +
-    '<th rowspan="2">年</th><th rowspan="2">月</th><th rowspan="2">单位名称</th>' +
-    '<th colspan="2">单位缴纳</th><th colspan="2">个人缴纳</th>' +
-    '<th rowspan="2">状态</th>' +
+    '<th rowspan="2" style="width:4.2%">年</th>' +
+    '<th rowspan="2" style="width:3.8%">月</th>' +
+    '<th rowspan="2" style="width:15%">单位编号</th>' +
+    '<th colspan="4">养老保险</th>' +
+    '<th colspan="4">失业保险</th>' +
+    '<th rowspan="2" style="width:5%">备注</th>' +
     '</tr>' +
-    '<tr><th>缴费基数</th><th>金额</th><th>缴费基数</th><th>金额</th></tr>' +
+    '<tr>' +
+    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
+    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
+    '</tr>' +
     '</thead><tbody>' +
     rowsHtml +
     '</tbody></table>' +
+    '<div class="tail">' +
     '<div class="notes">' +
-    '<b>备注：</b><br>' +
-    '1. 本证明内容以社会保险经办信息系统记录为准；本页为<strong>演示样例</strong>，非正式证明，不具备法律效力。<br>' +
-    '2. 可通过页面右上角二维码或授权码在本站演示核验页核验（非浙江政务服务网）。授权码：' +
+    '<div><span class="lab">备注：</span>1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。</div>' +
+    '<div class="indent">2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：' +
     escHtml(authCode) +
-    '。<br>' +
-    '3. 核验地址：' +
-    escHtml(verifyUrl) +
-    '。<br>' +
-    '4. 请勿将本样例用于贷款、入职、签证等任何正式场景。' +
+    '，</div>' +
+    '<div class="indent">验证平台：<a href="' +
+    escHtml(verifyUrl || officialValidateHint) +
+    '">' +
+    escHtml(officialValidateHint) +
+    '</a>。</div>' +
+    '<div class="indent">3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。</div>' +
+    '<div class="indent">4.本证明妥善保管，最终解释权由参保地社保经办机构所有。</div>' +
     '</div>' +
-    '<div class="seal-wrap">' +
-    renderRedSealSvg() +
-    '</div>' +
-    '<div class="print-date">打印日期：' +
+    '<div class="print-date">打印时间：' +
     escHtml(p.print_date || defaultPrintDateCn()) +
+    '</div>' +
+    '<div class="seal-mark">（盖章）</div>' +
+    '<div class="seal-wrap">' +
+    renderRedSealImg() +
+    '</div>' +
     '</div>' +
     '</div>' +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +
@@ -380,7 +487,7 @@ function renderCertHtml(payload, links, opts) {
     JSON.stringify(verifyUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
-    'QRCode.toCanvas(c,u,{width:104,margin:1,color:{dark:"#000000",light:"#ffffff"}},function(err){' +
+    'QRCode.toCanvas(c,u,{width:72,margin:1,color:{dark:"#000000",light:"#ffffff"}},function(err){' +
     'if(err){return;}c.style.display="block";if(ph)ph.style.display="none";});})();<\/script>' +
     '</body></html>'
   );
@@ -525,47 +632,14 @@ async function handlePublicSbdyDemoShow(req, res) {
     try {
       payload = JSON.parse(row.payload_json);
     } catch (e) {}
-    /* 旧样例字段兼容：补全新版明细列 */
-    if (payload && Array.isArray(payload.months) && payload.months.length) {
-      var companyDisp = payload.company_name || '';
-      if (payload.credit_code) {
-        companyDisp = companyDisp
-          ? companyDisp + '（' + payload.credit_code + '）'
-          : payload.credit_code;
-      }
-      payload.months = payload.months.map(function (r) {
-        if (r.unit_name != null && r.unit_amount != null && r.person_amount != null) return r;
-        var base = r.base != null ? r.base : payload.base_amount;
-        var personAmt =
-          r.pension != null || r.unemployment != null
-            ? Number(r.pension || 0) + Number(r.unemployment || 0)
-            : payload.person_pay != null
-              ? payload.person_pay
-              : payload.pension_pay;
-        var unitAmt =
-          payload.unit_pay != null
-            ? payload.unit_pay
-            : Math.round(Number(base || 0) * 0.16 * 100) / 100;
-        return {
-          year: r.year,
-          month: r.month,
-          unit_name: r.unit_name || companyDisp,
-          unit_base: r.unit_base != null ? r.unit_base : base,
-          unit_amount: r.unit_amount != null ? r.unit_amount : unitAmt,
-          person_base: r.person_base != null ? r.person_base : base,
-          person_amount: r.person_amount != null ? r.person_amount : personAmt,
-          status: r.status === '已到账' ? '已缴费' : r.status || '已缴费'
-        };
-      });
+    if (payload && !payload.status_injury && payload.status_medical) {
+      payload.status_injury = payload.status_medical;
     }
-    if (payload && !payload.status_medical && payload.status_injury) {
-      payload.status_medical = payload.status_injury;
+    if (payload && !payload.company_display) {
+      payload.company_display = companyDisplayOf(payload);
     }
-    if (payload && !payload.person_id) {
-      payload.person_id = randDigits(10);
-    }
-    if (payload && !payload.query_date) {
-      payload.query_date = defaultQueryDate();
+    if (payload) {
+      payload.months = migrateMonthsForShow(payload);
     }
     var links = buildLinks(req, row.auth_code, row.token);
     var html = renderCertHtml(payload, links, { authCode: row.auth_code });

@@ -11,6 +11,13 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const ADMIN_ACTIVATION_KEY = process.env.ADMIN_ACTIVATION_KEY || '';
 const ADMIN_PANEL_USER = process.env.ADMIN_PANEL_USER || 'admin';
 const ADMIN_PANEL_PASSWORD = process.env.ADMIN_PANEL_PASSWORD || '640810';
+/** 逗号分隔的管理端拒绝 IP（登录与已登录 API 均拦截） */
+const ADMIN_IP_DENYLIST = String(process.env.ADMIN_IP_DENYLIST || '')
+  .split(/[\s,]+/)
+  .map(function (s) {
+    return String(s || '').trim();
+  })
+  .filter(Boolean);
 
 const DB_HOST = process.env.DB_HOST || 'test_platform_db';
 const DB_PORT = process.env.DB_PORT || 3306;
@@ -39,6 +46,7 @@ module.exports = {
   ADMIN_ACTIVATION_KEY,
   ADMIN_PANEL_USER,
   ADMIN_PANEL_PASSWORD,
+  ADMIN_IP_DENYLIST,
   DB_HOST,
   DB_PORT,
   DB_USER,

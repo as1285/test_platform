@@ -74,6 +74,14 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   {
+    page: 'sales-contacts',
+    menu_key: 'sales-contacts',
+    label: '联系方式配置',
+    group: 'ops-config',
+    module: 'settings',
+    order: 25
+  },
+  {
     page: 'install-guide-stats',
     menu_key: 'install-guide-stats',
     label: '安装页统计',

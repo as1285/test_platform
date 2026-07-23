@@ -1071,6 +1071,7 @@
                 'codes',
                 'channel-analysis',
                 'install-guide',
+                'sales-contacts',
                 'install-guide-stats',
                 'users',
                 'guest-users',
@@ -1178,6 +1179,7 @@
             var ok = {
                 settings: 1,
                 'install-guide': 1,
+                'sales-contacts': 1,
                 appearance: 1,
                 codes: 1,
                 'admin-accounts': 1,
@@ -6910,6 +6912,7 @@
         var ADMIN_MENU_LABELS = {
             settings: '增长与触达配置',
             'install-guide': '引导安装',
+            'sales-contacts': '联系方式配置',
             appearance: '用户端外观',
             codes: '激活码',
             users: '注册用户',
@@ -8230,7 +8233,7 @@
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('C 方案销售代理联系方式已保存');
+                            alert('联系方式已保存（仅影响 C 方案购买页，不改原微信/闲鱼/QQ）');
                             loadAdminSettings();
                         } else {
                             alert(data.msg || '保存失败');
@@ -8263,7 +8266,7 @@
                         if (data.code === 200 && data.data && data.data.path) {
                             document.getElementById('salesAgentWechatQrUrl').value = data.data.path;
                             updateSalesAgentQrPreview('/' + String(data.data.path).replace(/^\//, ''));
-                            alert('已上传，请点击「保存销售代理联系方式」生效');
+                            alert('已上传，请点击「保存联系方式」生效');
                         } else {
                             alert(data.msg || '上传失败');
                         }
@@ -9429,7 +9432,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v3-sbdy-demo';
+                var MENU_TREE_VER = 'ops-ia-v4-sales-contacts';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

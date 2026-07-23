@@ -13,5 +13,6 @@ RUN npm run build
 FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/site/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY blocked_ips.conf /etc/nginx/blocked_ips.conf
 EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]

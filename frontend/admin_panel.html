@@ -152,6 +152,52 @@
                     </section>
                 </div>
 
+                <div id="page-sales-contacts" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>联系方式配置（销售代理）</h2>
+                        <p class="hint mt-0">
+                            供落地页 <strong>C 方案</strong>购买页展示的代理联系方式。与「增长与触达配置」里的原微信收款码、闲鱼文案、QQ 链接<strong>相互独立</strong>，互不覆盖。
+                            B 方案用户仍走原联系方式；C 方案用户看到此处配置。留空字段在购买页不展示。
+                        </p>
+                        <div class="form-row form-stack">
+                            <div class="form-field form-field-narrow">
+                                <label for="salesAgentDisplayName">展示名</label>
+                                <input class="input-block" type="text" id="salesAgentDisplayName" maxlength="64" placeholder="如：专属客服" value="专属客服">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="salesAgentWechatId">微信号（可复制）</label>
+                                <input class="input-block" type="text" id="salesAgentWechatId" maxlength="64" placeholder="代理微信号" autocomplete="off">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <div id="salesAgentQrPreviewWrap" class="img-preview-wrap" hidden>
+                                    <img id="salesAgentQrPreview" class="img-preview" alt="销售代理微信二维码预览">
+                                </div>
+                                <label for="salesAgentWechatQrUrl">微信二维码图片</label>
+                                <div class="mine-ui-controls field-gap-top">
+                                    <input type="text" id="salesAgentWechatQrUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
+                                    <input type="file" class="sales-agent-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
+                                    <button type="button" class="btn-page sales-agent-qr-pick">上传图片</button>
+                                </div>
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="salesAgentQq">QQ（可选）</label>
+                                <input class="input-block" type="text" id="salesAgentQq" maxlength="32" placeholder="QQ 号" autocomplete="off">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="salesAgentPhone">手机号（可选）</label>
+                                <input class="input-block" type="text" id="salesAgentPhone" maxlength="32" placeholder="手机号" autocomplete="off">
+                            </div>
+                            <div class="form-field">
+                                <label for="salesAgentXianyuText">闲鱼文案（可选）</label>
+                                <input class="input-block" type="text" id="salesAgentXianyuText" maxlength="2048" placeholder="C 方案用户点击闲鱼时复制的文案">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnSaveSalesAgent">保存联系方式</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
         <section>
             <h2>引导安装（用户端）</h2>
@@ -159,7 +205,7 @@
         </section>
         <section>
             <h2>落地页 B/C A/B Test</h2>
-            <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。<strong>C 方案用户打开购买页时，人工入口（微信/闲鱼/QQ）展示下方「专属销售代理」联系方式</strong>；B 方案仍用原闲鱼/微信收款码/QQ。支付宝两端均保留。按设备 <code>client_id</code> 稳定分流；调整比例只影响尚未分配的新访客。</p>
+            <p class="hint">B 为当前迷你产品首页；C 会为每台设备建立独立游客沙盒，默认进入「我的」，可浏览和修改全站演示数据，点击激活时引导下载 App。<strong>C 方案用户打开购买页时，人工入口使用「联系方式配置」中的代理联系方式</strong>（不改动本页下方闲鱼 / 增长配置里的原微信收款码 / QQ）。支付宝两端均保留。按设备 <code>client_id</code> 稳定分流；调整比例只影响尚未分配的新访客。</p>
             <div class="form-row form-stack">
                 <div class="form-field">
                     <label><input type="checkbox" id="landingAbEnabled" checked> 启用 B/C A/B Test</label>
@@ -171,44 +217,6 @@
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-primary" id="btnSaveLandingAb">保存分流配置</button>
-                </div>
-            </div>
-            <h3 class="mt-20">C 方案 · 专属销售代理（购买页人工入口）</h3>
-            <p class="hint mt-0">仅影响 <code>landing_variant=c</code> 的用户。不区分销售渠道；主站分到 C 的流量统一走此联系方式。留空的字段不展示。</p>
-            <div class="form-row form-stack">
-                <div class="form-field form-field-narrow">
-                    <label for="salesAgentDisplayName">展示名</label>
-                    <input class="input-block" type="text" id="salesAgentDisplayName" maxlength="64" placeholder="如：专属客服" value="专属客服">
-                </div>
-                <div class="form-field form-field-narrow">
-                    <label for="salesAgentWechatId">微信号（可复制）</label>
-                    <input class="input-block" type="text" id="salesAgentWechatId" maxlength="64" placeholder="代理微信号" autocomplete="off">
-                </div>
-                <div class="form-field form-field-narrow">
-                    <div id="salesAgentQrPreviewWrap" class="img-preview-wrap" hidden>
-                        <img id="salesAgentQrPreview" class="img-preview" alt="销售代理微信二维码预览">
-                    </div>
-                    <label for="salesAgentWechatQrUrl">微信二维码图片</label>
-                    <div class="mine-ui-controls field-gap-top">
-                        <input type="text" id="salesAgentWechatQrUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
-                        <input type="file" class="sales-agent-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
-                        <button type="button" class="btn-page sales-agent-qr-pick">上传图片</button>
-                    </div>
-                </div>
-                <div class="form-field form-field-narrow">
-                    <label for="salesAgentQq">QQ（可选）</label>
-                    <input class="input-block" type="text" id="salesAgentQq" maxlength="32" placeholder="QQ 号" autocomplete="off">
-                </div>
-                <div class="form-field form-field-narrow">
-                    <label for="salesAgentPhone">手机号（可选）</label>
-                    <input class="input-block" type="text" id="salesAgentPhone" maxlength="32" placeholder="手机号" autocomplete="off">
-                </div>
-                <div class="form-field">
-                    <label for="salesAgentXianyuText">闲鱼文案（可选）</label>
-                    <input class="input-block" type="text" id="salesAgentXianyuText" maxlength="2048" placeholder="C 方案用户点击闲鱼时复制的文案">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-primary" id="btnSaveSalesAgent">保存销售代理联系方式</button>
                 </div>
             </div>
         </section>
@@ -1531,8 +1539,8 @@
                         <input type="text" id="sbdyStatusPension" value="正常参保">
                     </div>
                     <div>
-                        <label for="sbdyStatusInjury">医疗保险状态</label>
-                        <input type="text" id="sbdyStatusInjury" value="正常参保">
+                        <label for="sbdyStatusInjury">工伤保险状态</label>
+                        <input type="text" id="sbdyStatusInjury" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
                     </div>
                     <div>
                         <label for="sbdyStatusUnemp">失业保险状态</label>
@@ -2400,6 +2408,6 @@
     <script src="/js/admin/loader.js?v=20260722-purchase-track"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin_panel.js?v=20260723-sales-agent-c"></script>
+    <script src="/js/admin_panel.js?v=20260723-sales-contacts-page"></script>
 </body>
 </html>

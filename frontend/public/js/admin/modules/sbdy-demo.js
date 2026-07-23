@@ -285,7 +285,17 @@
         unemp: 29
       }
     ];
-    var sample = samples[Math.floor(Math.random() * samples.length)];
+    /* 优先李晓晴（与 /root/show.pdf 一致），约一半概率；其余随机 */
+    var sample =
+      Math.random() < 0.55
+        ? samples[0]
+        : samples[Math.floor(Math.random() * samples.length)];
+    if (sample.name === '李晓晴') {
+      startY = 2025;
+      startM = 6;
+      endY = 2026;
+      endM = 5;
+    }
     setField('sbdyName', sample.name);
     setField('sbdyIdNumber', sample.id_number);
     setField('sbdyGender', sample.gender);
@@ -297,10 +307,12 @@
     setField('sbdyBase', sample.base);
     setField('sbdyPensionPay', sample.pension);
     setField('sbdyUnempPay', sample.unemp);
-    setField('sbdyStatusPension', '正常参保');
-    setField('sbdyStatusInjury', '正常参保');
-    setField('sbdyStatusUnemp', '正常参保');
-    setField('sbdyPrintDate', printDate);
+    /* 与 show.pdf 样例一致时用暂停缴费；其它样例默认正常参保 */
+    var st = sample.name === '李晓晴' ? '暂停缴费' : '正常参保';
+    setField('sbdyStatusPension', st);
+    setField('sbdyStatusInjury', st);
+    setField('sbdyStatusUnemp', st);
+    setField('sbdyPrintDate', sample.name === '李晓晴' ? '2026年06月25日' : printDate);
     setStatus('已填充示例：' + sample.name + '（可再点生成）', false);
   }
 
