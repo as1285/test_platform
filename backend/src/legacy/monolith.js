@@ -15495,13 +15495,6 @@ async function handleAdminUsers(req, res) {
           `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
                   activation_source_channel, user_type, sales_promo_channel, invited_by,
-                  (SELECT ac.owner_admin_username
-                   FROM activation_codes ac
-                   WHERE ac.used_by_username = users.username
-                     AND ac.owner_admin_username IS NOT NULL
-                     AND TRIM(ac.owner_admin_username) <> ''
-                   ORDER BY ac.last_used_at DESC, ac.id DESC
-                   LIMIT 1) AS upline_admin_username,
                   (SELECT ule.ip FROM user_login_events ule
                    WHERE ule.username = users.username AND ule.ip IS NOT NULL
                    ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
@@ -15521,13 +15514,6 @@ async function handleAdminUsers(req, res) {
       SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, user_type, sales_promo_channel, invited_by,
-             (SELECT ac.owner_admin_username
-              FROM activation_codes ac
-              WHERE ac.used_by_username = users.username
-                AND ac.owner_admin_username IS NOT NULL
-                AND TRIM(ac.owner_admin_username) <> ''
-              ORDER BY ac.last_used_at DESC, ac.id DESC
-              LIMIT 1) AS upline_admin_username,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
               ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
@@ -15586,17 +15572,6 @@ async function handleAdminUsers(req, res) {
         r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
           ? String(r.sales_promo_channel).trim()
           : '';
-      var upline =
-        r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
-          ? String(r.upline_admin_username).trim()
-          : '';
-      if (!upline) {
-        var actSrc =
-          r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '';
-        if (actSrc === 'alipay' || actSrc === 'kufaka') {
-          upline = ADMIN_PANEL_USER;
-        }
-      }
       return {
         id: r.id,
         username: r.username,
@@ -15609,7 +15584,6 @@ async function handleAdminUsers(req, res) {
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         ip_last: r.ip_last != null ? String(r.ip_last).trim() : '',
-        upline_admin: upline,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password:
           r.plain_password != null && String(r.plain_password).trim() !== ''
