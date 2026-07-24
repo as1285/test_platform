@@ -199,34 +199,38 @@
     <title>个人所得税 · 下载安装</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
     <style>
         :root {
-            --ink: #0f172a;
-            --ink-soft: #334155;
-            --mist: #e2e8f0;
-            --paper: #f8fafc;
-            --line: rgba(15, 23, 42, 0.08);
-            --muted: #64748b;
-            --accent: #0d9488;
-            --accent-light: #14b8a6;
-            --accent-deep: #0f766e;
-            --accent-glow: rgba(13, 148, 136, 0.15);
-            --gradient-hero: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0d9488 100%);
-            --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.9));
-            --gradient-btn: linear-gradient(135deg, #0d9488, #14b8a6);
-            --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-            --shadow-md: 0 4px 16px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
-            --shadow-lg: 0 12px 40px rgba(15,23,42,0.12), 0 4px 12px rgba(15,23,42,0.06);
-            --shadow-btn: 0 4px 14px rgba(13,148,136,0.35);
-            --radius-sm: 8px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
-            --radius-xl: 24px;
+            --ink: #07131f;
+            --ink-soft: #1c3448;
+            --mist: #d7e6ef;
+            --paper: #f3f7fa;
+            --line: rgba(7, 19, 31, 0.1);
+            --muted: #5a7388;
+            --accent: #0b8f7a;
+            --accent-light: #1fb39a;
+            --accent-deep: #067061;
+            --accent-glow: rgba(11, 143, 122, 0.22);
+            --seal: #c23b2e;
+            --seal-soft: rgba(194, 59, 46, 0.14);
+            --gold: #c9a45c;
+            --night: #061018;
+            --night-panel: rgba(10, 28, 40, 0.72);
+            --gradient-hero: linear-gradient(148deg, #061018 0%, #0c2a34 42%, #0b8f7a 100%);
+            --gradient-btn: linear-gradient(120deg, #067061 0%, #0b8f7a 48%, #1fb39a 100%);
+            --shadow-sm: 0 1px 2px rgba(7,19,31,0.06);
+            --shadow-md: 0 10px 28px rgba(7,19,31,0.1);
+            --shadow-lg: 0 18px 48px rgba(7,19,31,0.16);
+            --shadow-btn: 0 10px 28px rgba(11,143,122,0.38);
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+            --radius-xl: 26px;
             --safe-b: env(safe-area-inset-bottom, 0px);
             --safe-t: env(safe-area-inset-top, 0px);
             --wrap: 560px;
-            --font-display: "Noto Serif SC", "Songti SC", "SimSun", serif;
+            --font-display: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", serif;
             --font-body: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -243,10 +247,10 @@
             min-height: 100vh;
             padding-bottom: calc(112px + var(--safe-b));
             background:
-                radial-gradient(ellipse 800px 600px at 20% -5%, rgba(13, 148, 136, 0.08), transparent 60%),
-                radial-gradient(ellipse 600px 500px at 90% 15%, rgba(59, 130, 246, 0.06), transparent 55%),
-                radial-gradient(ellipse 900px 400px at 50% 100%, rgba(13, 148, 136, 0.05), transparent 50%),
-                linear-gradient(180deg, #f1f5f9 0%, #f8fafc 40%, #f1f5f9 100%);
+                radial-gradient(ellipse 720px 480px at 8% -8%, rgba(11, 143, 122, 0.16), transparent 58%),
+                radial-gradient(ellipse 560px 420px at 100% 8%, rgba(194, 59, 46, 0.07), transparent 52%),
+                radial-gradient(ellipse 900px 360px at 50% 100%, rgba(201, 164, 92, 0.08), transparent 55%),
+                linear-gradient(180deg, #e8f1f4 0%, #f3f7fa 38%, #e6eef3 100%);
             background-attachment: fixed;
         }
         body::before {
@@ -255,12 +259,51 @@
             inset: 0;
             pointer-events: none;
             z-index: 0;
-            opacity: 0.25;
+            opacity: 0.45;
             background-image:
-                linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px);
-            background-size: 32px 32px;
-            mask-image: linear-gradient(180deg, #000 0%, transparent 60%);
+                repeating-linear-gradient(
+                    -18deg,
+                    transparent 0,
+                    transparent 11px,
+                    rgba(7, 19, 31, 0.018) 11px,
+                    rgba(7, 19, 31, 0.018) 12px
+                );
+            mask-image: linear-gradient(180deg, #000 0%, transparent 72%);
+        }
+        .lp-atmos {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .lp-atmos::before,
+        .lp-atmos::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(40px);
+        }
+        .lp-atmos::before {
+            width: 280px;
+            height: 280px;
+            top: -60px;
+            right: -40px;
+            background: rgba(11, 143, 122, 0.35);
+            animation: atmosDrift 9s ease-in-out infinite alternate;
+        }
+        .lp-atmos::after {
+            width: 220px;
+            height: 220px;
+            bottom: 18%;
+            left: -70px;
+            background: rgba(194, 59, 46, 0.18);
+            animation: atmosDrift 11s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes atmosDrift {
+            from { transform: translate3d(0, 0, 0) scale(1); }
+            to { transform: translate3d(18px, 24px, 0) scale(1.08); }
         }
         .lp-wrap {
             position: relative;
@@ -291,20 +334,42 @@
         }
         .lp-hero-brand {
             font-family: var(--font-display);
-            font-size: clamp(2.4rem, 9vw, 3.2rem);
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            line-height: 1.05;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d9488 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 16px;
+            font-size: clamp(2.7rem, 10vw, 3.6rem);
+            font-weight: 400;
+            letter-spacing: 0.04em;
+            line-height: 1.02;
+            color: var(--ink);
+            margin-bottom: 18px;
+            position: relative;
+            display: inline-block;
+        }
+        .lp-hero-brand::after {
+            content: "税";
+            position: absolute;
+            top: -0.15em;
+            right: -1.55em;
+            width: 1.35em;
+            height: 1.35em;
+            border: 2px solid var(--seal);
+            color: var(--seal);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 0.38em;
+            letter-spacing: 0;
+            transform: rotate(-12deg);
+            opacity: 0.92;
+            box-shadow: inset 0 0 0 1px rgba(194, 59, 46, 0.25);
+            animation: sealIn 0.8s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes sealIn {
+            from { opacity: 0; transform: rotate(-28deg) scale(0.7); }
+            to { opacity: 0.92; transform: rotate(-12deg) scale(1); }
         }
         .lp-hero-headline {
-            font-size: clamp(1.1rem, 3.8vw, 1.25rem);
+            font-size: clamp(1.15rem, 4vw, 1.35rem);
             font-weight: 600;
-            line-height: 1.5;
+            line-height: 1.45;
             color: var(--ink-soft);
             margin-bottom: 10px;
         }
@@ -344,10 +409,26 @@
             background: var(--gradient-btn);
             color: #fff;
             box-shadow: var(--shadow-btn);
+            position: relative;
+            overflow: hidden;
+        }
+        .lp-btn-primary::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 -40%;
+            width: 35%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+            transform: skewX(-18deg);
+            animation: btnSheen 3.2s ease-in-out infinite;
+        }
+        @keyframes btnSheen {
+            0%, 55% { left: -40%; opacity: 0; }
+            70% { opacity: 1; }
+            100% { left: 120%; opacity: 0; }
         }
         .lp-btn-primary:hover {
-            background: linear-gradient(135deg, #0f766e, #0d9488);
-            box-shadow: 0 6px 20px rgba(13,148,136,0.4);
+            background: linear-gradient(120deg, #055a4f, #0b8f7a 55%, #18a78f);
+            box-shadow: 0 12px 30px rgba(11,143,122,0.45);
             transform: translateY(-1px);
         }
         .lp-btn-outline {
@@ -381,8 +462,8 @@
             z-index: 1;
             pointer-events: none;
             background:
-                linear-gradient(180deg, #f8fafc 0%, rgba(248,250,252,0.3) 16%, transparent 40%),
-                linear-gradient(0deg, rgba(15,23,42,0.2) 0%, transparent 40%);
+                linear-gradient(180deg, #f3f7fa 0%, rgba(243,247,250,0.2) 18%, transparent 42%),
+                linear-gradient(0deg, rgba(6,16,24,0.45) 0%, transparent 42%);
         }
         .lp-hero-visual img {
             display: block;
@@ -414,12 +495,12 @@
         }
         .lp-section-title {
             font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.65rem;
+            font-weight: 400;
             color: var(--ink);
             margin-bottom: 10px;
-            line-height: 1.3;
-            letter-spacing: -0.01em;
+            line-height: 1.25;
+            letter-spacing: 0.04em;
         }
         .lp-section-lead {
             font-size: 0.95rem;
@@ -445,8 +526,10 @@
         .showcase-gif-wrap {
             margin-bottom: 18px;
             overflow: hidden;
-            background: #0f172a;
+            background: #061018;
             border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(7, 19, 31, 0.12);
         }
         .showcase-gif-wrap img {
             display: block;
@@ -492,49 +575,81 @@
             margin-top: 4px;
         }
         .lp-caps, .lp-demo { display: none !important; }
-        /* ── Download Intent Mode（首屏只做下载） ── */
+        /* ── Download Intent Mode（税印夜幕） ── */
         .dl-intent-header {
             display: none;
-            padding: calc(20px + var(--safe-t)) 24px 8px;
+            padding: calc(28px + var(--safe-t)) 24px 6px;
             animation: lpRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .dl-intent-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .dl-seal {
+            flex: 0 0 auto;
+            width: 58px;
+            height: 58px;
+            border: 2.5px solid var(--seal);
+            color: var(--seal);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-family: var(--font-display);
+            font-size: 1.45rem;
+            letter-spacing: 0.08em;
+            transform: rotate(-11deg);
+            box-shadow:
+                inset 0 0 0 1px rgba(194, 59, 46, 0.35),
+                0 0 0 6px var(--seal-soft);
+            animation: sealIn 0.75s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .dl-intent-kicker {
+            display: inline-block;
+            font-size: 0.72rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 8px;
+            font-weight: 600;
         }
         .dl-intent-brand {
             font-family: var(--font-display);
-            font-size: clamp(1.85rem, 7vw, 2.35rem);
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            line-height: 1.1;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0d9488 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
+            font-size: clamp(2.15rem, 8.2vw, 2.75rem);
+            font-weight: 400;
+            letter-spacing: 0.06em;
+            line-height: 1.08;
+            color: #f4f8fb;
+            margin-bottom: 12px;
         }
         .dl-intent-headline {
-            font-size: 1.12rem;
+            font-size: 1.2rem;
             font-weight: 600;
-            color: var(--ink-soft);
-            line-height: 1.45;
-            margin-bottom: 6px;
+            color: rgba(244, 248, 251, 0.92);
+            line-height: 1.4;
+            margin-bottom: 8px;
         }
         .dl-intent-support {
             font-size: 0.92rem;
-            color: var(--muted);
-            line-height: 1.6;
+            color: rgba(215, 230, 239, 0.72);
+            line-height: 1.65;
             max-width: 22rem;
         }
         .dl-intent-register {
             display: none;
-            margin-top: 18px;
+            margin-top: 20px;
             font-size: 0.9rem;
-            color: var(--muted);
+            color: rgba(215, 230, 239, 0.62);
+            text-align: center;
         }
         .dl-intent-register a {
-            color: var(--accent-deep);
+            color: #7ee0cf;
             font-weight: 600;
             text-decoration: none;
+            border-bottom: 1px solid rgba(126, 224, 207, 0.35);
         }
-        .dl-intent-register a:hover { text-decoration: underline; }
+        .dl-intent-register a:hover { border-bottom-color: #7ee0cf; }
         .install-btn-skeleton {
             display: flex;
             flex-direction: column;
@@ -543,9 +658,9 @@
         .install-btn-skeleton[hidden] { display: none !important; }
         .skeleton-btn {
             width: 100%;
-            min-height: 54px;
+            min-height: 58px;
             border-radius: var(--radius-md);
-            background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 45%, #e2e8f0 90%);
+            background: linear-gradient(90deg, #d7e6ef 0%, #eef4f7 45%, #d7e6ef 90%);
             background-size: 200% 100%;
             animation: skShine 1.15s ease-in-out infinite;
         }
@@ -559,7 +674,33 @@
             100% { background-position: -100% 0; }
         }
         body.is-download-intent {
+            color: #e8f1f4;
             padding-bottom: calc(88px + var(--safe-b));
+            background:
+                radial-gradient(ellipse 640px 420px at 85% -10%, rgba(11, 143, 122, 0.28), transparent 58%),
+                radial-gradient(ellipse 480px 360px at 0% 30%, rgba(194, 59, 46, 0.12), transparent 55%),
+                radial-gradient(ellipse 700px 320px at 50% 110%, rgba(201, 164, 92, 0.1), transparent 50%),
+                linear-gradient(165deg, #040b12 0%, #0a1a24 48%, #071820 100%);
+        }
+        body.is-download-intent::before {
+            opacity: 0.35;
+            background-image:
+                repeating-linear-gradient(
+                    -18deg,
+                    transparent 0,
+                    transparent 14px,
+                    rgba(255, 255, 255, 0.025) 14px,
+                    rgba(255, 255, 255, 0.025) 15px
+                );
+            mask-image: none;
+        }
+        body.is-download-intent .lp-atmos { display: block; }
+        body.is-download-intent .skeleton-btn {
+            background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.16) 45%, rgba(255,255,255,0.08) 90%);
+            background-size: 200% 100%;
+        }
+        body.is-download-intent .skeleton-hint {
+            color: rgba(215, 230, 239, 0.65);
         }
         body.is-download-intent .dl-intent-header { display: block; }
         body.is-download-intent .dl-intent-register { display: block; }
@@ -568,7 +709,7 @@
             display: none !important;
         }
         body.is-download-intent .lp-download {
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: none;
         }
         body.is-download-intent .lp-download > .lp-section-title,
@@ -578,30 +719,116 @@
             display: none !important;
         }
         body.is-download-intent .install-top-download {
-            margin-bottom: 20px;
-            padding: 18px 16px;
-            background: rgba(255, 255, 255, 0.78);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
+            margin-bottom: 22px;
+            padding: 22px 18px 20px;
+            background:
+                linear-gradient(155deg, rgba(18, 42, 54, 0.92), rgba(8, 22, 32, 0.88));
+            border: 1px solid rgba(126, 224, 207, 0.18);
+            border-radius: var(--radius-xl);
+            box-shadow:
+                0 0 0 1px rgba(201, 164, 92, 0.08) inset,
+                0 20px 50px rgba(0, 0, 0, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        body.is-download-intent .install-top-download::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 12%;
+            right: 12%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(201, 164, 92, 0.55), transparent);
         }
         body.is-download-intent .install-actions .btn {
-            min-height: 56px;
-            font-size: 1.05rem;
+            min-height: 58px;
+            font-size: 1.08rem;
+            letter-spacing: 0.04em;
+            border-radius: 14px;
+        }
+        body.is-download-intent .install-actions .btn.btn-primary {
+            position: relative;
+            overflow: hidden;
+        }
+        body.is-download-intent .install-actions .btn.btn-primary::after {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 -40%;
+            width: 35%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transform: skewX(-18deg);
+            animation: btnSheen 3.2s ease-in-out infinite;
         }
         body.is-download-intent .install-actions .btn.btn-secondary-platform {
-            background: rgba(255, 255, 255, 0.92);
-            color: var(--ink-soft);
-            border: 1.5px solid rgba(15, 23, 42, 0.12);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(232, 241, 244, 0.82);
+            border: 1px solid rgba(215, 230, 239, 0.16);
             box-shadow: none;
             font-weight: 500;
             min-height: 48px;
             font-size: 0.95rem;
+            letter-spacing: 0;
+        }
+        body.is-download-intent .hint,
+        body.is-download-intent .lp-disclaimer,
+        body.is-download-intent .step-block p,
+        body.is-download-intent .step-block li,
+        body.is-download-intent #installEmptyHint {
+            color: rgba(215, 230, 239, 0.72);
+        }
+        body.is-download-intent .step-block {
+            border-bottom-color: rgba(215, 230, 239, 0.1);
+        }
+        body.is-download-intent .step-block h3 {
+            color: #f4f8fb;
+            font-family: var(--font-display);
+            font-weight: 400;
+            letter-spacing: 0.04em;
+        }
+        body.is-download-intent .lp-collapse {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(215, 230, 239, 0.12);
+        }
+        body.is-download-intent .lp-collapse[open] {
+            background: rgba(10, 28, 40, 0.85);
+            box-shadow: var(--shadow-md);
+        }
+        body.is-download-intent .lp-collapse summary {
+            color: #f4f8fb;
+        }
+        body.is-download-intent .lp-collapse summary::after {
+            color: #7ee0cf;
+            background: rgba(11, 143, 122, 0.2);
+        }
+        body.is-download-intent .lp-disclaimer {
+            border-top-color: rgba(215, 230, 239, 0.12);
+            color: rgba(215, 230, 239, 0.45);
+        }
+        body.is-download-intent .post-download-banner {
+            background: rgba(11, 143, 122, 0.14);
+            border-color: rgba(126, 224, 207, 0.25);
+            color: #7ee0cf;
+        }
+        body.is-download-intent .post-download-banner p {
+            color: rgba(232, 241, 244, 0.78);
+        }
+        body.is-download-intent .desktop-qr img {
+            border-color: rgba(215, 230, 239, 0.16);
+            background: #fff;
+        }
+        body.is-download-intent .desktop-qr p {
+            color: rgba(215, 230, 239, 0.7);
+        }
+        body.is-download-intent .ios-cert-hint a {
+            color: #7ee0cf;
         }
         body.is-download-intent .sticky-register-bar {
             transform: translateY(110%);
             transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: none;
+            background: rgba(6, 16, 24, 0.88);
+            border-top-color: rgba(126, 224, 207, 0.14);
+            box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
         }
         body.is-download-intent .sticky-register-bar.is-sticky-visible {
             transform: translateY(0);
@@ -620,15 +847,24 @@
         body.is-download-intent .sticky-register-hint {
             text-align: center;
             margin-bottom: 8px;
+            color: rgba(215, 230, 239, 0.7);
         }
         body.is-download-intent #stepRegisterBlock .btn-primary {
             display: none !important;
         }
         body.is-download-intent #stepInstallBlock > h3 {
-            font-size: 1.05rem;
+            font-size: 1.15rem;
         }
         body.is-download-intent #stepRegisterBlock > h3 {
-            font-size: 1.05rem;
+            font-size: 1.15rem;
+        }
+        body.is-download-intent .in-app-banner {
+            background: rgba(11, 143, 122, 0.12);
+            border-left-color: var(--accent-light);
+            color: rgba(232, 241, 244, 0.86);
+        }
+        body.is-download-intent .in-app-banner strong {
+            color: #7ee0cf;
         }
         /* ── Download Section ── */
         .lp-download {
@@ -681,8 +917,8 @@
             box-shadow: var(--shadow-btn);
         }
         .btn-primary:hover {
-            background: linear-gradient(135deg, #0f766e, #0d9488);
-            box-shadow: 0 6px 20px rgba(13,148,136,0.4);
+            background: linear-gradient(120deg, #055a4f, #0b8f7a 55%, #18a78f);
+            box-shadow: 0 12px 30px rgba(11,143,122,0.45);
             transform: translateY(-1px);
         }
         .desktop-qr { text-align: center; padding: 24px 0 8px; }
@@ -722,7 +958,7 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 0;
             margin: 12px 0 32px;
-            background: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.55);
             border-radius: var(--radius-md);
             border: 1px solid var(--line);
             overflow: hidden;
@@ -739,6 +975,7 @@
             border-radius: 0;
             position: relative;
             transition: all 0.3s ease;
+            letter-spacing: 0.02em;
         }
         .step-pill + .step-pill {
             padding-left: 8px;
@@ -752,15 +989,12 @@
         .step-pill.is-active::after {
             content: "";
             position: absolute;
-            left: 0;
+            left: 18%;
+            right: 18%;
             bottom: 0;
-            width: 100%;
             height: 3px;
-            background: var(--accent-light);
-        }
-        .step-pill + .step-pill.is-active::after {
-            left: 0;
-            width: 100%;
+            background: var(--gold);
+            border-radius: 2px 2px 0 0;
         }
         /* ── Step Blocks ── */
         .step-block {
@@ -775,10 +1009,11 @@
         }
         .step-block h3 {
             font-family: var(--font-display);
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             color: var(--ink);
             margin-bottom: 12px;
-            font-weight: 700;
+            font-weight: 400;
+            letter-spacing: 0.03em;
         }
         .step-block p, .step-block li {
             font-size: 0.92rem;
@@ -800,11 +1035,13 @@
         }
         .post-download-banner.is-visible,
         .post-download-banner:not([hidden]) { display: block; }
-        .post-download-banner strong {
+            .post-download-banner strong {
             display: block;
             font-family: var(--font-display);
-            font-size: 1.02rem;
+            font-size: 1.12rem;
             margin-bottom: 6px;
+            font-weight: 400;
+            letter-spacing: 0.03em;
         }
         .post-download-banner p {
             margin: 0;
@@ -940,7 +1177,7 @@
             box-shadow: var(--shadow-btn);
         }
         .sticky-download-btn:hover {
-            box-shadow: 0 6px 20px rgba(13,148,136,0.4);
+            box-shadow: 0 12px 30px rgba(11,143,122,0.45);
             transform: translateY(-1px);
         }
         .sticky-download-btn.is-visible { display: flex; }
@@ -983,11 +1220,12 @@
         }
         .lp-gate-title {
             font-family: var(--font-display);
-            font-size: 1.25rem;
-            font-weight: 700;
+            font-size: 1.35rem;
+            font-weight: 400;
             color: var(--ink);
             margin-bottom: 10px;
             text-align: left;
+            letter-spacing: 0.04em;
         }
         .lp-gate-desc {
             font-size: 0.95rem;
@@ -1019,7 +1257,7 @@
             box-shadow: var(--shadow-btn);
         }
         .lp-gate-btn-download:hover {
-            box-shadow: 0 6px 20px rgba(13,148,136,0.4);
+            box-shadow: 0 12px 30px rgba(11,143,122,0.45);
             transform: translateY(-1px);
         }
         .lp-gate-btn-register {
@@ -1045,7 +1283,9 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .lp-hero, .lp-hero-ctas, .lp-hero-visual, .lp-section, .lp-gate-panel,
-            .btn, .lp-btn, .sticky-download-btn, .sticky-register-btn, .lp-gate-btn {
+            .btn, .lp-btn, .sticky-download-btn, .sticky-register-btn, .lp-gate-btn,
+            .lp-atmos::before, .lp-atmos::after, .dl-seal, .lp-hero-brand::after,
+            .lp-btn-primary::before, .install-actions .btn.btn-primary::after {
                 animation: none !important;
                 transition: none !important;
             }
@@ -1064,18 +1304,25 @@
             } catch (e) {}
         })();
     </script>
+    <div class="lp-atmos" aria-hidden="true"></div>
     <div class="lp-wrap">
         <header class="dl-intent-header" id="dlIntentHeader" aria-label="下载引导">
-            <h1 class="dl-intent-brand">个人所得税</h1>
+            <div class="dl-intent-top">
+                <div class="dl-seal" aria-hidden="true">税</div>
+                <div class="dl-intent-copy">
+                    <p class="dl-intent-kicker">INSTALL</p>
+                    <h1 class="dl-intent-brand">个人所得税</h1>
+                </div>
+            </div>
             <p class="dl-intent-headline">把 App 装到手机</p>
-            <p class="dl-intent-support">下载安装包后按提示完成安装，打开即可注册使用</p>
+            <p class="dl-intent-support">识别当前系统后一键下载安装包，装好打开即可注册使用</p>
         </header>
 
         <section class="lp-hero" id="lpHero">
             <div class="lp-hero-copy">
                 <h1 class="lp-hero-brand">个人所得税</h1>
                 <p class="lp-hero-headline">先看效果，再装到手机</p>
-                <p class="lp-hero-support">满意后再下载 App，安装即可体验完整功能</p>
+                <p class="lp-hero-support">预览明细与完税界面，满意后再下载安装</p>
                 <div class="lp-hero-ctas">
                     <a href="#download" class="lp-btn lp-btn-primary" id="lpHeroDownloadBtn">下载到手机</a>
                 </div>
