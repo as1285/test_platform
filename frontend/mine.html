@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260723-nav-lower"></script>
+    <script src="/js/auth.js?v=20260724-rename-auth"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1543,6 +1543,33 @@
                 unlockMineProfileEditScroll();
             }
 
+            /** 改名/资料等受保护接口：必须走 authFetch（带 Bearer），禁止回退成裸 fetch（会 401） */
+            function mineAuthedFetch(url, opts) {
+                var fn =
+                    typeof window.authFetch === 'function'
+                        ? window.authFetch
+                        : typeof authFetch === 'function'
+                          ? authFetch
+                          : null;
+                var token = '';
+                try {
+                    token =
+                        (typeof window.authGetToken === 'function' && window.authGetToken()) ||
+                        localStorage.getItem('token') ||
+                        '';
+                } catch (eTok) {
+                    token = '';
+                }
+                if (!fn || !token) {
+                    try {
+                        alert('登录已失效，请重新登录');
+                    } catch (eAlert) {}
+                    window.location.href = 'index.html';
+                    return Promise.reject(new Error('unauthorized'));
+                }
+                return fn(url, opts || {});
+            }
+
             function saveMineProfileEdit() {
                 if (!isMineDataEditEnabled()) {
                     closeMineProfileEditModal();
@@ -1575,12 +1602,7 @@
                     tax_id: taxId,
                     gender: gender
                 };
-                var fetchFn =
-                    typeof authFetch === 'function'
-                        ? authFetch
-                        : function (url, opts) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
-                          };
+                var fetchFn = mineAuthedFetch;
 
                 function applyLocalAndClose() {
                     setMineDisplayName(realName);
@@ -1694,12 +1716,7 @@
             }
 
             function startMineRenamePay() {
-                var fetchFn =
-                    typeof authFetch === 'function'
-                        ? authFetch
-                        : function (url, opts) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
-                          };
+                var fetchFn = mineAuthedFetch;
                 var qrWrap = document.getElementById('mineRenamePayQrWrap');
                 fetchFn('api/payments/alipay/create', {
                     method: 'POST',
@@ -1760,12 +1777,7 @@
             }
 
             function pollMineRenamePay() {
-                var fetchFn =
-                    typeof authFetch === 'function'
-                        ? authFetch
-                        : function (url, opts) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
-                          };
+                var fetchFn = mineAuthedFetch;
                 fetchFn('api/payments/alipay/latest')
                     .then(function (r) {
                         return r.json();
@@ -1799,12 +1811,7 @@
                     return;
                 }
                 var payload = __mineRenamePayPayload;
-                var fetchFn =
-                    typeof authFetch === 'function'
-                        ? authFetch
-                        : function (url, opts) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
-                          };
+                var fetchFn = mineAuthedFetch;
                 fetchFn('api/user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2413,12 +2420,7 @@
                     applySummaryToUi(sessionSummary);
                 }
 
-                var fetchFn =
-                    typeof authFetch === 'function'
-                        ? authFetch
-                        : function (url, opts2) {
-                              return fetch(url, Object.assign({ credentials: 'same-origin' }, opts2 || {}));
-                          };
+                var fetchFn = mineAuthedFetch;
 
                 function refreshSummaryInBackground() {
                     fetchFn('api/user?action=summary')

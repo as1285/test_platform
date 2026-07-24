@@ -1078,6 +1078,30 @@ async function attachUserFromRequestChannel(username, req, body) {
       ch = '';
     }
   }
+  /* 游客沙盒已绑渠道时，注册账号继承 */
+  if (!ch) {
+    try {
+      var guestU =
+        (body && (body.guest_username || body.guestUsername)) ||
+        '';
+      guestU = String(guestU || '').trim();
+      if (!guestU) {
+        var cid = readClientIdFromRequest(req);
+        if (!cid && body && (body.client_id || body.clientId)) {
+          cid = String(body.client_id || body.clientId).trim();
+        }
+        if (cid) guestU = guestUsernameForClientId(cid);
+      }
+      if (guestU && guestU.indexOf(GUEST_USERNAME_PREFIX) === 0 && guestU !== u) {
+        ch = await getUserSalesPromoChannel(guestU);
+      }
+    } catch (e3) {
+      ch = ch || '';
+    }
+  }
+  if (!ch) {
+    return null;
+  }
   return attachUserFromSalesChannel(u, ch);
 }
 
@@ -5365,12 +5389,6 @@ function readPreferredPurchaseAbc(req) {
 async function handleAlipayConfig(req, res) {
   var envProduct = getAlipayProductConfig();
   var baseEnabled = alipay.isConfigured() && !!envProduct.amount;
-  if (!baseEnabled) {
-    return res.json({
-      code: 200,
-      data: { enabled: false, subject: envProduct.subject, amount: envProduct.amount, skus: [] }
-    });
-  }
   try {
     var offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
@@ -5388,6 +5406,22 @@ async function handleAlipayConfig(req, res) {
           pricing_variant: 'c',
           abc_variant: 'c',
           pricing_ab_enabled: !!offer.pricing_ab_enabled,
+          forced_by_channel: !!offer.forced_by_channel,
+          skus: []
+        }
+      });
+    }
+    if (!baseEnabled) {
+      return res.json({
+        code: 200,
+        data: {
+          enabled: false,
+          subject: envProduct.subject,
+          amount: envProduct.amount,
+          pricing_variant: offer.variant || 'control',
+          abc_variant: offer.abc_variant || 'a',
+          pricing_ab_enabled: !!offer.pricing_ab_enabled,
+          forced_by_channel: !!offer.forced_by_channel,
           skus: []
         }
       });
@@ -5414,11 +5448,18 @@ async function handleAlipayConfig(req, res) {
         pricing_variant: offer.variant,
         abc_variant: offer.abc_variant || (offer.variant === 'treatment' ? 'b' : 'a'),
         pricing_ab_enabled: !!offer.pricing_ab_enabled,
+        forced_by_channel: !!offer.forced_by_channel,
         skus: skus
       }
     });
   } catch (e) {
     console.error('alipay config pricing_ab', e);
+    if (!baseEnabled) {
+      return res.json({
+        code: 200,
+        data: { enabled: false, subject: envProduct.subject, amount: envProduct.amount, skus: [] }
+      });
+    }
     return res.json({
       code: 200,
       data: {
@@ -11737,12 +11778,11 @@ async function handleAuthPost(req, res) {
           parseFromInstallGuideFlag(body),
           regSalesCh
         );
-        if (regSalesCh) {
-          try {
-            await attachUserFromSalesChannel(out.username, regSalesCh);
-          } catch (eAttReg) {
-            console.error('register attach channel', eAttReg);
-          }
+        try {
+          /* 始终尝试挂载：body.ch / 设备归因 / 游客已绑渠道 */
+          await attachUserFromRequestChannel(out.username, req, body);
+        } catch (eAttReg) {
+          console.error('register attach channel', eAttReg);
         }
         if (regGuardKeys) {
           await registerGuard.markRegisterAttemptSuccess(regGuardKeys);

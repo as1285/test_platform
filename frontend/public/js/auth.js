@@ -1159,7 +1159,7 @@
     return isCordovaTaxAppShell() && isDistributorApp();
   }
 
-  /** 注册时绑定代理渠道：普通注册仅认当前页 URL 的 ch；安装指南来源可沿用非 IP 归因缓存 */
+  /** 注册时绑定代理渠道：优先 URL；安装页来源可沿用本地已存渠道（含 install_packages） */
   function getRegisterSalesChannel(fromInstallGuide) {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -1178,9 +1178,10 @@
       if (!o || !o.ch) {
         return '';
       }
-      if (o.source === 'server_resolve' || o.source === 'install_packages') {
+      if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
         return '';
       }
+      /* 专属渠道依赖安装页写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
       return sanitizeSalesChannelId(o.ch);
     } catch (e) {
       return '';
@@ -1579,6 +1580,16 @@
     } catch (e) {}
     setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc_force');
     return next;
+  }
+
+  /** 是否已被专属渠道强制过支付方案（防服务端普通分流覆盖） */
+  function hasAgentChannelForcedPurchaseAbc() {
+    try {
+      var a = getPurchaseAbcAssignment();
+      return !!(a && a.source === 'agent_channel' && (a.variant === 'a' || a.variant === 'b' || a.variant === 'c'));
+    } catch (e) {
+      return false;
+    }
   }
 
   function applyChannelForcedPricingAbc(data) {

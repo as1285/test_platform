@@ -6676,7 +6676,20 @@
                             '<td class="cell-break">' +
                             esc(u.channel_analysis_label || u.register_source_channel_label || '—') +
                             '</td>';
-                        html += '<td><button type="button" class="btn-sm btn-page btn-user-password" data-u="' + esc(u.username) + '" title="修改密码">修改</button></td>';
+                        var pwdText =
+                            u.password != null && String(u.password).trim() !== ''
+                                ? String(u.password)
+                                : '—';
+                        html +=
+                            '<td class="cell-break">' +
+                            '<code class="user-plain-password" style="font-size:12px;word-break:break-all;">' +
+                            esc(pwdText) +
+                            '</code> ' +
+                            '<button type="button" class="btn-sm btn-page btn-user-password" data-u="' +
+                            esc(u.username) +
+                            '" data-pwd="' +
+                            esc(pwdText === '—' || pwdText.indexOf('未记录') >= 0 ? '' : pwdText) +
+                            '" title="修改密码">修改</button></td>';
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
@@ -6696,7 +6709,10 @@
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-user-password').forEach(function (btn) {
                         btn.onclick = function () {
-                            openUserPasswordModal(btn.getAttribute('data-u'), '');
+                            openUserPasswordModal(
+                                btn.getAttribute('data-u'),
+                                btn.getAttribute('data-pwd') || ''
+                            );
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {

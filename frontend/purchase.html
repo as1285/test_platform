@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260723-purchase-abc"></script>
+    <script src="/js/auth.js?v=20260724-agent-ch-c"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>模拟器app · 开通权益</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -430,7 +430,7 @@
                     <span class="channel-arrow">›</span>
                 </a>
 
-                <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase">
+                <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase" hidden>
                     <span class="channel-icon chat">客</span>
                     <span class="channel-body">
                         <strong>在线客服</strong>
@@ -999,6 +999,9 @@
         /* APP 内不显示下载卡片 */
         if (cardDownload) cardDownload.hidden = purchasePageInApp;
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
+        /* 购买页关闭在线客服入口 */
+        var rowOnlineChat = document.getElementById('rowOnlineChat');
+        if (rowOnlineChat) rowOnlineChat.hidden = true;
 
 
         if (heroP) {
@@ -1127,7 +1130,13 @@
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
                 var abc = data.abc_variant || getPurchaseAbc() || '';
-                if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
+                if (
+                    data.forced_by_channel &&
+                    abc &&
+                    typeof window.forcePurchaseAbcAssignment === 'function'
+                ) {
+                    window.forcePurchaseAbcAssignment(abc, 'agent_channel');
+                } else if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
                     window.setPurchaseAbcAssignment(abc, 'server_offer');
                 }
                 if (abc === 'c' || isPurchaseVariantC()) {
@@ -1201,6 +1210,9 @@
 
     function applyConfig(data) {
         data = data || {};
+        if (typeof window.applyChannelForcedPricingAbc === 'function') {
+            window.applyChannelForcedPricingAbc(data);
+        }
         if (isPurchaseVariantC()) {
             purchaseUiMode = 'code_only';
         }
@@ -1214,7 +1226,7 @@
         trackPurchase('track_purchase_page_view', {
             alipay: !!(cardAlipay && !cardAlipay.hidden),
             kufaka: !!(document.getElementById('rowKufaka') && purchaseUiMode === 'legacy'),
-            online_chat: !!(document.getElementById('rowOnlineChat') && purchaseUiMode === 'legacy'),
+            online_chat: false,
             code_only: purchaseUiMode === 'code_only'
         });
     }
@@ -1321,9 +1333,13 @@
         });
     }
 
-    document.getElementById('rowOnlineChat').addEventListener('click', function () {
-        trackPurchase('track_online_chat_click');
-    });
+    var rowOnlineChatEl = document.getElementById('rowOnlineChat');
+    if (rowOnlineChatEl) {
+        rowOnlineChatEl.hidden = true;
+        rowOnlineChatEl.addEventListener('click', function (ev) {
+            ev.preventDefault();
+        });
+    }
 
     document.getElementById('btnPurchaseActivate').addEventListener('click', submitActivate);
 
@@ -1392,10 +1408,13 @@
         trackPurchase('track_purchase_back_click');
     });
 
-    ensurePurchaseAbcAssigned().then(function () {
-        loadConfig();
-        loadAlipayPurchase();
-    });
+    ensurePurchaseAbcAssigned()
+        .then(function () {
+            return loadConfig();
+        })
+        .then(function () {
+            return loadAlipayPurchase();
+        });
     /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
     setTimeout(function () {
         try {
