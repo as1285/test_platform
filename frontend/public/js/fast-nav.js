@@ -101,7 +101,6 @@
     if (here === 'mine.html' || here === 'shouye.html') {
       prefetchDocument('consult.html?v=20260721d-bonus');
       prefetchDocument('purchase.html');
-      prefetchDocument('chat.html');
     }
   }
 

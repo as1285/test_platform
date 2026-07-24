@@ -124,8 +124,7 @@ function switchTab(tab, pushHistory) {
         window.forceHidePageLoading();
     }
     if (tab === 'feedback' || tab === 'chat') {
-        window.location.href = 'chat.html?from=consult';
-        return;
+        tab = 'records';
     }
     if (tab === 'profile') {
         tab = 'employers';
@@ -349,11 +348,7 @@ function loadFeedbackWechatPayQr() {
 function initTabs() {
     document.querySelectorAll('.tabs .tab').forEach(function(a) {
         var tabKey = a.getAttribute('data-tab');
-        if (tabKey === 'feedback') {
-            a.href = 'chat.html?from=consult';
-        } else {
-            a.href = tabHref(tabKey);
-        }
+        a.href = tabHref(tabKey);
         a.addEventListener('click', function(e) {
             e.preventDefault();
             switchTab(a.getAttribute('data-tab'), true);
@@ -361,10 +356,7 @@ function initTabs() {
     });
     var tab = getUrlParam('tab') || 'records';
     if (tab === 'batch' || tab === 'batch_records') tab = 'records';
-    if (tab === 'feedback' || tab === 'chat') {
-        window.location.replace('chat.html?from=consult');
-        return;
-    }
+    if (tab === 'feedback' || tab === 'chat') tab = 'records';
     var valid = ['employers', 'messages', 'records'];
     if (tab === 'profile') tab = 'employers';
     if (valid.indexOf(tab) < 0) tab = 'records';

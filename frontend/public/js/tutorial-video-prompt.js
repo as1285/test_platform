@@ -1,11 +1,10 @@
 /**
- * 操作教程视频引导弹窗：登录页首次进入、登录/注册成功后进入我的页。
+ * 操作教程视频引导弹窗：登录页首次进入（登录成功后引导已下线）。
  */
 (function () {
   var TUTORIAL_PAGE = 'tutorial_video.html';
   var LOGIN_PROMPT_KEY = 'tax_tutorial_login_prompt_v1';
   var LEGACY_LOGIN_WELCOME_KEY = 'tax_login_welcome_v1';
-  var POST_LOGIN_PENDING_KEY = 'tax_tutorial_post_login_pending';
 
   function injectStyles() {
     if (document.getElementById('tutorial-video-prompt-style')) {
@@ -63,14 +62,6 @@
   function isNeedActivateMode() {
     try {
       return new URLSearchParams(window.location.search).get('need_activate') === '1';
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function isAccountActive() {
-    try {
-      return localStorage.getItem('account_active') === '1';
     } catch (e) {
       return false;
     }
@@ -153,54 +144,14 @@
     });
   }
 
-  function markPostLoginPending() {
-    try {
-      sessionStorage.setItem(POST_LOGIN_PENDING_KEY, '1');
-    } catch (e) {}
-  }
-
-  function maybeShowPostLoginPrompt() {
-    if (currentPageName() !== 'mine.html') {
-      return;
-    }
-    if (isAccountActive()) {
-      try {
-        sessionStorage.removeItem(POST_LOGIN_PENDING_KEY);
-      } catch (e0) {}
-      return;
-    }
-    var pending = false;
-    try {
-      pending = sessionStorage.getItem(POST_LOGIN_PENDING_KEY) === '1';
-      if (pending) {
-        sessionStorage.removeItem(POST_LOGIN_PENDING_KEY);
-      }
-    } catch (e) {}
-    if (!pending) {
-      return;
-    }
-    showPrompt({
-      source: 'login_success',
-      title: '登录成功',
-      body: '建议观看操作教程，快速了解如何填写与修改税务演示数据。',
-      dismissLabel: '稍后再说'
-    });
-  }
-
   window.TutorialVideoPrompt = {
     TUTORIAL_PAGE: TUTORIAL_PAGE,
-    markPostLoginPending: markPostLoginPending,
-    maybeShowLoginPagePrompt: maybeShowLoginPagePrompt,
-    maybeShowPostLoginPrompt: maybeShowPostLoginPrompt
+    maybeShowLoginPagePrompt: maybeShowLoginPagePrompt
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      maybeShowLoginPagePrompt();
-      maybeShowPostLoginPrompt();
-    });
+    document.addEventListener('DOMContentLoaded', maybeShowLoginPagePrompt);
   } else {
     maybeShowLoginPagePrompt();
-    maybeShowPostLoginPrompt();
   }
 })();
