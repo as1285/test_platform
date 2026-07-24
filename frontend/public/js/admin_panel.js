@@ -1431,9 +1431,7 @@
             return k;
         }
 
-        function applyAdminRoute() {
-            var pageKey = normalizeAdminPage(location.hash);
-            function runRouteBody() {
+        function applyAdminRouteChrome(pageKey) {
             document.querySelectorAll('.page-panel').forEach(function (el) {
                 el.classList.toggle('active', el.id === 'page-' + pageKey);
             });
@@ -1447,6 +1445,14 @@
             } else if (titleEl) {
                 titleEl.textContent = '管理控制台';
             }
+        }
+
+        function applyAdminRoute() {
+            var pageKey = normalizeAdminPage(location.hash);
+            // 先立刻切页，避免等 Chart/CDN 时界面仍停在上一页（如「增长与触达配置」）
+            applyAdminRouteChrome(pageKey);
+            function runRouteBody() {
+            applyAdminRouteChrome(pageKey);
             if (pageKey === 'users' && !_adminUsersLoaded) {
                 _adminUsersLoaded = true;
                 loadUsers(1);

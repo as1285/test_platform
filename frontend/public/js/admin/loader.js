@@ -23,6 +23,7 @@
   var PAGE_MODULE = {
     settings: 'settings',
     'install-guide': 'settings',
+    'sales-contacts': 'settings',
     appearance: 'settings',
     codes: 'codes',
     'weekly-codes': 'codes',
@@ -50,21 +51,39 @@
     'api-analytics': 'analytics'
   };
 
+  var SCRIPT_LOAD_TIMEOUT_MS = 12000;
+
   function loadScript(src) {
     if (loaded[src]) return Promise.resolve();
     if (inflight[src]) return inflight[src];
     inflight[src] = new Promise(function (resolve, reject) {
+      var done = false;
       var s = document.createElement('script');
       s.src = src;
       s.async = true;
-      s.onload = function () {
-        loaded[src] = 1;
+      function finish(err) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
         delete inflight[src];
-        resolve();
+        if (err) {
+          try {
+            if (s.parentNode) s.parentNode.removeChild(s);
+          } catch (e0) {}
+          reject(err);
+        } else {
+          loaded[src] = 1;
+          resolve();
+        }
+      }
+      var timer = setTimeout(function () {
+        finish(new Error('timeout loading ' + src));
+      }, SCRIPT_LOAD_TIMEOUT_MS);
+      s.onload = function () {
+        finish(null);
       };
       s.onerror = function () {
-        delete inflight[src];
-        reject(new Error('failed to load ' + src));
+        finish(new Error('failed to load ' + src));
       };
       document.head.appendChild(s);
     });
@@ -73,7 +92,7 @@
 
   function ensureChart() {
     if (typeof global.Chart === 'function') return Promise.resolve();
-    return loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js');
+    return loadScript('/js/vendor/chart.umd.min.js?v=4.4.7');
   }
 
   function ensureQrcode() {
