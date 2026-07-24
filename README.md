@@ -7,29 +7,6 @@
 
 ---
 
-## 软件截图
-
-### 首页
-
-![首页](docs/images/shot-home.png)
-
-### 我的
-
-![我的](docs/images/shot-mine.png)
-
-### 收入纳税明细
-
-![收入纳税明细](docs/images/shot-income.png)
-
-### 个人中心 · 税务记录
-
-![税务记录](docs/images/shot-tax.png)
-
-更新截图：先安装中文字体（Linux：`sudo apt-get install -y fonts-noto-cjk`），再执行
-`SCREENSHOT_USERNAME=… SCREENSHOT_PASSWORD=… node scripts/capture-readme-screenshots.mjs`（需已安装 Playwright 浏览器）。未装字体时截图中文会显示为方框。
-
----
-
 ## 下载安装
 
 | 端 | 安装方式 |
@@ -116,24 +93,30 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | 约 **160+** 个源文件、**8.8 万+** 行（不含 `node_modules`、Cordova 编译产物、`package-lock.json`） |
-| **前端页面** | **58** 个 HTML 页面（`frontend/*.html`） |
+| **源码规模** | **216** 个源文件、约 **9.1 万** 行代码（`cloc`，不含 `node_modules`、Cordova 编译产物、`package-lock.json`、JSON/SVG） |
+| **前端页面** | **59** 个 HTML 页面（`frontend/*.html`） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 2 个工作流：Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，约 2026-07）
+### 代码规模（按语言，2026-07-24）
 
-| 语言 | 说明 |
-|------|------|
-| JavaScript | 后端 `src/` + 前端 `public/js/`（含管理端懒加载模块） |
-| HTML / CSS | 用户端多页 + 管理端面板 |
-| Shell / YAML / SQL | 部署、CI、migrations |
+| 语言 | 文件 | 代码行 |
+|------|------|--------|
+| JavaScript | 83 | 56,184 |
+| HTML | 59 | 27,537 |
+| CSS | 9 | 3,135 |
+| Markdown | 20 | 1,341 |
+| Shell | 14 | 875 |
+| Python | 3 | 696 |
+| SQL | 14 | 459 |
+| 其它（YAML/XML/TS/Vue/Dockerfile 等） | 14 | 约 889 |
+| **合计** | **216** | **91,116** |
 
-按模块：`frontend/` 为主 · `backend/src/` 为 API 与迁移 · `docs/` 含架构与转化规划。
+按目录（含空白/注释外的 code）：`frontend/` ≈ 6.2 万 · `backend/` ≈ 2.7 万 · `docs/` / `scripts/` / 其它约占余量。
 
-核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`、`frontend/public/js/auth.js`、`frontend/purchase.html`。
+核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（样式/逻辑已拆至 `css/consult.css`、`js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`。
 
 ### 技术栈
 
@@ -180,13 +163,14 @@ https://www.installguide1.top/
 ### 近期产品要点（2026-07）
 
 - **安装引导页**：首屏精简；`?download=1` 聚焦下载
-- **咨询 · 税务记录**：个税计算表与公式；批量生成 / 粘贴导入 / 示例填写
+- **咨询 · 税务记录**：工具栏降噪、空状态 / 折叠、成功后滚到列表；样式与脚本拆分为 `consult.css` + `consult-core/batch-tax/records.js`
+- **咨询页入口精简**：去掉「在线客服」Tab；登录成功后不再弹操作教程引导
 - **批量激活码多渠道**：闲鱼 / 酷发卡 / 自定义；备注「渠道名+批量」
 - **游客 / 落地漏斗**：落地 A/B、游客样例数据（见 `docs/user-conversion-plan.md`）
 - **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
 - **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
 - **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
-- **在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节）
+- **管理端在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节；C 端客服入口已下线）
 
 ### 数据库备份
 

@@ -1167,11 +1167,14 @@
                 var card = document.getElementById('cardAlipay');
                 var abc = data.abc_variant || getPurchaseAbc() || '';
                 if (
-                    data.forced_by_channel &&
+                    (data.force_client_abc || data.forced_by_channel) &&
                     abc &&
                     typeof window.forcePurchaseAbcAssignment === 'function'
                 ) {
-                    window.forcePurchaseAbcAssignment(abc, 'agent_channel');
+                    window.forcePurchaseAbcAssignment(
+                        abc,
+                        data.abc_source || (data.forced_by_channel ? 'agent_channel' : 'admin_force')
+                    );
                 } else if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
                     window.setPurchaseAbcAssignment(abc, 'server_offer');
                 }

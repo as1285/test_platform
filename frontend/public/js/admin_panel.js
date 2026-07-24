@@ -6647,6 +6647,7 @@
                             : '<button type="button" class="btn-sm btn-ban btn-ban-act" data-u="' + esc(u.username) + '" data-b="1">封禁</button>')
                             + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
+                            + ' <button type="button" class="btn-sm btn-page btn-user-pricing-abc" data-u="' + esc(u.username) + '">方案</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
@@ -6718,6 +6719,41 @@
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
                         btn.onclick = function () {
                             openUserActivateModal(btn.getAttribute('data-u'));
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-pricing-abc').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            var pick = prompt(
+                                '为「' + name + '」分配支付方案（输入 a / b / c）：\nA=199永久  B=多档价  C=仅激活码',
+                                'a'
+                            );
+                            if (pick == null) return;
+                            var abc = String(pick).trim().toLowerCase();
+                            if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
+                                alert('请输入 a、b 或 c');
+                                return;
+                            }
+                            if (
+                                !confirm(
+                                    '确认将「' + name + '」立即设为方案 ' + abc.toUpperCase() + '？'
+                                )
+                            ) {
+                                return;
+                            }
+                            adminFetch('api/admin/user-pricing-abc', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, abc: abc })
+                            })
+                                .then(function (r) {
+                                    return r.json();
+                                })
+                                .then(function (d) {
+                                    alert(d.msg || (d.code === 200 ? '已分配' : '失败'));
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                });
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-ban-act').forEach(function (btn) {
@@ -8667,6 +8703,69 @@
                         }
                     })
                     .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btn.disabled = false;
+                    });
+            });
+        }
+
+        var btnAssignPricingAbc = document.getElementById('btnAssignPricingAbc');
+        if (btnAssignPricingAbc) {
+            btnAssignPricingAbc.addEventListener('click', function () {
+                var btn = btnAssignPricingAbc;
+                var username = String(
+                    (document.getElementById('pricingAbcAssignUsername') || {}).value || ''
+                ).trim();
+                var abc = String(
+                    (document.getElementById('pricingAbcAssignVariant') || {}).value || ''
+                )
+                    .trim()
+                    .toLowerCase();
+                var hint = document.getElementById('pricingAbcAssignHint');
+                if (!username) {
+                    alert('请填写账号');
+                    return;
+                }
+                if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
+                    alert('请选择方案 A / B / C');
+                    return;
+                }
+                if (
+                    !confirm(
+                        '确认将账号「' +
+                            username +
+                            '」立即分配为方案 ' +
+                            abc.toUpperCase() +
+                            '？\n将覆盖该账号原有支付方案锁定。'
+                    )
+                ) {
+                    return;
+                }
+                btn.disabled = true;
+                if (hint) hint.textContent = '分配中…';
+                adminFetch('api/admin/user-pricing-abc', {
+                    method: 'POST',
+                    body: JSON.stringify({ username: username, abc: abc })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data.code === 200) {
+                            if (hint) {
+                                hint.textContent =
+                                    '已生效：' + username + ' → ' + String(abc).toUpperCase();
+                            }
+                            alert(data.msg || '已分配');
+                        } else {
+                            if (hint) hint.textContent = '';
+                            alert(data.msg || '分配失败');
+                        }
+                    })
+                    .catch(function () {
+                        if (hint) hint.textContent = '';
                         alert('网络错误');
                     })
                     .finally(function () {

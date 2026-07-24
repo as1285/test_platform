@@ -57,6 +57,25 @@
                                 <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B/C</button>
                             </div>
                         </div>
+                        <div class="form-row form-stack" style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb;">
+                            <p class="hint mt-0"><strong>指定账号分配方案</strong>（即刻生效，覆盖该账号原有 sticky；优先于代理渠道默认方案。用户下次打开购买页会强制同步。）</p>
+                            <div class="form-field form-field-narrow">
+                                <label for="pricingAbcAssignUsername">账号</label>
+                                <input type="text" id="pricingAbcAssignUsername" maxlength="64" placeholder="用户名 / 手机号">
+                            </div>
+                            <div class="form-field form-field-narrow">
+                                <label for="pricingAbcAssignVariant">方案</label>
+                                <select id="pricingAbcAssignVariant">
+                                    <option value="a">A · 199 永久 + 全渠道</option>
+                                    <option value="b">B · 支付宝多档</option>
+                                    <option value="c">C · 仅下载 + 激活码</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="btnAssignPricingAbc">立即分配</button>
+                                <span class="hint" id="pricingAbcAssignHint" style="margin-left:8px;"></span>
+                            </div>
+                        </div>
                     </section>
                     <section>
                         <h2>未激活引导弹窗</h2>
@@ -2453,6 +2472,6 @@
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260724-show-password"></script>
+    <script src="/js/admin_panel.js?v=20260724-assign-abc"></script>
 </body>
 </html>

@@ -255,6 +255,7 @@ app.get(
   h.handleAdminCodes
 );
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
+app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);
 app.post('/api/admin/block-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockIp);

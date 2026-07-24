@@ -397,24 +397,34 @@ function createPricingAb(deps) {
     return loadPricingAbParsed(true);
   }
 
-  async function getStickyAbc(username) {
+  async function getStickyAssignment(username) {
     var u = String(username || '').trim();
     if (!u || u === 'guest' || !pool) return null;
     const conn = await pool.getConnection();
     try {
       await ensureAssignmentsTable(conn);
       const [rows] = await conn.execute(
-        'SELECT variant FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
+        'SELECT variant, source, assigned_at FROM pricing_ab_assignments WHERE username = ? LIMIT 1',
         [u]
       );
       if (!rows.length) return null;
       var v = String(rows[0].variant || '').toLowerCase();
-      return v === 'a' || v === 'b' || v === 'c' ? v : null;
+      if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+      return {
+        variant: v,
+        source: String(rows[0].source || '').substring(0, 32),
+        assigned_at: rows[0].assigned_at || null
+      };
     } catch (e) {
       return null;
     } finally {
       conn.release();
     }
+  }
+
+  async function getStickyAbc(username) {
+    var row = await getStickyAssignment(username);
+    return row ? row.variant : null;
   }
 
   async function setStickyAbc(username, abc, source, force) {
@@ -426,9 +436,12 @@ function createPricingAb(deps) {
       await ensureAssignmentsTable(conn);
       if (force) {
         await conn.execute(
-          `INSERT INTO pricing_ab_assignments (username, variant, source)
-           VALUES (?, ?, ?)
-           ON DUPLICATE KEY UPDATE variant = VALUES(variant), source = VALUES(source)`,
+          `INSERT INTO pricing_ab_assignments (username, variant, source, assigned_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+           ON DUPLICATE KEY UPDATE
+             variant = VALUES(variant),
+             source = VALUES(source),
+             assigned_at = CURRENT_TIMESTAMP`,
           [u, v, String(source || 'allocation').substring(0, 32)]
         );
       } else {
@@ -446,6 +459,29 @@ function createPricingAb(deps) {
     } finally {
       conn.release();
     }
+  }
+
+  /** 管理端指定账号方案：强制覆盖，优先于代理渠道锁定 */
+  async function assignAbcForAdmin(username, abc) {
+    var u = String(username || '').trim();
+    var v = String(abc || '').toLowerCase();
+    if (!u || u === 'guest') {
+      var err = new Error('请填写有效账号');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (v !== 'a' && v !== 'b' && v !== 'c') {
+      var err2 = new Error('方案须为 a / b / c');
+      err2.statusCode = 400;
+      throw err2;
+    }
+    var ok = await setStickyAbc(u, v, 'admin_force', true);
+    if (!ok) {
+      var err3 = new Error('分配失败');
+      err3.statusCode = 500;
+      throw err3;
+    }
+    return getStickyAssignment(u);
   }
 
   /**
@@ -469,6 +505,28 @@ function createPricingAb(deps) {
       }
     }
     if (!cfg.enabled) {
+      var stickyOff = null;
+      if (seed !== 'guest') {
+        stickyOff = await getStickyAssignment(seed);
+      }
+      if (stickyOff && stickyOff.source === 'admin_force' && stickyOff.variant) {
+        var adminAbc = stickyOff.variant;
+        return {
+          enabled: adminAbc !== 'c',
+          variant: abcToOfferVariant(adminAbc),
+          abc_variant: adminAbc,
+          abc_source: 'admin_force',
+          skus:
+            adminAbc === 'c'
+              ? []
+              : adminAbc === 'b'
+                ? cfg.treatment_skus.map(cloneSku)
+                : cfg.control_skus.map(cloneSku),
+          pricing_ab_enabled: false,
+          forced_by_channel: false,
+          force_client_abc: true
+        };
+      }
       if (forcedAbc === 'c') {
         if (seed !== 'guest') {
           await setStickyAbc(seed, 'c', 'agent_channel', true);
@@ -477,9 +535,11 @@ function createPricingAb(deps) {
           enabled: false,
           variant: 'c',
           abc_variant: 'c',
+          abc_source: 'agent_channel',
           skus: [],
           pricing_ab_enabled: false,
-          forced_by_channel: true
+          forced_by_channel: true,
+          force_client_abc: true
         };
       }
       var amt = alipayNormalizeAmount(envFallbackAmount);
@@ -490,26 +550,42 @@ function createPricingAb(deps) {
         enabled: true,
         variant: 'control',
         abc_variant: 'a',
+        abc_source: 'disabled',
         skus: [legacy],
-        pricing_ab_enabled: false
+        pricing_ab_enabled: false,
+        forced_by_channel: false,
+        force_client_abc: false
       };
     }
 
     var abc = null;
-    if (forcedAbc) {
+    var abcSource = '';
+    var sticky = null;
+    if (seed !== 'guest') {
+      sticky = await getStickyAssignment(seed);
+    }
+    /* 管理端强制分配优先于代理渠道默认方案 */
+    if (sticky && sticky.source === 'admin_force' && sticky.variant) {
+      abc = sticky.variant;
+      abcSource = 'admin_force';
+    } else if (forcedAbc) {
       abc = forcedAbc;
+      abcSource = 'agent_channel';
       if (seed !== 'guest') {
         await setStickyAbc(seed, abc, 'agent_channel', true);
       }
-    } else if (seed !== 'guest') {
-      abc = await getStickyAbc(seed);
+    } else if (sticky && sticky.variant) {
+      abc = sticky.variant;
+      abcSource = sticky.source || 'sticky';
     }
     if (!abc) {
       var pref = String(preferredAbc || '').toLowerCase();
       if (pref === 'a' || pref === 'b' || pref === 'c') {
         abc = pref;
+        abcSource = 'client_sticky';
       } else {
         abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, cfg.c_percent);
+        abcSource = 'allocation';
       }
       if (seed !== 'guest') {
         await setStickyAbc(seed, abc, preferredAbc ? 'client_sticky' : 'allocation');
@@ -529,14 +605,17 @@ function createPricingAb(deps) {
       skus = [cloneSku(SKU_CONTROL_199_PERM)];
       variant = 'control';
       abc = 'a';
+      abcSource = abcSource || 'fallback_a';
     }
     return {
       enabled: abc !== 'c',
       variant: variant,
       abc_variant: abc,
+      abc_source: abcSource,
       skus: skus,
       pricing_ab_enabled: true,
-      forced_by_channel: !!forcedAbc
+      forced_by_channel: !!forcedAbc && abcSource === 'agent_channel',
+      force_client_abc: abcSource === 'admin_force' || (!!forcedAbc && abcSource === 'agent_channel')
     };
   }
 
@@ -583,7 +662,9 @@ function createPricingAb(deps) {
     abcToOfferVariant: abcToOfferVariant,
     offerVariantToAbc: offerVariantToAbc,
     getStickyAbc: getStickyAbc,
+    getStickyAssignment: getStickyAssignment,
     setStickyAbc: setStickyAbc,
+    assignAbcForAdmin: assignAbcForAdmin,
     publicAbcConfig: publicAbcConfig
   };
 }

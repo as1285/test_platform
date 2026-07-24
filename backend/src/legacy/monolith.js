@@ -5421,8 +5421,10 @@ async function handleAlipayConfig(req, res) {
           amount: envProduct.amount,
           pricing_variant: 'c',
           abc_variant: 'c',
+          abc_source: offer.abc_source || '',
           pricing_ab_enabled: !!offer.pricing_ab_enabled,
           forced_by_channel: !!offer.forced_by_channel,
+          force_client_abc: !!offer.force_client_abc,
           skus: []
         }
       });
@@ -5436,8 +5438,10 @@ async function handleAlipayConfig(req, res) {
           amount: envProduct.amount,
           pricing_variant: offer.variant || 'control',
           abc_variant: offer.abc_variant || 'a',
+          abc_source: offer.abc_source || '',
           pricing_ab_enabled: !!offer.pricing_ab_enabled,
           forced_by_channel: !!offer.forced_by_channel,
+          force_client_abc: !!offer.force_client_abc,
           skus: []
         }
       });
@@ -5463,8 +5467,10 @@ async function handleAlipayConfig(req, res) {
         amount: primary ? primary.amount : envProduct.amount,
         pricing_variant: offer.variant,
         abc_variant: offer.abc_variant || (offer.variant === 'treatment' ? 'b' : 'a'),
+        abc_source: offer.abc_source || '',
         pricing_ab_enabled: !!offer.pricing_ab_enabled,
         forced_by_channel: !!offer.forced_by_channel,
+        force_client_abc: !!offer.force_client_abc,
         skus: skus
       }
     });
@@ -17367,6 +17373,51 @@ async function handleAdminUserActivate(req, res) {
   }
 }
 
+/** 管理端：指定账号支付方案 A/B/C（即刻生效，覆盖原 sticky / 代理渠道） */
+async function handleAdminUserPricingAbc(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var abc = body.abc != null ? String(body.abc).trim().toLowerCase() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
+    return res.status(400).json({ code: 400, msg: '方案须为 A / B / C' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    try {
+      const [urows] = await conn.execute('SELECT id FROM users WHERE username = ? LIMIT 1', [target]);
+      if (!urows.length) {
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+    } finally {
+      conn.release();
+    }
+    var row = await getPricingAb().assignAbcForAdmin(target, abc);
+    return res.json({
+      code: 200,
+      msg: '已将「' + target + '」分配为方案 ' + String(abc).toUpperCase() + '（即刻生效）',
+      data: {
+        username: target,
+        abc: row && row.variant ? row.variant : abc,
+        source: row && row.source ? row.source : 'admin_force',
+        assigned_at: row && row.assigned_at ? row.assigned_at : null
+      }
+    });
+  } catch (e) {
+    var code = e && e.statusCode ? e.statusCode : 500;
+    return res.status(code).json({ code: code, msg: (e && e.message) || '分配失败' });
+  }
+}
+
 /** 管理员重置密码 */
 async function handleAdminUserPassword(req, res) {
   var body = req.body || {};
@@ -22307,6 +22358,7 @@ function getHandlers() {
     handleAdminActivationBatchChannels,
     handleAdminCodes,
     handleAdminUserActivate,
+    handleAdminUserPricingAbc,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,
