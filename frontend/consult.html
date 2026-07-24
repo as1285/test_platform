@@ -413,6 +413,8 @@
         #panel-records .record-card .list-item-actions { margin-top: 8px; }
         #panel-records .record-card .btn-sm { padding: 5px 10px; font-size: 12px; }
         #panel-records #recordListMount .empty { padding: 28px 16px; font-size: 13px; color: var(--color-text-muted); }
+        #panel-records .record-list-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
+        #panel-records .record-list-toolbar .btn { flex: 0 0 auto; font-size: 12px; padding: 6px 10px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
 
         /* ===== 任职受雇 / 消息管理面板 ===== */
         #panel-employers .card, #panel-messages .card {
@@ -486,36 +488,38 @@
         #employerFormCard, #messageFormCard { scroll-margin-top: 56px; }
 
         /* ===== 批量添加工具栏 ===== */
-        #panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }
-        #panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }
-        #panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; }
+        #panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 10px; }
+        #panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        #panel-records .batch-tax-toolbar .btn { flex: 0 0 auto; font-size: 12px; padding: 7px 12px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
         #panel-records .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
-        #panel-records .batch-tax-actions { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
-        #panel-records .batch-tax-actions .btn-primary { box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
-        #panel-records .batch-bonus-only-btn { background: transparent; border: none; color: var(--color-text-secondary); font-size: 13px; font-weight: 500; padding: 8px; order: 2; }
+        #panel-records .batch-tax-toolbar .btn-default:active { background: var(--color-border-light); }
+        #panel-records .batch-tax-actions { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
+        #panel-records .batch-tax-actions .btn-primary { box-shadow: 0 4px 12px rgba(59,130,246,0.2); }
+        #panel-records .batch-bonus-only-btn { background: transparent; border: none; color: var(--color-text-muted); font-size: 13px; font-weight: 500; padding: 6px; order: 2; text-align: center; }
         #panel-records .batch-tax-actions #batch_submit_employments_btn, #panel-records .batch-tax-actions #batch_update_employments_btn { order: 1; }
         #panel-records .batch-bonus-only-btn:active { color: var(--color-primary); }
-        #panel-records .batch-add-emp-btn { margin: 0 0 12px; background: transparent; border: 1.5px dashed var(--color-border); color: var(--color-primary); font-weight: 500; border-radius: 10px; padding: 10px; }
-        #panel-records .batch-add-emp-btn:active { background: var(--color-surface-alt); }
+        #panel-records .batch-add-emp-btn { margin: 0 0 12px; background: var(--color-primary-bg); border: 1.5px dashed var(--color-primary-border); color: var(--color-primary); font-weight: 600; border-radius: var(--radius-md); padding: 12px; font-size: 14px; }
+        #panel-records .batch-add-emp-btn:active { background: var(--color-border-light); }
         #panel-records .batch-edit-banner { font-size: 12px; line-height: 1.5; color: #b45309; background: var(--color-warning-bg); border: 1px solid #fed7aa; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
-        #batchTaxCard.is-edit-mode { border: 1px solid var(--color-primary-border); box-shadow: 0 0 0 1px rgba(59,130,246,0.12); }
+        #batchTaxCard.is-edit-mode { border: 1px solid var(--color-primary-border); box-shadow: 0 0 0 1px rgba(59,130,246,0.1); }
 
         /* 工作经历行 */
-        #panel-records .batch-emp-row { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
-        #panel-records .batch-emp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
-        #panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
-        #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
-        #panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
-        #panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta { margin-bottom: 6px; }
+        #panel-records .batch-emp-row { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-sm); overflow: hidden; }
+        #panel-records .batch-emp-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--color-surface-alt); border-bottom: 1px solid var(--color-border-light); }
+        #panel-records .batch-emp-title { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); letter-spacing: 0.02em; }
+        #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 10px !important; font-size: 12px !important; font-weight: 500; box-shadow: none !important; border-radius: 999px !important; }
+        #panel-records .batch-emp-remove-btn:active { opacity: 0.7; background: var(--color-danger-bg) !important; }
+        #panel-records .batch-emp-body { padding: 12px 14px; }
+        #panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta { margin-bottom: 4px; }
         #panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle {
-            display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
-            font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
+            display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 6px; padding: 8px 12px;
+            font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: var(--radius-sm);
             cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
         }
-        #panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active { opacity: 0.92; }
+        #panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active { background: var(--color-border-light); }
         #panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
         #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon { transform: rotate(180deg); }
-        #panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body { display: none; }
+        #panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body { display: none; padding: 0 0 4px; }
         #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body { display: block; }
 
         /* 年月输入 */
@@ -531,10 +535,26 @@
             #panel-records .form-group select { padding: 10px 32px 10px 12px; -webkit-appearance: menulist; appearance: menulist; }
         }
 
-        #panel-records .batch-emp-month-salary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
-        #panel-records .batch-emp-month-salary-badge { font-size: 12px; color: var(--color-primary); }
-        #panel-records .batch-deduct-calc { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); }
+        #panel-records .batch-emp-month-salary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--color-border-light); }
+        #panel-records .batch-emp-month-salary-badge { font-size: 12px; color: var(--color-primary); font-weight: 500; }
+        #panel-records .batch-deduct-calc { margin-bottom: 6px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--color-primary-bg); border: 1px solid var(--color-primary-border); }
         #panel-records .batch-deduct-calc-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+        #panel-records .batch-emp-bonus-block { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--color-border-light); }
+
+        /* 单条添加分组 */
+        #singleTaxRecordCard .form-section { margin-bottom: 4px; }
+        #singleTaxRecordCard .form-section-toggle {
+            display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 0;
+            font-size: 13px; font-weight: 600; color: var(--color-text-secondary); background: transparent;
+            border: none; border-bottom: 1px solid var(--color-border-light); cursor: pointer;
+            font-family: inherit; -webkit-tap-highlight-color: transparent;
+        }
+        #singleTaxRecordCard .form-section-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+        #singleTaxRecordCard .form-section.is-open .form-section-toggle-icon { transform: rotate(180deg); }
+        #singleTaxRecordCard .form-section-body { display: none; padding: 8px 0 4px; }
+        #singleTaxRecordCard .form-section.is-open .form-section-body { display: block; }
+        #singleTaxRecordCard .form-section.is-always .form-section-body { display: block; }
+        #singleTaxRecordCard .form-section.is-always .form-section-toggle { display: none; }
 
         /* ===== 个税计算表 / 公式 ===== */
         #taxFormulaCard { padding: 0; overflow: hidden; }
@@ -977,137 +997,136 @@
                             <span class="batch-emp-title">工作经历</span>
                             <button type="button" class="btn btn-sm batch-emp-remove-btn">删除</button>
                         </div>
+                        <div class="batch-emp-body">
                             <div class="form-group">
                                 <label>扣缴义务人（公司全称）</label>
                                 <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="公司全称（可点选历史）">
                             </div>
-                        <div class="batch-emp-optional-meta">
-                            <button type="button" class="batch-emp-optional-toggle" aria-expanded="false">
-                                <span>选填信息（税号 / 税务机关）</span>
-                                <span class="batch-emp-optional-toggle-icon" aria-hidden="true">▼</span>
-                            </button>
-                            <div class="batch-emp-optional-body">
+                            <div class="batch-emp-optional-meta">
+                                <button type="button" class="batch-emp-optional-toggle" aria-expanded="false">
+                                    <span>选填信息（税号 / 税务机关）</span>
+                                    <span class="batch-emp-optional-toggle-icon" aria-hidden="true">▼</span>
+                                </button>
+                                <div class="batch-emp-optional-body">
+                                    <div class="form-group">
+                                        <label>扣缴义务人纳税人识别号（选填）</label>
+                                        <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>主管税务机关（选填）</label>
+                                        <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>扣缴义务人纳税人识别号（选填）</label>
-                                    <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
+                                    <label>起始年月</label>
+                                    <div class="batch-ym-inline">
+                                        <input type="text" class="batch-emp-sy batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                        <input type="text" class="batch-emp-sm batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="起始月">
+                                    </div>
                                 </div>
                                 <div class="form-group">
-                                    <label>主管税务机关（选填）</label>
-                                    <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
+                                    <label>结束年月</label>
+                                    <div class="batch-ym-inline batch-emp-end-inputs">
+                                        <input type="text" class="batch-emp-ey batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                        <input type="text" class="batch-emp-em batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="结束月">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>起始年月</label>
-                                <div class="batch-ym-inline">
-                                    <input type="text" class="batch-emp-sy batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
-                                    <input type="text" class="batch-emp-sm batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="起始月">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>月薪下限（元）</label>
+                                    <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="如 15000">
+                                </div>
+                                <div class="form-group">
+                                    <label>月薪上限（可选）</label>
+                                    <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空则每月固定">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>结束年月</label>
-                                <div class="batch-ym-inline batch-emp-end-inputs">
-                                    <input type="text" class="batch-emp-ey batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
-                                    <input type="text" class="batch-emp-em batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="结束月">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>月薪下限（元）</label>
-                                <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="如 15000">
-                            </div>
-                            <div class="form-group">
-                                <label>月薪上限（可选）</label>
-                                <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空则每月固定">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="batch-salary-mode-title" style="margin-bottom:8px;">本段社保与专项附加（月，元）</label>
                             <div class="batch-emp-deduct-meta">
                                 <button type="button" class="batch-emp-deduct-toggle" aria-expanded="false">
-                                    <span>社保/公积金基数与比例</span>
+                                    <span>社保、公积金与专项附加</span>
                                     <span class="batch-emp-deduct-toggle-icon" aria-hidden="true">▼</span>
                                 </button>
                                 <div class="batch-emp-deduct-body">
-                            <div class="batch-deduct-calc">
-                                <p class="batch-deduct-calc-hint">填写缴费基数与个人扣缴比例（%）后，自动填入下方三险一金金额；公积金基数留空时与社保基数相同。常见默认：养老 8%、医疗 2%、失业 0.5%、公积金 12%。</p>
+                                    <div class="batch-deduct-calc">
+                                        <p class="batch-deduct-calc-hint">填写缴费基数与比例后自动计算金额；公积金基数留空时与社保基数相同。常见默认：养老 8%、医疗 2%、失业 0.5%、公积金 12%。</p>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>社保缴费基数（元）</label>
+                                                <input type="number" class="batch-emp-ss-base" step="0.01" min="0" placeholder="留空表示不填">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>公积金缴费基数（元）</label>
+                                                <input type="number" class="batch-emp-fund-base" step="0.01" min="0" placeholder="留空同社保基数">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>养老比例（%）</label>
+                                                <input type="number" class="batch-emp-pension-ratio" step="0.01" min="0" max="100" value="8">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>医疗比例（%）</label>
+                                                <input type="number" class="batch-emp-medical-ratio" step="0.01" min="0" max="100" value="2">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>失业比例（%）</label>
+                                                <input type="number" class="batch-emp-unemployment-ratio" step="0.01" min="0" max="100" value="0.5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>公积金比例（%）</label>
+                                                <input type="number" class="batch-emp-fund-ratio" step="0.01" min="0" max="100" value="12">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>基本养老保险</label>
+                                            <input type="number" class="batch-emp-pension" step="0.01" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>基本医疗保险</label>
+                                            <input type="number" class="batch-emp-medical" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>失业保险</label>
+                                            <input type="number" class="batch-emp-unemployment" step="0.01" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>住房公积金（月，元）</label>
+                                            <input type="number" class="batch-emp-fund" step="0.01" min="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>专项附加扣除（租房、子女教育、父母赡养等）</label>
+                                        <input type="number" class="batch-emp-special" step="0.01" min="0" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group batch-emp-month-salary-row">
+                                <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
+                                <span class="batch-emp-month-salary-badge" hidden></span>
+                            </div>
+                            <div class="batch-emp-bonus-block">
+                                <div class="form-group">
+                                    <label>年终奖（元，可选；单独计税并生成独立记录）</label>
+                                    <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                                </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>社保缴费基数（元）</label>
-                                        <input type="number" class="batch-emp-ss-base" step="0.01" min="0" placeholder="留空表示不填">
+                                        <label>年终奖归属年度</label>
+                                        <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
                                     </div>
                                     <div class="form-group">
-                                        <label>公积金缴费基数（元）</label>
-                                        <input type="number" class="batch-emp-fund-base" step="0.01" min="0" placeholder="留空同社保基数">
+                                        <label>归属月份（1–12 月）</label>
+                                        <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
                                     </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>养老比例（%）</label>
-                                        <input type="number" class="batch-emp-pension-ratio" step="0.01" min="0" max="100" value="8">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>医疗比例（%）</label>
-                                        <input type="number" class="batch-emp-medical-ratio" step="0.01" min="0" max="100" value="2">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>失业比例（%）</label>
-                                        <input type="number" class="batch-emp-unemployment-ratio" step="0.01" min="0" max="100" value="0.5">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>公积金比例（%）</label>
-                                        <input type="number" class="batch-emp-fund-ratio" step="0.01" min="0" max="100" value="12">
-                                    </div>
-                                </div>
-                            </div>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>基本养老保险</label>
-                                    <input type="number" class="batch-emp-pension" step="0.01" min="0" value="0">
-                                </div>
-                                <div class="form-group">
-                                    <label>基本医疗保险</label>
-                                    <input type="number" class="batch-emp-medical" step="0.01" min="0" value="0">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>失业保险</label>
-                                    <input type="number" class="batch-emp-unemployment" step="0.01" min="0" value="0">
-                                </div>
-                                <div class="form-group">
-                                    <label>住房公积金（月，元）</label>
-                                    <input type="number" class="batch-emp-fund" step="0.01" min="0" value="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>专项附加扣除（租房、子女教育、父母赡养等，参照你官方 APP 填）</label>
-                                <input type="number" class="batch-emp-special" step="0.01" min="0" value="0">
-                            </div>
-                        </div>
-                        <div class="form-group batch-emp-month-salary-row">
-                            <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
-                            <span class="batch-emp-month-salary-badge" hidden></span>
-                        </div>
-                        <div class="batch-emp-bonus-block" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;">
-                            <div class="form-group">
-                                <label>年终奖（元，可选；单独计税并生成独立记录）</label>
-                                <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>年终奖归属年度</label>
-                                    <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
-                                </div>
-                                <div class="form-group">
-                                    <label>归属月份（1–12 月）</label>
-                                    <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
                                 </div>
                             </div>
                         </div>
@@ -1126,133 +1145,144 @@
                 <form id="recordForm" onsubmit="onSubmitRecord(event)">
                     <input type="hidden" name="editing_id" id="editing_id" value="">
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>年份</label>
-                            <input type="text" name="year" id="f_year" class="batch-ym-field" value="2026" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" required>
+                    <div class="form-section is-always">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>年份</label>
+                                <input type="text" name="year" id="f_year" class="batch-ym-field" value="2026" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" required>
+                            </div>
+                            <div class="form-group">
+                                <label>月份</label>
+                                <input type="text" name="month" id="f_month" class="batch-ym-field" value="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" required>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>月份</label>
-                            <input type="text" name="month" id="f_month" class="batch-ym-field" value="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="f_income_type">所得项目</label>
-                            <select name="income_type" id="f_income_type" required>
-                                <option value="工资薪金" selected>工资薪金</option>
-                                <option value="劳务报酬">劳务报酬</option>
-                                <option value="稿酬">稿酬</option>
-                                <option value="特许权使用费">特许权使用费</option>
-                                <option value="经营所得">经营所得</option>
-                                <option value="利息、股息、红利">利息、股息、红利</option>
-                                <option value="财产租赁">财产租赁</option>
-                                <option value="财产转让">财产转让</option>
-                                <option value="偶然所得">偶然所得</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="f_income_subtype">所得子项目</label>
-                            <input type="text" name="income_subtype" id="f_income_subtype" value="正常工资薪金">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>扣缴义务人名称</label>
-                        <input type="text" name="company_name" id="f_company_name" value="">
-                        <p id="f_tax_company_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号此项固定，不可修改。</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>扣缴义务人纳税人识别号</label>
-                        <input type="text" name="company_tax_id" id="f_company_tax_id" value="">
-                    </div>
-
-                    <div class="form-group">
-                        <label>主管税务机关</label>
-                        <input type="text" name="tax_authority" id="f_tax_authority" value="">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>申报渠道</label>
-                            <input type="text" name="report_channel" id="f_report_channel" value="其他">
-                        </div>
-                        <div class="form-group">
-                            <label>申报日期</label>
-                            <input type="date" name="report_date" id="f_report_date" value="">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="f_income_type">所得项目</label>
+                                <select name="income_type" id="f_income_type" required>
+                                    <option value="工资薪金" selected>工资薪金</option>
+                                    <option value="劳务报酬">劳务报酬</option>
+                                    <option value="稿酬">稿酬</option>
+                                    <option value="特许权使用费">特许权使用费</option>
+                                    <option value="经营所得">经营所得</option>
+                                    <option value="利息、股息、红利">利息、股息、红利</option>
+                                    <option value="财产租赁">财产租赁</option>
+                                    <option value="财产转让">财产转让</option>
+                                    <option value="偶然所得">偶然所得</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="f_income_subtype">所得子项目</label>
+                                <input type="text" name="income_subtype" id="f_income_subtype" value="正常工资薪金">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>税款所属期</label>
-                        <input type="text" name="tax_period" id="f_tax_period" value="2026-04">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>收入</label>
-                            <input type="number" step="0.01" name="income" id="f_income" value="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>已申报税额</label>
-                            <input type="number" step="0.01" name="tax_reported" id="f_tax_reported" value="0.00">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>本期收入</label>
-                            <input type="number" step="0.01" name="income_this_period" id="f_income_this_period" value="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>本期免税收入</label>
-                            <input type="number" step="0.01" name="tax_free_income" id="f_tax_free_income" value="0.00">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>本期减除费用</label>
-                            <input type="number" step="0.01" name="deduction_fee" id="f_deduction_fee" value="5000.00">
-                        </div>
-                        <div class="form-group">
-                            <label>本期专项扣除</label>
-                            <input type="number" step="0.01" name="special_deduction" id="f_special_deduction" value="0.00">
+                    <div class="form-section">
+                        <button type="button" class="form-section-toggle">
+                            <span>扣缴义务人信息</span>
+                            <span class="form-section-toggle-icon" aria-hidden="true">▼</span>
+                        </button>
+                        <div class="form-section-body">
+                            <div class="form-group">
+                                <label>扣缴义务人名称</label>
+                                <input type="text" name="company_name" id="f_company_name" value="">
+                                <p id="f_tax_company_hint" class="hint" style="display:none;color:#e65100;margin-top:6px;">测试账号此项固定，不可修改。</p>
+                            </div>
+                            <div class="form-group">
+                                <label>扣缴义务人纳税人识别号</label>
+                                <input type="text" name="company_tax_id" id="f_company_tax_id" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>主管税务机关</label>
+                                <input type="text" name="tax_authority" id="f_tax_authority" value="">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>申报渠道</label>
+                                    <input type="text" name="report_channel" id="f_report_channel" value="其他">
+                                </div>
+                                <div class="form-group">
+                                    <label>申报日期</label>
+                                    <input type="date" name="report_date" id="f_report_date" value="">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>税款所属期</label>
+                                <input type="text" name="tax_period" id="f_tax_period" value="2026-04">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>基本养老保险</label>
-                            <input type="number" step="0.01" name="pension_insurance" id="f_pension_insurance" value="0.00">
+                    <div class="form-section is-always">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>收入</label>
+                                <input type="number" step="0.01" name="income" id="f_income" value="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>已申报税额</label>
+                                <input type="number" step="0.01" name="tax_reported" id="f_tax_reported" value="0.00">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>基本医疗保险</label>
-                            <input type="number" step="0.01" name="medical_insurance" id="f_medical_insurance" value="0.00">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>本期收入</label>
+                                <input type="number" step="0.01" name="income_this_period" id="f_income_this_period" value="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>本期免税收入</label>
+                                <input type="number" step="0.01" name="tax_free_income" id="f_tax_free_income" value="0.00">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>失业保险</label>
-                            <input type="number" step="0.01" name="unemployment_insurance" id="f_unemployment_insurance" value="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>住房公积金</label>
-                            <input type="number" step="0.01" name="housing_fund" id="f_housing_fund" value="0.00">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>本期其他扣除</label>
-                            <input type="number" step="0.01" name="other_deduction" id="f_other_deduction" value="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>捐赠扣除</label>
-                            <input type="number" step="0.01" name="donation_deduction" id="f_donation_deduction" value="0.00">
+                    <div class="form-section">
+                        <button type="button" class="form-section-toggle">
+                            <span>扣除项（减除费用 / 专项扣除 / 其他）</span>
+                            <span class="form-section-toggle-icon" aria-hidden="true">▼</span>
+                        </button>
+                        <div class="form-section-body">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>本期减除费用</label>
+                                    <input type="number" step="0.01" name="deduction_fee" id="f_deduction_fee" value="5000.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>本期专项扣除</label>
+                                    <input type="number" step="0.01" name="special_deduction" id="f_special_deduction" value="0.00">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>基本养老保险</label>
+                                    <input type="number" step="0.01" name="pension_insurance" id="f_pension_insurance" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>基本医疗保险</label>
+                                    <input type="number" step="0.01" name="medical_insurance" id="f_medical_insurance" value="0.00">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>失业保险</label>
+                                    <input type="number" step="0.01" name="unemployment_insurance" id="f_unemployment_insurance" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>住房公积金</label>
+                                    <input type="number" step="0.01" name="housing_fund" id="f_housing_fund" value="0.00">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>本期其他扣除</label>
+                                    <input type="number" step="0.01" name="other_deduction" id="f_other_deduction" value="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>捐赠扣除</label>
+                                    <input type="number" step="0.01" name="donation_deduction" id="f_donation_deduction" value="0.00">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1261,16 +1291,14 @@
             </div>
 
             <div class="card">
-                <div class="card-title card-title-row">
-                    <span>税务记录列表</span>
-                    <div class="card-title-actions">
-                        <button type="button" class="btn btn-default btn-sm" onclick="openTaxRecycleBin()">回收站</button>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
-                        <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
-                        <button type="button" class="btn btn-default btn-sm" onclick="dedupeTaxRecords()">一键去重</button>
-                        <button type="button" class="btn btn-default btn-sm" onclick="openDeleteTaxRecordsByCompanyModal()">一键删除公司数据</button>
-                    </div>
+                <div class="card-title">税务记录列表</div>
+                <div class="record-list-toolbar">
+                    <button type="button" class="btn btn-default btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="openTaxRecycleBin()">回收站</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="dedupeTaxRecords()">去重</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="deleteTaxRecordsByYear()">按年删除</button>
+                    <button type="button" class="btn btn-default btn-sm" onclick="openDeleteTaxRecordsByCompanyModal()">删公司数据</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteAllTaxRecords()">一键删除</button>
                 </div>
                 <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
             </div>
@@ -3556,6 +3584,7 @@
 
         function syncBatchEmpDeductMetaExpanded(row) {
             if (!row) return;
+            /* 仅当用户填了缴费基数时自动展开；默认估算金额不强制展开 */
             var ssEl = row.querySelector('.batch-emp-ss-base');
             var fundBaseEl = row.querySelector('.batch-emp-fund-base');
             var hasBase =
@@ -3572,6 +3601,10 @@
             var wrap = row.querySelector('.batch-emp-deduct-meta');
             if (!btn || !wrap || btn.getAttribute('data-batch-deduct-bound') === '1') return;
             btn.setAttribute('data-batch-deduct-bound', '1');
+            /* 新建行默认折叠（draft 恢复会单独设 deductOpen） */
+            if (!wrap.classList.contains('is-open')) {
+                setBatchEmpDeductMetaExpanded(row, false);
+            }
             btn.addEventListener('click', function () {
                 var open = !wrap.classList.contains('is-open');
                 setBatchEmpDeductMetaExpanded(row, open);
@@ -3869,6 +3902,18 @@
             addBatchEmpRow();
         }
 
+        function initSingleTaxRecordSections() {
+            var card = document.getElementById('singleTaxRecordCard');
+            if (!card) return;
+            card.querySelectorAll('.form-section:not(.is-always)').forEach(function (sec) {
+                var btn = sec.querySelector('.form-section-toggle');
+                if (!btn) return;
+                btn.addEventListener('click', function () {
+                    sec.classList.toggle('is-open');
+                });
+            });
+        }
+
         /** 将示例或预设数据写入单段工作经历行（仅更新 data 中显式提供的字段） */
         function setBatchEmpRowValues(row, data) {
             if (!row || !data) return;
@@ -3941,14 +3986,17 @@
             }
             if (typeof data.deductOpen === 'boolean') {
                 setBatchEmpDeductMetaExpanded(row, data.deductOpen);
+            } else if (has('ss_base') || has('fund_base')) {
+                syncBatchEmpDeductMetaExpanded(row);
             } else if (
-                has('ss_base') ||
                 has('pension') ||
                 has('medical') ||
                 has('unemployment') ||
-                has('fund')
+                has('fund') ||
+                has('special')
             ) {
-                syncBatchEmpDeductMetaExpanded(row);
+                /* 回填/导入带专项金额时展开，便于核对；新建默认仍折叠 */
+                setBatchEmpDeductMetaExpanded(row, true);
             }
             updateBatchEmpMonthSalaryBadge(row);
         }
@@ -7889,6 +7937,7 @@
             initHeader();
             initIncomeTypeSelect();
             initBatchEmploymentRows();
+            initSingleTaxRecordSections();
             initBatchTaxDraftAutosave();
             restoreSingleTaxDraftIfAny();
             initSingleTaxDraftAutosave();
