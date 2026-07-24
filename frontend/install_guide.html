@@ -1168,14 +1168,6 @@
                         </div>
                     </div>
                 </details>
-
-                <details id="usageVideoBlock" class="lp-collapse" hidden>
-                    <summary>安装后如何使用（操作演示，可选）</summary>
-                    <div class="lp-collapse-body">
-                        <p class="video-label" style="margin-bottom:10px;">演示注册、填写个税与查看明细，约 1–2 分钟即可上手</p>
-                        <div id="usageVideoContainer"></div>
-                    </div>
-                </details>
             </div>
 
             <div class="step-block" id="stepRegisterBlock">
@@ -1664,7 +1656,6 @@
             var androidDetails = document.getElementById('androidInstallDetails');
             var iosSection = document.getElementById('iosInstallSection');
             var iosDetails = document.getElementById('iosInstallDetails');
-            var usageBlock = document.getElementById('usageVideoBlock');
             var pill1 = document.getElementById('stepPill1');
             var pill2 = document.getElementById('stepPill2');
             var pill3 = document.getElementById('stepPill3');
@@ -1731,9 +1722,6 @@
                         iosSection.hidden = false;
                     }
                 }
-                if (usageBlock) {
-                    usageBlock.hidden = false;
-                }
                 return {
                     platform: 'in_app',
                     inApp: true,
@@ -1756,9 +1744,6 @@
                 if (iosSection) {
                     iosSection.hidden = false;
                 }
-                if (usageBlock) {
-                    usageBlock.hidden = false;
-                }
             } else if (android) {
                 if (androidTips) {
                     androidTips.classList.remove('is-hidden');
@@ -1772,9 +1757,6 @@
                 if (iosSection) {
                     iosSection.hidden = true;
                 }
-                if (usageBlock) {
-                    usageBlock.hidden = false;
-                }
             } else if (desktop) {
                 if (androidTips) {
                     androidTips.classList.add('is-hidden');
@@ -1787,9 +1769,6 @@
                 }
                 if (iosSection) {
                     iosSection.hidden = false;
-                }
-                if (usageBlock) {
-                    usageBlock.hidden = false;
                 }
                 if (desktopQr) {
                     desktopQr.hidden = false;
@@ -2325,7 +2304,6 @@
         var mineUiCache = null;
         var mineUiInflight = null;
         var iosVideoLoaded = false;
-        var usageVideoLoaded = false;
 
         function ensureMineUiData(cb) {
             if (mineUiCache) {
@@ -2372,12 +2350,8 @@
                 s.type = 'video/mp4';
                 v.appendChild(s);
                 v.addEventListener('play', function () {
-                    var trackKey =
-                        containerId === 'iosInstallVideoContainer'
-                            ? 'track_install_ios_video_play'
-                            : 'track_install_usage_video_play';
                     if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction(trackKey, { page: 'install_guide' });
+                        window.trackPublicAction('track_install_ios_video_play', { page: 'install_guide' });
                     }
                 }, { once: true });
                 var wrap = document.createElement('div');
@@ -2399,34 +2373,12 @@
             });
         }
 
-        function loadUsageVideoIfNeeded() {
-            if (usageVideoLoaded) {
-                return;
-            }
-            usageVideoLoaded = true;
-            ensureMineUiData(function (data) {
-                renderVideo('usageVideoContainer', data ? data.install_usage_video || '' : '', '暂未配置操作视频');
-                var usageBlock = document.getElementById('usageVideoBlock');
-                if (usageBlock && data && data.install_usage_video) {
-                    usageBlock.hidden = false;
-                }
-            });
-        }
-
         function bindLazyVideoDetails() {
             var iosDetails = document.getElementById('iosInstallDetails');
-            var usageBlock = document.getElementById('usageVideoBlock');
             if (iosDetails) {
                 iosDetails.addEventListener('toggle', function () {
                     if (iosDetails.open) {
                         loadIosVideoIfNeeded();
-                    }
-                });
-            }
-            if (usageBlock) {
-                usageBlock.addEventListener('toggle', function () {
-                    if (usageBlock.open) {
-                        loadUsageVideoIfNeeded();
                     }
                 });
             }
@@ -2444,10 +2396,6 @@
                         return;
                     }
                     renderInstallShowcase(data);
-                    var usageBlock = document.getElementById('usageVideoBlock');
-                    if (usageBlock && data.install_usage_video) {
-                        usageBlock.hidden = false;
-                    }
                 });
             }
             bindLazyVideoDetails();
