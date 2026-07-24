@@ -3843,6 +3843,20 @@
             var bm = node.querySelector('.batch-emp-bonus-month');
             if (by && !by.value) by.value = String(cy);
             if (bm && !bm.value) bm.value = '12';
+            /* 默认社保/公积金：基数 5000 × 比例 */
+            var defBase = 5000;
+            var pRatio = parseFloat(node.querySelector('.batch-emp-pension-ratio').value) || 8;
+            var mRatio = parseFloat(node.querySelector('.batch-emp-medical-ratio').value) || 2;
+            var uRatio = parseFloat(node.querySelector('.batch-emp-unemployment-ratio').value) || 0.5;
+            var fRatio = parseFloat(node.querySelector('.batch-emp-fund-ratio').value) || 12;
+            var pEl = node.querySelector('.batch-emp-pension');
+            var mEl = node.querySelector('.batch-emp-medical');
+            var uEl = node.querySelector('.batch-emp-unemployment');
+            var fEl = node.querySelector('.batch-emp-fund');
+            if (pEl) pEl.value = (defBase * pRatio / 100).toFixed(2);
+            if (mEl) mEl.value = (defBase * mRatio / 100).toFixed(2);
+            if (uEl) uEl.value = (defBase * uRatio / 100).toFixed(2);
+            if (fEl) fEl.value = (defBase * fRatio / 100).toFixed(2);
             bindBatchEmpRow(node);
             list.appendChild(node);
             scheduleBatchTaxDraftSave();
