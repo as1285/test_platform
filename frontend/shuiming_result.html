@@ -171,6 +171,62 @@
             border-bottom: none;
         }
 
+        .sm-activate-card {
+            margin: 4px 0 10px;
+            padding: 14px 14px 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0b3d7a 0%, #1e6fff 55%, #3d8bff 100%);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(30, 111, 255, 0.22);
+            position: relative;
+            overflow: hidden;
+        }
+        .sm-activate-card[hidden] { display: none !important; }
+        .sm-activate-card::before {
+            content: "";
+            position: absolute;
+            width: 96px;
+            height: 96px;
+            right: -24px;
+            top: -30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+        }
+        .sm-activate-title {
+            position: relative;
+            z-index: 1;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: 0.02em;
+        }
+        .sm-activate-desc {
+            position: relative;
+            z-index: 1;
+            font-size: 12px;
+            line-height: 1.5;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+        .sm-activate-btn {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border-radius: 10px;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .sm-activate-btn:active { opacity: 0.92; transform: scale(0.98); }
+
         .summary-label {
             font-size: 14px;
             color: #000;
@@ -924,6 +980,11 @@
                 <span class="summary-label">已申报税额合计：</span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
+            <div class="sm-activate-card" id="smActivateCard" hidden>
+                <p class="sm-activate-title">开通完整功能</p>
+                <p class="sm-activate-desc">激活后可完整查看明细并体验完税证明等能力</p>
+                <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">立即激活</a>
+            </div>
         </div>
     </div>
 
@@ -1352,6 +1413,43 @@
                 });
         }
 
+        function syncSmActivateCard() {
+            var card = document.getElementById('smActivateCard');
+            var btn = document.getElementById('smActivateBtn');
+            if (!card) return;
+            var active = false;
+            var guest = false;
+            try {
+                active = localStorage.getItem('account_active') === '1';
+                guest =
+                    localStorage.getItem('landing_guest_v1') === '1' ||
+                    String(localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
+            } catch (e0) {}
+            card.hidden = !!(active || guest);
+            if (btn && !btn.dataset.bound) {
+                btn.dataset.bound = '1';
+                btn.addEventListener('click', function () {
+                    try {
+                        if (typeof window.trackUserAction === 'function') {
+                            window.trackUserAction('track_activate_prompt_open', {
+                                page: 'shuiming_result',
+                                source: 'summary_activate_card'
+                            });
+                        } else if (
+                            window.ConversionGuide &&
+                            typeof ConversionGuide.track === 'function'
+                        ) {
+                            ConversionGuide.track('track_activate_prompt_open', {
+                                page: 'shuiming_result',
+                                source: 'summary_activate_card'
+                            });
+                        }
+                    } catch (e1) {}
+                });
+            }
+            syncTopFixedHeight();
+        }
+
         window.addEventListener('resize', syncTopFixedHeight);
         window.addEventListener('orientationchange', syncTopFixedHeight);
         if (window.visualViewport) {
@@ -1369,6 +1467,14 @@
         stripShuimingBottomBar();
         var stripBarTimer = setInterval(stripShuimingBottomBar, 400);
         setTimeout(function () { clearInterval(stripBarTimer); }, 4000);
+        syncSmActivateCard();
+        try {
+            window.addEventListener('storage', function (ev) {
+                if (!ev || !ev.key || ev.key === 'account_active' || ev.key === 'user_id' || ev.key === 'landing_guest_v1') {
+                    syncSmActivateCard();
+                }
+            });
+        } catch (e) {}
         loadData();
     </script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
