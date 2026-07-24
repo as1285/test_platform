@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260724-agent-ch-c"></script>
+    <script src="/js/auth.js?v=20260724-login-session"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>模拟器app · 开通权益</title>
+    <title>个人所得税 · 开通权益</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
@@ -382,7 +382,7 @@
     </div>
     <div class="page">
         <div class="hero">
-            <div class="brand-line">模拟器app</div>
+            <div class="brand-line">个人所得税</div>
             <h1>开通完整功能</h1>
             <p>支付宝可扫码付款后自动开通；也可通过酷发卡购买激活码后在本页确认。</p>
         </div>
@@ -862,13 +862,49 @@
         return ok;
     }
 
+    /** 开通/支付接口必须带 Bearer；勿回退成无 Authorization 的裸 headers（会误报请先登录） */
+    function purchaseGetToken() {
+        try {
+            if (typeof window.authGetToken === 'function') {
+                return String(window.authGetToken() || '').trim();
+            }
+            return String(localStorage.getItem('token') || '').trim();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function purchaseAuthHeaders() {
+        if (typeof window.authHeaders === 'function') {
+            return window.authHeaders();
+        }
+        if (typeof authHeaders === 'function') {
+            return authHeaders();
+        }
+        var h = { 'Content-Type': 'application/json' };
+        var t = purchaseGetToken();
+        if (t) {
+            h.Authorization = 'Bearer ' + t;
+        }
+        return h;
+    }
+
+    function purchaseAuthFetch(url, opts) {
+        opts = opts || {};
+        if (typeof window.authFetch === 'function') {
+            return window.authFetch(url, opts);
+        }
+        if (typeof authFetch === 'function') {
+            return authFetch(url, opts);
+        }
+        var headers = Object.assign({}, purchaseAuthHeaders(), opts.headers || {});
+        return fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }));
+    }
+
     function paymentFetch(url, options) {
         var opts = options || {};
-        opts.headers = Object.assign(
-            { 'Content-Type': 'application/json' },
-            typeof authHeaders === 'function' ? authHeaders() : {}
-        );
-        return fetch(url, opts).then(function (r) {
+        opts.headers = Object.assign({ 'Content-Type': 'application/json' }, purchaseAuthHeaders(), opts.headers || {});
+        return purchaseAuthFetch(url, opts).then(function (r) {
             return r.json().then(function (body) {
                 return { status: r.status, body: body };
             });
@@ -1267,14 +1303,21 @@
             if (input) input.focus();
             return;
         }
+        if (!purchaseGetToken()) {
+            showToast('登录状态已失效，请重新登录后再激活');
+            setTimeout(function () {
+                window.location.href = 'index.html';
+            }, 900);
+            return;
+        }
         var btn = document.getElementById('btnPurchaseActivate');
         if (btn) btn.disabled = true;
         if (typeof window.trackUserAction === 'function') {
             trackPurchase('track_activate_prompt_confirm');
         }
-        fetch('api/auth', {
+        purchaseAuthFetch('api/auth', {
             method: 'POST',
-            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'activate', code: code })
         })
             .then(function (r) {
@@ -1307,7 +1350,14 @@
                     reason: (x.body && x.body.msg) || 'activate_failed',
                     http_status: x.status
                 });
-                showToast((x.body && x.body.msg) || '激活失败');
+                var failMsg = (x.body && x.body.msg) || '激活失败';
+                if (x.status === 401 || (x.body && x.body.code === 401)) {
+                    failMsg = '登录状态已失效，请重新登录后再激活';
+                    setTimeout(function () {
+                        window.location.href = 'index.html';
+                    }, 900);
+                }
+                showToast(failMsg);
             })
             .catch(function () {
                 trackPurchase('track_purchase_activate_fail', { reason: 'network_error' });

@@ -32,6 +32,13 @@
       if (CORDOVA_SHELL_UA_RE.test(navigator.userAgent || '')) {
         return true;
       }
+    } catch (eUa) {}
+    try {
+      if (window.cordova || window.PhoneGap) {
+        return true;
+      }
+    } catch (eCv) {}
+    try {
       return window.top !== window.self;
     } catch (e) {
       return true;
@@ -1968,11 +1975,24 @@
         }
         if (r.status === 401) {
           return r.text().then(function (text) {
-            clearSession();
+            var sentAuth = '';
+            try {
+              var hdrs = opts.headers || {};
+              if (typeof hdrs.get === 'function') {
+                sentAuth = String(hdrs.get('Authorization') || hdrs.get('authorization') || '').trim();
+              } else {
+                sentAuth = String(hdrs.Authorization || hdrs.authorization || '').trim();
+              }
+            } catch (eHdr) {}
             var j = null;
             try {
               j = JSON.parse(text);
             } catch (e) {}
+            /* 未带 Bearer 的 401 不得清会话，避免并发裸请求误杀刚登录的 token */
+            if (!sentAuth) {
+              return Promise.reject(new Error('unauthorized'));
+            }
+            clearSession();
             if (j && j.banned) {
               try {
                 alert('账号已被封禁');

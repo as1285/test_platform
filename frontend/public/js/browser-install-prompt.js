@@ -1,11 +1,12 @@
 /**
  * 浏览器打开登录页 / 我的页时，引导用户安装 APP。
- * Cordova 壳内、iOS 设备、已激活且已登录账号上不展示。
+ * 已在 APP / Cordova / Android WebView 壳内、iOS、已激活登录账号上不展示。
  */
 (function () {
   var INSTALL_PAGE = 'install_guide.html?download=1#download';
   var SESSION_DISMISS_KEY = 'browser_install_prompt_dismissed';
   var TARGET_PAGES = { 'index.html': true, 'mine.html': true };
+  var PROMPT_ROOT_CLASS = 'browser-install-prompt-root';
 
   function currentPageName() {
     var p = window.location.pathname || '';
@@ -14,15 +15,70 @@
     return name || 'index.html';
   }
 
-  function isInAppShell() {
-    if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+  /** 排除微信/QQ 等仍希望引导下载的内置浏览器 */
+  function isExcludedInAppBrowser(ua) {
+    return /MicroMessenger|QQ\//i.test(ua || '');
+  }
+
+  function isAndroidAppWebView() {
+    var ua = navigator.userAgent || '';
+    if (!/Android/i.test(ua) || isExcludedInAppBrowser(ua)) {
+      return false;
+    }
+    /* Android System WebView 常见标记；Cordova/壳打包几乎都带 */
+    if (/;\s*wv\)/i.test(ua)) {
       return true;
     }
+    if (/Version\/4\.0/i.test(ua) && /Chrome\//i.test(ua) && !/Safari\/\d+/i.test(ua.replace(/Chrome\/[\d.]+/, ''))) {
+      return true;
+    }
+    return false;
+  }
+
+  function isInAppShell() {
+    try {
+      if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+        return true;
+      }
+    } catch (e0) {}
+    try {
+      if (/TaxPlatformCordovaApp\//i.test(navigator.userAgent || '')) {
+        return true;
+      }
+    } catch (e1) {}
+    try {
+      if (window.cordova || window.PhoneGap || (window.Capacitor && window.Capacitor.isNativePlatform)) {
+        return true;
+      }
+    } catch (e2) {}
     try {
       if (window.CLIENT_APP_VERSION != null && String(window.CLIENT_APP_VERSION).trim() !== '') {
         return true;
       }
-    } catch (e) {}
+    } catch (e3) {}
+    try {
+      if (
+        document.documentElement &&
+        document.documentElement.classList &&
+        (document.documentElement.classList.contains('app-cordova-shell') ||
+          document.documentElement.classList.contains('tax-app-shell'))
+      ) {
+        /* tax-app-shell 是 H5 壳样式类，不能单凭它判定；仅配合 cordova 类 */
+        if (document.documentElement.classList.contains('app-cordova-shell')) {
+          return true;
+        }
+      }
+    } catch (e4) {}
+    try {
+      if (window.top !== window.self) {
+        return true;
+      }
+    } catch (e5) {
+      return true;
+    }
+    if (isAndroidAppWebView()) {
+      return true;
+    }
     return false;
   }
 
@@ -94,7 +150,11 @@
     var page = currentPageName();
     var meta = { page: page, surface: 'browser_install_prompt' };
     try {
-      if (typeof window.trackUserAction === 'function' && typeof window.authGetToken === 'function' && window.authGetToken()) {
+      if (
+        typeof window.trackUserAction === 'function' &&
+        typeof window.authGetToken === 'function' &&
+        window.authGetToken()
+      ) {
         window.trackUserAction(action, meta);
         return;
       }
@@ -123,10 +183,22 @@
     document.head.appendChild(style);
   }
 
+  function removePromptIfAny() {
+    var nodes = document.querySelectorAll('.' + PROMPT_ROOT_CLASS);
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].parentNode) {
+        nodes[i].parentNode.removeChild(nodes[i]);
+      }
+    }
+  }
+
   function showPrompt() {
+    if (document.querySelector('.' + PROMPT_ROOT_CLASS)) {
+      return;
+    }
     injectStyles();
     var root = document.createElement('div');
-    root.className = 'browser-install-prompt-root';
+    root.className = PROMPT_ROOT_CLASS;
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.innerHTML =
@@ -168,11 +240,29 @@
     trackPrompt('track_browser_install_prompt_show');
   }
 
-  function init() {
+  function tryShow() {
+    if (isInAppShell()) {
+      removePromptIfAny();
+      return;
+    }
     if (!shouldShowPrompt()) {
       return;
     }
     showPrompt();
+  }
+
+  function init() {
+    /* Cordova / 壳注入可能略晚于 DOMContentLoaded，延迟再判一次 */
+    tryShow();
+    setTimeout(tryShow, 400);
+    setTimeout(tryShow, 1200);
+    document.addEventListener(
+      'deviceready',
+      function () {
+        removePromptIfAny();
+      },
+      false
+    );
   }
 
   if (document.readyState === 'loading') {

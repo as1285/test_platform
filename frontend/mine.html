@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260724-rename-auth"></script>
+    <script src="/js/auth.js?v=20260724-login-session"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -1543,14 +1543,15 @@
                 unlockMineProfileEditScroll();
             }
 
-            /** 改名/资料等受保护接口：必须走 authFetch（带 Bearer），禁止回退成裸 fetch（会 401） */
+            /** 受保护接口：优先 authFetch；否则手动带 Bearer，禁止裸 fetch，且勿误弹「登录已失效」 */
             function mineAuthedFetch(url, opts) {
-                var fn =
-                    typeof window.authFetch === 'function'
-                        ? window.authFetch
-                        : typeof authFetch === 'function'
-                          ? authFetch
-                          : null;
+                opts = opts || {};
+                if (typeof window.authFetch === 'function') {
+                    return window.authFetch(url, opts);
+                }
+                if (typeof authFetch === 'function') {
+                    return authFetch(url, opts);
+                }
                 var token = '';
                 try {
                     token =
@@ -1560,14 +1561,17 @@
                 } catch (eTok) {
                     token = '';
                 }
-                if (!fn || !token) {
-                    try {
-                        alert('登录已失效，请重新登录');
-                    } catch (eAlert) {}
-                    window.location.href = 'index.html';
+                if (!token) {
                     return Promise.reject(new Error('unauthorized'));
                 }
-                return fn(url, opts || {});
+                var headers = Object.assign(
+                    { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    opts.headers || {}
+                );
+                return fetch(
+                    url,
+                    Object.assign({}, opts, { headers: headers, credentials: 'same-origin' })
+                );
             }
 
             function saveMineProfileEdit() {

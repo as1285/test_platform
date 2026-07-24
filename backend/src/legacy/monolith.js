@@ -760,7 +760,23 @@ function getUserDataAnalyticsExcludedCompanies(testCompanyName) {
     '杭州数示例信息技术有限公司',
     '成都汇示例商贸有限公司',
     '广州联示例电子有限公司',
-    '南京智示例软件有限公司'
+    '南京智示例软件有限公司',
+    '北京中关村科创信息技术有限公司',
+    '上海浦东智联网络科技有限公司',
+    '深圳市南山云创软件有限公司',
+    '杭州西湖数据服务有限公司',
+    '广州市天河汇通商贸有限公司',
+    '成都高新区瑞达实业有限公司',
+    '南京鼓楼博雅咨询有限公司',
+    '武汉东湖光谷光电技术有限公司',
+    '苏州工业园区精工电子有限公司',
+    '重庆渝北远航物流有限公司',
+    '天津滨海海河贸易有限公司',
+    '西安高新区丝路网络有限公司',
+    '长沙岳麓湘江科技有限公司',
+    '青岛市南远洋航运有限公司',
+    '郑州金水中原商贸有限公司',
+    '合肥高新区庐州信息技术有限公司'
   ];
   var tc = testCompanyName != null ? String(testCompanyName).trim() : '';
   if (tc) {
@@ -6827,44 +6843,44 @@ async function seedGuestSampleTaxRecords(conn, userId) {
   }
   var guestOrgs = [
     {
-      company: '北京华示例软件有限公司',
-      companyTaxId: '91110108MA01ABCD2X',
+      company: '北京中关村科创信息技术有限公司',
+      companyTaxId: '91110108MA01KCT8XR',
       taxAuthority: '国家税务总局北京市海淀区税务局'
     },
     {
-      company: '示例科技有限公司',
-      companyTaxId: '91110108MA01EFGH7Y',
-      taxAuthority: '国家税务总局北京市朝阳区税务局'
-    },
-    {
-      company: '上海云示例网络科技有限公司',
-      companyTaxId: '91310000MA1K2B3C4D',
+      company: '上海浦东智联网络科技有限公司',
+      companyTaxId: '91310000MA1FL2N67P',
       taxAuthority: '国家税务总局上海市浦东新区税务局'
     },
     {
-      company: '深圳创示例智能有限公司',
-      companyTaxId: '91440300MA5F6G7H8J',
+      company: '深圳市南山云创软件有限公司',
+      companyTaxId: '91440300MA5F9K2H3R',
       taxAuthority: '国家税务总局深圳市南山区税务局'
     },
     {
-      company: '杭州数示例信息技术有限公司',
-      companyTaxId: '91330108MA2B9C0D1E',
+      company: '杭州西湖数据服务有限公司',
+      companyTaxId: '91330106MA2B8C7D5E',
       taxAuthority: '国家税务总局杭州市西湖区税务局'
     },
     {
-      company: '成都汇示例商贸有限公司',
-      companyTaxId: '91510100MA6K3L4M5N',
-      taxAuthority: '国家税务总局成都市高新区税务局'
-    },
-    {
-      company: '广州联示例电子有限公司',
-      companyTaxId: '91440101MA9P2Q3R4S',
+      company: '广州市天河汇通商贸有限公司',
+      companyTaxId: '91440106MA9P4Q2R8S',
       taxAuthority: '国家税务总局广州市天河区税务局'
     },
     {
-      company: '南京智示例软件有限公司',
-      companyTaxId: '91320105MA7T8U9V0W',
+      company: '成都高新区瑞达实业有限公司',
+      companyTaxId: '91510100MA6K5L8M2N',
+      taxAuthority: '国家税务总局成都高新技术产业开发区税务局'
+    },
+    {
+      company: '南京鼓楼博雅咨询有限公司',
+      companyTaxId: '91320106MA7T3U9V1W',
       taxAuthority: '国家税务总局南京市鼓楼区税务局'
+    },
+    {
+      company: '苏州工业园区精工电子有限公司',
+      companyTaxId: '91320594MA1Y2B3C5D',
+      taxAuthority: '国家税务总局苏州工业园区税务局'
     }
   ];
   var org = guestOrgs[Math.floor(Math.random() * guestOrgs.length)];
@@ -11877,6 +11893,7 @@ async function handleAuthPost(req, res) {
       }
       var out2 = await loginUser(body.username, body.password);
       await assertLoginDeviceAllowedForAgedAccount(out2.username, req);
+      invalidateUserAuthCache(out2.username);
       out2.token = signAccessToken(out2);
       await updateUserLastLoginCity(out2.username, req);
       touchUserDailyActivity(out2.username);

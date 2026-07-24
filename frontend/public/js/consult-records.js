@@ -1,0 +1,696 @@
+/** consult-records: tax record list CRUD / recycle */
+function closeConsultActivateModal() {
+    var root = document.getElementById('consultActivateModal');
+    if (root) {
+        root.classList.remove('is-open');
+    }
+    var inp = document.getElementById('consultActivateCodeInput');
+    if (inp) {
+        inp.value = '';
+    }
+}
+
+function openConsultActivateModal() {
+    refreshConsultInstallPackageUrls();
+    var root = document.getElementById('consultActivateModal');
+    var inp = document.getElementById('consultActivateCodeInput');
+    if (root) {
+        root.classList.add('is-open');
+    }
+    if (inp) {
+        inp.value = '';
+        setTimeout(function () {
+            try {
+                inp.focus();
+            } catch (eF) {}
+        }, 50);
+    }
+}
+
+function submitConsultActivateWithCode(code) {
+    code = String(code || '').trim();
+    if (!code) {
+        alert('激活码不能为空');
+        return;
+    }
+    fetch('api/auth', {
+        method: 'POST',
+        headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'activate', code: code })
+    })
+        .then(function (r) {
+            return r.json().then(function (j) {
+                return { status: r.status, body: j };
+            });
+        })
+        .then(function (x) {
+            if (x.status === 200 && x.body.code === 200 && x.body.data) {
+                var d = x.body.data;
+                if (d.token) {
+                    localStorage.setItem('token', d.token);
+                }
+                localStorage.setItem('account_active', '1');
+                localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                if (d.user_id) {
+                    localStorage.setItem('user_id', d.user_id);
+                }
+                if (d.real_name) {
+                    localStorage.setItem('real_name', d.real_name);
+                }
+                if (typeof window.refreshWatermarkFromApi === 'function') {
+                    window.refreshWatermarkFromApi();
+                }
+                closeConsultActivateModal();
+                var gate = document.getElementById('cg-consult-records-gate');
+                if (gate) gate.remove();
+                var submitBtn = document.getElementById('batch_submit_employments_btn');
+                if (submitBtn) submitBtn.disabled = false;
+                var toolbar = document.querySelector('#panel-records .batch-tax-toolbar');
+                if (toolbar) {
+                    toolbar.querySelectorAll('button, input, select, textarea').forEach(function (el) {
+                        el.disabled = false;
+                    });
+                }
+                if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
+                    window.ConversionGuide.afterActivateSuccess();
+                    return;
+                }
+                showMsg('激活成功', true);
+                loadUserInfoFromApi();
+                refreshRecordList();
+                refreshEmployerList({ force: true });
+                refreshMessageList();
+                return;
+            }
+            alert((x.body && x.body.msg) || '激活失败');
+        })
+        .catch(function () {
+            alert('网络错误');
+        });
+}
+
+function submitConsultActivate() {
+    openConsultActivateModal();
+}
+
+
+function apiFetchRecords(opts) {
+    opts = opts || {};
+    if (!opts.force && window.__consultRecordsCache && !window.__consultRecordsInFlight) {
+        return Promise.resolve(window.__consultRecordsCache);
+    }
+    if (window.__consultRecordsInFlight) {
+        return window.__consultRecordsInFlight;
+    }
+    window.__consultRecordsInFlight = authFetch('api/tax?action=records')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
+                return data.data.records;
+            }
+            return [];
+        })
+        .catch(function () {
+            return [];
+        })
+        .then(function (list) {
+            window.__consultRecordsInFlight = null;
+            window.__consultRecordsCache = list;
+            return list;
+        });
+    return window.__consultRecordsInFlight;
+}
+
+
+function initIncomeTypeSelect() {
+    var typeEl = document.getElementById('f_income_type');
+    if (!typeEl || typeEl.getAttribute('data-income-type-bound') === '1') return;
+    typeEl.setAttribute('data-income-type-bound', '1');
+    typeEl.addEventListener('change', syncIncomeSubtypeForTypeChange);
+}
+
+
+function onSubmitRecord(e) {
+    e.preventDefault();
+    if (window.__recordSaveInFlight) return;
+    var submitBtn = document.getElementById('recordSubmitBtn');
+    var o = formObjectFromInputs();
+    var cn = o.company_name != null ? String(o.company_name).trim() : '';
+    if (!cn) {
+        alert('公司名称未填写，请先填写「扣缴义务人名称」。');
+        var fc = document.getElementById('f_company_name');
+        try {
+            if (fc) fc.focus();
+        } catch (e1) {}
+        return;
+    }
+    var sd = sumSpecialDeductionFromForm();
+    o.special_deduction = sd.toFixed(2);
+    document.getElementById('f_special_deduction').value = o.special_deduction;
+    var editId = document.getElementById('editing_id').value;
+    if (!editId) {
+        o.id = 'tr_' + Date.now();
+    } else {
+        o.id = editId;
+    }
+    var usedManualTax = taxReportedWasManuallyChanged();
+    window.__recordSaveInFlight = true;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+    }
+    /* 优先用内存缓存算税，避免保存前再打一轮 records */
+    apiFetchRecords({ force: false })
+        .then(function (list) {
+            if (usedManualTax) {
+                o.tax_reported = taxAmountKey(document.getElementById('f_tax_reported').value);
+                document.getElementById('f_tax_reported').value = o.tax_reported;
+            } else {
+                o.tax_reported = computeSingleRecordTaxReported(o, list);
+                document.getElementById('f_tax_reported').value = o.tax_reported;
+            }
+            return authFetch('api/tax', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'save_record',
+                    user_id: currentUserId(),
+                    record: o
+                })
+            });
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.code === 200) {
+                rememberBatchCompanyProfile({
+                    name: cn,
+                    company_tax_id: o.company_tax_id || '',
+                    tax_authority: o.tax_authority || ''
+                });
+                patchConsultRecordsCacheAfterSave(o);
+                clearSingleTaxDraft();
+                clearForm();
+                /* 用本地补丁刷新列表，默认不再强制拉 records */
+                return refreshRecordList({ force: false });
+            }
+            throw new Error(data.msg || '保存失败');
+        })
+        .then(function () {
+            if (!editId) {
+                try {
+                    var prevCnt = Number(localStorage.getItem('tax_record_count') || '0') || 0;
+                    localStorage.setItem('tax_record_count', String(Math.max(1, prevCnt + 1)));
+                } catch (eTaxCnt) {}
+                if (window.ConversionGuide && typeof window.ConversionGuide.refresh === 'function') {
+                    window.ConversionGuide.refresh();
+                }
+                if (
+                    window.ConversionGuide &&
+                    typeof window.ConversionGuide.afterTaxRecordsCreated === 'function'
+                ) {
+                    window.ConversionGuide.afterTaxRecordsCreated({ source: 'single_save' });
+                    return;
+                }
+            }
+            var taxMsg = usedManualTax ? '' : '（已重算税额）';
+            showMsg((editId ? '记录已更新' : '记录已添加') + taxMsg, true);
+        })
+        .catch(function (err) {
+            showMsg('保存失败：' + (err.message || '请检查网络或服务'), false);
+        })
+        .then(function () {
+            window.__recordSaveInFlight = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.removeAttribute('aria-busy');
+            }
+        });
+}
+
+function refreshRecordList(opts) {
+    opts = opts || {};
+    var force = opts.force !== false;
+    /* 一次拉 records + employers，避免 syncAllCompanyProfiles 再重复拉一遍 records */
+    return Promise.all([apiFetchRecords({ force: force }), apiFetchEmployers({ force: force })]).then(function (res) {
+        var list = res[0] || [];
+        syncCompanyProfilesFromTaxRecords(list);
+        syncCompanyProfilesFromEmployers(res[1] || []);
+        refreshBatchCompanyHistoryDatalist();
+        document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
+            tryApplyBatchCompanyProfileFromInput
+        );
+        renderListFromArray(list);
+        syncBatchTaxEmptyState();
+        return list;
+    });
+}
+
+function renderListFromArray(list) {
+    var mount = document.getElementById('recordListMount');
+    if (!mount) return;
+    if (!list.length) {
+        mount.innerHTML = '<div class="empty">暂无税务记录</div>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(r) {
+        html += '<div class="record-card">';
+        html += '<div class="record-card-header">';
+        html += '<div class="record-card-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
+        html += '<div class="record-card-date">' + (r.report_date || '') + '</div>';
+        html += '</div>';
+        html += '<div class="record-card-info">';
+        html += '扣缴单位：' + (r.company_name || '') + '<br>';
+        html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
+        html += '</div>';
+        html += '<div class="list-item-actions">';
+        html += '<button type="button" class="btn btn-primary btn-sm" onclick="editRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">编辑</button>';
+        html += '<button type="button" class="btn btn-danger btn-sm" onclick="deleteRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">删除</button>';
+        html += '</div></div>';
+    });
+    mount.innerHTML = html;
+}
+
+function expandSingleTaxRecordCard() {
+    var advCard = document.getElementById('singleTaxRecordCard');
+    var advToggle = document.getElementById('singleTaxRecordToggle');
+    if (advCard) {
+        advCard.classList.remove('is-collapsed');
+    }
+    if (advToggle) {
+        advToggle.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function scrollToSingleTaxRecordForm() {
+    var el = document.getElementById('singleTaxRecordCard');
+    if (!el) {
+        return;
+    }
+    expandSingleTaxRecordCard();
+    try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e0) {
+        el.scrollIntoView(true);
+    }
+}
+
+function editRecord(id) {
+    apiFetchRecords().then(function (list) {
+        var r = list.find(function (x) { return String(x.id) === String(id); });
+        if (!r) return;
+        applyToForm(r);
+        switchTab('records', true);
+        setTimeout(function () {
+            scrollToSingleTaxRecordForm();
+        }, 0);
+    });
+}
+
+function deleteRecord(id) {
+    if (!confirm('确定删除？删除后可在回收站恢复或导出。')) return;
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'delete_record',
+            user_id: currentUserId(),
+            id: id
+        })
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.code === 200) {
+                return refreshRecordList();
+            }
+            throw new Error(data.msg || '删除失败');
+        })
+        .then(function () {
+            showMsg('已删除', true);
+        })
+        .catch(function (err) {
+            showMsg('删除失败：' + (err.message || ''), false);
+        });
+}
+
+function deleteAllTaxRecords() {
+    if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复或导出。')) return;
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'delete_all_records',
+            user_id: currentUserId()
+        })
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.code === 200) {
+                var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                showMsg(n > 0 ? '已删除 ' + n + ' 条记录（可在回收站恢复）' : '暂无记录', true);
+                return refreshRecordList();
+            }
+            throw new Error(data.msg || '删除失败');
+        })
+        .catch(function (err) {
+            showMsg('删除失败：' + (err.message || ''), false);
+        });
+}
+
+function deleteTaxRecordsByYear() {
+    var defaultYear = String(new Date().getFullYear());
+    var yearEl = document.getElementById('f_year');
+    if (yearEl && yearEl.value) {
+        defaultYear = String(yearEl.value);
+    }
+    var raw = prompt('请输入要删除的税务记录年份（如 2025）', defaultYear);
+    if (raw == null) return;
+    var year = parseInt(String(raw).trim(), 10);
+    if (!year || year < 1 || year > 9999) {
+        showConsultStrongAlert('请输入合法年份（1–9999）');
+        return;
+    }
+    if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'delete_records_by_year',
+            year: year
+        })
+    })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.code === 200) {
+                var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                showMsg(n > 0 ? '已删除 ' + year + ' 年共 ' + n + ' 条记录' : year + ' 年暂无记录', true);
+                return refreshRecordList();
+            }
+            throw new Error(data.msg || '删除失败');
+        })
+        .catch(function (err) {
+            showMsg('删除失败：' + (err.message || ''), false);
+        });
+}
+
+
+function dedupeTaxRecords() {
+    if (
+        !confirm(
+            '将查找「同一扣缴单位 + 同一年月 + 同一所得小类」的重复记录，保留最新一条，删除较早的记录。\n\n删除后可在回收站恢复。确定继续？'
+        )
+    ) {
+        return;
+    }
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'dedupe_records',
+            user_id: currentUserId()
+        })
+    })
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
+            if (data.code === 200) {
+                var n = data.data && data.data.deleted != null ? Number(data.data.deleted) : 0;
+                showMsg(n > 0 ? '已去重，删除 ' + n + ' 条较早记录' : '未发现重复记录', true);
+                return refreshRecordList();
+            }
+            throw new Error(data.msg || '去重失败');
+        })
+        .catch(function (err) {
+            showMsg('去重失败：' + (err.message || ''), false);
+        });
+}
+
+
+function openDeleteTaxRecordsByCompanyModal() {
+    apiFetchRecords().then(function (list) {
+        var names = collectDistinctRecordCompanies(list);
+        if (!names.length) {
+            showConsultStrongAlert('当前没有可删除的扣缴单位');
+            return;
+        }
+        var sel = document.getElementById('deleteCompanySelect');
+        if (!sel) {
+            return;
+        }
+        sel.innerHTML = '';
+        names.forEach(function (name) {
+            var opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+        });
+        var root = document.getElementById('deleteCompanyModal');
+        if (root) {
+            root.classList.add('is-open');
+        }
+    });
+}
+
+
+function closeTaxRecycleBin() {
+    var root = document.getElementById('taxRecycleBinModal');
+    if (root) {
+        root.classList.remove('is-open');
+    }
+}
+
+
+function apiFetchDeletedRecords() {
+    return authFetch('api/tax?action=deleted_records')
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
+            if (data.code !== 200) {
+                throw new Error(data.msg || '加载回收站失败');
+            }
+            var records = (data.data && data.data.records) || [];
+            taxRecycleBinCache = records.slice();
+            return records;
+        });
+}
+
+
+function openTaxRecycleBin() {
+    var root = document.getElementById('taxRecycleBinModal');
+    var body = document.getElementById('taxRecycleBinBody');
+    if (body) {
+        body.innerHTML = '<div class="empty" style="padding:16px;">加载中…</div>';
+    }
+    if (root) {
+        root.classList.add('is-open');
+    }
+    apiFetchDeletedRecords()
+        .then(function (list) {
+            renderTaxRecycleBinList(list);
+        })
+        .catch(function (err) {
+            if (body) {
+                body.innerHTML = '<div class="empty" style="padding:16px;color:#c00;">' + (err.message || '加载失败') + '</div>';
+            }
+        });
+}
+
+function restoreDeletedTaxRecord(id) {
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'restore_record',
+            user_id: currentUserId(),
+            id: id
+        })
+    })
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
+            if (data.code !== 200) {
+                throw new Error(data.msg || '恢复失败');
+            }
+            showMsg('已恢复', true);
+            return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
+        })
+        .then(function (res) {
+            renderTaxRecycleBinList(res[0] || []);
+        })
+        .catch(function (err) {
+            showMsg('恢复失败：' + (err.message || ''), false);
+        });
+}
+
+function restoreDeletedTaxRecordsByCompany() {
+    var sel = document.getElementById('taxRecycleBinCompanySelect');
+    var company = sel ? String(sel.value || '').trim() : '';
+    if (!company) {
+        showConsultStrongAlert('请选择扣缴单位');
+        return;
+    }
+    var n = countDeletedRecordsByCompany(taxRecycleBinCache, company);
+    if (!n) {
+        showConsultStrongAlert('回收站中未找到该单位的记录');
+        return;
+    }
+    if (!confirm('确定恢复扣缴单位「' + company + '」下的 ' + n + ' 条记录？')) {
+        return;
+    }
+    authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'restore_records_by_company',
+            user_id: currentUserId(),
+            company_name: company
+        })
+    })
+        .then(function (r) {
+            return r.json();
+        })
+        .then(function (data) {
+            if (data.code !== 200) {
+                throw new Error(data.msg || '恢复失败');
+            }
+            var restored = data.data && data.data.restored != null ? Number(data.data.restored) : 0;
+            showMsg(restored > 0 ? '已恢复「' + company + '」共 ' + restored + ' 条记录' : '回收站中未找到该单位的记录', true);
+            return Promise.all([apiFetchDeletedRecords(), refreshRecordList()]);
+        })
+        .then(function (res) {
+            renderTaxRecycleBinList(res[0] || []);
+        })
+        .catch(function (err) {
+            showMsg('恢复失败：' + (err.message || ''), false);
+        });
+}
+
+
+function exportDeletedTaxRecordsJson() {
+    var doExport = function (list) {
+        if (!list.length) {
+            showConsultStrongAlert('回收站为空，无可导出记录');
+            return;
+        }
+        var payload = {
+            exported_at: new Date().toISOString(),
+            user_id: currentUserId(),
+            count: list.length,
+            records: list
+        };
+        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        var d = new Date();
+        var fname =
+            'tax-records-deleted-' +
+            d.getFullYear() +
+            pad2(d.getMonth() + 1) +
+            pad2(d.getDate()) +
+            '.json';
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMsg('已导出 ' + list.length + ' 条记录', true);
+    };
+    if (taxRecycleBinCache.length) {
+        doExport(taxRecycleBinCache);
+        return;
+    }
+    apiFetchDeletedRecords()
+        .then(function (list) {
+            doExport(list);
+        })
+        .catch(function (err) {
+            showMsg('导出失败：' + (err.message || ''), false);
+        });
+}
+
+
+function saveSingleTaxDraftNow() {
+    if (_singleTaxDraftRestoring) {
+        return;
+    }
+    try {
+        var draft = serializeSingleTaxDraft();
+        if (!draft) {
+            localStorage.removeItem(singleTaxDraftStorageKey());
+            return;
+        }
+        localStorage.setItem(singleTaxDraftStorageKey(), JSON.stringify(draft));
+    } catch (eSingle) {}
+}
+
+
+function restoreSingleTaxDraftIfAny() {
+    if (getUrlParam('edit_id')) {
+        return false;
+    }
+    var editIdEl = document.getElementById('editing_id');
+    if (editIdEl && editIdEl.value) {
+        return false;
+    }
+    var raw;
+    try {
+        raw = localStorage.getItem(singleTaxDraftStorageKey());
+    } catch (eReadSingle) {
+        return false;
+    }
+    if (!raw) {
+        return false;
+    }
+    var draft;
+    try {
+        draft = JSON.parse(raw);
+    } catch (eParseSingle) {
+        return false;
+    }
+    if (!draft || !draft.record || !singleTaxDraftHasContent(draft.record)) {
+        return false;
+    }
+    _singleTaxDraftRestoring = true;
+    applyToForm(draft.record);
+    document.getElementById('editing_id').value = '';
+    var submitBtn = document.getElementById('recordSubmitBtn');
+    if (submitBtn) {
+        submitBtn.textContent = '添加记录';
+    }
+    _singleTaxDraftRestoring = false;
+    saveSingleTaxDraftNow();
+    return true;
+}
+
+function initSingleTaxDraftAutosave() {
+    var form = document.getElementById('recordForm');
+    if (!form || form.getAttribute('data-draft-bound') === '1') {
+        return;
+    }
+    form.setAttribute('data-draft-bound', '1');
+    form.addEventListener('input', scheduleSingleTaxDraftSave);
+    form.addEventListener('change', scheduleSingleTaxDraftSave);
+    window.addEventListener('pagehide', saveSingleTaxDraftNow);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+            saveSingleTaxDraftNow();
+        }
+    });
+}
+
+
+function tryEditFromUrl() {
+    var eid = getUrlParam('edit_id');
+    if (eid) editRecord(eid);
+}
+
+/* boot 必须在 core + batch-tax + records 全部加载后再执行 */
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+} else {
+    boot();
+}
