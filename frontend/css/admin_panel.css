@@ -1845,10 +1845,4 @@ tr.ud-salary-bucket-high td {
     margin-top: 12px;
 }
 .agent-promo-links-mount[style*="display:none"] { display: none; }
-.page-panel {
-    display: none;
-}
-.page-panel:not([hidden]) {
-    display: block;
-}
-.page-panel[hidden] { display: none !important; }
+/* 页面切换仅靠 .page-panel.active（见文件头部规则），勿再用 :not([hidden]) 强制全部显示 */
