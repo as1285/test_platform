@@ -921,6 +921,10 @@
                             <button type="button" class="btn-page" id="userPrev">上一页</button>
                             <span id="userPageInfo">第 1 页</span>
                             <button type="button" class="btn-page" id="userNext">下一页</button>
+                            <span class="pagination-jump">
+                                <input type="number" id="userPageJumpInput" class="pagination-jump-input" min="1" placeholder="页码" aria-label="跳转到页码">
+                                <button type="button" class="btn-page btn-page-jump" id="userPageJumpBtn">跳转</button>
+                            </span>
                             <label class="pagination-size-label" for="userPageLimit">
                                 每页
                                 <select id="userPageLimit" class="pagination-size-select" aria-label="每页条数">

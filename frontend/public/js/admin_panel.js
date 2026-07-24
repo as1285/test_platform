@@ -7448,6 +7448,28 @@
 
         document.getElementById('userPrev').onclick = function() { if (userPage > 1) loadUsers(userPage - 1); };
         document.getElementById('userNext').onclick = function() { loadUsers(userPage + 1); };
+
+        /* 页码跳转 */
+        (function initUserPageJump() {
+            var input = document.getElementById('userPageJumpInput');
+            var btn = document.getElementById('userPageJumpBtn');
+            if (!input || !btn) return;
+            function doJump() {
+                var n = parseInt(input.value, 10);
+                if (!n || n < 1) return;
+                var infoText = document.getElementById('userPageInfo').textContent;
+                var m = infoText.match(/共 (\d+) 页/);
+                var maxPage = m ? parseInt(m[1], 10) : 99999;
+                if (n > maxPage) n = maxPage;
+                input.value = '';
+                loadUsers(n);
+            }
+            btn.onclick = doJump;
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); doJump(); }
+            });
+        })();
+
         var userPageLimitSel = document.getElementById('userPageLimit');
         if (userPageLimitSel) {
             userPageLimitSel.onchange = function () {

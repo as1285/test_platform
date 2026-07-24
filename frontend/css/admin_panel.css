@@ -999,6 +999,44 @@ tr.ud-salary-bucket-high td {
     background: #fff;
     cursor: pointer;
 }
+.pagination-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+}
+.pagination-jump-input {
+    width: 64px;
+    padding: 5px 8px;
+    font-size: 13px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+.pagination-jump-input::-webkit-outer-spin-button,
+.pagination-jump-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.pagination-jump-input:focus {
+    outline: none;
+    border-color: #1e6fff;
+    box-shadow: 0 0 0 2px rgba(30,111,255,0.15);
+}
+.btn-page-jump {
+    padding: 5px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: 1px solid #1e6fff;
+    background: #1e6fff;
+    color: #fff;
+    cursor: pointer;
+}
+.btn-page-jump:hover {
+    background: #1558d6;
+}
 .btn-link-pwd {
     border: none;
     background: transparent;
