@@ -535,14 +535,6 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-title">购买说明</div>
-            <ol class="steps">
-                <li>支付宝：扫码付款成功后自动开通当前账号</li>
-                <li>酷发卡：付款后领取激活码</li>
-                <li>回到本页顶部输入激活码，点击「确认激活」</li>
-            </ol>
-        </div>
     </div>
 
     <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
@@ -558,6 +550,14 @@
             return;
         }
     } catch (e0) {}
+
+    var purchasePageInApp = false;
+
+    (function detectInAppShell() {
+        purchasePageInApp =
+            isEmbeddedInAppShell() ||
+            (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell());
+    })();
 
     var KUFAKA_PURCHASE_URL = 'https://www.kufaka.com/item/bftacz';
 
@@ -1090,7 +1090,8 @@
         if (activateBox) activateBox.hidden = isNew;
         if (otherLabel) otherLabel.hidden = isNew || isCodeOnly;
         if (otherCard) otherCard.hidden = isNew || isCodeOnly;
-        if (cardDownload) cardDownload.hidden = false;
+        /* APP 内不显示下载卡片 */
+        if (cardDownload) cardDownload.hidden = purchasePageInApp;
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
         /* C：联系方式由 applySalesAgentCard 控制；非 C 一律隐藏 */
         if (!isCodeOnly && salesCard) salesCard.hidden = true;
@@ -1591,10 +1592,7 @@
     (function initPurchaseDownload() {
         var card = document.getElementById('cardDownloadApp');
         var btn = document.getElementById('btnPurchaseDownload');
-        var inApp =
-            isEmbeddedInAppShell() ||
-            (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell());
-        if (inApp) {
+        if (purchasePageInApp) {
             if (card) card.hidden = true;
             return;
         }
