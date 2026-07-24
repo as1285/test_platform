@@ -49,6 +49,10 @@ const ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_API_RATE_PER_IP_MIN
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.HEAVY_ADMIN_API_RATE_PER_IP_MIN || '60', 10);
 const DB_POOL_SIZE = parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30;
 const DB_POOL_QUEUE_LIMIT = parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60;
+/** 安装包等敏感下载签名密钥；空则回退 JWT_SECRET */
+const ASSET_SIGN_SECRET = String(process.env.ASSET_SIGN_SECRET || '').trim();
+/** 签名下载链接有效秒数（默认 30 分钟） */
+const ASSET_SIGN_TTL_SEC = parseInt(process.env.ASSET_SIGN_TTL_SEC || '1800', 10) || 1800;
 
 module.exports = {
   BACKEND_ROOT,
@@ -71,6 +75,8 @@ module.exports = {
   PUBLIC_SITE_URL,
   SITE_TRUSTED_HOSTS,
   UPLOAD_STORAGE_BACKEND,
+  ASSET_SIGN_SECRET,
+  ASSET_SIGN_TTL_SEC,
   LOGIN_RATE_PER_IP_MIN,
   LOGIN_RATE_PER_USER_MIN,
   ADMIN_LOGIN_RATE_PER_IP_MIN,

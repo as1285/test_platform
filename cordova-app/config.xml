@@ -1,23 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.testplatform.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
-    <name>个人所得税</name>
-    <description>个人所得税移动端应用</description>
+    <name>模拟器app</name>
+    <description>模拟器app 移动端壳（仅加载线上 H5）</description>
     <author email="dev@localhost" href="https://localhost">Tax Bureau Team</author>
     <content src="index.html" />
 
+    <!-- 本站分支仅允许加载 lkj 线上域名；外链用 allow-intent / _system -->
     <access origin="https://lkj.qiyun888.top" />
-    <access origin="http://lkj.qiyun888.top" />
-    <!-- 兼容旧域名包；WebView 仅允许受信本站，外链用 allow-intent / _system -->
-    <access origin="https://geshui.vip" />
-    <access origin="http://geshui.vip" />
-    <access origin="https://www.geshui.vip" />
-    <access origin="http://www.geshui.vip" />
     <allow-navigation href="https://lkj.qiyun888.top/*" />
-    <allow-navigation href="http://lkj.qiyun888.top/*" />
-    <allow-navigation href="https://geshui.vip/*" />
-    <allow-navigation href="http://geshui.vip/*" />
-    <allow-navigation href="https://www.geshui.vip/*" />
-    <allow-navigation href="http://www.geshui.vip/*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />

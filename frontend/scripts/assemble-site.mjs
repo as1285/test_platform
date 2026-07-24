@@ -23,7 +23,7 @@ const APP_ASSETS = [
   { siteSrc: 'css/app-shell.css', outDir: 'css', base: 'app-shell', ext: '.css' }
 ];
 
-/** 轻度混淆（不改 window 全局名）；体积大的管理端只做 minify */
+/** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify */
 const OBFUSCATE_REL = new Set([
   'js/auth.js',
   'js/app/ui.js',
@@ -34,6 +34,7 @@ const OBFUSCATE_REL = new Set([
   'js/fast-nav.js',
   'js/conversion-guide.js',
   'js/watermark.js',
+  'js/forensic-mark.js',
   'js/browser-install-prompt.js',
   'js/toast-duration.js',
   'js/back-arrow.js'
@@ -41,7 +42,8 @@ const OBFUSCATE_REL = new Set([
 
 const OBFUSCATOR_OPTS = {
   compact: true,
-  controlFlowFlattening: false,
+  controlFlowFlattening: true,
+  controlFlowFlatteningThreshold: 0.35,
   deadCodeInjection: false,
   debugProtection: false,
   disableConsoleOutput: false,
@@ -50,8 +52,9 @@ const OBFUSCATOR_OPTS = {
   selfDefending: false,
   stringArray: true,
   stringArrayEncoding: ['base64'],
-  stringArrayThreshold: 0.6,
-  splitStrings: false,
+  stringArrayThreshold: 0.85,
+  splitStrings: true,
+  splitStringsChunkLength: 6,
   transformObjectKeys: false,
   unicodeEscapeSequence: false,
   target: 'browser'
@@ -240,6 +243,15 @@ function injectSiteConfig(html) {
   return html.replace(/<\/head>/i, `    ${tag}\n</head>`);
 }
 
+function injectForensicMark(html) {
+  if (/\/js\/forensic-mark\.js/i.test(html)) return html;
+  const tag = '<script src="/js/forensic-mark.js" defer></script>';
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `    ${tag}\n</body>`);
+  }
+  return html + '\n' + tag + '\n';
+}
+
 function injectShell(html, snippet) {
   const markerStart = '<!-- TAX_APP_SHELL_START -->';
   const markerEnd = '<!-- TAX_APP_SHELL_END -->';
@@ -343,6 +355,7 @@ async function main() {
     const page = path.basename(abs);
     let html = fs.readFileSync(abs, 'utf8');
     html = injectSiteConfig(html);
+    html = injectForensicMark(html);
     if (PRIORITY_PAGES.includes(page)) {
       html = addShellBodyClass(html);
       html = injectShell(html, snippet);

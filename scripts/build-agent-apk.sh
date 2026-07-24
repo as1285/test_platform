@@ -20,23 +20,61 @@ CHANNEL_LOWER="$(echo "$CHANNEL" | tr '[:upper:]' '[:lower:]')"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CORDOVA_DIR="$ROOT/cordova-app"
 DIST_FILE="$CORDOVA_DIR/www/distribution-config.js"
+INDEX_FILE="$CORDOVA_DIR/www/index.html"
 CONFIG_FILE="$CORDOVA_DIR/config.xml"
 OUT_DIR="$ROOT/dist/agent-apk"
 OUT_APK="$OUT_DIR/app-agent-${CHANNEL_LOWER}-debug.apk"
+
+# 从仓库 .env 同步壳内 APP_ORIGIN（仅 https 线上域名）
+APP_ORIGIN_URL=""
+if [[ -f "$ROOT/.env" ]]; then
+  # shellcheck disable=SC1091
+  set -a
+  # 只读需要的键，避免 source 整份 .env 的副作用
+  APP_ORIGIN_URL="$(grep -E '^(PUBLIC_SITE_URL|APP_URL)=' "$ROOT/.env" | head -n1 | cut -d= -f2- | tr -d '\r' | sed 's/^["'\'']//;s/["'\'']$//')"
+  set +a
+fi
+if [[ -z "$APP_ORIGIN_URL" ]]; then
+  APP_ORIGIN_URL="https://lkj.qiyun888.top"
+fi
+APP_ORIGIN_URL="${APP_ORIGIN_URL%/}/"
+if ! [[ "$APP_ORIGIN_URL" =~ ^https://lkj\.qiyun888\.top/ ]]; then
+  echo "警告: PUBLIC_SITE_URL 非本站 lkj 域名，仍写入壳: $APP_ORIGIN_URL" >&2
+fi
 
 mkdir -p "$OUT_DIR"
 
 backup_dist="$(mktemp)"
 backup_config="$(mktemp)"
+backup_index="$(mktemp)"
 cp "$DIST_FILE" "$backup_dist"
 cp "$CONFIG_FILE" "$backup_config"
+cp "$INDEX_FILE" "$backup_index"
 
 restore() {
   cp "$backup_dist" "$DIST_FILE"
   cp "$backup_config" "$CONFIG_FILE"
-  rm -f "$backup_dist" "$backup_config"
+  cp "$backup_index" "$INDEX_FILE"
+  rm -f "$backup_dist" "$backup_config" "$backup_index"
 }
 trap restore EXIT
+
+# 同步壳内线上源，避免误打包本地/其它域名
+python3 - "$INDEX_FILE" "$APP_ORIGIN_URL" <<'PY'
+import re, sys
+path, origin = sys.argv[1], sys.argv[2]
+text = open(path, encoding="utf-8").read()
+text2, n = re.subn(
+    r"var APP_ORIGIN = '[^']*';",
+    f"var APP_ORIGIN = '{origin}';",
+    text,
+    count=1,
+)
+if n != 1:
+    raise SystemExit("未能替换 APP_ORIGIN")
+open(path, "w", encoding="utf-8").write(text2)
+print(f"==> APP_ORIGIN = {origin}")
+PY
 
 cat > "$DIST_FILE" <<EOF
 /**

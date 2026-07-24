@@ -19,6 +19,7 @@ const alipay = require('../../alipay');
 const chatAi = require('../../chatAi');
 const { inferBankNameFromCardNo } = require('../../bank_card_bins');
 const config = require('../shared/config');
+const signedAssets = require('../shared/signedAssets');
 const sharedDb = require('../shared/db');
 const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
@@ -631,7 +632,8 @@ var WECHAT_PAY_QRCODE_CACHE_MS = 15000;
 var _installPackageSettingsCache = null;
 var INSTALL_PACKAGE_SETTINGS_CACHE_MS = 30000;
 var _installPackagesResponseCache = new Map();
-var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 90000;
+/** 签名 URL 会过期，响应缓存不宜过长 */
+var INSTALL_PACKAGES_RESPONSE_CACHE_MS = 45000;
 var _salesPromoChannelCache = new Map();
 var SALES_PROMO_CHANNEL_CACHE_MS = 30000;
 var _taxRecordsListCache = new Map();
@@ -910,12 +912,22 @@ function toPublicInstallDownloadUrl(raw) {
   if (/^uploads\//i.test(s)) {
     s = '/' + s;
   }
+  // 本站 uploads 下的 APK / mobileconfig：短时签名，禁止直链热链
+  if (signedAssets.isSensitiveUploadPath(s)) {
+    return signedAssets.toSignedPublicAssetUrl(s, config);
+  }
   // 绕过 Cloudflare 对旧 APK 响应头的缓存（缺 Content-Disposition 时易整页打开失败）
   if (/\.apk$/i.test(s.split('?')[0]) && s.indexOf('?') < 0) {
     s += '?v=20260717';
   }
   return s;
 }
+
+/** 签名下载敏感安装包（APK / mobileconfig） */
+var handlePublicAssetGet = signedAssets.createPublicAssetHandler({
+  config: config,
+  uploadDir: UPLOAD_DIR
+});
 
 /** sanitize xianyu purchase text */
 function sanitizeXianyuPurchaseText(raw) {
@@ -8530,6 +8542,9 @@ function classifyAnalyticsRoute(req) {
   }
   if (path === '/api/public/install-packages') {
     return { route_key: method + ' /api/public/install-packages', biz_category: '公开配置' };
+  }
+  if (path === '/api/public/asset') {
+    return { route_key: method + ' /api/public/asset', biz_category: '公开下载' };
   }
   return { route_key: method + ' ' + String(path).substring(0, 200), biz_category: '其他' };
 }
@@ -17973,12 +17988,8 @@ async function handlePublicInstallPackages(req, res) {
     var now = Date.now();
     var hit = _installPackagesResponseCache.get(cacheKey);
     if (hit && now - hit.t < INSTALL_PACKAGES_RESPONSE_CACHE_MS) {
-      /* anon 无渠道时可被边缘缓存；带用户/渠道则 private */
-      if (!uid && !qCh) {
-        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
-      } else {
-        res.setHeader('Cache-Control', 'private, max-age=90');
-      }
+      /* 含短时签名 URL，禁止边缘/浏览器长缓存 */
+      res.setHeader('Cache-Control', 'private, max-age=30, no-store');
       return res.json(hit.body);
     }
 
@@ -18028,11 +18039,7 @@ async function handlePublicInstallPackages(req, res) {
     if (_installPackagesResponseCache.size > 500) {
       _installPackagesResponseCache.clear();
     }
-    if (!uid && !qCh) {
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
-    } else {
-      res.setHeader('Cache-Control', 'private, max-age=90');
-    }
+    res.setHeader('Cache-Control', 'private, max-age=30, no-store');
     return res.json(body);
   } catch (e) {
     console.error(e);
@@ -22140,6 +22147,7 @@ function getHandlers() {
     handleAlipayNotify,
     handlePublicMineUi,
     handlePublicInstallPackages,
+    handlePublicAssetGet,
     handlePublicResolveSalesChannel,
     handlePublicSalesChannelAttribution,
     handlePublicConversionConfig,
