@@ -5160,6 +5160,47 @@ async function recoverCredentialsByActivationCode(rawCode) {
   }
 }
 
+/** recover credentials by username + identity (real_name or tax_id) */
+async function recoverCredentialsByIdentity(username, realName, taxId) {
+  var uname = String(username || '').trim();
+  var rName = String(realName || '').trim();
+  var tId = String(taxId || '').trim();
+  if (!uname) throw new Error('请输入账号');
+  if (!rName && !tId) throw new Error('请至少填写姓名或身份证号其中一项');
+  const conn = await pool.getConnection();
+  try {
+    var sql = 'SELECT username, plain_password, real_name, tax_id FROM users WHERE username = ?';
+    var params = [uname];
+    if (rName && tId) {
+      sql += ' AND real_name = ? AND tax_id = ?';
+      params.push(rName, tId);
+    } else if (rName) {
+      sql += ' AND real_name = ?';
+      params.push(rName);
+    } else {
+      sql += ' AND tax_id = ?';
+      params.push(tId);
+    }
+    sql += ' LIMIT 1';
+    const [rows] = await conn.execute(sql, params);
+    if (rows.length === 0) {
+      throw new Error('账号与身份信息不匹配，请检查后重试');
+    }
+    var r = rows[0];
+    var pwd = r.plain_password != null ? String(r.plain_password) : '';
+    if (!pwd) {
+      throw new Error('已找到账号但无法显示密码，请联系管理员协助重置。');
+    }
+    return {
+      username: String(r.username),
+      password: pwd,
+      real_name: r.real_name != null ? String(r.real_name) : ''
+    };
+  } finally {
+    conn.release();
+  }
+}
+
 /** 应用：activation code（支持永久码与 grant_days 时效码） */
 async function applyActivationCode(username, rawCode) {
   await getInviteReward().applyActivationCodeExtended(username, rawCode, activationSourceFromCodeNote);
@@ -11762,6 +11803,18 @@ async function handleAuthPost(req, res) {
         body.activation_code != null ? body.activation_code : body.code
       );
       return res.json({ code: 200, data: recovered });
+    }
+    if (action === 'recover_by_identity') {
+      try {
+        var recovered2 = await recoverCredentialsByIdentity(
+          body.username,
+          body.real_name,
+          body.tax_id
+        );
+        return res.json({ code: 200, data: recovered2 });
+      } catch (idErr) {
+        return res.json({ code: 400, msg: idErr.message || '找回失败' });
+      }
     }
     if (action === 'login') {
       var loginUserName = body.username != null ? String(body.username).trim() : '';

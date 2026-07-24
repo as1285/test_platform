@@ -6,166 +6,286 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>找回账号密码</title>
     <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-bg: #eff6ff;
+            --primary-border: #bfdbfe;
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --surface-alt: #f8fafc;
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --success: #10b981;
+            --success-bg: #ecfdf5;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+            --shadow-md: 0 4px 6px -1px rgba(15,23,42,0.07), 0 2px 4px -2px rgba(15,23,42,0.05);
+            --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f5f6fa;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
             padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
         }
+
+        /* Header */
         .header {
-            background: #fff;
-            padding: 14px 16px;
+            background: var(--surface);
+            padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-light);
         }
         .back-btn {
             position: absolute;
             left: 12px;
-            color: #1e6fff;
-            font-size: 15px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 2px;
+            gap: 4px;
             -webkit-tap-highlight-color: transparent;
         }
-        .header-title { font-size: 17px; font-weight: 500; color: #333; }
+        .back-btn:active { opacity: 0.6; }
+        .header-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+
+        /* Content */
         .content { padding: 16px; }
+
+        /* Method Tabs */
+        .method-tabs {
+            display: flex;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+        }
+        .method-tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+        }
+        .method-tab.active {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+        }
+
+        /* Hint */
         .hint {
             font-size: 13px;
-            color: #666;
-            line-height: 1.55;
+            color: var(--text-secondary);
+            line-height: 1.6;
             margin-bottom: 14px;
+            padding: 10px 14px;
+            background: var(--primary-bg);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--primary);
         }
-        .card {
-            background: #fff;
-            border-radius: 10px;
+        .hint strong { color: var(--text); }
+
+        /* Form Card */
+        .form-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
             overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-light);
+            margin-bottom: 14px;
         }
         .form-row {
             display: flex;
             align-items: center;
             padding: 14px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            min-height: 50px;
+            border-bottom: 1px solid var(--border-light);
+            min-height: 52px;
         }
         .form-row:last-child { border-bottom: none; }
         .form-label {
-            font-size: 15px;
-            color: #333;
-            width: 72px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            width: 80px;
             flex-shrink: 0;
+        }
+        .form-label .required {
+            color: var(--danger);
+            margin-left: 2px;
         }
         .form-input {
             flex: 1;
             border: none;
             outline: none;
             font-size: 15px;
-            color: #333;
+            color: var(--text);
             background: transparent;
             font-family: inherit;
             min-width: 0;
         }
-        .form-input::placeholder { color: #bbb; }
+        .form-input::placeholder { color: var(--text-muted); }
+
+        /* Method panels */
+        .method-panel { display: none; }
+        .method-panel.active { display: block; }
+
+        /* Messages */
         .msg {
-            margin-top: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
             line-height: 1.5;
+            font-weight: 500;
             display: none;
         }
-        .msg.err {
-            display: block;
-            background: #fff1f0;
-            color: #cf1322;
-        }
-        .msg.ok {
-            display: block;
-            background: #f6ffed;
-            color: #389e0d;
-        }
+        .msg.err { display: block; background: var(--danger-bg); color: #991b1b; }
+        .msg.ok { display: block; background: var(--success-bg); color: #065f46; }
+
+        /* Result Card */
         .result-card {
-            margin-top: 14px;
-            background: #fff;
-            border-radius: 10px;
-            padding: 14px 16px;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px;
             display: none;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--primary-border);
+            margin-bottom: 14px;
         }
         .result-card.is-show { display: block; }
         .result-card h4 {
             font-size: 15px;
-            color: #333;
-            margin-bottom: 12px;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .result-card h4::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
         }
         .result-row {
             display: flex;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f5f5f5;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
             gap: 10px;
         }
         .result-row:last-child { border-bottom: none; }
         .result-label {
             width: 48px;
             flex-shrink: 0;
-            font-size: 14px;
-            color: #888;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
         }
         .result-value {
             flex: 1;
             font-size: 15px;
-            color: #333;
+            color: var(--text);
             word-break: break-all;
             font-variant-numeric: tabular-nums;
+            font-weight: 500;
         }
         .btn-copy {
             flex-shrink: 0;
-            border: 1px solid #1e6fff;
-            background: #fff;
-            color: #1e6fff;
+            border: 1.5px solid var(--primary-border);
+            background: var(--primary-bg);
+            color: var(--primary-dark);
             font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 14px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 999px;
             font-family: inherit;
+            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            transition: all var(--transition);
         }
-        .footer {
-            margin-top: 20px;
-            padding: 0 16px;
-        }
+        .btn-copy:active { transform: scale(0.95); }
+
+        /* Buttons */
         .btn-primary {
             display: block;
             width: 100%;
             padding: 14px 16px;
             border: none;
-            border-radius: 8px;
-            background: #1e6fff;
+            border-radius: var(--radius-md);
+            background: var(--primary);
             color: #fff;
-            font-size: 17px;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
             font-family: inherit;
+            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            transition: all var(--transition);
+            box-shadow: 0 4px 12px rgba(59,130,246,0.25);
         }
-        .btn-primary:disabled {
-            background: #7eb4ff;
-        }
+        .btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
+        .btn-primary:disabled { background: var(--text-muted); box-shadow: none; cursor: not-allowed; }
+
         .btn-login {
             display: block;
             width: 100%;
-            margin-top: 12px;
+            margin-top: 14px;
             text-align: center;
             font-size: 15px;
-            color: #1e6fff;
+            font-weight: 500;
+            color: var(--primary);
             text-decoration: none;
+            padding: 12px;
+        }
+        .btn-login:active { opacity: 0.7; }
+
+        /* Divider */
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
         }
     </style>
 </head>
@@ -177,15 +297,48 @@
         </a>
         <span class="header-title">找回账号密码</span>
     </div>
+
     <div class="content">
-        <p class="hint">请输入购买时获得的<strong>激活码</strong>（已用于激活的码可找回对应账号与密码）。激活码区分大小写，提交前会自动转为大写。</p>
-        <div class="card">
-            <div class="form-row">
-                <span class="form-label">激活码</span>
-                <input type="text" class="form-input" id="recoverCodeInput" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+        <!-- Method Switcher -->
+        <div class="method-tabs">
+            <button type="button" class="method-tab active" data-method="identity">账号+身份找回</button>
+            <button type="button" class="method-tab" data-method="code">激活码找回</button>
+        </div>
+
+        <!-- Method 1: Identity Recovery -->
+        <div id="panelIdentity" class="method-panel active">
+            <p class="hint">输入你的<strong>账号</strong>，再填写<strong>姓名</strong>或<strong>身份证号</strong>（至少填一项），即可找回账号和密码。</p>
+            <div class="form-card">
+                <div class="form-row">
+                    <span class="form-label">账号<span class="required">*</span></span>
+                    <input type="text" class="form-input" id="idUsername" placeholder="请输入注册账号" autocomplete="username">
+                </div>
+                <div class="form-row">
+                    <span class="form-label">姓名</span>
+                    <input type="text" class="form-input" id="idRealName" placeholder="注册时填写的姓名" autocomplete="name">
+                </div>
+                <div class="form-row">
+                    <span class="form-label">身份证号</span>
+                    <input type="text" class="form-input" id="idTaxId" placeholder="注册时填写的身份证号" autocomplete="off">
+                </div>
             </div>
         </div>
+
+        <!-- Method 2: Activation Code Recovery -->
+        <div id="panelCode" class="method-panel">
+            <p class="hint">请输入购买时获得的<strong>激活码</strong>（已用于激活的码可找回对应账号与密码）。激活码提交前会自动转为大写。</p>
+            <div class="form-card">
+                <div class="form-row">
+                    <span class="form-label">激活码<span class="required">*</span></span>
+                    <input type="text" class="form-input" id="recoverCodeInput" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages -->
         <div id="recoverMsg" class="msg" role="alert"></div>
+
+        <!-- Result -->
         <div id="recoverResult" class="result-card">
             <h4>找回成功</h4>
             <div class="result-row">
@@ -199,32 +352,40 @@
                 <button type="button" class="btn-copy" data-copy-target="recoverPassword">复制</button>
             </div>
         </div>
-        <div class="footer">
-            <button type="button" class="btn-primary" id="btnRecoverSubmit">查询找回</button>
-            <a href="index.html" class="btn-login">去登录</a>
-        </div>
+
+        <!-- Submit -->
+        <button type="button" class="btn-primary" id="btnRecoverSubmit">查询找回</button>
+        <a href="index.html" class="btn-login">去登录</a>
     </div>
+
     <script>
         (function () {
             var msgEl = document.getElementById('recoverMsg');
             var resultEl = document.getElementById('recoverResult');
-            var codeInp = document.getElementById('recoverCodeInput');
             var btn = document.getElementById('btnRecoverSubmit');
+            var currentMethod = 'identity';
+
+            /* Method tab switching */
+            document.querySelectorAll('.method-tab').forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    document.querySelectorAll('.method-tab').forEach(function (t) { t.classList.remove('active'); });
+                    tab.classList.add('active');
+                    currentMethod = tab.getAttribute('data-method');
+                    document.getElementById('panelIdentity').classList.toggle('active', currentMethod === 'identity');
+                    document.getElementById('panelCode').classList.toggle('active', currentMethod === 'code');
+                    setMsg('');
+                    hideResult();
+                });
+            });
 
             function setMsg(text, isErr) {
                 if (!msgEl) return;
-                if (!text) {
-                    msgEl.className = 'msg';
-                    msgEl.textContent = '';
-                    return;
-                }
+                if (!text) { msgEl.className = 'msg'; msgEl.textContent = ''; return; }
                 msgEl.className = 'msg ' + (isErr ? 'err' : 'ok');
                 msgEl.textContent = text;
             }
 
-            function hideResult() {
-                if (resultEl) resultEl.classList.remove('is-show');
-            }
+            function hideResult() { if (resultEl) resultEl.classList.remove('is-show'); }
 
             function showResult(data) {
                 if (!resultEl) return;
@@ -237,25 +398,13 @@
                 text = String(text || '');
                 if (!text || text === '--') return;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(function () {
-                        alert('已复制');
-                    }).catch(function () {
-                        alert('复制失败，请长按手动复制');
-                    });
+                    navigator.clipboard.writeText(text).then(function () { alert('已复制'); }).catch(function () { alert('复制失败，请长按手动复制'); });
                     return;
                 }
                 var ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    alert('已复制');
-                } catch (e) {
-                    alert('复制失败，请长按手动复制');
-                }
+                ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+                document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); alert('已复制'); } catch (e) { alert('复制失败，请长按手动复制'); }
                 document.body.removeChild(ta);
             }
 
@@ -271,20 +420,19 @@
                 btn.addEventListener('click', function () {
                     setMsg('');
                     hideResult();
-                    var code = codeInp ? String(codeInp.value || '').trim() : '';
-                    if (!code) {
-                        setMsg('请输入激活码', true);
-                        return;
-                    }
-                    btn.disabled = true;
-                    fetch('api/auth', {
-                        method: 'POST',
-                        headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'recover_by_activation_code',
-                            activation_code: code
+
+                    if (currentMethod === 'identity') {
+                        var username = document.getElementById('idUsername').value.trim();
+                        var realName = document.getElementById('idRealName').value.trim();
+                        var taxId = document.getElementById('idTaxId').value.trim();
+                        if (!username) { setMsg('请输入账号', true); return; }
+                        if (!realName && !taxId) { setMsg('请至少填写姓名或身份证号其中一项', true); return; }
+                        btn.disabled = true;
+                        fetch('api/auth', {
+                            method: 'POST',
+                            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'recover_by_identity', username: username, real_name: realName, tax_id: taxId })
                         })
-                    })
                         .then(function (r) { return r.json(); })
                         .then(function (data) {
                             btn.disabled = false;
@@ -295,10 +443,29 @@
                             }
                             setMsg(data.msg || '找回失败', true);
                         })
-                        .catch(function () {
+                        .catch(function () { btn.disabled = false; setMsg('网络错误，请稍后重试', true); });
+
+                    } else {
+                        var code = document.getElementById('recoverCodeInput').value.trim();
+                        if (!code) { setMsg('请输入激活码', true); return; }
+                        btn.disabled = true;
+                        fetch('api/auth', {
+                            method: 'POST',
+                            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'recover_by_activation_code', activation_code: code })
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
                             btn.disabled = false;
-                            setMsg('网络错误，请稍后重试', true);
-                        });
+                            if (data.code === 200 && data.data) {
+                                showResult(data.data);
+                                setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                return;
+                            }
+                            setMsg(data.msg || '找回失败', true);
+                        })
+                        .catch(function () { btn.disabled = false; setMsg('网络错误，请稍后重试', true); });
+                    }
                 });
             }
         })();
