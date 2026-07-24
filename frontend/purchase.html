@@ -435,58 +435,60 @@
             <div class="pay-status" id="alipayPayStatus" hidden></div>
         </div>
 
+        <!-- 独立卡片：勿放进 cardOtherChannels，否则 C 方案隐藏「其他购买」时联系方式一并消失 -->
+        <div class="card sales-agent-card" id="salesAgentCard" hidden>
+            <p class="sales-agent-title" id="salesAgentTitle">联系销售</p>
+            <p class="sales-agent-hint" id="salesAgentHint">添加下方联系方式，由专属客服协助开通</p>
+            <div class="sales-agent-actions">
+                <button type="button" class="channel-row" id="btnSalesAgentCopyWechat" hidden>
+                    <span class="channel-icon sales">微</span>
+                    <span class="channel-body">
+                        <strong>复制微信号</strong>
+                        <span id="salesAgentWechatLabel">—</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+                <button type="button" class="channel-row" id="btnSalesAgentShowQr" hidden>
+                    <span class="channel-icon sales">码</span>
+                    <span class="channel-body">
+                        <strong>微信二维码</strong>
+                        <span>点击展开扫码添加</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+                <div class="sales-agent-qr-wrap" id="salesAgentQrWrap" hidden>
+                    <img id="salesAgentQrImg" src="" alt="销售微信二维码">
+                    <div class="qr-caption">使用微信扫一扫添加</div>
+                </div>
+                <button type="button" class="channel-row" id="btnSalesAgentCopyPhone" hidden>
+                    <span class="channel-icon sales">电</span>
+                    <span class="channel-body">
+                        <strong>复制手机号</strong>
+                        <span id="salesAgentPhoneLabel">—</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+                <button type="button" class="channel-row" id="btnSalesAgentCopyQq" hidden>
+                    <span class="channel-icon qq">QQ</span>
+                    <span class="channel-body">
+                        <strong>复制 QQ</strong>
+                        <span id="salesAgentQqLabel">—</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+                <button type="button" class="channel-row" id="btnSalesAgentXianyu" hidden>
+                    <span class="channel-icon xianyu">闲</span>
+                    <span class="channel-body">
+                        <strong>闲鱼联系</strong>
+                        <span>复制文案，打开闲鱼联系卖家</span>
+                    </span>
+                    <span class="channel-arrow">›</span>
+                </button>
+            </div>
+        </div>
+
         <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
         <div class="card" id="cardOtherChannels">
-            <div class="sales-agent-card" id="salesAgentCard" hidden>
-                <p class="sales-agent-title" id="salesAgentTitle">联系销售</p>
-                <p class="sales-agent-hint" id="salesAgentHint">添加下方联系方式，由专属客服协助开通</p>
-                <div class="sales-agent-actions">
-                    <button type="button" class="channel-row" id="btnSalesAgentCopyWechat" hidden>
-                        <span class="channel-icon sales">微</span>
-                        <span class="channel-body">
-                            <strong>复制微信号</strong>
-                            <span id="salesAgentWechatLabel">—</span>
-                        </span>
-                        <span class="channel-arrow">›</span>
-                    </button>
-                    <button type="button" class="channel-row" id="btnSalesAgentShowQr" hidden>
-                        <span class="channel-icon sales">码</span>
-                        <span class="channel-body">
-                            <strong>微信二维码</strong>
-                            <span>点击展开扫码添加</span>
-                        </span>
-                        <span class="channel-arrow">›</span>
-                    </button>
-                    <div class="sales-agent-qr-wrap" id="salesAgentQrWrap" hidden>
-                        <img id="salesAgentQrImg" src="" alt="销售微信二维码">
-                        <div class="qr-caption">使用微信扫一扫添加</div>
-                    </div>
-                    <button type="button" class="channel-row" id="btnSalesAgentCopyPhone" hidden>
-                        <span class="channel-icon sales">电</span>
-                        <span class="channel-body">
-                            <strong>复制手机号</strong>
-                            <span id="salesAgentPhoneLabel">—</span>
-                        </span>
-                        <span class="channel-arrow">›</span>
-                    </button>
-                    <button type="button" class="channel-row" id="btnSalesAgentCopyQq" hidden>
-                        <span class="channel-icon qq">QQ</span>
-                        <span class="channel-body">
-                            <strong>复制 QQ</strong>
-                            <span id="salesAgentQqLabel">—</span>
-                        </span>
-                        <span class="channel-arrow">›</span>
-                    </button>
-                    <button type="button" class="channel-row" id="btnSalesAgentXianyu" hidden>
-                        <span class="channel-icon xianyu">闲</span>
-                        <span class="channel-body">
-                            <strong>闲鱼联系</strong>
-                            <span>复制文案，打开闲鱼联系卖家</span>
-                        </span>
-                        <span class="channel-arrow">›</span>
-                    </button>
-                </div>
-            </div>
             <div class="channel-list" id="legacyChannelList">
                 <a class="channel-row" id="rowKufaka" href="https://www.kufaka.com/item/bftacz" target="_blank" rel="noopener noreferrer">
                     <span class="channel-icon kufaka">酷</span>
@@ -1301,7 +1303,16 @@
         qrUrl = String(qrUrl || '').trim();
         if (btnQr) btnQr.hidden = !qrUrl;
         if (qrImg && qrUrl) qrImg.src = qrUrl;
-        if (qrWrap) qrWrap.hidden = true;
+        /* 仅有二维码、无微信号时默认展开，避免用户看不到联系方式 */
+        if (qrWrap) {
+            var onlyQr =
+                !!qrUrl &&
+                !String(agent.wechat_id || '').trim() &&
+                !String(agent.phone || '').trim() &&
+                !String(agent.qq || '').trim() &&
+                !String(agent.xianyu_text || '').trim();
+            qrWrap.hidden = !onlyQr;
+        }
         var btnPhone = document.getElementById('btnSalesAgentCopyPhone');
         var phoneLabel = document.getElementById('salesAgentPhoneLabel');
         var phone = agent.phone ? String(agent.phone).trim() : '';

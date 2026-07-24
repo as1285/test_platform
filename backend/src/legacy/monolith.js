@@ -17339,7 +17339,6 @@ async function handleAdminSettingsPost(req, res) {
       hasConversionAb ||
       hasLandingAb ||
       hasPricingAb ||
-      hasInvite ||
       hasActivationNudge
     ) {
       return res.status(403).json({
