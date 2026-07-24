@@ -649,6 +649,10 @@
             border-bottom: 1px solid rgba(126, 224, 207, 0.35);
         }
         .dl-intent-register a:hover { border-bottom-color: #7ee0cf; }
+        .dl-intent-sep {
+            color: rgba(215, 230, 239, 0.35);
+            margin: 0 2px;
+        }
         .install-btn-skeleton {
             display: flex;
             flex-direction: column;
@@ -1088,6 +1092,8 @@
                 <p class="dl-intent-register">
                     已安装？
                     <a href="register.html?from=install_guide" class="install-register-link">去注册账号</a>
+                    <span class="dl-intent-sep" aria-hidden="true"> · </span>
+                    <a href="purchase.html?from=install" class="install-activate-link" id="installActivateLink">已有激活码？去开通</a>
                 </p>
             </section>
 
@@ -1917,6 +1923,19 @@
         })();
 
         bindInstallRegisterLinks();
+        (function bindInstallActivateLink() {
+            var a = document.getElementById('installActivateLink');
+            if (!a || a.dataset.activateBound === '1') return;
+            a.dataset.activateBound = '1';
+            a.addEventListener('click', function () {
+                if (typeof window.trackPublicAction === 'function') {
+                    window.trackPublicAction('track_activate_prompt_open', {
+                        page: 'install_guide',
+                        source: 'install_activate_link'
+                    });
+                }
+            });
+        })();
 
         function toAssetUrl(path) {
             if (!path) return '';

@@ -1058,7 +1058,7 @@
     removeMineConversionUi();
     removeActivationPromoUi();
     setTimeout(function () {
-      window.location.href = 'consult.html?tab=records&onboarding=' + ONBOARD_TAX;
+      window.location.href = 'activate_success.html';
     }, 300);
   }
 

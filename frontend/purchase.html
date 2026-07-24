@@ -941,7 +941,11 @@
             window.refreshWatermarkFromApi();
         }
         setTimeout(function () {
-            window.location.replace('consult.html?tab=records&onboarding=tax');
+            if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {
+                window.ConversionGuide.afterActivateSuccess();
+            } else {
+                window.location.replace('activate_success.html');
+            }
         }, 600);
     }
 
@@ -1344,7 +1348,7 @@
                     } else {
                         showToast('激活成功');
                         setTimeout(function () {
-                            window.location.href = 'consult.html?tab=records&onboarding=tax';
+                            window.location.href = 'activate_success.html';
                         }, 500);
                     }
                     return;

@@ -443,6 +443,41 @@
             font-size: 13px;
             font-weight: 600;
         }
+        .shouye-activate-bar {
+            display: none;
+            margin: 10px 12px 0;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0a1a24 0%, #0f3a36 60%, #0b8f7a 140%);
+            color: #e8f1f4;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 8px 20px rgba(7, 19, 31, 0.14);
+        }
+        .shouye-activate-bar.is-visible { display: flex; }
+        .shouye-activate-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
+        .shouye-activate-copy span {
+            display: block;
+            font-size: 12px;
+            line-height: 1.45;
+            color: rgba(232, 241, 244, 0.72);
+        }
+        .shouye-activate-btn {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 0 14px;
+            border-radius: 18px;
+            background: #fff;
+            color: #0b5f54;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
         .guest-gate-mask {
             display: none;
             position: fixed;
@@ -622,6 +657,13 @@
                 <span>先浏览产品首页，完整明细与证明需下载或注册</span>
             </div>
             <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+        </div>
+        <div class="shouye-activate-bar" id="shouyeActivateBar" hidden>
+            <div class="shouye-activate-copy">
+                <strong>开通完整功能</strong>
+                <span>激活后可开具明细与完税证明</span>
+            </div>
+            <a href="purchase.html?from=shouye" class="shouye-activate-btn" id="shouyeActivateBtn">去激活</a>
         </div>
         <div class="shouye-content">
             <div class="shouye-lb-wrap">
@@ -815,6 +857,51 @@
         // 初始化时更新图标
         updateNavIcons();
         
+        (function initShouyeActivateBar() {
+            var bar = document.getElementById('shouyeActivateBar');
+            var btn = document.getElementById('shouyeActivateBtn');
+            if (!bar) return;
+            var guest = false;
+            try {
+                guest =
+                    localStorage.getItem('landing_guest_v1') === '1' ||
+                    (localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
+            } catch (e0) {}
+            if (guest || document.body.classList.contains('is-landing-guest')) {
+                bar.hidden = true;
+                bar.classList.remove('is-visible');
+                return;
+            }
+            var loggedIn = false;
+            var active = false;
+            try {
+                loggedIn = !!(localStorage.getItem('token') && localStorage.getItem('user_id'));
+                active = localStorage.getItem('account_active') === '1';
+            } catch (e1) {}
+            if (loggedIn && !active) {
+                bar.hidden = false;
+                bar.classList.add('is-visible');
+            } else {
+                bar.hidden = true;
+                bar.classList.remove('is-visible');
+            }
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_open', {
+                            page: 'shouye',
+                            source: 'shouye_bar'
+                        });
+                    } else if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_activate_prompt_open', {
+                            page: 'shouye',
+                            source: 'shouye_bar'
+                        });
+                    }
+                });
+            }
+        })();
+
         // iOS设备检测，底部导航上移
         (function() {
             var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

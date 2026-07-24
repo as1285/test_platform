@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/site-config.js"></script>
+    <script src="/js/auth.js?v=20260724-login-session"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>个人所得税 · 开通成功</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --font-display: "ZCOOL XiaoWei", "Noto Serif SC", "Songti SC", serif;
+            --font-body: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            --seal: #c23b2e;
+            --gold: #c9a45c;
+            --accent: #0b8f7a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            min-height: 100%;
+            font-family: var(--font-body);
+            color: #e8f1f4;
+            background:
+                radial-gradient(ellipse 640px 420px at 85% -10%, rgba(11, 143, 122, 0.28), transparent 58%),
+                radial-gradient(ellipse 480px 360px at 0% 40%, rgba(194, 59, 46, 0.12), transparent 55%),
+                linear-gradient(165deg, #040b12 0%, #0a1a24 48%, #071820 100%);
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: calc(28px + var(--safe-t)) 24px calc(36px + var(--safe-b));
+            min-height: 100vh;
+        }
+        .stage {
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .seal {
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 22px;
+            border: 3px solid var(--seal);
+            border-radius: 50%;
+            color: var(--seal);
+            display: grid;
+            place-items: center;
+            font-family: var(--font-display);
+            font-size: 2rem;
+            letter-spacing: 0.08em;
+            transform: rotate(-10deg);
+            box-shadow:
+                inset 0 0 0 1px rgba(194, 59, 46, 0.35),
+                0 0 0 10px rgba(194, 59, 46, 0.12);
+            animation: sealPop 0.85s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes sealPop {
+            from { opacity: 0; transform: rotate(-28deg) scale(0.65); }
+            to { opacity: 1; transform: rotate(-10deg) scale(1); }
+        }
+        .kicker {
+            font-size: 0.72rem;
+            letter-spacing: 0.24em;
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-family: var(--font-display);
+            font-size: clamp(1.85rem, 7vw, 2.35rem);
+            font-weight: 400;
+            letter-spacing: 0.06em;
+            line-height: 1.15;
+            margin-bottom: 12px;
+        }
+        .support {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            color: rgba(215, 230, 239, 0.72);
+            margin-bottom: 28px;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 54px;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.03em;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: linear-gradient(120deg, #067061 0%, #0b8f7a 48%, #1fb39a 100%);
+            color: #fff;
+            box-shadow: 0 10px 28px rgba(11, 143, 122, 0.38);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary::after {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 -40%;
+            width: 35%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transform: skewX(-18deg);
+            animation: sheen 3.2s ease-in-out infinite;
+        }
+        @keyframes sheen {
+            0%, 55% { left: -40%; opacity: 0; }
+            70% { opacity: 1; }
+            100% { left: 120%; opacity: 0; }
+        }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(232, 241, 244, 0.88);
+            border: 1px solid rgba(215, 230, 239, 0.16);
+        }
+        .hint {
+            margin-top: 22px;
+            font-size: 0.78rem;
+            color: rgba(215, 230, 239, 0.45);
+            line-height: 1.5;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .stage, .seal, .btn-primary::after { animation: none !important; }
+        }
+    </style>
+</head>
+<body class="page-activate-success">
+    <main class="stage" id="activateSuccessStage">
+        <div class="seal" aria-hidden="true">通</div>
+        <p class="kicker">ACTIVATED</p>
+        <h1>权益已开通</h1>
+        <p class="support">账号已激活。下一步添加个税演示数据，即可体验明细与完税证明。</p>
+        <div class="actions">
+            <a class="btn btn-primary" id="btnGoTax" href="consult.html?tab=records&onboarding=tax">去添加演示数据</a>
+            <a class="btn btn-ghost" id="btnGoMine" href="mine.html">先回个人中心</a>
+        </div>
+        <p class="hint">本应用为界面演示与学习参考，非官方申报渠道</p>
+    </main>
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('account_active') !== '1') {
+                    /* 未激活时不应停留在成功页 */
+                    window.location.replace('purchase.html');
+                    return;
+                }
+            } catch (e0) {}
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_activate_success_page_view', { page: 'activate_success' });
+            } else if (typeof window.trackPublicAction === 'function') {
+                window.trackPublicAction('track_activate_success_page_view', { page: 'activate_success' });
+            }
+            var goTax = document.getElementById('btnGoTax');
+            var goMine = document.getElementById('btnGoMine');
+            if (goTax) {
+                goTax.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_success_go_tax', { page: 'activate_success' });
+                    }
+                });
+            }
+            if (goMine) {
+                goMine.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_success_go_mine', { page: 'activate_success' });
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
