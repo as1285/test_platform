@@ -44,7 +44,6 @@
             overflow: hidden;
             --mine-safe-top: env(safe-area-inset-top, 0px);
             /* 激活按钮：相对顶栏下移，与头像中下缘齐平 */
-            --mine-activate-btn-top-offset: 66px;
             --mine-header-blue-top: #2188f4;
             --mine-header-blue-mid: #1e81fb;
             --mine-header-blue-bot: #2c80f4;
@@ -93,12 +92,6 @@
             margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)) - var(--mine-ios-header-lift, 12px));
         }
 
-        html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn {
-            top: calc(
-                var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, var(--mine-safe-top)) +
-                    var(--mine-ios-header-lift, 12px)
-            );
-        }
 
         /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
@@ -109,17 +102,8 @@
             margin: -70px 16px 0;
         }
 
-        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .mine-activate-btn {
-            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, 0px));
-        }
 
         /* Cordova 23127PN0CC：固定定位，避免被 header-bg overflow 或黑状态栏裁切 */
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn {
-            position: fixed;
-            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-cordova-statusbar-chrome, 40px));
-            right: 18px;
-            z-index: 500;
-        }
 
         /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
@@ -243,65 +227,6 @@
             width: 100%;
             display: block;
             vertical-align: top;
-        }
-
-        .mine-activate-btn {
-            position: fixed;
-            right: 18px;
-            top: calc(var(--mine-activate-btn-top-offset, 66px) + var(--app-shell-statusbar-top, 0px));
-            min-width: 76px;
-            height: 38px;
-            border: none;
-            border-radius: 22px;
-            background: rgba(255, 255, 255, 0.95);
-            color: #1658dc;
-            font-size: 16px;
-            font-weight: 600;
-            line-height: 1;
-            cursor: pointer;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 0 18px;
-            z-index: 500;
-            pointer-events: auto;
-        }
-        .mine-activate-promo {
-            margin: 0 0 14px;
-            padding: 16px 16px 14px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #0a1a24 0%, #0f3a36 55%, #0b8f7a 140%);
-            color: #e8f1f4;
-            box-shadow: 0 10px 28px rgba(7, 19, 31, 0.18);
-        }
-        .mine-activate-promo[hidden] { display: none !important; }
-        .mine-activate-promo-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-            letter-spacing: 0.02em;
-        }
-        .mine-activate-promo-desc {
-            font-size: 0.86rem;
-            line-height: 1.55;
-            color: rgba(232, 241, 244, 0.78);
-            margin-bottom: 12px;
-        }
-        .mine-activate-promo-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 44px;
-            border-radius: 10px;
-            background: #fff;
-            color: #0b5f54;
-            font-size: 0.98rem;
-            font-weight: 700;
-            text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
         /* 弹框居中：Android WebView（如 OPPO K7x）下 flex 居中易贴底，改用 fixed + transform */
@@ -1123,7 +1048,6 @@
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="header-bg">
         <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
-        <button type="button" class="mine-activate-btn" id="mineActivateBtn">激活</button>
     </div>
 
     <div class="content-wrapper">
@@ -1153,12 +1077,6 @@
                         </button>
                 </div>
             </div>
-        </div>
-
-        <div class="mine-activate-promo" id="mineActivatePromo" hidden>
-            <p class="mine-activate-promo-title">开通完整功能</p>
-            <p class="mine-activate-promo-desc">激活后可填写个税演示数据，体验明细与完税证明。</p>
-            <a href="purchase.html?from=mine_card" class="mine-activate-promo-btn" id="mineActivatePromoBtn">立即激活</a>
         </div>
 
         <div class="function-cards">
@@ -2035,8 +1953,6 @@
             }
 
             function updateMineActivateButton(user) {
-                var btn = document.getElementById('mineActivateBtn');
-                var promo = document.getElementById('mineActivatePromo');
                 var active = false;
                 if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
                     active = true;
@@ -2044,24 +1960,6 @@
                     try {
                         active = localStorage.getItem('account_active') === '1';
                     } catch (e0) {}
-                }
-                var guest = typeof isLandingGuestMode === 'function' ? isLandingGuestMode() : false;
-                if (btn) {
-                    if (active) {
-                        /* 已激活（含试用）不展示「剩X天」按钮 */
-                        btn.style.display = 'none';
-                        btn.textContent = '已激活';
-                    } else {
-                        btn.style.display = 'inline-flex';
-                        btn.textContent = guest ? '下载' : '激活';
-                    }
-                }
-                if (promo) {
-                    if (!active && !guest) {
-                        promo.hidden = false;
-                    } else {
-                        promo.hidden = true;
-                    }
                 }
                 if (document.body) {
                     document.body.classList.toggle('mine-account-active', active);
@@ -2587,28 +2485,6 @@
             var consultModifyLink = document.getElementById('consultModifyLink');
             if (consultModifyLink) {
                 consultModifyLink.addEventListener('click', handleConsultMenuClick);
-            }
-
-            var mineActivateBtn = document.getElementById('mineActivateBtn');
-            if (mineActivateBtn) {
-                mineActivateBtn.addEventListener('touchend', function (e) {
-                    e.stopPropagation();
-                });
-                mineActivateBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    openMineActivateModal();
-                });
-            }
-            var mineActivatePromoBtn = document.getElementById('mineActivatePromoBtn');
-            if (mineActivatePromoBtn) {
-                mineActivatePromoBtn.addEventListener('click', function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_activate_prompt_open', {
-                            page: 'mine',
-                            source: 'mine_card'
-                        });
-                    }
-                });
             }
 
             var mineOkBtn = document.getElementById('btnMineActivateOk');

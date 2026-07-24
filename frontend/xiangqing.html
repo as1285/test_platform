@@ -83,6 +83,83 @@
             text-decoration: none;
         }
 
+        .xq-activate-card {
+            margin: 12px 12px 0;
+            padding: 16px 16px 14px;
+            border-radius: 14px;
+            background:
+                linear-gradient(135deg, #0b3d7a 0%, #1e6fff 55%, #3d8bff 100%);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(30, 111, 255, 0.28);
+            position: relative;
+            overflow: hidden;
+        }
+        .xq-activate-card[hidden] { display: none !important; }
+        .xq-activate-card::before {
+            content: "";
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            right: -28px;
+            top: -36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+        }
+        .xq-activate-card::after {
+            content: "";
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            right: 36px;
+            bottom: -28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+        }
+        .xq-activate-kicker {
+            position: relative;
+            z-index: 1;
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            opacity: 0.85;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .xq-activate-title {
+            position: relative;
+            z-index: 1;
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: 0.02em;
+        }
+        .xq-activate-desc {
+            position: relative;
+            z-index: 1;
+            font-size: 13px;
+            line-height: 1.55;
+            opacity: 0.9;
+            margin-bottom: 14px;
+        }
+        .xq-activate-btn {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            border-radius: 11px;
+            background: #fff;
+            color: #1e6fff;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .xq-activate-btn:active { opacity: 0.92; transform: scale(0.98); }
+
         .xq-section {
             margin-top: 10px;
             background: #fff;
@@ -329,6 +406,13 @@
         </a>
         <span class="header-title">收入纳税明细详情</span>
         <a href="#" class="header-right" onclick="return false;">申诉</a>
+    </div>
+
+    <div class="xq-activate-card" id="xqActivateCard" hidden>
+        <p class="xq-activate-kicker">UNLOCK</p>
+        <p class="xq-activate-title">开通完整功能</p>
+        <p class="xq-activate-desc">激活后可完整查看明细并体验完税证明等能力</p>
+        <a href="purchase.html?from=xiangqing" class="xq-activate-btn" id="xqActivateBtn">立即激活</a>
     </div>
 
     <section class="xq-section" aria-labelledby="secSummary">
@@ -688,6 +772,37 @@
             window.location.href = u;
         }
 
+        function syncXqActivateCard() {
+            var card = document.getElementById('xqActivateCard');
+            var btn = document.getElementById('xqActivateBtn');
+            if (!card) return;
+            var active = false;
+            var guest = false;
+            try {
+                active = localStorage.getItem('account_active') === '1';
+                guest =
+                    localStorage.getItem('landing_guest_v1') === '1' ||
+                    String(localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
+            } catch (e0) {}
+            if (active || guest) {
+                card.hidden = true;
+            } else {
+                card.hidden = false;
+            }
+            if (btn && !btn.dataset.bound) {
+                btn.dataset.bound = '1';
+                btn.addEventListener('click', function () {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_activate_prompt_open', {
+                            page: 'xiangqing',
+                            source: 'xq_activate_card'
+                        });
+                    }
+                });
+            }
+        }
+
+        syncXqActivateCard();
         initBackLink();
         loadData();
     </script>
