@@ -1433,7 +1433,10 @@
 
         function applyAdminRouteChrome(pageKey) {
             document.querySelectorAll('.page-panel').forEach(function (el) {
-                el.classList.toggle('active', el.id === 'page-' + pageKey);
+                var on = el.id === 'page-' + pageKey;
+                el.classList.toggle('active', on);
+                if (on) el.removeAttribute('hidden');
+                else el.setAttribute('hidden', '');
             });
             document.querySelectorAll('.nav-item').forEach(function (btn) {
                 btn.classList.toggle('active', btn.getAttribute('data-page') === pageKey);

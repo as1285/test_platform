@@ -1883,10 +1883,3 @@ tr.ud-salary-bucket-high td {
     margin-top: 12px;
 }
 .agent-promo-links-mount[style*="display:none"] { display: none; }
-.page-panel {
-    display: none;
-}
-.page-panel:not([hidden]) {
-    display: block;
-}
-.page-panel[hidden] { display: none !important; }
