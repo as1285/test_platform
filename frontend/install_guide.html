@@ -243,14 +243,14 @@
         html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
         body {
             font-family: var(--font-body);
-            color: var(--ink);
+            color: #e8f1f4;
             min-height: 100vh;
-            padding-bottom: calc(112px + var(--safe-b));
+            padding-bottom: calc(88px + var(--safe-b));
             background:
-                radial-gradient(ellipse 720px 480px at 8% -8%, rgba(11, 143, 122, 0.16), transparent 58%),
-                radial-gradient(ellipse 560px 420px at 100% 8%, rgba(194, 59, 46, 0.07), transparent 52%),
-                radial-gradient(ellipse 900px 360px at 50% 100%, rgba(201, 164, 92, 0.08), transparent 55%),
-                linear-gradient(180deg, #e8f1f4 0%, #f3f7fa 38%, #e6eef3 100%);
+                radial-gradient(ellipse 640px 420px at 85% -10%, rgba(11, 143, 122, 0.28), transparent 58%),
+                radial-gradient(ellipse 480px 360px at 0% 30%, rgba(194, 59, 46, 0.12), transparent 55%),
+                radial-gradient(ellipse 700px 320px at 50% 110%, rgba(201, 164, 92, 0.1), transparent 50%),
+                linear-gradient(165deg, #040b12 0%, #0a1a24 48%, #071820 100%);
             background-attachment: fixed;
         }
         body::before {
@@ -259,19 +259,18 @@
             inset: 0;
             pointer-events: none;
             z-index: 0;
-            opacity: 0.45;
+            opacity: 0.35;
             background-image:
                 repeating-linear-gradient(
                     -18deg,
                     transparent 0,
-                    transparent 11px,
-                    rgba(7, 19, 31, 0.018) 11px,
-                    rgba(7, 19, 31, 0.018) 12px
+                    transparent 14px,
+                    rgba(255, 255, 255, 0.025) 14px,
+                    rgba(255, 255, 255, 0.025) 15px
                 );
-            mask-image: linear-gradient(180deg, #000 0%, transparent 72%);
         }
         .lp-atmos {
-            display: none;
+            display: block;
             position: fixed;
             inset: 0;
             z-index: 0;
@@ -577,7 +576,7 @@
         .lp-caps, .lp-demo { display: none !important; }
         /* ── Download Intent Mode（税印夜幕） ── */
         .dl-intent-header {
-            display: none;
+            display: block;
             padding: calc(28px + var(--safe-t)) 24px 6px;
             animation: lpRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
@@ -637,7 +636,7 @@
             max-width: 22rem;
         }
         .dl-intent-register {
-            display: none;
+            display: block;
             margin-top: 20px;
             font-size: 0.9rem;
             color: rgba(215, 230, 239, 0.62);
@@ -660,50 +659,20 @@
             width: 100%;
             min-height: 58px;
             border-radius: var(--radius-md);
-            background: linear-gradient(90deg, #d7e6ef 0%, #eef4f7 45%, #d7e6ef 90%);
+            background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.16) 45%, rgba(255,255,255,0.08) 90%);
             background-size: 200% 100%;
             animation: skShine 1.15s ease-in-out infinite;
         }
         .skeleton-hint {
             font-size: 0.86rem;
-            color: var(--muted);
+            color: rgba(215, 230, 239, 0.65);
             text-align: center;
         }
         @keyframes skShine {
             0% { background-position: 100% 0; }
             100% { background-position: -100% 0; }
         }
-        body.is-download-intent {
-            color: #e8f1f4;
-            padding-bottom: calc(88px + var(--safe-b));
-            background:
-                radial-gradient(ellipse 640px 420px at 85% -10%, rgba(11, 143, 122, 0.28), transparent 58%),
-                radial-gradient(ellipse 480px 360px at 0% 30%, rgba(194, 59, 46, 0.12), transparent 55%),
-                radial-gradient(ellipse 700px 320px at 50% 110%, rgba(201, 164, 92, 0.1), transparent 50%),
-                linear-gradient(165deg, #040b12 0%, #0a1a24 48%, #071820 100%);
-        }
-        body.is-download-intent::before {
-            opacity: 0.35;
-            background-image:
-                repeating-linear-gradient(
-                    -18deg,
-                    transparent 0,
-                    transparent 14px,
-                    rgba(255, 255, 255, 0.025) 14px,
-                    rgba(255, 255, 255, 0.025) 15px
-                );
-            mask-image: none;
-        }
-        body.is-download-intent .lp-atmos { display: block; }
-        body.is-download-intent .skeleton-btn {
-            background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.16) 45%, rgba(255,255,255,0.08) 90%);
-            background-size: 200% 100%;
-        }
-        body.is-download-intent .skeleton-hint {
-            color: rgba(215, 230, 239, 0.65);
-        }
-        body.is-download-intent .dl-intent-header { display: block; }
-        body.is-download-intent .dl-intent-register { display: block; }
+        /* 下载意图布局（全站安装页统一） */
         body.is-download-intent .lp-hero,
         body.is-download-intent .showcase-card {
             display: none !important;
@@ -1073,14 +1042,12 @@
     </style>
 
 </head>
-<body class="page-install-guide page-landing-b tax-app-shell page-install-v2">
+<body class="page-install-guide page-landing-b tax-app-shell page-install-v2 is-download-intent">
     <script>
+        /* 安装页统一为下载意图布局（税印夜幕），与 ?download=1 视觉一致 */
         (function markDownloadIntent() {
             try {
-                var q = new URLSearchParams(window.location.search || '');
-                if (q.get('download') === '1' || String(window.location.hash || '') === '#download') {
-                    document.body.classList.add('is-download-intent');
-                }
+                document.body.classList.add('is-download-intent');
             } catch (e) {}
         })();
     </script>
@@ -1097,32 +1064,6 @@
             <p class="dl-intent-headline">把 App 装到手机</p>
             <p class="dl-intent-support">识别当前系统后一键下载安装包，装好打开即可注册使用</p>
         </header>
-
-        <section class="lp-hero" id="lpHero">
-            <div class="lp-hero-copy">
-                <h1 class="lp-hero-brand">个人所得税</h1>
-                <p class="lp-hero-headline">先看效果，再装到手机</p>
-                <p class="lp-hero-support">预览明细与完税界面，满意后再下载安装</p>
-                <div class="lp-hero-ctas">
-                    <a href="#download" class="lp-btn lp-btn-primary" id="lpHeroDownloadBtn">下载到手机</a>
-                </div>
-            </div>
-            <div class="lp-hero-visual" id="lpHeroVisual">
-                <div class="lp-hero-gradient"></div>
-                <img id="lpHeroShowcaseImg" alt="" hidden decoding="async" loading="lazy" fetchpriority="low">
-            </div>
-        </section>
-
-        <section class="lp-section showcase-card" id="installShowcaseCard" hidden>
-            <h2 class="lp-section-title">更多界面</h2>
-            <p class="lp-section-lead">左右滑动查看申报与税务记录</p>
-            <div class="showcase-gif-wrap" id="installShowcaseGifWrap" hidden>
-                <img id="installShowcaseGif" alt="个税明细效果演示动图" loading="lazy" decoding="async" fetchpriority="low">
-            </div>
-            <div class="showcase-carousel-wrap" id="installShowcaseCarouselWrap" hidden>
-                <div class="showcase-carousel" id="installShowcaseCarousel" role="list"></div>
-            </div>
-        </section>
 
         <section class="lp-section lp-download" id="download">
             <h2 class="lp-section-title">下载安装</h2>
@@ -1357,15 +1298,7 @@
         }
 
         function isDownloadIntentPage() {
-            try {
-                return (
-                    document.body.classList.contains('is-download-intent') ||
-                    /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || '')) ||
-                    String(window.location.hash || '') === '#download'
-                );
-            } catch (e0) {
-                return false;
-            }
+            return true;
         }
 
         function setInstallButtonsLoading(loading) {
