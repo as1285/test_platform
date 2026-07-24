@@ -24,6 +24,39 @@ const MONITOR_DEPLOY_MARKER_MAX_AGE_MS = parseInt(
 );
 const MONITOR_STARTED_AT = Date.now();
 
+/** 告警邮件用的站点域名（来自 PUBLIC_SITE_URL / APP_URL） */
+function resolveAlertSiteDomain() {
+  var raw = String(process.env.PUBLIC_SITE_URL || process.env.APP_URL || '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!raw) return '';
+  try {
+    var u = new URL(raw.indexOf('://') >= 0 ? raw : 'https://' + raw);
+    return String(u.hostname || '').replace(/^www\./i, '') || raw;
+  } catch (e) {
+    return raw.replace(/^https?:\/\//i, '').split('/')[0] || raw;
+  }
+}
+
+function alertMailPrefix() {
+  var domain = resolveAlertSiteDomain();
+  return domain ? '[' + domain + ']' : '[test_platform]';
+}
+
+function alertMailSiteLine() {
+  var domain = resolveAlertSiteDomain();
+  var origin = String(process.env.PUBLIC_SITE_URL || process.env.APP_URL || '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (origin) {
+    return '站点：' + origin + '\n域名：' + (domain || '—') + '\n';
+  }
+  if (domain) {
+    return '域名：' + domain + '\n';
+  }
+  return '';
+}
+
 /** @type {import('mysql2/promise').Pool|null} */
 var _pool = null;
 var _uploadDir = '';
@@ -282,9 +315,10 @@ async function notifyServiceDown(svc, hostSnapshot) {
     return;
   }
   _alertCooldown[svc.id] = Date.now();
-  var subject = '[test_platform] 服务异常：' + svc.label;
+  var subject = alertMailPrefix() + ' 服务异常：' + svc.label;
   var text =
     '检测到服务不可用，请及时处理。\n\n' +
+    alertMailSiteLine() +
     '服务：' +
     svc.label +
     ' (' +
@@ -303,7 +337,9 @@ async function notifyServiceDown(svc, hostSnapshot) {
     '内存使用：' +
     (hostSnapshot.memory_used_percent != null ? hostSnapshot.memory_used_percent + '%' : '—') +
     '\n\n' +
-    '— test_platform 服务器监控';
+    '— ' +
+    (resolveAlertSiteDomain() || 'test_platform') +
+    ' 服务器监控';
 
   var alertEntry = {
     at: new Date().toISOString(),
@@ -359,9 +395,10 @@ async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
     return;
   }
   _alertCooldown[metricId] = Date.now();
-  var subject = '[test_platform] 服务器指标异常：' + label;
+  var subject = alertMailPrefix() + ' 服务器指标异常：' + label;
   var text =
     '检测到服务器指标异常，请及时处理。\n\n' +
+    alertMailSiteLine() +
     '指标：' +
     label +
     '\n' +
@@ -380,7 +417,9 @@ async function notifyHostMetricAlert(metricId, label, message, hostSnapshot) {
     '内存使用：' +
     (hostSnapshot.memory_used_percent != null ? hostSnapshot.memory_used_percent + '%' : '—') +
     '\n\n' +
-    '— test_platform 服务器监控';
+    '— ' +
+    (resolveAlertSiteDomain() || 'test_platform') +
+    ' 服务器监控';
 
   var alertEntry = {
     at: new Date().toISOString(),
@@ -553,12 +592,16 @@ async function sendTestAlertEmail() {
   }
   await mail.sendMail({
     to: MONITOR_ALERT_EMAIL,
-    subject: '[test_platform] 服务器监控邮件测试',
+    subject: alertMailPrefix() + ' 服务器监控邮件测试',
     text:
-      '这是一封测试邮件，说明服务器监控告警邮件通道已配置成功。\n\n时间：' +
-      new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+      '这是一封测试邮件，说明服务器监控告警邮件通道已配置成功。\n\n' +
+      alertMailSiteLine() +
+      '时间：' +
+      new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) +
+      '\n主机：' +
+      os.hostname()
   });
-  return { to: MONITOR_ALERT_EMAIL };
+  return { to: MONITOR_ALERT_EMAIL, site: resolveAlertSiteDomain() || null };
 }
 
 module.exports = {
