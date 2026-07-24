@@ -12,1247 +12,594 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
     <style>
+        /* ===== CSS 变量系统 ===== */
+        :root {
+            --color-primary: #3b82f6;
+            --color-primary-light: #60a5fa;
+            --color-primary-dark: #2563eb;
+            --color-primary-bg: #eff6ff;
+            --color-primary-border: #bfdbfe;
+            --color-success: #10b981;
+            --color-success-bg: #ecfdf5;
+            --color-danger: #ef4444;
+            --color-danger-bg: #fef2f2;
+            --color-warning: #f59e0b;
+            --color-warning-bg: #fffbeb;
+            --color-text: #0f172a;
+            --color-text-secondary: #475569;
+            --color-text-muted: #94a3b8;
+            --color-text-placeholder: #cbd5e1;
+            --color-bg: #f1f5f9;
+            --color-surface: #ffffff;
+            --color-surface-alt: #f8fafc;
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-full: 9999px;
+            --shadow-xs: 0 1px 2px rgba(15,23,42,0.04);
+            --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+            --shadow-md: 0 4px 6px -1px rgba(15,23,42,0.07), 0 2px 4px -2px rgba(15,23,42,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(15,23,42,0.08), 0 4px 6px -4px rgba(15,23,42,0.04);
+            --shadow-xl: 0 20px 25px -5px rgba(15,23,42,0.1), 0 8px 10px -6px rgba(15,23,42,0.06);
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ===== 基础重置 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
-            background: #f5f6fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
+
+        /* ===== 顶部 Header ===== */
         .header {
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
-            color: #fff;
-            padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px;
+            background: var(--color-surface);
+            padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
             text-align: center;
             position: relative;
+            border-bottom: 1px solid var(--color-border-light);
         }
-        .header h1 { font-size: 15px; font-weight: 600; line-height: 1.3; }
-        .header .user-name { font-size: 11px; opacity: 0.9; margin-top: 4px; line-height: 1.25; }
+        .header h1 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--color-text);
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+        }
+        .header .user-name {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-top: 2px;
+        }
 
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            position: absolute;
+            left: 12px;
+            top: calc(12px + env(safe-area-inset-top, 0px));
+        }
+        .back-link:active { opacity: 0.6; }
+        .header .back-link span { font-size: 13px; }
+
+        /* ===== Tab 导航 ===== */
         .tabs {
             display: flex;
-            background: #fff;
-            border-bottom: 1px solid #eee;
+            background: var(--color-surface);
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 100;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border-bottom: 1px solid var(--color-border-light);
+            padding: 0 4px;
         }
         .tabs::-webkit-scrollbar { display: none; }
         .tab {
             flex: 1;
             min-width: 72px;
-            padding: 11px 6px;
+            padding: 12px 8px;
             text-align: center;
-            font-size: 13px;
-            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text-muted);
             text-decoration: none;
-            border-bottom: 2px solid transparent;
+            position: relative;
             white-space: nowrap;
+            transition: color var(--transition-fast);
         }
+        .tab:active { opacity: 0.7; }
         .tab.active {
-            color: #1e6fff;
-            border-bottom-color: #1e6fff;
+            color: var(--color-primary);
+            font-weight: 600;
         }
-        .container { padding: 12px 12px 16px; padding-bottom: var(--bottom-nav-clearance); }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: var(--color-primary);
+            border-radius: 3px 3px 0 0;
+        }
 
+        /* ===== 内容容器 ===== */
+        .container {
+            padding: 12px;
+            padding-bottom: var(--bottom-nav-clearance, 16px);
+        }
+
+        /* ===== 卡片系统 ===== */
         .card {
-            background: #fff;
-            border-radius: 12px;
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
             padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-border-light);
+            transition: box-shadow var(--transition-fast);
         }
         .card-title {
             font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 16px;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 14px;
             padding-bottom: 12px;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--color-border-light);
+            letter-spacing: -0.01em;
+        }
+        .card-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .card-title-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
-        /* 列表「编辑」滚动到单条表单时，预留 sticky Tab 高度避免标题被挡住 */
-        #singleTaxRecordCard {
-            scroll-margin-top: 52px;
-        }
-
-        .form-group { margin-bottom: 16px; }
+        /* ===== 表单系统 ===== */
+        .form-group { margin-bottom: 14px; }
         .form-group label {
             display: block;
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            margin-bottom: 6px;
         }
-        .form-group input, .form-group select, .form-group textarea {
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fafafa;
+            padding: 11px 12px;
+            border: 1.5px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            color: var(--color-text);
+            background: var(--color-surface);
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            -webkit-appearance: none;
+            appearance: none;
         }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--color-text-placeholder);
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
-            border-color: #1e6fff;
-            background: #fff;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
         }
         .form-group input[readonly] {
-            color: #666;
-            background: #f0f0f0;
+            color: var(--color-text-muted);
+            background: var(--color-surface-alt);
             cursor: not-allowed;
         }
         .form-group input[readonly]:focus {
-            border-color: #e0e0e0;
-            background: #f0f0f0;
+            border-color: var(--color-border);
+            box-shadow: none;
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
         }
         @media (max-width: 480px) {
             .form-row { grid-template-columns: 1fr; }
         }
 
+        /* ===== 按钮系统 ===== */
         .btn {
-            display: inline-block;
-            padding: 12px 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             text-decoration: none;
             text-align: center;
+            transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.4;
         }
+        .btn:active { transform: scale(0.97); }
         .btn-primary {
-            background: linear-gradient(135deg, #1e6fff 0%, #4d9aff 100%);
+            background: var(--color-primary);
             color: #fff;
+        }
+        .btn-primary:active {
+            background: var(--color-primary-dark);
         }
         .btn-danger {
-            background: #ff4444;
+            background: var(--color-danger);
             color: #fff;
-            padding: 8px 12px;
+            padding: 7px 12px;
             font-size: 12px;
         }
-        .btn-sm { padding: 8px 16px; font-size: 12px; }
+        .btn-sm { padding: 7px 14px; font-size: 13px; }
         .btn-default {
-            background: #fff;
-            color: #1e6fff;
-            border: 1px solid #1e6fff;
-            padding: 8px 16px;
-            font-size: 12px;
+            background: var(--color-surface);
+            color: var(--color-primary);
+            border: 1.5px solid var(--color-primary-border);
+            padding: 7px 14px;
+            font-size: 13px;
+        }
+        .btn-default:active {
+            background: var(--color-primary-bg);
         }
         .btn-secondary {
-            background: #f5f6fa;
-            color: #333;
-            border: 1px solid #e0e0e0;
-            padding: 8px 16px;
-            font-size: 12px;
+            background: var(--color-surface-alt);
+            color: var(--color-text-secondary);
+            border: 1.5px solid var(--color-border);
+            padding: 7px 14px;
+            font-size: 13px;
         }
-        .btn-block { width: 100%; display: block; }
+        .btn-block { width: 100%; display: flex; }
 
+        /* ===== 消息提示 ===== */
         .msg {
             padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
             font-size: 14px;
+            font-weight: 500;
         }
-        .msg-success { background: #e8f5e9; color: #2e7d32; }
-        .msg-error { background: #ffebee; color: #c62828; }
+        .msg-success { background: var(--color-success-bg); color: #065f46; }
+        .msg-error { background: var(--color-danger-bg); color: #991b1b; }
 
+        /* ===== 列表项 ===== */
         .list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--color-border-light);
         }
         .list-item:last-child { border-bottom: none; }
         .list-item-content { flex: 1; }
-        .list-item-title { font-size: 14px; color: #333; font-weight: 500; }
-        .list-item-desc { font-size: 12px; color: #999; margin-top: 4px; }
-        .list-item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .list-item-title { font-size: 14px; color: var(--color-text); font-weight: 600; }
+        .list-item-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 3px; }
+        .list-item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .record-card .list-item-actions { margin-top: 10px; }
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            color: #fff;
-            text-decoration: none;
-            font-size: 12px;
-            position: absolute;
-            left: 12px;
-            top: calc(10px + env(safe-area-inset-top, 0px));
-            max-width: 46%;
-            line-height: 1.2;
-        }
+        .empty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }
 
-        /* 激活码弹窗（含闲鱼购买）；Android WebView 下 flex 居中易贴底，改用 fixed + transform */
-        .activate-modal-root {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            display: none;
-            box-sizing: border-box;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .activate-modal-root.is-open {
-            display: block;
-        }
-        .activate-modal-mask {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-        }
-        .activate-modal-panel {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1;
-            width: calc(100% - 32px);
-            max-width: 320px;
-            background: #fff;
-            border-radius: 12px;
-            padding: 18px 16px 14px;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
-        }
-        .activate-modal-title {
-            font-size: 15px;
-            color: #333;
-            margin-bottom: 12px;
-            font-weight: 500;
-        }
-        .activate-modal-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #1e6fff;
-            border-radius: 8px;
-            font-size: 15px;
-            margin-bottom: 14px;
-            box-sizing: border-box;
-        }
-        .activate-modal-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: flex-end;
-            align-items: center;
-        }
-        #btnConsultActivateXianyu {
-            margin-right: auto;
-        }
-
-        .empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
-
-        .fb-type-options label { display: block; margin-bottom: 8px; font-size: 14px; color: #333; }
-        .feedback-reply-box {
-            margin-top: 10px;
-            padding: 10px 12px;
-            background: #f0f7ff;
-            border-radius: 8px;
-            border-left: 3px solid #1e6fff;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .feedback-reply-box strong { color: #1e6fff; font-size: 12px; display: block; margin-bottom: 6px; }
-        .feedback-wechat-pay {
-            margin-bottom: 14px;
-            padding: 14px;
-            background: #f8fbff;
-            border-radius: 10px;
-            border: 1px solid #e8eef8;
-            text-align: center;
-        }
-        .feedback-wechat-pay-title {
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 10px;
-            font-weight: 500;
-        }
-        .feedback-submit-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-        .feedback-submit-head .card-title {
-            margin-bottom: 0;
-        }
-        .feedback-submit-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        #btnFeedbackXianyu,
-        #btnFeedbackQqGroup {
-            flex-shrink: 0;
-        }
-        .feedback-wechat-pay img {
-            max-width: 220px;
-            width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border-radius: 8px;
-        }
+        .fb-type-options label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--color-text); }
         .fb-type-badge {
             display: inline-block;
             padding: 2px 8px;
-            border-radius: 4px;
+            border-radius: var(--radius-full);
             font-size: 12px;
-            background: #e3f2fd;
-            color: #1565c0;
+            background: var(--color-primary-bg);
+            color: var(--color-primary-dark);
         }
         #fb_content { min-height: 120px; resize: vertical; width: 100%; box-sizing: border-box; }
 
-        .record-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px;
+        .feedback-reply-box {
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: var(--color-primary-bg);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--color-primary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .feedback-reply-box strong { color: var(--color-primary); font-size: 12px; display: block; margin-bottom: 6px; }
+        .feedback-wechat-pay {
             margin-bottom: 12px;
+            padding: 16px;
+            background: var(--color-surface-alt);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border-light);
+            text-align: center;
         }
-        .record-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .record-card-title { font-size: 14px; font-weight: 500; color: #333; }
-        .record-card-date { font-size: 12px; color: #999; }
-        .record-card-info { font-size: 12px; color: #666; line-height: 1.8; }
+        .feedback-wechat-pay-title { font-size: 14px; color: var(--color-text); margin-bottom: 10px; font-weight: 600; }
+        .feedback-wechat-pay img { max-width: 220px; width: 100%; height: auto; display: block; margin: 0 auto; border-radius: var(--radius-sm); }
+        .feedback-submit-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .feedback-submit-head .card-title { margin-bottom: 0; }
+        .feedback-submit-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        #btnFeedbackXianyu, #btnFeedbackQqGroup { flex-shrink: 0; }
 
-        /* 税务记录 tab：整体紧凑 + 清晰主次 */
+        .record-card {
+            background: var(--color-surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--color-border-light);
+        }
+        .record-card:last-child { margin-bottom: 0; }
+        .record-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .record-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+        .record-card-date { font-size: 12px; color: var(--color-text-muted); }
+        .record-card-info { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; }
+
+        /* ===== 激活码弹窗 ===== */
+        .activate-modal-root {
+            position: fixed; inset: 0; z-index: 9999;
+            display: none; box-sizing: border-box;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .activate-modal-root.is-open { display: block; }
+        .activate-modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .activate-modal-panel {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            z-index: 1; width: calc(100% - 32px); max-width: 340px;
+            background: var(--color-surface); border-radius: var(--radius-lg);
+            padding: 20px 18px 16px; box-shadow: var(--shadow-xl);
+        }
+        .activate-modal-title { font-size: 16px; color: var(--color-text); margin-bottom: 14px; font-weight: 700; }
+        .activate-modal-input {
+            width: 100%; padding: 12px; border: 1.5px solid var(--color-primary-border);
+            border-radius: var(--radius-sm); font-size: 15px; margin-bottom: 14px; box-sizing: border-box;
+        }
+        .activate-modal-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+        .activate-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+        #btnConsultActivateXianyu { margin-right: auto; }
+
+        /* ===== 税务记录面板 ===== */
         #panel-records .card {
-            padding: 14px 14px 16px;
+            padding: 14px;
             margin-bottom: 12px;
-            border-radius: 14px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
         }
         #panel-records .card-title {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            padding-bottom: 0;
-            border-bottom: none;
-            color: #1e293b;
+            font-size: 15px; font-weight: 700; margin-bottom: 4px;
+            padding-bottom: 0; border-bottom: none; color: var(--color-text);
         }
-        #batchTaxCard .card-title {
-            font-size: 15px;
-            margin-bottom: 4px;
-            padding-bottom: 0;
-        }
-        #batchTaxCard > .btn.btn-sm {
-            font-size: 12px;
-            padding: 8px 12px;
-        }
-        #panel-records .card-title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-        #panel-records .card-title-actions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        #panel-records .card-title-actions .btn {
-            padding: 5px 10px;
-            font-size: 12px;
-            border-radius: 6px;
-        }
+        #batchTaxCard .card-title { font-size: 15px; margin-bottom: 4px; padding-bottom: 0; }
+        #batchTaxCard > .btn.btn-sm { font-size: 12px; padding: 8px 12px; }
+        #panel-records .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+        #panel-records .card-title-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        #panel-records .card-title-actions .btn { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
         #panel-records .form-group { margin-bottom: 10px; }
-        #panel-records .form-group label {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 5px;
-            font-weight: 500;
+        #panel-records .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
+        #panel-records .form-group input, #panel-records .form-group select, #panel-records .form-group textarea {
+            padding: 10px 12px; font-size: 14px; border-radius: var(--radius-sm); border-color: var(--color-border); background: var(--color-surface);
         }
-        #panel-records .form-group input,
-        #panel-records .form-group select,
-        #panel-records .form-group textarea {
-            padding: 10px 12px;
-            font-size: 14px;
-            border-radius: 8px;
-            border-color: #e2e8f0;
-            background: #fff;
-        }
-        #panel-records .form-row {
-            gap: 10px;
-            grid-template-columns: 1fr 1fr;
-        }
-        #panel-records .btn-block {
-            padding: 12px;
-            font-size: 15px;
-            margin-top: 4px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        #panel-records .record-card {
-            padding: 10px 12px;
-            margin-bottom: 8px;
-            border-radius: 10px;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-        }
+        #panel-records .form-row { gap: 10px; grid-template-columns: 1fr 1fr; }
+        #panel-records .btn-block { padding: 12px; font-size: 15px; margin-top: 4px; border-radius: 10px; font-weight: 600; }
+        #panel-records .record-card { padding: 10px 12px; margin-bottom: 8px; border-radius: 10px; background: var(--color-surface-alt); border: 1px solid var(--color-border-light); }
         #panel-records .record-card-header { margin-bottom: 4px; }
         #panel-records .record-card-title { font-size: 13px; }
         #panel-records .record-card-date { font-size: 11px; }
-        #panel-records .record-card-info {
-            font-size: 12px;
-            line-height: 1.5;
-            color: #64748b;
-        }
+        #panel-records .record-card-info { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
         #panel-records .record-card .list-item-actions { margin-top: 8px; }
-        #panel-records .record-card .btn-sm {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-        #panel-records #recordListMount .empty {
-            padding: 28px 16px;
-            font-size: 13px;
-            color: #94a3b8;
-        }
+        #panel-records .record-card .btn-sm { padding: 5px 10px; font-size: 12px; }
+        #panel-records #recordListMount .empty { padding: 28px 16px; font-size: 13px; color: var(--color-text-muted); }
 
-        /* 任职受雇 / 消息管理：紧凑表单 + 列表优先 */
-        #panel-employers .card,
-        #panel-messages .card {
-            padding: 14px;
-            margin-bottom: 12px;
-            border-radius: 14px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        /* ===== 任职受雇 / 消息管理面板 ===== */
+        #panel-employers .card, #panel-messages .card {
+            padding: 14px; margin-bottom: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
         }
-        #panel-employers .card-title,
-        #panel-messages .card-title {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-            color: #1e293b;
+        #panel-employers .card-title, #panel-messages .card-title {
+            font-size: 15px; font-weight: 700; margin-bottom: 0; padding-bottom: 0; border-bottom: none; color: var(--color-text);
         }
-        #panel-employers .card-title-row,
-        #panel-messages .card-title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 12px;
+        #panel-employers .card-title-row, #panel-messages .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        #panel-employers .form-group, #panel-messages .form-group { margin-bottom: 10px; }
+        #panel-employers .form-group label, #panel-messages .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
+        #panel-employers .form-group input, #panel-employers .form-group select, #panel-employers .form-group textarea,
+        #panel-messages .form-group input, #panel-messages .form-group select, #panel-messages .form-group textarea {
+            padding: 10px 12px; font-size: 14px; border-radius: 10px; border-color: var(--color-border); background: var(--color-surface-alt); min-height: 42px; line-height: 1.25;
         }
-        #panel-employers .form-group,
-        #panel-messages .form-group {
-            margin-bottom: 10px;
-        }
-        #panel-employers .form-group label,
-        #panel-messages .form-group label {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        #panel-employers .form-group input,
-        #panel-employers .form-group select,
-        #panel-employers .form-group textarea,
-        #panel-messages .form-group input,
-        #panel-messages .form-group select,
-        #panel-messages .form-group textarea {
-            padding: 10px 12px;
-            font-size: 14px;
-            border-radius: 10px;
-            border-color: #e2e8f0;
-            background: #f8fafc;
-            min-height: 42px;
-            line-height: 1.25;
-        }
-        #panel-employers .form-group input[type="date"],
-        #panel-messages .form-group input[type="date"] {
-            -webkit-appearance: none;
-            appearance: none;
-            color: #334155;
-            background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
+        #panel-employers .form-group input[type="date"], #panel-messages .form-group input[type="date"] {
+            -webkit-appearance: none; appearance: none; color: var(--color-text);
+            background: var(--color-surface-alt) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
             padding-right: 36px;
-            position: relative;
         }
-        #panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator,
-        #panel-messages .form-group input[type="date"]::-webkit-calendar-picker-indicator {
-            opacity: 0;
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-        #panel-employers .form-row,
-        #panel-messages .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        #panel-employers .form-row .form-group,
-        #panel-messages .form-row .form-group {
-            min-width: 0;
-        }
-        #panel-employers .btn-block,
-        #panel-messages .btn-block {
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-weight: 600;
-            margin-top: 4px;
-        }
-        #panel-employers .consult-form-card,
-        #panel-messages .consult-form-card {
-            overflow: hidden;
-            transition: box-shadow 0.2s ease;
-        }
-        #panel-employers .consult-form-card.is-collapsed,
-        #panel-messages .consult-form-card.is-collapsed {
-            display: none;
-        }
-        #panel-employers .consult-form-toggle,
-        #panel-messages .consult-form-toggle {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            border: none;
-            background: transparent;
-            padding: 0 0 10px;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #f1f5f9;
-            font-family: inherit;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            text-align: left;
-        }
-        #panel-employers .consult-form-toggle-title,
-        #panel-messages .consult-form-toggle-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: #1e293b;
-        }
-        #panel-employers .consult-form-toggle-hint,
-        #panel-messages .consult-form-toggle-hint {
-            flex-shrink: 0;
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            background: #f1f5f9;
-            border-radius: 999px;
-            padding: 5px 10px;
-        }
-        #panel-employers .consult-form-body,
-        #panel-messages .consult-form-body {
-            padding-top: 2px;
-        }
-        #panel-messages .msg-card {
-            background: #f8fafc;
-            border: 1px solid #eef2f7;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        #panel-messages .msg-card:last-child {
-            margin-bottom: 0;
-        }
-        #panel-messages .msg-card-top {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        #panel-messages .msg-card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0f172a;
-            line-height: 1.35;
-        }
-        #panel-messages .msg-card-desc {
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.5;
-            margin-top: 6px;
-        }
-        #panel-messages .msg-card .btn-sm {
-            flex-shrink: 0;
-            padding: 6px 10px;
-            border-radius: 8px;
-        }
-        .header .back-link span { font-size: 13px; }
-        .header h1#consultPageTitle { font-size: 16px; font-weight: 600; }
-        #panel-employers .status-pill,
-        #panel-messages .status-pill {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 999px;
-            line-height: 1.4;
-        }
-        #panel-employers .status-pill.is-on {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        #panel-employers .status-pill.is-off {
-            background: #f1f5f9;
-            color: #64748b;
-        }
-        #panel-employers .record-card {
-            background: #f8fafc;
-            border: 1px solid #eef2f7;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        #panel-employers .record-card:last-child {
-            margin-bottom: 0;
-        }
-        #panel-employers .record-card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        #panel-employers .record-card-info {
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.55;
-            margin-top: 2px;
-        }
-        #panel-employers .record-card .list-item-actions {
-            margin-top: 10px;
-            gap: 6px;
-        }
-        #panel-employers .record-card .btn-sm {
-            padding: 6px 10px;
-            font-size: 12px;
-            border-radius: 8px;
-        }
-        #panel-messages .list-item {
-            align-items: flex-start;
-            gap: 10px;
-            padding: 12px 0;
-        }
-        #panel-messages .list-item-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        #panel-messages .list-item-desc {
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.45;
-            margin-top: 3px;
-        }
-        #panel-employers #employerListMount .empty,
-        #panel-messages #messageListMount .empty {
-            padding: 28px 12px;
-            font-size: 13px;
-            color: #94a3b8;
-        }
-        #employerFormCard,
-        #messageFormCard {
-            scroll-margin-top: 56px;
-        }
+        #panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator, #panel-messages .form-group input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+        #panel-employers .form-row, #panel-messages .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        #panel-employers .form-row .form-group, #panel-messages .form-row .form-group { min-width: 0; }
+        #panel-employers .btn-block, #panel-messages .btn-block { padding: 12px 16px; border-radius: 10px; font-weight: 600; margin-top: 4px; }
 
-        #panel-records .batch-hint {
-            font-size: 12px;
-            color: #94a3b8;
-            line-height: 1.45;
-            margin: 0 0 12px;
+        /* 折叠表单卡片 */
+        #panel-employers .consult-form-card, #panel-messages .consult-form-card { overflow: hidden; transition: box-shadow var(--transition-fast); }
+        #panel-employers .consult-form-card.is-collapsed, #panel-messages .consult-form-card.is-collapsed { display: none; }
+        #panel-employers .consult-form-toggle, #panel-messages .consult-form-toggle {
+            width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            border: none; background: transparent; padding: 0 0 10px; margin-bottom: 12px;
+            border-bottom: 1px solid var(--color-border-light); font-family: inherit; cursor: pointer;
+            -webkit-tap-highlight-color: transparent; text-align: left;
         }
-        #panel-records .batch-tax-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 14px;
-            align-items: stretch;
+        #panel-employers .consult-form-toggle-title, #panel-messages .consult-form-toggle-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
+        #panel-employers .consult-form-toggle-hint, #panel-messages .consult-form-toggle-hint {
+            flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--color-text-secondary);
+            background: var(--color-surface-alt); border-radius: var(--radius-full); padding: 5px 10px;
         }
-        #panel-records .batch-tax-toolbar .btn {
-            flex: 1 1 calc(33.33% - 6px);
-            min-width: 0;
-            font-size: 12px;
-            padding: 8px 6px;
-            border-radius: 8px;
-            font-weight: 500;
-        }
-        #panel-records .batch-tax-toolbar .btn-default {
-            background: #f8fafc;
-            border-color: #e2e8f0;
-            color: #475569;
-        }
-        #panel-records .batch-tax-actions {
-            margin-top: 4px;
-            padding-top: 12px;
-            border-top: 1px solid #f1f5f9;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        #panel-records .batch-tax-actions .btn-primary {
-            box-shadow: 0 4px 12px rgba(30, 111, 255, 0.28);
-        }
-        #panel-records .batch-bonus-only-btn {
-            background: transparent;
-            border: none;
-            color: #64748b;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 8px;
-            order: 2;
-        }
-        #panel-records .batch-tax-actions #batch_submit_employments_btn,
-        #panel-records .batch-tax-actions #batch_update_employments_btn {
-            order: 1;
-        }
-        #panel-records .batch-bonus-only-btn:active {
-            color: #1e6fff;
-        }
-        #panel-records .batch-add-emp-btn {
-            margin: 0 0 12px;
-            background: transparent;
-            border: 1px dashed #cbd5e1;
-            color: #1e6fff;
-            font-weight: 500;
-            border-radius: 10px;
-            padding: 10px;
-        }
-        #panel-records .batch-add-emp-btn:active {
-            background: #f8fafc;
-        }
-        #panel-records .batch-edit-banner {
-            font-size: 12px;
-            line-height: 1.5;
-            color: #b45309;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
-        }
-        #batchTaxCard.is-edit-mode {
-            border: 1px solid #93c5fd;
-            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.12);
-        }
+        #panel-employers .consult-form-body, #panel-messages .consult-form-body { padding-top: 2px; }
 
-        #panel-records .batch-emp-row {
-            border: 1px solid #e8eef7;
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 12px;
-            background: #fff;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        /* 消息卡片 */
+        #panel-messages .msg-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        #panel-messages .msg-card:last-child { margin-bottom: 0; }
+        #panel-messages .msg-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        #panel-messages .msg-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); line-height: 1.35; }
+        #panel-messages .msg-card-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 6px; }
+        #panel-messages .msg-card .btn-sm { flex-shrink: 0; padding: 6px 10px; border-radius: 8px; }
+
+        /* 状态标签 */
+        #panel-employers .status-pill, #panel-messages .status-pill {
+            display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); line-height: 1.4;
         }
-        #panel-records .batch-emp-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #f1f5f9;
+        #panel-employers .status-pill.is-on { background: var(--color-success-bg); color: #065f46; }
+        #panel-employers .status-pill.is-off { background: var(--color-surface-alt); color: var(--color-text-muted); }
+
+        /* 任职受雇记录卡片 */
+        #panel-employers .record-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        #panel-employers .record-card:last-child { margin-bottom: 0; }
+        #panel-employers .record-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+        #panel-employers .record-card-info { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 2px; }
+        #panel-employers .record-card .list-item-actions { margin-top: 10px; gap: 6px; }
+        #panel-employers .record-card .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+        /* 消息列表项 */
+        #panel-messages .list-item { align-items: flex-start; gap: 10px; padding: 12px 0; }
+        #panel-messages .list-item-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+        #panel-messages .list-item-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 3px; }
+
+        #panel-employers #employerListMount .empty, #panel-messages #messageListMount .empty { padding: 28px 12px; font-size: 13px; color: var(--color-text-muted); }
+        #employerFormCard, #messageFormCard { scroll-margin-top: 56px; }
+
+        /* ===== 批量添加工具栏 ===== */
+        #panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }
+        #panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }
+        #panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; }
+        #panel-records .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
+        #panel-records .batch-tax-actions { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
+        #panel-records .batch-tax-actions .btn-primary { box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
+        #panel-records .batch-bonus-only-btn { background: transparent; border: none; color: var(--color-text-secondary); font-size: 13px; font-weight: 500; padding: 8px; order: 2; }
+        #panel-records .batch-tax-actions #batch_submit_employments_btn, #panel-records .batch-tax-actions #batch_update_employments_btn { order: 1; }
+        #panel-records .batch-bonus-only-btn:active { color: var(--color-primary); }
+        #panel-records .batch-add-emp-btn { margin: 0 0 12px; background: transparent; border: 1.5px dashed var(--color-border); color: var(--color-primary); font-weight: 500; border-radius: 10px; padding: 10px; }
+        #panel-records .batch-add-emp-btn:active { background: var(--color-surface-alt); }
+        #panel-records .batch-edit-banner { font-size: 12px; line-height: 1.5; color: #b45309; background: var(--color-warning-bg); border: 1px solid #fed7aa; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+        #batchTaxCard.is-edit-mode { border: 1px solid var(--color-primary-border); box-shadow: 0 0 0 1px rgba(59,130,246,0.12); }
+
+        /* 工作经历行 */
+        #panel-records .batch-emp-row { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
+        #panel-records .batch-emp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
+        #panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+        #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
+        #panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
+        #panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta { margin-bottom: 6px; }
+        #panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle {
+            display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
+            font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
         }
-        #panel-records .batch-emp-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #334155;
-        }
-        #panel-records .batch-emp-remove-btn {
-            background: transparent !important;
-            color: #ef4444 !important;
-            border: none !important;
-            padding: 4px 8px !important;
-            font-size: 13px !important;
-            font-weight: 500;
-            box-shadow: none !important;
-        }
-        #panel-records .batch-emp-remove-btn:active {
-            opacity: 0.7;
-        }
-        #panel-records .batch-emp-optional-meta,
-        #panel-records .batch-emp-deduct-meta {
-            margin-bottom: 6px;
-        }
-        #panel-records .batch-emp-optional-toggle,
-        #panel-records .batch-emp-deduct-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            margin: 0 0 8px;
-            padding: 9px 12px;
-            font-size: 12px;
-            color: #475569;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            font-weight: 500;
-        }
-        #panel-records .batch-emp-optional-toggle:active,
-        #panel-records .batch-emp-deduct-toggle:active {
-            opacity: 0.92;
-        }
-        #panel-records .batch-emp-optional-toggle-icon,
-        #panel-records .batch-emp-deduct-toggle-icon {
-            font-size: 10px;
-            color: #94a3b8;
-            transition: transform 0.2s ease;
-        }
-        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
-        #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon {
-            transform: rotate(180deg);
-        }
-        #panel-records .batch-emp-optional-body,
-        #panel-records .batch-emp-deduct-body {
-            display: none;
-        }
-        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body,
-        #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body {
-            display: block;
-        }
-        #panel-records .batch-ym-inline {
-            display: flex;
-            gap: 8px;
-            align-items: stretch;
-        }
-        #panel-records .batch-ym-inline input.batch-ym-field {
-            flex: 1 1 0;
-            min-width: 0;
-            min-height: 42px;
-            font-size: 15px;
-            padding: 10px 12px;
-            touch-action: manipulation;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            background: #fff;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-        #panel-records .batch-ym-inline input.batch-emp-sm,
-        #panel-records .batch-ym-inline input.batch-emp-em {
-            flex: 0 0 72px;
-            width: 72px;
-            text-align: center;
-        }
-        #panel-records .batch-ym-inline input.batch-ym-field:focus {
-            outline: none;
-            border-color: #1e6fff;
-            background: #fff;
-        }
+        #panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active { opacity: 0.92; }
+        #panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon { transform: rotate(180deg); }
+        #panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body { display: none; }
+        #panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body { display: block; }
+
+        /* 年月输入 */
+        #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }
+        #panel-records .batch-ym-inline input.batch-ym-field { flex: 1 1 0; min-width: 0; min-height: 42px; font-size: 15px; padding: 10px 12px; touch-action: manipulation; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); -webkit-appearance: none; appearance: none; }
+        #panel-records .batch-ym-inline input.batch-emp-sm, #panel-records .batch-ym-inline input.batch-emp-em { flex: 0 0 72px; width: 72px; text-align: center; }
+        #panel-records .batch-ym-inline input.batch-ym-field:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+
         @media (pointer: coarse) {
-            .form-group select,
-            .form-group input[type="date"],
-            .form-group input[type="number"] {
-                min-height: 44px;
-                font-size: 16px;
-                touch-action: manipulation;
-            }
-            .form-group select {
-                padding-right: 32px;
-                -webkit-appearance: menulist;
-                appearance: menulist;
-            }
-            #panel-records .form-group select,
-            #panel-records .form-group input[type="date"],
-            #panel-records .form-group input[type="number"] {
-                min-height: 44px;
-                font-size: 16px;
-                touch-action: manipulation;
-            }
-            #panel-records .form-group select {
-                padding: 10px 32px 10px 12px;
-                -webkit-appearance: menulist;
-                appearance: menulist;
-            }
-        }
-        #panel-records .batch-emp-month-salary-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-            margin-top: 4px;
-        }
-        #panel-records .batch-emp-month-salary-badge {
-            font-size: 12px;
-            color: #1e6fff;
-        }
-        #panel-records .batch-deduct-calc {
-            margin-bottom: 8px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            background: #f0f4ff;
-            border: 1px dashed #c5d4f5;
-        }
-        #panel-records .batch-deduct-calc-hint {
-            font-size: 11px;
-            color: #888;
-            line-height: 1.45;
-            margin: 0 0 8px;
+            .form-group select, .form-group input[type="date"], .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
+            .form-group select { padding-right: 32px; -webkit-appearance: menulist; appearance: menulist; }
+            #panel-records .form-group select, #panel-records .form-group input[type="date"], #panel-records .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
+            #panel-records .form-group select { padding: 10px 32px 10px 12px; -webkit-appearance: menulist; appearance: menulist; }
         }
 
-        /* 个税计算表 / 公式 */
-        #taxFormulaCard {
-            padding: 0;
-            overflow: hidden;
-        }
+        #panel-records .batch-emp-month-salary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+        #panel-records .batch-emp-month-salary-badge { font-size: 12px; color: var(--color-primary); }
+        #panel-records .batch-deduct-calc { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); }
+        #panel-records .batch-deduct-calc-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+
+        /* ===== 个税计算表 / 公式 ===== */
+        #taxFormulaCard { padding: 0; overflow: hidden; }
         #taxFormulaCard .tax-formula-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            padding: 14px;
-            border: none;
-            background: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            color: #1e293b;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            text-align: left;
+            display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px;
+            border: none; background: var(--color-surface); font-size: 15px; font-weight: 700; color: var(--color-text);
+            cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: left;
         }
-        #taxFormulaCard .tax-formula-toggle-icon {
-            font-size: 11px;
-            color: #94a3b8;
-            transition: transform 0.2s ease;
-        }
-        #taxFormulaCard.is-open .tax-formula-toggle-icon {
-            transform: rotate(180deg);
-        }
-        #taxFormulaCard .tax-formula-body {
-            display: none;
-            padding: 0 14px 14px;
-            border-top: 1px solid #f1f5f9;
-        }
-        #taxFormulaCard.is-open .tax-formula-body {
-            display: block;
-        }
-        #taxFormulaCard .tax-formula-sec {
-            margin-top: 12px;
-        }
-        #taxFormulaCard .tax-formula-sec-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #1e6fff;
-            margin: 0 0 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        #taxFormulaCard .tax-formula-sec-title::before {
-            content: '';
-            width: 3px;
-            height: 12px;
-            background: #1e6fff;
-            border-radius: 2px;
-        }
-        #taxFormulaCard .tax-formula-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 12px;
-            color: #334155;
-            line-height: 1.65;
-            margin-bottom: 8px;
-        }
-        #taxFormulaCard .tax-formula-box code,
-        #taxFormulaCard .tax-formula-box .eq {
-            display: block;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 12px;
-            color: #0f172a;
-            background: #fff;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin: 6px 0;
-            border: 1px solid #e2e8f0;
-            word-break: break-all;
-        }
-        #taxFormulaCard .tax-formula-note {
-            font-size: 11px;
-            color: #94a3b8;
-            line-height: 1.45;
-            margin: 0;
-        }
-        #taxFormulaCard .tax-rate-table-wrap {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-        #taxFormulaCard .tax-rate-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            min-width: 300px;
-        }
-        #taxFormulaCard .tax-rate-table th,
-        #taxFormulaCard .tax-rate-table td {
-            padding: 8px 6px;
-            text-align: center;
-            border-bottom: 1px solid #f1f5f9;
-            white-space: nowrap;
-        }
-        #taxFormulaCard .tax-rate-table th {
-            background: #f1f5f9;
-            color: #475569;
-            font-weight: 600;
-        }
-        #taxFormulaCard .tax-rate-table tr:last-child td {
-            border-bottom: none;
-        }
-        #taxFormulaCard .tax-rate-table td {
-            color: #334155;
-        }
-        #taxFormulaCard .tax-try-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        #taxFormulaCard .tax-try-row label {
-            display: block;
-            font-size: 11px;
-            color: #64748b;
-            margin-bottom: 4px;
-        }
-        #taxFormulaCard .tax-try-row input {
-            width: 100%;
-            padding: 8px 10px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fff;
-        }
-        #taxFormulaCard .tax-try-result {
-            margin-top: 10px;
-            padding: 10px 12px;
-            background: #eff6ff;
-            border-radius: 10px;
-            font-size: 13px;
-            color: #1e40af;
-            line-height: 1.5;
-        }
-        #taxFormulaCard .tax-try-result strong {
-            color: #1e6fff;
-            font-size: 16px;
-        }
+        #taxFormulaCard .tax-formula-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+        #taxFormulaCard.is-open .tax-formula-toggle-icon { transform: rotate(180deg); }
+        #taxFormulaCard .tax-formula-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--color-border-light); }
+        #taxFormulaCard.is-open .tax-formula-body { display: block; }
+        #taxFormulaCard .tax-formula-sec { margin-top: 12px; }
+        #taxFormulaCard .tax-formula-sec-title { font-size: 13px; font-weight: 600; color: var(--color-primary); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+        #taxFormulaCard .tax-formula-sec-title::before { content: ''; width: 3px; height: 12px; background: var(--color-primary); border-radius: 2px; }
+        #taxFormulaCard .tax-formula-box { background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.65; margin-bottom: 8px; }
+        #taxFormulaCard .tax-formula-box code, #taxFormulaCard .tax-formula-box .eq { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--color-text); background: var(--color-surface); border-radius: 6px; padding: 8px 10px; margin: 6px 0; border: 1px solid var(--color-border); word-break: break-all; }
+        #taxFormulaCard .tax-formula-note { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0; }
+        #taxFormulaCard .tax-rate-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid var(--color-border); }
+        #taxFormulaCard .tax-rate-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 300px; }
+        #taxFormulaCard .tax-rate-table th, #taxFormulaCard .tax-rate-table td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--color-border-light); white-space: nowrap; }
+        #taxFormulaCard .tax-rate-table th { background: var(--color-surface-alt); color: var(--color-text-secondary); font-weight: 600; }
+        #taxFormulaCard .tax-rate-table tr:last-child td { border-bottom: none; }
+        #taxFormulaCard .tax-rate-table td { color: var(--color-text-secondary); }
+        #taxFormulaCard .tax-try-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        #taxFormulaCard .tax-try-row label { display: block; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+        #taxFormulaCard .tax-try-row input { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; background: var(--color-surface); }
+        #taxFormulaCard .tax-try-result { margin-top: 10px; padding: 10px 12px; background: var(--color-primary-bg); border-radius: 10px; font-size: 13px; color: var(--color-primary-dark); line-height: 1.5; }
+        #taxFormulaCard .tax-try-result strong { color: var(--color-primary); font-size: 16px; }
 
-        /* 工作经历：按月自定义工资浮窗 */
-        .batch-ms-modal-root {
-            position: fixed;
-            inset: 0;
-            z-index: 10050;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            box-sizing: border-box;
-        }
-        .batch-ms-modal-root.is-open {
-            display: flex;
-        }
-        .batch-ms-modal-mask {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-        }
-        .batch-ms-modal-panel {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            max-height: calc(100vh - 32px);
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .batch-ms-modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 14px;
-            border-bottom: 1px solid #eee;
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-        }
-        .batch-ms-modal-head button {
-            border: none;
-            background: none;
-            font-size: 22px;
-            line-height: 1;
-            color: #999;
-            cursor: pointer;
-            padding: 0 4px;
-        }
-        .batch-ms-modal-hint {
-            padding: 10px 14px 0;
-            font-size: 12px;
-            color: #666;
-            line-height: 1.45;
-        }
-        .batch-ms-modal-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 14px;
-            -webkit-overflow-scrolling: touch;
-        }
-        .batch-ms-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .batch-ms-row label {
-            flex: 0 0 92px;
-            font-size: 13px;
-            color: #555;
-        }
-        .batch-ms-row input {
-            flex: 1;
-            min-width: 0;
-            padding: 8px 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .batch-ms-modal-footer {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: flex-end;
-            align-items: center;
-            padding: 12px 14px;
-            border-top: 1px solid #eee;
-            background: #fafafa;
-        }
-        #batchMsModalClear {
-            margin-right: auto;
-        }
-        .tax-paste-import-textarea {
-            width: 100%;
-            box-sizing: border-box;
-            min-height: 220px;
-            margin: 0 0 10px;
-            padding: 10px 12px;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.5;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            resize: vertical;
-        }
-        .tax-paste-import-preview {
-            margin: 0 0 10px;
-            padding: 10px 12px;
-            background: #f6f8fa;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #333;
-            max-height: 160px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        #taxRecycleBinModal .recycle-bin-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        #taxRecycleBinModal .recycle-bin-item:last-child {
-            border-bottom: none;
-        }
-        #taxRecycleBinModal .recycle-bin-item-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-        }
-        #taxRecycleBinModal .recycle-bin-item-meta {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.45;
-            margin-bottom: 6px;
-        }
-        #taxRecycleBinModal .recycle-bin-item-actions {
-            display: flex;
-            gap: 6px;
-        }
-        #taxRecycleBinModal .recycle-bin-company-row {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding: 0 14px 10px;
-        }
-        #taxRecycleBinModal .recycle-bin-company-row select {
-            flex: 1;
-            min-width: 0;
-            height: 36px;
-            padding: 0 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 13px;
-            background: #fff;
-        }
+        /* ===== 弹窗系统 ===== */
+        .batch-ms-modal-root { position: fixed; inset: 0; z-index: 10050; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+        .batch-ms-modal-root.is-open { display: flex; }
+        .batch-ms-modal-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .batch-ms-modal-panel { position: relative; width: 100%; max-width: 420px; max-height: calc(100vh - 32px); background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; }
+        .batch-ms-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); font-size: 15px; font-weight: 700; color: var(--color-text); }
+        .batch-ms-modal-head button { border: none; background: none; font-size: 22px; line-height: 1; color: var(--color-text-muted); cursor: pointer; padding: 0 4px; }
+        .batch-ms-modal-hint { padding: 10px 16px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+        .batch-ms-modal-scroll { flex: 1; overflow-y: auto; padding: 10px 16px; -webkit-overflow-scrolling: touch; }
+        .batch-ms-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .batch-ms-row label { flex: 0 0 92px; font-size: 13px; color: var(--color-text-secondary); }
+        .batch-ms-row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+        .batch-ms-modal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 16px; border-top: 1px solid var(--color-border-light); background: var(--color-surface-alt); }
+        #batchMsModalClear { margin-right: auto; }
+        .tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 220px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+        .tax-paste-import-preview { margin: 0 0 10px; padding: 10px 12px; background: var(--color-surface-alt); border-radius: 8px; font-size: 13px; color: var(--color-text); max-height: 160px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+        #taxRecycleBinModal .recycle-bin-item { padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
+        #taxRecycleBinModal .recycle-bin-item:last-child { border-bottom: none; }
+        #taxRecycleBinModal .recycle-bin-item-title { font-size: 13px; font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+        #taxRecycleBinModal .recycle-bin-item-meta { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-bottom: 6px; }
+        #taxRecycleBinModal .recycle-bin-item-actions { display: flex; gap: 6px; }
+        #taxRecycleBinModal .recycle-bin-company-row { display: flex; gap: 8px; align-items: center; padding: 0 16px 10px; }
+        #taxRecycleBinModal .recycle-bin-company-row select { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; background: var(--color-surface); }
 
-        /* 税务批量等：校验失败强提示（居中弹框） */
-        .consult-strong-alert-root {
-            position: fixed;
-            inset: 0;
-            z-index: 10060;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .consult-strong-alert-root.is-open {
-            display: flex;
-        }
-        .consult-strong-alert-mask {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-        }
-        .consult-strong-alert-panel {
-            position: relative;
-            width: 100%;
-            max-width: 340px;
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
-            padding: 20px 18px 16px;
-            border: 2px solid #ff7043;
-        }
-        .consult-strong-alert-title {
-            font-size: 17px;
-            font-weight: 700;
-            color: #d84315;
-            margin: 0 0 12px;
-            text-align: center;
-        }
-        .consult-strong-alert-body {
-            font-size: 15px;
-            line-height: 1.55;
-            color: #333;
-            margin: 0 0 18px;
-            word-break: break-word;
-        }
-        .consult-strong-alert-actions .btn {
-            width: 100%;
-        }
+        /* 强提示弹窗 */
+        .consult-strong-alert-root { position: fixed; inset: 0; z-index: 10060; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .consult-strong-alert-root.is-open { display: flex; }
+        .consult-strong-alert-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); }
+        .consult-strong-alert-panel { position: relative; width: 100%; max-width: 340px; background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); padding: 20px 18px 16px; border: 2px solid #ff7043; }
+        .consult-strong-alert-title { font-size: 17px; font-weight: 700; color: #d84315; margin: 0 0 12px; text-align: center; }
+        .consult-strong-alert-body { font-size: 15px; line-height: 1.55; color: var(--color-text); margin: 0 0 18px; word-break: break-word; }
+        .consult-strong-alert-actions .btn { width: 100%; }
+
+        /* 滚动到表单时预留 sticky Tab 高度 */
+        #singleTaxRecordCard { scroll-margin-top: 52px; }
 
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
