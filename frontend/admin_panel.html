@@ -221,6 +221,42 @@
                                 <div id="agentPromoLinksMount" class="agent-promo-links-mount mt-12" style="display:none;"></div>
                                 <p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（48 小时内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p>
                             </div>
+                            <div class="form-field mt-16">
+                                <label>下属代理专属渠道</label>
+                                <p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下；默认走支付 <strong>C</strong> 方案（可改）。保存后会自动加入上方「隐藏闲鱼」列表。</p>
+                                <div class="mine-ui-block max-w-760 mt-10" id="agentExclusiveChannelsBox">
+                                    <div class="flex-actions gap-10 flex-wrap flex-align-end">
+                                        <div class="form-field" style="min-width:140px;flex:1;">
+                                            <label for="agentExChannelId">渠道 ID</label>
+                                            <input class="input-block" type="text" id="agentExChannelId" maxlength="64" placeholder="如 agent_zhang">
+                                        </div>
+                                        <div class="form-field" style="min-width:160px;flex:1;">
+                                            <label for="agentExOwnerAdmin">下属代理账号</label>
+                                            <select class="input-block" id="agentExOwnerAdmin">
+                                                <option value="">加载中…</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-field" style="min-width:100px;">
+                                            <label for="agentExPricingAbc">默认支付</label>
+                                            <select class="input-block" id="agentExPricingAbc">
+                                                <option value="c" selected>C</option>
+                                                <option value="a">A</option>
+                                                <option value="b">B</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-field" style="min-width:120px;flex:1;">
+                                            <label for="agentExNote">备注</label>
+                                            <input class="input-block" type="text" id="agentExNote" maxlength="255" placeholder="可选">
+                                        </div>
+                                        <label class="flex-align-center gap-6" style="margin-bottom:8px;">
+                                            <input type="checkbox" id="agentExEnabled" checked>
+                                            <span>启用</span>
+                                        </label>
+                                        <button type="button" class="btn-primary" id="btnSaveAgentExclusiveChannel">保存专属渠道</button>
+                                    </div>
+                                    <div id="agentExclusiveChannelsList" class="mt-12"></div>
+                                </div>
+                            </div>
                         </div>
                     </section>
                     <section>

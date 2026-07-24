@@ -402,7 +402,20 @@
                 genBtn.setAttribute('data-bound', '1');
                 genBtn.addEventListener('click', function () {
                     var raw = document.getElementById('xianyuHideSalesChannels');
-                    renderAgentPromoLinks(parseAgentChannelIds(raw ? raw.value : ''));
+                    var fromText = parseAgentChannelIds(raw ? raw.value : '');
+                    var fromExclusive = (_agentExclusiveChannelsCache || [])
+                        .filter(function (r) {
+                            return r && r.enabled !== false;
+                        })
+                        .map(function (r) {
+                            return String(r.channel_id || '');
+                        })
+                        .filter(Boolean);
+                    var merged = fromText.slice();
+                    fromExclusive.forEach(function (ch) {
+                        if (merged.indexOf(ch) < 0) merged.push(ch);
+                    });
+                    renderAgentPromoLinks(merged);
                 });
             }
             if (copyAllBtn && copyAllBtn.getAttribute('data-bound') !== '1') {
@@ -423,6 +436,206 @@
                         return;
                     }
                     copyCode(btn.getAttribute('data-copy') || '');
+                });
+            }
+        }
+
+        var _agentExclusiveChannelsCache = [];
+        var _agentExAdminOptionsLoaded = false;
+
+        function loadAgentExclusiveOwnerOptions() {
+            var sel = document.getElementById('agentExOwnerAdmin');
+            if (!sel) return Promise.resolve();
+            if (_agentExAdminOptionsLoaded && sel.options.length > 1) {
+                return Promise.resolve();
+            }
+            return adminFetch('api/admin/accounts')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var list = (data && data.data && data.data.accounts) || data.data || [];
+                    if (!Array.isArray(list)) list = [];
+                    var html = '<option value="">选择下属代理</option>';
+                    list.forEach(function (a) {
+                        if (!a || a.is_super || a.banned) return;
+                        var u = String(a.username || '').trim();
+                        if (!u) return;
+                        var name = a.full_name ? String(a.full_name) : '';
+                        html +=
+                            '<option value="' +
+                            esc(u) +
+                            '">' +
+                            esc(u) +
+                            (name ? '（' + esc(name) + '）' : '') +
+                            '</option>';
+                    });
+                    sel.innerHTML = html;
+                    _agentExAdminOptionsLoaded = true;
+                })
+                .catch(function () {
+                    sel.innerHTML = '<option value="">无法加载代理账号（需超管权限）</option>';
+                });
+        }
+
+        function renderAgentExclusiveChannelsList(list) {
+            var mount = document.getElementById('agentExclusiveChannelsList');
+            if (!mount) return;
+            _agentExclusiveChannelsCache = Array.isArray(list) ? list : [];
+            if (!_agentExclusiveChannelsCache.length) {
+                mount.innerHTML = '<p class="hint mt-0">暂无专属渠道。保存后，用户经 <code>?ch=渠道ID</code> 注册/登录会挂到对应代理名下。</p>';
+                return;
+            }
+            var origin = window.location.origin || '';
+            var html =
+                '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr>' +
+                '<th>渠道 ID</th><th>下属代理</th><th>默认支付</th><th>状态</th><th>备注</th><th>推广链接</th><th></th>' +
+                '</tr></thead><tbody>';
+            _agentExclusiveChannelsCache.forEach(function (row) {
+                var ch = String(row.channel_id || '');
+                var link = buildAgentPromoLink(origin, 'install_guide.html', ch);
+                html +=
+                    '<tr>' +
+                    '<td><code>' +
+                    esc(ch) +
+                    '</code></td>' +
+                    '<td>' +
+                    esc(row.owner_admin_username || '') +
+                    '</td>' +
+                    '<td>' +
+                    esc(String(row.default_pricing_abc || 'c').toUpperCase()) +
+                    '</td>' +
+                    '<td>' +
+                    (row.enabled ? '启用' : '停用') +
+                    '</td>' +
+                    '<td>' +
+                    esc(row.note || '') +
+                    '</td>' +
+                    '<td><button type="button" class="btn-sm btn-copy-agent-promo" data-copy="' +
+                    esc(link) +
+                    '">复制安装页</button></td>' +
+                    '<td><button type="button" class="btn-sm btn-danger btn-del-agent-ex-ch" data-ch="' +
+                    esc(ch) +
+                    '">删除</button></td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table>';
+            mount.innerHTML = html;
+        }
+
+        function loadAgentExclusiveChannels() {
+            return adminFetch('api/admin/agent-channels')
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data && data.code === 200 && data.data) {
+                        renderAgentExclusiveChannelsList(data.data.channels || []);
+                        var hideEl = document.getElementById('xianyuHideSalesChannels');
+                        if (hideEl && _agentExclusiveChannelsCache.length) {
+                            var existing = parseAgentChannelIds(hideEl.value);
+                            var changed = false;
+                            _agentExclusiveChannelsCache.forEach(function (row) {
+                                if (!row || !row.enabled) return;
+                                var ch = String(row.channel_id || '');
+                                if (ch && existing.indexOf(ch) < 0) {
+                                    existing.push(ch);
+                                    changed = true;
+                                }
+                            });
+                            if (changed) {
+                                hideEl.value = existing.join('\n');
+                            }
+                        }
+                    }
+                })
+                .catch(function () {});
+        }
+
+        function bindAgentExclusiveChannelsUi() {
+            var saveBtn = document.getElementById('btnSaveAgentExclusiveChannel');
+            var listMount = document.getElementById('agentExclusiveChannelsList');
+            if (saveBtn && saveBtn.getAttribute('data-bound') !== '1') {
+                saveBtn.setAttribute('data-bound', '1');
+                saveBtn.addEventListener('click', function () {
+                    var channelId = (document.getElementById('agentExChannelId') || {}).value || '';
+                    var owner = (document.getElementById('agentExOwnerAdmin') || {}).value || '';
+                    var abc = (document.getElementById('agentExPricingAbc') || {}).value || 'c';
+                    var note = (document.getElementById('agentExNote') || {}).value || '';
+                    var enabled = !!(document.getElementById('agentExEnabled') || {}).checked;
+                    channelId = String(channelId).trim().toLowerCase();
+                    if (!/^[a-z0-9_-]{1,64}$/.test(channelId)) {
+                        alert('渠道 ID 无效（字母数字下划线连字符）');
+                        return;
+                    }
+                    if (!String(owner).trim()) {
+                        alert('请选择下属代理账号');
+                        return;
+                    }
+                    saveBtn.disabled = true;
+                    adminFetch('api/admin/agent-channels', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            channel_id: channelId,
+                            owner_admin_username: String(owner).trim(),
+                            default_pricing_abc: abc,
+                            enabled: enabled,
+                            note: note
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            saveBtn.disabled = false;
+                            if (!data || data.code !== 200) {
+                                alert((data && data.msg) || '保存失败');
+                                return;
+                            }
+                            var idEl = document.getElementById('agentExChannelId');
+                            if (idEl) idEl.value = '';
+                            var noteEl = document.getElementById('agentExNote');
+                            if (noteEl) noteEl.value = '';
+                            loadAgentExclusiveChannels();
+                            alert('专属渠道已保存');
+                        })
+                        .catch(function () {
+                            saveBtn.disabled = false;
+                            alert('保存失败');
+                        });
+                });
+            }
+            if (listMount && listMount.getAttribute('data-bound') !== '1') {
+                listMount.setAttribute('data-bound', '1');
+                listMount.addEventListener('click', function (e) {
+                    var copyBtn = e.target.closest('.btn-copy-agent-promo');
+                    if (copyBtn) {
+                        copyCode(copyBtn.getAttribute('data-copy') || '');
+                        return;
+                    }
+                    var delBtn = e.target.closest('.btn-del-agent-ex-ch');
+                    if (!delBtn) return;
+                    var ch = delBtn.getAttribute('data-ch') || '';
+                    if (!ch || !confirm('确定删除专属渠道「' + ch + '」？已归属用户不会自动解除。')) return;
+                    adminFetch('api/admin/agent-channels/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ channel_id: ch })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (!data || data.code !== 200) {
+                                alert((data && data.msg) || '删除失败');
+                                return;
+                            }
+                            loadAgentExclusiveChannels();
+                        })
+                        .catch(function () {
+                            alert('删除失败');
+                        });
                 });
             }
         }
@@ -8073,6 +8286,8 @@
                         if (xyHideEl && data.data.xianyu_hide_sales_channels != null) {
                             xyHideEl.value = String(data.data.xianyu_hide_sales_channels);
                         }
+                        loadAgentExclusiveOwnerOptions();
+                        loadAgentExclusiveChannels();
                     }
                     if (data.code === 200 && data.data && data.data.mine_ui) {
                         var m = data.data.mine_ui;
@@ -8607,6 +8822,7 @@
         bindMineUiUploads();
         bindInstallPackageUploads();
         bindAgentPromoLinksUi();
+        bindAgentExclusiveChannelsUi();
         loadAdminSettings();
 
         document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {

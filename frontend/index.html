@@ -934,6 +934,12 @@
                 var lgU = localStorage.getItem('guest_username_v1') || '';
                 if (lgU && lgU.indexOf('__guest_') === 0) loginGuestUsername = lgU;
             } catch (eLg) {}
+            var loginSalesCh = '';
+            try {
+                if (typeof window.getSalesChannel === 'function') {
+                    loginSalesCh = String(window.getSalesChannel() || '');
+                }
+            } catch (eLoginCh) {}
             fetch('api/auth', {
                 method: 'POST',
                 headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
@@ -942,7 +948,8 @@
                     username: username,
                     password: password,
                     client_id: loginClientId || undefined,
-                    guest_username: loginGuestUsername || undefined
+                    guest_username: loginGuestUsername || undefined,
+                    sales_ch: loginSalesCh || undefined
                 })
             })
                 .then(function (r) { return r.json(); })

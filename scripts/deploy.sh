@@ -79,4 +79,4 @@ else
   echo "[deploy] (skip curl probe: curl not installed)"
 fi
 echo "[deploy] public site: ${APP_URL}"
-echo "[deploy] 其他机器：复制 .env.example → .env，改 PUBLIC_SITE_URL 后执行本脚本即可，无需按域名分分支。"
+echo "[deploy] 本机分支部署：在 .env 设 DEPLOY_BRANCH（lkj 站默认 lkj），然后执行 ./scripts/pull-and-deploy.sh"

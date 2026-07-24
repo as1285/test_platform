@@ -199,16 +199,32 @@ https://www.installguide1.top/
 
 环境变量与数据库初始化见 `docker-compose.yml`、`.env.example` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
-### 多域名 / 多服务器（同一套代码）
+### 多域名 / 多服务器
 
-不要为每个域名拉长期分支。三台机都跟踪 `master`，用本机 `.env` 区分对外地址：
+- **lkj.qiyun888.top（本机）**：长期跟踪 GitHub 分支 **`lkj`**，与 **`master`** 分开演进与部署。
+- 其他站点若仍共用主线，可继续跟踪 `master`，仅用本机 `.env` 区分域名。
+
+本机（lkj）日常更新：
 
 ```bash
+# .env 中已设 DEPLOY_BRANCH=lkj
+./scripts/pull-and-deploy.sh
+```
+
+仅重建容器（不拉代码）：
+
+```bash
+./scripts/deploy.sh
+```
+
+新建机器若要挂同一域名线：
+
+```bash
+git clone git@github.com:as1285/test_platform.git
+cd test_platform
+git checkout lkj
 cp .env.example .env
-# 编辑 PUBLIC_SITE_URL / APP_URL，例如：
-#   https://lkj.qiyun888.top
-#   https://www.geshui.vip
-#   http://85.137.247.81
+# 编辑 PUBLIC_SITE_URL / APP_URL / DEPLOY_BRANCH=lkj
 ./scripts/deploy.sh
 ```
 

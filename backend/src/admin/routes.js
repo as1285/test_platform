@@ -18,6 +18,24 @@ app.get(
   mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance', 'sales-contacts']),
   h.handleAdminSettingsGet
 );
+app.get(
+  '/api/admin/agent-channels',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings']),
+  h.handleAdminAgentChannelsGet
+);
+app.post(
+  '/api/admin/agent-channels',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings']),
+  h.handleAdminAgentChannelsUpsert
+);
+app.post(
+  '/api/admin/agent-channels/delete',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['install-guide', 'settings']),
+  h.handleAdminAgentChannelsDelete
+);
 app.post(
   '/api/admin/upload-asset',
   mw.requireAdminAuth,

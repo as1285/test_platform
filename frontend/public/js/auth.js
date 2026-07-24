@@ -1266,22 +1266,25 @@
         return r.json();
       })
       .then(function (body) {
-        if (body && body.code === 200 && body.data && body.data.sales_ch) {
-          var ch = sanitizeSalesChannelId(body.data.sales_ch);
-          if (ch) {
-            if (!getToken()) {
-              try {
-                localStorage.setItem(
-                  SALES_CHANNEL_KEY,
-                  JSON.stringify({
-                    ch: ch,
-                    at: Date.now(),
-                    source: 'server_resolve'
-                  })
-                );
-              } catch (e) {}
+        if (body && body.code === 200 && body.data) {
+          applyChannelForcedPricingAbc(body.data);
+          if (body.data.sales_ch) {
+            var ch = sanitizeSalesChannelId(body.data.sales_ch);
+            if (ch) {
+              if (!getToken()) {
+                try {
+                  localStorage.setItem(
+                    SALES_CHANNEL_KEY,
+                    JSON.stringify({
+                      ch: ch,
+                      at: Date.now(),
+                      source: 'server_resolve'
+                    })
+                  );
+                } catch (e) {}
+              }
+              return ch;
             }
-            return ch;
           }
         }
         return '';
@@ -1392,6 +1395,7 @@
         }
         if (data) {
           writeInstallPackagesCache(data);
+          applyChannelForcedPricingAbc(data);
         }
         applyXianyuPurchaseVisibility(data);
         return data;
@@ -1558,6 +1562,32 @@
     /* 同步落地页：C→落地 C，A/B→落地 B */
     setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc');
     return next;
+  }
+
+  /** 代理专属渠道等场景：强制覆盖本地 sticky */
+  function forcePurchaseAbcAssignment(variant, source) {
+    var v = String(variant || '').toLowerCase();
+    if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+    var next = {
+      experiment: 'purchase_abc_v1',
+      variant: v,
+      assigned_at: Date.now(),
+      source: String(source || 'agent_channel').substring(0, 32)
+    };
+    try {
+      localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
+    } catch (e) {}
+    setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc_force');
+    return next;
+  }
+
+  function applyChannelForcedPricingAbc(data) {
+    var abc = '';
+    if (data) {
+      abc = String(data.force_pricing_abc || data.default_pricing_abc || '').toLowerCase();
+    }
+    if (abc !== 'a' && abc !== 'b' && abc !== 'c') return null;
+    return forcePurchaseAbcAssignment(abc, 'agent_channel');
   }
 
   function migratePurchaseAbcFromLanding() {
@@ -2371,6 +2401,8 @@
   window.getPurchaseAbcAssignment = getPurchaseAbcAssignment;
   window.getPurchaseAbcVariant = getPurchaseAbcVariant;
   window.setPurchaseAbcAssignment = setPurchaseAbcAssignment;
+  window.forcePurchaseAbcAssignment = forcePurchaseAbcAssignment;
+  window.applyChannelForcedPricingAbc = applyChannelForcedPricingAbc;
   window.migratePurchaseAbcFromLanding = migratePurchaseAbcFromLanding;
   window.allocatePurchaseAbcFromPercents = allocatePurchaseAbcFromPercents;
   window.markInstallGuideReferral = markInstallGuideReferral;

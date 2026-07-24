@@ -126,6 +126,7 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./certbot-webroot:/var/www/certbot:ro
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/blocked_ips.conf:/etc/nginx/blocked_ips.conf:ro
       # 部署脚本按 .env 生成到 deploy/runtime/；改域名后无需重建前端镜像
       - ./deploy/runtime/site-config.js:/usr/share/nginx/html/js/site-config.js:ro
     networks:

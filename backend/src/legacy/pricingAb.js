@@ -417,19 +417,28 @@ function createPricingAb(deps) {
     }
   }
 
-  async function setStickyAbc(username, abc, source) {
+  async function setStickyAbc(username, abc, source, force) {
     var u = String(username || '').trim();
     var v = String(abc || '').toLowerCase();
     if (!u || u === 'guest' || (v !== 'a' && v !== 'b' && v !== 'c') || !pool) return null;
     const conn = await pool.getConnection();
     try {
       await ensureAssignmentsTable(conn);
-      await conn.execute(
-        `INSERT INTO pricing_ab_assignments (username, variant, source)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE username = username`,
-        [u, v, String(source || 'allocation').substring(0, 32)]
-      );
+      if (force) {
+        await conn.execute(
+          `INSERT INTO pricing_ab_assignments (username, variant, source)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE variant = VALUES(variant), source = VALUES(source)`,
+          [u, v, String(source || 'allocation').substring(0, 32)]
+        );
+      } else {
+        await conn.execute(
+          `INSERT INTO pricing_ab_assignments (username, variant, source)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE username = username`,
+          [u, v, String(source || 'allocation').substring(0, 32)]
+        );
+      }
       return v;
     } catch (e) {
       console.error('setStickyAbc', e);
@@ -442,11 +451,37 @@ function createPricingAb(deps) {
   /**
    * 为用户解析可见 SKU 列表与变体。
    * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
+   * 代理专属渠道可强制 default_pricing_abc（通常为 c）。
    */
   async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
     var cfg = await loadPricingAbParsed();
     var seed = String(username || '').trim() || 'guest';
+    var forcedAbc = null;
+    if (seed !== 'guest' && typeof deps.getForcedAbcForUser === 'function') {
+      try {
+        forcedAbc = await deps.getForcedAbcForUser(seed);
+      } catch (eForce) {
+        forcedAbc = null;
+      }
+      forcedAbc = String(forcedAbc || '').toLowerCase();
+      if (forcedAbc !== 'a' && forcedAbc !== 'b' && forcedAbc !== 'c') {
+        forcedAbc = null;
+      }
+    }
     if (!cfg.enabled) {
+      if (forcedAbc === 'c') {
+        if (seed !== 'guest') {
+          await setStickyAbc(seed, 'c', 'agent_channel', true);
+        }
+        return {
+          enabled: false,
+          variant: 'c',
+          abc_variant: 'c',
+          skus: [],
+          pricing_ab_enabled: false,
+          forced_by_channel: true
+        };
+      }
       var amt = alipayNormalizeAmount(envFallbackAmount);
       var legacy = cloneSku(SKU_CONTROL_199_PERM);
       if (amt) legacy.amount = amt;
@@ -461,7 +496,12 @@ function createPricingAb(deps) {
     }
 
     var abc = null;
-    if (seed !== 'guest') {
+    if (forcedAbc) {
+      abc = forcedAbc;
+      if (seed !== 'guest') {
+        await setStickyAbc(seed, abc, 'agent_channel', true);
+      }
+    } else if (seed !== 'guest') {
       abc = await getStickyAbc(seed);
     }
     if (!abc) {
@@ -495,7 +535,8 @@ function createPricingAb(deps) {
       variant: variant,
       abc_variant: abc,
       skus: skus,
-      pricing_ab_enabled: true
+      pricing_ab_enabled: true,
+      forced_by_channel: !!forcedAbc
     };
   }
 
