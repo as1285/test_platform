@@ -14,7 +14,8 @@ const { PUBLIC_SITE_URL } = require('../shared/config');
 
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 
-function renderSbdyPdfBuffer(payload, authCode, verifyUrl) {
+/** qrUrl：二维码扫码目标（应为 PDF 样例页 show_url） */
+function renderSbdyPdfBuffer(payload, authCode, qrUrl) {
   return new Promise(function (resolve, reject) {
     var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sbdy-'));
     var inJson = path.join(tmpDir, 'in.json');
@@ -33,7 +34,9 @@ function renderSbdyPdfBuffer(payload, authCode, verifyUrl) {
         JSON.stringify({
           payload: payload || {},
           auth_code: authCode || '',
-          verify_url: verifyUrl || ''
+          qr_url: qrUrl || '',
+          /* 兼容旧字段：二维码优先 qr_url */
+          verify_url: qrUrl || ''
         }),
         'utf8'
       );
@@ -281,9 +284,15 @@ function buildLinks(req, authCode, token) {
   };
 }
 
+var ROWS_PER_PAGE_HTML = 24;
+
 function padMonthRowsHtml(months, minRows) {
   var list = Array.isArray(months) ? months.slice() : [];
-  var target = Math.max(minRows || 22, list.length);
+  var target = Math.max(minRows || ROWS_PER_PAGE_HTML, list.length);
+  /* 向上取整到整页行数，避免半页 */
+  var pageRows = ROWS_PER_PAGE_HTML;
+  target = Math.ceil(target / pageRows) * pageRows;
+  if (target < pageRows) target = pageRows;
   var html = '';
   var i;
   for (i = 0; i < target; i++) {
@@ -337,6 +346,45 @@ function padMonthRowsHtml(months, minRows) {
     }
   }
   return html;
+}
+
+function chunkMonthRowsHtml(months, size) {
+  var list = Array.isArray(months) ? months.slice() : [];
+  var pageSize = size || ROWS_PER_PAGE_HTML;
+  if (!list.length) {
+    return [padMonthRowsHtml([], pageSize)];
+  }
+  var chunks = [];
+  var i;
+  for (i = 0; i < list.length; i += pageSize) {
+    chunks.push(padMonthRowsHtml(list.slice(i, i + pageSize), pageSize));
+  }
+  return chunks;
+}
+
+function paymentTableHeadHtml() {
+  return (
+    '<tr class="dhead">' +
+    '<th rowspan="2">年</th><th rowspan="2">月</th><th rowspan="2">单位编号</th>' +
+    '<th colspan="4">养老保险</th><th colspan="4">失业保险</th>' +
+    '<th rowspan="2">备注</th>' +
+    '</tr>' +
+    '<tr class="dhead">' +
+    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
+    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
+    '</tr>'
+  );
+}
+
+function colgroupHtml() {
+  return (
+    '<colgroup>' +
+    '<col style="width:4.2%"><col style="width:3.8%"><col style="width:14.5%">' +
+    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
+    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
+    '<col style="width:5.5%">' +
+    '</colgroup>'
+  );
 }
 
 function renderRedSealImg() {
@@ -418,14 +466,139 @@ function renderCertHtml(payload, links, opts) {
   var p = payload || {};
   var months = migrateMonthsForShow(p);
   var verifyUrl = (links && links.verify_url) || '';
-  var rowsHtml = padMonthRowsHtml(months, 24);
+  /* 二维码扫码直达 PDF 样例页（与纸质证明一致） */
+  var qrUrl =
+    (links && links.show_url) || (links && links.show_api_url) || verifyUrl || '';
+  var rowChunks = chunkMonthRowsHtml(months, ROWS_PER_PAGE_HTML);
+  var totalPages = rowChunks.length;
   var authCode = opts.authCode || '';
   var companyDisp = companyDisplayOf(p);
   var periodLabel = p.period_label || '';
+  var monthCount = Array.isArray(months) ? months.length : 0;
+  if (monthCount < 1) monthCount = 12;
+  if (monthCount > 48) monthCount = 48;
+  var paySecTitle =
+    '出具证明前' + monthCount + '个月缴费情况（' + escHtml(periodLabel) + '）';
   var officialValidateHint =
     'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate';
 
-  /* 一整张连续 12 列表格（对齐 show.pdf） */
+  function pageHeadHtml(pageIdx) {
+    var pageNo = '共' + totalPages + '页，第' + pageIdx + '页';
+    var qrBlock =
+      pageIdx === 1
+        ? '<div class="qr-ph" id="qrPh"></div>' +
+          '<canvas id="qrCanvas" class="qr" width="80" height="80" style="display:none"></canvas>'
+        : '<div class="qr-ph qr-cont"></div>';
+    return (
+      '<div class="head">' +
+      '<div class="qr-box">' +
+      qrBlock +
+      '<div class="page-no">' +
+      pageNo +
+      '</div>' +
+      '</div>' +
+      '<h1>浙江省社会保险参保证明（个人专用）</h1>' +
+      '</div>'
+    );
+  }
+
+  function tailHtml() {
+    return (
+      '<div class="tail">' +
+      '<div class="notes">' +
+      '<div><span class="lab">备注：</span>1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。</div>' +
+      '<div class="indent">2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：' +
+      escHtml(authCode) +
+      '，</div>' +
+      '<div class="indent">验证平台：<a href="' +
+      escHtml(verifyUrl || officialValidateHint) +
+      '">' +
+      escHtml(officialValidateHint) +
+      '</a>。</div>' +
+      '<div class="indent">3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。</div>' +
+      '<div class="indent">4.本证明妥善保管，最终解释权由参保地社保经办机构所有。</div>' +
+      '</div>' +
+      '<div class="print-date">打印时间：' +
+      escHtml(p.print_date || defaultPrintDateCn()) +
+      '</div>' +
+      '<div class="seal-mark">（盖章）</div>' +
+      '<div class="seal-wrap">' +
+      renderRedSealImg() +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  var pagesHtml = '';
+  var pi;
+  for (pi = 0; pi < totalPages; pi++) {
+    var pageIdx = pi + 1;
+    var isFirst = pi === 0;
+    var isLast = pi === totalPages - 1;
+    var secLabel = isFirst
+      ? paySecTitle
+      : '出具证明前' + monthCount + '个月缴费情况（续）（' + escHtml(periodLabel) + '）';
+    pagesHtml +=
+      '<div class="page' +
+      (isLast ? '' : ' page-break') +
+      '">' +
+      pageHeadHtml(pageIdx) +
+      '<table class="cert">' +
+      colgroupHtml() +
+      (isFirst
+        ? '<tr class="info">' +
+          '<th colspan="1">姓名</th><td colspan="1">' +
+          escHtml(p.name) +
+          '</td>' +
+          '<th colspan="1">社会保障号</th><td colspan="2">' +
+          escHtml(p.id_number) +
+          '</td>' +
+          '<th colspan="1">证件类型</th><td colspan="1">' +
+          escHtml(p.id_type || '居民身份证') +
+          '</td>' +
+          '<th colspan="1">证件号码</th><td colspan="2">' +
+          escHtml(p.id_number) +
+          '</td>' +
+          '<th colspan="1">性别</th><td colspan="1">' +
+          escHtml(p.gender || '') +
+          '</td>' +
+          '</tr>' +
+          '<tr class="sec"><th colspan="12">参加社会保险基本情况</th></tr>' +
+          '<tr class="basic">' +
+          '<th class="lab" colspan="3">险　　种</th>' +
+          '<th colspan="3">养老保险</th><th colspan="3">工伤保险</th><th colspan="3">失业保险</th>' +
+          '</tr>' +
+          '<tr class="basic">' +
+          '<th class="lab" colspan="3">参保状态</th>' +
+          '<td colspan="3">' +
+          escHtml(p.status_pension || '') +
+          '</td>' +
+          '<td colspan="3">' +
+          escHtml(p.status_injury || p.status_medical || '') +
+          '</td>' +
+          '<td colspan="3">' +
+          escHtml(p.status_unemployment || '') +
+          '</td>' +
+          '</tr>' +
+          '<tr class="basic">' +
+          '<th class="lab" colspan="3">参保单位</th>' +
+          '<td colspan="9">' +
+          escHtml(companyDisp) +
+          '</td>' +
+          '</tr>'
+        : '') +
+      '<tr class="sec"><th colspan="12">' +
+      secLabel +
+      '</th></tr>' +
+      paymentTableHeadHtml() +
+      rowChunks[pi] +
+      '</table>' +
+      /* 每一页底部文案与电子印章相同（与官方多页证明一致） */
+      tailHtml() +
+      '</div>';
+  }
+
+  /* 每页 24 行缴费明细；超出自动换页（对齐 PDF） */
   return (
     '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -437,12 +610,14 @@ function renderCertHtml(payload, links, opts) {
     '-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '.page{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;' +
     'padding:14mm 14mm 16mm;position:relative}' +
+    '.page-break{page-break-after:always;break-after:page}' +
     '.head{position:relative;min-height:96px;margin:0 0 10px}' +
     'h1{margin:0;padding:26px 100px 0 0;text-align:center;font-size:24px;font-weight:700;' +
     'letter-spacing:3px;line-height:1.35}' +
     '.qr-box{position:absolute;top:0;right:0;width:90px;text-align:center}' +
     '.qr-box canvas,.qr-box img.qr{width:80px;height:80px;display:block;margin:0 auto}' +
     '.qr-ph{width:80px;height:80px;margin:0 auto}' +
+    '.qr-cont{background:repeating-linear-gradient(45deg,#eee,#eee 4px,#f8f8f8 4px,#f8f8f8 8px)}' +
     '.page-no{margin-top:2px;font-size:12px;text-align:right;white-space:nowrap}' +
     'table.cert{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;font-size:11px}' +
     'table.cert th,table.cert td{border:1px solid #000;padding:4px 2px;text-align:center;' +
@@ -464,110 +639,17 @@ function renderCertHtml(payload, links, opts) {
     '.seal-mark{position:absolute;right:118px;top:48px;font-size:12px;z-index:3}' +
     '.seal-wrap{position:absolute;right:0;top:10px;width:160px;height:160px;z-index:2;pointer-events:none}' +
     '.seal{width:160px;height:160px;display:block;opacity:.92}' +
-    '@media print{.page{padding:12mm;min-height:auto}}' +
+    '@media print{.page{padding:12mm;min-height:auto}.page-break{page-break-after:always}}' +
     '@media (max-width:720px){.page{padding:8px;min-height:0}.head{min-height:0}' +
     'h1{padding:6px 0 0;font-size:18px;letter-spacing:1px}' +
     '.qr-box{position:static;margin:0 auto 8px}.page-no{text-align:center}' +
     '.notes{padding-right:0}.seal-mark{position:static;text-align:right;margin-top:8px}' +
     '.seal-wrap{position:relative;right:auto;top:auto;margin:6px 0 0 auto}}' +
     '</style></head><body>' +
-    '<div class="page">' +
-    '<div class="head">' +
-    '<div class="qr-box">' +
-    '<div class="qr-ph" id="qrPh"></div>' +
-    '<canvas id="qrCanvas" class="qr" width="80" height="80" style="display:none"></canvas>' +
-    '<div class="page-no">共1页，第1页</div>' +
-    '</div>' +
-    '<h1>浙江省社会保险参保证明（个人专用）</h1>' +
-    '</div>' +
-    '<table class="cert">' +
-    '<colgroup>' +
-    '<col style="width:4.2%"><col style="width:3.8%"><col style="width:14.5%">' +
-    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
-    '<col style="width:7%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:7%">' +
-    '<col style="width:5.5%">' +
-    '</colgroup>' +
-    /* 个人信息：12 列拆成 5 组 */
-    '<tr class="info">' +
-    '<th colspan="1">姓名</th><td colspan="1">' +
-    escHtml(p.name) +
-    '</td>' +
-    '<th colspan="1">社会保障号</th><td colspan="2">' +
-    escHtml(p.id_number) +
-    '</td>' +
-    '<th colspan="1">证件类型</th><td colspan="1">' +
-    escHtml(p.id_type || '居民身份证') +
-    '</td>' +
-    '<th colspan="1">证件号码</th><td colspan="2">' +
-    escHtml(p.id_number) +
-    '</td>' +
-    '<th colspan="1">性别</th><td colspan="1">' +
-    escHtml(p.gender || '') +
-    '</td>' +
-    '</tr>' +
-    '<tr class="sec"><th colspan="12">参加社会保险基本情况</th></tr>' +
-    '<tr class="basic">' +
-    '<th class="lab" colspan="3">险　　种</th>' +
-    '<th colspan="3">养老保险</th><th colspan="3">工伤保险</th><th colspan="3">失业保险</th>' +
-    '</tr>' +
-    '<tr class="basic">' +
-    '<th class="lab" colspan="3">参保状态</th>' +
-    '<td colspan="3">' +
-    escHtml(p.status_pension || '') +
-    '</td>' +
-    '<td colspan="3">' +
-    escHtml(p.status_injury || p.status_medical || '') +
-    '</td>' +
-    '<td colspan="3">' +
-    escHtml(p.status_unemployment || '') +
-    '</td>' +
-    '</tr>' +
-    '<tr class="basic">' +
-    '<th class="lab" colspan="3">参保单位</th>' +
-    '<td colspan="9">' +
-    escHtml(companyDisp) +
-    '</td>' +
-    '</tr>' +
-    '<tr class="sec"><th colspan="12">出具证明前12个月缴费情况（' +
-    escHtml(periodLabel) +
-    '）</th></tr>' +
-    '<tr class="dhead">' +
-    '<th rowspan="2">年</th><th rowspan="2">月</th><th rowspan="2">单位编号</th>' +
-    '<th colspan="4">养老保险</th><th colspan="4">失业保险</th>' +
-    '<th rowspan="2">备注</th>' +
-    '</tr>' +
-    '<tr class="dhead">' +
-    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
-    '<th>参保地</th><th>缴费基数(元)</th><th>个人缴费(元)</th><th>缴费状况</th>' +
-    '</tr>' +
-    rowsHtml +
-    '</table>' +
-    '<div class="tail">' +
-    '<div class="notes">' +
-    '<div><span class="lab">备注：</span>1.本证明已签署经国家电子政务外网浙江省电子认证注册的机构认证的电子印章，社保经办机构不再另行签章。</div>' +
-    '<div class="indent">2.本证明出具后3个月内可在“浙江政务服务网”进行网上验证，授权码：' +
-    escHtml(authCode) +
-    '，</div>' +
-    '<div class="indent">验证平台：<a href="' +
-    escHtml(verifyUrl || officialValidateHint) +
-    '">' +
-    escHtml(officialValidateHint) +
-    '</a>。</div>' +
-    '<div class="indent">3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。</div>' +
-    '<div class="indent">4.本证明妥善保管，最终解释权由参保地社保经办机构所有。</div>' +
-    '</div>' +
-    '<div class="print-date">打印时间：' +
-    escHtml(p.print_date || defaultPrintDateCn()) +
-    '</div>' +
-    '<div class="seal-mark">（盖章）</div>' +
-    '<div class="seal-wrap">' +
-    renderRedSealImg() +
-    '</div>' +
-    '</div>' +
-    '</div>' +
+    pagesHtml +
     '<script src="/js/vendor/qrcode.min.js"><\/script>' +
     '<script>(function(){var u=' +
-    JSON.stringify(verifyUrl) +
+    JSON.stringify(qrUrl) +
     ';var c=document.getElementById("qrCanvas");var ph=document.getElementById("qrPh");' +
     'if(!u||typeof QRCode==="undefined"||!QRCode.toCanvas||!c){return;}' +
     'QRCode.toCanvas(c,u,{width:80,margin:1,color:{dark:"#000000",light:"#ffffff"}},function(err){' +
@@ -734,7 +816,7 @@ async function handlePublicSbdyDemoShow(req, res) {
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       return res.status(200).send(html);
     }
-    var pdfBuf = await renderSbdyPdfBuffer(payload, row.auth_code, links.verify_url);
+    var pdfBuf = await renderSbdyPdfBuffer(payload, row.auth_code, links.show_url);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="show.pdf"');
     res.setHeader('Cache-Control', 'private, max-age=60');

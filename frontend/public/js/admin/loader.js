@@ -17,7 +17,7 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260723-bj8'
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator'
   };
 
   var PAGE_MODULE = {
@@ -25,6 +25,7 @@
     'install-guide': 'settings',
     appearance: 'settings',
     codes: 'codes',
+    'weekly-codes': 'codes',
     'sbdy-demo': 'sbdy-demo',
     'admin-accounts': 'accounts',
     users: 'users',

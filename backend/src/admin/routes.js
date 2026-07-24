@@ -224,6 +224,18 @@ app.post(
   mw.requireAdminMenu('codes'),
   h.handleAdminIssueCodeBatch
 );
+app.post(
+  '/api/admin/issue-weekly-code',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('weekly-codes'),
+  h.handleAdminIssueWeeklyCode
+);
+app.post(
+  '/api/admin/issue-weekly-code-batch',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('weekly-codes'),
+  h.handleAdminIssueWeeklyCodeBatch
+);
 app.get(
   '/api/admin/activation-batch-channels',
   mw.requireAdminAuth,
@@ -236,7 +248,12 @@ app.post(
   mw.requireAdminMenu('codes'),
   h.handleAdminActivationBatchChannels
 );
-app.get('/api/admin/codes', mw.requireAdminAuth, mw.requireAdminMenu('codes'), h.handleAdminCodes);
+app.get(
+  '/api/admin/codes',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['codes', 'weekly-codes']),
+  h.handleAdminCodes
+);
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);

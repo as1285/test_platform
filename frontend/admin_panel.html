@@ -33,7 +33,7 @@
                         <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
                             <strong>A</strong>：支付宝仅「199 永久」+ 其它渠道 + 激活码（落地页 B）；
                             <strong>B</strong>：支付宝多档价，收起其它渠道（落地页 B）；
-                            <strong>C</strong>：仅「下载 App」+ 激活码（落地页游客沙盒）。
+                            <strong>C</strong>：下载 App + 激活码 +「联系方式配置」中的专属客服（落地页游客沙盒；无支付宝/其它购买渠道）。
                             A+B+C 必须为 100%。
                         </p>
                         <div class="form-row form-stack">
@@ -133,6 +133,7 @@
                 <div id="page-sales-contacts" class="page-panel" role="tabpanel">
                     <section>
                         <h2>联系方式配置</h2>
+                        <p class="hint mt-0">仅在支付页 <strong>C 方案</strong>展示（下载 App + 激活码旁的专属客服卡片）。A/B 方案购买页不展示此处配置。</p>
                         <div class="form-row form-stack">
                             <div class="form-field form-field-narrow">
                                 <label for="salesAgentDisplayName">展示名</label>
@@ -175,7 +176,7 @@
                     </section>
                     <section>
                         <h2>落地页 B/C（跟随支付页 A/B/C）</h2>
-                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页仅展示「下载 App」与「激活码输入」。</p>
+                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页展示「下载 App」「激活码」以及「联系方式配置」中的专属客服。</p>
                     </section>
                     <section>
                         <h2>安装包下载（用户端）</h2>
@@ -700,6 +701,78 @@
                     </section>
                 </div>
 
+                <div id="page-weekly-codes" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>周卡激活码</h2>
+                        <p class="hint mt-0">本页<strong>只能生成周卡</strong>（激活后开通 <strong>7 天</strong>试用时效）。不可生成永久码或其它天数。</p>
+                        <div class="form-row flex-wrap gap-10" style="align-items:flex-end;margin-bottom:10px;">
+                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyCode">生成 1 个周卡码</button>
+                            <div>
+                                <label for="weeklyBatchCount">批量数量</label>
+                                <input class="filter-select input-w-100 mt-6" type="number" id="weeklyBatchCount" min="1" max="5000" value="100" inputmode="numeric">
+                            </div>
+                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyBatch">批量生成周卡码</button>
+                        </div>
+                        <div class="code-result" id="weeklyIssueOut"></div>
+                        <div class="form-row mb-12 flex-wrap">
+                            <div>
+                                <label for="weeklyCodeCodeFilter">激活码</label>
+                                <input type="text" id="weeklyCodeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeOwnerAdminFilter">管理员账号</label>
+                                <input type="text" id="weeklyCodeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeUsedByFilter">使用账号</label>
+                                <input type="text" id="weeklyCodeUsedByFilter" placeholder="按使用账号查询">
+                            </div>
+                            <div>
+                                <label for="weeklyCodeUsageFilter">使用状态</label>
+                                <select id="weeklyCodeUsageFilter" class="filter-select">
+                                    <option value="">全部</option>
+                                    <option value="unused">未使用</option>
+                                    <option value="used">已使用</option>
+                                </select>
+                            </div>
+                            <div class="flex-row-end filter-tools-row">
+                                <label class="inline-check-label nowrap">
+                                    <input type="checkbox" id="weeklyCodeCodeExact"> 激活码精准查询
+                                </label>
+                                <label class="inline-check-label nowrap">
+                                    <input type="checkbox" id="weeklyCodeUsedByExact"> 使用账号精准查询
+                                </label>
+                            </div>
+                            <div class="flex-row-end">
+                                <button type="button" class="btn-primary" id="btnSearchWeeklyCodes">查询</button>
+                                <button type="button" class="btn-page" id="btnResetWeeklyCodesFilter">重置</button>
+                                <button type="button" class="btn-primary" id="btnRefreshWeeklyCodes">刷新列表</button>
+                            </div>
+                        </div>
+                        <p class="stat" id="weeklyCodeListStat"></p>
+                        <div class="scroll-x">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>激活码</th>
+                                        <th>复制</th>
+                                        <th>类型</th>
+                                        <th>归属管理员</th>
+                                        <th>使用账号</th>
+                                        <th>使用时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="weeklyCodeTbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="weeklyCodePagination">
+                            <button type="button" class="btn-page" id="weeklyCodePrev">上一页</button>
+                            <span id="weeklyCodePageInfo">第 1 页</span>
+                            <button type="button" class="btn-page" id="weeklyCodeNext">下一页</button>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-admin-accounts" class="page-panel" role="tabpanel">
                     <section>
                         <h2>后台账号权限</h2>
@@ -822,7 +895,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员默认列表仅含 admin 名下用户；<strong>按账号搜索时可查到其它子管理员开通的用户</strong>。子管理员仅见自己激活码关联账号。近六个月平均工资来自个税收入月均。当日修改按北京时间当日个税变更。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。近六个月平均工资来自个税收入月均。当日修改按北京时间当日个税变更。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -837,7 +910,6 @@
                                         <th class="col-w-72">封禁</th>
                                         <th class="col-w-140">风控</th>
                                         <th class="col-w-120">近六个月平均工资</th>
-                                        <th class="col-w-72">上线</th>
                                         <th class="col-w-150">注册时间</th>
                                         <th class="col-ops">操作</th>
                                     </tr>
@@ -1562,11 +1634,10 @@
                                         <th>证件号</th>
                                         <th>单位</th>
                                         <th>授权码</th>
-                                        <th>操作人</th>
                                         <th>链接</th>
                                     </tr>
                                 </thead>
-                                <tbody id="sbdyDemoListTbody"><tr><td colspan="7">加载中…</td></tr></tbody>
+                                <tbody id="sbdyDemoListTbody"><tr><td colspan="6">加载中…</td></tr></tbody>
                             </table>
                         </div>
                     </section>
@@ -2378,6 +2449,6 @@
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260723-hide-chat-ai"></script>
+    <script src="/js/admin_panel.js?v=20260723-weekly-codes-nav"></script>
 </body>
 </html>

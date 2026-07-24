@@ -37,6 +37,7 @@ const JWT_EXPIRES = config.JWT_EXPIRES;
 const ADMIN_ACTIVATION_KEY = config.ADMIN_ACTIVATION_KEY;
 const ADMIN_PANEL_USER = config.ADMIN_PANEL_USER;
 const ADMIN_PANEL_PASSWORD = config.ADMIN_PANEL_PASSWORD;
+const ADMIN_PANEL_FULL_NAME = config.ADMIN_PANEL_FULL_NAME || '系统管理员';
 const ADMIN_IP_DENYLIST = Array.isArray(config.ADMIN_IP_DENYLIST) ? config.ADMIN_IP_DENYLIST : [];
 
 const DB_HOST = config.DB_HOST;
@@ -480,6 +481,22 @@ const MSG_BULK_INSERT_CHUNK = 80;
 
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
 const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
+
+/**
+ * 运营子账号 admin：注册用户页可看「从此刻起」新注册用户（UTC）。
+ * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖，格式 YYYY-MM-DD HH:MM:SS（UTC）。
+ */
+const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
+  process.env.ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00'
+).trim();
+
+function isOpsNamedAdmin(admin) {
+  return !!(admin && String(admin.username || '').trim().toLowerCase() === 'admin');
+}
+
+function adminOpsSeeRegisteredSinceUtc() {
+  return ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00';
+}
 
 /** 个人中心默认外观（管理后台可覆盖） */
 const DEFAULT_MINE_UI = {
@@ -3288,6 +3305,7 @@ async function createTables() {
 
   var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
+  var rootFullName = String(ADMIN_PANEL_FULL_NAME || '系统管理员').trim() || '系统管理员';
   var rootSalt = crypto.randomBytes(16);
   var rootSaltHex = rootSalt.toString('hex');
   var rootHash = hashPasswordWithSalt(rootPassword, rootSalt);
@@ -3297,9 +3315,10 @@ async function createTables() {
   );
   var rootAdminId = 0;
   if (!adminRows.length) {
+    /* 不再把保留账号 admin 改名为环境变量用户名；admin 为普通管理员，超管仅根账号 */
     const [insRoot] = await conn.execute(
       'INSERT INTO admin_accounts (username, full_name, salt, hash, is_super, banned) VALUES (?, ?, ?, ?, 1, 0)',
-      [rootAdmin, '系统管理员', rootSaltHex, rootHash]
+      [rootAdmin, rootFullName, rootSaltHex, rootHash]
     );
     rootAdminId = insRoot.insertId ? Number(insRoot.insertId) : 0;
   } else {
@@ -3308,10 +3327,13 @@ async function createTables() {
     if (!keepHash) {
       await conn.execute(
         'UPDATE admin_accounts SET full_name = ?, salt = ?, hash = ?, is_super = 1, banned = 0 WHERE id = ?',
-        ['系统管理员', rootSaltHex, rootHash, rootAdminId]
+        [rootFullName, rootSaltHex, rootHash, rootAdminId]
       );
     } else {
-      await conn.execute('UPDATE admin_accounts SET full_name = ?, is_super = 1, banned = 0 WHERE id = ?', ['系统管理员', rootAdminId]);
+      await conn.execute(
+        'UPDATE admin_accounts SET full_name = ?, is_super = 1, banned = 0 WHERE id = ?',
+        [rootFullName, rootAdminId]
+      );
     }
   }
   if (rootAdminId > 0) {
@@ -3321,6 +3343,55 @@ async function createTables() {
         'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
         [rootAdminId, ADMIN_MENU_KEYS[mi]]
       );
+    }
+  }
+
+  /* 仅环境变量根账号为超级管理员；其余账号一律降为普通管理员 */
+  await conn.execute(
+    'UPDATE admin_accounts SET is_super = 0 WHERE username <> ? AND is_super = 1',
+    [rootAdmin]
+  );
+
+  /* 保留账号 admin：普通管理员；无菜单时写入默认可分配菜单（不含超管专属） */
+  if (rootAdmin.toLowerCase() !== 'admin') {
+    const [namedAdminRows] = await conn.execute(
+      "SELECT id FROM admin_accounts WHERE username = 'admin' LIMIT 1"
+    );
+    if (namedAdminRows.length) {
+      var namedAdminId = Number(namedAdminRows[0].id) || 0;
+      if (namedAdminId > 0) {
+        await conn.execute(
+          'UPDATE admin_accounts SET is_super = 0, banned = 0 WHERE id = ?',
+          [namedAdminId]
+        );
+        const [namedMenuCnt] = await conn.execute(
+          'SELECT COUNT(*) AS c FROM admin_account_menus WHERE admin_id = ?',
+          [namedAdminId]
+        );
+        var namedMenus = namedMenuCnt.length ? Number(namedMenuCnt[0].c) || 0 : 0;
+        if (namedMenus <= 0) {
+          var subAdminMenus = adminMenuRegistry
+            .getAssignableMenuDefs()
+            .filter(function (d) {
+              return d && d.key && !d.super_only && d.key !== 'admin-accounts';
+            })
+            .map(function (d) {
+              return String(d.key);
+            });
+          for (var sami = 0; sami < subAdminMenus.length; sami++) {
+            await conn.execute(
+              'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
+              [namedAdminId, subAdminMenus[sami]]
+            );
+          }
+        } else {
+          /* 去掉超管专属菜单键，避免子账号侧栏残留无效入口 */
+          await conn.execute(
+            "DELETE FROM admin_account_menus WHERE admin_id = ? AND menu_key IN ('guest-users', 'admin-accounts')",
+            [namedAdminId]
+          );
+        }
+      }
     }
   }
 
@@ -3374,6 +3445,11 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'sbdy-demo' FROM admin_account_menus WHERE menu_key = 'codes'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'weekly-codes' FROM admin_account_menus WHERE menu_key = 'codes'`
   );
 
   await conn.execute(
@@ -5128,6 +5204,10 @@ var RENAME_FEE_SUBJECT = '改名服务（单次）';
 var RENAME_FREE_LIMIT = 5;
 var RENAME_FREQ_WINDOW_DAYS = 30;
 var RENAME_FREQ_MIN_ACTIVE_DAYS = 2;
+/** 豁免改名收费的账号（不限次数） */
+var RENAME_FEE_EXEMPT_USERNAMES = {
+  jing00001: true
+};
 
 function isRenameFeeSkuId(skuId) {
   return String(skuId || '') === RENAME_FEE_SKU_ID;
@@ -5179,7 +5259,9 @@ async function getRenameFeePolicy(userId) {
   var activeDays = await countUserActiveDaysRecent(userId, RENAME_FREQ_WINDOW_DAYS);
   var unused = await countUnusedRenameCredits(userId);
   var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
-  var needFee = isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
+  var uname = String(userId || '').trim().toLowerCase();
+  var exempt = !!(uname && RENAME_FEE_EXEMPT_USERNAMES[uname]);
+  var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   return {
     need_fee: needFee,
     can_rename_now: !needFee || unused > 0,
@@ -5189,6 +5271,7 @@ async function getRenameFeePolicy(userId) {
     active_days: activeDays,
     activity_window_days: RENAME_FREQ_WINDOW_DAYS,
     is_mid_high_frequency: isMidHigh,
+    rename_fee_exempt: exempt,
     fee_amount: RENAME_FEE_AMOUNT,
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
@@ -6088,7 +6171,16 @@ async function adminCanAccessTargetUser(conn, admin, username) {
      LIMIT 1`,
     [username, admin.username]
   );
-  return owned.length > 0;
+  if (owned.length > 0) return true;
+  /* 运营子账号 admin：可操作「新注册可见」期内的注册用户（仅配合注册用户页） */
+  if (isOpsNamedAdmin(admin)) {
+    const [nu] = await conn.execute(
+      'SELECT id FROM users WHERE username = ? AND created_at >= ? LIMIT 1',
+      [String(username), adminOpsSeeRegisteredSinceUtc()]
+    );
+    return nu.length > 0;
+  }
+  return false;
 }
 
 /** 要求管理员已登录 */
@@ -11862,8 +11954,11 @@ async function handleAdminAccountsCreate(req, res) {
   if (!menus.length) {
     return res.status(400).json({ code: 400, msg: '请至少选择一个可用菜单' });
   }
-  if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
-    return res.status(400).json({ code: 400, msg: '保留账号请直接使用 admin' });
+  if (
+    username.toLowerCase() === 'admin' ||
+    username.toLowerCase() === String(ADMIN_PANEL_USER || '').toLowerCase()
+  ) {
+    return res.status(400).json({ code: 400, msg: '保留账号不可新建' });
   }
   try {
     const conn = await pool.getConnection();
@@ -15569,14 +15664,8 @@ async function handleAdminUsers(req, res) {
       whereClauses.push(userLoginInactiveSinceSql(qLoginInactiveDays));
     }
     if (!qGuest) {
-      /*
-       * 默认按激活码归属隔离：超管列表不含其它子管理员名下开通用户。
-       * 但超管按「账号」搜索时放开归属，便于从登录流水定位任意用户。
-       */
-      var skipOwnerScopeForSuperSearch = !!(req.admin && req.admin.is_super && qUsername);
-      if (!skipOwnerScopeForSuperSearch) {
-        appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
-      }
+      /* 超管看全站注册用户；子账号仅看本人激活码开通用户 */
+      appendAdminRegisteredUsersScope(whereClauses, params, req.admin, 'users.username');
     }
 
     let whereSql = whereClauses.length > 0 ? ' WHERE ' + whereClauses.join(' AND ') : '';
@@ -15617,13 +15706,6 @@ async function handleAdminUsers(req, res) {
           `SELECT id, username, real_name, tax_id, account_active, banned,
                   last_login_city, created_at, hash, plain_password, register_source_channel,
                   activation_source_channel, user_type, sales_promo_channel, invited_by,
-                  (SELECT ac.owner_admin_username
-                   FROM activation_codes ac
-                   WHERE ac.used_by_username = users.username
-                     AND ac.owner_admin_username IS NOT NULL
-                     AND TRIM(ac.owner_admin_username) <> ''
-                   ORDER BY ac.last_used_at DESC, ac.id DESC
-                   LIMIT 1) AS upline_admin_username,
                   (SELECT ule.ip FROM user_login_events ule
                    WHERE ule.username = users.username AND ule.ip IS NOT NULL
                    ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
@@ -15643,13 +15725,6 @@ async function handleAdminUsers(req, res) {
       SELECT id, username, real_name, tax_id, account_active, banned,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, user_type, sales_promo_channel, invited_by,
-             (SELECT ac.owner_admin_username
-              FROM activation_codes ac
-              WHERE ac.used_by_username = users.username
-                AND ac.owner_admin_username IS NOT NULL
-                AND TRIM(ac.owner_admin_username) <> ''
-              ORDER BY ac.last_used_at DESC, ac.id DESC
-              LIMIT 1) AS upline_admin_username,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
               ORDER BY ule.created_at DESC LIMIT 1) AS ip_last
@@ -15708,17 +15783,6 @@ async function handleAdminUsers(req, res) {
         r.sales_promo_channel != null && String(r.sales_promo_channel).trim() !== ''
           ? String(r.sales_promo_channel).trim()
           : '';
-      var upline =
-        r.upline_admin_username != null && String(r.upline_admin_username).trim() !== ''
-          ? String(r.upline_admin_username).trim()
-          : '';
-      if (!upline) {
-        var actSrc =
-          r.activation_source_channel != null ? String(r.activation_source_channel).trim() : '';
-        if (actSrc === 'alipay' || actSrc === 'kufaka') {
-          upline = ADMIN_PANEL_USER;
-        }
-      }
       return {
         id: r.id,
         username: r.username,
@@ -15731,7 +15795,6 @@ async function handleAdminUsers(req, res) {
         is_guest: ut === USER_TYPE_GUEST,
         last_login_city: r.last_login_city != null && String(r.last_login_city).trim() !== '' ? String(r.last_login_city).trim() : '',
         ip_last: r.ip_last != null ? String(r.ip_last).trim() : '',
-        upline_admin: upline,
         created_at: r.created_at ? r.created_at.toISOString() : '',
         password:
           r.plain_password != null && String(r.plain_password).trim() !== ''
@@ -15846,33 +15909,39 @@ function appendAdminUserScope(whereClauses, params, admin, userCol) {
 /** append admin registered users scope */
 function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
   if (!admin || !admin.username) return;
-  var owner = conversionAnalyticsOwnerAdmin(admin);
-  if (!owner) return;
-  if (admin.is_super) {
+  /* 超级管理员：全部注册用户（含各子账号激活码开通的用户） */
+  if (admin.is_super) return;
+  /*
+   * 运营子账号 admin：本人激活码开通用户 ∪ 截止时间后新注册用户。
+   * 仅用于「注册用户」列表；其它数据页仍走 appendAdminUserScope（仅激活码归属）。
+   */
+  if (isOpsNamedAdmin(admin)) {
+    var createdCol = String(userCol || 'users.username').replace(/\.username\s*$/i, '.created_at');
+    if (createdCol === String(userCol || '')) {
+      createdCol = 'users.created_at';
+    }
     whereClauses.push(
-      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
+      '(' +
+        'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
         userCol +
-        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
-        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
-        ' AND ac.owner_admin_username <> ?)' +
-        ' AND NOT EXISTS (SELECT 1 FROM users __oa_ex WHERE __oa_ex.username = ' +
-        userCol +
-        " AND __oa_ex.owner_agent_admin IS NOT NULL AND TRIM(__oa_ex.owner_agent_admin) <> ''" +
-        ' AND __oa_ex.owner_agent_admin <> ?)'
+        ' AND ac.owner_admin_username = ?) OR ' +
+        createdCol +
+        ' >= ?' +
+        ')'
     );
-    params.push(owner, owner);
+    params.push(admin.username, adminOpsSeeRegisteredSinceUtc());
     return;
   }
   appendSubAdminOwnedUsersScope(whereClauses, params, admin.username, userCol);
 }
 
-/** conversion analytics owner admin */
+/** conversion analytics owner admin；超管返回 null 表示全站（不按归属过滤） */
 function conversionAnalyticsOwnerAdmin(admin) {
   if (!admin || !admin.username) {
     return null;
   }
   if (admin.is_super) {
-    return String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
+    return null;
   }
   return String(admin.username).trim();
 }
@@ -15884,16 +15953,7 @@ function appendConversionAnalyticsAdminScope(whereClauses, params, admin, userCo
   if (!owner) {
     return;
   }
-  if (admin && !admin.is_super) {
-    appendSubAdminOwnedUsersScope(whereClauses, params, owner, userCol);
-    return;
-  }
-  whereClauses.push(
-    'EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-      userCol +
-      ' AND ac.owner_admin_username = ?)'
-  );
-  params.push(owner);
+  appendSubAdminOwnedUsersScope(whereClauses, params, owner, userCol);
 }
 
 /** append conversion analytics registration scope */
@@ -15901,21 +15961,6 @@ function appendConversionAnalyticsRegistrationScope(whereParts, params, admin, u
   whereParts.push(nonGuestUsernameSql(userCol));
   var owner = conversionAnalyticsOwnerAdmin(admin);
   if (!owner) {
-    return;
-  }
-  if (admin.is_super) {
-    whereParts.push(
-      'NOT EXISTS (SELECT 1 FROM activation_codes ac WHERE ac.used_by_username = ' +
-        userCol +
-        ' AND ac.used_count > 0 AND ac.last_used_at IS NOT NULL' +
-        " AND ac.owner_admin_username IS NOT NULL AND TRIM(ac.owner_admin_username) <> ''" +
-        ' AND ac.owner_admin_username <> ?)' +
-        ' AND NOT EXISTS (SELECT 1 FROM users __oa_ex WHERE __oa_ex.username = ' +
-        userCol +
-        " AND __oa_ex.owner_agent_admin IS NOT NULL AND TRIM(__oa_ex.owner_agent_admin) <> ''" +
-        ' AND __oa_ex.owner_agent_admin <> ?)'
-    );
-    params.push(owner, owner);
     return;
   }
   appendSubAdminOwnedUsersScope(whereParts, params, owner, userCol);
@@ -16812,6 +16857,100 @@ async function handleAdminIssueCodeBatch(req, res) {
   }
 }
 
+var WEEKLY_CODE_GRANT_DAYS = 7;
+var WEEKLY_CODE_NOTE = '周卡激活';
+var WEEKLY_CODE_BATCH_NOTE = '周卡批量';
+
+/** 发放单个周卡激活码（固定 7 天时效，不可改） */
+async function handleAdminIssueWeeklyCode(req, res) {
+  try {
+    var plainCode = randomActivationCodePlain();
+    const conn = await pool.getConnection();
+    try {
+      await conn.execute(
+        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
+        [
+          plainCode,
+          1,
+          null,
+          WEEKLY_CODE_GRANT_DAYS,
+          null,
+          WEEKLY_CODE_NOTE,
+          req.admin && req.admin.username ? req.admin.username : null
+        ]
+      );
+    } finally {
+      conn.release();
+    }
+    return res.json({
+      code: 200,
+      data: {
+        code: plainCode,
+        max_uses: 1,
+        grant_days: WEEKLY_CODE_GRANT_DAYS,
+        grant_hours: null,
+        note: WEEKLY_CODE_NOTE,
+        product: 'weekly'
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 批量发放周卡激活码（固定 7 天时效） */
+async function handleAdminIssueWeeklyCodeBatch(req, res) {
+  var body = req.body || {};
+  var count = parseInt(body.count, 10);
+  if (!count || count < 1) {
+    return res.status(400).json({ code: 400, msg: '批量数量须为大于 0 的整数' });
+  }
+  if (count > 5000) {
+    return res.status(400).json({ code: 400, msg: '单次批量数量不能超过 5000' });
+  }
+  var owner = req.admin && req.admin.username ? req.admin.username : null;
+  var codes = [];
+  var seen = Object.create(null);
+  while (codes.length < count) {
+    var c = randomActivationCodePlain();
+    if (seen[c]) continue;
+    seen[c] = true;
+    codes.push(c);
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (var i = 0; i < codes.length; i++) {
+      await conn.execute(
+        'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
+        [codes[i], 1, null, WEEKLY_CODE_GRANT_DAYS, null, WEEKLY_CODE_BATCH_NOTE, owner]
+      );
+    }
+    await conn.commit();
+    return res.json({
+      code: 200,
+      data: {
+        codes: codes,
+        count: codes.length,
+        max_uses: 1,
+        grant_days: WEEKLY_CODE_GRANT_DAYS,
+        note: WEEKLY_CODE_BATCH_NOTE,
+        product: 'weekly',
+        generated_at: new Date().toISOString()
+      }
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (eRb) {}
+    console.error(e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  } finally {
+    conn.release();
+  }
+}
+
 /** 激活批次渠道配置 */
 async function handleAdminActivationBatchChannels(req, res) {
   if (!req.admin || !req.admin.is_super) {
@@ -16941,6 +17080,17 @@ async function handleAdminCodes(req, res) {
       }
     }
     var scope = req.query.scope != null ? String(req.query.scope).trim() : '';
+    var canCodes = adminHasMenu(req.admin, 'codes');
+    var canWeekly = adminHasMenu(req.admin, 'weekly-codes');
+    if (scope === 'weekly') {
+      if (!canWeekly && !canCodes) {
+        conn.release();
+        return res.status(403).json({ code: 403, msg: '无周卡激活码权限' });
+      }
+    } else if (!canCodes) {
+      /* 仅有周卡权限时强制周卡列表，避免看到其它激活码 */
+      scope = 'weekly';
+    }
     var noteChannel =
       req.query.note_channel != null
         ? sanitizeActivationBatchChannelLabel(req.query.note_channel)
@@ -16970,8 +17120,12 @@ async function handleAdminCodes(req, res) {
         return res.status(403).json({ code: 403, msg: '仅超级管理员可查看渠道批量激活码' });
       }
       conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%批量%')");
+    } else if (scope === 'weekly') {
+      conditions.push("(ac.note IS NOT NULL AND ac.note LIKE '%周卡%')");
     } else if (scope === 'general') {
-      conditions.push("(ac.note IS NULL OR ac.note NOT LIKE '%批量%')");
+      conditions.push(
+        "(ac.note IS NULL OR (ac.note NOT LIKE '%批量%' AND ac.note NOT LIKE '%周卡%'))"
+      );
     }
     var whereSql = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [totalRows] = await conn.execute(
@@ -22030,6 +22184,8 @@ function getHandlers() {
     handleAdminUserTaxRecords,
     handleAdminIssueCode,
     handleAdminIssueCodeBatch,
+    handleAdminIssueWeeklyCode,
+    handleAdminIssueWeeklyCodeBatch,
     handleAdminActivationBatchChannels,
     handleAdminCodes,
     handleAdminUserActivate,
