@@ -1257,6 +1257,7 @@
                         }
                     } catch (e1) {}
                     applyPurchaseWatermark(isTest && isInactive);
+                    if (typeof syncSmActivateCard === 'function') syncSmActivateCard();
                 })
                 .catch(function () {
                     applyPurchaseWatermark(localIsTest && localInactive);
