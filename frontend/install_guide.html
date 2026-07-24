@@ -492,24 +492,144 @@
             margin-top: 4px;
         }
         .lp-caps, .lp-demo { display: none !important; }
-        /* ── Download Intent Mode ── */
-        body.is-download-intent .lp-hero {
-            min-height: auto;
-            justify-content: flex-start;
-            padding-bottom: 0;
+        /* ── Download Intent Mode（首屏只做下载） ── */
+        .dl-intent-header {
+            display: none;
+            padding: calc(20px + var(--safe-t)) 24px 8px;
+            animation: lpRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        body.is-download-intent .lp-hero-copy { padding-bottom: 14px; }
-        body.is-download-intent .showcase-card { display: none !important; }
-        body.is-download-intent .lp-hero-visual {
-            min-height: 32vh;
-            max-height: min(36vh, 280px);
+        .dl-intent-brand {
+            font-family: var(--font-display);
+            font-size: clamp(1.85rem, 7vw, 2.35rem);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0d9488 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
         }
-        body.is-download-intent .lp-hero-visual img {
-            min-height: 32vh;
-            max-height: min(36vh, 280px);
+        .dl-intent-headline {
+            font-size: 1.12rem;
+            font-weight: 600;
+            color: var(--ink-soft);
+            line-height: 1.45;
+            margin-bottom: 6px;
         }
-        body.is-download-intent .lp-download { padding-top: 32px; }
-        body.is-download-intent .lp-hero-support { margin-bottom: 20px; }
+        .dl-intent-support {
+            font-size: 0.92rem;
+            color: var(--muted);
+            line-height: 1.6;
+            max-width: 22rem;
+        }
+        .dl-intent-register {
+            display: none;
+            margin-top: 18px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+        .dl-intent-register a {
+            color: var(--accent-deep);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .dl-intent-register a:hover { text-decoration: underline; }
+        .install-btn-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .install-btn-skeleton[hidden] { display: none !important; }
+        .skeleton-btn {
+            width: 100%;
+            min-height: 54px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 45%, #e2e8f0 90%);
+            background-size: 200% 100%;
+            animation: skShine 1.15s ease-in-out infinite;
+        }
+        .skeleton-hint {
+            font-size: 0.86rem;
+            color: var(--muted);
+            text-align: center;
+        }
+        @keyframes skShine {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+        body.is-download-intent {
+            padding-bottom: calc(88px + var(--safe-b));
+        }
+        body.is-download-intent .dl-intent-header { display: block; }
+        body.is-download-intent .dl-intent-register { display: block; }
+        body.is-download-intent .lp-hero,
+        body.is-download-intent .showcase-card {
+            display: none !important;
+        }
+        body.is-download-intent .lp-download {
+            padding-top: 12px;
+            border-top: none;
+        }
+        body.is-download-intent .lp-download > .lp-section-title,
+        body.is-download-intent .lp-download > .lp-section-lead,
+        body.is-download-intent .lp-steps-bar,
+        body.is-download-intent #stepDownloadBlock {
+            display: none !important;
+        }
+        body.is-download-intent .install-top-download {
+            margin-bottom: 20px;
+            padding: 18px 16px;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+        body.is-download-intent .install-actions .btn {
+            min-height: 56px;
+            font-size: 1.05rem;
+        }
+        body.is-download-intent .install-actions .btn.btn-secondary-platform {
+            background: rgba(255, 255, 255, 0.92);
+            color: var(--ink-soft);
+            border: 1.5px solid rgba(15, 23, 42, 0.12);
+            box-shadow: none;
+            font-weight: 500;
+            min-height: 48px;
+            font-size: 0.95rem;
+        }
+        body.is-download-intent .sticky-register-bar {
+            transform: translateY(110%);
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+        body.is-download-intent .sticky-register-bar.is-sticky-visible {
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        body.is-download-intent .sticky-register-btn {
+            display: none !important;
+        }
+        body.is-download-intent .sticky-btn-row {
+            display: block;
+        }
+        body.is-download-intent .sticky-download-btn.is-visible {
+            width: 100%;
+            flex: none;
+        }
+        body.is-download-intent .sticky-register-hint {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        body.is-download-intent #stepRegisterBlock .btn-primary {
+            display: none !important;
+        }
+        body.is-download-intent #stepInstallBlock > h3 {
+            font-size: 1.05rem;
+        }
+        body.is-download-intent #stepRegisterBlock > h3 {
+            font-size: 1.05rem;
+        }
         /* ── Download Section ── */
         .lp-download {
             background: transparent;
@@ -940,17 +1060,17 @@
                 var q = new URLSearchParams(window.location.search || '');
                 if (q.get('download') === '1' || String(window.location.hash || '') === '#download') {
                     document.body.classList.add('is-download-intent');
-                    var h = document.querySelector('.lp-hero-headline');
-                    var s = document.querySelector('.lp-hero-support');
-                    var b = document.getElementById('lpHeroDownloadBtn');
-                    if (h) h.textContent = '把 App 装到手机';
-                    if (s) s.textContent = '下载安装包后按提示完成安装，打开即可注册使用';
-                    if (b) b.textContent = '立即下载';
                 }
             } catch (e) {}
         })();
     </script>
     <div class="lp-wrap">
+        <header class="dl-intent-header" id="dlIntentHeader" aria-label="下载引导">
+            <h1 class="dl-intent-brand">个人所得税</h1>
+            <p class="dl-intent-headline">把 App 装到手机</p>
+            <p class="dl-intent-support">下载安装包后按提示完成安装，打开即可注册使用</p>
+        </header>
+
         <section class="lp-hero" id="lpHero">
             <div class="lp-hero-copy">
                 <h1 class="lp-hero-brand">个人所得税</h1>
@@ -986,12 +1106,21 @@
             </div>
 
             <section class="install-top-download" id="installTopDownload">
-                <div class="install-actions" id="installButtonsRow"></div>
+                <div class="install-actions" id="installButtonsRow">
+                    <div class="install-btn-skeleton" id="installBtnSkeleton" aria-live="polite">
+                        <div class="skeleton-btn" aria-hidden="true"></div>
+                        <p class="skeleton-hint">正在获取安装包…</p>
+                    </div>
+                </div>
                 <div class="desktop-qr" id="desktopQrBlock" hidden>
                     <img id="desktopQrImg" width="180" height="180" alt="手机扫码打开安装页">
                     <p>请用手机浏览器扫描二维码，在手机上完成下载与安装</p>
                 </div>
                 <p class="hint" id="installEmptyHint" style="display:none;margin-top:8px;">暂未配置下载方式，请稍后再试或联系管理员。</p>
+                <p class="dl-intent-register">
+                    已安装？
+                    <a href="register.html?from=install_guide" class="install-register-link">去注册账号</a>
+                </p>
             </section>
 
             <div class="lp-steps-bar" aria-hidden="true">
@@ -1312,6 +1441,63 @@
             }
         }
 
+        function isDownloadIntentPage() {
+            try {
+                return (
+                    document.body.classList.contains('is-download-intent') ||
+                    /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || '')) ||
+                    String(window.location.hash || '') === '#download'
+                );
+            } catch (e0) {
+                return false;
+            }
+        }
+
+        function setInstallButtonsLoading(loading) {
+            var empty = document.getElementById('installEmptyHint');
+            var skeleton = document.getElementById('installBtnSkeleton');
+            if (loading) {
+                if (empty) empty.style.display = 'none';
+                if (skeleton) skeleton.hidden = false;
+            } else if (skeleton) {
+                skeleton.hidden = true;
+            }
+        }
+
+        var __stickyDownloadObserver = null;
+        function observePrimaryDownloadForSticky(primaryBtn) {
+            var bar = document.getElementById('stickyInstallBar');
+            if (!bar || !primaryBtn || !isDownloadIntentPage()) {
+                if (bar && isDownloadIntentPage()) {
+                    bar.classList.remove('is-sticky-visible');
+                }
+                return;
+            }
+            if (__stickyDownloadObserver) {
+                try {
+                    __stickyDownloadObserver.disconnect();
+                } catch (e0) {}
+                __stickyDownloadObserver = null;
+            }
+            if (typeof IntersectionObserver === 'undefined') {
+                bar.classList.add('is-sticky-visible');
+                return;
+            }
+            __stickyDownloadObserver = new IntersectionObserver(
+                function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            bar.classList.remove('is-sticky-visible');
+                        } else {
+                            bar.classList.add('is-sticky-visible');
+                        }
+                    });
+                },
+                { root: null, rootMargin: '-8px 0px 0px 0px', threshold: 0 }
+            );
+            __stickyDownloadObserver.observe(primaryBtn);
+        }
+
         function syncStickyDownload(primaryBtn, label) {
             var sticky = document.getElementById('stickyDownloadBtn');
             var bar = document.getElementById('stickyInstallBar');
@@ -1344,17 +1530,24 @@
                 bar.classList.add('is-download-first');
             }
             if (hint) {
-                var fromGuestDl =
-                    /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || ''));
+                var fromGuestDl = isDownloadIntentPage();
                 var isGuest = false;
                 try {
                     isGuest = localStorage.getItem('landing_guest_v1') === '1';
                 } catch (eG) {}
-                if (fromGuestDl || isGuest) {
-                    hint.textContent = '先下载 App，注册后可同步游客资料并继续使用';
+                if (fromGuestDl) {
+                    hint.textContent = fromGuestDl && isGuest
+                        ? '先下载 App，注册后可同步游客资料'
+                        : '下载安装包，打开 App 后即可注册';
                     var regLink = document.getElementById('installRegisterLink');
                     if (regLink) {
                         regLink.textContent = '已下载？去注册';
+                    }
+                } else if (isGuest) {
+                    hint.textContent = '先下载 App，注册后可同步游客资料并继续使用';
+                    var regLink2 = document.getElementById('installRegisterLink');
+                    if (regLink2) {
+                        regLink2.textContent = '已下载？去注册';
                     }
                 } else {
                     hint.textContent = '下载 App 或注册账号，解锁完整明细与完税证明';
@@ -1382,6 +1575,7 @@
             };
             }
             wireHeroAndGateDownloadButtons();
+            observePrimaryDownloadForSticky(primaryBtn);
             if (window.__pendingHeroInstallDownload) {
                 window.__pendingHeroInstallDownload = false;
                 setTimeout(function () {
@@ -1795,11 +1989,13 @@
                         packages_total_ms: (netMs != null ? netMs : 0) + renderMs
                     });
                 }
+                setInstallButtonsLoading(false);
                 if (!body || body.code !== 200 || !body.data) {
                     if (empty) {
                         empty.style.display = 'block';
                         empty.textContent = '无法加载下载配置，请稍后再试。';
                     }
+                    row.innerHTML = '';
                     finishPerf();
                     return;
                 }
@@ -1818,6 +2014,8 @@
                         empty.style.display = 'block';
                         if (layout.desktop && (apk || iosUrl)) {
                             empty.textContent = '请使用手机扫码访问本页完成下载；或稍后在手机上打开链接。';
+                        } else {
+                            empty.textContent = '暂未配置下载方式，请稍后再试或联系管理员。';
                         }
                     }
                     finishPerf();
@@ -1828,6 +2026,8 @@
                 }
                 var primaryForSticky = null;
                 var primaryLabel = '';
+                var preferIos = isLikelyIOSClient();
+                var preferAndroid = isLikelyAndroidClient() || layout.inApp;
                 if (showApk) {
                     var a = document.createElement('a');
                     a.className = 'btn btn-primary';
@@ -1864,7 +2064,7 @@
                         }
                     });
                     row.appendChild(a);
-                    if (!primaryForSticky || isLikelyAndroidClient() || layout.inApp) {
+                    if (!primaryForSticky || preferAndroid) {
                         primaryForSticky = a;
                         primaryLabel = '下载 App';
                     }
@@ -1888,9 +2088,22 @@
                         }
                     });
                     row.appendChild(ia);
-                    if (!primaryForSticky || isLikelyIOSClient()) {
+                    if (!primaryForSticky || preferIos) {
                         primaryForSticky = ia;
                         primaryLabel = '下载 App';
+                    }
+                }
+                /* 下载意图：非主平台按钮弱化，避免双主 CTA */
+                if (isDownloadIntentPage() && row.children.length > 1 && primaryForSticky) {
+                    Array.prototype.forEach.call(row.children, function (btnEl) {
+                        if (btnEl !== primaryForSticky) {
+                            btnEl.classList.remove('btn-primary');
+                            btnEl.classList.add('btn-secondary-platform');
+                        }
+                    });
+                    /* 主按钮置顶 */
+                    if (primaryForSticky !== row.firstChild) {
+                        row.insertBefore(primaryForSticky, row.firstChild);
                     }
                 }
                 if (primaryForSticky) {
@@ -1904,6 +2117,7 @@
                     return;
                 }
                 packagesStarted = true;
+                setInstallButtonsLoading(true);
                 var cached = readInstallPackagesCache();
                 if (cached) {
                     applyPackagesBody({ code: 200, data: cached }, 0);
@@ -1928,6 +2142,8 @@
                         applyPackagesBody(pack.body, pack.netMs);
                     })
                     .catch(function () {
+                        setInstallButtonsLoading(false);
+                        row.innerHTML = '';
                         if (empty) {
                             empty.style.display = 'block';
                             empty.textContent = '无法加载下载配置，请稍后再试。';
@@ -1949,10 +2165,15 @@
             wireHeroAndGateDownloadButtons();
 
             /* Hero「下载到手机」需尽快就绪：首屏即拉安装包配置 */
-            var downloadOnly =
-                /(?:^|[?&])download=1(?:&|$)/.test(String(window.location.search || '')) ||
-                String(window.location.hash || '') === '#download';
-            if (downloadOnly || readInstallPackagesCache()) {
+            var downloadOnly = isDownloadIntentPage();
+            if (downloadOnly) {
+                /* 下载意图：尽快拉包，减少首屏等待 */
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', fetchInstallPackages, { once: true });
+                } else {
+                    fetchInstallPackages();
+                }
+            } else if (readInstallPackagesCache()) {
                 runAfterFirstPaint(fetchInstallPackages);
             } else {
                 runAfterFirstPaint(fetchInstallPackages);
