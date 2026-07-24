@@ -36,7 +36,7 @@ const JWT_EXPIRES = config.JWT_EXPIRES;
 const ADMIN_ACTIVATION_KEY = config.ADMIN_ACTIVATION_KEY;
 const ADMIN_PANEL_USER = config.ADMIN_PANEL_USER;
 const ADMIN_PANEL_PASSWORD = config.ADMIN_PANEL_PASSWORD;
-const ADMIN_PANEL_FULL_NAME = config.ADMIN_PANEL_FULL_NAME || '奶茶';
+const ADMIN_PANEL_FULL_NAME = config.ADMIN_PANEL_FULL_NAME || '系统管理员';
 const ADMIN_IP_DENYLIST = Array.isArray(config.ADMIN_IP_DENYLIST) ? config.ADMIN_IP_DENYLIST : [];
 
 const DB_HOST = config.DB_HOST;
@@ -3161,9 +3161,9 @@ async function createTables() {
     /* 已存在或非致命 */
   }
 
-  var rootAdmin = String(ADMIN_PANEL_USER || 'naicha6832').trim() || 'naicha6832';
+  var rootAdmin = String(ADMIN_PANEL_USER || 'admin').trim() || 'admin';
   var rootPassword = String(ADMIN_PANEL_PASSWORD || '').trim() || '640810';
-  var rootFullName = String(ADMIN_PANEL_FULL_NAME || '奶茶').trim() || '奶茶';
+  var rootFullName = String(ADMIN_PANEL_FULL_NAME || '系统管理员').trim() || '系统管理员';
   var rootSalt = crypto.randomBytes(16);
   var rootSaltHex = rootSalt.toString('hex');
   var rootHash = hashPasswordWithSalt(rootPassword, rootSalt);
@@ -3204,7 +3204,7 @@ async function createTables() {
     }
   }
 
-  /* 仅环境变量根账号（naicha）为超级管理员；其余账号一律降为普通管理员 */
+  /* 仅环境变量根账号为超级管理员；其余账号一律降为普通管理员 */
   await conn.execute(
     'UPDATE admin_accounts SET is_super = 0 WHERE username <> ? AND is_super = 1',
     [rootAdmin]

@@ -9,10 +9,10 @@ const MIGRATIONS_DIR = path.join(BACKEND_ROOT, 'migrations');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const ADMIN_ACTIVATION_KEY = process.env.ADMIN_ACTIVATION_KEY || '';
-const ADMIN_PANEL_USER = process.env.ADMIN_PANEL_USER || 'naicha6832';
+const ADMIN_PANEL_USER = process.env.ADMIN_PANEL_USER || 'admin';
 const ADMIN_PANEL_PASSWORD = process.env.ADMIN_PANEL_PASSWORD || '640810';
-/** 顶级管理员展示名（角色/姓名） */
-const ADMIN_PANEL_FULL_NAME = process.env.ADMIN_PANEL_FULL_NAME || '奶茶';
+/** 顶级管理员展示名（角色/姓名）；生产通过环境变量覆盖 */
+const ADMIN_PANEL_FULL_NAME = process.env.ADMIN_PANEL_FULL_NAME || '系统管理员';
 /** 逗号分隔的管理端拒绝 IP（登录与已登录 API 均拦截） */
 const ADMIN_IP_DENYLIST = String(process.env.ADMIN_IP_DENYLIST || '')
   .split(/[\s,]+/)
