@@ -1600,18 +1600,53 @@
   }
 
   function applyChannelForcedPricingAbc(data) {
+    var ch = '';
+    try {
+      if (data) {
+        ch = sanitizeSalesChannelId(data.sales_ch || data.sales_channel || '');
+      }
+      if (!ch) ch = getSalesChannel() || '';
+    } catch (e0) {
+      ch = '';
+    }
+    /* 仅渠道 abc 强制支付 C；其它渠道/无渠道不覆盖本地 A/B 分流 */
+    if (String(ch || '').toLowerCase() !== 'abc') return null;
     var abc = '';
     if (data) {
-      abc = String(data.force_pricing_abc || data.default_pricing_abc || '').toLowerCase();
+      abc = String(data.force_pricing_abc || data.default_pricing_abc || 'c').toLowerCase();
     }
-    if (abc !== 'a' && abc !== 'b' && abc !== 'c') return null;
+    if (abc !== 'a' && abc !== 'b' && abc !== 'c') abc = 'c';
     return forcePurchaseAbcAssignment(abc, 'agent_channel');
   }
 
+  function clearInvalidPurchaseAbcCSticky() {
+    try {
+      var a = getPurchaseAbcAssignment();
+      if (!a || a.variant !== 'c') return false;
+      var src = String(a.source || '');
+      if (src === 'agent_channel' || src === 'admin_force') {
+        /* 渠道强制留下的 C：仅当当前仍是 abc 渠道时保留 */
+        if (src === 'agent_channel' && String(getSalesChannel() || '').toLowerCase() !== 'abc') {
+          localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
+          return true;
+        }
+        return false;
+      }
+      /* client_sticky / migrate / allocation 等写出的 C：无 abc 渠道则作废 */
+      if (String(getSalesChannel() || '').toLowerCase() === 'abc') return false;
+      localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function migratePurchaseAbcFromLanding() {
+    clearInvalidPurchaseAbcCSticky();
     if (getPurchaseAbcAssignment()) return getPurchaseAbcAssignment();
     var land = getLandingAbAssignment();
-    if (land && land.variant === 'c') {
+    /* 落地 C 仅在渠道 abc 时迁入支付 C */
+    if (land && land.variant === 'c' && String(getSalesChannel() || '').toLowerCase() === 'abc') {
       return setPurchaseAbcAssignment('c', 'migrate_landing');
     }
     return null;

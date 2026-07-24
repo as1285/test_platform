@@ -563,7 +563,12 @@ function getPricingAb() {
       getForcedAbcForUser: async function (username) {
         try {
           var pol = await getAgentChannels().getUserChannelPolicy(username);
-          if (pol && pol.default_pricing_abc) {
+          /* 仅渠道 abc 强制支付方案（默认 C）；其他专属渠道只挂代理，不锁 A/B/C */
+          if (
+            pol &&
+            String(pol.channel_id || '').toLowerCase() === 'abc' &&
+            pol.default_pricing_abc
+          ) {
             return pol.default_pricing_abc;
           }
         } catch (e) {}
@@ -1044,7 +1049,7 @@ async function getAgentPromoChannelListFromSettings() {
 }
 
 /**
- * 经专属渠道注册/登录：挂到下属代理名下，并按渠道默认支付方案强制 sticky（通常 C）。
+ * 经专属渠道注册/登录：挂到下属代理名下；仅渠道 abc 按默认支付方案强制 sticky（通常 C）。
  * @returns {Promise<object|null>} 渠道配置或 null
  */
 async function attachUserFromSalesChannel(username, salesCh) {
@@ -1060,7 +1065,11 @@ async function attachUserFromSalesChannel(username, salesCh) {
     console.error('attachUserFromSalesChannel', eAtt);
     return null;
   }
-  if (pol && pol.default_pricing_abc) {
+  if (
+    pol &&
+    String(pol.channel_id || '').toLowerCase() === 'abc' &&
+    pol.default_pricing_abc
+  ) {
     try {
       await getPricingAb().setStickyAbc(u, pol.default_pricing_abc, 'agent_channel', true);
     } catch (eSticky) {}
@@ -18115,7 +18124,7 @@ async function handlePublicResolveSalesChannel(req, res) {
   try {
     var ch = await resolveSalesChannelForRequest(req);
     var defaultPricingAbc = null;
-    if (ch) {
+    if (ch && String(ch).toLowerCase() === 'abc') {
       try {
         var pol = await getAgentChannels().getEnabledChannelById(ch);
         if (pol && pol.default_pricing_abc) {
@@ -18172,10 +18181,15 @@ async function handlePublicInstallPackages(req, res) {
     }
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
     var salesAgentPub = salesAgentPublicPayload(await loadSalesAgentParsed());
-    var defaultPricingAbc =
-      ctx.channelPolicy && ctx.channelPolicy.default_pricing_abc
-        ? ctx.channelPolicy.default_pricing_abc
-        : '';
+    var defaultPricingAbc = '';
+    if (
+      salesCh &&
+      String(salesCh).toLowerCase() === 'abc' &&
+      ctx.channelPolicy &&
+      ctx.channelPolicy.default_pricing_abc
+    ) {
+      defaultPricingAbc = ctx.channelPolicy.default_pricing_abc;
+    }
     var body = {
       code: 200,
       data: {

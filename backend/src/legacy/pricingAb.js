@@ -487,7 +487,7 @@ function createPricingAb(deps) {
   /**
    * 为用户解析可见 SKU 列表与变体。
    * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
-   * 代理专属渠道可强制 default_pricing_abc（通常为 c）。
+   * 仅渠道 abc 可强制支付方案（通常为 c）；无渠道强制时不接受客户端上报的 c。
    */
   async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
     var cfg = await loadPricingAbParsed();
@@ -503,6 +503,13 @@ function createPricingAb(deps) {
       if (forcedAbc !== 'a' && forcedAbc !== 'b' && forcedAbc !== 'c') {
         forcedAbc = null;
       }
+    }
+    function acceptPreferredAbc(pref) {
+      var p = String(pref || '').toLowerCase();
+      if (p !== 'a' && p !== 'b' && p !== 'c') return '';
+      /* C 仅允许渠道 abc / 管理端强制；客户端误 sticky 的 c 不采纳 */
+      if (p === 'c' && !forcedAbc) return '';
+      return p;
     }
     if (!cfg.enabled) {
       var stickyOff = null;
@@ -560,6 +567,7 @@ function createPricingAb(deps) {
 
     var abc = null;
     var abcSource = '';
+    var repairedNonChannelC = false;
     var sticky = null;
     if (seed !== 'guest') {
       sticky = await getStickyAssignment(seed);
@@ -575,20 +583,35 @@ function createPricingAb(deps) {
         await setStickyAbc(seed, abc, 'agent_channel', true);
       }
     } else if (sticky && sticky.variant) {
-      abc = sticky.variant;
-      abcSource = sticky.source || 'sticky';
+      if (
+        sticky.variant === 'c' &&
+        !forcedAbc &&
+        (sticky.source !== 'admin_force')
+      ) {
+        /* 非管理端强制的 C：仅渠道 abc 存续时有效；否则作废重分 */
+        sticky = null;
+        repairedNonChannelC = true;
+      } else {
+        abc = sticky.variant;
+        abcSource = sticky.source || 'sticky';
+      }
     }
     if (!abc) {
-      var pref = String(preferredAbc || '').toLowerCase();
-      if (pref === 'a' || pref === 'b' || pref === 'c') {
+      var pref = acceptPreferredAbc(preferredAbc);
+      if (pref) {
         abc = pref;
         abcSource = 'client_sticky';
       } else {
         abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, cfg.c_percent);
-        abcSource = 'allocation';
+        abcSource = repairedNonChannelC ? 'repair_non_channel_c' : 'allocation';
       }
       if (seed !== 'guest') {
-        await setStickyAbc(seed, abc, preferredAbc ? 'client_sticky' : 'allocation');
+        await setStickyAbc(
+          seed,
+          abc,
+          abcSource === 'client_sticky' ? 'client_sticky' : abcSource,
+          repairedNonChannelC
+        );
       }
     }
 
@@ -615,7 +638,10 @@ function createPricingAb(deps) {
       skus: skus,
       pricing_ab_enabled: true,
       forced_by_channel: !!forcedAbc && abcSource === 'agent_channel',
-      force_client_abc: abcSource === 'admin_force' || (!!forcedAbc && abcSource === 'agent_channel')
+      force_client_abc:
+        abcSource === 'admin_force' ||
+        (!!forcedAbc && abcSource === 'agent_channel') ||
+        repairedNonChannelC
     };
   }
 
