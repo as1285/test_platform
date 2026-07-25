@@ -1213,7 +1213,17 @@
                 'user-prep-import': 1,
                 'blocked-ips': 1
             };
-            if (!ok[k] || !adminHasMenu(k)) {
+            if (!ok[k]) {
+                return firstAllowedAdminPage();
+            }
+            /* 资料未就绪时先按 hash 展示，避免把 #user-prep-import 等误切到「转化与触达」 */
+            var profileReady = !!(
+                currentAdminProfile &&
+                (currentAdminProfile.is_super ||
+                    currentAdminProfile.username ||
+                    (currentAdminProfile.menus && currentAdminProfile.menus.length))
+            );
+            if (profileReady && !adminHasMenu(k)) {
                 return firstAllowedAdminPage();
             }
             return k;
@@ -9630,7 +9640,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v4-sales-contacts';
+                var MENU_TREE_VER = 'ops-ia-v5-user-prep-import';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);
