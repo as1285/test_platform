@@ -1170,6 +1170,63 @@
                     </section>
                 </div>
 
+                <div id="page-user-prep-import" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>备数导入</h2>
+                        <p class="hint mt-0">
+                            用 Excel/CSV 批量建用户、写入个税并<strong>直接开通</strong>。用户拿到账号登录即可看到已备好的数据。
+                            冲突策略：<strong>覆盖</strong>（同用户名覆盖资料/密码；同用户+年月覆盖个税）。开通天数留空=永久。
+                        </p>
+                        <div class="form-row flex-wrap gap-10 flex-align-center">
+                            <a class="btn-page" id="btnUserPrepTemplate" href="/api/admin/user-prep/template">下载 Excel 模板</a>
+                            <label class="btn-page" for="userPrepFileInput" style="cursor:pointer;margin:0;">选择文件</label>
+                            <input type="file" id="userPrepFileInput" accept=".xlsx,.xls,.csv" hidden>
+                            <span id="userPrepFileName" class="hint m-0">未选择文件</span>
+                            <button type="button" class="btn-page" id="btnUserPrepPreview">预览</button>
+                            <button type="button" class="btn-page" id="btnUserPrepImport">确认导入</button>
+                        </div>
+                        <div id="userPrepSummary" class="user-data-stats mt-12" aria-live="polite">选择文件后可预览/导入</div>
+                        <div class="scroll-x mt-12">
+                            <p class="stat mb-8">预览（最多 50 行）</p>
+                            <table class="users-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>行</th>
+                                        <th>用户名</th>
+                                        <th>姓名</th>
+                                        <th>证件号</th>
+                                        <th>性别</th>
+                                        <th>开通</th>
+                                        <th>年</th>
+                                        <th>月</th>
+                                        <th>单位</th>
+                                        <th>收入</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userPrepPreviewTbody">
+                                    <tr><td colspan="10">暂无预览</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="scroll-x mt-16" id="userPrepAccountsWrap" hidden>
+                            <p class="stat mb-8">导入结果账号（可复制发给用户）</p>
+                            <table class="users-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>用户名</th>
+                                        <th>密码</th>
+                                        <th>姓名</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userPrepAccountsTbody"></tbody>
+                            </table>
+                            <button type="button" class="btn-page mt-8" id="btnUserPrepCopyAccounts">复制账号密码</button>
+                        </div>
+                        <div id="userPrepErrors" class="hint mt-12" style="color:#b45309;" hidden></div>
+                    </section>
+                </div>
+
                 <div id="page-user-behavior" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户行为</h2>

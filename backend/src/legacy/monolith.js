@@ -3312,6 +3312,11 @@ async function createTables() {
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'user-prep-import' FROM admin_account_menus WHERE menu_key = 'user-data'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'sales-contacts' FROM admin_account_menus
      WHERE menu_key IN ('install-guide', 'settings')`
   );

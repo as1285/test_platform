@@ -122,6 +122,14 @@ const ADMIN_PAGE_DEFS = [
   { page: 'chat', menu_key: 'chat', label: '在线客服', group: 'users', module: 'chat', order: 50 },
   { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
   {
+    page: 'user-prep-import',
+    menu_key: 'user-prep-import',
+    label: '备数导入',
+    group: 'users',
+    module: 'user-prep-import',
+    order: 65
+  },
+  {
     page: 'user-behavior',
     menu_key: 'user-behavior',
     label: '用户行为',

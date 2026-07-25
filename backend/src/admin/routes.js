@@ -325,6 +325,40 @@ app.get(
   mw.requireAdminMenu('sbdy-demo'),
   h.handleAdminSbdyDemoList
 );
+app.get(
+  '/api/admin/user-prep/template',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-prep-import'),
+  h.handleAdminUserPrepTemplate
+);
+app.post(
+  '/api/admin/user-prep/preview',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-prep-import'),
+  function (req, res, next) {
+    mw.prepUpload.single('file')(req, res, function (err) {
+      if (err) {
+        return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+      }
+      next();
+    });
+  },
+  h.handleAdminUserPrepPreview
+);
+app.post(
+  '/api/admin/user-prep/import',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('user-prep-import'),
+  function (req, res, next) {
+    mw.prepUpload.single('file')(req, res, function (err) {
+      if (err) {
+        return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+      }
+      next();
+    });
+  },
+  h.handleAdminUserPrepImport
+);
 }
 
 module.exports = { registerAdminRoutes };

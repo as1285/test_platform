@@ -1210,6 +1210,7 @@
                 'user-login-log': 1,
                 'server-monitor': 1,
                 'sbdy-demo': 1,
+                'user-prep-import': 1,
                 'blocked-ips': 1
             };
             if (!ok[k] || !adminHasMenu(k)) {
@@ -1326,6 +1327,15 @@
                     typeof window.AdminModules['sbdy-demo'].loadPage === 'function'
                 ) {
                     window.AdminModules['sbdy-demo'].loadPage();
+                }
+            }
+            if (pageKey === 'user-prep-import') {
+                if (
+                    window.AdminModules &&
+                    window.AdminModules['user-prep-import'] &&
+                    typeof window.AdminModules['user-prep-import'].loadPage === 'function'
+                ) {
+                    window.AdminModules['user-prep-import'].loadPage();
                 }
             }
             if (pageKey === 'login-log') {
@@ -7030,7 +7040,8 @@
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
             'server-monitor': '服务器监控',
-            'sbdy-demo': '社保演示生成'
+            'sbdy-demo': '社保演示生成',
+            'user-prep-import': '备数导入'
         };
 
         function applyMenuDefsFromServer(defs) {

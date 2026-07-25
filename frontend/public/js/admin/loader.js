@@ -17,7 +17,8 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator'
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator',
+    'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260725-p0'
   };
 
   var PAGE_MODULE = {
@@ -32,6 +33,7 @@
     'guest-users': 'users',
     'users-deleted': 'users',
     'user-data': 'user-data',
+    'user-prep-import': 'user-prep-import',
     'user-behavior': 'user-data',
     'activated-user-analysis': 'user-data',
     feedback: 'feedback',
