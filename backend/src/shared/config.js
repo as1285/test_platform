@@ -35,6 +35,13 @@ const PUBLIC_SITE_URL = String(process.env.PUBLIC_SITE_URL || process.env.APP_UR
   /\/+$/,
   ''
 );
+/**
+ * 社保演示对外域名（无尾斜杠）。仅影响样例 PDF / 核验 / 二维码链接；
+ * 空则仍用请求 Host 或 PUBLIC_SITE_URL。主站其它业务不受影响。
+ */
+const SBDY_PUBLIC_ORIGIN = String(
+  process.env.SBDY_PUBLIC_ORIGIN || process.env.SBDY_SITE_URL || ''
+).replace(/\/+$/, '');
 /** 受信 Host（逗号分隔），用于把本站绝对下载 URL 收成相对路径 */
 const SITE_TRUSTED_HOSTS = String(process.env.SITE_TRUSTED_HOSTS || '')
   .split(/[,\s;]+/)
@@ -69,6 +76,7 @@ module.exports = {
   UPLOAD_DIR,
   PUBLIC_ASSET_BASE_URL,
   PUBLIC_SITE_URL,
+  SBDY_PUBLIC_ORIGIN,
   SITE_TRUSTED_HOSTS,
   UPLOAD_STORAGE_BACKEND,
   LOGIN_RATE_PER_IP_MIN,

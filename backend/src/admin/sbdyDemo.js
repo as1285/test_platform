@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { getPool } = require('../shared/db');
-const { PUBLIC_SITE_URL } = require('../shared/config');
+const { PUBLIC_SITE_URL, SBDY_PUBLIC_ORIGIN } = require('../shared/config');
 
 const SBDY_RENDER_SCRIPT = path.join(__dirname, '../../scripts/sbdy_render_pdf.py');
 
@@ -261,6 +261,11 @@ function normalizePayload(body) {
 }
 
 function publicOriginFromReq(req) {
+  /* 社保专用域名优先：仅改链接文案/二维码，不改主站 PUBLIC_SITE_URL */
+  var sbdyOnly = String(SBDY_PUBLIC_ORIGIN || '').replace(/\/+$/, '');
+  if (sbdyOnly) {
+    return sbdyOnly;
+  }
   var configured = String(PUBLIC_SITE_URL || '').replace(/\/+$/, '');
   var xfProto = req.headers && (req.headers['x-forwarded-proto'] || req.headers['x-forwarded-protocol']);
   var proto = String(xfProto || req.protocol || 'https').split(',')[0].trim() || 'https';
