@@ -560,7 +560,10 @@
                 saveBtn.addEventListener('click', function () {
                     var channelId = (document.getElementById('agentExChannelId') || {}).value || '';
                     var owner = (document.getElementById('agentExOwnerAdmin') || {}).value || '';
-                    var abc = (document.getElementById('agentExPricingAbc') || {}).value || 'c';
+                    var abc = String((document.getElementById('agentExPricingAbc') || {}).value || 'c')
+                        .trim()
+                        .toLowerCase();
+                    if (abc !== 'a' && abc !== 'b' && abc !== 'c') abc = 'c';
                     var note = (document.getElementById('agentExNote') || {}).value || '';
                     var enabled = !!(document.getElementById('agentExEnabled') || {}).checked;
                     channelId = String(channelId).trim().toLowerCase();

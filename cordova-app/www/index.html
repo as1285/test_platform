@@ -320,6 +320,30 @@
                 StatusBar.backgroundColorByHexString('#00000000');
                 StatusBar.styleDefault();
             });
+
+            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default */
+            window.addEventListener('message', function (ev) {
+                var d = ev && ev.data;
+                if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
+                    return;
+                }
+                if (!window.StatusBar) {
+                    return;
+                }
+                try {
+                    if (d.overlays !== false) {
+                        StatusBar.overlaysWebView(true);
+                    }
+                    if (d.style === 'default') {
+                        StatusBar.styleDefault();
+                    } else {
+                        StatusBar.styleLightContent();
+                    }
+                    if (d.color) {
+                        StatusBar.backgroundColorByHexString(String(d.color));
+                    }
+                } catch (eSbMsg) {}
+            });
         })();
     </script>
 </body>

@@ -914,11 +914,7 @@
         '<p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.45;">可到「收入纳税明细」查看。下载 App 并注册后，这些资料可同步到正式账号。</p>' +
         '<button type="button" class="cg-btn cg-btn-primary" id="cgGuestSeededDlBtn" style="width:100%;">下载 App 带走资料</button>';
       var wrapH = document.querySelector('.content-wrapper');
-      var userCardH = document.getElementById('mineUserCardEditHit');
-      if (wrapH && userCardH && userCardH.parentNode === wrapH) {
-        if (userCardH.nextSibling) wrapH.insertBefore(hint, userCardH.nextSibling);
-        else wrapH.appendChild(hint);
-      } else if (wrapH) {
+      if (wrapH) {
         wrapH.insertBefore(hint, wrapH.firstChild);
       } else {
         return;
@@ -952,14 +948,7 @@
       '<p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.45;">用示例生成几条个税记录，再下载 App，注册后可同步带走。</p>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgGuestFillTaxBtn" style="width:100%;">示例填写个税</button>';
     var wrap = document.querySelector('.content-wrapper');
-    var userCard = document.getElementById('mineUserCardEditHit');
-    if (wrap && userCard && userCard.parentNode === wrap) {
-      if (userCard.nextSibling) {
-        wrap.insertBefore(card, userCard.nextSibling);
-      } else {
-        wrap.appendChild(card);
-      }
-    } else if (wrap) {
+    if (wrap) {
       wrap.insertBefore(card, wrap.firstChild);
     } else {
       return;

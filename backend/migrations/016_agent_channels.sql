@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS agent_channels (
   channel_id VARCHAR(64) NOT NULL COMMENT '推广渠道 ch，如 agent_zhang',
   owner_admin_username VARCHAR(64) NOT NULL COMMENT '下属代理后台账号',
-  default_pricing_abc VARCHAR(8) NOT NULL DEFAULT 'c' COMMENT 'a|b|c，空=不强制',
+  default_pricing_abc VARCHAR(8) NOT NULL DEFAULT '' COMMENT 'a|b|c，空=跟随增长分流',
   enabled TINYINT(1) NOT NULL DEFAULT 1,
   note VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

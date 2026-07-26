@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260725-abc-c-only"></script>
+    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -11,6 +11,8 @@
     <!-- TAX_APP_SHELL_END -->
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2286ee">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>我的</title>
     <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
@@ -35,90 +37,119 @@
             padding-bottom: 0 !important;
         }
 
+        /*
+         * mine-stack 叠层（对齐官方）：
+         * --mine-user-card-lift: 米色卡上移压住顶图
+         * --mine-panel-overlap: 灰面板盖住米色卡下半段
+         * 露出条约 = min-height - overlap（约 56–64px）
+         */
+        body.page-mine {
+            --mine-user-card-lift: 64px;
+            --mine-panel-overlap: 46px;
+            --mine-user-card-min-height: 104px;
+        }
+
+        .mine-stack {
+            position: relative;
+            isolation: isolate;
+        }
+
         /* 底栏位置统一由 nav.css / auth 锁控制，勿在此写死 bottom（会与机型 inset 冲突导致切页跳动） */
 
-        /* 顶部背景图：头像在 grdb/nx 整图内；状态栏区铺蓝（与顶图取样色一致，避免浅/深蓝接缝） */
+        /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
         .header-bg {
             position: relative;
+            z-index: 0;
             width: 100%;
             overflow: hidden;
             --mine-safe-top: env(safe-area-inset-top, 0px);
-            /* 激活按钮：相对顶栏下移，与头像中下缘齐平 */
-            --mine-header-blue-top: #2188f4;
+            /* 与 grdb.jpg 顶部取样对齐 */
+            --mine-header-blue-top: #2286ee;
             --mine-header-blue-mid: #1e81fb;
             --mine-header-blue-bot: #2c80f4;
-            background: linear-gradient(
-                180deg,
-                var(--mine-header-blue-top) 0%,
-                var(--mine-header-blue-mid) 45%,
-                var(--mine-header-blue-bot) 100%
-            );
+            background: var(--mine-header-blue-top);
         }
 
+        /* 安全区留白 + 头图上推进安全区，整段视觉连续 */
         html.app-top-safe-shell body.page-mine .header-bg {
             padding-top: var(--app-shell-statusbar-top, var(--mine-safe-top));
         }
 
         html.app-top-safe-shell body.page-mine .header-bg > img {
             margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
+            display: block;
+            width: 100%;
         }
 
-        /* iOS：顶图上移、状态栏区铺蓝（与 auth.js 一致，仅我的页） */
         html.app-ios-client.app-top-safe-shell {
-            --mine-ios-header-lift: 12px;
+            --mine-ios-header-lift: 0px;
+            --mine-header-blue-top: #2286ee;
         }
 
+        /* iOS：只覆盖叠层两变量 + 卡高 */
+        html.app-ios-client body.page-mine,
+        html[class*='app-ios'] body.page-mine {
+            --mine-user-card-lift: 72px;
+            --mine-panel-overlap: 50px;
+            --mine-user-card-min-height: 108px;
+        }
+
+        /* iOS：刘海区顶色条兜底（Cordova iframe env 常为 0；与头图顶色一致） */
         html.app-ios-client.app-top-safe-shell body.page-mine::before {
-            content: "";
+            content: '';
+            display: block !important;
             position: fixed;
             left: 0;
             right: 0;
             top: 0;
-            height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            /* 与 grdb/nx 顶缘同色，iPhone 15 Pro Max 状态栏不再偏浅蓝 */
-            background: var(--mine-header-blue-top, #2188f4);
-            z-index: 8;
+            height: var(--app-shell-statusbar-top, 59px);
+            background: var(--mine-header-blue-top, #2286ee);
+            z-index: 40;
             pointer-events: none;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-mine .header-bg {
             position: relative;
-            z-index: 9;
-            padding-top: calc(var(--app-shell-statusbar-top, var(--mine-safe-top)) + var(--mine-ios-header-lift, 12px));
-            overflow: visible;
+            z-index: 0;
+            padding-top: var(--app-shell-statusbar-top, var(--mine-safe-top));
+            overflow: hidden;
+            background: var(--mine-header-blue-top, #2286ee);
         }
 
         html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)) - var(--mine-ios-header-lift, 12px));
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
         }
 
-
-        /* 小米 14 / HyperOS：顶图略下移，头像不被状态栏裁切 */
+        /* 小米 14：同样头图顶入安全区，避免固色垫带色差 */
         html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img {
-            margin-top: calc(-1 * var(--app-shell-statusbar-top, 0px) + 8px);
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, var(--mine-safe-top)));
         }
 
-        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin: -70px 16px 0;
+        html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine {
+            --mine-user-card-lift: 64px;
         }
 
 
         /* Cordova 23127PN0CC：固定定位，避免被 header-bg overflow 或黑状态栏裁切 */
 
-        /* Cordova 小米14(23127PN0CC)：米色个人信息卡与参考稿一致，避免姓名/税号顶裁切 */
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
-            padding-top: 0;
+        /* Cordova 小米14(23127PN0CC)：叠层用变量，避免写死 margin */
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine {
+            --mine-user-card-lift: 42px;
+            --mine-panel-overlap: 38px;
+            --mine-user-card-min-height: 96px;
         }
 
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper {
-            margin-top: -6px;
-            padding-top: 14px;
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
+            padding-top: var(--app-cordova-statusbar-chrome, 40px);
+            background: var(--mine-header-blue-top, #2286ee);
+            overflow: hidden;
+        }
+        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img {
+            margin-top: calc(-1 * var(--app-cordova-statusbar-chrome, 40px));
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
-            margin: -38px 16px 0;
-            border-radius: 12px 12px 0 0;
-            padding: 16px 14px 14px;
+            padding: 14px 14px 32px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name {
@@ -126,17 +157,14 @@
             line-height: 1.25;
         }
 
-        html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn {
-            top: 16px;
-        }
-
         /* Cordova 小米 10S（M2102J2SC）：个人信息卡字号略小，税号单行完整展示 */
-        html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
-            padding: 12px;
+        html.app-cordova-xiaomi-m2102 body.page-mine {
+            --mine-user-card-min-height: 96px;
+            --mine-panel-overlap: 36px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-card {
-            padding-right: 78px;
+            padding: 14px 78px 32px 12px;
         }
 
         html.app-cordova-xiaomi-m2102 body.page-mine .user-info-text {
@@ -186,6 +214,64 @@
             font-size: 10.5px;
         }
 
+        /* 红米 Note 13 Pro：缩小「个人信息」与税号字号，避免挡住眼睛按钮 */
+        html.app-android-redmi-note13-pro body.page-mine {
+            --mine-user-card-min-height: 96px;
+            --mine-panel-overlap: 36px;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .user-card {
+            padding: 12px 88px 36px 14px;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .user-info-text {
+            padding-right: 0;
+            min-width: 0;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .user-name {
+            font-size: 13px;
+            margin-bottom: 4px;
+            line-height: 1.25;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .user-id {
+            font-size: 10.5px;
+            line-height: 1.25;
+            word-break: normal;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            gap: 3px;
+            max-width: 100%;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .user-tax-label,
+        html.app-android-redmi-note13-pro body.page-mine .user-tax-value {
+            font-size: 10.5px;
+            letter-spacing: -0.03em;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .personal-info-btn {
+            font-size: 10px;
+            padding: 4px 8px 4px 10px;
+            border-radius: 16px 0 0 16px;
+        }
+
+        html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after {
+            font-size: 10px;
+        }
+
         /* 华为 TAS-AN00（Mate 30 等，Android 12 Cordova）：个人信息卡姓名小两号 */
         html.app-android-huawei-tas-an00 body.page-mine .user-name {
             font-size: 13px;
@@ -194,8 +280,8 @@
 
         /* 小米 14：主白区横向贴边，减少两侧灰条（Cordova 23127 用户卡保留 16px 边距见上） */
         html.app-android-xiaomi-14:not(.app-cordova-xiaomi-23127) body.page-mine .user-card {
-            margin-left: 0;
-            margin-right: 0;
+            margin-left: 16px;
+            margin-right: 16px;
             border-radius: 12px 12px 0 0;
         }
 
@@ -211,7 +297,12 @@
         }
 
         /* 华为 Pura 70：录屏时减少两侧黑边观感，主内容横向贴边（与 auth.js 全局规则一致） */
-        html.app-huawei-pura70 body.page-mine .user-card,
+        html.app-huawei-pura70 body.page-mine .user-card {
+            margin-left: 0;
+            margin-right: 0;
+            border-radius: 12px 12px 0 0;
+        }
+
         html.app-huawei-pura70 body.page-mine .menu-list {
             margin-left: 0;
             margin-right: 0;
@@ -221,6 +312,7 @@
         html.app-huawei-pura70 body.page-mine .function-cards {
             margin-left: 8px;
             margin-right: 8px;
+            gap: 8px;
         }
 
         .header-bg > img {
@@ -374,36 +466,51 @@
             margin-right: 0;
         }
 
-        /* 灰底圆角面板：与原版一致，白卡片浮在灰底上；底栏避让与其它 TAB 一致放在内容区。
-         * 勿加 overflow-x:clip/hidden：会连带裁切上移的 .user-card（margin-top 负值）。 */
+        /* 灰底圆角面板：压住米色卡下半；三张独立功能卡浮在灰底上。
+         * 勿加 overflow:hidden/clip：会裁切叠层。 */
         .content-wrapper {
             background: #f5f6fa;
             border-radius: 20px 20px 0 0;
-            margin-top: -20px;
+            margin-top: calc(-1 * var(--mine-panel-overlap, 46px));
             position: relative;
-            z-index: 10;
-            padding-top: 10px;
+            z-index: 2;
+            padding-top: 4px;
             padding-bottom: var(--bottom-nav-clearance, calc(98px + env(safe-area-inset-bottom, 0px)));
         }
 
+        /* 米色卡：高于蓝顶图、低于灰面板；底边不圆角（官方下沿被面板切开） */
         .user-card {
-            background: linear-gradient(105deg, #f8ead8 0%, #f3e2cc 42%, #edd9bf 100%);
-            margin: -70px 16px 0;
+            background: linear-gradient(105deg, #f6e4c8 0%, #f0d9b5 45%, #e8cfa8 100%);
+            margin: calc(-1 * var(--mine-user-card-lift, 64px)) 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 14px 86px 14px 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 12px 94px 40px 16px;
+            min-height: var(--mine-user-card-min-height, 104px);
+            box-sizing: border-box;
+            box-shadow: 0 2px 10px rgba(180, 120, 40, 0.12);
             position: relative;
-            z-index: 11;
+            z-index: 1;
             overflow: visible;
         }
 
-        /* 头像热区：卡通头像在顶图内，信息卡上移后会挡住点击，单独留出触控区 */
+        /* 强制叠层，防止机型/auth 把 header 提到卡上方导致「个人信息不见了」 */
+        body.page-mine .mine-stack > .header-bg {
+            z-index: 0 !important;
+        }
+        body.page-mine .mine-stack > .user-card {
+            z-index: 1 !important;
+        }
+        body.page-mine .mine-stack > .content-wrapper {
+            z-index: 2 !important;
+        }
+
+        /* 头像热区：卡通头像在顶图内；灰面板只盖卡下半，热区仍可点 */
         .mine-avatar-edit-hit {
             position: absolute;
-            left: 8px;
-            top: -62px;
+            left: 50%;
+            top: -70px;
             width: 80px;
             height: 80px;
+            margin-left: -40px;
             border: none;
             padding: 0;
             margin: 0;
@@ -454,7 +561,7 @@
             font-size: 16px;
             color: #1a1a1a;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             line-height: 1.25;
         }
 
@@ -489,9 +596,9 @@
         /* iOS Safari / iPhone：对齐官方——标签与税号同一行 */
         html.app-ios-client body.page-mine .user-name,
         html[class*='app-ios'] body.page-mine .user-name {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 6px;
             line-height: 1.25;
         }
 
@@ -585,13 +692,14 @@
         .personal-info-btn {
             position: absolute;
             right: 0;
-            top: 50%;
+            /* 相对「露出条」垂直居中，避免按整卡高度时按钮偏下被灰面板盖住 */
+            top: calc((var(--mine-user-card-min-height, 104px) - var(--mine-panel-overlap, 46px)) / 2);
             transform: translateY(-50%);
             background: #edaa66;
             border: none;
             border-radius: 20px 0 0 20px;
-            padding: 6px 10px 6px 14px;
-            font-size: 12px;
+            padding: 5px 9px 5px 12px;
+            font-size: 11px;
             font-weight: 500;
             color: #fff;
             display: inline-flex;
@@ -608,7 +716,7 @@
 
         .personal-info-btn::after {
             content: '>';
-            font-size: 12px;
+            font-size: 11px;
             line-height: 1;
             opacity: 0.95;
         }
@@ -761,26 +869,27 @@
             opacity: 1;
         }
 
-        /* 功能入口：原版为一整块白底三列，非三张独立卡 */
+        /* 功能入口：官方为三张独立白卡（非一整块白底） */
         .function-cards {
             display: flex;
             justify-content: space-between;
             align-items: stretch;
-            gap: 0;
-            margin: 6px 16px 0;
-            padding: 10px 6px 12px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            gap: 8px;
+            margin: 2px 16px 0;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .function-card {
             flex: 1;
-            background: transparent;
-            border-radius: 0;
-            padding: 2px 6px;
+            min-width: 0;
+            background: #fff;
+            border-radius: 14px;
+            padding: 14px 6px 12px;
             text-align: center;
-            box-shadow: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
             text-decoration: none;
             color: inherit;
             -webkit-tap-highlight-color: transparent;
@@ -877,7 +986,7 @@
         /* 菜单：原版无分割横线，行高更紧凑 */
         .menu-list {
             background: #fff;
-            margin: 12px 16px 0;
+            margin: 14px 16px 0;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -939,7 +1048,7 @@
             display: none !important;
         }
 
-        /* 与参考图一致：右箭头纯黑 SVG，避免 iOS 上文字 > 发灰偏细 */
+        /* 与官方一致：右箭头浅灰 */
         .menu-arrow {
             display: inline-flex;
             align-items: center;
@@ -948,7 +1057,7 @@
             height: 18px;
             flex-shrink: 0;
             margin-left: 2px;
-            color: #000;
+            color: #b0b0b0;
         }
 
         .menu-arrow svg {
@@ -970,14 +1079,14 @@
             stroke-width: 2;
         }
 
-        /* 退出登录：原版在菜单白底卡片内，非独立卡 */
+        /* 退出登录：官方为菜单下方独立白底圆角条 */
         .logout-section {
-            background: transparent;
-            margin: 0;
-            border-radius: 0;
-            padding: 10px 20px 14px;
+            background: #fff;
+            margin: 12px 16px 0;
+            border-radius: 12px;
+            padding: 14px 20px;
             text-align: center;
-            box-shadow: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
 
         .logout-btn {
@@ -990,6 +1099,7 @@
             font-family: inherit;
             line-height: 1.3;
             padding: 4px 8px;
+            width: 100%;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -1046,11 +1156,11 @@
     </style>
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
-    <div class="header-bg">
-        <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
-    </div>
+    <div class="mine-stack">
+        <div class="header-bg">
+            <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
+        </div>
 
-    <div class="content-wrapper">
         <div class="user-card" id="mineUserCardEditHit">
             <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
             <a href="personal_info.html" class="personal-info-btn">个人信息</a>
@@ -1079,40 +1189,42 @@
             </div>
         </div>
 
-        <div class="function-cards">
-            <div class="function-card function-card--split">
-                <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
-                    <div class="function-icon">
-                        <img id="mineIconFamily" src="jtcy.jpg" alt="">
-                    </div>
-                    <div class="function-title">家庭成员</div>
-                </a>
-                <a href="jtcy_add.html" class="function-btn orange" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount" role="text">添加</span></a>
-            </div>
-            <a class="function-card" href="renzhi.html">
-                <div class="function-icon">
-                    <img id="mineIconEmployer" src="rzsp.jpg" alt="">
+        <div class="content-wrapper">
+            <div class="function-cards">
+                <div class="function-card function-card--split">
+                    <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
+                        <div class="function-icon">
+                            <img id="mineIconFamily" src="jtcy.jpg" alt="">
+                        </div>
+                        <div class="function-title">家庭成员</div>
+                    </a>
+                    <a href="jtcy_add.html" class="function-btn orange" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount" role="text">添加</span></a>
                 </div>
-                <div class="function-title">任职受雇</div>
-                <span class="function-btn orange" id="employerCount" role="text">暂无</span>
-            </a>
-            <div class="function-card function-card--split">
-                <a href="yhk.html" class="function-card-hit" aria-label="银行卡">
+                <a class="function-card" href="renzhi.html">
                     <div class="function-icon">
-                        <img id="mineIconBank" src="yhk.jpg" alt="">
+                        <img id="mineIconEmployer" src="rzsp.jpg" alt="">
                     </div>
-                    <div class="function-title">银行卡</div>
+                    <div class="function-title">任职受雇</div>
+                    <span class="function-btn orange" id="employerCount" role="text">添加</span>
                 </a>
-                <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
+                <div class="function-card function-card--split">
+                    <a href="yhk.html" class="function-card-hit" aria-label="银行卡">
+                        <div class="function-icon">
+                            <img id="mineIconBank" src="yhk.jpg" alt="">
+                        </div>
+                        <div class="function-title">银行卡</div>
+                    </a>
+                    <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
+                </div>
             </div>
-        </div>
 
-        <div class="menu-list">
-            <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-consult-hint" id="consultModifyHint" hidden>我要咨询修改</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            <div class="menu-list">
+                <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+                <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+                <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+                <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+                <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+            </div>
             <div class="logout-section">
                 <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
             </div>
@@ -1826,7 +1938,7 @@
                         employerBtn.textContent = ec + '家';
                         employerBtn.className = 'function-btn blue';
                     } else {
-                        employerBtn.textContent = '暂无';
+                        employerBtn.textContent = '添加';
                         employerBtn.className = 'function-btn orange';
                     }
                 }
@@ -1860,18 +1972,9 @@
             }
 
             function syncConsultModifyHint() {
+                /* 对齐官方：咨询行不展示「我要咨询修改」旁注 */
                 var hint = document.getElementById('consultModifyHint');
-                if (!hint) return;
-                var loggedIn = !!localStorage.getItem('user_id');
-                var editOn =
-                    !window.ConversionGuide ||
-                    typeof window.ConversionGuide.isTaxEditModeOn !== 'function' ||
-                    window.ConversionGuide.isTaxEditModeOn();
-                if (loggedIn && editOn && !hasTaxRecords()) {
-                    hint.removeAttribute('hidden');
-                } else {
-                    hint.setAttribute('hidden', '');
-                }
+                if (hint) hint.setAttribute('hidden', '');
             }
 
             function updateCountsFromStorage() {

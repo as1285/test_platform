@@ -23,16 +23,16 @@ const APP_ASSETS = [
   { siteSrc: 'css/app-shell.css', outDir: 'css', base: 'app-shell', ext: '.css' }
 ];
 
-/** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify */
+/** 混淆关键业务脚本（不改 window 全局名）；体积大的管理端只做 minify。
+ * auth.js / conversion-guide.js 为登录后关键路径，强混淆易在部分环境运行期崩溃，仅 minify。
+ */
 const OBFUSCATE_REL = new Set([
-  'js/auth.js',
   'js/app/ui.js',
   'js/app/nav.js',
   'js/app/core.js',
   'js/theme-loader.js',
   'js/page-loading.js',
   'js/fast-nav.js',
-  'js/conversion-guide.js',
   'js/watermark.js',
   'js/forensic-mark.js',
   'js/browser-install-prompt.js',

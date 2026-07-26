@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260725-abc-c-only"></script>
+    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1e8fff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>消息</title>
     <style>
         * {
@@ -21,6 +23,7 @@
         
         html {
             overflow-x: hidden;
+            background: #1e8fff;
         }
         
         .message-page {
@@ -50,11 +53,25 @@
             line-height: 1.2;
         }
 
+        /* 蓝渐变从屏幕顶缘铺进安全区，文字用 padding 避让 */
         html.app-top-safe-shell .message-header-toolbar {
             padding-top: calc(14px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
             padding-left: 16px;
             padding-right: 16px;
             padding-bottom: 20px;
+        }
+
+        html.app-ios-client.app-top-safe-shell body.page-message::before {
+            content: '';
+            display: block !important;
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: var(--app-shell-statusbar-top, 59px);
+            background: #1e8fff;
+            z-index: 40;
+            pointer-events: none;
         }
 
         .message-list {

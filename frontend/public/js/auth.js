@@ -26,6 +26,8 @@
   var APP_STATUS_BAR_COLOR = '#1e6fff';
   /** Cordova 壳通过 config AppendUserAgent 追加；若 UA 未透传到 iframe，则用被嵌入状态兜底识别 */
   var CORDOVA_SHELL_UA_RE = /TaxPlatformCordovaApp\//i;
+  /** Dynamic Island / 刘海机（16 Pro 等）安全区高度兜底；iframe 内 env 常为 0 */
+  var IOS_DYNAMIC_ISLAND_INSET_PX = 59;
 
   function isCordovaTaxAppShell() {
     try {
@@ -119,6 +121,18 @@
       return false;
     }
     return /M2102J2SC/i.test(ua);
+  }
+
+  /**
+   * 红米 Note 13 Pro（含 Pro 5G / 部分 Pro+）：我的页「个人信息」易挡住税号眼睛按钮。
+   * 型号：2312DRA50C / 2312CRAD3C / 2312DRA50G / 2312DRA50I / 23117RA68G 等。
+   */
+  function isRedmiNote13ProClient() {
+    var ua = navigator.userAgent || '';
+    if (/2312DRA50[CGI]|2312CRAD3C|23117RA68G|2312FPCA6G/i.test(ua)) {
+      return true;
+    }
+    return /Redmi[\s_-]*Note[\s_-]*13[\s_-]*Pro/i.test(ua);
   }
 
   /**
@@ -494,27 +508,224 @@
     } catch (e) {}
   }
 
-  /** iOS 个人中心：状态栏区铺蓝、顶图上移填满安全区 */
+  /** 蓝顶栏页顶色：我的 / 待办 / 办查 / 消息（按 body 或路径） */
+  function getImmersiveBlueTopColor() {
+    try {
+      var body = document.body;
+      if (body) {
+        if (body.classList.contains('page-mine')) return '#2286ee';
+        if (body.classList.contains('page-daiban') || body.classList.contains('page-bancha')) {
+          return '#2b81f2';
+        }
+        if (body.classList.contains('page-message')) return '#1e8fff';
+      }
+      var p = String(window.location.pathname || '').split('/').pop() || '';
+      if (p === 'mine.html') return '#2286ee';
+      if (p === 'daiban.html' || p === 'bancha.html') return '#2b81f2';
+      if (p === 'message.html') return '#1e8fff';
+    } catch (e) {}
+    return '';
+  }
+
+  /**
+   * iOS / Cordova iframe：测量或兜底写入 --app-shell-statusbar-top。
+   * 壳内 iframe 的 env(safe-area-inset-top) 经常是 0，导致头图无法顶入、刘海区露白。
+   */
+  function syncAppShellStatusbarTop() {
+    try {
+      if (!isLikelyIOSViewportClient() && !isCordovaTaxAppShell()) {
+        return;
+      }
+      var measured = 0;
+      try {
+        if (document.body) {
+          var probe = document.createElement('div');
+          probe.setAttribute('data-safe-top-probe', '1');
+          probe.style.cssText =
+            'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);';
+          document.body.appendChild(probe);
+          measured = parseFloat(window.getComputedStyle(probe).paddingTop) || 0;
+          if (probe.parentNode) probe.parentNode.removeChild(probe);
+        }
+      } catch (eProbe) {}
+      var inset = measured;
+      if (inset < 20) {
+        /* Cordova iframe / 异常 env：刘海与 Dynamic Island 用 59px */
+        if (isCordovaTaxAppShell() || isIPhone16ProLikeClient() || isIPhone16ProMaxClient() || isIPhone15PlusProMaxLikeClient() || isIPhone17ProLikeClient() || isIPhone17ProMaxClient()) {
+          inset = IOS_DYNAMIC_ISLAND_INSET_PX;
+        } else if (isLikelyIOSViewportClient()) {
+          inset = 47;
+        }
+      }
+      if (inset > 0) {
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', inset + 'px');
+      }
+    } catch (e) {}
+  }
+
+  /** 通知 Cordova 父壳改 StatusBar（H5 在 https iframe 内无法直接碰 parent.StatusBar） */
+  function requestShellStatusBar(opts) {
+    opts = opts || {};
+    try {
+      var sb = null;
+      try {
+        if (window.StatusBar) sb = window.StatusBar;
+      } catch (e0) {}
+      if (!sb) {
+        try {
+          if (window.top && window.top !== window && window.top.StatusBar) {
+            sb = window.top.StatusBar;
+          }
+        } catch (e1) {}
+      }
+      if (sb) {
+        if (opts.overlays !== false && typeof sb.overlaysWebView === 'function') {
+          sb.overlaysWebView(true);
+        }
+        if (opts.style === 'default' && typeof sb.styleDefault === 'function') {
+          sb.styleDefault();
+        } else if (typeof sb.styleLightContent === 'function') {
+          sb.styleLightContent();
+        }
+        if (opts.color && typeof sb.backgroundColorByHexString === 'function') {
+          sb.backgroundColorByHexString(opts.color);
+        }
+        return;
+      }
+    } catch (eSb) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            source: 'tax-h5',
+            type: 'status-bar',
+            style: opts.style === 'default' ? 'default' : 'light',
+            overlays: opts.overlays !== false,
+            color: opts.color || '#00000000'
+          },
+          '*'
+        );
+      }
+    } catch (eMsg) {}
+  }
+
+  /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条 */
+  function applyImmersiveBlueStatusBar(topColor) {
+    if (!topColor) return;
+    try {
+      upsertMeta('theme-color', topColor);
+      upsertMeta('msapplication-navbutton-color', topColor);
+      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      requestShellStatusBar({ style: 'light', overlays: true, color: topColor });
+    } catch (e) {}
+  }
+
+  /** 个人中心：状态栏/根背景与头图顶色对齐；头图顶入安全区，不再盖固色遮罩 */
   function applyMinePageChrome() {
     try {
       if (!document.body || !document.body.classList.contains('page-mine')) {
         return;
       }
-      if (!isLikelyIOSViewportClient()) {
+      var mineBlue = '#2286ee';
+      /* 覆盖 setupMobileStatusBar 注入的 html 白底 */
+      try {
+        var old = document.querySelector('style[data-mine-chrome]');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var st = document.createElement('style');
+        st.setAttribute('data-mine-chrome', '1');
+        st.textContent =
+          'html{background:' +
+          mineBlue +
+          ' !important;}' +
+          'html body.page-mine{background-color:#f5f6fa !important;background-image:linear-gradient(' +
+          mineBlue +
+          ',' +
+          mineBlue +
+          ');background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background-repeat:no-repeat;}' +
+          /* 取消固色遮罩，让头图顶入安全区；iOS 再用顶色条兜底刘海（env=0 时仍铺蓝） */
+          'html.app-top-safe-shell body.page-mine::before{display:none !important;content:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:' +
+          mineBlue +
+          ' !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+          mineBlue +
+          ' !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;}';
+        document.head.appendChild(st);
+      } catch (eCss) {}
+      syncAppShellStatusbarTop();
+      applyImmersiveBlueStatusBar(mineBlue);
+    } catch (e) {}
+  }
+
+  /** 待办 / 办&查：状态栏色与头图顶色对齐 */
+  function applyDaibanBanchaPageChrome() {
+    try {
+      if (!document.body) return;
+      var isDaiban = document.body.classList.contains('page-daiban');
+      var isBancha = document.body.classList.contains('page-bancha');
+      if (!isDaiban && !isBancha) return;
+      var topBlue = '#2b81f2';
+      try {
+        var old = document.querySelector('style[data-daiban-bancha-chrome]');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var st = document.createElement('style');
+        st.setAttribute('data-daiban-bancha-chrome', '1');
+        st.textContent =
+          'html{background:' +
+          topBlue +
+          ' !important;}' +
+          'html body.page-daiban,html body.page-bancha{background-color:#f5f6fa !important;background-image:linear-gradient(' +
+          topBlue +
+          ',' +
+          topBlue +
+          ');background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background-repeat:no-repeat;}' +
+          'html.app-top-safe-shell .daiban-header,html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top,0px) !important;background:' +
+          topBlue +
+          ' !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell .daiban-header > img,html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell body.page-daiban::before,html.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:' +
+          topBlue +
+          ' !important;z-index:40 !important;pointer-events:none !important;}';
+        document.head.appendChild(st);
+      } catch (eCss) {}
+      syncAppShellStatusbarTop();
+      applyImmersiveBlueStatusBar(topBlue);
+    } catch (e) {}
+  }
+
+  /** 消息：蓝渐变顶栏铺进安全区；覆盖 iOS 默认白底状态栏 */
+  function applyMessagePageChrome() {
+    try {
+      if (!document.body || !document.body.classList.contains('page-message')) {
         return;
       }
-      /* 与 mine 顶图（grdb/nx）顶缘取样一致，避免状态栏浅蓝与头像区深蓝断层 */
-      upsertMeta('theme-color', '#2188f4');
-      upsertMeta('msapplication-navbutton-color', '#2188f4');
-      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+      var msgBlue = '#1e8fff';
       try {
-        var sbMine = window.top && window.top.StatusBar;
-        if (sbMine) {
-          sbMine.overlaysWebView(true);
-          sbMine.styleLightContent();
-          sbMine.backgroundColorByHexString('#2188f4');
-        }
-      } catch (eMineSb) {}
+        var old = document.querySelector('style[data-message-chrome]');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var st = document.createElement('style');
+        st.setAttribute('data-message-chrome', '1');
+        st.textContent =
+          'html{background:' +
+          msgBlue +
+          ' !important;}' +
+          'html body.page-message{background-color:#f5f6fa !important;background-image:linear-gradient(' +
+          msgBlue +
+          ',' +
+          msgBlue +
+          ');background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background-repeat:no-repeat;}' +
+          'html.app-top-safe-shell body.page-message::before{display:none !important;content:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-message::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:' +
+          msgBlue +
+          ' !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-top-safe-shell .message-header-wrap{margin:0 !important;padding:0 !important;}' +
+          'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;background:linear-gradient(135deg,#1e8fff 0%,#4d9aff 50%,#1e8fff 100%) !important;}';
+        document.head.appendChild(st);
+      } catch (eCss) {}
+      syncAppShellStatusbarTop();
+      applyImmersiveBlueStatusBar(msgBlue);
     } catch (e) {}
   }
 
@@ -527,17 +738,7 @@
       if (!isLikelyIOSViewportClient()) {
         return;
       }
-      upsertMeta('theme-color', '#2c80f4');
-      upsertMeta('msapplication-navbutton-color', '#2c80f4');
-      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
-      try {
-        var sbHome = window.top && window.top.StatusBar;
-        if (sbHome) {
-          sbHome.overlaysWebView(true);
-          sbHome.styleLightContent();
-          sbHome.backgroundColorByHexString('#2c80f4');
-        }
-      } catch (eHomeSb) {}
+      applyImmersiveBlueStatusBar('#2c80f4');
     } catch (e) {}
   }
 
@@ -566,14 +767,7 @@
       upsertMeta('msapplication-navbutton-color', '#ffffff');
       upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
       /* Cordova iframe：白顶栏页使用深色状态栏文字，避免白底+浅色图标看不见时间/电量 */
-      try {
-        var sb = window.top && window.top.StatusBar;
-        if (sb) {
-          sb.overlaysWebView(true);
-          sb.styleDefault();
-          sb.backgroundColorByHexString('#00000000');
-        }
-      } catch (e2) {}
+      requestShellStatusBar({ style: 'default', overlays: true, color: '#00000000' });
     } catch (e) {}
   }
 
@@ -640,6 +834,7 @@
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
+      var redmiNote13Pro = androidClient && isRedmiNote13ProClient();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       lockAppSafeBottomInset({ cordovaXiaomi2410: cordovaXiaomi2410 });
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
@@ -660,24 +855,31 @@
       var huaweiTasAn00Client = androidClient && isHuaweiTasAn00Client();
       var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
-       * iOS 维持原有逻辑；安卓改用页面灰根背景，避免页面跳转时先露出品牌蓝或纯白空屏。
-       * Cordova / iframe 壳：白底，由各页顶栏铺色。
+       * 默认：Cordova / iOS / Android 用浅色根底，避免切页蓝闪。
+       * 蓝顶栏页（我的/待办/办查/消息）：根底与顶色一致 + translucent，消除刘海白条。
        */
       var lightRootChrome = cordovaShell || iosClient || androidClient;
+      var immersiveBlueTop = getImmersiveBlueTopColor();
       var rootChromeBg = cordovaXiaomi23127
         ? APP_STATUS_BAR_COLOR
-        : androidClient
-          ? '#f5f6fa'
-          : lightRootChrome
-            ? '#ffffff'
-            : APP_STATUS_BAR_COLOR;
+        : immersiveBlueTop
+          ? immersiveBlueTop
+          : androidClient
+            ? '#f5f6fa'
+            : lightRootChrome
+              ? '#ffffff'
+              : APP_STATUS_BAR_COLOR;
       upsertMeta('theme-color', rootChromeBg);
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
       upsertMeta('apple-mobile-web-app-capable', 'yes');
+      upsertMeta('mobile-web-app-capable', 'yes');
       upsertMeta(
         'apple-mobile-web-app-status-bar-style',
-        lightRootChrome ? 'default' : 'black-translucent'
+        immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'
       );
+      if (immersiveBlueTop) {
+        applyImmersiveBlueStatusBar(immersiveBlueTop);
+      }
       /*
        * 顶部与系统状态栏避让：
        * - Cordova / iframe：iframe 内 env(safe-area-inset-top) 常为 0，用固定 48px。
@@ -700,9 +902,11 @@
                   ? '56px'
                   : '24px')
         : cordovaShell
-          ? '48px'
+          ? iosClient
+            ? IOS_DYNAMIC_ISLAND_INSET_PX + 'px'
+            : '48px'
           : iosClient
-            ? 'env(safe-area-inset-top, 0px)'
+            ? 'env(safe-area-inset-top, ' + IOS_DYNAMIC_ISLAND_INSET_PX + 'px)'
             : '';
       if (cordovaShell) {
         document.documentElement.classList.add('app-cordova-shell');
@@ -734,6 +938,9 @@
       if (cordovaXiaomiM2102) {
         document.documentElement.classList.add('app-cordova-xiaomi-m2102');
       }
+      if (redmiNote13Pro) {
+        document.documentElement.classList.add('app-android-redmi-note13-pro');
+      }
       if (cordovaXiaomi2410) {
         document.documentElement.classList.add('app-cordova-xiaomi-2410');
       }
@@ -762,14 +969,18 @@
       }
       if (iosIPhone16Pro) {
         document.documentElement.classList.add('app-ios-iphone16pro');
-        /* 16 Pro 状态栏区易露出 html 白底；首页顶栏为蓝，与 theme-color 对齐 */
-        upsertMeta('theme-color', '#2c80f4');
-        upsertMeta('msapplication-navbutton-color', '#2c80f4');
+        /* 仅首页默认对齐搜索顶栏蓝；蓝顶栏页由 page-chrome 再覆盖，避免整站被刷成首页色 */
+        if (!immersiveBlueTop) {
+          upsertMeta('theme-color', '#2c80f4');
+          upsertMeta('msapplication-navbutton-color', '#2c80f4');
+        }
       }
       if (iosIPhone16ProMax) {
         document.documentElement.classList.add('app-ios-iphone16promax');
-        upsertMeta('theme-color', '#2c80f4');
-        upsertMeta('msapplication-navbutton-color', '#2c80f4');
+        if (!immersiveBlueTop) {
+          upsertMeta('theme-color', '#2c80f4');
+          upsertMeta('msapplication-navbutton-color', '#2c80f4');
+        }
       }
       if (iosIPhone14) {
         document.documentElement.classList.add('app-ios-iphone14');
@@ -847,16 +1058,19 @@
           'html.app-android-honor-pgt-an20.app-top-safe-shell{--app-shell-statusbar-top:36px !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell{--app-shell-statusbar-top:44px !important;}' +
           'html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(54px + var(--app-shell-statusbar-top,44px)) !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2c80f4 !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .daiban-header > img{margin-top:0 !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2c80f4 !important;}' +
-          'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .message-header-toolbar{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2c80f4 !important;overflow:visible;}' +
-          'html.app-top-safe-shell .daiban-header > img{margin-top:0 !important;}' +
-          'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2c80f4 !important;overflow:visible;}' +
-          'html.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
+          /* 待办/办查：头图顶入安全区，兜底色与图顶取样一致 */
+          'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell body.page-daiban::before,html.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
           'html.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:20px !important;padding-left:16px !important;padding-right:16px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-toolbar{padding-bottom:20px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .message-header-title{margin-bottom:18px !important;}' +
@@ -865,48 +1079,71 @@
           'html.app-android-client.app-top-safe-shell body:not(.page-shuiming) > .header{height:auto !important;min-height:calc(48px + var(--app-shell-statusbar-top)) !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell body.page-login .header{min-height:auto !important;padding-top:calc(15px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-xiangqing{padding-top:calc(48px + var(--app-shell-statusbar-top)) !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:linear-gradient(180deg,#2188f4 0%,#1e81fb 45%,#2c80f4 100%) !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
-          /* iOS 我的：顶图再上移，安全区用 env 与顶图同色蓝底补条填满（避免浅蓝/深蓝接缝） */
-          'html.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:env(safe-area-inset-top,48px) !important;--mine-ios-header-lift:12px;--mine-header-blue-top:#2188f4;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px));background:#2188f4;z-index:8;pointer-events:none;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:9;padding-top:calc(var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;overflow:visible !important;background:linear-gradient(180deg,#2188f4 0%,#1e81fb 45%,#2c80f4 100%) !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) - var(--mine-ios-header-lift,12px)) !important;}' +
-          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px) + var(--mine-ios-header-lift,12px)) !important;}' +
-          /* iPhone 12 Pro Max：待办/办查/消息/我的 刘海区白边（仅 12PM，其它机型不改） */
+          /* 我的：头图顶入安全区，兜底色与 grdb.jpg 顶色一致 */
+          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
+          'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
+          'html.app-top-safe-shell body.page-mine::before{display:none !important;content:none !important;}' +
+          /* iOS：非 Cordova 用真实 env；Cordova iframe env 常为 0，锁 59px；16 Pro 强制至少 59 */
+          'html.app-ios-client.app-top-safe-shell:not(.app-cordova-shell){--app-shell-statusbar-top:env(safe-area-inset-top,59px) !important;--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
+          'html.app-cordova-shell.app-ios-client.app-top-safe-shell{--app-shell-statusbar-top:59px !important;--mine-ios-header-lift:0px;--mine-header-blue-top:#2286ee;}' +
+          'html.app-ios-iphone16pro.app-top-safe-shell,html.app-ios-iphone16promax.app-top-safe-shell,html.app-ios-iphone15promax.app-top-safe-shell{--app-shell-statusbar-top:max(59px,env(safe-area-inset-top,59px)) !important;}' +
+          'html.app-ios-client body.page-mine,html[class*="app-ios"] body.page-mine{--mine-user-card-lift:72px;--mine-panel-overlap:50px;--mine-user-card-min-height:108px;}' +
+          'html.app-ios-client body.page-mine .user-card,html[class*="app-ios"] body.page-mine .user-card{border-radius:12px 12px 0 0 !important;background:linear-gradient(105deg,#f6e4c8 0%,#f0d9b5 45%,#e8cfa8 100%) !important;}' +
+          'html.app-ios-client body.page-mine .user-name,html[class*="app-ios"] body.page-mine .user-name{font-size:17px !important;font-weight:700 !important;margin-bottom:6px !important;}' +
+          'html.app-ios-client body.page-mine .content-wrapper,html[class*="app-ios"] body.page-mine .content-wrapper{padding-top:4px !important;border-radius:20px 20px 0 0 !important;}' +
+          'html.app-ios-client body.page-mine .function-cards,html[class*="app-ios"] body.page-mine .function-cards{gap:8px !important;background:transparent !important;box-shadow:none !important;padding:0 !important;margin-top:2px !important;}' +
+          'html.app-ios-client body.page-mine .function-card,html[class*="app-ios"] body.page-mine .function-card{background:#fff !important;border-radius:14px !important;padding:14px 6px 12px !important;box-shadow:0 2px 10px rgba(0,0,0,0.06) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#2286ee !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:hidden !important;background:#2286ee !important;}' +
+          'html.app-ios-client body.page-mine .mine-stack > .header-bg{z-index:0 !important;}html.app-ios-client body.page-mine .mine-stack > .user-card{z-index:1 !important;}html.app-ios-client body.page-mine .mine-stack > .content-wrapper{z-index:2 !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#2b81f2 !important;z-index:40 !important;pointer-events:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-message::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#1e8fff !important;z-index:40 !important;pointer-events:none !important;}' +
+          /* iPhone 12 Pro Max：待办/办查/消息/我的 用头图 bleed，取消固色垫带 */
           'html.app-ios-iphone12promax.app-top-safe-shell{--mine-ios-header-lift:0px !important;--app-shell-statusbar-top:env(safe-area-inset-top,0px) !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell body.page-daiban::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-bancha::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:env(safe-area-inset-top,0px) !important;background:#2c80f4 !important;z-index:12 !important;pointer-events:none !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header{padding-top:env(safe-area-inset-top,0px) !important;background:#2c80f4 !important;overflow:visible !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell body.page-message::before{content:"" !important;position:fixed !important;top:0 !important;left:0 !important;right:0 !important;height:env(safe-area-inset-top,0px) !important;background:#1e8fff !important;z-index:3 !important;pointer-events:none !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before{height:env(safe-area-inset-top,0px) !important;}' +
-          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg{padding-top:env(safe-area-inset-top,0px) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-daiban::before,html.app-ios-iphone12promax.app-top-safe-shell body.page-bancha::before{display:none !important;content:none !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header{padding-top:env(safe-area-inset-top,0px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .daiban-header > img,html.app-ios-iphone12promax.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-message::before{display:none !important;content:none !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + env(safe-area-inset-top,0px)) !important;background:linear-gradient(135deg,#1e8fff 0%,#4d9aff 50%,#1e8fff 100%) !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine::before{display:none !important;content:none !important;}' +
+          'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg{padding-top:env(safe-area-inset-top,0px) !important;background:#2286ee !important;overflow:hidden !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * env(safe-area-inset-top,0px)) !important;}' +
           'html.app-ios-iphone12promax.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + env(safe-area-inset-top,0px)) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px) + 8px) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .user-card{margin:-70px 16px 0 !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-mine{--mine-user-card-lift:64px;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:40px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .search-bar-wrapper{padding-top:6px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;margin:2px 12px 14px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2c80f4 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2c80f4 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header > img{margin-top:0 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell .message-header-toolbar{padding-top:14px !important;padding-bottom:20px !important;padding-left:16px !important;padding-right:16px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .content-wrapper{margin-top:-6px !important;padding-top:14px !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card{margin:-38px 16px 0 !important;border-radius:12px 12px 0 0 !important;padding:16px 14px 14px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell .message-header-toolbar{padding-top:calc(14px + var(--app-cordova-statusbar-chrome,40px)) !important;padding-bottom:20px !important;padding-left:16px !important;padding-right:16px !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-cordova-statusbar-chrome,40px) !important;background:#2286ee !important;overflow:hidden !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine{--mine-user-card-lift:42px;--mine-panel-overlap:38px;--mine-user-card-min-height:96px;}' +
+          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card{padding:14px 14px 32px !important;border-radius:12px 12px 0 0 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name{margin-bottom:4px !important;line-height:1.25 !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .personal-info-btn{top:16px !important;}' +
-          'html.app-cordova-xiaomi-m2102 body.page-mine .user-card{padding:12px 0 12px 12px !important;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine{--mine-user-card-min-height:96px;--mine-panel-overlap:36px;}' +
+          'html.app-cordova-xiaomi-m2102 body.page-mine .user-card{padding:14px 0 32px 12px !important;border-radius:12px 12px 0 0 !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .user-name{font-size:12px !important;margin-bottom:4px !important;line-height:1.25 !important;}' +
           'html.app-android-huawei-tas-an00 body.page-mine .user-name{font-size:13px !important;line-height:1.35 !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .user-id{font-size:10px !important;line-height:1.25 !important;word-break:normal !important;white-space:nowrap !important;flex-wrap:nowrap !important;gap:4px !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine #userTaxIdText{white-space:nowrap !important;letter-spacing:-0.02em !important;}' +
           'html.app-cordova-xiaomi-m2102 body.page-mine .personal-info-btn{font-size:10.5px !important;padding:4px 8px 4px 10px !important;}' +
           'html.app-cordova-xiaomi-m2102.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,48px)) !important;right:18px !important;z-index:500 !important;}' +
+          /* 红米 Note 13 Pro：缩小个人信息按钮与税号字号，右侧留白避免挡住眼睛 */
+          'html.app-android-redmi-note13-pro body.page-mine{--mine-user-card-min-height:96px;--mine-panel-overlap:36px;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .user-card{padding:12px 88px 36px 14px !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .user-name{font-size:13px !important;margin-bottom:4px !important;line-height:1.25 !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .user-id{font-size:10.5px !important;line-height:1.25 !important;gap:3px !important;white-space:nowrap !important;flex-wrap:nowrap !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .user-tax-label,html.app-android-redmi-note13-pro body.page-mine .user-tax-value{font-size:10.5px !important;letter-spacing:-0.03em !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn{width:16px !important;height:16px !important;flex-shrink:0 !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .tax-eye-btn svg{width:14px !important;height:14px !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn{font-size:10px !important;padding:4px 8px 4px 10px !important;border-radius:16px 0 0 16px !important;}' +
+          'html.app-android-redmi-note13-pro body.page-mine .personal-info-btn::after{font-size:10px !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
@@ -921,9 +1158,11 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
           /* 华为 Pura 70：H5 横向铺满，录屏黑边改为页面灰底；个人中心主区贴边 */
           'html.app-huawei-pura70,html.app-huawei-pura70 body{width:100% !important;min-width:100% !important;max-width:none !important;margin:0 !important;background:#f5f6fa !important;overflow-x:hidden !important;}' +
-          'html.app-huawei-pura70 body.page-mine .header-bg,html.app-huawei-pura70 body.page-mine .content-wrapper{width:100vw !important;max-width:100vw !important;margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;box-sizing:border-box !important;}' +
-          'html.app-huawei-pura70 body.page-mine .user-card,html.app-huawei-pura70 body.page-mine .menu-list{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
-          'html.app-huawei-pura70 body.page-mine .function-cards{margin-left:8px !important;margin-right:8px !important;}' +
+          'html.app-huawei-pura70 body.page-mine .mine-stack,html.app-huawei-pura70 body.page-mine .header-bg,html.app-huawei-pura70 body.page-mine .content-wrapper{width:100vw !important;max-width:100vw !important;margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;box-sizing:border-box !important;}' +
+          'html.app-huawei-pura70 body.page-mine .user-card{margin-left:0 !important;margin-right:0 !important;border-radius:12px 12px 0 0 !important;}' +
+          'html.app-huawei-pura70 body.page-mine .menu-list{margin-left:0 !important;margin-right:0 !important;border-radius:0 !important;}' +
+          'html.app-huawei-pura70 body.page-mine .function-cards{margin-left:8px !important;margin-right:8px !important;gap:8px !important;background:transparent !important;box-shadow:none !important;padding:0 !important;}' +
+          'html.app-huawei-pura70 body.page-mine .function-card{background:#fff !important;border-radius:12px !important;box-shadow:0 2px 8px rgba(0,0,0,0.04) !important;}' +
           'html.app-huawei-pura70.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,0px) !important;}' +
           /* 华为 Pura 70 Cordova：壳已避开状态栏，顶栏贴 WebView 顶；高度由首页 JS 写入 --shouye-fixed-top-h */
           'html.app-cordova-huawei-pura70.app-top-safe-shell{--app-shell-statusbar-top:0px !important;--app-cordova-statusbar-chrome:0px !important;}' +
@@ -1014,14 +1253,44 @@
   }
 
   setupMobileStatusBar();
+  syncAppShellStatusbarTop();
   applyMinePageChrome();
+  applyDaibanBanchaPageChrome();
+  applyMessagePageChrome();
   applyShouyePageChrome();
   applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyMinePageChrome);
-    document.addEventListener('DOMContentLoaded', applyShouyePageChrome);
-    document.addEventListener('DOMContentLoaded', applyIPhone16ProPageChrome);
+    document.addEventListener('DOMContentLoaded', function () {
+      syncAppShellStatusbarTop();
+      applyMinePageChrome();
+      applyDaibanBanchaPageChrome();
+      applyMessagePageChrome();
+      applyShouyePageChrome();
+      applyIPhone16ProPageChrome();
+    });
+  } else {
+    setTimeout(syncAppShellStatusbarTop, 0);
   }
+  window.addEventListener('orientationchange', function () {
+    setTimeout(syncAppShellStatusbarTop, 50);
+  });
+  window.addEventListener('resize', function () {
+    setTimeout(syncAppShellStatusbarTop, 50);
+  });
+  /* Cordova StatusBar 插件常在 deviceready 后才可用，再刷一次蓝顶栏页 */
+  function refreshImmersiveBluePageChrome() {
+    syncAppShellStatusbarTop();
+    applyMinePageChrome();
+    applyDaibanBanchaPageChrome();
+    applyMessagePageChrome();
+    applyShouyePageChrome();
+  }
+  document.addEventListener('deviceready', refreshImmersiveBluePageChrome, false);
+  try {
+    if (window.top && window.top !== window) {
+      window.top.document.addEventListener('deviceready', refreshImmersiveBluePageChrome, false);
+    }
+  } catch (eTopReady) {}
 
   function currentPageName() {
     var p = window.location.pathname || '';
@@ -1600,22 +1869,22 @@
   }
 
   function applyChannelForcedPricingAbc(data) {
-    var ch = '';
-    try {
-      if (data) {
-        ch = sanitizeSalesChannelId(data.sales_ch || data.sales_channel || '');
-      }
-      if (!ch) ch = getSalesChannel() || '';
-    } catch (e0) {
-      ch = '';
-    }
-    /* 仅渠道 abc 强制支付 C；其它渠道/无渠道不覆盖本地 A/B 分流 */
-    if (String(ch || '').toLowerCase() !== 'abc') return null;
     var abc = '';
     if (data) {
-      abc = String(data.force_pricing_abc || data.default_pricing_abc || 'c').toLowerCase();
+      abc = String(data.force_pricing_abc || data.default_pricing_abc || '')
+        .trim()
+        .toLowerCase();
     }
-    if (abc !== 'a' && abc !== 'b' && abc !== 'c') abc = 'c';
+    /* 仅服务端明确返回 a|b|c 时强制；空=跟随后台增长 A/B/C，并清掉旧渠道锁定 */
+    if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
+      try {
+        var prev = getPurchaseAbcAssignment();
+        if (prev && prev.source === 'agent_channel') {
+          localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
+        }
+      } catch (eClear) {}
+      return null;
+    }
     return forcePurchaseAbcAssignment(abc, 'agent_channel');
   }
 
@@ -1624,16 +1893,9 @@
       var a = getPurchaseAbcAssignment();
       if (!a || a.variant !== 'c') return false;
       var src = String(a.source || '');
-      if (src === 'agent_channel' || src === 'admin_force') {
-        /* 渠道强制留下的 C：仅当当前仍是 abc 渠道时保留 */
-        if (src === 'agent_channel' && String(getSalesChannel() || '').toLowerCase() !== 'abc') {
-          localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
-          return true;
-        }
-        return false;
-      }
-      /* client_sticky / migrate / allocation 等写出的 C：无 abc 渠道则作废 */
-      if (String(getSalesChannel() || '').toLowerCase() === 'abc') return false;
+      if (src === 'admin_force') return false;
+      /* agent_channel 由 applyChannelForcedPricingAbc 维护；其余本地 C 作废，改由服务端分流 */
+      if (src === 'agent_channel') return false;
       localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
       return true;
     } catch (e) {
@@ -1644,11 +1906,7 @@
   function migratePurchaseAbcFromLanding() {
     clearInvalidPurchaseAbcCSticky();
     if (getPurchaseAbcAssignment()) return getPurchaseAbcAssignment();
-    var land = getLandingAbAssignment();
-    /* 落地 C 仅在渠道 abc 时迁入支付 C */
-    if (land && land.variant === 'c' && String(getSalesChannel() || '').toLowerCase() === 'abc') {
-      return setPurchaseAbcAssignment('c', 'migrate_landing');
-    }
+    /* 落地 C 不再迁入支付 C；支付方案由增长后台 / 渠道强制决定 */
     return null;
   }
 

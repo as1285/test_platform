@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260725-abc-c-only"></script>
+    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2b81f2">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>办&查</title>
     <style>
         * {
@@ -27,13 +29,29 @@
         .bancha-header {
             position: relative;
             z-index: 1;
-            background: #2c80f4;
+            /* 与 db.jpg 顶部左侧取样对齐，仅作头图未盖住时的兜底 */
+            background: #2b81f2;
+            overflow: hidden;
         }
 
         @supports (padding-top: env(safe-area-inset-top)) {
             .bancha-header {
                 padding-top: env(safe-area-inset-top, 0px);
             }
+            .bancha-header img {
+                margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+            }
+        }
+
+        html.app-top-safe-shell .bancha-header {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            background: #2b81f2;
+            overflow: hidden;
+        }
+        html.app-top-safe-shell .bancha-header > img {
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            display: block;
+            width: 100%;
         }
 
         .bancha-header img {

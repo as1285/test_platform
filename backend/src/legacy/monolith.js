@@ -563,13 +563,14 @@ function getPricingAb() {
       getForcedAbcForUser: async function (username) {
         try {
           var pol = await getAgentChannels().getUserChannelPolicy(username);
-          /* 仅渠道 abc 强制支付方案（默认 C）；其他专属渠道只挂代理，不锁 A/B/C */
-          if (
-            pol &&
-            String(pol.channel_id || '').toLowerCase() === 'abc' &&
-            pol.default_pricing_abc
-          ) {
-            return pol.default_pricing_abc;
+          /* 命中启用的代理专属渠道：一律强制支付方案（空配置按 C） */
+          if (pol) {
+            return pol.default_pricing_abc || 'c';
+          }
+          /* 仅在「代理推广/隐藏闲鱼」列表、未建专属渠道的 ch（如 abc）→ 强制 C */
+          var promoCh = await getUserSalesPromoChannel(username);
+          if (promoCh && (await isAgentPromoSalesChannel(promoCh))) {
+            return 'c';
           }
         } catch (e) {}
         return null;
@@ -1048,8 +1049,40 @@ async function getAgentPromoChannelListFromSettings() {
   return list;
 }
 
+/** 是否代理推广渠道（隐藏闲鱼列表或专属渠道表） */
+async function isAgentPromoSalesChannel(salesCh) {
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) return false;
+  try {
+    var list = await getAgentPromoChannelListFromSettings();
+    return list.indexOf(ch) >= 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
- * 经专属渠道注册/登录：挂到下属代理名下；仅渠道 abc 按默认支付方案强制 sticky（通常 C）。
+ * 代理推广渠道强制的支付方案：专属渠道按其配置（空=C）；其它代理推广 ch 一律 C。
+ * @returns {Promise<string|null>} a|b|c 或 null（非代理渠道）
+ */
+async function resolveForcedAbcForSalesChannel(salesCh) {
+  var ch = sanitizeSalesChannelId(salesCh);
+  if (!ch) return null;
+  try {
+    var pol = await getAgentChannels().getEnabledChannelById(ch);
+    if (pol) {
+      return pol.default_pricing_abc || 'c';
+    }
+  } catch (ePol) {}
+  if (await isAgentPromoSalesChannel(ch)) {
+    return 'c';
+  }
+  return null;
+}
+
+/**
+ * 经专属/代理推广渠道注册/登录：挂到下属代理名下（若有专属配置）；
+ * 命中代理推广渠道时强制 sticky（专属默认 C，可显式 A/B；仅隐藏闲鱼列表的 ch 一律 C）。
  * @returns {Promise<object|null>} 渠道配置或 null
  */
 async function attachUserFromSalesChannel(username, salesCh) {
@@ -1065,13 +1098,35 @@ async function attachUserFromSalesChannel(username, salesCh) {
     console.error('attachUserFromSalesChannel', eAtt);
     return null;
   }
-  if (
-    pol &&
-    String(pol.channel_id || '').toLowerCase() === 'abc' &&
-    pol.default_pricing_abc
-  ) {
+  var forcedAbc = null;
+  if (pol) {
+    forcedAbc = pol.default_pricing_abc || 'c';
+  } else if (await isAgentPromoSalesChannel(ch)) {
+    /* 未建专属渠道、但在代理推广（隐藏闲鱼）列表：仍写入渠道并强制 C */
     try {
-      await getPricingAb().setStickyAbc(u, pol.default_pricing_abc, 'agent_channel', true);
+      if (pool) {
+        await pool.execute(
+          `UPDATE users
+           SET sales_promo_channel = COALESCE(NULLIF(TRIM(sales_promo_channel), ''), ?)
+           WHERE username = ?`,
+          [ch, u]
+        );
+      }
+    } catch (ePromo) {
+      console.error('attachUserFromSalesChannel promo', ePromo);
+    }
+    forcedAbc = 'c';
+    pol = {
+      channel_id: ch,
+      owner_admin_username: '',
+      default_pricing_abc: 'c',
+      enabled: true,
+      note: ''
+    };
+  }
+  if (forcedAbc) {
+    try {
+      await getPricingAb().setStickyAbc(u, forcedAbc, 'agent_channel', true);
     } catch (eSticky) {}
   }
   try {
@@ -10176,6 +10231,43 @@ async function handleTaxGet(req, res) {
       return res.status(500).json({ code: 500, msg: String(e.message) });
     }
   }
+  if (action === 'list_issue_applications') {
+    var uidIssues = req.authUserId;
+    if (uidIssues == null || uidIssues === '') {
+      return res.status(400).json({ code: 400, msg: 'user_id required' });
+    }
+    try {
+      const connList = await pool.getConnection();
+      try {
+        const [issueRows] = await connList.execute(
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at
+           FROM tax_issue_applications
+           WHERE user_id = ?
+           ORDER BY created_at DESC, apply_time DESC
+           LIMIT 30`,
+          [String(uidIssues)]
+        );
+        var issueOut = (issueRows || []).map(function (r) {
+          return {
+            id: r.id != null ? String(r.id) : '',
+            apply_time: r.apply_time != null ? String(r.apply_time) : '',
+            period_start: r.period_start != null ? String(r.period_start) : '',
+            period_end: r.period_end != null ? String(r.period_end) : '',
+            record_no: r.record_no != null ? String(r.record_no) : '',
+            scope: r.scope != null ? String(r.scope) : '全国',
+            status: r.status != null ? String(r.status) : '制作成功',
+            query_code: r.query_code != null ? String(r.query_code) : ''
+          };
+        });
+        return res.json({ code: 200, data: { applications: issueOut } });
+      } finally {
+        connList.release();
+      }
+    } catch (eList) {
+      console.error(eList);
+      return res.status(500).json({ code: 500, msg: String(eList.message) });
+    }
+  }
   if (action !== 'records') {
     return res.status(400).json({ code: 400, msg: 'unknown action' });
   }
@@ -18124,12 +18216,9 @@ async function handlePublicResolveSalesChannel(req, res) {
   try {
     var ch = await resolveSalesChannelForRequest(req);
     var defaultPricingAbc = null;
-    if (ch && String(ch).toLowerCase() === 'abc') {
+    if (ch) {
       try {
-        var pol = await getAgentChannels().getEnabledChannelById(ch);
-        if (pol && pol.default_pricing_abc) {
-          defaultPricingAbc = pol.default_pricing_abc;
-        }
+        defaultPricingAbc = await resolveForcedAbcForSalesChannel(ch);
       } catch (ePol) {}
     }
     return res.json({
@@ -18182,13 +18271,12 @@ async function handlePublicInstallPackages(req, res) {
     var qrRef = hideXianyu ? '' : await getWechatPayQrcodeUrl();
     var salesAgentPub = salesAgentPublicPayload(await loadSalesAgentParsed());
     var defaultPricingAbc = '';
-    if (
-      salesCh &&
-      String(salesCh).toLowerCase() === 'abc' &&
-      ctx.channelPolicy &&
-      ctx.channelPolicy.default_pricing_abc
-    ) {
-      defaultPricingAbc = ctx.channelPolicy.default_pricing_abc;
+    if (salesCh) {
+      try {
+        defaultPricingAbc = (await resolveForcedAbcForSalesChannel(salesCh)) || '';
+      } catch (eForceAbc) {
+        defaultPricingAbc = '';
+      }
     }
     var body = {
       code: 200,

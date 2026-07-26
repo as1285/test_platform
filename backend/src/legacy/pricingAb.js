@@ -487,7 +487,7 @@ function createPricingAb(deps) {
   /**
    * 为用户解析可见 SKU 列表与变体。
    * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
-   * 仅渠道 abc 可强制支付方案（通常为 c）；无渠道强制时不接受客户端上报的 c。
+   * 命中代理专属渠道时强制（空配置按 C）；无渠道强制时不接受客户端上报的 c。
    */
   async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
     var cfg = await loadPricingAbParsed();

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260725-abc-c-only"></script>
+    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -756,12 +756,12 @@
                         } catch (eGo) {
                             goDownload = false;
                         }
-                        showToast(goDownload ? '注册成功，马上带你去下载' : '注册成功，去开通权益');
+                        showToast(goDownload ? '注册成功，马上带你去下载' : '注册成功');
                         setTimeout(function () {
                             if (goDownload) {
                                 window.location.href = 'install_guide.html?download=1#download';
                             } else {
-                                window.location.href = 'purchase.html?from=register';
+                                window.location.href = 'mine.html?from=register';
                             }
                         }, 450);
                         return;

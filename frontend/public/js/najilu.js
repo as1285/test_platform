@@ -294,7 +294,7 @@
   }
 
   function pushIssueToServer(app) {
-    if (typeof window.authFetch !== 'function' || !app) return;
+    if (typeof window.authFetch !== 'function' || !app) return Promise.resolve(null);
     var body = {
       action: 'log_issue_application',
       application: {
@@ -308,7 +308,7 @@
         query_code: String(app.query_code || '').substring(0, 32)
       }
     };
-    window
+    return window
       .authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -317,7 +317,60 @@
       .then(function (r) {
         return r.json();
       })
-      .catch(function () {});
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function fetchIssueApplicationsFromServer() {
+    if (typeof window.authFetch !== 'function') return Promise.resolve([]);
+    return window
+      .authFetch('api/tax?action=list_issue_applications')
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (j && j.code === 200 && j.data && Array.isArray(j.data.applications)) {
+          return j.data.applications;
+        }
+        return [];
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
+  /** 合并服务端开具记录到本地（保留本地已有 records 快照） */
+  function mergeServerApplications(localApps, serverApps) {
+    var byId = {};
+    (Array.isArray(localApps) ? localApps : []).forEach(function (app) {
+      if (app && app.id) byId[String(app.id)] = app;
+    });
+    (Array.isArray(serverApps) ? serverApps : []).forEach(function (s) {
+      if (!s || !s.id) return;
+      var id = String(s.id);
+      var prev = byId[id];
+      byId[id] = Object.assign({}, prev || {}, {
+        id: id,
+        apply_time: s.apply_time || (prev && prev.apply_time) || '',
+        period_start: s.period_start || (prev && prev.period_start) || '',
+        period_end: s.period_end || (prev && prev.period_end) || '',
+        record_no: s.record_no || (prev && prev.record_no) || '',
+        scope: s.scope || (prev && prev.scope) || '全国',
+        status: s.status || (prev && prev.status) || '制作成功',
+        query_code: s.query_code || (prev && prev.query_code) || '',
+        user: (prev && prev.user) || undefined,
+        records: (prev && prev.records) || undefined
+      });
+    });
+    return Object.keys(byId)
+      .map(function (k) {
+        return byId[k];
+      })
+      .sort(function (a, b) {
+        return String(b.apply_time || '') < String(a.apply_time || '') ? -1 : 1;
+      })
+      .slice(0, 30);
   }
 
   function maskId(id) {
@@ -386,7 +439,8 @@
   function fetchUserInfo() {
     var local = getLocalUser();
     if (typeof window.authFetch !== 'function') return Promise.resolve(local);
-    return authFetch('api/user?action=info')
+    return window
+      .authFetch('api/user?action=info')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.code === 200 && j.data) {
@@ -402,7 +456,10 @@
   }
 
   function fetchTaxRecords() {
-    return authFetch('api/tax?action=records')
+    if (typeof window.authFetch !== 'function') {
+      return Promise.reject(new Error('登录状态异常，请刷新页面后重试'));
+    }
+    return window.authFetch('api/tax?action=records')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.code === 200 && j.data && Array.isArray(j.data.records)) return j.data.records;
@@ -717,32 +774,54 @@
   function renderApplicationsPage() {
     document.title = '纳税记录申请记录';
     var apps = loadApplications();
-    var html = '<div class="record-page">' +
-      renderHeader('纳税记录申请记录', 'back') +
-      '<div class="record-tips">' +
-      '<div>温馨提示：</div>' +
-      '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
-      '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>；</div>' +
-      '<div>3.长按记录可删除。</div>' +
-      '</div><div class="application-list">';
+    function paint(list) {
+      var html =
+        '<div class="record-page">' +
+        renderHeader('纳税记录申请记录', 'back') +
+        '<div class="record-tips">' +
+        '<div>温馨提示：</div>' +
+        '<div>1.仅支持查询最近30天（含30天）内开具的纳税记录，如有需要，请重新开具；</div>' +
+        '<div>2.若您对纳税记录的内容有疑问，请<a href="#" style="color:#1677ff;text-decoration:none;">点此帮助</a>；</div>' +
+        '<div>3.长按记录可删除。</div>' +
+        '</div><div class="application-list">';
 
-    if (!apps.length) {
-      html += '<div class="empty-records">暂无申请记录</div>';
-    } else {
-      apps.forEach(function (app) {
-        html += '<div class="application-card" data-id="' + esc(app.id) + '">' +
-          '<div class="application-line"><span class="application-label">申请时间：</span><span class="application-time">' + esc(app.apply_time) + '</span></div>' +
-          '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' + esc(periodText(app.period_start, app.period_end)) + '</span><span class="application-status">' + esc(app.status || '制作成功') + '</span></div>' +
-          '<div class="application-line"><span class="application-label">开具范围：</span><span class="application-value">' + esc(app.scope || '全国') + '</span></div>' +
-          '<div class="application-actions">' +
-          renderApplicationActionBtn('preview', app.id, '预览', SVG_ICON_PREVIEW) +
-          renderApplicationActionBtn('save', app.id, '保存', SVG_ICON_SAVE) +
-          '</div></div>';
-      });
+      if (!list.length) {
+        html += '<div class="empty-records">暂无申请记录</div>';
+      } else {
+        list.forEach(function (app) {
+          html +=
+            '<div class="application-card" data-id="' +
+            esc(app.id) +
+            '">' +
+            '<div class="application-line"><span class="application-label">申请时间：</span><span class="application-time">' +
+            esc(app.apply_time) +
+            '</span></div>' +
+            '<div class="application-line"><span class="application-label">税款所属期：</span><span class="application-value">' +
+            esc(periodText(app.period_start, app.period_end)) +
+            '</span><span class="application-status">' +
+            esc(app.status || '制作成功') +
+            '</span></div>' +
+            '<div class="application-line"><span class="application-label">开具范围：</span><span class="application-value">' +
+            esc(app.scope || '全国') +
+            '</span></div>' +
+            '<div class="application-actions">' +
+            renderApplicationActionBtn('preview', app.id, '预览', SVG_ICON_PREVIEW) +
+            renderApplicationActionBtn('save', app.id, '保存', SVG_ICON_SAVE) +
+            '</div></div>';
+        });
+      }
+      html += '</div></div>';
+      document.body.innerHTML = html;
+      bindApplicationListEvents();
     }
-    html += '</div></div>';
-    document.body.innerHTML = html;
-    bindApplicationListEvents();
+
+    paint(apps);
+    fetchIssueApplicationsFromServer().then(function (serverApps) {
+      if (!serverApps || !serverApps.length) return;
+      var merged = mergeServerApplications(loadApplications(), serverApps);
+      saveApplications(merged);
+      paint(merged);
+    });
   }
 
   function bindApplicationListEvents() {
@@ -884,23 +963,54 @@
 
     initSlider();
 
+    function resetGenerateBtn() {
+      var verified = document.getElementById('sliderHandle');
+      var ok = verified && verified.classList.contains('verified');
+      btn.disabled = !ok;
+      btn.textContent = '生成纳税记录';
+    }
+
+    /* bfcache / 异常中断返回：按钮可能仍停在「正在生成…」且禁用，需复位 */
+    window.addEventListener('pageshow', function () {
+      btn.removeAttribute('data-generating');
+      resetGenerateBtn();
+    });
+    resetGenerateBtn();
+
     btn.addEventListener('click', function () {
       if (btn.disabled) return;
+      if (btn.getAttribute('data-generating') === '1') return;
+      btn.setAttribute('data-generating', '1');
       btn.disabled = true;
       btn.textContent = '正在生成...';
+      var navigated = false;
+      var safetyTimer = setTimeout(function () {
+        if (!navigated) {
+          btn.removeAttribute('data-generating');
+          resetGenerateBtn();
+          alert('生成超时，请检查网络后重试；若已开具成功请点「查看申请记录」');
+        }
+      }, 20000);
       Promise.all([fetchUserInfo(), fetchTaxRecords()])
         .then(function (ret) {
           var app = generateRecord(rangeStartInput.value, rangeEndInput.value, ret[0], ret[1]);
           var apps = loadApplications();
           apps.unshift(app);
           saveApplications(apps);
-          pushIssueToServer(app);
+          return pushIssueToServer(app).then(function () {
+            return app;
+          });
+        })
+        .then(function () {
+          navigated = true;
+          clearTimeout(safetyTimer);
           window.location.replace('najilu.html?view=records');
         })
         .catch(function (err) {
+          clearTimeout(safetyTimer);
+          btn.removeAttribute('data-generating');
           alert(err && err.message ? err.message : '生成失败');
-          btn.disabled = false;
-          btn.textContent = '生成纳税记录';
+          resetGenerateBtn();
         });
     });
 

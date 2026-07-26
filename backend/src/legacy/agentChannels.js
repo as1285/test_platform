@@ -1,5 +1,6 @@
 /**
  * 代理专属渠道：channel_id → 下属代理账号 + 默认支付 A/B/C
+ * 未显式配置 a/b 时一律强制 C（不再跟随增长分流）。
  */
 const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
 
@@ -20,7 +21,7 @@ function createAgentChannels(deps) {
       `CREATE TABLE IF NOT EXISTS agent_channels (
         channel_id VARCHAR(64) NOT NULL,
         owner_admin_username VARCHAR(64) NOT NULL,
-        default_pricing_abc VARCHAR(8) NOT NULL DEFAULT 'c',
+        default_pricing_abc VARCHAR(8) NOT NULL DEFAULT 'c' COMMENT 'a|b|c，空亦按 c（代理专属默认 C）',
         enabled TINYINT(1) NOT NULL DEFAULT 1,
         note VARCHAR(255) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,8 +43,24 @@ function createAgentChannels(deps) {
   function normalizeAbc(raw) {
     var s = String(raw == null ? '' : raw).trim().toLowerCase();
     if (s === 'a' || s === 'b' || s === 'c') return s;
-    if (s === '' || s === 'none' || s === '-') return '';
-    return 'c';
+    /* 空 / none / auto：历史「跟随分流」；专属渠道侧按 C 处理见 effectivePricingAbc */
+    if (
+      s === '' ||
+      s === 'none' ||
+      s === '-' ||
+      s === 'auto' ||
+      s === 'follow' ||
+      s === 'ab' ||
+      s === 'growth'
+    ) {
+      return '';
+    }
+    return '';
+  }
+
+  /** 专属渠道有效默认支付：未显式 a/b/c 时强制 C */
+  function effectivePricingAbc(raw) {
+    return normalizeAbc(raw) || 'c';
   }
 
   function normalizeOwner(raw) {
@@ -67,7 +84,7 @@ function createAgentChannels(deps) {
       return {
         channel_id: String(r.channel_id || ''),
         owner_admin_username: String(r.owner_admin_username || ''),
-        default_pricing_abc: normalizeAbc(r.default_pricing_abc) || 'c',
+        default_pricing_abc: effectivePricingAbc(r.default_pricing_abc),
         enabled: Number(r.enabled) === 1,
         note: r.note != null ? String(r.note) : '',
         created_at: r.created_at,
@@ -91,7 +108,7 @@ function createAgentChannels(deps) {
     return {
       channel_id: String(r.channel_id || ''),
       owner_admin_username: String(r.owner_admin_username || ''),
-      default_pricing_abc: normalizeAbc(r.default_pricing_abc) || 'c',
+      default_pricing_abc: effectivePricingAbc(r.default_pricing_abc),
       enabled: Number(r.enabled) === 1,
       note: r.note != null ? String(r.note) : ''
     };
@@ -137,8 +154,8 @@ function createAgentChannels(deps) {
   async function upsertChannel(input) {
     var channelId = sanitizeSalesChannelId(input && input.channel_id);
     var owner = normalizeOwner(input && input.owner_admin_username);
-    var abc = normalizeAbc(input && input.default_pricing_abc);
-    if (!abc) abc = 'c';
+    /* 未传或跟随分流 → 默认 C */
+    var abc = effectivePricingAbc(input && input.default_pricing_abc);
     var enabled = input && input.enabled === false ? 0 : 1;
     var note = normalizeNote(input && input.note);
     if (!channelId) {
@@ -231,7 +248,8 @@ function createAgentChannels(deps) {
     deleteChannel: deleteChannel,
     attachUserToChannel: attachUserToChannel,
     getUserChannelPolicy: getUserChannelPolicy,
-    normalizeAbc: normalizeAbc
+    normalizeAbc: normalizeAbc,
+    effectivePricingAbc: effectivePricingAbc
   };
 }
 
