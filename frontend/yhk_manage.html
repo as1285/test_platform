@@ -10,7 +10,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理</title>
     <style>
@@ -209,7 +209,7 @@
             }
 
             function postAction(action, payload) {
-                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : (function(url, opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(!h.Authorization&&!h.authorization){var t='';try{t=String(localStorage.getItem('token')||'').trim()}catch(e){}if(t)h.Authorization='Bearer '+t}return fetch(url,Object.assign({},opts,{headers:Object.assign({},h,opts.headers||{}),credentials:opts.credentials||'same-origin'}))});
                 return fetchFn('api/user', {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -260,7 +260,7 @@
                     }
                     return;
                 }
-                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : (function(url, opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(!h.Authorization&&!h.authorization){var t='';try{t=String(localStorage.getItem('token')||'').trim()}catch(e){}if(t)h.Authorization='Bearer '+t}return fetch(url,Object.assign({},opts,{headers:Object.assign({},h,opts.headers||{}),credentials:opts.credentials||'same-origin'}))});
                 fetchFn('api/user?action=bank_cards', { credentials: 'same-origin' })
                     .then(function (r) {
                         return r.json();

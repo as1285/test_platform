@@ -41,7 +41,11 @@ function createAgentChannels(deps) {
   }
 
   function normalizeAbc(raw) {
-    var s = String(raw == null ? '' : raw).trim().toLowerCase();
+    var s = String(raw == null ? '' : raw).trim();
+    try {
+      if (typeof s.normalize === 'function') s = s.normalize('NFKC');
+    } catch (eNfkc) {}
+    s = s.toLowerCase();
     if (s === 'a' || s === 'b' || s === 'c') return s;
     /* 空 / none / auto：历史「跟随分流」；专属渠道侧按 C 处理见 effectivePricingAbc */
     if (

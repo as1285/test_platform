@@ -130,10 +130,10 @@
     }
 
     function fetchTaxRecords() {
-        if (typeof authFetch !== 'function') {
+        if (typeof window.authFetch !== 'function') {
             return Promise.reject(new Error('请先登录'));
         }
-        return authFetch('api/tax?action=records')
+        return window.authFetch('api/tax?action=records')
             .then(function (r) {
                 return r.json();
             })

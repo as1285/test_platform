@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人信息</title>
     <style>
@@ -516,6 +516,34 @@
     <script>
         var lastTaxId = '';
 
+        /** 勿用裸 authFetch：部分 WebView 下未挂到全局会报 ReferenceError，导致改不了资料 */
+        function profileAuthFetch(url, opts) {
+            opts = opts || {};
+            if (typeof window.authFetch === 'function') {
+                return window.authFetch(url, opts);
+            }
+            var headers = { 'Content-Type': 'application/json' };
+            try {
+                if (typeof window.authHeaders === 'function') {
+                    headers = Object.assign(headers, window.authHeaders());
+                }
+            } catch (eHdr) {}
+            if (!headers.Authorization && !headers.authorization) {
+                var t = '';
+                try {
+                    t = String(localStorage.getItem('token') || '').trim();
+                } catch (eTok) {}
+                if (t) headers.Authorization = 'Bearer ' + t;
+            }
+            return fetch(
+                url,
+                Object.assign({}, opts, {
+                    headers: Object.assign({}, headers, opts.headers || {}),
+                    credentials: opts.credentials || 'same-origin'
+                })
+            );
+        }
+
         function requireProfileEdit() {
             if (
                 !window.ConversionGuide ||
@@ -649,7 +677,7 @@
         }
 
         function openRealNameEditor() {
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -690,7 +718,7 @@
 
         function openBirthDateEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -961,7 +989,7 @@
 
         function saveProfileFields(payload, onOk) {
             if (!requireProfileEdit()) return;
-            authFetch('api/user', {
+            profileAuthFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1001,7 +1029,7 @@
             var titles = { huji: '户籍详细地址', living: '经常居住地详细地址', contact: '联系地址详细地址' };
             document.getElementById('addressSheetTitle').textContent = titles[target] || '详细地址';
             var cur = '';
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -1094,7 +1122,7 @@
 
         function openEmailEditor() {
             if (!requireProfileEdit()) return;
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (r) {
                     return r.json();
                 })
@@ -1146,7 +1174,7 @@
                 return;
             }
 
-            authFetch('api/user?action=info')
+            profileAuthFetch('api/user?action=info')
                 .then(function (response) {
                     return response.json();
                 })

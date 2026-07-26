@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>找回账号密码</title>
     <style>
@@ -430,7 +430,7 @@
                         btn.disabled = true;
                         fetch('api/auth', {
                             method: 'POST',
-                            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                            headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'recover_by_identity', username: username, real_name: realName, tax_id: taxId })
                         })
                         .then(function (r) { return r.json(); })
@@ -451,7 +451,7 @@
                         btn.disabled = true;
                         fetch('api/auth', {
                             method: 'POST',
-                            headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+                            headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ action: 'recover_by_activation_code', activation_code: code })
                         })
                         .then(function (r) { return r.json(); })

@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope=".page-root"></script>
@@ -1244,7 +1244,7 @@
                 applyPurchaseWatermark(false);
             }
 
-            authFetch('api/user?action=info')
+            window.authFetch('api/user?action=info')
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
                     var d = res && res.code === 200 ? res.data : null;
@@ -1375,7 +1375,7 @@
 
             var fetchPromise = __shuimingRecordsInFlight[cacheKey];
             if (!fetchPromise) {
-                fetchPromise = authFetch(apiUrl)
+                fetchPromise = window.authFetch(apiUrl)
                     .then(function (response) {
                         return response.json();
                     })

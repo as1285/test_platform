@@ -1126,7 +1126,11 @@ async function attachUserFromSalesChannel(username, salesCh) {
   }
   if (forcedAbc) {
     try {
-      await getPricingAb().setStickyAbc(u, forcedAbc, 'agent_channel', true);
+      /* 管理端指定方案优先：登录挂渠道时不得覆盖 admin_force */
+      var existingSticky = await getPricingAb().getStickyAssignment(u);
+      if (!(existingSticky && existingSticky.source === 'admin_force')) {
+        await getPricingAb().setStickyAbc(u, forcedAbc, 'agent_channel', true);
+      }
     } catch (eSticky) {}
   }
   try {
@@ -17474,40 +17478,59 @@ async function handleAdminUserActivate(req, res) {
   }
 }
 
+/** 归一化支付方案 token：全角/大小写 → a|b|c */
+function normalizePricingAbcToken(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  try {
+    if (typeof s.normalize === 'function') s = s.normalize('NFKC');
+  } catch (eNfkc) {}
+  s = s.toLowerCase();
+  if (s === 'a' || s === 'control') return 'a';
+  if (s === 'b' || s === 'treatment') return 'b';
+  if (s === 'c') return 'c';
+  return '';
+}
+
 /** 管理端：指定账号支付方案 A/B/C（即刻生效，覆盖原 sticky / 代理渠道） */
 async function handleAdminUserPricingAbc(req, res) {
   var body = req.body || {};
   var target = body.username != null ? String(body.username).trim() : '';
-  var abc = body.abc != null ? String(body.abc).trim().toLowerCase() : '';
+  var abc = normalizePricingAbcToken(body.abc);
   if (!target) {
     return res.status(400).json({ code: 400, msg: '请填写账号' });
   }
-  if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
-    return res.status(400).json({ code: 400, msg: '方案须为 A / B / C' });
+  if (!abc) {
+    return res.status(400).json({ code: 400, msg: '方案须为 A / B / C（大小写均可）' });
   }
   if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
     return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
   }
   try {
     const conn = await pool.getConnection();
+    var canonicalUsername = target;
     try {
-      const [urows] = await conn.execute('SELECT id FROM users WHERE username = ? LIMIT 1', [target]);
+      const [urows] = await conn.execute(
+        'SELECT id, username FROM users WHERE username = ? LIMIT 1',
+        [target]
+      );
       if (!urows.length) {
         return res.status(404).json({ code: 404, msg: '用户不存在' });
       }
-      var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+      canonicalUsername = String(urows[0].username || target);
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
       if (!allowed) {
         return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
       }
     } finally {
       conn.release();
     }
-    var row = await getPricingAb().assignAbcForAdmin(target, abc);
+    var row = await getPricingAb().assignAbcForAdmin(canonicalUsername, abc);
     return res.json({
       code: 200,
-      msg: '已将「' + target + '」分配为方案 ' + String(abc).toUpperCase() + '（即刻生效）',
+      msg: '已将「' + canonicalUsername + '」分配为方案 ' + String(abc).toUpperCase() + '（即刻生效）',
       data: {
-        username: target,
+        username: canonicalUsername,
         abc: row && row.variant ? row.variant : abc,
         source: row && row.source ? row.source : 'admin_force',
         assigned_at: row && row.assigned_at ? row.assigned_at : null

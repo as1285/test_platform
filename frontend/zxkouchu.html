@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>专项附加扣除</title>
     <style>
@@ -458,7 +458,7 @@
             }
 
             function authJson(url, opts) {
-                var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+                var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : (function(url, opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(!h.Authorization&&!h.authorization){var t='';try{t=String(localStorage.getItem('token')||'').trim()}catch(e){}if(t)h.Authorization='Bearer '+t}return fetch(url,Object.assign({},opts,{headers:Object.assign({},h,opts.headers||{}),credentials:opts.credentials||'same-origin'}))});
                 return fetchFn(url, opts || {}).then(function (r) {
                     return r.json();
                 });
@@ -581,8 +581,8 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:
-                        typeof authHeaders === 'function'
-                            ? authHeaders()
+                        typeof window.authHeaders === 'function'
+                            ? window.authHeaders()
                             : { 'Content-Type': 'application/json' },
                     body: JSON.stringify(Object.assign({ action: action }, payload))
                 })
@@ -614,8 +614,8 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:
-                        typeof authHeaders === 'function'
-                            ? authHeaders()
+                        typeof window.authHeaders === 'function'
+                            ? window.authHeaders()
                             : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'delete_special_deduction_record',
@@ -649,8 +649,8 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers:
-                        typeof authHeaders === 'function'
-                            ? authHeaders()
+                        typeof window.authHeaders === 'function'
+                            ? window.authHeaders()
                             : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'update_special_deduction_record',

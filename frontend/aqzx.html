@@ -10,7 +10,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>安全中心</title>
     <style>
@@ -227,8 +227,8 @@
                 } catch (e) {}
             }
             loadFromStorage();
-            var fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
-            var headers = typeof authHeaders === 'function' ? authHeaders() : {};
+            var fetchFn = typeof window.authFetch === 'function' ? window.authFetch : (function(url, opts){opts=opts||{};var h=Object.assign({'Content-Type':'application/json'},opts.headers||{});if(!h.Authorization&&!h.authorization){var t='';try{t=String(localStorage.getItem('token')||'').trim()}catch(e){}if(t)h.Authorization='Bearer '+t}return fetch(url,Object.assign({},opts,{headers:Object.assign({},h,opts.headers||{}),credentials:opts.credentials||'same-origin'}))});
+            var headers = typeof window.authHeaders === 'function' ? window.authHeaders() : {};
             fetchFn('api/user?action=info', { headers: headers })
                 .then(function (r) {
                     return r.json();

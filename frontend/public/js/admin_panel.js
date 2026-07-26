@@ -6737,13 +6737,17 @@
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var pick = prompt(
-                                '为「' + name + '」分配支付方案（输入 a / b / c）：\nA=199永久  B=多档价  C=仅激活码',
-                                'a'
+                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=199永久  B=多档价  C=仅激活码',
+                                'A'
                             );
                             if (pick == null) return;
-                            var abc = String(pick).trim().toLowerCase();
+                            var abc = String(pick).trim();
+                            try {
+                                if (typeof abc.normalize === 'function') abc = abc.normalize('NFKC');
+                            } catch (eNfkc) {}
+                            abc = abc.toLowerCase();
                             if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
-                                alert('请输入 a、b 或 c');
+                                alert('请输入 A、B 或 C（大小写均可）');
                                 return;
                             }
                             if (

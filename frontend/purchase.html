@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-ios16pro-inset"></script>
+    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通权益</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -905,8 +905,8 @@
         if (typeof window.authHeaders === 'function') {
             return window.authHeaders();
         }
-        if (typeof authHeaders === 'function') {
-            return authHeaders();
+        if (typeof window.authHeaders === 'function') {
+            return window.authHeaders();
         }
         var h = { 'Content-Type': 'application/json' };
         var t = purchaseGetToken();
@@ -919,11 +919,8 @@
     function purchaseAuthFetch(url, opts) {
         opts = opts || {};
         if (typeof window.authFetch === 'function') {
-            return window.authFetch(url, opts);
-        }
-        if (typeof authFetch === 'function') {
-            return authFetch(url, opts);
-        }
+                    return window.authFetch(url, opts);
+                }
         var headers = Object.assign({}, purchaseAuthHeaders(), opts.headers || {});
         return fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'same-origin' }));
     }
@@ -1196,7 +1193,12 @@
                 var data = x.body && x.body.data ? x.body.data : {};
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
-                var abc = data.abc_variant || getPurchaseAbc() || '';
+                var abc = String(data.abc_variant || getPurchaseAbc() || '')
+                    .trim()
+                    .toLowerCase();
+                try {
+                    if (typeof abc.normalize === 'function') abc = abc.normalize('NFKC').toLowerCase();
+                } catch (eNfkc) {}
                 if (
                     (data.force_client_abc || data.forced_by_channel) &&
                     abc &&
@@ -1206,6 +1208,8 @@
                         abc,
                         data.abc_source || (data.forced_by_channel ? 'agent_channel' : 'admin_force')
                     );
+                } else if (abc && typeof window.forcePurchaseAbcAssignment === 'function' && data.abc_source === 'admin_force') {
+                    window.forcePurchaseAbcAssignment(abc, 'admin_force');
                 } else if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
                     window.setPurchaseAbcAssignment(abc, 'server_offer');
                 }

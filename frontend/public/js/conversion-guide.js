@@ -352,7 +352,7 @@
 
   function fetchProfileCounts(opts) {
     opts = opts || {};
-    if (!isLoggedIn() || typeof authFetch !== 'function') {
+    if (!isLoggedIn() || typeof window.authFetch !== 'function') {
       return Promise.resolve();
     }
     var cached = readProfileCache();
@@ -368,7 +368,7 @@
     if (profileFetchInFlight && !opts.force) {
       return profileFetchInFlight;
     }
-    profileFetchInFlight = authFetch('api/user?action=summary')
+    profileFetchInFlight = window.authFetch('api/user?action=summary')
       .then(function (r) {
         return r.json();
       })

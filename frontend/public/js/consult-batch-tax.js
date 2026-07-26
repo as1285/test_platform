@@ -1142,7 +1142,7 @@ function deleteBatchExampleTaxRecordsPromise(companies) {
     }
     return Promise.all(
         companies.map(function (company) {
-            return authFetch('api/tax', {
+            return window.authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1982,7 +1982,7 @@ function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
     var list = Array.isArray(records) ? records : [];
     var CHUNK = 100;
     function postOne(delIds, part) {
-        return authFetch('api/tax', {
+        return window.authFetch('api/tax', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3102,7 +3102,7 @@ function applyProfilePasteImport() {
     var chain = Promise.resolve();
     if (hasProfile) {
         chain = chain.then(function () {
-            return authFetch('api/user', {
+            return window.authFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(profilePayload)
@@ -3139,7 +3139,7 @@ function applyProfilePasteImport() {
 
     if (parsed.card_no && parsed.phone && parsed.phone.length === 11 && parsed.card_no.length >= 16) {
         chain = chain.then(function () {
-            return authFetch('api/user', {
+            return window.authFetch('api/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3342,7 +3342,7 @@ function postBatchTaxRecordsPromise(records) {
     var list = Array.isArray(records) ? records : [];
     var CHUNK = 100;
     function postOneChunk(part) {
-        return authFetch('api/tax', {
+        return window.authFetch('api/tax', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

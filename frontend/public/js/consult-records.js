@@ -35,7 +35,7 @@ function submitConsultActivateWithCode(code) {
     }
     fetch('api/auth', {
         method: 'POST',
-        headers: typeof authHeaders === 'function' ? authHeaders() : { 'Content-Type': 'application/json' },
+        headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'activate', code: code })
     })
         .then(function (r) {
@@ -102,7 +102,7 @@ function apiFetchRecords(opts) {
     if (window.__consultRecordsInFlight) {
         return window.__consultRecordsInFlight;
     }
-    window.__consultRecordsInFlight = authFetch('api/tax?action=records')
+    window.__consultRecordsInFlight = window.authFetch('api/tax?action=records')
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200 && data.data && Array.isArray(data.data.records)) {
@@ -169,7 +169,7 @@ function onSubmitRecord(e) {
                 o.tax_reported = computeSingleRecordTaxReported(o, list);
                 document.getElementById('f_tax_reported').value = o.tax_reported;
             }
-            return authFetch('api/tax', {
+            return window.authFetch('api/tax', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -309,7 +309,7 @@ function editRecord(id) {
 
 function deleteRecord(id) {
     if (!confirm('确定删除？删除后可在回收站恢复或导出。')) return;
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -335,7 +335,7 @@ function deleteRecord(id) {
 
 function deleteAllTaxRecords() {
     if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复或导出。')) return;
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -371,7 +371,7 @@ function deleteTaxRecordsByYear() {
         return;
     }
     if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -402,7 +402,7 @@ function dedupeTaxRecords() {
     ) {
         return;
     }
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -462,7 +462,7 @@ function closeTaxRecycleBin() {
 
 
 function apiFetchDeletedRecords() {
-    return authFetch('api/tax?action=deleted_records')
+    return window.authFetch('api/tax?action=deleted_records')
         .then(function (r) {
             return r.json();
         })
@@ -498,7 +498,7 @@ function openTaxRecycleBin() {
 }
 
 function restoreDeletedTaxRecord(id) {
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -540,7 +540,7 @@ function restoreDeletedTaxRecordsByCompany() {
     if (!confirm('确定恢复扣缴单位「' + company + '」下的 ' + n + ' 条记录？')) {
         return;
     }
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

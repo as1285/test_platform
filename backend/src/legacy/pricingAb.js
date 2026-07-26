@@ -408,8 +408,8 @@ function createPricingAb(deps) {
         [u]
       );
       if (!rows.length) return null;
-      var v = String(rows[0].variant || '').toLowerCase();
-      if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+      var v = normalizeAbcToken(rows[0].variant);
+      if (!v) return null;
       return {
         variant: v,
         source: String(rows[0].source || '').substring(0, 32),
@@ -427,10 +427,22 @@ function createPricingAb(deps) {
     return row ? row.variant : null;
   }
 
+  function normalizeAbcToken(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    try {
+      if (typeof s.normalize === 'function') s = s.normalize('NFKC');
+    } catch (eNfkc) {}
+    s = s.toLowerCase();
+    if (s === 'a' || s === 'control') return 'a';
+    if (s === 'b' || s === 'treatment') return 'b';
+    if (s === 'c') return 'c';
+    return '';
+  }
+
   async function setStickyAbc(username, abc, source, force) {
     var u = String(username || '').trim();
-    var v = String(abc || '').toLowerCase();
-    if (!u || u === 'guest' || (v !== 'a' && v !== 'b' && v !== 'c') || !pool) return null;
+    var v = normalizeAbcToken(abc);
+    if (!u || u === 'guest' || !v || !pool) return null;
     const conn = await pool.getConnection();
     try {
       await ensureAssignmentsTable(conn);
@@ -464,14 +476,14 @@ function createPricingAb(deps) {
   /** 管理端指定账号方案：强制覆盖，优先于代理渠道锁定 */
   async function assignAbcForAdmin(username, abc) {
     var u = String(username || '').trim();
-    var v = String(abc || '').toLowerCase();
+    var v = normalizeAbcToken(abc);
     if (!u || u === 'guest') {
       var err = new Error('请填写有效账号');
       err.statusCode = 400;
       throw err;
     }
-    if (v !== 'a' && v !== 'b' && v !== 'c') {
-      var err2 = new Error('方案须为 a / b / c');
+    if (!v) {
+      var err2 = new Error('方案须为 a / b / c（大小写均可）');
       err2.statusCode = 400;
       throw err2;
     }
@@ -499,14 +511,14 @@ function createPricingAb(deps) {
       } catch (eForce) {
         forcedAbc = null;
       }
-      forcedAbc = String(forcedAbc || '').toLowerCase();
-      if (forcedAbc !== 'a' && forcedAbc !== 'b' && forcedAbc !== 'c') {
+      forcedAbc = normalizeAbcToken(forcedAbc);
+      if (!forcedAbc) {
         forcedAbc = null;
       }
     }
     function acceptPreferredAbc(pref) {
-      var p = String(pref || '').toLowerCase();
-      if (p !== 'a' && p !== 'b' && p !== 'c') return '';
+      var p = normalizeAbcToken(pref);
+      if (!p) return '';
       /* C 仅允许渠道 abc / 管理端强制；客户端误 sticky 的 c 不采纳 */
       if (p === 'c' && !forcedAbc) return '';
       return p;

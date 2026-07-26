@@ -244,7 +244,7 @@ function applyFeedbackConfigData(data) {
 }
 
 function loadFeedbackWechatPayQr() {
-    return authFetch('api/feedback?action=config')
+    return window.authFetch('api/feedback?action=config')
         .then(function (r) {
             return r.json();
         })
@@ -274,7 +274,7 @@ function loadFeedbackWechatPayQr() {
             openFeedbackQqGroupUrl(feedbackQqGroupUrl);
             return;
         }
-        authFetch('api/feedback?action=config')
+        window.authFetch('api/feedback?action=config')
             .then(function (r) {
                 return r.json();
             })
@@ -323,7 +323,7 @@ function loadFeedbackWechatPayQr() {
             doCopy(feedbackXianyuPurchaseUrl);
             return;
         }
-        authFetch('api/feedback?action=config')
+        window.authFetch('api/feedback?action=config')
             .then(function (r) {
                 return r.json();
             })
@@ -381,7 +381,7 @@ function loadUserInfoFromApi() {
         return;
     }
     
-    authFetch('api/user?action=summary')
+    window.authFetch('api/user?action=summary')
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200) {
@@ -434,7 +434,7 @@ function refreshConsultInstallPackageUrls() {
         typeof getPublicInstallPackagesUrl === 'function'
             ? getPublicInstallPackagesUrl()
             : '/api/public/install-packages';
-    return authFetch(url, { credentials: 'same-origin' })
+    return window.authFetch(url, { credentials: 'same-origin' })
         .then(function (r) {
             return r.json();
         })
@@ -741,7 +741,7 @@ function confirmDeleteTaxRecordsByCompany() {
     if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复或导出。')) {
         return;
     }
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -850,7 +850,7 @@ function restoreAllDeletedTaxRecords() {
     if (!confirm('确定恢复回收站中的全部 ' + taxRecycleBinCache.length + ' 条记录？')) {
         return;
     }
-    authFetch('api/tax', {
+    window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1917,7 +1917,7 @@ function apiFetchEmployers(opts) {
     if (window.__consultEmployersInFlight) {
         return window.__consultEmployersInFlight;
     }
-    window.__consultEmployersInFlight = authFetch('api/user?action=employers')
+    window.__consultEmployersInFlight = window.authFetch('api/user?action=employers')
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200 && data.data && data.data.employers) {
@@ -2060,7 +2060,7 @@ function onSubmitEmployer(e) {
     if (employerEditId) {
         data.employer_id = employerEditId;
     }
-    authFetch('api/user', {
+    window.authFetch('api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(data)
@@ -2182,7 +2182,7 @@ function editEmployer(id) {
 
 function deleteEmployer(id) {
     if (!confirm('确定要删除这条任职受雇记录吗？')) return;
-    authFetch('api/user', {
+    window.authFetch('api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2227,7 +2227,7 @@ function copyEmployer(id) {
             leave_date: item.leave_date || '',
             status: item.status === '0' || item.status === 0 || item.status === '离职' ? '0' : '1'
         };
-        authFetch('api/user', {
+        window.authFetch('api/user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(data)
@@ -2258,7 +2258,7 @@ function escapeHtml(s) {
 
 function apiFetchMessages() {
     var uid = currentUserId();
-    return authFetch('api/message?action=list')
+    return window.authFetch('api/message?action=list')
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200 && Array.isArray(data.data)) {
@@ -2310,7 +2310,7 @@ function onSubmitMessage(e) {
         company_name: document.getElementById('mf_company_name').value.trim(),
         msg_date: document.getElementById('mf_msg_date').value
     };
-    authFetch('api/message', {
+    window.authFetch('api/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -2333,7 +2333,7 @@ function onSubmitMessage(e) {
 
 function deleteMessage(id) {
     if (!confirm('确定删除？')) return;
-    authFetch('api/message', {
+    window.authFetch('api/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2416,7 +2416,7 @@ function renderFeedbackListFromArray(items) {
 }
 
 function refreshFeedbackList() {
-    return authFetch('api/feedback?action=list')
+    return window.authFetch('api/feedback?action=list')
         .then(function (r) {
             return r.json();
         })
@@ -2452,7 +2452,7 @@ function submitUserFeedback() {
         showMsg('请填写反馈内容', false);
         return;
     }
-    authFetch('api/feedback', {
+    window.authFetch('api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ feedback_type: type, content: content })
