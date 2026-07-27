@@ -15,7 +15,7 @@ app.get('/api/admin/me', mw.requireAdminAuth, h.handleAdminMe);
 app.get(
   '/api/admin/settings',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance', 'sales-contacts']),
+  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']),
   h.handleAdminSettingsGet
 );
 app.get(
@@ -39,7 +39,7 @@ app.post(
 app.post(
   '/api/admin/upload-asset',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['install-guide', 'appearance', 'sales-contacts']),
+  mw.requireAdminAnyMenu(['install-guide', 'appearance']),
   function (req, res, next) {
     mw.adminUpload.single('file')(req, res, function (err) {
       if (err) {
@@ -53,7 +53,7 @@ app.post(
 app.post(
   '/api/admin/settings',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance', 'sales-contacts']),
+  mw.requireAdminAnyMenu(['settings', 'install-guide', 'appearance']),
   h.handleAdminSettingsPost
 );
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeletedUsers);
@@ -125,6 +125,12 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminMenu('install-guide-stats'),
   h.handleAdminInstallGuideStats
+);
+app.get(
+  '/api/admin/analytics/share-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('share-stats'),
+  h.handleAdminShareStats
 );
 app.get(
   '/api/admin/analytics/install-track-stats',
@@ -216,7 +222,13 @@ app.get(
   mw.requireAdminMenu('activated-user-analysis'),
   h.handleAdminActivatedUserAnalysisBehaviorPath
 );
-app.get('/api/admin/user-tax-records', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'guest-users']), h.handleAdminUserTaxRecords);
+app.get('/api/admin/user-tax-records', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'guest-users', 'tax-records-edit']), h.handleAdminUserTaxRecords);
+app.post(
+  '/api/admin/user-tax-records',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('tax-records-edit'),
+  h.handleAdminUserTaxRecordsWrite
+);
 app.post('/api/admin/issue-code', mw.requireAdminAuth, mw.requireAdminMenu('codes'), h.handleAdminIssueCode);
 app.post(
   '/api/admin/issue-code-batch',

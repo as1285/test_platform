@@ -1,0 +1,384 @@
+/* Admin batch tax — all page styles scoped to #adminTaxBatchRoot (never leak into admin shell) */
+#adminTaxBatchRoot {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-primary-bg: #eff6ff;
+  --color-primary-border: #93c5fd;
+  --color-surface: #fff;
+  --color-surface-alt: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-text-placeholder: #94a3b8;
+  --color-danger: #dc2626;
+  --color-success-bg: #d1fae5;
+  --color-danger-bg: #fee2e2;
+  --color-warning-bg: #fffbeb;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 8px 20px rgba(0,0,0,.08);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,.18);
+  --radius-sm: 8px;
+  --radius-lg: 14px;
+  --transition-fast: .15s ease;
+  --transition-normal: .2s ease;
+  max-width: 720px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+#adminTaxBatchRoot[hidden] { display: none !important; }
+#adminTaxBatchRoot .card { background: transparent; border: none; box-shadow: none; padding: 0; }
+#adminTaxBatchMsg { margin: 0 0 12px; }
+#adminTaxBatchRoot .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+#adminTaxBatchRoot .form-row .form-group { flex: 1 1 140px; min-width: 0; margin-bottom: 10px; }
+
+/* Force modals closed unless .is-open — survives any nesting mistakes */
+.batch-ms-modal-root:not(.is-open),
+.consult-strong-alert-root:not(.is-open) {
+  display: none !important;
+  pointer-events: none !important;
+}
+.batch-ms-modal-root.is-open,
+.consult-strong-alert-root.is-open {
+  display: flex !important;
+  pointer-events: auto !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.consult-strong-alert-root.is-open { z-index: 10060 !important; }
+
+#adminTaxBatchRoot .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border-light);
+    letter-spacing: -0.01em;
+}
+#adminTaxBatchRoot .card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+#adminTaxBatchRoot .card-title-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ===== 表单系统（仅批量录入根节点） ===== */
+#adminTaxBatchRoot .form-group { margin-bottom: 14px; }
+#adminTaxBatchRoot .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+}
+#adminTaxBatchRoot .form-group input,
+#adminTaxBatchRoot .form-group select,
+#adminTaxBatchRoot .form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    -webkit-appearance: none;
+    appearance: none;
+}
+#adminTaxBatchRoot .form-group input::placeholder,
+#adminTaxBatchRoot .form-group textarea::placeholder {
+    color: var(--color-text-placeholder);
+}
+#adminTaxBatchRoot .form-group input:focus,
+#adminTaxBatchRoot .form-group select:focus,
+#adminTaxBatchRoot .form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+#adminTaxBatchRoot .form-group input[readonly] {
+    color: var(--color-text-muted);
+    background: var(--color-surface-alt);
+    cursor: not-allowed;
+}
+#adminTaxBatchRoot .form-group input[readonly]:focus {
+    border-color: var(--color-border);
+    box-shadow: none;
+}
+
+#adminTaxBatchRoot .form-row.form-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+@media (max-width: 480px) {
+    #adminTaxBatchRoot .form-row.form-row-grid { grid-template-columns: 1fr; }
+}
+
+/* ===== 按钮系统（仅批量录入） ===== */
+#adminTaxBatchRoot .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1.4;
+}
+#adminTaxBatchRoot .btn:active { transform: scale(0.97); }
+#adminTaxBatchRoot .btn-primary {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+}
+#adminTaxBatchRoot .btn-primary:active {
+    background: var(--color-primary-dark);
+}
+#adminTaxBatchRoot .btn-danger {
+    background: var(--color-danger);
+    color: #fff;
+    padding: 7px 12px;
+    font-size: 12px;
+}
+#adminTaxBatchRoot .btn-sm { padding: 7px 14px; font-size: 13px; }
+#adminTaxBatchRoot .btn-default {
+    background: var(--color-surface);
+    color: var(--color-primary);
+    border: 1.5px solid var(--color-primary-border);
+    padding: 7px 14px;
+    font-size: 13px;
+}
+#adminTaxBatchRoot .btn-default:active {
+    background: var(--color-primary-bg);
+}
+#adminTaxBatchRoot .btn-secondary {
+    background: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+    border: 1.5px solid var(--color-border);
+    padding: 7px 14px;
+    font-size: 13px;
+}
+#adminTaxBatchRoot .btn-block {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ===== 消息提示 ===== */
+#adminTaxBatchRoot .msg {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 500;
+}
+#adminTaxBatchRoot .msg-success { background: var(--color-success-bg); color: #065f46; }
+#adminTaxBatchRoot .msg-error { background: var(--color-danger-bg); color: #991b1b; }
+
+/* ===== 列表项 ===== */
+
+#adminTaxBatchRoot .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }
+#adminTaxBatchRoot .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }
+#adminTaxBatchRoot .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; }
+#adminTaxBatchRoot .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
+#adminTaxBatchRoot .batch-tax-more-wrap { position: relative; flex: 1 1 calc(33.33% - 6px); min-width: 0; }
+#adminTaxBatchRoot .batch-tax-more-wrap > .btn { width: 100%; }
+#adminTaxBatchRoot .batch-tax-more-menu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 40;
+    min-width: 148px; background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: 10px; box-shadow: var(--shadow-md); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+#adminTaxBatchRoot .batch-tax-more-menu[hidden] { display: none !important; }
+#adminTaxBatchRoot .batch-tax-more-item {
+    border: none; background: transparent; text-align: left; padding: 10px 12px; border-radius: 8px;
+    font-size: 13px; color: var(--color-text); cursor: pointer; font-family: inherit;
+}
+#adminTaxBatchRoot .batch-tax-more-item:active { background: var(--color-surface-alt); }
+#adminTaxBatchRoot .batch-tax-more-item.is-danger { color: var(--color-danger); }
+#adminTaxBatchRoot .card-title-actions .batch-tax-more-wrap { flex: 0 0 auto; }
+#adminTaxBatchRoot .batch-tax-card-head { margin-bottom: 4px; }
+#adminTaxBatchRoot .batch-tax-collapse-btn {
+    border: none; background: transparent; color: var(--color-primary); font-size: 13px;
+    font-weight: 500; padding: 4px 6px; cursor: pointer; font-family: inherit;
+}
+#adminTaxBatchRoot .batch-tax-empty {
+    text-align: center; padding: 16px 12px 18px; margin-bottom: 12px;
+    background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); border-radius: 12px;
+}
+#adminTaxBatchRoot .batch-tax-empty-title { font-size: 15px; font-weight: 600; color: var(--color-text); margin: 0 0 6px; }
+#adminTaxBatchRoot .batch-tax-empty-desc { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 12px; line-height: 1.45; }
+#adminTaxBatchRoot .batch-tax-empty-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+#adminTaxBatchRoot #batchTaxCard.is-collapsed #batchTaxCardBody { display: none; }
+#adminTaxBatchRoot .consult-advanced-card { padding: 0; overflow: hidden; }
+#adminTaxBatchRoot .consult-advanced-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#adminTaxBatchRoot .consult-advanced-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#adminTaxBatchRoot .consult-advanced-card:not(.is-collapsed) .consult-advanced-toggle-icon { transform: rotate(180deg); }
+#adminTaxBatchRoot .consult-advanced-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--color-border-light); }
+#adminTaxBatchRoot .consult-advanced-card:not(.is-collapsed) .consult-advanced-body { display: block; }
+#taxRecordsListCard { scroll-margin-top: 56px; }
+#adminTaxBatchRoot .batch-tax-actions { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
+#adminTaxBatchRoot .batch-tax-actions .btn-primary { box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
+#adminTaxBatchRoot .batch-bonus-only-btn { background: transparent; border: none; color: var(--color-text-secondary); font-size: 13px; font-weight: 500; padding: 8px; order: 2; }
+#adminTaxBatchRoot .batch-tax-actions #batch_submit_employments_btn, #adminTaxBatchRoot .batch-tax-actions #batch_update_employments_btn { order: 1; }
+#adminTaxBatchRoot .batch-bonus-only-btn:active { color: var(--color-primary); }
+#adminTaxBatchRoot .batch-add-emp-btn { margin: 0 0 12px; background: transparent; border: 1.5px dashed var(--color-border); color: var(--color-primary); font-weight: 500; border-radius: 10px; padding: 10px; }
+#adminTaxBatchRoot .batch-add-emp-btn:active { background: var(--color-surface-alt); }
+#adminTaxBatchRoot .batch-edit-banner { font-size: 12px; line-height: 1.5; color: #b45309; background: var(--color-warning-bg); border: 1px solid #fed7aa; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+#adminTaxBatchRoot #batchTaxCard.is-edit-mode { border: 1px solid var(--color-primary-border); box-shadow: 0 0 0 1px rgba(59,130,246,0.12); }
+
+/* 工作经历行 */
+#adminTaxBatchRoot .batch-emp-row { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: var(--color-surface); box-shadow: var(--shadow-xs); }
+#adminTaxBatchRoot .batch-emp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border-light); }
+#adminTaxBatchRoot .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
+#adminTaxBatchRoot .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
+#adminTaxBatchRoot .batch-emp-remove-btn:active { opacity: 0.7; }
+#adminTaxBatchRoot .batch-emp-optional-meta, #adminTaxBatchRoot .batch-emp-deduct-meta { margin-bottom: 6px; }
+#adminTaxBatchRoot .batch-emp-optional-toggle, #adminTaxBatchRoot .batch-emp-deduct-toggle {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
+    font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
+}
+#adminTaxBatchRoot .batch-emp-optional-toggle:active, #adminTaxBatchRoot .batch-emp-deduct-toggle:active { opacity: 0.92; }
+#adminTaxBatchRoot .batch-emp-optional-toggle-icon, #adminTaxBatchRoot .batch-emp-deduct-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#adminTaxBatchRoot .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon, #adminTaxBatchRoot .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon { transform: rotate(180deg); }
+#adminTaxBatchRoot .batch-emp-optional-body, #adminTaxBatchRoot .batch-emp-deduct-body { display: none; }
+#adminTaxBatchRoot .batch-emp-optional-meta.is-open .batch-emp-optional-body, #adminTaxBatchRoot .batch-emp-deduct-meta.is-open .batch-emp-deduct-body { display: block; }
+
+/* 年月输入 */
+#adminTaxBatchRoot .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }
+#adminTaxBatchRoot .batch-ym-inline input.batch-ym-field { flex: 1 1 0; min-width: 0; min-height: 42px; font-size: 15px; padding: 10px 12px; touch-action: manipulation; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); -webkit-appearance: none; appearance: none; }
+#adminTaxBatchRoot .batch-ym-inline input.batch-emp-sm, #adminTaxBatchRoot .batch-ym-inline input.batch-emp-em { flex: 0 0 72px; width: 72px; text-align: center; }
+#adminTaxBatchRoot .batch-ym-inline input.batch-ym-field:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+
+@media (pointer: coarse) {
+    #adminTaxBatchRoot .form-group select,
+    #adminTaxBatchRoot .form-group input[type="date"],
+    #adminTaxBatchRoot .form-group input[type="number"] { min-height: 44px; font-size: 16px; touch-action: manipulation; }
+    #adminTaxBatchRoot .form-group select { padding: 10px 32px 10px 12px; -webkit-appearance: menulist; appearance: menulist; }
+}
+
+#adminTaxBatchRoot .batch-emp-month-salary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+#adminTaxBatchRoot .batch-emp-month-salary-badge { font-size: 12px; color: var(--color-primary); }
+#adminTaxBatchRoot .batch-deduct-calc { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--color-primary-bg); border: 1px dashed var(--color-primary-border); }
+#adminTaxBatchRoot .batch-deduct-calc-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+
+/* ===== 个税计算表 / 公式 ===== */
+#adminTaxBatchRoot #taxFormulaCard { padding: 0; overflow: hidden; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-toggle {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px;
+    border: none; background: var(--color-surface); font-size: 15px; font-weight: 700; color: var(--color-text);
+    cursor: pointer; -webkit-tap-highlight-color: transparent; text-align: left;
+}
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#adminTaxBatchRoot #taxFormulaCard.is-open .tax-formula-toggle-icon { transform: rotate(180deg); }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--color-border-light); }
+#adminTaxBatchRoot #taxFormulaCard.is-open .tax-formula-body { display: block; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-sec { margin-top: 12px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-sec-title { font-size: 13px; font-weight: 600; color: var(--color-primary); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-sec-title::before { content: ''; width: 3px; height: 12px; background: var(--color-primary); border-radius: 2px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-box { background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.65; margin-bottom: 8px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-box code,
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-box .eq { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--color-text); background: var(--color-surface); border-radius: 6px; padding: 8px 10px; margin: 6px 0; border: 1px solid var(--color-border); word-break: break-all; }
+#adminTaxBatchRoot #taxFormulaCard .tax-formula-note { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0; }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid var(--color-border); }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 300px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table th,
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--color-border-light); white-space: nowrap; }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table th { background: var(--color-surface-alt); color: var(--color-text-secondary); font-weight: 600; }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table tr:last-child td { border-bottom: none; }
+#adminTaxBatchRoot #taxFormulaCard .tax-rate-table td { color: var(--color-text-secondary); }
+#adminTaxBatchRoot #taxFormulaCard .tax-try-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-try-row label { display: block; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+#adminTaxBatchRoot #taxFormulaCard .tax-try-row input { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; background: var(--color-surface); }
+#adminTaxBatchRoot #taxFormulaCard .tax-try-result { margin-top: 10px; padding: 10px 12px; background: var(--color-primary-bg); border-radius: 10px; font-size: 13px; color: var(--color-primary-dark); line-height: 1.5; }
+#adminTaxBatchRoot #taxFormulaCard .tax-try-result strong { color: var(--color-primary); font-size: 16px; }
+
+/* ===== 弹窗系统（独立根节点，自带变量） ===== */
+.batch-ms-modal-root,
+.consult-strong-alert-root {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-primary-bg: #eff6ff;
+  --color-primary-border: #93c5fd;
+  --color-surface: #fff;
+  --color-surface-alt: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-danger: #dc2626;
+  --shadow-xl: 0 20px 40px rgba(0,0,0,.18);
+  --radius-lg: 14px;
+  --radius-sm: 8px;
+}
+.batch-ms-modal-root { position: fixed; inset: 0; z-index: 10050; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+.batch-ms-modal-root.is-open { display: flex; }
+.batch-ms-modal-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+.batch-ms-modal-panel { position: relative; width: 100%; max-width: 420px; max-height: calc(100vh - 32px); background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; }
+.batch-ms-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); font-size: 15px; font-weight: 700; color: var(--color-text); }
+.batch-ms-modal-head button { border: none; background: none; font-size: 22px; line-height: 1; color: var(--color-text-muted); cursor: pointer; padding: 0 4px; }
+.batch-ms-modal-hint { padding: 10px 16px 0; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+.batch-ms-modal-scroll { flex: 1; overflow-y: auto; padding: 10px 16px; -webkit-overflow-scrolling: touch; }
+.batch-ms-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.batch-ms-row label { flex: 0 0 92px; font-size: 13px; color: var(--color-text-secondary); }
+.batch-ms-row input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+.batch-ms-modal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; padding: 12px 16px; border-top: 1px solid var(--color-border-light); background: var(--color-surface-alt); }
+.batch-ms-modal-footer .btn-primary,
+.consult-strong-alert-root .btn-primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.batch-ms-modal-footer .btn-secondary,
+.batch-ms-modal-footer .btn-sm {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+#batchMsModalClear { margin-right: auto; }
+
+.tax-paste-import-textarea { width: 100%; box-sizing: border-box; min-height: 220px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+.tax-paste-import-preview { margin: 0 0 10px; padding: 10px 12px; background: var(--color-surface-alt); border-radius: 8px; font-size: 13px; color: var(--color-text); max-height: 160px; overflow: auto; white-space: pre-wrap; word-break: break-word; }

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -14,7 +14,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#2286ee">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>我的</title>
+    <title>我的 · 个人所得税</title>
+    <meta name="description" content="模拟器APP个人中心，登录后管理资料与服务。">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="模拟器APP">
+    <meta property="og:description" content="模拟器APP个人中心，登录后管理资料与服务。">
+    <meta property="og:image" content="/grdb.jpg">
+    <meta property="og:url" content="/mine.html?from=share">
+    <meta name="twitter:card" content="summary">
+    <meta itemprop="name" content="模拟器APP">
+    <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
+    <meta itemprop="image" content="/grdb.jpg">
     <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
@@ -1045,7 +1055,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 我的页分享：头图右上角，保存二维码去微信后返回才隐藏 */
+        /* 我的页分享：头图右上角；分享成功后隐藏 */
         .mine-share-btn {
             position: fixed;
             top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
@@ -1103,6 +1113,19 @@
             height: auto;
             object-fit: contain;
             display: block;
+        }
+        .mine-share-link-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
+        .mine-share-link-actions .activate-modal-btn {
+            width: 100%;
+            margin: 0;
+        }
+        .mine-share-poster-block[hidden] {
+            display: none !important;
         }
         .mine-share-tip {
             margin: 0 0 12px;
@@ -1170,7 +1193,7 @@
             <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
         </div>
 
-        <button type="button" class="mine-share-btn" id="mineShareBtn" hidden aria-label="分享二维码到微信">
+        <button type="button" class="mine-share-btn" id="mineShareBtn" aria-label="分享给好友">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 <path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1252,14 +1275,23 @@
     <div id="mineShareModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineShareModalTitle">
         <div class="activate-modal-mask" id="mineShareModalMask"></div>
         <div class="activate-modal-panel mine-share-modal-panel">
-            <p class="activate-modal-title" id="mineShareModalTitle">分享下载给好友</p>
-            <p class="mine-share-tip" id="mineShareTip">下方海报已含说明文案与下载二维码。保存后发到微信，好友扫码即可下载；从微信返回本应用后，分享入口会自动关闭。</p>
-            <div class="mine-share-qr-wrap" id="mineShareQrWrap">
-                <span style="color:#999;font-size:13px;">加载中…</span>
+            <p class="activate-modal-title" id="mineShareModalTitle">分享给好友</p>
+            <p class="mine-share-tip" id="mineShareTip">复制或系统分享链接，粘贴到微信后好友可直接打开。也可保存下载海报扫码安装。</p>
+            <div class="mine-share-link-actions">
+                <button type="button" class="activate-modal-btn primary" id="btnMineShareHome">分享首页</button>
+                <button type="button" class="activate-modal-btn primary" id="btnMineShareMine">分享我的</button>
+                <button type="button" class="activate-modal-btn" id="btnMineSharePoster">保存下载海报</button>
+            </div>
+            <div class="mine-share-poster-block" id="mineSharePosterBlock" hidden>
+                <div class="mine-share-qr-wrap" id="mineShareQrWrap">
+                    <span style="color:#999;font-size:13px;">加载中…</span>
+                </div>
+                <div class="activate-modal-actions">
+                    <button type="button" class="activate-modal-btn primary" id="btnMineShareSave">保存并去微信</button>
+                </div>
             </div>
             <div class="activate-modal-actions">
                 <button type="button" class="activate-modal-btn" id="btnMineShareCancel">取消</button>
-                <button type="button" class="activate-modal-btn primary" id="btnMineShareSave">保存并去微信</button>
             </div>
         </div>
     </div>
@@ -2213,6 +2245,9 @@
                         tax_count: guestTaxRecordCountHint()
                     });
                 }
+                if (typeof window.trackShareDownloadClick === 'function') {
+                    window.trackShareDownloadClick(source || 'mine_download');
+                }
                 window.location.href = 'install_guide.html?download=1#download';
             }
 
@@ -2252,8 +2287,12 @@
                 var btn = document.getElementById('mineShareBtn');
                 var modal = document.getElementById('mineShareModal');
                 var qrWrap = document.getElementById('mineShareQrWrap');
+                var posterBlock = document.getElementById('mineSharePosterBlock');
                 var btnSave = document.getElementById('btnMineShareSave');
                 var btnCancel = document.getElementById('btnMineShareCancel');
+                var btnShareHome = document.getElementById('btnMineShareHome');
+                var btnShareMine = document.getElementById('btnMineShareMine');
+                var btnSharePoster = document.getElementById('btnMineSharePoster');
                 var mask = document.getElementById('mineShareModalMask');
                 if (!btn || !modal) return;
 
@@ -2284,14 +2323,13 @@
                     }
                 }
 
-                function markSharePending() {
-                    try {
-                        localStorage.setItem(SHARE_PENDING_KEY, '1');
-                    } catch (e) {}
-                }
-
                 function hideShareBtn() {
-                    btn.hidden = true;
+                    try {
+                        btn.hidden = true;
+                        btn.setAttribute('hidden', '');
+                    } catch (e) {
+                        btn.hidden = true;
+                    }
                 }
 
                 function showShareBtnIfNeeded() {
@@ -2299,30 +2337,221 @@
                         hideShareBtn();
                         return;
                     }
-                    btn.hidden = false;
+                    try {
+                        btn.hidden = false;
+                        btn.removeAttribute('hidden');
+                    } catch (e) {
+                        btn.hidden = false;
+                    }
+                }
+
+                function markSharePending() {
+                    try {
+                        localStorage.setItem(SHARE_PENDING_KEY, '1');
+                    } catch (e) {}
+                }
+
+                /** 分享成功：记下完成态并隐藏按钮（iOS 系统分享 resolve 后立刻调用） */
+                function markShareCompleted(extra) {
+                    try {
+                        localStorage.setItem(SHARE_DONE_KEY, '1');
+                        localStorage.removeItem(SHARE_PENDING_KEY);
+                    } catch (e) {}
+                    closeShareModal();
+                    hideShareBtn();
+                    trackShare('track_mine_share_done', extra);
                 }
 
                 function finalizeShareIfPending() {
                     try {
                         if (localStorage.getItem(SHARE_PENDING_KEY) !== '1') return;
-                        localStorage.setItem(SHARE_DONE_KEY, '1');
                         localStorage.removeItem(SHARE_PENDING_KEY);
                     } catch (e) {
                         return;
                     }
-                    hideShareBtn();
-                    closeShareModal();
-                    trackShare('track_mine_share_done');
+                    markShareCompleted({ via: 'pending_return' });
                 }
 
                 function closeShareModal() {
                     modal.classList.remove('is-open');
+                    if (posterBlock) posterBlock.hidden = true;
                 }
 
                 function openShareModal() {
+                    if (isShareDone()) {
+                        hideShareBtn();
+                        return;
+                    }
                     modal.classList.add('is-open');
+                    if (posterBlock) posterBlock.hidden = true;
                     trackShare('track_mine_share_open');
-                    ensureShareImage();
+                }
+
+                function afterShareResult(result) {
+                    if (!result || !result.method) return;
+                    if (result.method === 'abort') {
+                        try {
+                            localStorage.removeItem(SHARE_PENDING_KEY);
+                        } catch (eAbort) {}
+                        return;
+                    }
+                    /* 系统分享成功 / 已复制：立刻隐藏；Intent 跳走则等回 App 再隐藏 */
+                    if (result.method === 'intent') {
+                        markSharePending();
+                        return;
+                    }
+                    markShareCompleted({ method: result.method });
+                }
+
+                function localShareFallback(opts) {
+                    opts = opts || {};
+                    var origin = '';
+                    try {
+                        origin = String(window.location.origin || '');
+                    } catch (e0) {}
+                    var page = String(opts.page || 'shouye.html').replace(/^\/+/, '');
+                    var url = origin ? origin + '/' + page : page;
+                    try {
+                        var u = new URL(page, (origin || 'https://lkj.qiyun888.top') + '/');
+                        var q = opts.query || {};
+                        Object.keys(q).forEach(function (k) {
+                            if (q[k] != null && String(q[k]) !== '') u.searchParams.set(k, String(q[k]));
+                        });
+                        u.searchParams.delete('ch');
+                        u.searchParams.delete('channel');
+                        u.searchParams.delete('sales_ch');
+                        url = u.href;
+                    } catch (eUrl) {}
+                    var title = opts.title || '模拟器APP';
+                    var text = opts.text || title;
+                    var body = String(text || '').trim();
+                    if (body.indexOf(url) < 0) body = body ? body + '\n' + url : url;
+                    var isAndroid = /Android/i.test(navigator.userAgent || '');
+
+                    function copyUrl() {
+                        var finish = function (ok) {
+                            alert(ok ? '链接已复制，可粘贴到微信发给好友' : '复制失败：\n' + url);
+                            return { method: 'copy', url: url, ok: !!ok };
+                        };
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            return navigator.clipboard.writeText(url).then(
+                                function () {
+                                    return finish(true);
+                                },
+                                function () {
+                                    return finish(false);
+                                }
+                            );
+                        }
+                        try {
+                            var ta = document.createElement('textarea');
+                            ta.value = url;
+                            ta.setAttribute('readonly', '');
+                            ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            var ok = document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            return Promise.resolve(finish(!!ok));
+                        } catch (eCopy) {
+                            return Promise.resolve(finish(false));
+                        }
+                    }
+
+                    if (typeof navigator.share === 'function') {
+                        var payload = isAndroid
+                            ? { title: title, text: body }
+                            : { title: title, text: text, url: url };
+                        return navigator
+                            .share(payload)
+                            .then(function () {
+                                return { method: 'native', url: url };
+                            })
+                            .catch(function (err) {
+                                if (err && err.name === 'AbortError') {
+                                    return { method: 'abort', url: url };
+                                }
+                                if (isAndroid) {
+                                    try {
+                                        window.location.href =
+                                            'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+                                            'S.android.intent.extra.SUBJECT=' +
+                                            encodeURIComponent(title) +
+                                            ';S.android.intent.extra.TEXT=' +
+                                            encodeURIComponent(body) +
+                                            ';end';
+                                        return { method: 'intent', url: url };
+                                    } catch (eIntent) {}
+                                }
+                                return copyUrl();
+                            });
+                    }
+                    if (isAndroid) {
+                        try {
+                            var a = document.createElement('a');
+                            a.href =
+                                'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+                                'S.android.intent.extra.SUBJECT=' +
+                                encodeURIComponent(title) +
+                                ';S.android.intent.extra.TEXT=' +
+                                encodeURIComponent(body) +
+                                ';end';
+                            a.style.cssText = 'display:none;';
+                            document.body.appendChild(a);
+                            a.click();
+                            setTimeout(function () {
+                                try {
+                                    a.parentNode && a.parentNode.removeChild(a);
+                                } catch (eRm) {}
+                            }, 800);
+                            return Promise.resolve({ method: 'intent', url: url });
+                        } catch (eA) {}
+                    }
+                    return copyUrl();
+                }
+
+                function doSharePage(kind) {
+                    var shareFn =
+                        typeof window.sharePageLink === 'function' ? window.sharePageLink : localShareFallback;
+                    var opts =
+                        kind === 'mine'
+                            ? {
+                                  page: 'mine.html',
+                                  query: { from: 'share', sv: 'sim1' },
+                                  title: '模拟器APP',
+                                  text: '打开模拟器APP个人中心',
+                                  track: 'track_share_mine'
+                              }
+                            : {
+                                  page: 'shouye.html',
+                                  query: { guest: '1', from: 'share', sv: 'sim1' },
+                                  title: '模拟器APP',
+                                  text: '打开即可体验模拟器APP',
+                                  track: 'track_share_home'
+                              };
+                    /* 跳系统分享前先记 pending：部分 iOS/WebView resolve 不可靠，回 App 也可隐藏 */
+                    markSharePending();
+                    var ret = shareFn(opts);
+                    if (ret && typeof ret.then === 'function') {
+                        ret.then(afterShareResult).catch(function () {});
+                    }
+                }
+
+                if (btnShareHome) {
+                    btnShareHome.addEventListener('click', function () {
+                        doSharePage('home');
+                    });
+                }
+                if (btnShareMine) {
+                    btnShareMine.addEventListener('click', function () {
+                        doSharePage('mine');
+                    });
+                }
+                if (btnSharePoster) {
+                    btnSharePoster.addEventListener('click', function () {
+                        if (posterBlock) posterBlock.hidden = false;
+                        ensureShareImage();
+                    });
                 }
 
                 function setQrContent(node) {
@@ -2654,7 +2883,16 @@
                                                 title: '扫码下载个人所得税 App',
                                                 text: '扫码下载官方 App，安装后登录即可同步权益与资料'
                                             })
-                                            .catch(function () {
+                                            .then(function () {
+                                                markShareCompleted({ method: 'native_poster' });
+                                            })
+                                            .catch(function (err) {
+                                                if (err && err.name === 'AbortError') {
+                                                    try {
+                                                        localStorage.removeItem(SHARE_PENDING_KEY);
+                                                    } catch (eClr) {}
+                                                    return;
+                                                }
                                                 downloadBlob(blob, name);
                                                 tryOpenWeChat();
                                             });
@@ -2702,11 +2940,16 @@
                     if (!document.hidden) finalizeShareIfPending();
                 });
                 window.addEventListener('pageshow', function () {
+                    showShareBtnIfNeeded();
                     finalizeShareIfPending();
                 });
-                document.addEventListener('resume', function () {
-                    finalizeShareIfPending();
-                }, false);
+                document.addEventListener(
+                    'resume',
+                    function () {
+                        finalizeShareIfPending();
+                    },
+                    false
+                );
             }
 
             function setupGuestDownloadUi() {

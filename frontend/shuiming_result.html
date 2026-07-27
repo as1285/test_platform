@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope=".page-root"></script>
@@ -1450,6 +1450,15 @@
             }
             syncTopFixedHeight();
         }
+        window.syncSmActivateCard = syncSmActivateCard;
+
+        function refreshActivateUiAfterReturn() {
+            syncSmActivateCard();
+            refreshPurchaseWatermarkForTestAccount();
+            if (typeof window.refreshWatermarkFromApi === 'function') {
+                window.refreshWatermarkFromApi();
+            }
+        }
 
         window.addEventListener('resize', syncTopFixedHeight);
         window.addEventListener('orientationchange', syncTopFixedHeight);
@@ -1476,8 +1485,17 @@
                 }
             });
         } catch (e) {}
+        /* 同页返回 / bfcache：storage 事件不会触发，需主动刷新激活态 UI */
+        window.addEventListener('pageshow', function () {
+            refreshActivateUiAfterReturn();
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') {
+                refreshActivateUiAfterReturn();
+            }
+        });
         loadData();
     </script>
-    <script src="/js/watermark.js?v=20260722-wm-redder"></script>
+    <script src="/js/watermark.js?v=20260727-wm-activate"></script>
 </body>
 </html>

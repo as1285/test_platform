@@ -2,10 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/admin_auth.js?v=20260727-share-stats"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营控制台</title>
     <link rel="stylesheet" href="/css/admin_panel.css?v=20260724-tab-display">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260727-btn-scope">
 </head>
 <body>
     <div class="layout">
@@ -33,7 +34,7 @@
                         <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
                             <strong>A</strong>：支付宝仅「199 永久」+ 其它渠道 + 激活码（落地页 B）；
                             <strong>B</strong>：支付宝多档价，收起其它渠道（落地页 B）；
-                            <strong>C</strong>：下载 App + 激活码 +「联系方式配置」中的专属客服（落地页游客沙盒；无支付宝/其它购买渠道）。
+                            <strong>C</strong>：下载 App + 激活码 + 专属客服联系方式（落地页游客沙盒；无支付宝/其它购买渠道）。
                             A+B+C 必须为 100%。
                         </p>
                         <div class="form-row form-stack">
@@ -149,45 +150,6 @@
                     </section>
                 </div>
 
-                <div id="page-sales-contacts" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>联系方式配置</h2>
-                        <p class="hint mt-0">仅在支付页 <strong>C 方案</strong>展示（下载 App + 激活码旁的专属客服卡片）。A/B 方案购买页不展示此处配置。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field form-field-narrow">
-                                <label for="salesAgentDisplayName">展示名</label>
-                                <input class="input-block" type="text" id="salesAgentDisplayName" maxlength="64" placeholder="如：专属客服" value="专属客服">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="salesAgentWechatId">微信号（可复制）</label>
-                                <input class="input-block" type="text" id="salesAgentWechatId" maxlength="64" placeholder="代理微信号" autocomplete="off">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <div id="salesAgentQrPreviewWrap" class="img-preview-wrap" hidden>
-                                    <img id="salesAgentQrPreview" class="img-preview" alt="微信二维码预览">
-                                </div>
-                                <label for="salesAgentWechatQrUrl">微信二维码图片</label>
-                                <div class="mine-ui-controls field-gap-top">
-                                    <input type="text" id="salesAgentWechatQrUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
-                                    <input type="file" class="sales-agent-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
-                                    <button type="button" class="btn-page sales-agent-qr-pick">上传图片</button>
-                                </div>
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="salesAgentQq">QQ（可选）</label>
-                                <input class="input-block" type="text" id="salesAgentQq" maxlength="32" placeholder="QQ 号" autocomplete="off">
-                            </div>
-                            <div class="form-field form-field-narrow">
-                                <label for="salesAgentPhone">手机号（可选）</label>
-                                <input class="input-block" type="text" id="salesAgentPhone" maxlength="32" placeholder="手机号" autocomplete="off">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveSalesAgent">保存联系方式</button>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
                     <section>
                         <h2>引导安装（用户端）</h2>
@@ -195,7 +157,7 @@
                     </section>
                     <section>
                         <h2>落地页 B/C（跟随支付页 A/B/C）</h2>
-                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页展示「下载 App」「激活码」以及「联系方式配置」中的专属客服。</p>
+                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页展示「下载 App」「激活码」以及专属客服联系方式。</p>
                     </section>
                     <section>
                         <h2>安装包下载（用户端）</h2>
@@ -239,7 +201,7 @@
                                     <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>
                                 </div>
                                 <div id="agentPromoLinksMount" class="agent-promo-links-mount mt-12" style="display:none;"></div>
-                                <p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（48 小时内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p>
+                                <p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（15 分钟内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p>
                             </div>
                             <div class="form-field mt-16">
                                 <label>下属代理专属渠道</label>
@@ -1229,6 +1191,309 @@
                     </section>
                 </div>
 
+                <div id="page-tax-records-edit" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>个税记录维护</h2>
+                        <p class="hint mt-0">按用户名加载该账号个税明细，支持<strong>批量录入（与 C 端相同）</strong>及单条新增 / 修改 / 软删除。写入与 C 端共用 <code>tax_records</code>，用户端列表会同步变化。非超级管理员仅能操作自己权限范围内的用户。</p>
+                        <div class="form-row flex-align-center mt-8 flex-wrap gap-10">
+                            <div>
+                                <label for="taxEditUsername">用户名</label>
+                                <input type="text" id="taxEditUsername" maxlength="64" placeholder="输入注册用户名" autocomplete="off">
+                            </div>
+                            <button type="button" class="btn-page" id="btnTaxEditLoad">加载</button>
+                            <button type="button" class="btn-page" id="btnTaxEditNew" disabled>单条新增</button>
+                            <button type="button" class="btn-primary" id="btnTaxEditBatch" disabled>批量录入</button>
+                        </div>
+                        <div id="taxEditUserMeta" class="hint mt-8" aria-live="polite">请输入用户名后加载</div>
+                        <div id="taxEditListMount" class="mt-12" aria-live="polite"></div>
+                        <div id="taxEditFormWrap" class="mt-16" style="display:none;max-width:920px;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;background:#fafafa;">
+                            <h3 class="mt-0 mb-10" id="taxEditFormTitle" style="font-size:16px;">编辑记录</h3>
+                            <input type="hidden" id="taxEditId">
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="taxEditYear">年份</label>
+                                    <input type="number" id="taxEditYear" min="2000" max="2100" placeholder="2026">
+                                </div>
+                                <div>
+                                    <label for="taxEditMonth">月份</label>
+                                    <input type="number" id="taxEditMonth" min="1" max="12" placeholder="1">
+                                </div>
+                                <div style="flex:1;min-width:200px;">
+                                    <label for="taxEditCompany">扣缴义务人</label>
+                                    <input type="text" id="taxEditCompany" maxlength="128" placeholder="公司名称">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div style="flex:1;min-width:160px;">
+                                    <label for="taxEditCompanyTaxId">纳税人识别号</label>
+                                    <input type="text" id="taxEditCompanyTaxId" maxlength="64">
+                                </div>
+                                <div style="flex:1;min-width:160px;">
+                                    <label for="taxEditAuthority">主管税务机关</label>
+                                    <input type="text" id="taxEditAuthority" maxlength="128">
+                                </div>
+                                <div>
+                                    <label for="taxEditIncomeType">所得项目</label>
+                                    <input type="text" id="taxEditIncomeType" maxlength="64" value="工资薪金">
+                                </div>
+                                <div>
+                                    <label for="taxEditIncomeSubtype">所得小类</label>
+                                    <input type="text" id="taxEditIncomeSubtype" maxlength="64" value="正常工资薪金">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="taxEditIncome">收入</label>
+                                    <input type="number" id="taxEditIncome" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditIncomePeriod">本期收入</label>
+                                    <input type="number" id="taxEditIncomePeriod" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditTaxReported">已申报税额</label>
+                                    <input type="number" id="taxEditTaxReported" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditDeductionFee">本期减除费用</label>
+                                    <input type="number" id="taxEditDeductionFee" step="0.01" value="5000">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="taxEditSpecial">本期专项扣除</label>
+                                    <input type="number" id="taxEditSpecial" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditPension">基本养老保险</label>
+                                    <input type="number" id="taxEditPension" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditMedical">基本医疗保险</label>
+                                    <input type="number" id="taxEditMedical" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditUnemp">失业保险</label>
+                                    <input type="number" id="taxEditUnemp" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditHousing">住房公积金</label>
+                                    <input type="number" id="taxEditHousing" step="0.01" value="0">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="taxEditOther">本期其他扣除</label>
+                                    <input type="number" id="taxEditOther" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditDonation">捐赠扣除</label>
+                                    <input type="number" id="taxEditDonation" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditTaxFree">本期免税收入</label>
+                                    <input type="number" id="taxEditTaxFree" step="0.01" value="0">
+                                </div>
+                                <div>
+                                    <label for="taxEditReportChannel">申报渠道</label>
+                                    <input type="text" id="taxEditReportChannel" maxlength="32" value="其他">
+                                </div>
+                                <div>
+                                    <label for="taxEditReportDate">申报日期</label>
+                                    <input type="text" id="taxEditReportDate" maxlength="32" placeholder="YYYY-MM-DD">
+                                </div>
+                            </div>
+                            <div class="form-row flex-align-center gap-10 mt-12">
+                                <button type="button" class="btn-page" id="btnTaxEditSave">保存</button>
+                                <button type="button" class="btn-page" id="btnTaxEditCancel">取消</button>
+                            </div>
+                        </div>
+                        <div id="adminTaxBatchRoot" hidden>
+                            <div id="adminTaxBatchMsg" aria-live="polite"></div>
+<div class="card" id="batchTaxCard">
+                <div class="card-title-row batch-tax-card-head">
+                    <div class="card-title" id="batchTaxCardTitle">生成税务记录</div>
+                    <button type="button" class="batch-tax-collapse-btn" id="batchTaxCollapseBtn" aria-expanded="true" hidden>收起</button>
+                </div>
+                <div id="batchTaxCardBody">
+                <p class="batch-hint" id="batchTaxCardHint">填写工作经历后一键生成多月工资薪金；也可从个税 APP 粘贴导入。</p>
+                <div class="batch-tax-empty" id="batchTaxEmptyState" hidden>
+                    <p class="batch-tax-empty-title">还没有税务记录</p>
+                    <p class="batch-tax-empty-desc">先填一段工作经历，或用下面方式快速开始。</p>
+                    <div class="batch-tax-empty-actions">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnBatchTaxEmptyExample">示例填写</button>
+                        <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxEmptyPaste">粘贴导入</button>
+                    </div>
+                </div>
+                <div class="batch-tax-toolbar" id="batchTaxToolbar">
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxExample">示例填写</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxPasteImport">粘贴导入</button>
+                    <div class="batch-tax-more-wrap">
+                        <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxMore" aria-expanded="false">更多</button>
+                        <div class="batch-tax-more-menu" id="batchTaxMoreMenu" hidden>
+                            <button type="button" class="batch-tax-more-item">从已有回填</button>
+                            <button type="button" class="batch-tax-more-item" id="btnBatchTaxQuickStart" style="display:none;">30秒体验</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-default btn-sm" id="batch_exit_edit_btn" style="display:none;">退出修改</button>
+                </div>
+                <div id="batchEditModeBanner" class="batch-edit-banner" hidden></div>
+                <div id="batch_employment_list"></div>
+                <button type="button" class="btn btn-block batch-add-emp-btn">＋ 添加一段工作经历</button>
+                <template id="batchEmpRowTpl">
+                    <div class="batch-emp-row">
+                        <div class="batch-emp-head">
+                            <span class="batch-emp-title">工作经历</span>
+                            <button type="button" class="btn btn-sm batch-emp-remove-btn" aria-label="删除本段工作经历">删除</button>
+                        </div>
+                            <div class="form-group">
+                                <label>扣缴义务人（公司全称）</label>
+                                <input type="text" class="batch-emp-company" list="batchCompanyHistoryDatalist" autocomplete="off" placeholder="公司全称（可点选历史）">
+                            </div>
+                        <div class="batch-emp-optional-meta">
+                            <button type="button" class="batch-emp-optional-toggle" aria-expanded="false">
+                                <span>税号与税务机关</span>
+                                <span class="batch-emp-optional-toggle-icon" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="batch-emp-optional-body">
+                                <div class="form-group">
+                                    <label>纳税人识别号</label>
+                                    <input type="text" class="batch-emp-company-tax-id" autocomplete="off" placeholder="可与个税 APP 扣缴义务人信息一致">
+                                </div>
+                                <div class="form-group">
+                                    <label>主管税务机关</label>
+                                    <input type="text" class="batch-emp-tax-authority" autocomplete="off" placeholder="可与个税 APP 一致">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>起始年月</label>
+                                <div class="batch-ym-inline">
+                                    <input type="text" class="batch-emp-sy batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                    <input type="text" class="batch-emp-sm batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="起始月">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>结束年月</label>
+                                <div class="batch-ym-inline batch-emp-end-inputs">
+                                    <input type="text" class="batch-emp-ey batch-ym-field" placeholder="年" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4">
+                                    <input type="text" class="batch-emp-em batch-ym-field" placeholder="月" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" aria-label="结束月">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>月薪下限（元）</label>
+                                <input type="number" class="batch-emp-salary" step="0.01" min="0" placeholder="如 15000">
+                            </div>
+                            <div class="form-group">
+                                <label>月薪上限（可选）</label>
+                                <input type="number" class="batch-emp-salary-max" step="0.01" min="0" placeholder="留空则每月固定">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="batch-emp-deduct-meta">
+                                <button type="button" class="batch-emp-deduct-toggle" aria-expanded="false">
+                                    <span>社保、公积金与专项附加</span>
+                                    <span class="batch-emp-deduct-toggle-icon" aria-hidden="true">▼</span>
+                                </button>
+                                <div class="batch-emp-deduct-body">
+                            <div class="batch-deduct-calc">
+                                <p class="batch-deduct-calc-hint">填写缴费基数与个人扣缴比例（%）后，自动填入下方三险一金金额；公积金基数留空时与社保基数相同。常见默认：养老 8%、医疗 2%、失业 0.5%、公积金 12%。</p>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>社保缴费基数（元）</label>
+                                        <input type="number" class="batch-emp-ss-base" step="0.01" min="0" placeholder="留空表示不填">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>公积金缴费基数（元）</label>
+                                        <input type="number" class="batch-emp-fund-base" step="0.01" min="0" placeholder="留空同社保基数">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>养老比例（%）</label>
+                                        <input type="number" class="batch-emp-pension-ratio" step="0.01" min="0" max="100" value="8">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>医疗比例（%）</label>
+                                        <input type="number" class="batch-emp-medical-ratio" step="0.01" min="0" max="100" value="2">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>失业比例（%）</label>
+                                        <input type="number" class="batch-emp-unemployment-ratio" step="0.01" min="0" max="100" value="0.5">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>公积金比例（%）</label>
+                                        <input type="number" class="batch-emp-fund-ratio" step="0.01" min="0" max="100" value="12">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>基本养老保险</label>
+                                    <input type="number" class="batch-emp-pension" step="0.01" min="0" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>基本医疗保险</label>
+                                    <input type="number" class="batch-emp-medical" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>失业保险</label>
+                                    <input type="number" class="batch-emp-unemployment" step="0.01" min="0" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>住房公积金（月，元）</label>
+                                    <input type="number" class="batch-emp-fund" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>专项附加扣除（租房、子女教育、父母赡养等，参照你官方 APP 填）</label>
+                                <input type="number" class="batch-emp-special" step="0.01" min="0" value="0">
+                            </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group batch-emp-month-salary-row">
+                            <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
+                            <span class="batch-emp-month-salary-badge" hidden></span>
+                        </div>
+                        <div class="batch-emp-bonus-block" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;">
+                            <div class="form-group">
+                                <label>年终奖（元，可选；单独计税并生成独立记录）</label>
+                                <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>年终奖归属年度</label>
+                                    <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
+                                </div>
+                                <div class="form-group">
+                                    <label>归属月份（1–12 月）</label>
+                                    <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <datalist id="batchCompanyHistoryDatalist"></datalist>
+                <div class="batch-tax-actions">
+                    <button type="button" class="btn btn-primary btn-block" id="batch_submit_employments_btn">一键生成税务记录</button>
+                    <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;">保存覆盖</button>
+                    <button type="button" class="btn btn-block batch-bonus-only-btn">仅添加年终奖</button>
+                </div>
+                </div>
+            </div>
+
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-user-behavior" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户行为</h2>
@@ -1543,6 +1808,21 @@
                                 </div>
                             </div>
                         </div>
+                    </section>
+                </div>
+
+                <div id="page-share-stats" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>分享统计</h2>
+                        <p class="hint mt-0">统计「我的 / 首页」分享发出、好友经 <code>from=share</code> 打开、以及后续<strong>注册 / 登录 / 下载</strong>转化。分享链接<strong>不含代理 ch</strong>，全部记为主站流量，与渠道分析分开。归因窗口 7 天（本地标记 + 服务端事件）。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="shareStatsDays">统计区间</label>
+                                <select id="shareStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshShareStats">刷新统计</button>
+                        </div>
+                        <div id="shareStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
                     </section>
                 </div>
 
@@ -2454,6 +2734,52 @@
             </div>
         </div>
     </div>
+    <div id="batchMonthSalaryModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="batchMsModalTitleEl">
+        <div class="batch-ms-modal-mask" id="batchMsModalMask"></div>
+        <div class="batch-ms-modal-panel">
+            <div class="batch-ms-modal-head">
+                <span id="batchMsModalTitleEl">按月自定义工资</span>
+                <button type="button" id="batchMsModalCloseX" aria-label="关闭">&times;</button>
+            </div>
+            <p class="batch-ms-modal-hint" id="batchMsModalHint"></p>
+            <div class="batch-ms-modal-scroll" id="batchMsModalBody"></div>
+            <div class="batch-ms-modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" id="batchMsModalClear">清空本月自定义</button>
+                <button type="button" class="btn btn-default btn-sm" id="batchMsModalCancel">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" id="batchMsModalSave">保存</button>
+            </div>
+        </div>
+    </div>
+    <div id="taxPasteImportModal" class="batch-ms-modal-root" role="dialog" aria-modal="true" aria-labelledby="taxPasteImportTitle">
+        <div class="batch-ms-modal-mask" id="taxPasteImportMask"></div>
+        <div class="batch-ms-modal-panel" style="max-width:560px;">
+            <div class="batch-ms-modal-head">
+                <span id="taxPasteImportTitle">粘贴导入税务信息</span>
+                <button type="button" id="taxPasteImportCloseX" aria-label="关闭">&times;</button>
+            </div>
+            <p class="batch-ms-modal-hint">解析引擎 v0721d。支持：① 个税 APP 月明细；② 聊天摘要（公司/税号/入职、全年区间、月薪、奖金、每月专项扣除三险一金）。标签可带【】[]。可一次粘贴多家公司；「改为」「数字改为」会覆盖原金额。</p>
+            <textarea id="taxPasteImportText" class="tax-paste-import-textarea" rows="12" placeholder="示例（摘要）：&#10;1某某有限公司&#10;扣缴义务人纳税人识别号：91xxxxxxxxxxxx&#10;入职：2023年12月开始&#10;2024年全年个税&#10;一直到2026年6月份&#10;正常工资薪金：月薪税前2万（改为20000—23000区间）&#10;2024年2月2号发2万提成（改为21350.5）&#10;每月专项扣除&#10;基本养老保险：800&#10;基本医疗保险：200&#10;失业保险：50&#10;住房公积金：1200&#10;&#10;也可粘贴 APP 月明细（收入+税额）。"></textarea>
+            <div id="taxPasteImportPreview" class="tax-paste-import-preview" hidden></div>
+            <div class="batch-ms-modal-footer" style="flex-wrap:wrap;">
+                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportCancel">取消</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="taxPasteImportParseBtn">解析预览</button>
+                <button type="button" class="btn btn-default btn-sm" id="taxPasteImportFillBtn">填入表单</button>
+                <button type="button" class="btn btn-primary btn-sm" id="taxPasteImportGenerateBtn">直接生成记录</button>
+            </div>
+        </div>
+    </div>
+    <div id="consultStrongAlertModal" class="consult-strong-alert-root" role="alertdialog" aria-modal="true" aria-labelledby="consultStrongAlertTitle" aria-describedby="consultStrongAlertText">
+        <div class="consult-strong-alert-mask" id="consultStrongAlertMask"></div>
+        <div class="consult-strong-alert-panel">
+            <div class="consult-strong-alert-title" id="consultStrongAlertTitle">请核对</div>
+            <div class="consult-strong-alert-body" id="consultStrongAlertText"></div>
+            <div class="consult-strong-alert-actions">
+                <button type="button" class="btn btn-primary" id="consultStrongAlertOk">我知道了</button>
+            </div>
+        </div>
+    </div>
+
+            
     <div id="feedbackReplyBackdrop" class="admin-modal-backdrop" hidden>
         <div class="admin-modal-box" onclick="event.stopPropagation()">
             <h2 class="admin-modal-title">回复用户反馈</h2>
@@ -2466,10 +2792,13 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260724-tab-fix"></script>
+    <script src="/js/admin/loader.js?v=20260727-no-sales-contacts"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260725-pricing-follow-ab"></script>
+    <script src="/js/admin-panel-utils.js?v=20260727-no-sales-contacts"></script>
+    <script src="/js/consult-core.js?v=20260727-tax-batch-fix2"></script>
+    <script src="/js/consult-batch-tax.js?v=20260727-tax-batch-fix2"></script>
+    <script src="/js/admin-tax-batch-bridge.js?v=20260727-tax-batch-fix2"></script>
+    <script src="/js/admin_panel.js?v=20260727-no-sales-contacts"></script>
 </body>
 </html>

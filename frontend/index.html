@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
@@ -940,6 +940,8 @@
                     loginSalesCh = String(window.getSalesChannel() || '');
                 }
             } catch (eLoginCh) {}
+            var fromShareLogin =
+                typeof window.hasShareAttribution === 'function' && window.hasShareAttribution();
             fetch('api/auth', {
                 method: 'POST',
                 headers: typeof window.authHeaders === 'function' ? window.authHeaders() : { 'Content-Type': 'application/json' },
@@ -949,13 +951,23 @@
                     password: password,
                     client_id: loginClientId || undefined,
                     guest_username: loginGuestUsername || undefined,
-                    sales_ch: loginSalesCh || undefined
+                    sales_ch: loginSalesCh || undefined,
+                    from_share: fromShareLogin ? 1 : 0
                 })
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
                         var d = data.data;
+                        if (fromShareLogin && typeof window.trackPublicAction === 'function') {
+                            window.trackPublicAction('track_share_login_success', {
+                                page: 'login',
+                                username: d.username || username
+                            });
+                        }
+                        if (typeof window.clearShareAttribution === 'function') {
+                            window.clearShareAttribution();
+                        }
                         if (d.token) {
                             localStorage.setItem('token', d.token);
                         }
@@ -980,6 +992,28 @@
                         var act = d.account_active === true || d.account_active === 1;
                         localStorage.setItem('account_active', act ? '1' : '0');
                         localStorage.setItem('is_test_account', d.is_test_account ? '1' : '0');
+                        var loginNext = '';
+                        try {
+                            if (typeof window.getLoginNextTarget === 'function') {
+                                loginNext = String(window.getLoginNextTarget() || '');
+                            } else {
+                                loginNext = String(
+                                    new URLSearchParams(window.location.search).get('next') || ''
+                                );
+                            }
+                        } catch (eNext) {
+                            loginNext = '';
+                        }
+                        if (loginNext && /^[a-z0-9_\-]+\.html/i.test(loginNext)) {
+                            var nextHref = loginNext;
+                            try {
+                                if (typeof window.appendSalesChannelToUrl === 'function') {
+                                    nextHref = window.appendSalesChannelToUrl(loginNext);
+                                }
+                            } catch (eCh) {}
+                            window.location.href = nextHref;
+                            return;
+                        }
                         window.location.href = 'mine.html';
                         return;
                     }

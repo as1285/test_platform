@@ -1261,6 +1261,8 @@
         var _adminAnalyticsTrackingSeen = false;
         var _adminAnalyticsDevicesSeen = false;
         var _adminInstallGuideStatsSeen = false;
+        var _adminShareStatsSeen = false;
+        var _adminTaxRecordsEditSeen = false;
         var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
@@ -1293,14 +1295,15 @@
                 'weekly-codes',
                 'channel-analysis',
                 'install-guide',
-                'sales-contacts',
                 'install-guide-stats',
+                'share-stats',
                 'users',
                 'guest-users',
                 'users-deleted',
                 'feedback',
                 'chat',
                 'user-data',
+                'tax-records-edit',
                 'user-behavior',
                 'activated-user-analysis',
                 'analytics-register',
@@ -1400,7 +1403,6 @@
             var ok = {
                 settings: 1,
                 'install-guide': 1,
-                'sales-contacts': 1,
                 appearance: 1,
                 codes: 1,
                 'weekly-codes': 1,
@@ -1409,6 +1411,7 @@
                 'guest-users': 1,
                 'users-deleted': 1,
                 'user-data': 1,
+                'tax-records-edit': 1,
                 'user-behavior': 1,
                 'activated-user-analysis': 1,
                 feedback: 1,
@@ -1420,6 +1423,7 @@
                 'analytics-tracking': 1,
                 'analytics-devices': 1,
                 'install-guide-stats': 1,
+                'share-stats': 1,
                 'channel-analysis': 1,
                 'api-analytics': 1,
                 'login-log': 1,
@@ -1525,6 +1529,14 @@
             if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
                 _adminInstallGuideStatsSeen = true;
                 loadInstallGuideStats();
+            }
+            if (pageKey === 'share-stats' && !_adminShareStatsSeen) {
+                _adminShareStatsSeen = true;
+                loadShareStats();
+            }
+            if (pageKey === 'tax-records-edit' && !_adminTaxRecordsEditSeen) {
+                _adminTaxRecordsEditSeen = true;
+                initTaxRecordsEditPage();
             }
             if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
                 _adminChannelAnalysisSeen = true;
@@ -4545,6 +4557,604 @@
                 });
         }
 
+        function renderShareStats(data) {
+            var el = document.getElementById('shareStatsMount');
+            if (!el) return;
+            if (!data || !data.summary) {
+                el.textContent = '暂无分享统计数据';
+                return;
+            }
+            var s = data.summary;
+            var html = analyticsPeriodHintHtml(data);
+            if (data.note) {
+                html +=
+                    '<p class="hint" style="margin:0 0 12px;">' +
+                    esc(String(data.note)) +
+                    '</p>';
+            }
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">分享发出</div><div class="ud-val">' +
+                esc(String(s.share_out != null ? s.share_out : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">首页 ' +
+                esc(String(s.share_home || 0)) +
+                ' · 我的 ' +
+                esc(String(s.share_mine || 0)) +
+                ' · 系统 ' +
+                esc(String(s.share_native || 0)) +
+                ' · 复制 ' +
+                esc(String(s.share_copy || 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">面板 / 完成 / 海报</div><div class="ud-val">' +
+                esc(String(s.share_panel_open || 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">完成 ' +
+                esc(String(s.share_done || 0)) +
+                ' · 海报 ' +
+                esc(String(s.share_poster_save || 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">打开 PV / UV</div><div class="ud-val">' +
+                esc(String(s.land_pv || 0)) +
+                ' / ' +
+                esc(String(s.land_uv || 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">from=share 落地</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">分享→注册</div><div class="ud-val">' +
+                esc(String(s.register_users || 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">事件 ' +
+                esc(String(s.register_times || 0)) +
+                ' · 占打开 UV ' +
+                esc(s.register_rate_pct || '—') +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">分享→登录</div><div class="ud-val">' +
+                esc(String(s.login_times || 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">分享→下载</div><div class="ud-val">' +
+                esc(String(s.download_clicks || 0)) +
+                '</div></div>';
+            html += '</div>';
+
+            var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
+            html += '<p class="stat" style="margin:0 0 8px;">分日明细（北京时间）</p>';
+            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html +=
+                '<th>日期</th><th>发出</th><th>打开 PV</th><th>打开 UV</th><th>注册</th><th>登录</th><th>下载</th></tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="7">暂无分日数据；产生分享/打开后开始累计</td></tr>';
+            } else {
+                daily.forEach(function (row) {
+                    html +=
+                        '<tr><td>' +
+                        esc(row.day || '—') +
+                        '</td><td>' +
+                        esc(String(row.share_out || 0)) +
+                        '</td><td>' +
+                        esc(String(row.land_pv || 0)) +
+                        '</td><td>' +
+                        esc(String(row.land_uv || 0)) +
+                        '</td><td>' +
+                        esc(String(row.register || 0)) +
+                        '</td><td>' +
+                        esc(String(row.login || 0)) +
+                        '</td><td>' +
+                        esc(String(row.download || 0)) +
+                        '</td></tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadShareStats() {
+            var el = document.getElementById('shareStatsMount');
+            if (!el) return;
+            var daysEl = document.getElementById('shareStatsDays');
+            var days = analyticsPeriodVal(daysEl);
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/share-stats?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderShareStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
+        /* ========== 个税记录维护 ========== */
+        var _taxEditCurrentUser = '';
+        var _taxEditRecords = [];
+        var _taxEditBound = false;
+        var _taxEditBatchInited = false;
+
+        function ensureAdminTaxBatchCtx() {
+            window.__adminTaxBatchCtx = window.__adminTaxBatchCtx || {};
+            window.__adminTaxBatchCtx.fetch = window.adminFetch || adminFetch;
+            window.__adminTaxBatchCtx.reloadUser = function (username) {
+                return loadTaxRecordsEditUser(username, { fromBatch: true });
+            };
+            if (typeof window.authFetch !== 'function') {
+                window.authFetch = function () {
+                    return Promise.reject(new Error('C 端 authFetch 在管理后台不可用'));
+                };
+            }
+        }
+
+        function syncAdminTaxBatchPanel(records, opts) {
+            opts = opts || {};
+            ensureAdminTaxBatchCtx();
+            var root = document.getElementById('adminTaxBatchRoot');
+            var btnBatch = document.getElementById('btnTaxEditBatch');
+            var prevUser = window.__adminTaxBatchCtx.username || '';
+            if (!_taxEditCurrentUser) {
+                if (root) root.hidden = true;
+                if (btnBatch) btnBatch.disabled = true;
+                window.__adminTaxBatchCtx.username = '';
+                window.__consultRecordsCache = [];
+                return;
+            }
+            var userChanged = prevUser && prevUser !== _taxEditCurrentUser;
+            window.__adminTaxBatchCtx.username = _taxEditCurrentUser;
+            window.__consultRecordsCache = Array.isArray(records) ? records.slice() : [];
+            if (btnBatch) btnBatch.disabled = false;
+            if (!_taxEditBatchInited) {
+                _taxEditBatchInited = true;
+                try {
+                    if (typeof initBatchEmploymentRows === 'function') initBatchEmploymentRows();
+                    if (typeof initBatchTaxDraftAutosave === 'function') initBatchTaxDraftAutosave();
+                    if (typeof initBatchCompanyHistoryUi === 'function') initBatchCompanyHistoryUi();
+                    if (typeof initConsultRecordsUx === 'function') initConsultRecordsUx();
+                } catch (eInit) {
+                    console.warn('admin tax batch init', eInit);
+                }
+            } else if (userChanged && !opts.keepForm) {
+                var list = document.getElementById('batch_employment_list');
+                if (list) list.innerHTML = '';
+                window.__batchTaxUserExpanded = true;
+                try {
+                    if (typeof initBatchEmploymentRows === 'function') initBatchEmploymentRows();
+                } catch (eRe) {}
+            }
+            try {
+                if (typeof syncBatchTaxEmptyState === 'function') syncBatchTaxEmptyState();
+            } catch (eSync) {}
+        }
+
+        function showAdminTaxBatchPanel() {
+            if (!_taxEditCurrentUser) {
+                alert('请先加载用户');
+                return;
+            }
+            ensureAdminTaxBatchCtx();
+            window.__adminTaxBatchCtx.username = _taxEditCurrentUser;
+            var root = document.getElementById('adminTaxBatchRoot');
+            if (root) {
+                root.hidden = false;
+                try {
+                    root.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } catch (eScr) {}
+            }
+            window.__batchTaxUserExpanded = true;
+            try {
+                if (typeof setBatchTaxCardCollapsed === 'function') setBatchTaxCardCollapsed(false);
+                if (typeof syncBatchTaxEmptyState === 'function') syncBatchTaxEmptyState();
+            } catch (e0) {}
+        }
+
+        function taxEditNum(id, fallback) {
+            var el = document.getElementById(id);
+            if (!el) return fallback != null ? fallback : 0;
+            var n = parseFloat(el.value);
+            return isFinite(n) ? n : fallback != null ? fallback : 0;
+        }
+
+        function taxEditStr(id) {
+            var el = document.getElementById(id);
+            return el ? String(el.value || '').trim() : '';
+        }
+
+        function hideTaxEditForm() {
+            var wrap = document.getElementById('taxEditFormWrap');
+            if (wrap) wrap.style.display = 'none';
+            var idEl = document.getElementById('taxEditId');
+            if (idEl) idEl.value = '';
+        }
+
+        function fillTaxEditForm(rec) {
+            rec = rec || {};
+            var set = function (id, v) {
+                var el = document.getElementById(id);
+                if (el) el.value = v != null && v !== '' ? String(v) : '';
+            };
+            set('taxEditId', rec.id || '');
+            set('taxEditYear', rec.year != null ? rec.year : new Date().getFullYear());
+            set('taxEditMonth', rec.month != null ? rec.month : new Date().getMonth() + 1);
+            set('taxEditCompany', rec.company_name || '');
+            set('taxEditCompanyTaxId', rec.company_tax_id || '');
+            set('taxEditAuthority', rec.tax_authority || '');
+            set('taxEditIncomeType', rec.income_type || '工资薪金');
+            set('taxEditIncomeSubtype', rec.income_subtype || '正常工资薪金');
+            set('taxEditIncome', rec.income != null ? rec.income : '0');
+            set('taxEditIncomePeriod', rec.income_this_period != null ? rec.income_this_period : '0');
+            set('taxEditTaxReported', rec.tax_reported != null ? rec.tax_reported : '0');
+            set('taxEditDeductionFee', rec.deduction_fee != null ? rec.deduction_fee : '5000');
+            set('taxEditSpecial', rec.special_deduction != null ? rec.special_deduction : '0');
+            set('taxEditPension', rec.pension_insurance != null ? rec.pension_insurance : '0');
+            set('taxEditMedical', rec.medical_insurance != null ? rec.medical_insurance : '0');
+            set('taxEditUnemp', rec.unemployment_insurance != null ? rec.unemployment_insurance : '0');
+            set('taxEditHousing', rec.housing_fund != null ? rec.housing_fund : '0');
+            set('taxEditOther', rec.other_deduction != null ? rec.other_deduction : '0');
+            set('taxEditDonation', rec.donation_deduction != null ? rec.donation_deduction : '0');
+            set('taxEditTaxFree', rec.tax_free_income != null ? rec.tax_free_income : '0');
+            set('taxEditReportChannel', rec.report_channel || '其他');
+            set('taxEditReportDate', rec.report_date || '');
+            var title = document.getElementById('taxEditFormTitle');
+            if (title) title.textContent = rec.id ? '编辑记录' : '新增记录';
+            var wrap = document.getElementById('taxEditFormWrap');
+            if (wrap) {
+                wrap.style.display = 'block';
+                try {
+                    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } catch (eScr) {}
+            }
+        }
+
+        function collectTaxEditForm() {
+            var year = parseInt(taxEditStr('taxEditYear'), 10);
+            var month = parseInt(taxEditStr('taxEditMonth'), 10);
+            var id = taxEditStr('taxEditId');
+            var record = {
+                year: year,
+                month: month,
+                company_name: taxEditStr('taxEditCompany'),
+                company_tax_id: taxEditStr('taxEditCompanyTaxId'),
+                tax_authority: taxEditStr('taxEditAuthority'),
+                income_type: taxEditStr('taxEditIncomeType') || '工资薪金',
+                income_subtype: taxEditStr('taxEditIncomeSubtype') || '正常工资薪金',
+                income: taxEditNum('taxEditIncome', 0),
+                income_this_period: taxEditNum('taxEditIncomePeriod', 0),
+                tax_reported: taxEditNum('taxEditTaxReported', 0),
+                deduction_fee: taxEditNum('taxEditDeductionFee', 5000),
+                special_deduction: taxEditNum('taxEditSpecial', 0),
+                pension_insurance: taxEditNum('taxEditPension', 0),
+                medical_insurance: taxEditNum('taxEditMedical', 0),
+                unemployment_insurance: taxEditNum('taxEditUnemp', 0),
+                housing_fund: taxEditNum('taxEditHousing', 0),
+                other_deduction: taxEditNum('taxEditOther', 0),
+                donation_deduction: taxEditNum('taxEditDonation', 0),
+                tax_free_income: taxEditNum('taxEditTaxFree', 0),
+                report_channel: taxEditStr('taxEditReportChannel') || '其他',
+                report_date: taxEditStr('taxEditReportDate') || null,
+                tax_period:
+                    isFinite(year) && isFinite(month)
+                        ? year + '-' + String(month).padStart(2, '0')
+                        : ''
+            };
+            if (id) record.id = id;
+            return record;
+        }
+
+        function renderTaxEditList(records) {
+            var el = document.getElementById('taxEditListMount');
+            if (!el) return;
+            if (!records || !records.length) {
+                el.innerHTML = '<p class="hint" style="margin:0;">暂无个税记录，可点击「新增记录」。</p>';
+                return;
+            }
+            var html =
+                '<div class="scroll-x"><table><thead><tr>' +
+                '<th>所属期</th><th>公司</th><th>收入</th><th>税额</th><th>更新</th><th>操作</th>' +
+                '</tr></thead><tbody>';
+            records.forEach(function (raw, idx) {
+                var r = normalizeAdminTaxRecordRow(raw);
+                html +=
+                    '<tr><td>' +
+                    esc(r.tax_period || (r.year || '') + '-' + (r.month || '')) +
+                    '</td><td class="cell-break">' +
+                    esc(r.company_name || '—') +
+                    '</td><td>' +
+                    esc(r.income != null ? r.income : '—') +
+                    '</td><td>' +
+                    esc(r.tax_reported != null ? r.tax_reported : '—') +
+                    '</td><td>' +
+                    esc(r.updated_at ? formatDt(r.updated_at) : '—') +
+                    '</td><td>' +
+                    '<button type="button" class="btn-page btn-tax-edit" data-idx="' +
+                    idx +
+                    '">编辑</button> ' +
+                    '<button type="button" class="btn-page btn-tax-del" data-id="' +
+                    esc(r.id || '') +
+                    '">删除</button>' +
+                    '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+            el.querySelectorAll('.btn-tax-edit').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var i = parseInt(btn.getAttribute('data-idx'), 10);
+                    if (!isFinite(i) || !_taxEditRecords[i]) return;
+                    fillTaxEditForm(_taxEditRecords[i]);
+                });
+            });
+            el.querySelectorAll('.btn-tax-del').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = btn.getAttribute('data-id') || '';
+                    if (!id || !_taxEditCurrentUser) return;
+                    if (!window.confirm('确认软删除该条个税记录？用户端将不再显示。')) return;
+                    adminFetch('api/admin/user-tax-records', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'delete_record',
+                            username: _taxEditCurrentUser,
+                            id: id
+                        })
+                    })
+                        .then(function (r) {
+                            return r.json();
+                        })
+                        .then(function (j) {
+                            if (j.code !== 200) {
+                                alert(j.msg || '删除失败');
+                                return;
+                            }
+                            hideTaxEditForm();
+                            loadTaxRecordsEditUser(_taxEditCurrentUser);
+                        })
+                        .catch(function () {
+                            alert('删除失败');
+                        });
+                });
+            });
+        }
+
+        function loadTaxRecordsEditUser(username, opts) {
+            opts = opts || {};
+            var meta = document.getElementById('taxEditUserMeta');
+            var list = document.getElementById('taxEditListMount');
+            var btnNew = document.getElementById('btnTaxEditNew');
+            var btnBatch = document.getElementById('btnTaxEditBatch');
+            username = String(username || '').trim();
+            if (!username) {
+                if (meta) meta.textContent = '请输入用户名';
+                return Promise.resolve(null);
+            }
+            if (meta && !opts.fromBatch) meta.textContent = '加载中…';
+            if (list && !opts.fromBatch) list.textContent = '';
+            if (!opts.fromBatch) hideTaxEditForm();
+            return adminFetch('api/admin/user-tax-records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'list', username: username })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        if (meta) meta.textContent = j.msg || '加载失败';
+                        _taxEditCurrentUser = '';
+                        _taxEditRecords = [];
+                        if (btnNew) btnNew.disabled = true;
+                        if (btnBatch) btnBatch.disabled = true;
+                        syncAdminTaxBatchPanel([]);
+                        return null;
+                    }
+                    var d = j.data;
+                    _taxEditCurrentUser = d.username || username;
+                    _taxEditRecords = Array.isArray(d.records) ? d.records : [];
+                    if (btnNew) btnNew.disabled = false;
+                    if (btnBatch) btnBatch.disabled = false;
+                    if (meta) {
+                        meta.textContent =
+                            '用户 ' +
+                            (d.username || username) +
+                            (d.real_name ? '（' + d.real_name + '）' : '') +
+                            ' · ' +
+                            (d.account_active ? '已激活' : '未激活') +
+                            ' · 有效记录 ' +
+                            (d.record_count != null ? d.record_count : _taxEditRecords.length) +
+                            ' 条';
+                    }
+                    var nameInput = document.getElementById('taxEditUsername');
+                    if (nameInput) nameInput.value = _taxEditCurrentUser;
+                    renderTaxEditList(_taxEditRecords);
+                    syncAdminTaxBatchPanel(_taxEditRecords, { keepForm: !!opts.fromBatch });
+                    if (!opts.fromBatch) {
+                        var batchRoot = document.getElementById('adminTaxBatchRoot');
+                        if (batchRoot) batchRoot.hidden = false;
+                    }
+                    return d;
+                })
+                .catch(function () {
+                    if (meta) meta.textContent = '加载失败';
+                    if (btnNew) btnNew.disabled = true;
+                    if (btnBatch) btnBatch.disabled = true;
+                    syncAdminTaxBatchPanel([]);
+                    return null;
+                });
+        }
+
+        function saveTaxEditForm() {
+            if (!_taxEditCurrentUser) {
+                alert('请先加载用户');
+                return;
+            }
+            var record = collectTaxEditForm();
+            if (!record.company_name) {
+                alert('请填写扣缴义务人');
+                return;
+            }
+            if (!isFinite(record.year) || !isFinite(record.month)) {
+                alert('请填写有效年月');
+                return;
+            }
+            var btn = document.getElementById('btnTaxEditSave');
+            if (btn) btn.disabled = true;
+            adminFetch('api/admin/user-tax-records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'save_record',
+                    username: _taxEditCurrentUser,
+                    record: record
+                })
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (btn) btn.disabled = false;
+                    if (j.code !== 200) {
+                        alert(j.msg || '保存失败');
+                        return;
+                    }
+                    hideTaxEditForm();
+                    loadTaxRecordsEditUser(_taxEditCurrentUser);
+                })
+                .catch(function () {
+                    if (btn) btn.disabled = false;
+                    alert('保存失败');
+                });
+        }
+
+        function initTaxRecordsEditPage() {
+            if (_taxEditBound) return;
+            _taxEditBound = true;
+            ensureAdminTaxBatchCtx();
+            var btnLoad = document.getElementById('btnTaxEditLoad');
+            var btnNew = document.getElementById('btnTaxEditNew');
+            var btnBatch = document.getElementById('btnTaxEditBatch');
+            var btnSave = document.getElementById('btnTaxEditSave');
+            var btnCancel = document.getElementById('btnTaxEditCancel');
+            var nameInput = document.getElementById('taxEditUsername');
+            if (btnLoad) {
+                btnLoad.addEventListener('click', function () {
+                    loadTaxRecordsEditUser(nameInput ? nameInput.value : '');
+                });
+            }
+            if (nameInput) {
+                nameInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        loadTaxRecordsEditUser(nameInput.value);
+                    }
+                });
+            }
+            if (btnNew) {
+                btnNew.addEventListener('click', function () {
+                    if (!_taxEditCurrentUser) {
+                        alert('请先加载用户');
+                        return;
+                    }
+                    fillTaxEditForm({});
+                });
+            }
+            if (btnBatch) {
+                btnBatch.addEventListener('click', function () {
+                    showAdminTaxBatchPanel();
+                });
+            }
+            if (btnSave) btnSave.addEventListener('click', saveTaxEditForm);
+            if (btnCancel) btnCancel.addEventListener('click', hideTaxEditForm);
+            /* 不依赖 HTML onclick，避免压缩/CSP 导致「一键生成」无响应 */
+            var batchSubmit = document.getElementById('batch_submit_employments_btn');
+            if (batchSubmit && !batchSubmit.__adminBound) {
+                batchSubmit.__adminBound = true;
+                batchSubmit.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (!_taxEditCurrentUser) {
+                        alert('请先加载用户');
+                        return;
+                    }
+                    ensureAdminTaxBatchCtx();
+                    window.__adminTaxBatchCtx.username = _taxEditCurrentUser;
+                    if (typeof window.oneClickGenerateBatchTaxRecords === 'function') {
+                        window.oneClickGenerateBatchTaxRecords();
+                    } else if (typeof oneClickGenerateBatchTaxRecords === 'function') {
+                        oneClickGenerateBatchTaxRecords();
+                    } else {
+                        alert('批量录入脚本未加载，请强制刷新页面后重试');
+                    }
+                });
+            }
+            var batchUpdate = document.getElementById('batch_update_employments_btn');
+            if (batchUpdate && !batchUpdate.__adminBound) {
+                batchUpdate.__adminBound = true;
+                batchUpdate.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.batchUpdateEmploymentTaxRecords === 'function') {
+                        window.batchUpdateEmploymentTaxRecords();
+                    } else if (typeof batchUpdateEmploymentTaxRecords === 'function') {
+                        batchUpdateEmploymentTaxRecords();
+                    }
+                });
+            }
+            var batchBonusOnly = document.querySelector('#adminTaxBatchRoot .batch-bonus-only-btn');
+            if (batchBonusOnly && !batchBonusOnly.__adminBound) {
+                batchBonusOnly.__adminBound = true;
+                batchBonusOnly.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.batchAddYearEndBonusOnly === 'function') {
+                        window.batchAddYearEndBonusOnly();
+                    } else if (typeof batchAddYearEndBonusOnly === 'function') {
+                        batchAddYearEndBonusOnly();
+                    }
+                });
+            }
+            function bindAdminBatchClick(sel, fnName) {
+                var el = document.querySelector(sel);
+                if (!el || el.__adminBound) return;
+                el.__adminBound = true;
+                el.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window[fnName] === 'function') window[fnName]();
+                });
+            }
+            bindAdminBatchClick('#btnBatchTaxExample', 'fillBatchTaxExample');
+            bindAdminBatchClick('#btnBatchTaxEmptyExample', 'fillBatchTaxExample');
+            bindAdminBatchClick('#btnBatchTaxPasteImport', 'openTaxPasteImportModal');
+            bindAdminBatchClick('#btnBatchTaxEmptyPaste', 'openTaxPasteImportModal');
+            bindAdminBatchClick('#batch_exit_edit_btn', 'exitBatchTaxEditMode');
+            var addEmpBtn = document.querySelector('#adminTaxBatchRoot .batch-add-emp-btn');
+            if (addEmpBtn && !addEmpBtn.__adminBound) {
+                addEmpBtn.__adminBound = true;
+                addEmpBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.addBatchEmpRow === 'function') window.addBatchEmpRow();
+                });
+            }
+            var moreFill = document.querySelector('#batchTaxMoreMenu .batch-tax-more-item');
+            if (moreFill && !moreFill.__adminBound) {
+                moreFill.__adminBound = true;
+                moreFill.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.loadBatchEmploymentsFromExistingRecords === 'function') {
+                        window.loadBatchEmploymentsFromExistingRecords();
+                    }
+                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
+                });
+            }
+            var quickStart = document.getElementById('btnBatchTaxQuickStart');
+            if (quickStart && !quickStart.__adminBound) {
+                quickStart.__adminBound = true;
+                quickStart.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (typeof window.fillBatchTaxExample === 'function') window.fillBatchTaxExample();
+                    if (typeof window.closeBatchTaxMoreMenu === 'function') window.closeBatchTaxMoreMenu();
+                });
+            }
+        }
+
         function loadInstallTrackStats() {
             var el = document.getElementById('analyticsInstallTrack');
             if (!el) return;
@@ -7287,12 +7897,12 @@
         var ADMIN_MENU_LABELS = {
             settings: '增长与触达配置',
             'install-guide': '引导安装',
-            'sales-contacts': '联系方式配置',
             appearance: '用户端外观',
             codes: '激活码',
             users: '注册用户',
             'guest-users': '游客用户',
             'user-data': '用户数据',
+            'tax-records-edit': '个税记录维护',
             'user-behavior': '用户行为',
             'activated-user-analysis': '激活用户分析',
             feedback: '用户反馈',
@@ -7307,6 +7917,7 @@
             'analytics-tracking': '埋点分析',
             'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
+            'share-stats': '分享统计',
             'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
@@ -8498,23 +9109,6 @@
                             );
                             updateLandingAbSplitHint();
                         }
-                        var salesAgent = data.data.sales_agent;
-                        if (salesAgent) {
-                            var saName = document.getElementById('salesAgentDisplayName');
-                            var saWx = document.getElementById('salesAgentWechatId');
-                            var saQr = document.getElementById('salesAgentWechatQrUrl');
-                            var saQq = document.getElementById('salesAgentQq');
-                            var saPhone = document.getElementById('salesAgentPhone');
-                            if (saName) saName.value = salesAgent.display_name != null ? String(salesAgent.display_name) : '专属客服';
-                            if (saWx) saWx.value = salesAgent.wechat_id != null ? String(salesAgent.wechat_id) : '';
-                            if (saQr) saQr.value = salesAgent.wechat_qr_url != null ? String(salesAgent.wechat_qr_url) : '';
-                            if (saQq) saQq.value = salesAgent.qq != null ? String(salesAgent.qq) : '';
-                            if (saPhone) saPhone.value = salesAgent.phone != null ? String(salesAgent.phone) : '';
-                            updateSalesAgentQrPreview(
-                                salesAgent.wechat_qr_display_url ||
-                                    (saQr && saQr.value ? '/' + String(saQr.value).replace(/^\//, '') : '')
-                            );
-                        }
                         var pricingAb = data.data.pricing_ab;
                         if (pricingAb) {
                             var pricingEn = document.getElementById('pricingAbEnabled');
@@ -8802,90 +9396,6 @@
         if (btnSaveLandingAb) {
             btnSaveLandingAb.addEventListener('click', function () {
                 alert('落地页分流已并入「增长与触达 → 定价/支付页 A/B/C」，请在该处配置');
-            });
-        }
-
-        function updateSalesAgentQrPreview(url) {
-            var wrap = document.getElementById('salesAgentQrPreviewWrap');
-            var img = document.getElementById('salesAgentQrPreview');
-            if (!wrap || !img) return;
-            var u = url != null ? String(url).trim() : '';
-            if (!u) {
-                wrap.hidden = true;
-                img.removeAttribute('src');
-                return;
-            }
-            img.src = u;
-            wrap.hidden = false;
-        }
-
-        var btnSaveSalesAgent = document.getElementById('btnSaveSalesAgent');
-        if (btnSaveSalesAgent) {
-            btnSaveSalesAgent.addEventListener('click', function () {
-                btnSaveSalesAgent.disabled = true;
-                adminFetch('api/admin/settings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        sales_agent: {
-                            display_name: (document.getElementById('salesAgentDisplayName') || {}).value || '',
-                            wechat_id: (document.getElementById('salesAgentWechatId') || {}).value || '',
-                            wechat_qr_url: (document.getElementById('salesAgentWechatQrUrl') || {}).value || '',
-                            qq: (document.getElementById('salesAgentQq') || {}).value || '',
-                            phone: (document.getElementById('salesAgentPhone') || {}).value || '',
-                            xianyu_text: ''
-                        }
-                    })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200) {
-                            alert('联系方式已保存');
-                            loadAdminSettings();
-                        } else {
-                            alert(data.msg || '保存失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnSaveSalesAgent.disabled = false;
-                    });
-            });
-        }
-        var saQrPick = document.querySelector('.sales-agent-qr-pick');
-        if (saQrPick) {
-            saQrPick.addEventListener('click', function () {
-                var fi = document.querySelector('.sales-agent-qr-file');
-                if (fi) fi.click();
-            });
-        }
-        var saQrFile = document.querySelector('.sales-agent-qr-file');
-        if (saQrFile) {
-            saQrFile.addEventListener('change', function () {
-                var fileInput = document.querySelector('.sales-agent-qr-file');
-                var f = fileInput.files && fileInput.files[0];
-                if (!f) return;
-                fileInput.disabled = true;
-                adminUploadAsset(f)
-                    .then(function (data) {
-                        if (data.code === 200 && data.data && data.data.path) {
-                            document.getElementById('salesAgentWechatQrUrl').value = data.data.path;
-                            updateSalesAgentQrPreview('/' + String(data.data.path).replace(/^\//, ''));
-                            alert('已上传，请点击「保存联系方式」生效');
-                        } else {
-                            alert(data.msg || '上传失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        fileInput.disabled = false;
-                        fileInput.value = '';
-                    });
             });
         }
         var btnSaveActNudge = document.getElementById('btnSaveActNudge');
@@ -9350,6 +9860,18 @@
         if (installGuideStatsDays) {
             installGuideStatsDays.addEventListener('change', function () {
                 loadInstallGuideStats();
+            });
+        }
+        var btnRefreshShareStats = document.getElementById('btnRefreshShareStats');
+        if (btnRefreshShareStats) {
+            btnRefreshShareStats.onclick = function () {
+                loadShareStats();
+            };
+        }
+        var shareStatsDays = document.getElementById('shareStatsDays');
+        if (shareStatsDays) {
+            shareStatsDays.addEventListener('change', function () {
+                loadShareStats();
             });
         }
         var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');
@@ -9988,7 +10510,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v4-sales-contacts';
+                var MENU_TREE_VER = 'ops-ia-v5-no-sales-contacts';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

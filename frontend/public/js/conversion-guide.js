@@ -253,6 +253,9 @@
           window.location.href = 'mine.html?guest_dl=1';
           return;
         }
+        if (typeof window.trackShareDownloadClick === 'function') {
+          window.trackShareDownloadClick('conversion_guide');
+        }
         window.location.href = 'install_guide.html?download=1#download';
         return;
       }

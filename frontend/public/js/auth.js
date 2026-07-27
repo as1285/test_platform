@@ -9,12 +9,15 @@
   var ACTIVATE_PAGE = 'index.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
+  var SHARE_ATTR_KEY = 'share_attr_v1';
+  var SHARE_LAND_ONCE_KEY = 'share_land_once_v1';
   var LANDING_AB_ASSIGNMENT_KEY = 'landing_bc_assignment_v1';
   var PURCHASE_ABC_ASSIGNMENT_KEY = 'purchase_abc_assignment_v1';
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  var SHARE_ATTR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
-  var SALES_CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+  var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
 
   /** 尽早占位：后半段初始化异常时，业务页仍可用带 Bearer 的请求（正常路径会被真实 authFetch 覆盖） */
   function bearerTokenFetch(url, opts) {
@@ -1079,6 +1082,12 @@
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-client.app-top-safe-shell .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;}' +
+          /* 收入纳税明细：Android 系统状态栏多为独立黑条，勿再叠 statusbar 占位（否则导航上方白条） */
+          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header{top:0 !important;height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;box-sizing:border-box !important;z-index:120 !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;display:flex !important;align-items:center !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
+          'html.app-android-client.app-top-safe-shell body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
           'html.app-top-safe-shell .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
           'html.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
@@ -1174,15 +1183,12 @@
           'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .mine-activate-btn{position:fixed !important;top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-cordova-statusbar-chrome,40px)) !important;right:18px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .header-activate-btn{position:fixed !important;top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;right:12px !important;z-index:500 !important;}' +
           'html.app-cordova-xiaomi-23127.app-top-safe-shell .back-link{top:calc(10px + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
-          /* 收入纳税明细 shuiming_result：小米 14 顶栏/汇总区避免被状态栏遮挡 */
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header{height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;padding-top:calc(var(--app-shell-statusbar-top) + 10px) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .header .header-right{top:calc(var(--app-shell-statusbar-top) + 10px) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;}' +
-          'html.app-android-xiaomi-14.app-top-safe-shell:not(.app-cordova-xiaomi-23127) body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-shell-statusbar-top) + 10px) !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header{height:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;padding-top:var(--app-cordova-statusbar-chrome,40px) !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:var(--app-cordova-statusbar-chrome,40px) !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
-          'html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .list{margin-top:calc(var(--header-height,52px) + var(--app-cordova-statusbar-chrome,40px)) !important;}' +
+          /* 收入纳税明细：小米 14 / 23127 壳已让出黑条状态栏，顶栏贴 WebView 顶，勿再加 chrome/inset */
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .page-root,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .page-root{--safe-top:0px !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .top-fixed .header,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header{height:var(--header-height,48px) !important;min-height:var(--header-height,48px) !important;padding:8px 16px !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .back-btn,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .header .header-right{top:0 !important;height:var(--header-height,48px) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .top-fixed .summary,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .top-fixed .summary{top:var(--header-height,48px) !important;}' +
+          'html.app-android-xiaomi-14.app-top-safe-shell body.page-shuiming-result .list,html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-shuiming-result .list{margin-top:var(--header-height,48px) !important;}' +
           /* 华为 Pura 70：H5 横向铺满，录屏黑边改为页面灰底；个人中心主区贴边 */
           'html.app-huawei-pura70,html.app-huawei-pura70 body{width:100% !important;min-width:100% !important;max-width:none !important;margin:0 !important;background:#f5f6fa !important;overflow-x:hidden !important;}' +
           'html.app-huawei-pura70 body.page-mine .mine-stack,html.app-huawei-pura70 body.page-mine .header-bg,html.app-huawei-pura70 body.page-mine .content-wrapper{width:100vw !important;max-width:100vw !important;margin-left:calc(50% - 50vw) !important;margin-right:calc(50% - 50vw) !important;box-sizing:border-box !important;}' +
@@ -1355,12 +1361,55 @@
     if (currentPageName() === 'shouye.html') {
       try {
         var guestQuery = new URLSearchParams(window.location.search);
+        /* 落地 C 游客；或分享入口 from=share（可带 guest=1） */
+        if (guestQuery.get('from') === 'share') {
+          return true;
+        }
         if (guestQuery.get('guest') === '1' && guestQuery.get('landing_ab') === 'c') {
           return true;
         }
       } catch (e0) {}
     }
     return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
+  }
+
+  function sanitizeLoginNext(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return '';
+    try {
+      s = decodeURIComponent(s);
+    } catch (eDec) {}
+    s = s.replace(/^\/+/, '');
+    if (s.indexOf('://') >= 0 || s.indexOf('//') === 0) return '';
+    if (!/^[a-z0-9_\-]+\.html([?#][^\s]*)?$/i.test(s)) return '';
+    return s.split('#')[0];
+  }
+
+  function getLoginNextTarget() {
+    try {
+      return sanitizeLoginNext(new URLSearchParams(window.location.search).get('next'));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function buildLoginPageUrl(nextPage, extras) {
+    var next = sanitizeLoginNext(nextPage);
+    var u;
+    try {
+      u = new URL(LOGIN_PAGE, window.location.href);
+    } catch (e0) {
+      return LOGIN_PAGE;
+    }
+    if (next) u.searchParams.set('next', next);
+    if (extras && typeof extras === 'object') {
+      Object.keys(extras).forEach(function (k) {
+        if (extras[k] != null && String(extras[k]) !== '') {
+          u.searchParams.set(k, String(extras[k]));
+        }
+      });
+    }
+    return appendSalesChannelToUrl(u.pathname + u.search + u.hash);
   }
 
   function isActivationPage() {
@@ -1617,6 +1666,261 @@
     }
   }
 
+  function resolvePublicOrigin() {
+    try {
+      if (typeof window.sitePublicOrigin === 'function') {
+        var o = String(window.sitePublicOrigin() || '').replace(/\/+$/, '');
+        if (o) return o;
+      }
+    } catch (e0) {}
+    try {
+      return String(window.location.origin || '').replace(/\/+$/, '');
+    } catch (e1) {
+      return '';
+    }
+  }
+
+  /**
+   * 构建可分享的绝对 HTTPS 链接。
+   * 页面分享不带代理渠道 ch（避免把 abc 等渠道带给好友）。
+   * page: 'shouye.html' | 'mine.html' …
+   * extras: { guest:'1', from:'share', … }
+   */
+  function buildShareUrl(page, extras) {
+    var origin = resolvePublicOrigin();
+    var path = String(page || 'shouye.html').replace(/^\/+/, '');
+    if (!/^[a-z0-9_\-]+\.html$/i.test(path.split('?')[0])) {
+      path = 'shouye.html';
+    }
+    var base = origin || String(window.location.origin || '');
+    var u;
+    try {
+      u = new URL(path, base + '/');
+    } catch (eUrl) {
+      u = null;
+    }
+    if (!u) {
+      return (base ? base : '') + '/' + path;
+    }
+    if (extras && typeof extras === 'object') {
+      Object.keys(extras).forEach(function (k) {
+        var key = String(k || '').toLowerCase();
+        /* 分享链接禁止写入渠道参数 */
+        if (key === 'ch' || key === 'channel' || key === 'sales_ch') return;
+        if (extras[k] != null && String(extras[k]) !== '') {
+          u.searchParams.set(k, String(extras[k]));
+        }
+      });
+    }
+    u.searchParams.delete('ch');
+    u.searchParams.delete('channel');
+    u.searchParams.delete('sales_ch');
+    return u.href;
+  }
+
+  function copyTextToClipboard(text) {
+    var t = String(text || '');
+    if (!t) return Promise.resolve(false);
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(t).then(
+        function () {
+          return true;
+        },
+        function () {
+          return fallbackCopy(t);
+        }
+      );
+    }
+    return Promise.resolve(fallbackCopy(t));
+
+    function fallbackCopy(s) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = s;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * 分享页面链接：优先系统分享面板（安卓把链接放进 text，兼容微信等），失败再 Intent/复制。
+   * opts: { page, query, url, title, text, track }
+   */
+  function sharePageLink(opts) {
+    opts = opts || {};
+    var url =
+      opts.url ||
+      buildShareUrl(
+        opts.page || 'shouye.html',
+        opts.query || { guest: '1', from: 'share', sv: 'sim1' }
+      );
+    var title = opts.title || '模拟器APP';
+    var text = opts.text || title;
+    var pageKey = String(opts.page || '').replace(/\.html$/i, '') || 'share';
+    var isAndroid = /Android/i.test(navigator.userAgent || '');
+    var shareBody = String(text || '').trim();
+    if (shareBody && shareBody.indexOf(url) < 0) {
+      shareBody = shareBody + '\n' + url;
+    } else if (!shareBody) {
+      shareBody = url;
+    }
+
+    function track(action) {
+      var meta = { page: pageKey, url: url, method: action };
+      try {
+        if (typeof window.trackUserAction === 'function') {
+          window.trackUserAction(action, meta);
+          return;
+        }
+      } catch (e0) {}
+      try {
+        if (typeof window.trackPublicAction === 'function') {
+          window.trackPublicAction(action, meta);
+        }
+      } catch (e1) {}
+    }
+
+    function toast(msg) {
+      try {
+        if (typeof window.showToast === 'function') {
+          window.showToast(msg);
+          return;
+        }
+      } catch (eT) {}
+      try {
+        alert(msg);
+      } catch (eA) {}
+    }
+
+    function copyFallback() {
+      return copyTextToClipboard(url).then(function (ok) {
+        track('track_share_copy');
+        toast(ok ? '链接已复制，可粘贴到微信发给好友' : '复制失败，请长按手动复制链接');
+        return { method: 'copy', url: url, ok: !!ok };
+      });
+    }
+
+    /** Cordova 社交通用插件（若壳内已装） */
+    function tryCordovaSocialShare() {
+      try {
+        var plugin =
+          (window.plugins && window.plugins.socialsharing) ||
+          (navigator && navigator.share && navigator.share.socialsharing) ||
+          null;
+        var shareFn =
+          plugin && typeof plugin.share === 'function'
+            ? plugin.share.bind(plugin)
+            : typeof window.socialsharing !== 'undefined' &&
+                window.socialsharing &&
+                typeof window.socialsharing.share === 'function'
+              ? window.socialsharing.share.bind(window.socialsharing)
+              : null;
+        if (!shareFn) return false;
+        shareFn(shareBody, title, null, url);
+        track(opts.track || 'track_share_native');
+        return true;
+      } catch (ePlugin) {
+        return false;
+      }
+    }
+
+    /** 安卓 WebView 无 Web Share 时，用系统 SEND Intent 拉起分享面板 */
+    function tryAndroidShareIntent() {
+      if (!isAndroid) return false;
+      var intent =
+        'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+        'S.android.intent.extra.SUBJECT=' +
+        encodeURIComponent(title) +
+        ';S.android.intent.extra.TEXT=' +
+        encodeURIComponent(shareBody) +
+        ';end';
+      /* 1) 隐藏 a.click：Cordova 对 location.href 的 intent 常拦截 */
+      try {
+        var a = document.createElement('a');
+        a.href = intent;
+        a.style.cssText = 'display:none;position:fixed;left:-9999px;';
+        a.setAttribute('rel', 'noopener');
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          try {
+            a.parentNode && a.parentNode.removeChild(a);
+          } catch (eRm) {}
+        }, 800);
+        track(opts.track || 'track_share_native');
+        return true;
+      } catch (eA) {}
+      /* 2) iframe */
+      try {
+        var iframe = document.createElement('iframe');
+        iframe.style.cssText = 'display:none;width:0;height:0;border:0;';
+        iframe.src = intent;
+        document.body.appendChild(iframe);
+        setTimeout(function () {
+          try {
+            iframe.parentNode && iframe.parentNode.removeChild(iframe);
+          } catch (eRm2) {}
+        }, 1500);
+        track(opts.track || 'track_share_native');
+        return true;
+      } catch (eIframe) {}
+      /* 3) 最后再试 location */
+      try {
+        window.location.href = intent;
+        track(opts.track || 'track_share_native');
+        return true;
+      } catch (eIntent) {
+        return false;
+      }
+    }
+
+    function doNativeShare() {
+      /* 安卓：链接放进 text，单独 url 字段易被部分 App（如微信）丢掉 */
+      var payload = isAndroid
+        ? { title: title, text: shareBody }
+        : { title: title, text: text, url: url };
+      return navigator.share(payload).then(function () {
+        track(opts.track || 'track_share_native');
+        return { method: 'native', url: url };
+      });
+    }
+
+    if (tryCordovaSocialShare()) {
+      return Promise.resolve({ method: 'cordova', url: url });
+    }
+    if (typeof navigator.share === 'function') {
+      return doNativeShare().catch(function (err) {
+        if (err && err.name === 'AbortError') {
+          return { method: 'abort', url: url };
+        }
+        /* NotAllowedError / DataError：安卓再试 Intent，再复制 */
+        if (isAndroid && tryAndroidShareIntent()) {
+          return { method: 'intent', url: url };
+        }
+        return copyFallback();
+      });
+    }
+    if (isAndroid && tryAndroidShareIntent()) {
+      return Promise.resolve({ method: 'intent', url: url });
+    }
+    return copyFallback();
+  }
+
+  /* 尽早挂到 window：后半段若因 Map 等环境差异中断，分享仍可用 */
+  try {
+    window.buildShareUrl = buildShareUrl;
+    window.sharePageLink = sharePageLink;
+    window.copyTextToClipboard = copyTextToClipboard;
+  } catch (eShareEarly) {}
+
   function fetchPublicInstallPackages() {
     var url = getPublicInstallPackagesUrl();
     var opts = { credentials: 'same-origin' };
@@ -1780,6 +2084,98 @@
     } catch (e2) {
       return false;
     }
+  }
+
+  /** 分享链归因（主站流量，不带代理 ch；TTL 7 天） */
+  function markShareAttribution(source, landPage) {
+    try {
+      localStorage.setItem(
+        SHARE_ATTR_KEY,
+        JSON.stringify({
+          at: Date.now(),
+          source: source ? String(source).substring(0, 32) : 'share',
+          land_page: landPage ? String(landPage).substring(0, 64) : ''
+        })
+      );
+    } catch (e) {}
+  }
+
+  function hasShareAttribution() {
+    try {
+      var raw = localStorage.getItem(SHARE_ATTR_KEY);
+      if (!raw) return false;
+      var o = JSON.parse(raw);
+      if (!o || !o.at) return false;
+      if (Date.now() - Number(o.at) > SHARE_ATTR_TTL_MS) {
+        localStorage.removeItem(SHARE_ATTR_KEY);
+        return false;
+      }
+      return true;
+    } catch (e2) {
+      return false;
+    }
+  }
+
+  function clearShareAttribution() {
+    try {
+      localStorage.removeItem(SHARE_ATTR_KEY);
+    } catch (e) {}
+  }
+
+  function getShareAttribution() {
+    try {
+      if (!hasShareAttribution()) return null;
+      var raw = localStorage.getItem(SHARE_ATTR_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function trackSharePublic(action, meta) {
+    try {
+      if (typeof firePublicTrack === 'function') {
+        firePublicTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
+        return;
+      }
+    } catch (e0) {}
+    try {
+      if (typeof window.trackPublicAction === 'function') {
+        window.trackPublicAction(action, meta || {});
+      }
+    } catch (e1) {}
+  }
+
+  /** 从分享会话进入下载/安装引导时上报（同会话只报一次） */
+  function trackShareDownloadClick(source) {
+    if (!hasShareAttribution()) return false;
+    try {
+      if (sessionStorage.getItem('share_download_once_v1') === '1') return false;
+      sessionStorage.setItem('share_download_once_v1', '1');
+    } catch (eOnce) {}
+    trackSharePublic('track_share_download_click', {
+      page: currentPageName(),
+      source: source ? String(source).substring(0, 32) : 'download'
+    });
+    return true;
+  }
+
+  /** URL 含 from=share 时写入归因并上报打开（同页会话去重） */
+  function bootstrapShareAttributionFromUrl() {
+    var fromShare = false;
+    try {
+      var sp = new URLSearchParams(window.location.search || '');
+      fromShare = String(sp.get('from') || '').toLowerCase() === 'share';
+    } catch (eQ) {}
+    if (!fromShare) return;
+    var page = currentPageName();
+    markShareAttribution('url_param', page);
+    try {
+      var onceKey = SHARE_LAND_ONCE_KEY + ':' + page;
+      if (sessionStorage.getItem(onceKey) === '1') return;
+      sessionStorage.setItem(onceKey, '1');
+    } catch (eS) {}
+    trackSharePublic('track_share_land', { page: page, from: 'share' });
   }
 
   function clearInstallGuideReferral() {
@@ -2789,6 +3185,11 @@
   window.hasInstallGuideReferral = hasInstallGuideReferral;
   window.clearInstallGuideReferral = clearInstallGuideReferral;
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
+  window.markShareAttribution = markShareAttribution;
+  window.hasShareAttribution = hasShareAttribution;
+  window.clearShareAttribution = clearShareAttribution;
+  window.getShareAttribution = getShareAttribution;
+  window.trackShareDownloadClick = trackShareDownloadClick;
   window.getSalesChannel = getSalesChannel;
   window.getRegisterSalesChannel = getRegisterSalesChannel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
@@ -2798,6 +3199,12 @@
   window.persistSalesChannelAttribution = persistSalesChannelAttribution;
   window.resolveSalesChannelFromServer = resolveSalesChannelFromServer;
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
+  window.buildShareUrl = buildShareUrl;
+  window.sharePageLink = sharePageLink;
+  window.copyTextToClipboard = copyTextToClipboard;
+  window.sanitizeLoginNext = sanitizeLoginNext;
+  window.getLoginNextTarget = getLoginNextTarget;
+  window.buildLoginPageUrl = buildLoginPageUrl;
   window.refreshPublicInstallPackagesUi = refreshPublicInstallPackagesUi;
   window.getCachedPublicInstallPackages = getCachedPublicInstallPackages;
   window.fetchPublicInstallPackages = fetchPublicInstallPackages;
@@ -2808,6 +3215,9 @@
     firePublicTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };
   autoTrackJumpButtons();
+  try {
+    bootstrapShareAttributionFromUrl();
+  } catch (eShareBoot) {}
 
   (function injectToastDuration() {
     if (typeof window.TOAST_DURATION_MS === 'number') return;
@@ -2883,7 +3293,14 @@
 
   if (!isPublicPage()) {
     if (!getToken()) {
-      window.location.replace(LOGIN_PAGE);
+      var curPage = currentPageName();
+      var loginExtras = {};
+      try {
+        if (new URLSearchParams(window.location.search).get('from') === 'share') {
+          loginExtras.from = 'share';
+        }
+      } catch (eFrom) {}
+      window.location.replace(buildLoginPageUrl(curPage, loginExtras));
       return;
     }
     if (isActivationPage()) {
@@ -2896,6 +3313,11 @@
   } else {
     var page = currentPageName();
     if ((page === 'index.html' || page === 'login.html') && getToken()) {
+      var nextTarget = getLoginNextTarget();
+      if (nextTarget) {
+        window.location.replace(appendSalesChannelToUrl(nextTarget));
+        return;
+      }
       if (isAccountActive()) {
         window.location.replace('mine.html');
       } else {

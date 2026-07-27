@@ -23,7 +23,6 @@
   var PAGE_MODULE = {
     settings: 'settings',
     'install-guide': 'settings',
-    'sales-contacts': 'settings',
     appearance: 'settings',
     codes: 'codes',
     'weekly-codes': 'codes',
@@ -33,6 +32,7 @@
     'guest-users': 'users',
     'users-deleted': 'users',
     'user-data': 'user-data',
+    'tax-records-edit': 'user-data',
     'user-behavior': 'user-data',
     'activated-user-analysis': 'user-data',
     feedback: 'feedback',
@@ -47,6 +47,7 @@
     'analytics-tracking': 'analytics',
     'analytics-devices': 'analytics',
     'install-guide-stats': 'analytics',
+    'share-stats': 'analytics',
     'channel-analysis': 'analytics',
     'api-analytics': 'analytics'
   };

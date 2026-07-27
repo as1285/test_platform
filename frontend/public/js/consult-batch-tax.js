@@ -1,4 +1,23 @@
 /** consult-batch-tax: work experience batch generate / paste / example */
+
+/** C 端走 /api/tax；管理端个税维护走 /api/admin/user-tax-records（带 username） */
+function consultTaxApiFetch(body) {
+    var ctx = window.__adminTaxBatchCtx;
+    if (ctx && ctx.username && typeof ctx.fetch === 'function') {
+        var payload = Object.assign({}, body || {}, { username: ctx.username });
+        return ctx.fetch('api/admin/user-tax-records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    }
+    return window.authFetch('api/tax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+}
+
 function closeConsultStrongAlertModal() {
     var root = document.getElementById('consultStrongAlertModal');
     if (root) {
@@ -1142,13 +1161,9 @@ function deleteBatchExampleTaxRecordsPromise(companies) {
     }
     return Promise.all(
         companies.map(function (company) {
-            return window.authFetch('api/tax', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'delete_records_by_company',
-                    company_name: company
-                })
+            return consultTaxApiFetch({
+                action: 'delete_records_by_company',
+                company_name: company
             })
                 .then(function (r) {
                     return r.json();
@@ -1628,7 +1643,10 @@ function syncBatchTaxEmptyState() {
 }
 
 function scrollToTaxRecordsList() {
-    var el = document.getElementById('taxRecordsListCard') || document.getElementById('recordListMount');
+    var el =
+        document.getElementById('taxRecordsListCard') ||
+        document.getElementById('recordListMount') ||
+        document.getElementById('taxEditListMount');
     if (!el) return;
     try {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1982,14 +2000,10 @@ function postBatchReplaceTaxRecordsPromise(idsToDelete, records) {
     var list = Array.isArray(records) ? records : [];
     var CHUNK = 100;
     function postOne(delIds, part) {
-        return window.authFetch('api/tax', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'batch_replace_records',
-                ids_to_delete: delIds,
-                records: part
-            })
+        return consultTaxApiFetch({
+            action: 'batch_replace_records',
+            ids_to_delete: delIds,
+            records: part
         })
             .then(function (r) {
                 return r.json();
@@ -3342,13 +3356,9 @@ function postBatchTaxRecordsPromise(records) {
     var list = Array.isArray(records) ? records : [];
     var CHUNK = 100;
     function postOneChunk(part) {
-        return window.authFetch('api/tax', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'batch_save_records',
-                records: part
-            })
+        return consultTaxApiFetch({
+            action: 'batch_save_records',
+            records: part
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -3714,3 +3724,16 @@ function batchUpdateEmploymentTaxRecords() {
             setBatchTaxActionLoading(false, true);
         });
 }
+
+
+/* admin / inline-onclick 兼容：显式挂到 window */
+window.oneClickGenerateBatchTaxRecords = oneClickGenerateBatchTaxRecords;
+window.batchAddEmploymentTaxRecords = batchAddEmploymentTaxRecords;
+window.batchUpdateEmploymentTaxRecords = batchUpdateEmploymentTaxRecords;
+window.batchAddYearEndBonusOnly = batchAddYearEndBonusOnly;
+window.fillBatchTaxExample = fillBatchTaxExample;
+window.openTaxPasteImportModal = openTaxPasteImportModal;
+window.addBatchEmpRow = addBatchEmpRow;
+window.loadBatchEmploymentsFromExistingRecords = loadBatchEmploymentsFromExistingRecords;
+window.exitBatchTaxEditMode = exitBatchTaxEditMode;
+window.closeBatchTaxMoreMenu = closeBatchTaxMoreMenu;

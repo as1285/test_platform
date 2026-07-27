@@ -1871,7 +1871,7 @@ async function recordSalesChannelAttribution(req, salesCh, sourcePage) {
   var ua = sanitizeAuditText(normalizeUserAgentHeader(req), 512);
   var modelKey = deviceModelKeyFromRequest(req);
   var src = sourcePage != null ? String(sourcePage).trim().substring(0, 128) : '';
-  var expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  var expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   try {
     await pool.execute(
       `INSERT INTO sales_channel_attributions
@@ -2768,6 +2768,15 @@ async function createTables() {
       throw e;
     }
   }
+  try {
+    await conn.execute(`
+      ALTER TABLE users ADD COLUMN registered_from_share TINYINT(1) NOT NULL DEFAULT 0 COMMENT '注册时上报来自分享链接（主站流量）'
+    `);
+  } catch (e) {
+    if (e.errno !== 1060) {
+      throw e;
+    }
+  }
 
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS activation_codes (
@@ -3537,6 +3546,18 @@ async function createTables() {
 
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'share-stats' FROM admin_account_menus
+     WHERE menu_key IN ('install-guide-stats', 'analytics-tracking', 'analytics')`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'tax-records-edit' FROM admin_account_menus
+     WHERE menu_key IN ('users', 'user-data')`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'chat' FROM admin_account_menus WHERE menu_key = 'feedback'`
   );
 
@@ -3573,9 +3594,7 @@ async function createTables() {
   );
 
   await conn.execute(
-    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
-     SELECT admin_id, 'sales-contacts' FROM admin_account_menus
-     WHERE menu_key IN ('install-guide', 'settings')`
+    `DELETE FROM admin_account_menus WHERE menu_key = 'sales-contacts'`
   );
 
   conn.release();
@@ -6616,7 +6635,14 @@ async function buildUserTaxAvgSalaryMap(conn, usernames) {
 /**
  * 注册：无需激活码，账号默认为未激活（account_active=0），需在个人中心填写激活码开通。
  */
-async function registerUser(username, password, registerSourceChannel, fromInstallGuide, salesPromoChannel) {
+async function registerUser(
+  username,
+  password,
+  registerSourceChannel,
+  fromInstallGuide,
+  salesPromoChannel,
+  fromShare
+) {
   var u = validateUsername(username);
   if (u) {
     throw new Error(u);
@@ -6654,8 +6680,8 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
     var storePlain =
       String(process.env.REGISTER_STORE_PLAIN_PASSWORD || '1') === '0' ? null : password;
     await conn.execute(
-      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, sales_promo_channel)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (username, salt, hash, real_name, account_active, user_type, plain_password, register_source_channel, registered_from_install_guide, registered_from_share, sales_promo_channel)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
       [
         username,
         saltHex,
@@ -6665,6 +6691,7 @@ async function registerUser(username, password, registerSourceChannel, fromInsta
         storePlain,
         registerSourceChannel,
         fromInstallGuide ? 1 : 0,
+        fromShare ? 1 : 0,
         salesPromoChannel || null
       ]
     );
@@ -7880,6 +7907,7 @@ async function handleUserPost(req, res) {
   try {
     if (/^track_[a-z0-9_]{1,80}$/i.test(String(action || ''))) {
       maybeRecordClientApiPerfTrack(req, action, body.meta);
+      recordInstallGuideTrackEvent(req, action, body.meta);
       return res.json({ code: 200, data: { ok: true } });
     }
 
@@ -9106,6 +9134,13 @@ function parseFromInstallGuideFlag(body) {
   return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
 }
 
+/** 解析：from share link flag（主站分享流量） */
+function parseFromShareFlag(body) {
+  var b = body && typeof body === 'object' ? body : {};
+  var v = b.from_share;
+  return v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
+}
+
 /**
  * 解析 B/C 落地页方案：优先请求体，其次同 client_id / device_fp / IP 近 48h 的分流记录。
  * 解决浏览器落地与 App 内注册 localStorage 隔离导致 variant 丢失。
@@ -9181,7 +9216,9 @@ function recordInstallGuideTrackEvent(req, action, meta) {
     !/^track_app_/i.test(act) &&
     !/^track_guest_/i.test(act) &&
     !/^track_wechat_/i.test(act) &&
-    !/^track_browser_/i.test(act)
+    !/^track_browser_/i.test(act) &&
+    !/^track_share_/i.test(act) &&
+    !/^track_mine_share_/i.test(act)
   ) {
     return;
   }
@@ -11898,12 +11935,14 @@ async function handleAuthPost(req, res) {
           return res.status(400).json({ code: 400, msg: regSourceNorm.err });
         }
         var regSalesCh = sanitizeSalesChannelId(body.sales_ch || body.ch || '');
+        var fromShareReg = parseFromShareFlag(body);
         var out = await registerUser(
           body.username,
           body.password,
           regSourceNorm.value,
           parseFromInstallGuideFlag(body),
-          regSalesCh
+          regSalesCh,
+          fromShareReg
         );
         try {
           /* 始终尝试挂载：body.ch / 设备归因 / 游客已绑渠道 */
@@ -11947,6 +11986,13 @@ async function handleAuthPost(req, res) {
             reported: true,
             landing_variant: landingVariant || undefined,
             landing_variant_inferred: landingVariant && !String(body.landing_variant || '').trim() ? true : undefined
+          });
+        }
+        if (fromShareReg) {
+          recordInstallGuideTrackEvent(req, 'track_share_register_success', {
+            page: 'register',
+            username: out.username,
+            reported: true
           });
         }
         out.token = signAccessToken(out);
@@ -12034,6 +12080,13 @@ async function handleAuthPost(req, res) {
         }
       } catch (eLoginMig) {
         console.error('login guest migrate', eLoginMig);
+      }
+      if (parseFromShareFlag(body)) {
+        recordInstallGuideTrackEvent(req, 'track_share_login_success', {
+          page: 'login',
+          username: out2.username,
+          reported: true
+        });
       }
       return res.json({ code: 200, data: out2 });
     }
@@ -13234,6 +13287,135 @@ async function handleAdminActivationChannelFunnel(req, res) {
 }
 
 /** 安装引导统计 */
+/** 管理端：分享漏斗统计（发出 / 打开 / 注册 / 登录 / 下载；主站流量，不含代理 ch） */
+async function handleAdminShareStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 90);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var cnSince = pf.sql;
+    var sinceParams = pf.params.slice();
+    var shareOutKeys = [
+      'track_share_home',
+      'track_share_mine',
+      'track_share_native',
+      'track_share_copy',
+      'track_mine_share_open',
+      'track_mine_share_done',
+      'track_mine_share_save'
+    ];
+    var shareAllKeys = shareOutKeys.concat([
+      'track_share_land',
+      'track_share_register_success',
+      'track_share_login_success',
+      'track_share_download_click'
+    ]);
+    var inList = shareAllKeys.map(function () {
+      return '?';
+    }).join(',');
+    const conn = await pool.getConnection();
+    try {
+      const [actionRows] = await conn.query(
+        `SELECT event_key, COUNT(*) AS total
+         FROM install_guide_track_events
+         WHERE event_key IN (${inList}) AND ${cnSince}
+         GROUP BY event_key`,
+        shareAllKeys.concat(sinceParams)
+      );
+      var byKey = {};
+      (actionRows || []).forEach(function (r) {
+        byKey[String(r.event_key || '')] = Number(r.total) || 0;
+      });
+      const [landUvRows] = await conn.query(
+        `SELECT COUNT(DISTINCT COALESCE(NULLIF(client_id, ''), device_fp)) AS uv
+         FROM install_guide_track_events
+         WHERE event_key = 'track_share_land' AND ${cnSince}`,
+        sinceParams
+      );
+      var cnUserDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+      var userPf = analyticsPeriodCnDateFilter(cnUserDay, period);
+      const [regUserRows] = await conn.query(
+        `SELECT COUNT(*) AS n
+         FROM users
+         WHERE registered_from_share = 1
+           AND (user_type IS NULL OR user_type <> ?)
+           AND ${userPf.sql}`,
+        [USER_TYPE_GUEST].concat(userPf.params)
+      );
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d,
+                SUM(CASE WHEN event_key IN ('track_share_home','track_share_mine','track_share_native','track_share_copy') THEN 1 ELSE 0 END) AS share_out,
+                SUM(CASE WHEN event_key = 'track_share_land' THEN 1 ELSE 0 END) AS land_pv,
+                COUNT(DISTINCT CASE
+                  WHEN event_key = 'track_share_land'
+                  THEN COALESCE(NULLIF(client_id, ''), device_fp)
+                END) AS land_uv,
+                SUM(CASE WHEN event_key = 'track_share_register_success' THEN 1 ELSE 0 END) AS register_times,
+                SUM(CASE WHEN event_key = 'track_share_login_success' THEN 1 ELSE 0 END) AS login_times,
+                SUM(CASE WHEN event_key = 'track_share_download_click' THEN 1 ELSE 0 END) AS download_clicks
+         FROM install_guide_track_events
+         WHERE event_key IN (${inList}) AND ${cnSince}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        shareAllKeys.concat(sinceParams)
+      );
+      var shareHome = byKey.track_share_home || 0;
+      var shareMine = byKey.track_share_mine || 0;
+      var shareNative = byKey.track_share_native || 0;
+      var shareCopy = byKey.track_share_copy || 0;
+      var landPv = byKey.track_share_land || 0;
+      var landUv = landUvRows && landUvRows[0] ? Number(landUvRows[0].uv) || 0 : 0;
+      var registerTimes = byKey.track_share_register_success || 0;
+      var loginTimes = byKey.track_share_login_success || 0;
+      var downloadClicks = byKey.track_share_download_click || 0;
+      var registerUsers = regUserRows && regUserRows[0] ? Number(regUserRows[0].n) || 0 : 0;
+      var shareOut = shareHome + shareMine + shareNative + shareCopy;
+      var registerRate =
+        landUv > 0 ? ((registerUsers / landUv) * 100).toFixed(1) + '%' : '—';
+      return res.json({
+        code: 200,
+        data: {
+          period: period,
+          summary: {
+            share_out: shareOut,
+            share_home: shareHome,
+            share_mine: shareMine,
+            share_native: shareNative,
+            share_copy: shareCopy,
+            share_panel_open: byKey.track_mine_share_open || 0,
+            share_done: byKey.track_mine_share_done || 0,
+            share_poster_save: byKey.track_mine_share_save || 0,
+            land_pv: landPv,
+            land_uv: landUv,
+            register_times: registerTimes,
+            register_users: registerUsers,
+            register_rate_pct: registerRate,
+            login_times: loginTimes,
+            download_clicks: downloadClicks
+          },
+          daily: (dailyRows || []).map(function (r) {
+            return {
+              day: r.d ? String(r.d).substring(0, 10) : '',
+              share_out: Number(r.share_out) || 0,
+              land_pv: Number(r.land_pv) || 0,
+              land_uv: Number(r.land_uv) || 0,
+              register: Number(r.register_times) || 0,
+              login: Number(r.login_times) || 0,
+              download: Number(r.download_clicks) || 0
+            };
+          }),
+          note: '分享链不含代理 ch，计入主站流量；打开/转化依赖 from=share 归因（7 日内）。'
+        }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('handleAdminShareStats', e);
+    return res.status(500).json({ code: 500, msg: e.message || String(e) });
+  }
+}
+
 async function handleAdminInstallGuideStats(req, res) {
   try {
     var period = parseAnalyticsPeriod(req.query.days, 90);
@@ -18348,7 +18530,7 @@ async function handleAdminUserTaxRecords(req, res) {
       }
       const [rows] = await conn.execute(
         ADMIN_TAX_RECORD_SELECT_SQL +
-          ' WHERE user_id = ? ORDER BY year DESC, month DESC, id DESC LIMIT 200',
+          ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 200',
         [username]
       );
       const [devices] = await conn.execute(
@@ -18462,6 +18644,190 @@ async function handleAdminUserTaxRecords(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 管理端：指定用户个税记录增改删（复用 saveRecord / deleteRecord） */
+async function handleAdminUserTaxRecordsWrite(req, res) {
+  var body = req.body || {};
+  var username = body.username != null ? String(body.username).trim() : '';
+  var action = body.action != null ? String(body.action).trim() : '';
+  if (!username) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (username.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  if (!action) {
+    return res.status(400).json({ code: 400, msg: 'action required' });
+  }
+  try {
+    const conn = await pool.getConnection();
+    var canonical = username;
+    var userRow = null;
+    try {
+      const [urows] = await conn.execute(
+        `SELECT username, real_name, account_active, user_type
+         FROM users WHERE username = ? LIMIT 1`,
+        [username]
+      );
+      if (!urows.length) {
+        return res.status(404).json({ code: 404, msg: '用户不存在' });
+      }
+      userRow = urows[0];
+      canonical = String(userRow.username || username);
+      var allowed = await adminCanAccessTargetUser(conn, req.admin, canonical);
+      if (!allowed) {
+        return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+      }
+    } finally {
+      conn.release();
+    }
+
+    if (action === 'list' || action === 'load') {
+      const conn2 = await pool.getConnection();
+      try {
+        const [rows] = await conn2.execute(
+          ADMIN_TAX_RECORD_SELECT_SQL +
+            ' WHERE user_id = ? AND deleted_at IS NULL ORDER BY year DESC, month DESC, id DESC LIMIT 200',
+          [canonical]
+        );
+        const [cntRows] = await conn2.execute(
+          'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
+          [canonical]
+        );
+        return res.json({
+          code: 200,
+          data: {
+            username: canonical,
+            real_name: userRow.real_name != null ? String(userRow.real_name) : '',
+            account_active:
+              userRow.account_active === true ||
+              userRow.account_active === 1 ||
+              userRow.account_active === '1',
+            user_type: userRow.user_type != null ? Number(userRow.user_type) : null,
+            record_count: cntRows && cntRows[0] ? Number(cntRows[0].c) || 0 : 0,
+            records: (rows || []).map(mapTaxRecordRowForAdmin)
+          }
+        });
+      } finally {
+        conn2.release();
+      }
+    }
+
+    if (action === 'save_record' || action === 'add_record') {
+      var record = body.record && typeof body.record === 'object' ? body.record : null;
+      if (!record) {
+        return res.status(400).json({ code: 400, msg: 'record required' });
+      }
+      var companyName = record.company_name != null ? String(record.company_name).trim() : '';
+      if (!companyName) {
+        return res.status(400).json({ code: 400, msg: '请填写扣缴义务人（公司名称）' });
+      }
+      var yearN = parseInt(record.year, 10);
+      var monthN = parseInt(record.month, 10);
+      if (!isFinite(yearN) || yearN < 2000 || yearN > 2100) {
+        return res.status(400).json({ code: 400, msg: '年份无效' });
+      }
+      if (!isFinite(monthN) || monthN < 1 || monthN > 12) {
+        return res.status(400).json({ code: 400, msg: '月份无效' });
+      }
+      record.year = yearN;
+      record.month = monthN;
+      record.company_name = companyName;
+      if (!record.tax_period) {
+        record.tax_period = yearN + '-' + String(monthN).padStart(2, '0');
+      }
+      var saved = await saveRecord(canonical, record);
+      return res.json({
+        code: 200,
+        msg: '已保存',
+        data: { id: saved && saved.id ? saved.id : record.id || '', username: canonical }
+      });
+    }
+
+    if (action === 'delete_record') {
+      var delId =
+        body.id != null
+          ? String(body.id).trim()
+          : body.record && body.record.id != null
+            ? String(body.record.id).trim()
+            : '';
+      if (!delId) {
+        return res.status(400).json({ code: 400, msg: 'id required' });
+      }
+      await deleteRecord(canonical, delId);
+      return res.json({
+        code: 200,
+        msg: '已删除',
+        data: { id: delId, username: canonical }
+      });
+    }
+
+    if (action === 'batch_save_records') {
+      var batchRecords = body.records;
+      if (!Array.isArray(batchRecords) || batchRecords.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (batchRecords.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多写入 ' + TAX_BATCH_MAX_RECORDS + ' 条记录'
+        });
+      }
+      var batchOut = await batchSaveRecords(canonical, batchRecords);
+      return res.json({
+        code: 200,
+        msg: '批量已保存',
+        data: Object.assign({}, batchOut, { username: canonical })
+      });
+    }
+
+    if (action === 'batch_replace_records') {
+      var idsToDelete = body.ids_to_delete;
+      var replaceRecords = body.records;
+      if (!Array.isArray(idsToDelete)) {
+        return res.status(400).json({ code: 400, msg: 'ids_to_delete 须为数组' });
+      }
+      if (!Array.isArray(replaceRecords) || replaceRecords.length === 0) {
+        return res.status(400).json({ code: 400, msg: 'records 须为非空数组' });
+      }
+      if (idsToDelete.length > TAX_BATCH_MAX_RECORDS || replaceRecords.length > TAX_BATCH_MAX_RECORDS) {
+        return res.status(400).json({
+          code: 400,
+          msg: '单次最多处理 ' + TAX_BATCH_MAX_RECORDS + ' 条删除或写入'
+        });
+      }
+      var replaceOut = await batchReplaceTaxRecords(canonical, idsToDelete, replaceRecords);
+      return res.json({
+        code: 200,
+        msg: '批量已覆盖',
+        data: Object.assign({}, replaceOut, { username: canonical })
+      });
+    }
+
+    if (action === 'delete_records_by_company') {
+      var delCompany =
+        body.company_name != null
+          ? String(body.company_name).trim()
+          : body.company != null
+            ? String(body.company).trim()
+            : '';
+      if (!delCompany) {
+        return res.status(400).json({ code: 400, msg: 'company_name required' });
+      }
+      var delCompanyOut = await deleteRecordsByCompany(canonical, delCompany);
+      return res.json({
+        code: 200,
+        msg: '已按公司删除',
+        data: Object.assign({}, delCompanyOut, { username: canonical })
+      });
+    }
+
+    return res.status(400).json({ code: 400, msg: 'unknown action' });
+  } catch (e) {
+    console.error('handleAdminUserTaxRecordsWrite', e);
+    return res.status(500).json({ code: 500, msg: (e && e.message) || String(e) });
   }
 }
 
@@ -22460,6 +22826,7 @@ function getHandlers() {
     handleAdminActivationChannelFunnel,
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
+    handleAdminShareStats,
     handleAdminInstallGuideStats,
     handleAdminInstallTrackStats,
     handleAdminConversionKpis,
@@ -22476,6 +22843,7 @@ function getHandlers() {
     handleAdminActivatedUserAnalysisUsers,
     handleAdminActivatedUserAnalysisBehaviorPath,
     handleAdminUserTaxRecords,
+    handleAdminUserTaxRecordsWrite,
     handleAdminIssueCode,
     handleAdminIssueCodeBatch,
     handleAdminIssueWeeklyCode,

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通权益</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -435,12 +435,7 @@
             </div>
             <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">生成付款二维码</button>
-            <div class="qr-wrap" id="alipayQrWrap" hidden>
-                <img id="alipayQrImg" src="" alt="支付宝付款二维码">
-                <div class="qr-caption" id="alipayQrCaption">请用支付宝扫一扫付款。华为等机型请点「打开支付宝付款」；也可直接扫码，无需下载。</div>
-                <button type="button" class="btn btn-secondary" id="btnAlipayOpenLink" hidden>打开支付宝付款</button>
-            </div>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
             <div class="pay-status" id="alipayPayStatus" hidden></div>
         </div>
 
@@ -472,7 +467,6 @@
 
     <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
 
-    <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
@@ -984,6 +978,7 @@
                         clearInterval(alipayOrderPolling);
                         alipayOrderPolling = null;
                     }
+                    alipayPendingPayUrl = '';
                     activateAfterAlipayPaid({
                         token: data.token || null,
                         account_active: data.account_active
@@ -1001,39 +996,21 @@
         }, 2500);
     }
 
-    function showAlipayQr(qrCode) {
-        var wrap = document.getElementById('alipayQrWrap');
-        var img = document.getElementById('alipayQrImg');
-        var openBtn = document.getElementById('btnAlipayOpenLink');
-        var code = qrCode != null ? String(qrCode).trim() : '';
-        if (!code) throw new Error('未获取到付款二维码');
-        img.src =
-            'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' +
-            encodeURIComponent(code);
-        wrap.hidden = false;
-        /* 手机端可打开支付宝 App 付款（不离开本页，避免回跳白屏） */
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
-            openBtn.hidden = false;
-            openBtn.onclick = function () {
-                trackPurchase('track_alipay_open_click');
-                openAlipayPay(code);
-            };
-            /*
-             * 华为/荣耀：定时自动唤起常丢失用户手势，系统会当成未安装并提示下载。
-             * 壳内 iframe 同样建议点按钮唤起。其它机型仍可自动尝试一次。
-             */
-            if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
-                setAlipayStatus('请点击「打开支付宝付款」，或使用支付宝扫上方二维码', false);
-            } else {
-                setTimeout(function () {
-                    trackPurchase('track_alipay_open_click', { auto: 1 });
-                    openAlipayPay(code);
-                }, 300);
-            }
-        } else {
-            openBtn.hidden = true;
-        }
+    /** 最近一次付款链接：同次点击异步创建后可能丢手势，再次点击可直接唤起支付宝 */
+    var alipayPendingPayUrl = '';
+
+    function launchAlipayPay(payUrl) {
+        var code = payUrl != null ? String(payUrl).trim() : '';
+        if (!code) throw new Error('未获取到付款链接');
+        alipayPendingPayUrl = code;
+        trackPurchase('track_alipay_open_click');
+        openAlipayPay(code);
         startAlipayOrderPolling();
+        if (isHuaweiLikeUa() || isEmbeddedInAppShell()) {
+            setAlipayStatus('若未弹出支付宝，请再点一次「打开支付宝付款」', true);
+        } else {
+            setAlipayStatus('等待付款中…付款成功后将自动开通', true);
+        }
     }
 
     var alipayPricing = {
@@ -1073,10 +1050,10 @@
                 heroP.textContent =
                     '下载 App 后更流畅；已有激活码请在下方填写。';
             } else if (isNew) {
-                heroP.textContent = '选择下方套餐，支付宝扫码付款后自动开通当前账号。';
+                heroP.textContent = '选择下方套餐，点「打开支付宝付款」完成后自动开通当前账号。';
             } else {
                 heroP.textContent =
-                    '支付宝可扫码付款后自动开通；也可通过微信支付宝购买激活码后在本页确认。';
+                    '支付宝可一键付款后自动开通；也可通过微信支付宝购买激活码后在本页确认。';
             }
         }
         if (steps) {
@@ -1087,12 +1064,12 @@
                     '<li>开通后账号权益将同步到当前登录账号</li>';
             } else if (isNew) {
                 steps.innerHTML =
-                    '<li>选择套餐并点「生成付款二维码」</li>' +
-                    '<li>用支付宝扫码完成付款</li>' +
+                    '<li>选择套餐并点「打开支付宝付款」</li>' +
+                    '<li>在支付宝完成付款</li>' +
                     '<li>付款成功后自动开通，无需填写激活码</li>';
             } else {
                 steps.innerHTML =
-                    '<li>支付宝：扫码付款成功后自动开通当前账号</li>' +
+                    '<li>支付宝：点「打开支付宝付款」完成支付后自动开通当前账号</li>' +
                     '<li>微信支付宝购买：付款后领取激活码</li>' +
                     '<li>回到本页顶部输入激活码，点击「确认激活」</li>';
             }
@@ -1213,7 +1190,8 @@
                 } else if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
                     window.setPurchaseAbcAssignment(abc, 'server_offer');
                 }
-                if (abc === 'c' || isPurchaseVariantC()) {
+                /* 以服务端 abc 为准：本地曾 sticky 为 C 时不得盖住管理端/渠道强制的 A/B */
+                if (abc === 'c') {
                     if (card) card.hidden = true;
                     purchaseUiMode = 'code_only';
                     alipayPricing.variant = 'c';
@@ -1449,6 +1427,7 @@
             var btn = e.target.closest('[data-sku-id]');
             if (!btn) return;
             alipayPricing.selectedSkuId = btn.getAttribute('data-sku-id') || '';
+            alipayPendingPayUrl = '';
             renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
         });
     }
@@ -1457,6 +1436,11 @@
         var sku = getSelectedAlipaySku();
         if (!sku || !sku.id) {
             showToast('请选择套餐');
+            return;
+        }
+        /* 已有付款链接：直接唤起（保留用户手势，华为等机型更稳） */
+        if (alipayPendingPayUrl) {
+            launchAlipayPay(alipayPendingPayUrl);
             return;
         }
         btn.disabled = true;
@@ -1474,9 +1458,8 @@
                 if (x.status !== 200 || !x.body || !x.body.data) {
                     throw new Error((x.body && x.body.msg) || '创建支付订单失败');
                 }
-                var qr = x.body.data.qr_code || x.body.data.payment_url;
-                showAlipayQr(qr);
-                btn.textContent = '刷新付款二维码';
+                var payUrl = x.body.data.qr_code || x.body.data.payment_url;
+                launchAlipayPay(payUrl);
                 btn.disabled = false;
             })
             .catch(function (e) {

@@ -66,6 +66,9 @@ function getUrlParam(name) {
 }
 
 function currentUserId() {
+    if (window.__adminTaxBatchCtx && window.__adminTaxBatchCtx.username) {
+        return String(window.__adminTaxBatchCtx.username);
+    }
     return localStorage.getItem('user_id') || '64';
 }
 
@@ -108,6 +111,10 @@ function getToastDurationMs() {
 }
 
 function showMsg(text, ok) {
+    if (window.__adminTaxBatchCtx && typeof window.__adminTaxBatchCtx.showMsg === 'function') {
+        window.__adminTaxBatchCtx.showMsg(text, ok);
+        return;
+    }
     if (window.TaxApp && TaxApp.ui && typeof TaxApp.ui.toast === 'function') {
         TaxApp.ui.toast(text, { ok: !!ok, error: !ok });
         return;
@@ -550,30 +557,37 @@ function syncIncomeSubtypeForTypeChange() {
 
 
 function formObjectFromInputs() {
+    function fieldVal(id, fallback) {
+        var el = document.getElementById(id);
+        if (!el) return fallback != null ? fallback : '';
+        return el.value;
+    }
+    var nowY = String(new Date().getFullYear());
+    var nowM = String(new Date().getMonth() + 1);
     return {
-        id: document.getElementById('editing_id').value || ('tr_' + Date.now()),
-        year: parseInt(document.getElementById('f_year').value, 10),
-        month: parseInt(document.getElementById('f_month').value, 10),
-        income_type: document.getElementById('f_income_type').value || '工资薪金',
-        income_subtype: document.getElementById('f_income_subtype').value,
-        company_name: document.getElementById('f_company_name').value,
-        company_tax_id: document.getElementById('f_company_tax_id').value,
-        tax_authority: document.getElementById('f_tax_authority').value,
-        report_channel: document.getElementById('f_report_channel').value,
-        report_date: document.getElementById('f_report_date').value,
-        tax_period: document.getElementById('f_tax_period').value,
-        income: document.getElementById('f_income').value,
-        tax_reported: document.getElementById('f_tax_reported').value,
-        income_this_period: document.getElementById('f_income_this_period').value,
-        tax_free_income: document.getElementById('f_tax_free_income').value,
-        deduction_fee: document.getElementById('f_deduction_fee').value,
-        special_deduction: document.getElementById('f_special_deduction').value,
-        pension_insurance: document.getElementById('f_pension_insurance').value,
-        medical_insurance: document.getElementById('f_medical_insurance').value,
-        unemployment_insurance: document.getElementById('f_unemployment_insurance').value,
-        housing_fund: document.getElementById('f_housing_fund').value,
-        other_deduction: document.getElementById('f_other_deduction').value,
-        donation_deduction: document.getElementById('f_donation_deduction').value
+        id: fieldVal('editing_id', '') || ('tr_' + Date.now()),
+        year: parseInt(fieldVal('f_year', nowY), 10),
+        month: parseInt(fieldVal('f_month', nowM), 10),
+        income_type: fieldVal('f_income_type', '工资薪金') || '工资薪金',
+        income_subtype: fieldVal('f_income_subtype', '正常工资薪金'),
+        company_name: fieldVal('f_company_name', ''),
+        company_tax_id: fieldVal('f_company_tax_id', ''),
+        tax_authority: fieldVal('f_tax_authority', ''),
+        report_channel: fieldVal('f_report_channel', '其他'),
+        report_date: fieldVal('f_report_date', ''),
+        tax_period: fieldVal('f_tax_period', ''),
+        income: fieldVal('f_income', '0'),
+        tax_reported: fieldVal('f_tax_reported', '0'),
+        income_this_period: fieldVal('f_income_this_period', '0'),
+        tax_free_income: fieldVal('f_tax_free_income', '0'),
+        deduction_fee: fieldVal('f_deduction_fee', '5000'),
+        special_deduction: fieldVal('f_special_deduction', '0'),
+        pension_insurance: fieldVal('f_pension_insurance', '0'),
+        medical_insurance: fieldVal('f_medical_insurance', '0'),
+        unemployment_insurance: fieldVal('f_unemployment_insurance', '0'),
+        housing_fund: fieldVal('f_housing_fund', '0'),
+        other_deduction: fieldVal('f_other_deduction', '0'),
+        donation_deduction: fieldVal('f_donation_deduction', '0')
     };
 }
 

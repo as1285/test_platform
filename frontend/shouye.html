@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -10,7 +10,17 @@
     <script src="/js/app/core.js"></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>首页</title>
+    <title>个人所得税</title>
+    <meta name="description" content="模拟器APP，打开即可体验首页服务。">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="模拟器APP">
+    <meta property="og:description" content="模拟器APP，打开即可体验首页服务。">
+    <meta property="og:image" content="/grdb.jpg">
+    <meta property="og:url" content="/shouye.html?guest=1&from=share">
+    <meta name="twitter:card" content="summary">
+    <meta itemprop="name" content="模拟器APP">
+    <meta itemprop="description" content="模拟器APP，打开即可体验首页服务。">
+    <meta itemprop="image" content="/grdb.jpg">
     <style>
         * {
             margin: 0;
@@ -149,6 +159,35 @@
         .scan-btn svg {
             width: 26px;
             height: 26px;
+        }
+
+        .shouye-share-btn {
+            flex-shrink: 0;
+            min-width: 40px;
+            height: 28px;
+            padding: 0 6px;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .shouye-share-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        .shouye-share-btn:active {
+            opacity: 0.75;
+        }
+        .shouye-share-btn[hidden] {
+            display: none !important;
         }
         
         .shouye-header img {
@@ -532,6 +571,14 @@
             </div>
             <span class="search-text">请输入想搜索的功能/服务</span>
         </div>
+        <button type="button" class="shouye-share-btn" id="shouyeShareBtn" aria-label="分享首页">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            分享
+        </button>
         <div class="scan-btn">
             <svg viewBox="0 0 24 24" fill="none">
                 <path d="M3 7V5a2 2 0 012-2h2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -990,12 +1037,18 @@
             if (topDownload) {
                 topDownload.addEventListener('click', function () {
                     track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
+                    if (typeof window.trackShareDownloadClick === 'function') {
+                        window.trackShareDownloadClick('shouye_guest_bar');
+                    }
                     window.location.href = 'install_guide.html?download=1#download';
                 });
             }
             if (download) {
                 download.addEventListener('click', function () {
                     track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
+                    if (typeof window.trackShareDownloadClick === 'function') {
+                        window.trackShareDownloadClick('shouye_guest_gate');
+                    }
                 });
             }
             if (register) {
@@ -1027,6 +1080,199 @@
             });
             window.addEventListener('pagehide', sendLeave);
             window.addEventListener('beforeunload', sendLeave);
+        })();
+
+        (function setupShouyeShare() {
+            var SHARE_DONE_KEY = 'shouye_share_done_v1';
+            var SHARE_PENDING_KEY = 'shouye_share_pending_v1';
+            var btn = document.getElementById('shouyeShareBtn');
+            if (!btn) return;
+
+            function isShareDone() {
+                try {
+                    return localStorage.getItem(SHARE_DONE_KEY) === '1';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function hideShareBtn() {
+                try {
+                    btn.hidden = true;
+                    btn.setAttribute('hidden', '');
+                } catch (e) {
+                    btn.hidden = true;
+                }
+            }
+
+            function showShareBtnIfNeeded() {
+                if (isShareDone()) {
+                    hideShareBtn();
+                    return;
+                }
+                try {
+                    btn.hidden = false;
+                    btn.removeAttribute('hidden');
+                } catch (e2) {
+                    btn.hidden = false;
+                }
+            }
+
+            function markSharePending() {
+                try {
+                    localStorage.setItem(SHARE_PENDING_KEY, '1');
+                } catch (e) {}
+            }
+
+            function markShareCompleted() {
+                try {
+                    localStorage.setItem(SHARE_DONE_KEY, '1');
+                    localStorage.removeItem(SHARE_PENDING_KEY);
+                } catch (e) {}
+                hideShareBtn();
+                try {
+                    if (typeof window.trackUserAction === 'function') {
+                        window.trackUserAction('track_share_home_done', { page: 'shouye' });
+                    } else if (typeof window.trackPublicAction === 'function') {
+                        window.trackPublicAction('track_share_home_done', { page: 'shouye' });
+                    }
+                } catch (eTrack) {}
+            }
+
+            function finalizeShareIfPending() {
+                try {
+                    if (localStorage.getItem(SHARE_PENDING_KEY) !== '1') return;
+                    localStorage.removeItem(SHARE_PENDING_KEY);
+                } catch (e) {
+                    return;
+                }
+                markShareCompleted();
+            }
+
+            function afterShareResult(result) {
+                if (!result || !result.method) return;
+                if (result.method === 'abort') {
+                    try {
+                        localStorage.removeItem(SHARE_PENDING_KEY);
+                    } catch (eAbort) {}
+                    return;
+                }
+                /* 系统分享/复制：立刻隐藏；Android Intent 跳走后回 App 再隐藏 */
+                if (result.method === 'intent') {
+                    markSharePending();
+                    return;
+                }
+                markShareCompleted();
+            }
+
+            function localShareFallback(opts) {
+                opts = opts || {};
+                var origin = '';
+                try {
+                    origin = String(window.location.origin || '');
+                } catch (e0) {}
+                var url = origin + '/shouye.html?guest=1&from=share';
+                var title = opts.title || '模拟器APP';
+                var text = opts.text || title;
+                var body = String(text || '').trim();
+                if (body.indexOf(url) < 0) body = body ? body + '\n' + url : url;
+                var isAndroid = /Android/i.test(navigator.userAgent || '');
+
+                function copyUrl() {
+                    var finish = function (ok) {
+                        try {
+                            alert(ok ? '链接已复制，可粘贴到微信发给好友' : '复制失败：\n' + url);
+                        } catch (eA) {}
+                        return { method: 'copy', url: url, ok: !!ok };
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        return navigator.clipboard.writeText(url).then(
+                            function () {
+                                return finish(true);
+                            },
+                            function () {
+                                return finish(false);
+                            }
+                        );
+                    }
+                    return Promise.resolve(finish(false));
+                }
+
+                if (typeof navigator.share === 'function') {
+                    var payload = isAndroid
+                        ? { title: title, text: body }
+                        : { title: title, text: text, url: url };
+                    return navigator
+                        .share(payload)
+                        .then(function () {
+                            return { method: 'native', url: url };
+                        })
+                        .catch(function (err) {
+                            if (err && err.name === 'AbortError') {
+                                return { method: 'abort', url: url };
+                            }
+                            if (isAndroid) {
+                                try {
+                                    window.location.href =
+                                        'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+                                        'S.android.intent.extra.SUBJECT=' +
+                                        encodeURIComponent(title) +
+                                        ';S.android.intent.extra.TEXT=' +
+                                        encodeURIComponent(body) +
+                                        ';end';
+                                    return { method: 'intent', url: url };
+                                } catch (eIntent) {}
+                            }
+                            return copyUrl();
+                        });
+                }
+                if (isAndroid) {
+                    try {
+                        window.location.href =
+                            'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+                            'S.android.intent.extra.SUBJECT=' +
+                            encodeURIComponent(title) +
+                            ';S.android.intent.extra.TEXT=' +
+                            encodeURIComponent(body) +
+                            ';end';
+                        return Promise.resolve({ method: 'intent', url: url });
+                    } catch (eA) {}
+                }
+                return copyUrl();
+            }
+
+            btn.addEventListener('click', function () {
+                if (isShareDone()) {
+                    hideShareBtn();
+                    return;
+                }
+                var shareFn =
+                    typeof window.sharePageLink === 'function' ? window.sharePageLink : localShareFallback;
+                var opts = {
+                    page: 'shouye.html',
+                    query: { guest: '1', from: 'share', sv: 'sim1' },
+                    title: '模拟器APP',
+                    text: '打开即可体验模拟器APP',
+                    track: 'track_share_home'
+                };
+                markSharePending();
+                var ret = shareFn(opts);
+                if (ret && typeof ret.then === 'function') {
+                    ret.then(afterShareResult).catch(function () {});
+                } else if (ret && ret.method) {
+                    afterShareResult(ret);
+                }
+            });
+
+            showShareBtnIfNeeded();
+            finalizeShareIfPending();
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) finalizeShareIfPending();
+            });
+            window.addEventListener('pageshow', function () {
+                showShareBtnIfNeeded();
+                finalizeShareIfPending();
+            });
         })();
     </script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>

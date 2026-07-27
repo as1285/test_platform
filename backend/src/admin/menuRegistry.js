@@ -82,20 +82,20 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   {
-    page: 'sales-contacts',
-    menu_key: 'sales-contacts',
-    label: '联系方式配置',
-    group: 'ops-config',
-    module: 'settings',
-    order: 25
-  },
-  {
     page: 'install-guide-stats',
     menu_key: 'install-guide-stats',
     label: '安装页统计',
     group: 'ops-config',
     module: 'analytics',
     order: 30
+  },
+  {
+    page: 'share-stats',
+    menu_key: 'share-stats',
+    label: '分享统计',
+    group: 'ops-config',
+    module: 'analytics',
+    order: 35
   },
 
   /* —— 用户与客服 —— */
@@ -121,6 +121,14 @@ const ADMIN_PAGE_DEFS = [
   { page: 'feedback', menu_key: 'feedback', label: '用户反馈', group: 'users', module: 'feedback', order: 40 },
   { page: 'chat', menu_key: 'chat', label: '在线客服', group: 'users', module: 'chat', order: 50 },
   { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
+  {
+    page: 'tax-records-edit',
+    menu_key: 'tax-records-edit',
+    label: '个税记录维护',
+    group: 'users',
+    module: 'user-data',
+    order: 65
+  },
   {
     page: 'user-behavior',
     menu_key: 'user-behavior',

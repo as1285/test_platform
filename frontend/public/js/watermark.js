@@ -3,6 +3,8 @@
     var WM_CACHE_KEY = 'wm_cache';
     var WM_CACHE_TIME_KEY = 'wm_cache_time';
     var CACHE_TTL = 60000; // 1分钟缓存
+    var _wmGuardObserver = null;
+    var _wmRemoving = false;
 
     function isInactiveWatermarkPage() {
         try {
@@ -37,6 +39,15 @@
             color2: 'rgba(200, 16, 16, 0.22)',
             line2OffsetY: 18
         };
+    }
+
+    function stopWmGuard() {
+        if (_wmGuardObserver) {
+            try {
+                _wmGuardObserver.disconnect();
+            } catch (e0) {}
+            _wmGuardObserver = null;
+        }
     }
 
     function createWatermarkLayer() {
@@ -81,22 +92,33 @@
         ].join(';');
         document.body.appendChild(div);
 
-        // MutationObserver 防止被删除
-        var observer = new MutationObserver(function (mutations) {
+        /* 防删守卫：移除前必须 disconnect，否则 remove 会被立刻加回（激活后仍见水印） */
+        stopWmGuard();
+        _wmGuardObserver = new MutationObserver(function (mutations) {
+            if (_wmRemoving) return;
             mutations.forEach(function (m) {
                 m.removedNodes.forEach(function (node) {
-                    if (node.id === '__wm_layer__') {
-                        document.body.appendChild(div);
+                    if (node && node.id === '__wm_layer__') {
+                        try {
+                            if (!document.getElementById('__wm_layer__')) {
+                                document.body.appendChild(div);
+                            }
+                        } catch (eRe) {}
                     }
                 });
             });
         });
-        observer.observe(document.body, { childList: true });
+        _wmGuardObserver.observe(document.body, { childList: true });
     }
 
     function removeWatermarkLayer() {
-        var el = document.getElementById('__wm_layer__');
-        if (el) el.parentNode.removeChild(el);
+        _wmRemoving = true;
+        stopWmGuard();
+        try {
+            var el = document.getElementById('__wm_layer__');
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+        } catch (eRm) {}
+        _wmRemoving = false;
     }
 
     function applyWatermark(enabled) {
@@ -108,6 +130,14 @@
             createWatermarkLayer();
         } else {
             removeWatermarkLayer();
+        }
+    }
+
+    function notifyActivateCardSync() {
+        if (typeof window.syncSmActivateCard === 'function') {
+            try {
+                window.syncSmActivateCard();
+            } catch (eSync) {}
         }
     }
 
@@ -130,12 +160,14 @@
         } catch (e0) {}
         if (localActive) {
             applyWatermark('0');
+            notifyActivateCardSync();
             try {
                 localStorage.removeItem(WM_CACHE_KEY);
                 localStorage.removeItem(WM_CACHE_TIME_KEY);
             } catch (e1) {}
         } else if (localInactive) {
             applyWatermark('1');
+            notifyActivateCardSync();
             try {
                 localStorage.removeItem(WM_CACHE_KEY);
                 localStorage.removeItem(WM_CACHE_TIME_KEY);
@@ -152,21 +184,22 @@
                 try {
                     var data = JSON.parse(xhr.responseText);
                     if (data.code === 200 && data.data) {
-                        var apiActive =
-                            data.data.account_active === true ||
-                            data.data.account_active === 1 ||
-                            data.data.account_active === '1';
-                        var apiInactive = data.data.account_active === false;
+                        var raw = data.data.account_active;
+                        var apiActive = raw === true || raw === 1 || raw === '1';
+                        var apiInactive =
+                            raw === false || raw === 0 || raw === '0';
                         if (apiActive) {
                             localStorage.setItem('account_active', '1');
                             localStorage.setItem(WM_CACHE_KEY, '0');
                             localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
                             applyWatermark('0');
+                            notifyActivateCardSync();
                         } else if (apiInactive) {
                             localStorage.setItem('account_active', '0');
                             localStorage.setItem(WM_CACHE_KEY, '1');
                             localStorage.setItem(WM_CACHE_TIME_KEY, Date.now().toString());
                             applyWatermark('1');
+                            notifyActivateCardSync();
                         }
                     }
                 } catch (e) {}
@@ -185,9 +218,21 @@
     // 页面可见性切换时刷新（防止缓存过久）
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
-            localStorage.removeItem(WM_CACHE_KEY);
+            try {
+                localStorage.removeItem(WM_CACHE_KEY);
+                localStorage.removeItem(WM_CACHE_TIME_KEY);
+            } catch (eV) {}
             fetchAndApply();
         }
+    });
+
+    /* App 内返回 / bfcache 恢复：按最新激活态立刻去水印 */
+    window.addEventListener('pageshow', function () {
+        try {
+            localStorage.removeItem(WM_CACHE_KEY);
+            localStorage.removeItem(WM_CACHE_TIME_KEY);
+        } catch (ePs) {}
+        fetchAndApply();
     });
 
     window.refreshWatermarkFromApi = function () {

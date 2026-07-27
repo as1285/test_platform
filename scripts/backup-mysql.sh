@@ -1,19 +1,50 @@
 #!/usr/bin/env bash
 # 备份 Docker MySQL 中的 personal_tax 库为 gzip sql。
 # 用法：
-#   ./scripts/backup-mysql.sh              # 写入 data/db-backups/
-#   ./scripts/backup-mysql.sh --stdout     # 输出到 stdout（供 GitHub Actions / 管道使用）
+#   ./scripts/backup-mysql.sh                 # 写入 data/db-backups/
+#   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
+#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 2 小时备份，最多保留 1 天
 #
-# 高频本地备份（防攻击回滚）：默认保留 24 小时，最多 50 份（约每 30 分钟一份）。
+# 默认：保留 24 小时，最多 12 份（配合每 2 小时一次）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_PATH="$ROOT/scripts/backup-mysql.sh"
 DB_CONTAINER="${DB_CONTAINER:-test_platform_db}"
-DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-password}"
 DB_NAME="${DB_NAME:-personal_tax}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT/data/db-backups}"
 RETAIN_HOURS="${RETAIN_HOURS:-24}"
-MAX_BACKUPS="${MAX_BACKUPS:-50}"
+MAX_BACKUPS="${MAX_BACKUPS:-12}"
+LOG_FILE="${MYSQL_BACKUP_LOG:-/var/log/test_platform-mysql-backup.log}"
+CRON_EXPR="0 */2 * * *"
+CRON_LINE="${CRON_EXPR} /bin/bash ${SCRIPT_PATH} >> ${LOG_FILE} 2>&1"
+
+resolve_db_password() {
+  if [[ -n "${DB_ROOT_PASSWORD:-}" ]]; then
+    echo "$DB_ROOT_PASSWORD"
+    return 0
+  fi
+  if docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
+    docker exec "$DB_CONTAINER" printenv MYSQL_ROOT_PASSWORD 2>/dev/null || true
+  fi
+}
+
+install_cron() {
+  local tmp
+  tmp="$(mktemp)"
+  crontab -l 2>/dev/null | grep -v 'scripts/backup-mysql.sh' >"$tmp" || true
+  printf '%s\n' "$CRON_LINE" >>"$tmp"
+  crontab "$tmp"
+  rm -f "$tmp"
+  echo "[backup] crontab installed: $CRON_LINE"
+  crontab -l 2>/dev/null | grep -F 'backup-mysql.sh' || true
+}
+
+if [[ "${1:-}" == "--install-cron" ]]; then
+  install_cron
+  exit 0
+fi
+
 STDOUT=0
 if [[ "${1:-}" == "--stdout" ]]; then
   STDOUT=1
@@ -21,6 +52,12 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
   echo "[backup] MySQL 容器未运行: $DB_CONTAINER" >&2
+  exit 1
+fi
+
+DB_ROOT_PASSWORD="$(resolve_db_password)"
+if [[ -z "$DB_ROOT_PASSWORD" ]]; then
+  echo "[backup] 无法读取 MySQL root 密码（设 DB_ROOT_PASSWORD 或确保容器 ${DB_CONTAINER} 可访问）" >&2
   exit 1
 fi
 

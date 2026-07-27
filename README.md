@@ -135,7 +135,7 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
-| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，保留 24h） |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 2 小时、保留 24h / 最多 12 份） |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
 
@@ -174,7 +174,7 @@ https://www.installguide1.top/
 
 ### 数据库备份
 
-- **本机**：cron 每 30 分钟执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`
+- **本机**：cron 每 2 小时执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron`；最多保留 1 天 / 12 份）
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
 - **保留**：**24 小时**、最多约 50 份
 - GitHub Actions 远端每日备份已取消

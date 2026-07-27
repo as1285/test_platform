@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260726-card-revert-midnight"></script>
+    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -628,15 +628,18 @@
                 }
             }
 
+            var fromInstallGuide =
+                typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
+            var fromShare =
+                typeof window.hasShareAttribution === 'function' && window.hasShareAttribution();
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', {
                     page: 'register',
-                    from_install_guide: !!(typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral())
+                    from_install_guide: !!fromInstallGuide,
+                    from_share: !!fromShare
                 });
             }
 
-            var fromInstallGuide =
-                typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
             var regSalesCh =
                 typeof window.getRegisterSalesChannel === 'function'
                     ? window.getRegisterSalesChannel(fromInstallGuide)
@@ -671,6 +674,7 @@
                     register_source_channel: sourceChannel || undefined,
                     register_source_channel_other: sourceChannelOther || undefined,
                     from_install_guide: fromInstallGuide ? 1 : 0,
+                    from_share: fromShare ? 1 : 0,
                     landing_variant:
                         typeof window.getLandingAbVariant === 'function'
                             ? window.getLandingAbVariant() || undefined
@@ -688,14 +692,24 @@
                             window.trackPublicAction('track_register_success', {
                                 page: 'register',
                                 from_install_guide: fromInstallGuide,
+                                from_share: fromShare,
                                 landing_variant:
                                     typeof window.getLandingAbVariant === 'function'
                                         ? window.getLandingAbVariant() || undefined
                                         : undefined
                             });
+                            if (fromShare) {
+                                window.trackPublicAction('track_share_register_success', {
+                                    page: 'register',
+                                    username: d.username || username
+                                });
+                            }
                         }
                         if (typeof window.clearInstallGuideReferral === 'function') {
                             window.clearInstallGuideReferral();
+                        }
+                        if (typeof window.clearShareAttribution === 'function') {
+                            window.clearShareAttribution();
                         }
                         if (d.token) {
                             localStorage.setItem('token', d.token);
