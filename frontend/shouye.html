@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260727-redmi-k70-top2"></script>
+    <script src="/js/auth.js?v=20260727-redmi-k70-top3"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -95,9 +95,9 @@
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
 
-        /* 红米 K70：勿用小米 14 的 72px 顶栏；状态栏约 24px */
+        /* 红米 K70：系统已留状态栏时勿再叠顶距，搜索条仅保留 6px */
         html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: calc(2px + var(--app-shell-statusbar-top, 24px));
+            padding-top: 6px;
         }
 
         /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */
