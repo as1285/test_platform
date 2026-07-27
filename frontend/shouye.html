@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260727-ch-ttl-15m"></script>
+    <script src="/js/auth.js?v=20260727-redmi-k70-top2"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -90,8 +90,14 @@
         /* 荣耀等 Android 顶栏安全区（auth.js 亦注入，此处兜底） */
         html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
+        }
+
+        /* 红米 K70：勿用小米 14 的 72px 顶栏；状态栏约 24px */
+        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: calc(2px + var(--app-shell-statusbar-top, 24px));
         }
 
         /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */

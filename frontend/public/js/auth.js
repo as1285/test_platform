@@ -123,6 +123,10 @@
     if (isRedmiNote13ProClient()) {
       return false;
     }
+    /* 红米 K70（23113RKC6C）勿套 72px 顶栏，首页搜索条会空出过大蓝隙 */
+    if (isRedmiK70Client()) {
+      return false;
+    }
     if (/Xiaomi\s*14|23127PN|2201PN/i.test(ua)) {
       return true;
     }
@@ -169,6 +173,17 @@
       return true;
     }
     return /(?:Redmi|Xiaomi)[\s_-]*Note[\s_-]*13[\s_-]*Pro/i.test(ua);
+  }
+
+  /**
+   * 红米 K70（23113RKC6C / HyperOS）：打孔屏状态栏约 36px，勿走小米 14 的 72px 顶栏。
+   */
+  function isRedmiK70Client() {
+    var ua = navigator.userAgent || '';
+    if (/23113RKC6[CG]/i.test(ua)) {
+      return true;
+    }
+    return /(?:Redmi|Xiaomi)[\s_-]*K70(?![\s_-]*(?:Pro|Ultra|E)\b)/i.test(ua);
   }
 
   /**
@@ -874,6 +889,7 @@
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
       var cordovaXiaomiM2102 = androidClient && isCordovaXiaomiM2102Client();
       var redmiNote13Pro = androidClient && isRedmiNote13ProClient();
+      var redmiK70Client = androidClient && isRedmiK70Client();
       var cordovaXiaomi2410 = androidClient && isCordovaXiaomi2410Client();
       lockAppSafeBottomInset({ cordovaXiaomi2410: cordovaXiaomi2410 });
       var android25060RK16C = androidClient && isAndroid25060RK16CClient();
@@ -892,7 +908,8 @@
       var cordovaHuaweiPura70 = cordovaShell && huaweiPura70Client;
       var huaweiClsAl00Client = androidClient && isHuaweiClsAl00Client();
       var huaweiTasAn00Client = androidClient && isHuaweiTasAn00Client();
-      var tallAndroidStatusBar = androidClient && (isTallAndroidStatusBarClient() || xiaomi14Client);
+      var tallAndroidStatusBar =
+        androidClient && !redmiK70Client && (isTallAndroidStatusBarClient() || xiaomi14Client);
       /*
        * 默认：Cordova / iOS / Android 用浅色根底，避免切页蓝闪。
        * 蓝顶栏页（我的/待办/办查/消息）：根底与顶色一致 + translucent，消除刘海白条。
@@ -935,11 +952,13 @@
             ? '44px'
             : honorPgtAn20Client
               ? '36px'
-              : annAn00Client
-                ? '32px'
-                : tallAndroidStatusBar
-                  ? '56px'
-                  : '24px')
+              : redmiK70Client
+                ? '24px'
+                : annAn00Client
+                  ? '32px'
+                  : tallAndroidStatusBar
+                    ? '56px'
+                    : '24px')
         : cordovaShell
           ? iosClient
             ? IOS_DYNAMIC_ISLAND_INSET_PX + 'px'
@@ -979,6 +998,9 @@
       }
       if (redmiNote13Pro) {
         document.documentElement.classList.add('app-android-redmi-note13-pro');
+      }
+      if (redmiK70Client) {
+        document.documentElement.classList.add('app-android-redmi-k70');
       }
       if (cordovaXiaomi2410) {
         document.documentElement.classList.add('app-cordova-xiaomi-2410');
@@ -1077,6 +1099,7 @@
           statusInsetCss +
           ';}' +
           'html.app-android-xiaomi-14.app-top-safe-shell{--app-shell-statusbar-top:72px !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell{--app-shell-statusbar-top:24px !important;}' +
           'html.app-android-client.app-top-safe-shell .page-root{--safe-top:var(--app-shell-statusbar-top) !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header{top:0 !important;height:calc(var(--header-height,52px) + var(--app-shell-statusbar-top)) !important;padding:var(--app-shell-statusbar-top) 16px 0 !important;z-index:120 !important;}' +
           'html.app-android-client.app-top-safe-shell .top-fixed .header .back-btn,html.app-android-client.app-top-safe-shell .top-fixed .header .header-right{top:var(--app-shell-statusbar-top) !important;height:var(--header-height,52px) !important;display:flex !important;align-items:center !important;}' +
@@ -1095,6 +1118,8 @@
           'html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar{position:relative !important;top:auto !important;left:auto !important;right:auto !important;margin:2px 12px 14px !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(60px + var(--app-shell-statusbar-top,0px)) !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
+          'html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,78px) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell .search-bar-wrapper{padding-top:calc(2px + var(--app-shell-statusbar-top)) !important;}' +
           'html.app-android-ann-an00.app-top-safe-shell body.page-shouye .shouye-page{padding-top:calc(53px + var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .search-bar-wrapper{padding-top:calc(8px + var(--app-shell-statusbar-top)) !important;}' +
