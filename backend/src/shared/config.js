@@ -56,6 +56,10 @@ const ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_API_RATE_PER_IP_MIN
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.HEAVY_ADMIN_API_RATE_PER_IP_MIN || '60', 10);
 const DB_POOL_SIZE = parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30;
 const DB_POOL_QUEUE_LIMIT = parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60;
+/** C 端：激活时间早于此日期的已激活用户强制跳转新站（YYYY-MM-DD；空=关闭） */
+const LEGACY_ACTIVATION_CUTOFF = String(process.env.LEGACY_ACTIVATION_CUTOFF || '').trim();
+/** C 端：上述用户跳转目标（完整 URL；空=关闭强制重定向） */
+const LEGACY_USER_REDIRECT_URL = String(process.env.LEGACY_USER_REDIRECT_URL || '').trim();
 
 module.exports = {
   BACKEND_ROOT,
@@ -85,5 +89,7 @@ module.exports = {
   ADMIN_API_RATE_PER_IP_MIN,
   HEAVY_ADMIN_API_RATE_PER_IP_MIN,
   DB_POOL_SIZE,
-  DB_POOL_QUEUE_LIMIT
+  DB_POOL_QUEUE_LIMIT,
+  LEGACY_ACTIVATION_CUTOFF,
+  LEGACY_USER_REDIRECT_URL
 };

@@ -1079,6 +1079,77 @@
     }
   }
 
+  /** C 端强制引流已关闭；保留函数供日后按需开启 */
+  var LEGACY_USER_REDIRECT_ENABLED = false;
+
+  function isOnLegacyRedirectTargetSite() {
+    try {
+      return String(window.location.hostname || '').toLowerCase() === 'lkj.qiyun888.top';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** C 端：老用户强制引流（已关闭） */
+  function performLegacyUserRedirect(url) {
+    if (!LEGACY_USER_REDIRECT_ENABLED) {
+      return false;
+    }
+    var target = String(url || '').trim();
+    if (!target || isOnLegacyRedirectTargetSite()) {
+      return false;
+    }
+    if (!/^https?:\/\//i.test(target)) {
+      return false;
+    }
+    try {
+      clearSession();
+    } catch (e0) {}
+    window.location.replace(target);
+    return true;
+  }
+
+  function maybeApplyLegacyUserRedirect(payload) {
+    if (!payload || !payload.legacy_redirect || !payload.redirect_url) {
+      return false;
+    }
+    return performLegacyUserRedirect(payload.redirect_url);
+  }
+
+  function checkLegacyUserRedirect() {
+    if (!LEGACY_USER_REDIRECT_ENABLED) {
+      return;
+    }
+    if (isOnLegacyRedirectTargetSite()) {
+      return;
+    }
+    if (currentPageName() === 'admin_panel.html') {
+      return;
+    }
+    if (!getToken()) {
+      return;
+    }
+    fetch('api/auth?action=status', {
+      headers: typeof authHeaders === 'function' ? authHeaders() : {}
+    })
+      .then(function (r) {
+        return r.text().then(function (text) {
+          var j = null;
+          try {
+            j = JSON.parse(text);
+          } catch (e) {}
+          if (j && j.code === 200 && j.data) {
+            maybeApplyLegacyUserRedirect(j.data);
+            return;
+          }
+          if (j && j.code === 403) {
+            maybeApplyLegacyUserRedirect(j);
+          }
+        });
+      })
+      .catch(function () {});
+  }
+
   function getToken() {
     try {
       return localStorage.getItem('token') || '';
@@ -1971,6 +2042,10 @@
               err.need_activation = true;
               return Promise.reject(err);
             }
+            if (j && j.legacy_redirect && j.redirect_url) {
+              performLegacyUserRedirect(j.redirect_url);
+              return Promise.reject(new Error('legacy_redirect'));
+            }
             return Promise.reject(new Error('forbidden'));
           });
         }
@@ -2360,6 +2435,10 @@
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
   window.authClearSession = clearSession;
+  window.performLegacyUserRedirect = performLegacyUserRedirect;
+  window.LEGACY_USER_REDIRECT_ENABLED = LEGACY_USER_REDIRECT_ENABLED;
+  window.maybeApplyLegacyUserRedirect = maybeApplyLegacyUserRedirect;
+  window.checkLegacyUserRedirect = checkLegacyUserRedirect;
   window.reportApiPerf = reportApiPerf;
   window.measureFetchAndRender = measureFetchAndRender;
   window.getClientDeviceHeaders = getClientDeviceHeaders;
@@ -2474,6 +2553,7 @@
       window.location.replace(LOGIN_PAGE);
       return;
     }
+    checkLegacyUserRedirect();
     if (isActivationPage()) {
       if (isAccountActive()) {
         window.location.replace('mine.html');
@@ -2483,6 +2563,9 @@
     /* 未激活也可浏览业务页，在个人中心（consult）等处激活 */
   } else {
     var page = currentPageName();
+    if (getToken()) {
+      checkLegacyUserRedirect();
+    }
     if ((page === 'index.html' || page === 'login.html') && getToken()) {
       if (isAccountActive()) {
         window.location.replace('mine.html');

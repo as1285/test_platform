@@ -40,7 +40,7 @@
     var tb = document.getElementById('userPrepPreviewTbody');
     if (!tb) return;
     if (!rows || !rows.length) {
-      tb.innerHTML = '<tr><td colspan="10">暂无预览</td></tr>';
+      tb.innerHTML = '<tr><td colspan="11">暂无预览</td></tr>';
       return;
     }
     tb.innerHTML = rows
@@ -67,6 +67,8 @@
           esc(r.company_name) +
           '</td><td>' +
           esc(r.income) +
+          '</td><td>' +
+          esc(r.special_deduction) +
           '</td></tr>'
         );
       })

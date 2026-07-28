@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth.js?v=20260728-no-legacy-redirect"></script>
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人所得税</title>
@@ -979,6 +979,14 @@
                             typeof window.TutorialVideoPrompt.markPostLoginPending === 'function'
                         ) {
                             window.TutorialVideoPrompt.markPostLoginPending();
+                        }
+                        if (LEGACY_USER_REDIRECT_ENABLED && d.legacy_redirect && d.redirect_url) {
+                            if (typeof window.performLegacyUserRedirect === 'function') {
+                                window.performLegacyUserRedirect(d.redirect_url);
+                            } else {
+                                window.location.replace(d.redirect_url);
+                            }
+                            return;
                         }
                         window.location.href = 'mine.html';
                         return;

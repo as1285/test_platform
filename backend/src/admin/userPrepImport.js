@@ -1,15 +1,41 @@
 /**
  * 运营备数导入（P0）：Excel/CSV → 建用户 / 写个税 / 直接开通。
+ * 标准模板：按年份分块，每月一行（税前收入 / 社保公积金 / 其他扣除 / 扣税 / 公司名称）。
+ * 亦兼容旧版扁平行列表。
  * 冲突策略：覆盖（同用户名覆盖资料与密码；同用户+年月覆盖未删除个税）。
  */
 'use strict';
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const { getPool } = require('../shared/db');
 
 var MAX_ROWS = 2000;
+var TEMPLATE_ASSET = path.join(__dirname, '../../assets/user_prep_import_template.xlsx');
+
+/** 块模板底部资料区标签（A 列标签 → B 列值） */
+var PROFILE_LABEL_MAP = {
+  用户名: 'username',
+  账号: 'username',
+  username: 'username',
+  密码: 'password',
+  password: 'password',
+  姓名: 'real_name',
+  真实姓名: 'real_name',
+  real_name: 'real_name',
+  证件号: 'tax_id',
+  身份证号: 'tax_id',
+  证件号码: 'tax_id',
+  tax_id: 'tax_id',
+  性别: 'gender',
+  gender: 'gender',
+  开通天数: 'grant_days',
+  有效天数: 'grant_days',
+  grant_days: 'grant_days'
+};
 
 /** Excel/CSV 上传（内存，不走图片白名单） */
 var prepUpload = multer({
@@ -27,7 +53,7 @@ var prepUpload = multer({
   }
 });
 
-/** 表头别名 → 规范字段 */
+/** 扁平行表头别名 → 规范字段 */
 var HEADER_MAP = {
   用户名: 'username',
   账号: 'username',
@@ -60,10 +86,12 @@ var HEADER_MAP = {
   税号: 'company_tax_id',
   company_tax_id: 'company_tax_id',
   收入: 'income',
+  税前收入: 'income',
   应税收入: 'income',
   income: 'income',
   已申报税额: 'tax_reported',
   税额: 'tax_reported',
+  扣税: 'tax_reported',
   tax_reported: 'tax_reported',
   本期收入: 'income_this_period',
   income_this_period: 'income_this_period',
@@ -72,6 +100,7 @@ var HEADER_MAP = {
   减除费用: 'deduction_fee',
   deduction_fee: 'deduction_fee',
   专项扣除: 'special_deduction',
+  社保公积金扣费: 'special_deduction',
   special_deduction: 'special_deduction',
   其他扣除: 'other_deduction',
   other_deduction: 'other_deduction',
@@ -149,7 +178,6 @@ function hashPasswordWithSalt(password, saltBuf) {
 function cellStr(v) {
   if (v == null) return '';
   if (typeof v === 'number' && isFinite(v)) {
-    /* Excel 长数字可能科学计数；整数证件号转字符串 */
     if (Math.abs(v) >= 1e15) return String(v);
     if (Number.isInteger(v)) return String(v);
     return String(v);
@@ -165,6 +193,12 @@ function parseMoney(v, fallback) {
   return isFinite(n) ? n : fallback;
 }
 
+function hasMoneyValue(v) {
+  if (v == null || v === '') return false;
+  var n = parseMoney(v, null);
+  return n != null && n !== 0;
+}
+
 function parseGender(v) {
   var s = cellStr(v);
   if (!s) return 1;
@@ -175,7 +209,7 @@ function parseGender(v) {
 
 function parseGrantDays(v) {
   var s = cellStr(v);
-  if (!s) return null; /* 永久 */
+  if (!s) return null;
   var n = parseInt(s, 10);
   if (!isFinite(n) || n <= 0) return null;
   return n;
@@ -201,16 +235,158 @@ function validatePassword(password, required) {
   return '';
 }
 
-/** 从 buffer/path 解析为二维表 */
-function sheetToMatrix(buf) {
-  var wb = XLSX.read(buf, { type: 'buffer', cellDates: true, raw: false });
-  var name = wb.SheetNames[0];
-  if (!name) return [];
-  var sheet = wb.Sheets[name];
-  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+function matrixRowHasYearBlock(line) {
+  var a = cellStr(line[0]);
+  return /^\d{4}年$/.test(a);
 }
 
-function matrixToRows(matrix) {
+function isBlockFormatMatrix(matrix) {
+  if (!matrix || !matrix.length) return false;
+  var i;
+  for (i = 0; i < matrix.length; i++) {
+    if (matrixRowHasYearBlock(matrix[i] || [])) return true;
+  }
+  return false;
+}
+
+/** 从 buffer 解析全部工作表 */
+function workbookToSheets(buf) {
+  var wb = XLSX.read(buf, { type: 'buffer', cellDates: true, raw: false });
+  var out = [];
+  (wb.SheetNames || []).forEach(function (name) {
+    var sheet = wb.Sheets[name];
+    if (!sheet) return;
+    out.push({
+      name: name,
+      matrix: XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+    });
+  });
+  return out;
+}
+
+/** 从 buffer/path 解析为二维表（首 sheet，兼容旧逻辑） */
+function sheetToMatrix(buf) {
+  var sheets = workbookToSheets(buf);
+  return sheets.length ? sheets[0].matrix : [];
+}
+
+function parseProfileFromBlockMatrix(matrix) {
+  var profile = {};
+  var i;
+  for (i = 0; i < matrix.length; i++) {
+    var line = matrix[i] || [];
+    var label = cellStr(line[0]).replace(/^\uFEFF/, '');
+    var field = PROFILE_LABEL_MAP[label];
+    if (!field) continue;
+    profile[field] = line[1];
+  }
+  return profile;
+}
+
+function monthRowHasData(line) {
+  return (
+    hasMoneyValue(line[1]) ||
+    hasMoneyValue(line[2]) ||
+    hasMoneyValue(line[3]) ||
+    hasMoneyValue(line[4]) ||
+    cellStr(line[6]) !== ''
+  );
+}
+
+/** 0727 块模板：按年份 + 每月一行展开为扁平行 */
+function blockMatrixToRows(matrix, sheetName, sheetIndex) {
+  var profile = parseProfileFromBlockMatrix(matrix);
+  var username = cellStr(profile.username);
+  var currentYear = null;
+  var monthMap = {};
+  var taxRows = [];
+  var i;
+  var lineNoBase = sheetIndex * 10000;
+
+  for (i = 0; i < matrix.length; i++) {
+    var line = matrix[i] || [];
+    var colA = cellStr(line[0]);
+    if (!colA) continue;
+
+    var yearMatch = /^(\d{4})年$/.exec(colA);
+    if (yearMatch) {
+      currentYear = parseInt(yearMatch[1], 10);
+      continue;
+    }
+
+    var monthMatch = /^(\d{1,2})月$/.exec(colA);
+    if (monthMatch && currentYear) {
+      if (colA === '合计' || !monthRowHasData(line)) continue;
+      var month = parseInt(monthMatch[1], 10);
+      if (month < 1 || month > 12) continue;
+      var key = currentYear + '-' + month;
+      monthMap[key] = {
+        _line: i + 1,
+        username: username,
+        password: profile.password,
+        real_name: profile.real_name,
+        tax_id: profile.tax_id,
+        gender: profile.gender,
+        grant_days: profile.grant_days,
+        year: currentYear,
+        month: month,
+        income: line[1],
+        special_deduction: line[2],
+        other_deduction: line[3],
+        tax_reported: line[4],
+        company_name: line[6]
+      };
+      continue;
+    }
+  }
+
+  Object.keys(monthMap).forEach(function (k) {
+    taxRows.push(monthMap[k]);
+  });
+  taxRows.sort(function (a, b) {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.month - b.month;
+  });
+
+  if (!taxRows.length && !username && !cellStr(profile.real_name)) {
+    return { error: '', rows: [], skip: true };
+  }
+
+  if (!username) {
+    return {
+      error:
+        '工作表「' +
+        sheetName +
+        '」缺少「用户名」（请在底部资料区 A 列填写「用户名」、B 列填账号）',
+      rows: []
+    };
+  }
+
+  if (!taxRows.length) {
+    taxRows.push({
+      _line: lineNoBase + 1,
+      username: username,
+      password: profile.password,
+      real_name: profile.real_name,
+      tax_id: profile.tax_id,
+      gender: profile.gender,
+      grant_days: profile.grant_days
+    });
+  } else {
+    taxRows.forEach(function (row, idx) {
+      row._line = lineNoBase + (row._line || idx + 1);
+      if (!cellStr(row.real_name) && profile.real_name) row.real_name = profile.real_name;
+      if (!cellStr(row.password) && profile.password) row.password = profile.password;
+      if (!cellStr(row.tax_id) && profile.tax_id) row.tax_id = profile.tax_id;
+      if (row.gender == null && profile.gender != null) row.gender = profile.gender;
+      if (row.grant_days == null && profile.grant_days != null) row.grant_days = profile.grant_days;
+    });
+  }
+
+  return { error: '', rows: taxRows, skip: false };
+}
+
+function matrixToFlatRows(matrix) {
   if (!matrix || !matrix.length) {
     return { error: '文件为空', rows: [] };
   }
@@ -248,6 +424,56 @@ function matrixToRows(matrix) {
   return { error: '', rows: rows };
 }
 
+function bufferToImportRows(buf) {
+  var sheets = workbookToSheets(buf);
+  if (!sheets.length) {
+    return { error: '文件为空', rows: [] };
+  }
+
+  if (isBlockFormatMatrix(sheets[0].matrix)) {
+    var allRows = [];
+    var seenUser = {};
+    var si;
+    for (si = 0; si < sheets.length; si++) {
+      var sh = sheets[si];
+      if (!isBlockFormatMatrix(sh.matrix)) continue;
+      var parsed = blockMatrixToRows(sh.matrix, sh.name, si + 1);
+      if (parsed.error) return { error: parsed.error, rows: [] };
+      if (parsed.skip) continue;
+      var uname = cellStr((parsed.rows[0] && parsed.rows[0].username) || '');
+      if (uname && seenUser[uname]) continue;
+      if (uname) seenUser[uname] = 1;
+      allRows = allRows.concat(parsed.rows);
+    }
+    if (!allRows.length) {
+      return { error: '未解析到有效数据（请填写用户名与至少一条月度收入）', rows: [] };
+    }
+    if (allRows.length > MAX_ROWS) {
+      return { error: '单次最多 ' + MAX_ROWS + ' 行数据', rows: [] };
+    }
+    return { error: '', rows: allRows, format: 'block' };
+  }
+
+  if (sheets.length > 1) {
+    return { error: '扁平行模板仅支持单工作表', rows: [] };
+  }
+  var flat = matrixToFlatRows(sheets[0].matrix);
+  flat.format = 'flat';
+  return flat;
+}
+
+function matrixToRows(matrix) {
+  return bufferToImportRows(
+    XLSX.write(
+      {
+        SheetNames: ['s'],
+        Sheets: { s: XLSX.utils.aoa_to_sheet(matrix) }
+      },
+      { type: 'buffer', bookType: 'xlsx' }
+    )
+  );
+}
+
 function normalizeImportRow(raw) {
   var username = cellStr(raw.username);
   var password = cellStr(raw.password);
@@ -268,6 +494,10 @@ function normalizeImportRow(raw) {
     raw.income_this_period != null && cellStr(raw.income_this_period) !== ''
       ? parseMoney(raw.income_this_period, incomeVal)
       : incomeVal;
+  var specialDed =
+    raw.special_deduction != null && cellStr(raw.special_deduction) !== ''
+      ? parseMoney(raw.special_deduction, 0)
+      : 0;
 
   return {
     error: '',
@@ -288,7 +518,7 @@ function normalizeImportRow(raw) {
           income_this_period: incomeThis,
           tax_free_income: parseMoney(raw.tax_free_income, 0),
           deduction_fee: parseMoney(raw.deduction_fee, 5000),
-          special_deduction: parseMoney(raw.special_deduction, 0),
+          special_deduction: specialDed,
           other_deduction: parseMoney(raw.other_deduction, 0),
           donation_deduction: parseMoney(raw.donation_deduction, 0),
           pension_insurance: parseMoney(raw.pension_insurance, 0),
@@ -461,11 +691,22 @@ async function upsertTax(conn, username, tax) {
   return { written: true, overwritten: false, id: newId };
 }
 
-function buildTemplateBuffer() {
+function buildLegacyFlatTemplateBuffer() {
   var ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, SAMPLE_ROW]);
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '备数导入');
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+function buildTemplateBuffer() {
+  try {
+    if (fs.existsSync(TEMPLATE_ASSET)) {
+      return fs.readFileSync(TEMPLATE_ASSET);
+    }
+  } catch (eAsset) {
+    console.error('[user-prep] template asset', eAsset);
+  }
+  return buildLegacyFlatTemplateBuffer();
 }
 
 async function handleAdminUserPrepTemplate(req, res) {
@@ -491,9 +732,7 @@ async function handleAdminUserPrepPreview(req, res) {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ code: 400, msg: '请上传 Excel/CSV 文件' });
     }
-    var buf = req.file.buffer;
-    var matrix = sheetToMatrix(buf);
-    var parsed = matrixToRows(matrix);
+    var parsed = bufferToImportRows(req.file.buffer);
     if (parsed.error) {
       return res.status(400).json({ code: 400, msg: parsed.error });
     }
@@ -518,13 +757,15 @@ async function handleAdminUserPrepPreview(req, res) {
         year: n.tax ? n.tax.year : '',
         month: n.tax ? n.tax.month : '',
         company_name: n.tax ? n.tax.company_name : '',
-        income: n.tax ? n.tax.income : ''
+        income: n.tax ? n.tax.income : '',
+        special_deduction: n.tax ? n.tax.special_deduction : ''
       });
     }
     return res.json({
       code: 200,
       data: {
         conflict_policy: 'overwrite',
+        format: parsed.format || 'flat',
         row_count: parsed.rows.length,
         user_count: Object.keys(users).length,
         preview: preview.slice(0, 50),
@@ -544,9 +785,7 @@ async function handleAdminUserPrepImport(req, res) {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ code: 400, msg: '请上传 Excel/CSV 文件' });
     }
-    var buf = req.file.buffer;
-    var matrix = sheetToMatrix(buf);
-    var parsed = matrixToRows(matrix);
+    var parsed = bufferToImportRows(req.file.buffer);
     if (parsed.error) {
       return res.status(400).json({ code: 400, msg: parsed.error });
     }
@@ -558,7 +797,7 @@ async function handleAdminUserPrepImport(req, res) {
     var taxInserted = 0;
     var taxOverwritten = 0;
     var fail = [];
-    var accountOut = {}; /* username -> {password, real_name, created} */
+    var accountOut = {};
 
     try {
       await conn.beginTransaction();
@@ -624,6 +863,7 @@ async function handleAdminUserPrepImport(req, res) {
       code: 200,
       data: {
         conflict_policy: 'overwrite',
+        format: parsed.format || 'flat',
         created_users: createdUsers,
         overwritten_users: overwrittenUsers,
         tax_inserted: taxInserted,
@@ -655,5 +895,7 @@ module.exports = {
   getHandlers: getHandlers,
   getMiddleware: getMiddleware,
   HEADER_MAP: HEADER_MAP,
-  TEMPLATE_HEADERS: TEMPLATE_HEADERS
+  TEMPLATE_HEADERS: TEMPLATE_HEADERS,
+  bufferToImportRows: bufferToImportRows,
+  blockMatrixToRows: blockMatrixToRows
 };

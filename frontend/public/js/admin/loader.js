@@ -18,7 +18,7 @@
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
     'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator',
-    'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260725-p0'
+    'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260728-block-tpl'
   };
 
   var PAGE_MODULE = {

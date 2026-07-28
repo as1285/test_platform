@@ -1174,7 +1174,9 @@
                     <section>
                         <h2>备数导入</h2>
                         <p class="hint mt-0">
-                            用 Excel/CSV 批量建用户、写入个税并<strong>直接开通</strong>。用户拿到账号登录即可看到已备好的数据。
+                            用 Excel 批量建用户、写入个税并<strong>直接开通</strong>。标准模板按<strong>年份分块</strong>，每月一行填写
+                            <strong>税前收入、社保公积金扣费、其他扣除、扣税、公司名称</strong>；底部资料区填写
+                            <strong>用户名、密码、姓名</strong>等。多工作表=多用户。亦兼容旧版扁平行 CSV。
                             冲突策略：<strong>覆盖</strong>（同用户名覆盖资料/密码；同用户+年月覆盖个税）。开通天数留空=永久。
                         </p>
                         <div class="form-row flex-wrap gap-10 flex-align-center">
@@ -1201,10 +1203,11 @@
                                         <th>月</th>
                                         <th>单位</th>
                                         <th>收入</th>
+                                        <th>社保公积金</th>
                                     </tr>
                                 </thead>
                                 <tbody id="userPrepPreviewTbody">
-                                    <tr><td colspan="10">暂无预览</td></tr>
+                                    <tr><td colspan="11">暂无预览</td></tr>
                                 </tbody>
                             </table>
                         </div>

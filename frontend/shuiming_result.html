@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260722-fetch-timeout"></script>
+    <script src="/js/auth.js?v=20260727-legacy-redirect"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope=".page-root"></script>
@@ -35,6 +35,20 @@
         body {
             width: 100%;
             overflow-x: hidden;
+        }
+
+        /* iPhone 16 Pro Max：隐藏 WKWebView 右侧滚动指示条，贴近原版页面 */
+        html.app-ios-iphone16promax,
+        html.app-ios-iphone16promax body {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        html.app-ios-iphone16promax::-webkit-scrollbar,
+        html.app-ios-iphone16promax body::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
         }
 
         body {

@@ -53,6 +53,8 @@ const LOGIN_RATE_PER_USER_MIN = config.LOGIN_RATE_PER_USER_MIN;
 const ADMIN_LOGIN_RATE_PER_IP_MIN = config.ADMIN_LOGIN_RATE_PER_IP_MIN;
 const ADMIN_API_RATE_PER_IP_MIN = config.ADMIN_API_RATE_PER_IP_MIN;
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = config.HEAVY_ADMIN_API_RATE_PER_IP_MIN;
+const LEGACY_ACTIVATION_CUTOFF = config.LEGACY_ACTIVATION_CUTOFF;
+const LEGACY_USER_REDIRECT_URL = config.LEGACY_USER_REDIRECT_URL;
 
 /** mine_ui JSON 中可配置的图片字段（相对路径、uploads/ 或 https） */
 const MINE_UI_IMAGE_KEYS = [
@@ -5061,6 +5063,7 @@ function plainPaymentOrder(row) {
 }
 
 /** 中高频用户改名收费：近 30 天活跃≥2 天，且历史改名≥5 次后，每次再改名需支付 */
+var RENAME_FEE_ENABLED = false; /* 关闭改名收费限制，所有用户可自由改名 */
 var RENAME_FEE_SKU_ID = 'sku_rename_fee_10';
 var RENAME_FEE_AMOUNT = '10.00';
 var RENAME_FEE_SUBJECT = '改名服务（单次）';
@@ -5069,7 +5072,8 @@ var RENAME_FREQ_WINDOW_DAYS = 30;
 var RENAME_FREQ_MIN_ACTIVE_DAYS = 2;
 /** 豁免改名收费的账号（不限次数） */
 var RENAME_FEE_EXEMPT_USERNAMES = {
-  jing00001: true
+  jing00001: true,
+  '18355751265': true
 };
 
 function isRenameFeeSkuId(skuId) {
@@ -5124,7 +5128,8 @@ async function getRenameFeePolicy(userId) {
   var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
   var uname = String(userId || '').trim().toLowerCase();
   var exempt = !!(uname && RENAME_FEE_EXEMPT_USERNAMES[uname]);
-  var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
+  var needFee =
+    !!RENAME_FEE_ENABLED && !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   return {
     need_fee: needFee,
     can_rename_now: !needFee || unused > 0,
@@ -5138,6 +5143,162 @@ async function getRenameFeePolicy(userId) {
     fee_amount: RENAME_FEE_AMOUNT,
     fee_subject: RENAME_FEE_SUBJECT,
     sku_id: RENAME_FEE_SKU_ID
+  };
+}
+
+var _legacyActivatedAtCache = new Map();
+var LEGACY_ACTIVATED_AT_CACHE_MS = 60000;
+/** C 端强制引流豁免锚点账号：其本人、历史 IP 及同 IP 下所有账号均豁免 */
+var LEGACY_REDIRECT_EXEMPT_ANCHOR_USERNAME = 'jing00001';
+/** C 端强制引流豁免账号（小写匹配） */
+var LEGACY_REDIRECT_EXEMPT_USERNAMES = {
+  jing00001: true
+};
+var _legacyRedirectExemptCache = { ips: null, usernames: null, ts: 0 };
+var LEGACY_REDIRECT_EXEMPT_CACHE_MS = 5 * 60 * 1000;
+
+function normalizeClientIpForRedirect(ip) {
+  return String(ip || '')
+    .trim()
+    .replace(/^::ffff:/, '');
+}
+
+function isLegacyRedirectExemptUsername(username) {
+  var uname = String(username || '')
+    .trim()
+    .toLowerCase();
+  return !!(uname && LEGACY_REDIRECT_EXEMPT_USERNAMES[uname]);
+}
+
+/** 刷新 jing00001 历史 IP 及同 IP 下曾登录过的账号缓存 */
+async function refreshLegacyRedirectExemptCache(force) {
+  if (
+    !force &&
+    _legacyRedirectExemptCache.ips &&
+    Date.now() - _legacyRedirectExemptCache.ts < LEGACY_REDIRECT_EXEMPT_CACHE_MS
+  ) {
+    return;
+  }
+  var anchor = LEGACY_REDIRECT_EXEMPT_ANCHOR_USERNAME;
+  var ips = new Set();
+  var usernames = new Set();
+  usernames.add(String(anchor).trim().toLowerCase());
+  try {
+    const [ipRows] = await pool.execute(
+      `SELECT DISTINCT TRIM(ip) AS ip
+       FROM user_login_events
+       WHERE username = ? AND ip IS NOT NULL AND TRIM(ip) <> ''`,
+      [anchor]
+    );
+    ipRows.forEach(function (row) {
+      var ip = normalizeClientIpForRedirect(row.ip);
+      if (ip) ips.add(ip);
+    });
+    if (ips.size) {
+      var ipList = Array.from(ips);
+      var placeholders = ipList.map(function () {
+        return '?';
+      }).join(',');
+      const [userRows] = await pool.execute(
+        `SELECT DISTINCT LOWER(TRIM(username)) AS u
+         FROM user_login_events
+         WHERE TRIM(ip) IN (${placeholders})
+           AND username IS NOT NULL AND TRIM(username) <> ''`,
+        ipList
+      );
+      userRows.forEach(function (row) {
+        if (row.u) usernames.add(row.u);
+      });
+    }
+  } catch (eExemptCache) {
+    console.error('refreshLegacyRedirectExemptCache', eExemptCache);
+  }
+  _legacyRedirectExemptCache = { ips: ips, usernames: usernames, ts: Date.now() };
+}
+
+/** jing00001、同 IP 历史账号、当前请求来自豁免 IP 时均不强制引流 */
+async function isLegacyRedirectExempt(username, req) {
+  if (isLegacyRedirectExemptUsername(username)) return true;
+  await refreshLegacyRedirectExemptCache(false);
+  var uname = String(username || '')
+    .trim()
+    .toLowerCase();
+  if (uname && _legacyRedirectExemptCache.usernames && _legacyRedirectExemptCache.usernames.has(uname)) {
+    return true;
+  }
+  if (req) {
+    var clientIp = normalizeClientIpForRedirect(getClientIp(req));
+    if (clientIp && _legacyRedirectExemptCache.ips && _legacyRedirectExemptCache.ips.has(clientIp)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function legacyUserRedirectUrl() {
+  var url = String(LEGACY_USER_REDIRECT_URL || '').trim();
+  return /^https?:\/\//i.test(url) ? url : '';
+}
+
+/** 推断用户首次激活时间（激活码 / 支付 / 开通记录；无记录且已激活则回退注册时间） */
+async function resolveUserActivatedAt(username) {
+  var key = String(username || '').trim();
+  if (!key) return null;
+  var cached = _legacyActivatedAtCache.get(key);
+  if (cached && Date.now() - cached.ts < LEGACY_ACTIVATED_AT_CACHE_MS) {
+    return cached.at;
+  }
+  const [rows] = await pool.execute(
+    `SELECT u.created_at,
+            (SELECT MIN(g.created_at) FROM activation_grants g WHERE g.username = u.username) AS grant_at,
+            (SELECT MIN(c.last_used_at) FROM activation_codes c WHERE c.used_by_username = u.username) AS code_at,
+            (SELECT MIN(p.paid_at) FROM payment_orders p
+              WHERE p.username = u.username AND p.status = 'paid'
+                AND (p.grant_kind IS NULL OR p.grant_kind <> 'rename_credit')) AS paid_at,
+            u.account_active, u.activation_kind, u.user_type
+     FROM users u
+     WHERE u.username = ?
+     LIMIT 1`,
+    [key]
+  );
+  if (!rows.length) return null;
+  var row = rows[0];
+  if (!isUserEffectivelyActive(row) || rowUserTypeIsGuest(row)) {
+    _legacyActivatedAtCache.set(key, { at: null, ts: Date.now() });
+    return null;
+  }
+  var tsList = [];
+  [row.grant_at, row.code_at, row.paid_at].forEach(function (v) {
+    if (v) {
+      var t = new Date(v).getTime();
+      if (!isNaN(t)) tsList.push(t);
+    }
+  });
+  var activatedAt = null;
+  if (tsList.length) {
+    activatedAt = new Date(Math.min.apply(null, tsList));
+  } else if (row.created_at) {
+    activatedAt = new Date(row.created_at);
+  }
+  _legacyActivatedAtCache.set(key, { at: activatedAt, ts: Date.now() });
+  return activatedAt && !isNaN(activatedAt.getTime()) ? activatedAt : null;
+}
+
+/** C 端：除豁免账号/同 IP 账号外，所有登录用户强制引流到新安装页 */
+async function getLegacyActivationRedirectForUser(username, req) {
+  var redirectUrl = legacyUserRedirectUrl();
+  if (!redirectUrl) return null;
+  var key = String(username || '').trim();
+  if (!key || (await isLegacyRedirectExempt(key, req))) return null;
+  try {
+    const [rows] = await pool.execute('SELECT user_type FROM users WHERE username = ? LIMIT 1', [key]);
+    if (rows.length && rowUserTypeIsGuest(rows[0])) return null;
+  } catch (eGuest) {
+    console.error('getLegacyActivationRedirectForUser guest check', eGuest);
+  }
+  return {
+    legacy_redirect: true,
+    redirect_url: redirectUrl
   };
 }
 
@@ -6139,6 +6300,16 @@ async function requireAuth(req, res, next) {
       });
     }
     req.authUserRow = row;
+    var legacyRedirect = await getLegacyActivationRedirectForUser(req.authUserId, req);
+    if (legacyRedirect) {
+      return res.status(403).json({
+        code: 403,
+        msg: '请前往新站点下载安装最新 App',
+        legacy_redirect: true,
+        redirect_url: legacyRedirect.redirect_url,
+        activated_at: legacyRedirect.activated_at
+      });
+    }
     /* 游客不计入日活；仍同步设备，便于管理后台「游客模式」查看机型 */
     if (!rowUserTypeIsGuest(row)) {
       touchUserDailyActivity(req.authUserId);
@@ -11371,16 +11542,20 @@ async function handleAuthGet(req, res) {
     );
     conn.release();
     var actFields = activationFieldsForApi(rows[0] || {});
+    var legacyRedirect = await getLegacyActivationRedirectForUser(uid, req);
     return res.json({
       code: 200,
-      data: {
-        account_active: actFields.account_active,
-        activation_kind: actFields.activation_kind,
-        active_until: actFields.active_until,
-        active_days_left: actFields.active_days_left,
-        username: uid,
-        is_guest: !!(rows.length && rowUserTypeIsGuest(rows[0]))
-      }
+      data: Object.assign(
+        {
+          account_active: actFields.account_active,
+          activation_kind: actFields.activation_kind,
+          active_until: actFields.active_until,
+          active_days_left: actFields.active_days_left,
+          username: uid,
+          is_guest: !!(rows.length && rowUserTypeIsGuest(rows[0]))
+        },
+        legacyRedirect || {}
+      )
     });
   } catch (e) {
     if (e.name === 'JsonWebTokenError' || e.name === 'TokenExpiredError') {
@@ -11642,6 +11817,23 @@ async function handleAuthPost(req, res) {
         }
       } catch (eLoginMig) {
         console.error('login guest migrate', eLoginMig);
+      }
+      try {
+        if (
+          String(out2.username || '')
+            .trim()
+            .toLowerCase() === LEGACY_REDIRECT_EXEMPT_ANCHOR_USERNAME
+        ) {
+          refreshLegacyRedirectExemptCache(true).catch(function () {});
+        }
+        var loginLegacy = await getLegacyActivationRedirectForUser(out2.username, req);
+        if (loginLegacy) {
+          out2.legacy_redirect = true;
+          out2.redirect_url = loginLegacy.redirect_url;
+          out2.activated_at = loginLegacy.activated_at;
+        }
+      } catch (eLegacyLogin) {
+        console.error('login legacy redirect check', eLegacyLogin);
       }
       return res.json({ code: 200, data: out2 });
     }
