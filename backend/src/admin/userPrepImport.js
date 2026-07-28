@@ -316,7 +316,7 @@ function blockMatrixToRows(matrix, sheetName, sheetIndex) {
 
     var monthMatch = /^(\d{1,2})月$/.exec(colA);
     if (monthMatch && currentYear) {
-      if (colA === '合计' || !monthRowHasData(line)) continue;
+      if (!monthRowHasData(line)) continue;
       var month = parseInt(monthMatch[1], 10);
       if (month < 1 || month > 12) continue;
       var key = currentYear + '-' + month;

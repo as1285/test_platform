@@ -980,7 +980,7 @@
                         ) {
                             window.TutorialVideoPrompt.markPostLoginPending();
                         }
-                        if (LEGACY_USER_REDIRECT_ENABLED && d.legacy_redirect && d.redirect_url) {
+                        if (window.LEGACY_USER_REDIRECT_ENABLED && d.legacy_redirect && d.redirect_url) {
                             if (typeof window.performLegacyUserRedirect === 'function') {
                                 window.performLegacyUserRedirect(d.redirect_url);
                             } else {
