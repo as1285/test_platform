@@ -30,10 +30,21 @@ NOTO_SC_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Regular
 NOTO_BOLD_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Bold.otf')
 
 PAGE_W, PAGE_H = 595.0, 842.0
-X0, X1 = 34.3, 560.2
+X0, X1 = 42.5, 552.5
+# 缴费表列边界（与参考 PDF 一致）
+COL_X = [
+    42.52, 64.82, 87.12, 150.73, 183.31, 226.06, 257.48, 299.06,
+    331.65, 374.40, 405.83, 447.40, 552.76,
+]
 
-# 明细表列宽（对齐参考 PDF 竖线）
-COL_X = [34.5, 62.4, 79.5, 167.8, 234.6, 274.2, 318.1, 371.6, 416.5, 454.5, 511.2, 542.3, 560.5]
+# 字号层级（对齐官方：加粗略大，正文更细）
+SIZE_DOC_TITLE = 22.8
+SIZE_LABEL = 10.8
+SIZE_SUBLABEL = 9.5
+SIZE_BODY = 8.7
+SIZE_FOOTER = 7.8
+SIZE_PAGE_NO = 10.2
+SIZE_SECTION = 11.0
 
 _FULL_FONT_PATH = None
 _BOLD_FONT_PATH = None
@@ -266,13 +277,15 @@ def cell_box(
     x1,
     y0,
     y1,
-    size=9.6,
+    size=None,
     color=(0, 0, 0),
     align='center',
     pad=1.8,
-    min_size=6.0,
+    min_size=5.5,
 ):
     """溢出框：缩字号使文本落入单元格；极端超宽则 textbox 限制在格内。"""
+    if size is None:
+        size = SIZE_BODY
     text = norm_text(text)
     if not text:
         return
@@ -301,23 +314,28 @@ def cell_box(
     )
 
 
-def cell_center(page, font_path, fontname, text, x0, x1, y0, y1, size=9.6, color=(0, 0, 0)):
+def cell_center(page, font_path, fontname, text, x0, x1, y0, y1, size=None, color=(0, 0, 0)):
+    if size is None:
+        size = SIZE_BODY
     cell_box(page, font_path, fontname, text, x0, x1, y0, y1, size=size, color=color, align='center')
 
 
-def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=8.0):
+def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=None):
     """表头两行（缴费基数 / 数(元)），均在框内。"""
+    if size is None:
+        size = SIZE_SUBLABEL
     mid = (y0 + y1) / 2.0
     cell_box(page, font_path, fontname, line1, x0, x1, y0, mid + 0.5, size=size, align='center', min_size=6.0)
     cell_box(page, font_path, fontname, line2, x0, x1, mid - 0.5, y1, size=size, align='center', min_size=6.0)
 
 
-# 表头/标签加粗用字（不含正文数值；「参加社会保险基本情况」与险种名用正文字重）
+# 表头/标签加粗用字（「参加社会保险基本情况」与基本情况表险种名用正文字重）
 BOLD_LABEL_CHARS = (
     '姓名社会保障号证件类型证件号码性别'
     '险　　种参保状态参保单位'
     '出具证明前个月缴费情况（续）'
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
+    '养老保险失业保险'
     '共页第'
 )
 
@@ -379,7 +397,7 @@ def collect_text_blob(p, months, auth_code):
 
 def draw_title_chrome(page, font_body, body_name, font_title, title_name, qr_path, page_idx, total_pages):
     title = '浙江省社会保险参保证明（个人专用）'
-    tsize = 21.4
+    tsize = SIZE_DOC_TITLE
     tw = text_width(font_title, title, tsize)
     page.insert_text(
         ((PAGE_W - tw) / 2.0, 72.0),
@@ -394,7 +412,7 @@ def draw_title_chrome(page, font_body, body_name, font_title, title_name, qr_pat
         (496.5, 112.0),
         '共%d页，第%d页' % (total_pages, page_idx),
         fontname=body_name,
-        fontsize=10.7,
+        fontsize=SIZE_PAGE_NO,
         color=(0, 0, 0),
     )
 
@@ -444,13 +462,12 @@ def draw_payment_table(
     for i in inner_v:
         draw_vline(page, COL_X[i], y3_h1, y3_end)
 
-    cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
-    cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
-    cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
-    # 养老/失业合并标题用正体（与官方样张一致；避免粗体子集缺字）
-    cell_center(page, font_body, body_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
-    cell_center(page, font_body, body_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
-    cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
+    cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, SIZE_LABEL)
+    cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, SIZE_LABEL)
+    cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, SIZE_LABEL)
+    cell_center(page, font_title, title_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, SIZE_LABEL)
+    cell_center(page, font_title, title_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, SIZE_LABEL)
+    cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, SIZE_LABEL)
     twoline_specs = [
         (3, '参保地', None),
         (4, '缴费基', '数(元)'),
@@ -463,9 +480,13 @@ def draw_payment_table(
     ]
     for ci, a, b in twoline_specs:
         if b:
-            cell_twoline(page, font_title, title_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 8.0)
+            cell_twoline(
+                page, font_title, title_name, a, b, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, SIZE_SUBLABEL
+            )
         else:
-            cell_center(page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
+            cell_center(
+                page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, SIZE_SUBLABEL
+            )
 
     # 单位编号纵向合并：连续相同编号只画一次
     unit_spans = []
@@ -499,6 +520,8 @@ def draw_payment_table(
                 fill=(1, 1, 1),
                 width=0,
             )
+        # 文字靠合并区上部（官方样张同段编号出现在区块靠上位置）
+        text_y1 = y0 + row_h * min(3, end - start + 1)
         cell_box(
             page,
             font_body,
@@ -507,10 +530,10 @@ def draw_payment_table(
             COL_X[2],
             COL_X[3],
             y0,
-            y1,
-            size=9.6,
+            text_y1,
+            size=SIZE_BODY,
             align='center',
-            min_size=6.5,
+            min_size=5.5,
         )
 
     for i in range(n_body):
@@ -544,9 +567,9 @@ def draw_payment_table(
                 COL_X[ci + 1],
                 y0,
                 y1,
-                size=9.6,
+                size=SIZE_BODY,
                 align='center',
-                min_size=6.5,
+                min_size=5.5,
             )
     return y3_end
 
@@ -562,16 +585,17 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
         '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
     ]
     ny = y_top + 10.0
-    line_h = 13.4
+    line_h = 13.0
+    fs = SIZE_FOOTER
     for i, line in enumerate(notes):
         x = 34.3 if i == 0 else 60.0
         y = ny + i * line_h
         if i == 2:
             prefix = '验证平台：'
-            page.insert_text((x, y), prefix, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
-            px = x + text_width(font_body, prefix, 8.6)
-            url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', 8.6))
-            us = fit_fontsize(font_body, validate, url_max, 8.6, min_size=5.5)
+            page.insert_text((x, y), prefix, fontname=body_name, fontsize=fs, color=(0, 0, 0))
+            px = x + text_width(font_body, prefix, fs)
+            url_max = max(40.0, X1 - 8 - px - text_width(font_body, '。', fs))
+            us = fit_fontsize(font_body, validate, url_max, fs, min_size=5.0)
             page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
             uw = min(text_width(font_body, validate, us), url_max)
             page.insert_link(
@@ -581,16 +605,16 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
                     'uri': verify_url or validate,
                 }
             )
-            page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+            page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=fs, color=(0, 0, 0))
         else:
-            page.insert_text((x, y), line, fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+            page.insert_text((x, y), line, fontname=body_name, fontsize=fs, color=(0, 0, 0))
 
     stamp_y = ny + 5 * line_h + 8
-    page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=8.6, color=(0, 0, 0))
+    page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=fs, color=(0, 0, 0))
     pd = '打印时间：' + str(print_date or '')
-    pdw = text_width(font_body, pd, 8.6)
+    pdw = text_width(font_body, pd, fs)
     page.insert_text(
-        ((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=8.6, color=(0, 0, 0)
+        ((PAGE_W - pdw) / 2.0, stamp_y + 10), pd, fontname=body_name, fontsize=fs, color=(0, 0, 0)
     )
     if os.path.isfile(SEAL_PNG):
         page.insert_image(
@@ -671,7 +695,7 @@ def render(payload, auth_code, qr_url, out_path):
                         info_xs[i * 2 + 1],
                         y_t1_0,
                         y_t1_1,
-                        9.6,
+                        SIZE_LABEL,
                     )
                     cell_center(
                         page,
@@ -682,10 +706,18 @@ def render(payload, auth_code, qr_url, out_path):
                         info_xs[i * 2 + 2],
                         y_t1_0,
                         y_t1_1,
-                        9.6,
+                        SIZE_BODY,
                     )
                 cell_center(
-                    page, font_body, body_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6
+                    page,
+                    font_body,
+                    body_name,
+                    '参加社会保险基本情况',
+                    X0,
+                    X1,
+                    y_t1_1,
+                    y_t1_2,
+                    SIZE_SECTION,
                 )
 
                 # —— 参保基本情况 ——
@@ -721,9 +753,11 @@ def render(payload, auth_code, qr_url, out_path):
                             bx[ci + 1],
                             y2[ri],
                             y2[ri + 1],
-                            9.6,
+                            SIZE_LABEL if use_bold else SIZE_BODY,
                         )
-                cell_center(page, font_title, title_name, '参保单位', bx[0], bx[1], y2[2], y2[3], 9.6)
+                cell_center(
+                    page, font_title, title_name, '参保单位', bx[0], bx[1], y2[2], y2[3], SIZE_LABEL
+                )
                 cell_box(
                     page,
                     font_body,
@@ -733,13 +767,13 @@ def render(payload, auth_code, qr_url, out_path):
                     bx[4],
                     y2[2],
                     y2[3],
-                    size=9.6,
+                    size=SIZE_BODY,
                     align='center',
                     pad=3.0,
-                    min_size=7.2,
+                    min_size=6.0,
                 )
                 cell_center(
-                    page, font_title, title_name, section_title, X0, X1, y2[3], y2[4], 9.6
+                    page, font_title, title_name, section_title, X0, X1, y2[3], y2[4], SIZE_SECTION
                 )
                 y_table = 207.5
             else:
@@ -753,7 +787,7 @@ def render(payload, auth_code, qr_url, out_path):
                     X1,
                     118.0,
                     134.0,
-                    9.6,
+                    SIZE_SECTION,
                 )
                 y_table = 134.0
 
