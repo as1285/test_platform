@@ -123,7 +123,6 @@ def norm_text(text):
 
 
 def _strip_trailing_credit(company):
-    import re
     s = str(company or '').strip()
     if not s:
         return ''
@@ -131,24 +130,25 @@ def _strip_trailing_credit(company):
 
 
 def _extract_credit(company):
-    import re
     s = str(company or '').strip()
     m = re.search(r'[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*$', s)
     return m.group(1) if m else ''
 
 
+def _dedupe_company_display(text):
+    s = str(text or '').strip()
+    m = re.match(
+        r'^(.*?)[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*[（(]\s*\2\s*[）)]\s*$',
+        s,
+    )
+    if m:
+        return '%s（%s）' % (m.group(1).strip(), m.group(2))
+    return s
+
+
 def company_display(p):
     if p.get('company_display'):
-        text = str(p['company_display'])
-        # 已含两份信用代码时压成一份
-        import re
-        m = re.match(
-            r'^(.*?)[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*[（(]\s*\2\s*[）)]\s*$',
-            text,
-        )
-        if m:
-            return '%s（%s）' % (m.group(1).strip(), m.group(2))
-        return text
+        return _dedupe_company_display(p['company_display'])
     c = str(p.get('company_name') or '')
     code = str(p.get('credit_code') or '') or _extract_credit(c)
     c = _strip_trailing_credit(c)
@@ -409,26 +409,47 @@ def draw_payment_table(
     y3_0,
     section_title,
 ):
-    """画缴费明细表（固定 ROWS_PER_PAGE 行），返回表底 y。"""
+    """画缴费明细表（固定 ROWS_PER_PAGE 行），返回表底 y。
+
+    表头合并规则（对齐官方样张）：
+    - 年 / 月 / 单位编号 / 备注：纵向跨两行表头（无中间横线）
+    - 养老保险 / 失业保险：横向各合并 4 列（顶行无内部竖线）
+    - 子列竖线仅从表头第二行起向下画
+    """
     y3_h1 = y3_0 + 14.7
     y3_h2 = y3_0 + 40.9
     row_h = 14.45
     n_body = ROWS_PER_PAGE
     y3_end = y3_h2 + row_h * n_body
     draw_rect(page, y3_0, y3_end)
-    draw_hline(page, y3_h1)
+
+    # 表头中间横线：只画在「养老保险 / 失业保险」子列区，不切断年/月/单位编号/备注
+    page.draw_line(
+        fitz.Point(COL_X[3], y3_h1),
+        fitz.Point(COL_X[11], y3_h1),
+        color=(0, 0, 0),
+        width=0.6,
+    )
+    # 表头底线 + 数据行横线（单位编号合并区稍后再盖掉中间横线）
     draw_hline(page, y3_h2)
     for i in range(1, n_body):
         draw_hline(page, y3_h2 + row_h * i)
-    for x in COL_X:
-        draw_vline(page, x, y3_0, y3_end)
 
-    # 区段标题压在表上方外：由调用方画；此处画表头
+    # 贯通全表高的竖线（合并表头的外框与年/月/单位编号/备注分隔）
+    full_v = (0, 1, 2, 3, 7, 11, 12)
+    for i in full_v:
+        draw_vline(page, COL_X[i], y3_0, y3_end)
+    # 养老/失业内部子列竖线：仅从第二行表头起，避免切断合并标题
+    inner_v = (4, 5, 6, 8, 9, 10)
+    for i in inner_v:
+        draw_vline(page, COL_X[i], y3_h1, y3_end)
+
     cell_center(page, font_title, title_name, '年', COL_X[0], COL_X[1], y3_0, y3_h2, 9.6)
     cell_center(page, font_title, title_name, '月', COL_X[1], COL_X[2], y3_0, y3_h2, 9.6)
     cell_center(page, font_title, title_name, '单位编号', COL_X[2], COL_X[3], y3_0, y3_h2, 9.6)
-    cell_center(page, font_title, title_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
-    cell_center(page, font_title, title_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
+    # 养老/失业合并标题用正体（与官方样张一致；避免粗体子集缺字）
+    cell_center(page, font_body, body_name, '养老保险', COL_X[3], COL_X[7], y3_0, y3_h1, 9.6)
+    cell_center(page, font_body, body_name, '失业保险', COL_X[7], COL_X[11], y3_0, y3_h1, 9.6)
     cell_center(page, font_title, title_name, '备注', COL_X[11], COL_X[12], y3_0, y3_h2, 9.6)
     twoline_specs = [
         (3, '参保地', None),
@@ -446,6 +467,52 @@ def draw_payment_table(
         else:
             cell_center(page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, 9.0)
 
+    # 单位编号纵向合并：连续相同编号只画一次
+    unit_spans = []
+    i = 0
+    while i < n_body:
+        r = month_chunk[i] if i < len(month_chunk) else None
+        code = str((r.get('unit_code') if r else None) or '')
+        if not r or not code:
+            i += 1
+            continue
+        j = i + 1
+        while j < n_body:
+            rj = month_chunk[j] if j < len(month_chunk) else None
+            if not rj or str(rj.get('unit_code') or '') != code:
+                break
+            j += 1
+        unit_spans.append((i, j - 1, code))
+        i = j
+
+    drawn_unit_row = set()
+    for start, end, code in unit_spans:
+        for k in range(start, end + 1):
+            drawn_unit_row.add(k)
+        y0 = y3_h2 + row_h * start
+        y1 = y3_h2 + row_h * (end + 1)
+        if end > start:
+            # 盖住合并区内横线
+            page.draw_rect(
+                fitz.Rect(COL_X[2] + 0.5, y0 + 0.5, COL_X[3] - 0.5, y1 - 0.5),
+                color=(1, 1, 1),
+                fill=(1, 1, 1),
+                width=0,
+            )
+        cell_box(
+            page,
+            font_body,
+            body_name,
+            code,
+            COL_X[2],
+            COL_X[3],
+            y0,
+            y1,
+            size=9.6,
+            align='center',
+            min_size=6.5,
+        )
+
     for i in range(n_body):
         y0 = y3_h2 + row_h * i
         y1 = y0 + row_h
@@ -453,20 +520,21 @@ def draw_payment_table(
         if not r:
             continue
         vals = [
-            r['year'],
-            r['month'],
-            r['unit_code'],
-            r['area'],
-            money(r['pension_base']),
-            money(r['pension_pay']),
-            r['pension_status'],
-            r['unemp_area'],
-            money(r['unemp_base']),
-            money(r['unemp_pay']),
-            r['unemp_status'],
-            r.get('remark') or '',
+            (0, r['year']),
+            (1, r['month']),
+            (3, r['area']),
+            (4, money(r['pension_base'])),
+            (5, money(r['pension_pay'])),
+            (6, r['pension_status']),
+            (7, r['unemp_area']),
+            (8, money(r['unemp_base'])),
+            (9, money(r['unemp_pay'])),
+            (10, r['unemp_status']),
+            (11, r.get('remark') or ''),
         ]
-        for ci, val in enumerate(vals):
+        if i not in drawn_unit_row:
+            vals.insert(2, (2, r.get('unit_code') or ''))
+        for ci, val in vals:
             cell_box(
                 page,
                 font_body,
