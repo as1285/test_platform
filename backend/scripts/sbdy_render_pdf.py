@@ -11,6 +11,7 @@ from __future__ import print_function
 
 import json
 import os
+import re
 import sys
 import tempfile
 
@@ -121,11 +122,36 @@ def norm_text(text):
     return str(text)
 
 
+def _strip_trailing_credit(company):
+    import re
+    s = str(company or '').strip()
+    if not s:
+        return ''
+    return re.sub(r'[（(]\s*[0-9A-Za-z]{15,20}\s*[）)]\s*$', '', s).strip()
+
+
+def _extract_credit(company):
+    import re
+    s = str(company or '').strip()
+    m = re.search(r'[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*$', s)
+    return m.group(1) if m else ''
+
+
 def company_display(p):
     if p.get('company_display'):
-        return str(p['company_display'])
+        text = str(p['company_display'])
+        # 已含两份信用代码时压成一份
+        import re
+        m = re.match(
+            r'^(.*?)[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*[（(]\s*\2\s*[）)]\s*$',
+            text,
+        )
+        if m:
+            return '%s（%s）' % (m.group(1).strip(), m.group(2))
+        return text
     c = str(p.get('company_name') or '')
-    code = str(p.get('credit_code') or '')
+    code = str(p.get('credit_code') or '') or _extract_credit(c)
+    c = _strip_trailing_credit(c)
     if c and code:
         return '%s（%s）' % (c, code)
     return c or code or ''

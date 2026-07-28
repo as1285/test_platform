@@ -236,9 +236,26 @@ function buildMonthRows(periodStart, periodEnd, opts) {
   return rows;
 }
 
+/** 去掉单位名称末尾已带的（信用代码），避免展示时拼成两份 */
+function stripTrailingCreditFromCompany(company) {
+  var s = String(company || '').trim();
+  if (!s) return '';
+  return s
+    .replace(/[（(]\s*[0-9A-Za-z]{15,20}\s*[）)]\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractCreditFromCompany(company) {
+  var s = String(company || '').trim();
+  var m = s.match(/[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*$/);
+  return m ? m[1] : '';
+}
+
 function formatCompanyDisplay(company, credit) {
-  company = String(company || '').trim();
-  credit = String(credit || '').trim();
+  var embedded = extractCreditFromCompany(company);
+  company = stripTrailingCreditFromCompany(company);
+  credit = String(credit || '').trim() || embedded;
   if (company && credit) return company + '（' + credit + '）';
   return company || credit || '';
 }
@@ -287,6 +304,10 @@ function normalizeSegment(raw, defaults) {
   var credit = String(s.credit_code || s.creditCode || defaults.credit_code || '')
     .trim()
     .substring(0, 32);
+  if (!credit) {
+    credit = extractCreditFromCompany(company);
+  }
+  company = stripTrailingCreditFromCompany(company).substring(0, 128);
   var area = String(s.area || defaults.area || '余杭区')
     .trim()
     .substring(0, 32);
