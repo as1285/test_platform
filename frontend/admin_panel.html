@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营控制台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260728-sbdy-segments">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260728-sbdy-nested">
 </head>
 <body>
     <div class="layout">
@@ -1602,13 +1602,6 @@
                                         <option value="男">男</option>
                                     </select>
                                 </div>
-                            </div>
-                            <p class="hint mt-8 mb-4">参保可多段（换单位或每年基数变化时分开填）；基本情况表「参保单位」只显示<strong>最近一段</strong>公司。明细表「养老保险 / 失业保险」为合并表头。</p>
-                            <div id="sbdySegments" class="sbdy-segments"></div>
-                            <div class="form-actions" style="margin-top:8px;">
-                                <button type="button" class="btn-page" id="btnSbdyAddSegment">＋ 添加参保段</button>
-                            </div>
-                            <div class="form-row flex-wrap gap-10">
                                 <div>
                                     <label for="sbdyStatusPension">养老保险状态</label>
                                     <input type="text" id="sbdyStatusPension" value="正常参保">
@@ -1625,6 +1618,11 @@
                                     <label for="sbdyPrintDate">打印时间文案</label>
                                     <input type="text" id="sbdyPrintDate" placeholder="默认今天，如 2026年07月22日">
                                 </div>
+                            </div>
+                            <p class="hint mt-8 mb-4">可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。</p>
+                            <div id="sbdySegments" class="sbdy-segments"></div>
+                            <div class="form-actions" style="margin-top:8px;">
+                                <button type="button" class="btn-page" id="btnSbdyAddSegment">＋ 添加参保经历</button>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyDemoFillSample" onclick="if(window.sbdyDemoFillSample){window.sbdyDemoFillSample();}">填充示例数据</button>

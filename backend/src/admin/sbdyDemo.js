@@ -243,6 +243,41 @@ function formatCompanyDisplay(company, credit) {
   return company || credit || '';
 }
 
+function normalizePeriod(raw, defaults) {
+  defaults = defaults || {};
+  var s = raw && typeof raw === 'object' ? raw : {};
+  var periodStart = String(s.period_start || s.periodStart || '').trim();
+  var periodEnd = String(s.period_end || s.periodEnd || '').trim();
+  var a0 = parseYm(periodStart);
+  var b0 = parseYm(periodEnd);
+  if (!a0 || !b0) {
+    return { error: '缴费起止月份格式应为 YYYY-MM' };
+  }
+  if (compareYm(a0, b0) > 0) {
+    var tmp = periodStart;
+    periodStart = periodEnd;
+    periodEnd = tmp;
+  }
+  var baseAmt = Number(s.base_amount != null ? s.base_amount : s.baseAmount);
+  if (!isFinite(baseAmt)) baseAmt = Number(defaults.base_amount);
+  if (!isFinite(baseAmt)) baseAmt = 4986;
+  var pensionPay = Number(s.pension_pay != null ? s.pension_pay : s.pensionPay);
+  var unempPay = Number(s.unemployment_pay != null ? s.unemployment_pay : s.unemploymentPay);
+  if (!isFinite(pensionPay)) {
+    pensionPay = Math.round(baseAmt * 0.08 * 100) / 100;
+  }
+  if (!isFinite(unempPay)) {
+    unempPay = Math.round(baseAmt * 0.005 * 100) / 100;
+  }
+  return {
+    period_start: periodStart,
+    period_end: periodEnd,
+    base_amount: baseAmt,
+    pension_pay: pensionPay,
+    unemployment_pay: unempPay
+  };
+}
+
 function normalizeSegment(raw, defaults) {
   defaults = defaults || {};
   var s = raw && typeof raw === 'object' ? raw : {};
@@ -255,49 +290,56 @@ function normalizeSegment(raw, defaults) {
   var area = String(s.area || defaults.area || '余杭区')
     .trim()
     .substring(0, 32);
-  var periodStart = String(s.period_start || s.periodStart || '').trim();
-  var periodEnd = String(s.period_end || s.periodEnd || '').trim();
-  var a0 = parseYm(periodStart);
-  var b0 = parseYm(periodEnd);
-  if (!a0 || !b0) {
-    return { error: '缴费起止月份格式应为 YYYY-MM' };
+
+  /* 同公司可挂多段缴费基数区间；兼容旧版单段字段 */
+  var periodsIn = Array.isArray(s.periods) ? s.periods : null;
+  var periods = [];
+  if (periodsIn && periodsIn.length) {
+    var pi;
+    for (pi = 0; pi < periodsIn.length; pi++) {
+      var per = normalizePeriod(periodsIn[pi], defaults);
+      if (per.error) {
+        return { error: '缴费区间' + (pi + 1) + '：' + per.error };
+      }
+      periods.push(per);
+    }
+  } else if (s.period_start || s.periodStart || s.period_end || s.periodEnd) {
+    var singlePer = normalizePeriod(
+      {
+        period_start: s.period_start || s.periodStart,
+        period_end: s.period_end || s.periodEnd,
+        base_amount: s.base_amount != null ? s.base_amount : s.baseAmount,
+        pension_pay: s.pension_pay != null ? s.pension_pay : s.pensionPay,
+        unemployment_pay:
+          s.unemployment_pay != null ? s.unemployment_pay : s.unemploymentPay
+      },
+      defaults
+    );
+    if (singlePer.error) return singlePer;
+    /* 兼容旧 year_bases：拆成按年区间不便，仍交给 buildMonthRows */
+    singlePer.year_bases = parseYearBases(s.year_bases || s.yearBases);
+    periods.push(singlePer);
+  } else {
+    return { error: '请至少填写一段缴费起止月份与基数' };
   }
-  if (compareYm(a0, b0) > 0) {
-    var tmp = periodStart;
-    periodStart = periodEnd;
-    periodEnd = tmp;
-    a0 = parseYm(periodStart);
-    b0 = parseYm(periodEnd);
-  }
-  var baseAmt = Number(s.base_amount != null ? s.base_amount : s.baseAmount);
-  if (!isFinite(baseAmt)) baseAmt = Number(defaults.base_amount);
-  if (!isFinite(baseAmt)) baseAmt = 4986;
-  var pensionPay = Number(s.pension_pay != null ? s.pension_pay : s.pensionPay);
-  var unempPay = Number(s.unemployment_pay != null ? s.unemployment_pay : s.unemploymentPay);
-  if (!isFinite(pensionPay)) {
-    pensionPay =
-      defaults.pension_pay != null && isFinite(Number(defaults.pension_pay))
-        ? Number(defaults.pension_pay)
-        : Math.round(baseAmt * 0.08 * 100) / 100;
-  }
-  if (!isFinite(unempPay)) {
-    unempPay =
-      defaults.unemployment_pay != null && isFinite(Number(defaults.unemployment_pay))
-        ? Number(defaults.unemployment_pay)
-        : Math.round(baseAmt * 0.005 * 100) / 100;
-  }
-  var yearBases = parseYearBases(s.year_bases || s.yearBases);
+
+  periods.sort(function (x, y) {
+    return compareYm(parseYm(x.period_end), parseYm(y.period_end));
+  });
+  var lastPer = periods[periods.length - 1];
+  var firstPer = periods[0];
   return {
     company_name: company,
     credit_code: credit,
     company_display: formatCompanyDisplay(company, credit),
     area: area,
-    period_start: periodStart,
-    period_end: periodEnd,
-    base_amount: baseAmt,
-    pension_pay: pensionPay,
-    unemployment_pay: unempPay,
-    year_bases: yearBases
+    periods: periods,
+    period_start: firstPer.period_start,
+    period_end: lastPer.period_end,
+    base_amount: lastPer.base_amount,
+    pension_pay: lastPer.pension_pay,
+    unemployment_pay: lastPer.unemployment_pay,
+    year_bases: lastPer.year_bases || null
   };
 }
 
@@ -341,10 +383,10 @@ function normalizePayload(body) {
     for (si = 0; si < segmentsIn.length; si++) {
       var seg = normalizeSegment(segmentsIn[si], flatDefaults);
       if (seg.error) {
-        return { error: '第' + (si + 1) + '段：' + seg.error };
+        return { error: '第' + (si + 1) + '段经历：' + seg.error };
       }
       if (!seg.company_name && !seg.credit_code) {
-        return { error: '第' + (si + 1) + '段：参保单位必填' };
+        return { error: '第' + (si + 1) + '段经历：参保单位必填' };
       }
       segments.push(seg);
     }
@@ -359,7 +401,8 @@ function normalizePayload(body) {
         base_amount: flatDefaults.base_amount,
         pension_pay: flatDefaults.pension_pay,
         unemployment_pay: flatDefaults.unemployment_pay,
-        year_bases: b.year_bases || b.yearBases
+        year_bases: b.year_bases || b.yearBases,
+        periods: b.periods
       },
       flatDefaults
     );
@@ -371,28 +414,43 @@ function normalizePayload(body) {
     return compareYm(parseYm(x.period_end), parseYm(y.period_end));
   });
 
-  /* 基本情况「参保单位」仅展示最近一段（按止月最晚） */
+  /* 基本情况「参保单位」仅展示最近一段经历（按止月最晚） */
   var latest = segments[segments.length - 1];
   var monthsMap = {};
   var months = [];
   for (si = 0; si < segments.length; si++) {
     var sg = segments[si];
-    var part = buildMonthRows(sg.period_start, sg.period_end, {
-      credit_code: sg.credit_code,
-      unit_code: sg.credit_code,
-      area: sg.area,
-      base_amount: sg.base_amount,
-      pension_pay: sg.pension_pay,
-      unemployment_pay: sg.unemployment_pay,
-      year_bases: sg.year_bases,
-      company_name: sg.company_name
-    });
-    var mi;
-    for (mi = 0; mi < part.length; mi++) {
-      var row = part[mi];
-      var key = ymKey(Number(row.year), Number(row.month));
-      /* 重叠月份以后段为准（通常后段更近） */
-      monthsMap[key] = row;
+    var periods = Array.isArray(sg.periods) && sg.periods.length
+      ? sg.periods
+      : [
+          {
+            period_start: sg.period_start,
+            period_end: sg.period_end,
+            base_amount: sg.base_amount,
+            pension_pay: sg.pension_pay,
+            unemployment_pay: sg.unemployment_pay,
+            year_bases: sg.year_bases
+          }
+        ];
+    var pi;
+    for (pi = 0; pi < periods.length; pi++) {
+      var per = periods[pi];
+      var part = buildMonthRows(per.period_start, per.period_end, {
+        credit_code: sg.credit_code,
+        unit_code: sg.credit_code,
+        area: sg.area,
+        base_amount: per.base_amount,
+        pension_pay: per.pension_pay,
+        unemployment_pay: per.unemployment_pay,
+        year_bases: per.year_bases || null,
+        company_name: sg.company_name
+      });
+      var mi;
+      for (mi = 0; mi < part.length; mi++) {
+        var row = part[mi];
+        var key = ymKey(Number(row.year), Number(row.month));
+        monthsMap[key] = row;
+      }
     }
   }
   Object.keys(monthsMap)

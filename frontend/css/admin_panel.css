@@ -1852,7 +1852,8 @@ tr.ud-salary-bucket-high td {
     background: #f8fafc;
     padding: 12px;
 }
-.sbdy-seg-head {
+.sbdy-seg-head,
+.sbdy-period-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1861,23 +1862,31 @@ tr.ud-salary-bucket-high td {
     font-weight: 600;
     color: #334155;
 }
-.sbdy-seg-head .btn-page {
+.sbdy-seg-head .btn-page,
+.sbdy-period-head .btn-page {
     font-weight: 400;
+}
+.sbdy-seg-company-row {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.sbdy-periods {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.sbdy-period {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px;
+}
+.sbdy-period-actions {
+    margin-top: 8px;
 }
 .sbdy-seg .form-row {
     margin-bottom: 0;
-}
-.sbdy-year-bases {
-    margin-top: 8px;
-    width: 100%;
-}
-.sbdy-year-bases label {
-    display: block;
-    margin-bottom: 4px;
-}
-.sbdy-year-bases input {
-    width: 100%;
-    max-width: 420px;
 }
 .agent-promo-links-mount {
     margin-top: 12px;
