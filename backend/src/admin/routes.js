@@ -109,6 +109,12 @@ app.get(
   h.handleAdminInstallGuideStats
 );
 app.get(
+  '/api/admin/analytics/legacy-redirect-stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('legacy-redirect-stats'),
+  h.handleAdminLegacyRedirectStats
+);
+app.get(
   '/api/admin/analytics/install-track-stats',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),

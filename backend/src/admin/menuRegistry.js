@@ -97,6 +97,14 @@ const ADMIN_PAGE_DEFS = [
     module: 'analytics',
     order: 30
   },
+  {
+    page: 'legacy-redirect-stats',
+    menu_key: 'legacy-redirect-stats',
+    label: '强制跳转统计',
+    group: 'ops-config',
+    module: 'analytics',
+    order: 35
+  },
 
   /* —— 用户与客服 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },

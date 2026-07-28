@@ -41,6 +41,13 @@ const PURGE_TARGETS = [
     defaultDays: 180
   },
   {
+    table: 'legacy_redirect_events',
+    dateColumn: 'created_at',
+    label: '强制跳转事件',
+    envVar: 'DB_RETAIN_LEGACY_REDIRECT_EVENTS_DAYS',
+    defaultDays: 180
+  },
+  {
     table: 'admin_operation_logs',
     dateColumn: 'created_at',
     label: '管理操作日志',

@@ -1045,6 +1045,7 @@
         var _adminAnalyticsTrackingSeen = false;
         var _adminAnalyticsDevicesSeen = false;
         var _adminInstallGuideStatsSeen = false;
+        var _adminLegacyRedirectStatsSeen = false;
         var _adminChannelAnalysisSeen = false;
         var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
@@ -1079,6 +1080,7 @@
                 'install-guide',
                 'sales-contacts',
                 'install-guide-stats',
+                'legacy-redirect-stats',
                 'users',
                 'guest-users',
                 'users-deleted',
@@ -1204,6 +1206,7 @@
                 'analytics-tracking': 1,
                 'analytics-devices': 1,
                 'install-guide-stats': 1,
+                'legacy-redirect-stats': 1,
                 'channel-analysis': 1,
                 'api-analytics': 1,
                 'login-log': 1,
@@ -1311,6 +1314,10 @@
             if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
                 _adminInstallGuideStatsSeen = true;
                 loadInstallGuideStats();
+            }
+            if (pageKey === 'legacy-redirect-stats' && !_adminLegacyRedirectStatsSeen) {
+                _adminLegacyRedirectStatsSeen = true;
+                loadLegacyRedirectStats();
             }
             if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
                 _adminChannelAnalysisSeen = true;
@@ -4340,6 +4347,110 @@
                 });
         }
 
+        function renderLegacyRedirectStats(data) {
+            var el = document.getElementById('legacyRedirectStatsMount');
+            if (!el) return;
+            if (!data || !data.summary) {
+                el.textContent = '暂无跳转统计数据';
+                return;
+            }
+            var s = data.summary;
+            var html = typeof analyticsPeriodHintHtml === 'function' ? analyticsPeriodHintHtml(data) : '';
+            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">跳转人数（去重）</div><div class="ud-val">' +
+                esc(String(s.unique_users != null ? s.unique_users : 0)) +
+                '</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">跳转次数</div><div class="ud-val">' +
+                esc(String(s.redirect_events != null ? s.redirect_events : 0)) +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">同用户 30 分钟内记 1 次</div></div>';
+            html +=
+                '<div class="user-data-stat-card"><div class="ud-label">引流状态</div><div class="ud-val">' +
+                (s.enabled ? '开启' : '关闭') +
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;word-break:break-all;">' +
+                esc(s.redirect_url || '未配置目标 URL') +
+                '</div></div>';
+            html += '</div>';
+
+            var daily = data.daily || [];
+            html += '<p class="stat mb-8">按日跳转人数（北京时间）</p>';
+            html += '<div class="scroll-x"><table class="users-data-table"><thead><tr>';
+            html += '<th>日期</th><th>跳转人数</th><th>跳转次数</th><th>登录触发</th><th>状态检查</th><th>接口拦截</th>';
+            html += '</tr></thead><tbody>';
+            if (!daily.length) {
+                html += '<tr><td colspan="6">区间内暂无数据</td></tr>';
+            } else {
+                for (var i = daily.length - 1; i >= 0; i--) {
+                    var d = daily[i];
+                    html +=
+                        '<tr><td>' +
+                        esc(d.date) +
+                        '</td><td>' +
+                        esc(String(d.unique_users || 0)) +
+                        '</td><td>' +
+                        esc(String(d.redirect_events || 0)) +
+                        '</td><td>' +
+                        esc(String(d.login_events || 0)) +
+                        '</td><td>' +
+                        esc(String(d.status_events || 0)) +
+                        '</td><td>' +
+                        esc(String(d.api_events || 0)) +
+                        '</td></tr>';
+                }
+            }
+            html += '</tbody></table></div>';
+
+            var todayUsers = data.today_users || [];
+            html += '<p class="stat mb-8 mt-16">今日跳转明细（最近 200 条）</p>';
+            html += '<div class="scroll-x"><table class="users-data-table"><thead><tr>';
+            html += '<th>时间</th><th>用户名</th><th>姓名</th><th>来源</th><th>IP</th>';
+            html += '</tr></thead><tbody>';
+            if (!todayUsers.length) {
+                html += '<tr><td colspan="5">今日暂无跳转</td></tr>';
+            } else {
+                var sourceLabel = { login: '登录', status: '状态检查', api: '接口拦截' };
+                todayUsers.forEach(function (u) {
+                    html +=
+                        '<tr><td>' +
+                        esc(u.redirected_at || '') +
+                        '</td><td>' +
+                        esc(u.username || '') +
+                        '</td><td>' +
+                        esc(u.real_name || '') +
+                        '</td><td>' +
+                        esc(sourceLabel[u.source] || u.source || '') +
+                        '</td><td>' +
+                        esc(u.ip || '') +
+                        '</td></tr>';
+                });
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function loadLegacyRedirectStats() {
+            var el = document.getElementById('legacyRedirectStatsMount');
+            if (!el) return;
+            var daysEl = document.getElementById('legacyRedirectStatsDays');
+            var days = analyticsPeriodVal(daysEl);
+            el.textContent = '加载中…';
+            adminFetch('api/admin/analytics/legacy-redirect-stats?days=' + encodeURIComponent(days))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        el.textContent = j.msg || '加载失败';
+                        return;
+                    }
+                    renderLegacyRedirectStats(j.data);
+                })
+                .catch(function () {
+                    el.textContent = '加载失败';
+                });
+        }
+
         function loadInstallTrackStats() {
             var el = document.getElementById('analyticsInstallTrack');
             if (!el) return;
@@ -7046,6 +7157,7 @@
             'analytics-tracking': '埋点分析',
             'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
+            'legacy-redirect-stats': '强制跳转统计',
             'channel-analysis': '渠道分析',
             'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
@@ -9004,6 +9116,18 @@
                 loadInstallGuideStats();
             });
         }
+        var btnRefreshLegacyRedirectStats = document.getElementById('btnRefreshLegacyRedirectStats');
+        if (btnRefreshLegacyRedirectStats) {
+            btnRefreshLegacyRedirectStats.onclick = function () {
+                loadLegacyRedirectStats();
+            };
+        }
+        var legacyRedirectStatsDays = document.getElementById('legacyRedirectStatsDays');
+        if (legacyRedirectStatsDays) {
+            legacyRedirectStatsDays.addEventListener('change', function () {
+                loadLegacyRedirectStats();
+            });
+        }
         var btnRefreshPurchaseEvents = document.getElementById('btnRefreshPurchaseEvents');
         if (btnRefreshPurchaseEvents) {
             btnRefreshPurchaseEvents.onclick = function () {
@@ -9640,7 +9764,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v5-user-prep-import';
+                var MENU_TREE_VER = 'ops-ia-v6-legacy-redirect-stats';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

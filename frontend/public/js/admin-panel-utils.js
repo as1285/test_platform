@@ -393,7 +393,7 @@
             'analytics-register': '注册', 'analytics-activity': '日活',
             'analytics-tracking': '埋点', 'analytics-devices': '设备',
             'channel-analysis': '渠道', 'api-analytics': '接口',
-            'install-guide-stats': '安装统计', 'sales-contacts': '代理联系方式',
+            'install-guide-stats': '安装统计', 'legacy-redirect-stats': '强制跳转', 'sales-contacts': '代理联系方式',
             'blocked-ips': 'IP 黑名单'
         };
         return map[key] || key;

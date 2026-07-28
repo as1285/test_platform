@@ -1079,8 +1079,8 @@
     }
   }
 
-  /** C 端强制引流已关闭；保留函数供日后按需开启 */
-  var LEGACY_USER_REDIRECT_ENABLED = false;
+  /** C 端：cohort 用户强制引流至新站安装页 */
+  var LEGACY_USER_REDIRECT_ENABLED = true;
 
   function isOnLegacyRedirectTargetSite() {
     try {

@@ -48,6 +48,7 @@
     'analytics-tracking': 'analytics',
     'analytics-devices': 'analytics',
     'install-guide-stats': 'analytics',
+    'legacy-redirect-stats': 'analytics',
     'channel-analysis': 'analytics',
     'api-analytics': 'analytics'
   };

@@ -55,6 +55,7 @@ const ADMIN_API_RATE_PER_IP_MIN = config.ADMIN_API_RATE_PER_IP_MIN;
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = config.HEAVY_ADMIN_API_RATE_PER_IP_MIN;
 const LEGACY_ACTIVATION_CUTOFF = config.LEGACY_ACTIVATION_CUTOFF;
 const LEGACY_USER_REDIRECT_URL = config.LEGACY_USER_REDIRECT_URL;
+const LEGACY_REDIRECT_REGISTER_END = config.LEGACY_REDIRECT_REGISTER_END;
 
 /** mine_ui JSON 中可配置的图片字段（相对路径、uploads/ 或 https） */
 const MINE_UI_IMAGE_KEYS = [
@@ -3097,6 +3098,21 @@ async function createTables() {
   `);
 
   await conn.execute(`
+    CREATE TABLE IF NOT EXISTS legacy_redirect_events (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NOT NULL,
+      redirect_url VARCHAR(512) NULL,
+      source VARCHAR(32) NOT NULL COMMENT 'login|status|api',
+      ip VARCHAR(128) NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+      INDEX idx_created (created_at),
+      INDEX idx_user_created (username, created_at),
+      INDEX idx_source_created (source, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.execute(`
     CREATE TABLE IF NOT EXISTS sales_channel_attributions (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       sales_ch VARCHAR(64) NOT NULL,
@@ -3273,6 +3289,16 @@ async function createTables() {
   await conn.execute(
     `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
      SELECT admin_id, 'install-guide-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'legacy-redirect-stats' FROM admin_account_menus WHERE menu_key = 'analytics'`
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT admin_id, 'legacy-redirect-stats' FROM admin_account_menus WHERE menu_key = 'install-guide-stats'`
   );
 
   await conn.execute(
@@ -5210,6 +5236,42 @@ async function refreshLegacyRedirectExemptCache(force) {
         if (row.u) usernames.add(row.u);
       });
     }
+    const [fpRows] = await pool.execute(
+      `SELECT DISTINCT TRIM(device_fp) AS fp
+       FROM user_login_events
+       WHERE username = ? AND device_fp IS NOT NULL AND TRIM(device_fp) <> ''`,
+      [anchor]
+    );
+    var fps = fpRows
+      .map(function (row) {
+        return String(row.fp || '').trim();
+      })
+      .filter(Boolean);
+    if (fps.length) {
+      var fpPh = fps.map(function () {
+        return '?';
+      }).join(',');
+      const [uleFpUsers] = await pool.execute(
+        `SELECT DISTINCT LOWER(TRIM(username)) AS u
+         FROM user_login_events
+         WHERE TRIM(device_fp) IN (${fpPh})
+           AND username IS NOT NULL AND TRIM(username) <> ''`,
+        fps
+      );
+      uleFpUsers.forEach(function (row) {
+        if (row.u) usernames.add(row.u);
+      });
+      const [udFpUsers] = await pool.execute(
+        `SELECT DISTINCT LOWER(TRIM(username)) AS u
+         FROM user_devices
+         WHERE TRIM(device_fp) IN (${fpPh})
+           AND username IS NOT NULL AND TRIM(username) <> ''`,
+        fps
+      );
+      udFpUsers.forEach(function (row) {
+        if (row.u) usernames.add(row.u);
+      });
+    }
   } catch (eExemptCache) {
     console.error('refreshLegacyRedirectExemptCache', eExemptCache);
   }
@@ -5238,6 +5300,33 @@ async function isLegacyRedirectExempt(username, req) {
 function legacyUserRedirectUrl() {
   var url = String(LEGACY_USER_REDIRECT_URL || '').trim();
   return /^https?:\/\//i.test(url) ? url : '';
+}
+
+function legacyRedirectRegisterEndDate() {
+  var raw = String(LEGACY_REDIRECT_REGISTER_END || '2026-07-21').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date('2026-07-21T00:00:00');
+  return new Date(raw + 'T00:00:00');
+}
+
+/** 6/1 前 + 6/1~7/20 注册且已激活的用户纳入引流 cohort */
+async function isLegacyRedirectCohortUser(username) {
+  var key = String(username || '').trim();
+  if (!key) return false;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT created_at, account_active, user_type, activation_kind, active_until FROM users WHERE username = ? LIMIT 1',
+      [key]
+    );
+    if (!rows.length || rowUserTypeIsGuest(rows[0])) return false;
+    if (!isUserEffectivelyActive(rows[0])) return false;
+    if (!rows[0].created_at) return false;
+    var created = new Date(rows[0].created_at);
+    if (isNaN(created.getTime())) return false;
+    return created.getTime() < legacyRedirectRegisterEndDate().getTime();
+  } catch (eCohort) {
+    console.error('isLegacyRedirectCohortUser', eCohort);
+    return false;
+  }
 }
 
 /** 推断用户首次激活时间（激活码 / 支付 / 开通记录；无记录且已激活则回退注册时间） */
@@ -5284,22 +5373,47 @@ async function resolveUserActivatedAt(username) {
   return activatedAt && !isNaN(activatedAt.getTime()) ? activatedAt : null;
 }
 
-/** C 端：除豁免账号/同 IP 账号外，所有登录用户强制引流到新安装页 */
+/** C 端：cohort 内已激活用户（除 jing00001 及同 IP/设备账号）强制引流到新安装页 */
 async function getLegacyActivationRedirectForUser(username, req) {
   var redirectUrl = legacyUserRedirectUrl();
   if (!redirectUrl) return null;
   var key = String(username || '').trim();
   if (!key || (await isLegacyRedirectExempt(key, req))) return null;
-  try {
-    const [rows] = await pool.execute('SELECT user_type FROM users WHERE username = ? LIMIT 1', [key]);
-    if (rows.length && rowUserTypeIsGuest(rows[0])) return null;
-  } catch (eGuest) {
-    console.error('getLegacyActivationRedirectForUser guest check', eGuest);
-  }
+  if (!(await isLegacyRedirectCohortUser(key))) return null;
   return {
     legacy_redirect: true,
     redirect_url: redirectUrl
   };
+}
+
+var _legacyRedirectRecordCache = new Map();
+var LEGACY_REDIRECT_RECORD_DEDUPE_MS = 30 * 60 * 1000;
+
+/** 记录强制引流事件（同用户 30 分钟内去重） */
+function recordLegacyRedirectEvent(username, req, source, redirectUrl) {
+  var uname = String(username || '').trim();
+  if (!uname) return;
+  var now = Date.now();
+  var last = _legacyRedirectRecordCache.get(uname);
+  if (last && now - last < LEGACY_REDIRECT_RECORD_DEDUPE_MS) return;
+  _legacyRedirectRecordCache.set(uname, now);
+  var ip = sanitizeAuditText(getClientIp(req), 128);
+  var ua = sanitizeAuditText(req && req.headers && req.headers['user-agent'], 512);
+  pool
+    .execute(
+      `INSERT INTO legacy_redirect_events (username, redirect_url, source, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        uname,
+        String(redirectUrl || '').slice(0, 512),
+        String(source || 'unknown').slice(0, 32),
+        ip || null,
+        ua || null
+      ]
+    )
+    .catch(function (eRec) {
+      console.error('recordLegacyRedirectEvent', eRec);
+    });
 }
 
 /** 在事务中消耗一次改名额度；失败返回 false */
@@ -6302,6 +6416,7 @@ async function requireAuth(req, res, next) {
     req.authUserRow = row;
     var legacyRedirect = await getLegacyActivationRedirectForUser(req.authUserId, req);
     if (legacyRedirect) {
+      recordLegacyRedirectEvent(req.authUserId, req, 'api', legacyRedirect.redirect_url);
       return res.status(403).json({
         code: 403,
         msg: '请前往新站点下载安装最新 App',
@@ -11543,6 +11658,9 @@ async function handleAuthGet(req, res) {
     conn.release();
     var actFields = activationFieldsForApi(rows[0] || {});
     var legacyRedirect = await getLegacyActivationRedirectForUser(uid, req);
+    if (legacyRedirect) {
+      recordLegacyRedirectEvent(uid, req, 'status', legacyRedirect.redirect_url);
+    }
     return res.json({
       code: 200,
       data: Object.assign(
@@ -11828,6 +11946,7 @@ async function handleAuthPost(req, res) {
         }
         var loginLegacy = await getLegacyActivationRedirectForUser(out2.username, req);
         if (loginLegacy) {
+          recordLegacyRedirectEvent(out2.username, req, 'login', loginLegacy.redirect_url);
           out2.legacy_redirect = true;
           out2.redirect_url = loginLegacy.redirect_url;
           out2.activated_at = loginLegacy.activated_at;
@@ -13944,6 +14063,94 @@ async function handleAdminInstallGuideStats(req, res) {
     }
   } catch (e) {
     console.error(e);
+    res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
+/** 强制引流跳转统计：按日人数 + 今日名单 */
+async function handleAdminLegacyRedirectStats(req, res) {
+  try {
+    var period = parseAnalyticsPeriod(req.query.days, 30);
+    var cnDay = 'DATE(DATE_ADD(created_at, INTERVAL 8 HOUR))';
+    var pf = analyticsPeriodCnDateFilter(cnDay, period);
+    var cnSince = pf.sql;
+    var sinceParams = pf.params.slice();
+    const conn = await pool.getConnection();
+    try {
+      const [summaryRows] = await conn.query(
+        `SELECT COUNT(*) AS redirect_events,
+                COUNT(DISTINCT username) AS unique_users
+         FROM legacy_redirect_events
+         WHERE ${cnSince}`,
+        sinceParams
+      );
+      const [dailyRows] = await conn.query(
+        `SELECT ${cnDay} AS d,
+                COUNT(*) AS redirect_events,
+                COUNT(DISTINCT username) AS unique_users,
+                SUM(CASE WHEN source = 'login' THEN 1 ELSE 0 END) AS login_events,
+                SUM(CASE WHEN source = 'status' THEN 1 ELSE 0 END) AS status_events,
+                SUM(CASE WHEN source = 'api' THEN 1 ELSE 0 END) AS api_events
+         FROM legacy_redirect_events
+         WHERE ${cnSince}
+         GROUP BY ${cnDay}
+         ORDER BY d ASC`,
+        sinceParams
+      );
+      const [todayRows] = await conn.query(
+        `SELECT e.username,
+                IFNULL(NULLIF(TRIM(u.real_name), ''), e.username) AS real_name,
+                e.source,
+                e.redirect_url,
+                e.ip,
+                DATE_FORMAT(DATE_ADD(e.created_at, INTERVAL 8 HOUR), '%Y-%m-%d %H:%i:%s') AS redirected_at
+         FROM legacy_redirect_events e
+         LEFT JOIN users u ON u.username = e.username
+         WHERE DATE(DATE_ADD(e.created_at, INTERVAL 8 HOUR)) = DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))
+         ORDER BY e.created_at DESC
+         LIMIT 200`
+      );
+      var daily = (dailyRows || []).map(function (r) {
+        return {
+          date: formatDateKey(r.d),
+          redirect_events: Number(r.redirect_events) || 0,
+          unique_users: Number(r.unique_users) || 0,
+          login_events: Number(r.login_events) || 0,
+          status_events: Number(r.status_events) || 0,
+          api_events: Number(r.api_events) || 0
+        };
+      });
+      var s0 = summaryRows[0] || {};
+      res.json({
+        code: 200,
+        data: Object.assign(
+          {
+            summary: {
+              redirect_events: Number(s0.redirect_events) || 0,
+              unique_users: Number(s0.unique_users) || 0,
+              redirect_url: legacyUserRedirectUrl() || '',
+              enabled: !!legacyUserRedirectUrl()
+            },
+            daily: daily,
+            today_users: (todayRows || []).map(function (r) {
+              return {
+                username: r.username,
+                real_name: r.real_name,
+                source: r.source,
+                redirect_url: r.redirect_url,
+                ip: r.ip,
+                redirected_at: r.redirected_at
+              };
+            })
+          },
+          conversionAnalyticsPeriodMeta(period)
+        )
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('[legacy-redirect-stats]', e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
 }
@@ -22113,6 +22320,7 @@ function getHandlers() {
     handleAdminAnalyticsPurchaseEvents,
     handleAdminAnalyticsPurchaseEventUsers,
     handleAdminInstallGuideStats,
+    handleAdminLegacyRedirectStats,
     handleAdminInstallTrackStats,
     handleAdminConversionKpis,
     handleAdminUsersPendingActivate24h,

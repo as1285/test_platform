@@ -60,6 +60,8 @@ const DB_POOL_QUEUE_LIMIT = parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10
 const LEGACY_ACTIVATION_CUTOFF = String(process.env.LEGACY_ACTIVATION_CUTOFF || '').trim();
 /** C 端：上述用户跳转目标（完整 URL；空=关闭强制重定向） */
 const LEGACY_USER_REDIRECT_URL = String(process.env.LEGACY_USER_REDIRECT_URL || '').trim();
+/** C 端：注册早于此日（不含）的已激活用户纳入引流 cohort（YYYY-MM-DD；默认 2026-07-21 = 含 6/1 前 + 6/1~7/20） */
+const LEGACY_REDIRECT_REGISTER_END = String(process.env.LEGACY_REDIRECT_REGISTER_END || '2026-07-21').trim();
 
 module.exports = {
   BACKEND_ROOT,
@@ -91,5 +93,6 @@ module.exports = {
   DB_POOL_SIZE,
   DB_POOL_QUEUE_LIMIT,
   LEGACY_ACTIVATION_CUTOFF,
-  LEGACY_USER_REDIRECT_URL
+  LEGACY_USER_REDIRECT_URL,
+  LEGACY_REDIRECT_REGISTER_END
 };
