@@ -17,7 +17,7 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260729-nested-exp',
     'user-prep-import': '/js/admin/modules/user-prep-import.js?v=20260728-block-tpl'
   };
 

@@ -1623,7 +1623,7 @@
                             <p class="hint mt-8 mb-4">可添加<strong>多段参保经历</strong>（换单位）；每段经历下可再添加<strong>多个缴费基数区间</strong>（同公司基数变化）。基本情况表「参保单位」只显示最近一段公司。</p>
                             <div id="sbdySegments" class="sbdy-segments"></div>
                             <div class="form-actions" style="margin-top:8px;">
-                                <button type="button" class="btn-page" id="btnSbdyAddSegment">＋ 添加参保经历</button>
+                                <button type="button" class="btn-page" id="btnSbdyAddSegment" onclick="if(window.sbdyDemoAddExperience){window.sbdyDemoAddExperience();}">＋ 添加参保经历</button>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyDemoFillSample" onclick="if(window.sbdyDemoFillSample){window.sbdyDemoFillSample();}">填充示例数据</button>
