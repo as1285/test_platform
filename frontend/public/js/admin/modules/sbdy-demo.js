@@ -671,7 +671,6 @@
   global.sbdyDemoGenerate = generate;
   global.sbdyDemoFillSample = fillSample;
   global.sbdyDemoAddExperience = function () {
-    ensureOneExperience();
     addExperience({});
   };
 })(window);
