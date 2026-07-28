@@ -263,3 +263,12 @@ html.user-font-custom.app-android-huawei-cls-al00 [data-ufs-target] .top-fixed .
     width: 12px !important;
     height: 12px !important;
 }
+
+html.user-font-custom.app-android-redmi-k70 [data-ufs-target] .top-fixed .summary .summary-label .icon,
+html.user-font-custom.app-android-mi-family [data-ufs-target] .top-fixed .summary .summary-label .icon {
+    width: 1.15em !important;
+    height: 1.15em !important;
+    min-width: 1.15em !important;
+    min-height: 1.15em !important;
+    font-size: 0.78em !important;
+}

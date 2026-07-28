@@ -7359,7 +7359,7 @@ async function getUserSummaryForApi(userId) {
       activation_kind: actFields.activation_kind,
       active_until: actFields.active_until,
       active_days_left: actFields.active_days_left,
-      employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
+      employer_count: await countActiveEmployersForUser(conn, uid),
       family_count: rec.family_count != null ? Number(rec.family_count) : 0,
       bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
       tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
@@ -7408,6 +7408,28 @@ async function listEmployersForUser(userId) {
   }
 }
 
+/** 在职任职数（我的页角标；离职后不计，对齐官方「暂无」） */
+async function countActiveEmployersForUser(conn, userId) {
+  if (!conn || userId == null || String(userId).trim() === '') {
+    return 0;
+  }
+  const [rows] = await conn.execute(
+    `SELECT COUNT(*) AS count FROM employers
+     WHERE user_id = ?
+       AND (
+         status = 1 OR status = '1' OR status = '在职'
+       )`,
+    [String(userId).trim()]
+  );
+  return rows && rows[0] ? Number(rows[0].count) || 0 : 0;
+}
+
+async function syncUserEmployerCount(conn, userId) {
+  var n = await countActiveEmployersForUser(conn, userId);
+  await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [n, String(userId).trim()]);
+  return n;
+}
+
 /** 组装用户 info 接口数据 */
 async function getUserInfoForApi(userId) {
   if (userId == null || String(userId).trim() === '') {
@@ -7440,6 +7462,7 @@ async function getUserInfoForApi(userId) {
     'SELECT COUNT(*) AS c FROM tax_records WHERE user_id = ? AND ' + TAX_RECORD_NOT_DELETED_SQL,
     [uid]
   );
+  var activeEmployerCount = await countActiveEmployersForUser(conn, uid);
   conn.release();
 
   const defaults = {
@@ -7502,7 +7525,7 @@ async function getUserInfoForApi(userId) {
     username: uid,
     real_name: rec.real_name != null ? String(rec.real_name) : uid,
     tax_id: normalizeTaxIdForApi(rec.tax_id != null ? String(rec.tax_id) : ''),
-    employer_count: rec.employer_count != null ? Number(rec.employer_count) : 0,
+    employer_count: activeEmployerCount,
     family_count: rec.family_count != null ? Number(rec.family_count) : 0,
     bank_card_count: rec.bank_card_count != null ? Number(rec.bank_card_count) : 0,
     tax_record_count: taxCountRows && taxCountRows[0] ? Number(taxCountRows[0].c) || 0 : 0,
@@ -7944,7 +7967,12 @@ async function handleUserPost(req, res) {
         employerData.position, employerData.hire_date, employerData.leave_date, employerData.status
       ]);
       
-      const [employerCount] = await conn.execute('SELECT COUNT(*) as count FROM employers WHERE user_id = ?', [userId]);
+      const [employerCount] = await conn.execute(
+        `SELECT COUNT(*) as count FROM employers
+         WHERE user_id = ?
+           AND (status = 1 OR status = '1' OR status = '在职')`,
+        [userId]
+      );
       await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
       
       conn.release();
@@ -7979,6 +8007,7 @@ async function handleUserPost(req, res) {
         if (!updRows || !updRows.affectedRows) {
           return res.status(404).json({ code: 404, msg: '任职受雇记录不存在' });
         }
+        await syncUserEmployerCount(connUpd, userId);
         invalidateUserInfoApiCache(userId);
         return res.json({
           code: 200,
@@ -8669,7 +8698,12 @@ async function handleUserPost(req, res) {
         const conn = await pool.getConnection();
         await conn.execute('DELETE FROM employers WHERE id = ? AND user_id = ?', [body.employer_id, userId]);
         
-        const [employerCount] = await conn.execute('SELECT COUNT(*) as count FROM employers WHERE user_id = ?', [userId]);
+        const [employerCount] = await conn.execute(
+          `SELECT COUNT(*) as count FROM employers
+           WHERE user_id = ?
+             AND (status = 1 OR status = '1' OR status = '在职')`,
+          [userId]
+        );
         await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
         
         conn.release();

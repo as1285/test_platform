@@ -2,8 +2,16 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260727-redmi-k70-top3"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        (function () {
+            try {
+                var u = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+                if (/Android/i.test(u)) document.documentElement.classList.add('platform-android');
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>任职受雇</title>
     <style>
         * {
@@ -39,6 +47,14 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Android：黑条状态栏已在 WebView 外，顶栏勿再叠安全区 */
+        html.platform-android body.page-renzhi > .header,
+        html.app-android-client.app-top-safe-shell body.page-renzhi > .header {
+            padding-top: 14px;
+            padding-bottom: 15px;
+            min-height: 0;
         }
 
         .back-btn {
@@ -127,7 +143,7 @@
         }
     </style>
 </head>
-<body>
+<body class="page-renzhi">
     <div class="header">
         <a href="mine.html" class="back-btn">
             <img src="/jt.png" alt="" style="width: 9px; vertical-align: middle;">

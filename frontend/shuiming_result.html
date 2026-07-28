@@ -18,8 +18,8 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260727-redmi-k70-top3"></script>
-    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260622-line-height">
+    <script src="/js/auth.js?v=20260728-k70-help-icon"></script>
+    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260728-k70-help-icon">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260709-edit-mode-fab" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -164,11 +164,12 @@
             padding-bottom: 9px;
             margin-bottom: 3px;
             position: relative;
-            border-bottom: 1px solid #e5e5e5;
+            border-bottom: none;
         }
 
-        .summary-item:last-child {
-            border-bottom: none;
+        /* 仅「收入合计」与「已申报税额合计」之间保留横线；税额下方不再画线（对齐正版） */
+        .summary > .summary-item:first-child {
+            border-bottom: 1px solid #e5e5e5;
         }
 
         .sm-activate-card {
@@ -551,6 +552,24 @@
             font-size: 8px;
             font-weight: 500;
             border-width: 1px;
+        }
+
+        /* 红米 K70 / 至尊：高分屏上 13px 问号偏小，放大至与汇总字高更接近 */
+        html.app-android-redmi-k70 body.page-shuiming-result .summary-label .icon,
+        html.app-android-mi-family body.page-shuiming-result .summary-label .icon {
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            border-width: 1.5px;
+            line-height: 1;
+        }
+
+        html.app-android-redmi-k70 body.page-shuiming-result .summary-help-with-colon,
+        html.app-android-mi-family body.page-shuiming-result .summary-help-with-colon,
+        html.app-android-redmi-k70 body.page-shuiming-result .summary-help-with-colon .summary-colon,
+        html.app-android-mi-family body.page-shuiming-result .summary-help-with-colon .summary-colon {
+            line-height: 20px;
         }
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-item {

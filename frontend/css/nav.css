@@ -15,19 +15,23 @@
     );
 }
 
+/* iOS：贴底（0），由 auth.js pinTabBottomNav 实测纠偏，保证五 TAB 同高 */
+html.app-ios-client {
+    --bottom-nav-bottom: 0px;
+}
+
 /*
  * 高优先级锁：覆盖各页内联 / 机型补丁，保证切 TAB 时 bottom 一致。
- * 位置只由 --bottom-nav-bottom 决定（默认 2px；Cordova 2410 为 32px）。
+ * 「我的」排除：由 auth.js 用 top 像素硬钉，勿锁 bottom/transform。
  */
-html body .bottom-nav,
-html body > .bottom-nav,
-html body.page-mine > .bottom-nav,
+html body:not(.page-mine) .bottom-nav,
+html body:not(.page-mine) > .bottom-nav,
 html body.page-shouye > .bottom-nav,
 html body.page-daiban > .bottom-nav,
 html body.page-bancha > .bottom-nav,
 html body.page-message > .bottom-nav,
-html body.tax-app-shell > .bottom-nav,
-.bottom-nav.ios-device {
+html body.tax-app-shell:not(.page-mine) > .bottom-nav,
+html body:not(.page-mine) .bottom-nav.ios-device {
     position: fixed !important;
     left: var(--bottom-nav-side) !important;
     right: var(--bottom-nav-side) !important;
@@ -36,6 +40,23 @@ html body.tax-app-shell > .bottom-nav,
     margin: 0 !important;
     transform: none !important;
     -webkit-transform: none !important;
+    view-transition-name: none !important;
+    animation: none !important;
+}
+
+/* 「我的」：位置由 JS top 硬钉；此处只保 fixed / 左右 / 层级 */
+html body.page-mine {
+    --bottom-nav-bottom: 0px !important;
+}
+html body.page-mine > .bottom-nav,
+html body.page-mine > .bottom-nav.ios-device {
+    position: fixed !important;
+    left: var(--bottom-nav-side) !important;
+    right: var(--bottom-nav-side) !important;
+    bottom: auto !important;
+    z-index: 200 !important;
+    margin: 0 !important;
+    padding-bottom: 0 !important;
     view-transition-name: none !important;
     animation: none !important;
 }

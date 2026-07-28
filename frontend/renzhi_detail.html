@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260727-redmi-k70-top3"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>详情</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,6 +24,11 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #e5e5ea;
+        }
+        html.app-android-client.app-top-safe-shell body > .header {
+            padding-top: 14px;
+            padding-bottom: 15px;
+            min-height: 0;
         }
         .back-btn {
             position: absolute;

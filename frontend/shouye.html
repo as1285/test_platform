@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260727-redmi-k70-top3"></script>
+    <script src="/js/auth.js?v=20260728-ios-tab-pin"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -87,17 +87,19 @@
             box-shadow: none;
         }
 
-        /* 荣耀等 Android 顶栏安全区（auth.js 亦注入，此处兜底） */
-        html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+        /* 小米/红米/HyperOS（含 K70 / 至尊）：黑条状态栏时搜索条仅 6px */
+        html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: 6px;
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
 
-        /* 红米 K70：系统已留状态栏时勿再叠顶距，搜索条仅保留 6px */
-        html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 6px;
+        /* 荣耀等 Android 顶栏安全区（auth.js 亦注入，此处兜底） */
+        html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
         }
 
         /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */
@@ -562,7 +564,7 @@
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
 
         </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260723-nav-lower">
+    <link rel="stylesheet" href="css/nav.css?v=20260728-ios-tab-pin">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
