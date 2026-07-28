@@ -30,12 +30,9 @@ NOTO_SC_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Regular
 NOTO_BOLD_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Bold.otf')
 
 PAGE_W, PAGE_H = 595.0, 842.0
-X0, X1 = 42.5, 552.5
-# 缴费表列边界（与参考 PDF 一致）
-COL_X = [
-    42.52, 64.82, 87.12, 150.73, 183.31, 226.06, 257.48, 299.06,
-    331.65, 374.40, 405.83, 447.40, 552.76,
-]
+X0, X1 = 34.3, 560.2
+# 明细表列宽（对齐参考 PDF 竖线）
+COL_X = [34.5, 62.4, 79.5, 167.8, 234.6, 274.2, 318.1, 371.6, 416.5, 454.5, 511.2, 542.3, 560.5]
 
 # 字号层级（对齐官方：加粗略大，正文更细）
 SIZE_DOC_TITLE = 22.8
