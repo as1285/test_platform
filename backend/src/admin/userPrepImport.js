@@ -82,8 +82,13 @@ var HEADER_MAP = {
   单位名称: 'company_name',
   公司名称: 'company_name',
   company_name: 'company_name',
+  扣税义务人名称: 'withholding_agent_name',
+  扣缴义务人名称: 'withholding_agent_name',
+  withholding_agent_name: 'withholding_agent_name',
   单位税号: 'company_tax_id',
   税号: 'company_tax_id',
+  扣税义务人识别编号: 'company_tax_id',
+  扣缴义务人识别编号: 'company_tax_id',
   company_tax_id: 'company_tax_id',
   收入: 'income',
   税前收入: 'income',
@@ -283,23 +288,57 @@ function parseProfileFromBlockMatrix(matrix) {
   return profile;
 }
 
-function monthRowHasData(line) {
+/** 从「202x年」表头行解析列下标（后续年份表头可只填部分列，未填的沿用上一份映射） */
+function mergeYearHeaderColMap(line, prevMap) {
+  var map = prevMap ? Object.assign({}, prevMap) : {};
+  var j;
+  for (j = 1; j < line.length; j++) {
+    var field = normalizeHeader(line[j]);
+    if (!field) continue;
+    map[field] = j;
+  }
+  return map;
+}
+
+function cellByField(line, colMap, field) {
+  if (!colMap || colMap[field] == null) return '';
+  return line[colMap[field]];
+}
+
+function monthRowHasData(line, colMap) {
+  if (!line) return false;
+  if (colMap && Object.keys(colMap).length) {
+    var keys = Object.keys(colMap);
+    var ki;
+    for (ki = 0; ki < keys.length; ki++) {
+      var field = keys[ki];
+      var v = line[colMap[field]];
+      if (field === 'company_name' || field === 'company_tax_id' || field === 'tax_authority') {
+        if (cellStr(v) !== '') return true;
+      } else if (hasMoneyValue(v)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  /* 兼容旧固定列：收入/社保/其他扣除/扣税/公司名 */
   return (
     hasMoneyValue(line[1]) ||
     hasMoneyValue(line[2]) ||
     hasMoneyValue(line[3]) ||
     hasMoneyValue(line[4]) ||
-    cellStr(line[6]) !== ''
+    cellStr(line[6]) !== '' ||
+    cellStr(line[9]) !== ''
   );
 }
 
-/** 0727 块模板：按年份 + 每月一行展开为扁平行 */
+/** 块模板：按年份 + 每月一行展开为扁平行（列位以当年表头为准） */
 function blockMatrixToRows(matrix, sheetName, sheetIndex) {
   var profile = parseProfileFromBlockMatrix(matrix);
   var username = cellStr(profile.username);
   var currentYear = null;
+  var colMap = null;
   var monthMap = {};
-  var taxRows = [];
   var i;
   var lineNoBase = sheetIndex * 10000;
 
@@ -311,15 +350,17 @@ function blockMatrixToRows(matrix, sheetName, sheetIndex) {
     var yearMatch = /^(\d{4})年$/.exec(colA);
     if (yearMatch) {
       currentYear = parseInt(yearMatch[1], 10);
+      colMap = mergeYearHeaderColMap(line, colMap);
       continue;
     }
 
     var monthMatch = /^(\d{1,2})月$/.exec(colA);
     if (monthMatch && currentYear) {
-      if (!monthRowHasData(line)) continue;
+      if (!monthRowHasData(line, colMap)) continue;
       var month = parseInt(monthMatch[1], 10);
       if (month < 1 || month > 12) continue;
       var key = currentYear + '-' + month;
+      var legacy = !colMap || colMap.income == null;
       monthMap[key] = {
         _line: i + 1,
         username: username,
@@ -330,16 +371,38 @@ function blockMatrixToRows(matrix, sheetName, sheetIndex) {
         grant_days: profile.grant_days,
         year: currentYear,
         month: month,
-        income: line[1],
-        special_deduction: line[2],
-        other_deduction: line[3],
-        tax_reported: line[4],
-        company_name: line[6]
+        income: legacy ? line[1] : cellByField(line, colMap, 'income'),
+        special_deduction: legacy ? line[2] : cellByField(line, colMap, 'special_deduction'),
+        other_deduction: legacy
+          ? line[3]
+          : cellByField(line, colMap, 'other_deduction'),
+        tax_reported: legacy ? line[4] : cellByField(line, colMap, 'tax_reported'),
+        company_name: legacy
+          ? line[6] != null && cellStr(line[6]) !== ''
+            ? line[6]
+            : line[9]
+          : cellByField(line, colMap, 'company_name') ||
+            cellByField(line, colMap, 'withholding_agent_name'),
+        company_tax_id: legacy
+          ? line[11] || ''
+          : cellByField(line, colMap, 'company_tax_id'),
+        pension_insurance: legacy
+          ? ''
+          : cellByField(line, colMap, 'pension_insurance'),
+        medical_insurance: legacy
+          ? ''
+          : cellByField(line, colMap, 'medical_insurance'),
+        unemployment_insurance: legacy
+          ? ''
+          : cellByField(line, colMap, 'unemployment_insurance'),
+        housing_fund: legacy ? '' : cellByField(line, colMap, 'housing_fund'),
+        tax_authority: legacy ? '' : cellByField(line, colMap, 'tax_authority')
       };
       continue;
     }
   }
 
+  var taxRows = [];
   Object.keys(monthMap).forEach(function (k) {
     taxRows.push(monthMap[k]);
   });
