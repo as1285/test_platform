@@ -1,4 +1,4 @@
-/** Admin module: 社保演示生成 */
+/** Admin module: 社保演示生成（支持多段参保 / 按年基数） */
 (function (global) {
   function esc(s) {
     return String(s == null ? '' : s)
@@ -19,11 +19,6 @@
   function val(id) {
     var el = document.getElementById(id);
     return el ? String(el.value || '').trim() : '';
-  }
-
-  function num(id, fallback) {
-    var n = Number(val(id));
-    return isFinite(n) ? n : fallback;
   }
 
   /** 兼容 type=month 与手填「2026年01月」 */
@@ -81,13 +76,15 @@
     );
   }
 
-  function fillDefaults() {
+  function defaultPeriodRange() {
     var now = new Date();
-    var endY = now.getFullYear();
-    var endM = now.getMonth();
-    if (endM === 0) {
+    var bj = new Date(now.getTime() + 8 * 3600 * 1000);
+    var endY = bj.getUTCFullYear();
+    var endM = bj.getUTCMonth() + 1;
+    endM -= 1;
+    if (endM <= 0) {
+      endM += 12;
       endY -= 1;
-      endM = 12;
     }
     var startY = endY;
     var startM = endM - 11;
@@ -95,13 +92,172 @@
       startM += 12;
       startY -= 1;
     }
-    var ps = document.getElementById('sbdyPeriodStart');
-    var pe = document.getElementById('sbdyPeriodEnd');
-    if (ps && !ps.value) {
-      ps.value = startY + '-' + String(startM).padStart(2, '0');
+    return {
+      start: startY + '-' + String(startM).padStart(2, '0'),
+      end: endY + '-' + String(endM).padStart(2, '0')
+    };
+  }
+
+  function parseYearBasesText(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return null;
+    var out = {};
+    var parts = s.split(/[,，;；\s]+/);
+    var i;
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i].trim();
+      if (!p) continue;
+      var m = p.match(/^(\d{4})\s*[:=\s]\s*(\d+(?:\.\d+)?)$/);
+      if (!m) m = p.match(/^(\d{4})[年\/\-](\d+(?:\.\d+)?)$/);
+      if (!m) continue;
+      out[m[1]] = Number(m[2]);
     }
-    if (pe && !pe.value) {
-      pe.value = endY + '-' + String(endM).padStart(2, '0');
+    return Object.keys(out).length ? out : null;
+  }
+
+  function formatYearBasesText(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    return Object.keys(obj)
+      .sort()
+      .map(function (y) {
+        return y + '=' + obj[y];
+      })
+      .join(', ');
+  }
+
+  function segmentField(row, cls) {
+    var el = row.querySelector('.' + cls);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function segmentNum(row, cls, fallback) {
+    var n = Number(segmentField(row, cls));
+    return isFinite(n) ? n : fallback;
+  }
+
+  function collectSegments() {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return [];
+    var rows = wrap.querySelectorAll('.sbdy-seg');
+    var list = [];
+    rows.forEach(function (row) {
+      var company = segmentField(row, 'sbdy-seg-company');
+      var credit = segmentField(row, 'sbdy-seg-credit');
+      var area = segmentField(row, 'sbdy-seg-area') || '余杭区';
+      var periodStart = normalizeYm(segmentField(row, 'sbdy-seg-start'));
+      var periodEnd = normalizeYm(segmentField(row, 'sbdy-seg-end'));
+      var base = segmentNum(row, 'sbdy-seg-base', 4986);
+      var pension = segmentNum(row, 'sbdy-seg-pension', Math.round(base * 0.08 * 100) / 100);
+      var unemp = segmentNum(row, 'sbdy-seg-unemp', Math.round(base * 0.005 * 100) / 100);
+      var yearBases = parseYearBasesText(segmentField(row, 'sbdy-seg-year-bases'));
+      var item = {
+        company_name: company,
+        credit_code: credit,
+        area: area,
+        period_start: periodStart,
+        period_end: periodEnd,
+        base_amount: base,
+        pension_pay: pension,
+        unemployment_pay: unemp
+      };
+      if (yearBases) item.year_bases = yearBases;
+      list.push(item);
+    });
+    return list;
+  }
+
+  function renumberSegments() {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    var rows = wrap.querySelectorAll('.sbdy-seg');
+    rows.forEach(function (row, idx) {
+      var title = row.querySelector('.sbdy-seg-title');
+      if (title) title.textContent = '参保段 ' + (idx + 1);
+      var rm = row.querySelector('.sbdy-seg-remove');
+      if (rm) rm.style.display = rows.length > 1 ? '' : 'none';
+    });
+  }
+
+  function addSegment(data) {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    data = data || {};
+    var range = defaultPeriodRange();
+    var start = data.period_start || range.start;
+    var end = data.period_end || range.end;
+    var base = data.base_amount != null ? data.base_amount : 4986;
+    var pension = data.pension_pay != null ? data.pension_pay : Math.round(Number(base) * 0.08 * 100) / 100;
+    var unemp =
+      data.unemployment_pay != null
+        ? data.unemployment_pay
+        : Math.round(Number(base) * 0.005 * 100) / 100;
+    var div = document.createElement('div');
+    div.className = 'sbdy-seg';
+    div.innerHTML =
+      '<div class="sbdy-seg-head">' +
+      '<span class="sbdy-seg-title">参保段</span>' +
+      '<button type="button" class="btn-page sbdy-seg-remove">删除本段</button>' +
+      '</div>' +
+      '<div class="form-row flex-wrap gap-10">' +
+      '<div style="flex:1;min-width:200px;"><label>参保单位</label>' +
+      '<input type="text" class="sbdy-seg-company" maxlength="128" placeholder="单位名称" value="' +
+      esc(data.company_name || '') +
+      '"></div>' +
+      '<div><label>统一社会信用代码</label>' +
+      '<input type="text" class="sbdy-seg-credit" maxlength="32" placeholder="9131…" value="' +
+      esc(data.credit_code || '') +
+      '"></div>' +
+      '<div><label>参保地</label>' +
+      '<input type="text" class="sbdy-seg-area" maxlength="32" value="' +
+      esc(data.area || '余杭区') +
+      '"></div>' +
+      '</div>' +
+      '<div class="form-row flex-wrap gap-10" style="margin-top:8px;">' +
+      '<div><label>缴费起月</label>' +
+      '<input type="month" class="sbdy-seg-start" value="' +
+      esc(start) +
+      '"></div>' +
+      '<div><label>缴费止月</label>' +
+      '<input type="month" class="sbdy-seg-end" value="' +
+      esc(end) +
+      '"></div>' +
+      '<div><label>缴费基数（元）</label>' +
+      '<input type="number" class="sbdy-seg-base" step="0.01" value="' +
+      esc(base) +
+      '"></div>' +
+      '<div><label>养老个人缴费</label>' +
+      '<input type="number" class="sbdy-seg-pension" step="0.01" value="' +
+      esc(pension) +
+      '"></div>' +
+      '<div><label>失业个人缴费</label>' +
+      '<input type="number" class="sbdy-seg-unemp" step="0.01" value="' +
+      esc(unemp) +
+      '"></div>' +
+      '</div>' +
+      '<div class="sbdy-year-bases">' +
+      '<label>按年基数（可选，每年可不同）</label>' +
+      '<input type="text" class="sbdy-seg-year-bases" placeholder="如 2025=4462, 2026=4986；留空则整段用上方基数" value="' +
+      esc(formatYearBasesText(data.year_bases)) +
+      '">' +
+      '</div>';
+    var rm = div.querySelector('.sbdy-seg-remove');
+    if (rm) {
+      rm.onclick = function () {
+        var wrapEl = document.getElementById('sbdySegments');
+        if (!wrapEl || wrapEl.querySelectorAll('.sbdy-seg').length <= 1) return;
+        div.remove();
+        renumberSegments();
+      };
+    }
+    wrap.appendChild(div);
+    renumberSegments();
+  }
+
+  function ensureOneSegment() {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    if (!wrap.querySelector('.sbdy-seg')) {
+      addSegment({});
     }
   }
 
@@ -165,23 +321,17 @@
 
   function generate() {
     var result = document.getElementById('sbdyDemoResult');
+    var segments = collectSegments();
     var body = {
       name: val('sbdyName'),
       id_number: val('sbdyIdNumber'),
       gender: val('sbdyGender') || '女',
-      company_name: val('sbdyCompany'),
-      credit_code: val('sbdyCredit'),
-      area: val('sbdyArea') || '余杭区',
-      period_start: normalizeYm(val('sbdyPeriodStart')),
-      period_end: normalizeYm(val('sbdyPeriodEnd')),
-      base_amount: num('sbdyBase', 4986),
-      pension_pay: num('sbdyPensionPay', 398.88),
-      unemployment_pay: num('sbdyUnempPay', 24.93),
       status_pension: val('sbdyStatusPension') || '正常参保',
       status_medical: val('sbdyStatusInjury') || '正常参保',
       status_injury: val('sbdyStatusInjury') || '正常参保',
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
-      print_date: val('sbdyPrintDate')
+      print_date: val('sbdyPrintDate'),
+      segments: segments
     };
     if (!body.name || !body.id_number) {
       setStatus('请填写上方「姓名」与「证件号码」', true);
@@ -192,12 +342,21 @@
       if (nameEl && nameEl.scrollIntoView) nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (!body.period_start || !body.period_end) {
-      setStatus('请选择缴费起止月份', true);
-      try {
-        alert('请选择缴费起止月份');
-      } catch (e1) {}
+    if (!segments.length) {
+      setStatus('请至少填写一段参保信息', true);
       return;
+    }
+    var si;
+    for (si = 0; si < segments.length; si++) {
+      var sg = segments[si];
+      if (!sg.period_start || !sg.period_end) {
+        setStatus('第' + (si + 1) + '段：请选择缴费起止月份', true);
+        return;
+      }
+      if (!sg.company_name && !sg.credit_code) {
+        setStatus('第' + (si + 1) + '段：请填写参保单位', true);
+        return;
+      }
     }
     setStatus('生成中…', false);
     if (result) result.innerHTML = '';
@@ -258,22 +417,22 @@
     el.value = value == null ? '' : String(value);
   }
 
+  function resetSegments(list) {
+    var wrap = document.getElementById('sbdySegments');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!list || !list.length) {
+      addSegment({});
+      return;
+    }
+    list.forEach(function (seg) {
+      addSegment(seg);
+    });
+  }
+
   function fillSample() {
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
-    var endY = bj.getUTCFullYear();
-    var endM = bj.getUTCMonth() + 1; // 1-12, use previous month as end of 12m window
-    endM -= 1;
-    if (endM <= 0) {
-      endM += 12;
-      endY -= 1;
-    }
-    var startY = endY;
-    var startM = endM - 11;
-    while (startM <= 0) {
-      startM += 12;
-      startY -= 1;
-    }
     var printDate =
       bj.getUTCFullYear() +
       '年' +
@@ -286,69 +445,101 @@
         name: '李晓晴',
         id_number: '371323199904156523',
         gender: '女',
-        company: '杭州百伦思宠物用品有限公司',
-        credit: '91310113630842640E',
-        area: '余杭区',
-        base: 4986,
-        pension: 398.88,
-        unemp: 24.93
+        status: '正常参保',
+        print_date: '2026年07月28日',
+        segments: [
+          {
+            company_name: '杭州百伦思宠物用品有限公司',
+            credit_code: '91310113630842640E',
+            area: '余杭区',
+            period_start: '2025-07',
+            period_end: '2026-06',
+            base_amount: 4986,
+            pension_pay: 398.88,
+            unemployment_pay: 24.93,
+            year_bases: { '2025': 4986, '2026': 4986 }
+          }
+        ]
       },
       {
         name: '王思远',
         id_number: '330106199508123456',
         gender: '男',
-        company: '杭州云启信息技术有限公司',
-        credit: '91330108MA2H12345X',
-        area: '西湖区',
-        base: 6520,
-        pension: 521.6,
-        unemp: 32.6
+        status: '正常参保',
+        print_date: printDate,
+        segments: [
+          {
+            company_name: '杭州云启信息技术有限公司',
+            credit_code: '91330108MA2H12345X',
+            area: '西湖区',
+            period_start: '2024-08',
+            period_end: '2025-03',
+            base_amount: 6200,
+            pension_pay: 496,
+            unemployment_pay: 31
+          },
+          {
+            company_name: '浙江星河网络科技有限公司',
+            credit_code: '91330110MA2K98765B',
+            area: '余杭区',
+            period_start: '2025-04',
+            period_end: '2026-06',
+            base_amount: 6800,
+            pension_pay: 544,
+            unemployment_pay: 34,
+            year_bases: { '2025': 6520, '2026': 6800 }
+          }
+        ]
       },
       {
         name: '陈佳怡',
         id_number: '330102199211088765',
         gender: '女',
-        company: '浙江启航贸易有限公司',
-        credit: '91330000MA27ABCD1Y',
-        area: '拱墅区',
-        base: 5800,
-        pension: 464,
-        unemp: 29
+        status: '正常参保',
+        print_date: printDate,
+        segments: [
+          {
+            company_name: '浙江启航贸易有限公司',
+            credit_code: '91330000MA27ABCD1Y',
+            area: '拱墅区',
+            period_start: '2025-07',
+            period_end: '2026-06',
+            base_amount: 5800,
+            pension_pay: 464,
+            unemployment_pay: 29,
+            year_bases: { '2025': 5600, '2026': 5800 }
+          }
+        ]
       }
     ];
-    /* 优先李晓晴（与 /root/show.pdf 一致），约一半概率；其余随机 */
     var sample =
       Math.random() < 0.55
         ? samples[0]
         : samples[Math.floor(Math.random() * samples.length)];
-    if (sample.name === '李晓晴') {
-      startY = 2025;
-      startM = 6;
-      endY = 2026;
-      endM = 5;
-    }
     setField('sbdyName', sample.name);
     setField('sbdyIdNumber', sample.id_number);
     setField('sbdyGender', sample.gender);
-    setField('sbdyCompany', sample.company);
-    setField('sbdyCredit', sample.credit);
-    setField('sbdyArea', sample.area);
-    setField('sbdyPeriodStart', startY + '-' + String(startM).padStart(2, '0'));
-    setField('sbdyPeriodEnd', endY + '-' + String(endM).padStart(2, '0'));
-    setField('sbdyBase', sample.base);
-    setField('sbdyPensionPay', sample.pension);
-    setField('sbdyUnempPay', sample.unemp);
-    /* 与 show.pdf 样例一致时用暂停缴费；其它样例默认正常参保 */
-    var st = sample.name === '李晓晴' ? '暂停缴费' : '正常参保';
-    setField('sbdyStatusPension', st);
-    setField('sbdyStatusInjury', st);
-    setField('sbdyStatusUnemp', st);
-    setField('sbdyPrintDate', sample.name === '李晓晴' ? '2026年06月25日' : printDate);
-    setStatus('已填充示例：' + sample.name + '（可再点生成）', false);
+    setField('sbdyStatusPension', sample.status);
+    setField('sbdyStatusInjury', sample.status);
+    setField('sbdyStatusUnemp', sample.status);
+    setField('sbdyPrintDate', sample.print_date);
+    resetSegments(sample.segments);
+    var hint =
+      sample.segments.length > 1
+        ? '（' + sample.segments.length + ' 段，基本情况显示最近公司）'
+        : '';
+    setStatus('已填充示例：' + sample.name + hint + '（可再点生成）', false);
   }
 
   function bind() {
-    fillDefaults();
+    ensureOneSegment();
+    var addBtn = document.getElementById('btnSbdyAddSegment');
+    if (addBtn) {
+      addBtn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        addSegment({});
+      };
+    }
     var fillBtn = document.getElementById('btnSbdyDemoFillSample');
     if (fillBtn) {
       fillBtn.onclick = function (ev) {

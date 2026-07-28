@@ -286,11 +286,10 @@ def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=8
     cell_box(page, font_path, fontname, line2, x0, x1, mid - 0.5, y1, size=size, align='center', min_size=6.0)
 
 
-# 表头/标签加粗用字（不含正文数值）
+# 表头/标签加粗用字（不含正文数值；「参加社会保险基本情况」与险种名用正文字重）
 BOLD_LABEL_CHARS = (
     '姓名社会保障号证件类型证件号码性别'
-    '参加社会保险基本情况'
-    '险　　种养老保险工伤保险失业保险参保状态参保单位'
+    '险　　种参保状态参保单位'
     '出具证明前个月缴费情况（续）'
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
     '共页第'
@@ -304,6 +303,8 @@ def collect_text_blob(p, months, auth_code):
         '浙江省社会保险参保证明（个人专用）',
         '共%d页，第1页' % page_n,
         '出具证明前%d个月缴费情况' % (n or 12),
+        '参加社会保险基本情况',
+        '养老保险工伤保险失业保险',
         BOLD_LABEL_CHARS,
         '（盖章）',
         '打印时间：',
@@ -590,7 +591,7 @@ def render(payload, auth_code, qr_url, out_path):
                         9.6,
                     )
                 cell_center(
-                    page, font_title, title_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6
+                    page, font_body, body_name, '参加社会保险基本情况', X0, X1, y_t1_1, y_t1_2, 9.6
                 )
 
                 # —— 参保基本情况 ——
@@ -615,7 +616,8 @@ def render(payload, auth_code, qr_url, out_path):
                 ]
                 for ri, row in enumerate(rows2):
                     for ci, val in enumerate(row):
-                        use_bold = ri == 0 or ci == 0
+                        # 险种名称（养老保险等）不用黑体；仅左侧行标签加粗
+                        use_bold = ci == 0
                         cell_center(
                             page,
                             font_title if use_bold else font_body,

@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营控制台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260724-page-switch">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260728-sbdy-segments">
 </head>
 <body>
     <div class="layout">
@@ -1562,6 +1562,25 @@
                     </section>
                 </div>
 
+                <div id="page-legacy-redirect-stats" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>强制跳转统计</h2>
+                        <p class="hint mt-0">
+                            统计 C 端被强制引流到新站安装页的人数（按北京时间自然日）。
+                            口径：同用户 30 分钟内只记 1 次；含登录触发、状态检查、业务接口拦截。
+                            豁免账号（如 jing00001 及同 IP/设备）不计入。
+                        </p>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="legacyRedirectStatsDays">统计区间</label>
+                                <select id="legacyRedirectStatsDays" class="js-analytics-period-select filter-select" data-day-options="7,30,90" data-default="30"></select>
+                            </div>
+                            <button type="button" class="btn-page" id="btnRefreshLegacyRedirectStats">刷新统计</button>
+                        </div>
+                        <div id="legacyRedirectStatsMount" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
+                    </section>
+                </div>
+
                 <div id="page-sbdy-demo" class="page-panel" role="tabpanel">
                     <section>
                         <h2>社保演示生成</h2>
@@ -1584,41 +1603,10 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="form-row flex-wrap gap-10">
-                                <div style="flex:1;min-width:220px;">
-                                    <label for="sbdyCompany">参保单位</label>
-                                    <input type="text" id="sbdyCompany" maxlength="128" placeholder="单位名称">
-                                </div>
-                                <div>
-                                    <label for="sbdyCredit">统一社会信用代码</label>
-                                    <input type="text" id="sbdyCredit" maxlength="32" placeholder="9131…">
-                                </div>
-                                <div>
-                                    <label for="sbdyArea">参保地</label>
-                                    <input type="text" id="sbdyArea" maxlength="32" value="余杭区">
-                                </div>
-                            </div>
-                            <div class="form-row flex-wrap gap-10">
-                                <div>
-                                    <label for="sbdyPeriodStart">缴费起月</label>
-                                    <input type="month" id="sbdyPeriodStart">
-                                </div>
-                                <div>
-                                    <label for="sbdyPeriodEnd">缴费止月</label>
-                                    <input type="month" id="sbdyPeriodEnd">
-                                </div>
-                                <div>
-                                    <label for="sbdyBase">缴费基数（元）</label>
-                                    <input type="number" id="sbdyBase" value="4986" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="sbdyPensionPay">养老个人缴费</label>
-                                    <input type="number" id="sbdyPensionPay" value="398.88" step="0.01">
-                                </div>
-                                <div>
-                                    <label for="sbdyUnempPay">失业个人缴费</label>
-                                    <input type="number" id="sbdyUnempPay" value="24.93" step="0.01">
-                                </div>
+                            <p class="hint mt-8 mb-4">参保可多段（换单位或每年基数变化时分开填）；基本情况表「参保单位」只显示<strong>最近一段</strong>公司。明细表「养老保险 / 失业保险」为合并表头。</p>
+                            <div id="sbdySegments" class="sbdy-segments"></div>
+                            <div class="form-actions" style="margin-top:8px;">
+                                <button type="button" class="btn-page" id="btnSbdyAddSegment">＋ 添加参保段</button>
                             </div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
@@ -2467,10 +2455,10 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260725-user-prep"></script>
+    <script src="/js/admin/loader.js?v=20260728-legacy-redirect-stats"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin-panel-utils.js?v=20260723"></script>
-    <script src="/js/admin_panel.js?v=20260725-user-prep"></script>
+    <script src="/js/admin-panel-utils.js?v=20260728-legacy-redirect-stats"></script>
+    <script src="/js/admin_panel.js?v=20260728-legacy-redirect-stats"></script>
 </body>
 </html>

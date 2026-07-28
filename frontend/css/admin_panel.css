@@ -1841,6 +1841,44 @@ tr.ud-salary-bucket-high td {
     max-height: 300px;
     overflow-y: auto;
 }
+.sbdy-segments {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.sbdy-seg {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 12px;
+}
+.sbdy-seg-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+.sbdy-seg-head .btn-page {
+    font-weight: 400;
+}
+.sbdy-seg .form-row {
+    margin-bottom: 0;
+}
+.sbdy-year-bases {
+    margin-top: 8px;
+    width: 100%;
+}
+.sbdy-year-bases label {
+    display: block;
+    margin-bottom: 4px;
+}
+.sbdy-year-bases input {
+    width: 100%;
+    max-width: 420px;
+}
 .agent-promo-links-mount {
     margin-top: 12px;
 }
