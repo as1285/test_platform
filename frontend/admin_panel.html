@@ -214,7 +214,8 @@
                             </div>
                             <div class="form-field mt-12">
                                 <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>
-                                <textarea class="textarea-block" id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li"></textarea>
+                                <textarea class="textarea-block" id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li&#10;special_a"></textarea>
+                                <p class="hint mt-6">列入后：该 <code>?ch=</code> 用户端隐藏闲鱼。内置仅 C 方案渠道 <code>special_a</code>（专门A方案）会额外强制无支付宝/价格，只留激活码。</p>
                                 <div class="flex-actions gap-10 mt-10 flex-align-center">
                                     <button type="button" class="btn-primary" id="btnGenerateAgentPromoLinks">生成代理推广链接</button>
                                     <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>

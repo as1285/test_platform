@@ -14,6 +14,10 @@
   var INSTALL_GUIDE_REFERRAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
+  /** 专门A方案 → special_a：强制支付页 C（仅激活码，无自助支付） */
+  var CODE_ONLY_SALES_CHANNELS = {
+    special_a: true
+  };
   var SALES_CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   var PUBLIC_PAGES = {
     'index.html': true,
@@ -1412,7 +1416,40 @@
           source: 'url'
         })
       );
+      applyCodeOnlySalesChannelPolicy(ch);
     } catch (e) {}
+  }
+
+  function isCodeOnlySalesChannel(chOpt) {
+    var ch = sanitizeSalesChannelId(
+      chOpt != null && String(chOpt).trim() !== '' ? chOpt : getSalesChannel()
+    );
+    return !!(ch && CODE_ONLY_SALES_CHANNELS[String(ch).toLowerCase()]);
+  }
+
+  /** 强制锁定支付页 C（覆盖本地 sticky A/B） */
+  function forcePurchaseAbcAssignment(variant, source) {
+    var v = String(variant || '').toLowerCase();
+    if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+    var next = {
+      experiment: 'purchase_abc_v1',
+      variant: v,
+      assigned_at: Date.now(),
+      source: String(source || 'force').substring(0, 32)
+    };
+    try {
+      localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
+    } catch (e) {}
+    setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc');
+    return next;
+  }
+
+  function applyCodeOnlySalesChannelPolicy(chOpt) {
+    if (!isCodeOnlySalesChannel(chOpt)) {
+      return false;
+    }
+    forcePurchaseAbcAssignment('c', 'code_only_channel');
+    return true;
   }
 
   function initDistributorAppFromUrl() {
@@ -1567,6 +1604,7 @@
                 );
               } catch (e) {}
             }
+            applyCodeOnlySalesChannelPolicy(ch);
             return ch;
           }
         }
@@ -1695,6 +1733,7 @@
 
   initSalesChannelFromUrl();
   initDistributorAppFromUrl();
+  applyCodeOnlySalesChannelPolicy();
 
   (function bootstrapSalesChannel() {
     var path = (window.location && window.location.pathname) || '';
@@ -1817,11 +1856,17 @@
   }
 
   function getPurchaseAbcVariant() {
+    if (isCodeOnlySalesChannel()) {
+      return 'c';
+    }
     var assignment = getPurchaseAbcAssignment();
     return assignment ? assignment.variant : '';
   }
 
   function setPurchaseAbcAssignment(variant, source) {
+    if (isCodeOnlySalesChannel()) {
+      return forcePurchaseAbcAssignment('c', 'code_only_channel');
+    }
     var v = String(variant || '').toLowerCase();
     if (v !== 'a' && v !== 'b' && v !== 'c') return null;
     var existing = getPurchaseAbcAssignment();
@@ -2673,6 +2718,7 @@
   window.consumeInstallGuideReferral = consumeInstallGuideReferral;
   window.getSalesChannel = getSalesChannel;
   window.getRegisterSalesChannel = getRegisterSalesChannel;
+  window.isCodeOnlySalesChannel = isCodeOnlySalesChannel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
   window.isDistributorApp = isDistributorApp;
   window.isInAppRegisterDisabled = isInAppRegisterDisabled;

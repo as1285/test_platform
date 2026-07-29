@@ -24,6 +24,10 @@ const { runMigrations } = require('../shared/migrate');
 const adminMenuRegistry = require('../admin/menuRegistry');
 const settingsPolicy = require('../shared/settingsPolicy');
 const {
+  isCodeOnlySalesChannel,
+  listCodeOnlySalesChannels
+} = require('../shared/codeOnlySalesChannels');
+const {
   createInviteReward,
   isUserEffectivelyActive,
   isTrialExpired,
@@ -972,7 +976,35 @@ function shouldHideXianyuForSalesChannel(salesCh, hideList) {
   if (!ch) {
     return false;
   }
+  /* 仅 C 方案渠道默认藏闲鱼（与隐藏列表叠加） */
+  if (isCodeOnlySalesChannel(ch)) {
+    return true;
+  }
   return (hideList || []).indexOf(ch) >= 0;
+}
+
+/**
+ * 代理仅 C 方案渠道：强制无自助支付报价。
+ * @returns {Promise<object|null>} 命中则返回 C 报价，否则 null
+ */
+async function codeOnlyOfferIfSalesChannel(req) {
+  var ch = '';
+  try {
+    ch = await resolveEffectiveSalesChannel(req);
+  } catch (e0) {
+    ch = '';
+  }
+  if (!isCodeOnlySalesChannel(ch)) {
+    return null;
+  }
+  return {
+    enabled: false,
+    variant: 'c',
+    abc_variant: 'c',
+    skus: [],
+    pricing_ab_enabled: true,
+    code_only_sales_channel: sanitizeSalesChannelId(ch)
+  };
 }
 
 /** 获取：agent promo channel list from settings */
@@ -5457,6 +5489,22 @@ async function handleAlipayConfig(req, res) {
     });
   }
   try {
+    var forcedCodeOnly = await codeOnlyOfferIfSalesChannel(req);
+    if (forcedCodeOnly) {
+      return res.json({
+        code: 200,
+        data: {
+          enabled: false,
+          subject: envProduct.subject,
+          amount: envProduct.amount,
+          pricing_variant: 'c',
+          abc_variant: 'c',
+          pricing_ab_enabled: true,
+          code_only_sales_channel: forcedCodeOnly.code_only_sales_channel || '',
+          skus: []
+        }
+      });
+    }
     var offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
       envProduct.amount,
@@ -5534,6 +5582,17 @@ async function handleAlipayConfig(req, res) {
 async function handleAlipayCreateOrder(req, res) {
   if (!alipay.isConfigured()) {
     return res.status(503).json({ code: 503, msg: '支付宝支付暂未配置，请选择其它购买方式' });
+  }
+  try {
+    var forcedCodeOnlyCreate = await codeOnlyOfferIfSalesChannel(req);
+    if (forcedCodeOnlyCreate) {
+      return res.status(403).json({
+        code: 403,
+        msg: '当前渠道仅支持激活码开通，不提供在线支付'
+      });
+    }
+  } catch (eCodeOnly) {
+    console.error('codeOnlyOfferIfSalesChannel create', eCodeOnly);
   }
   var body = req.body && typeof req.body === 'object' ? req.body : {};
   var product = body.product != null ? String(body.product).trim() : '';
@@ -5643,6 +5702,13 @@ async function handleAlipayCreateOrder(req, res) {
   }
   var offer;
   try {
+    var forcedAgain = await codeOnlyOfferIfSalesChannel(req);
+    if (forcedAgain) {
+      return res.status(403).json({
+        code: 403,
+        msg: '当前渠道仅支持激活码开通，不提供在线支付'
+      });
+    }
     offer = await getPricingAb().resolveOfferForUser(
       req.authUserId || '',
       envProduct.amount,
