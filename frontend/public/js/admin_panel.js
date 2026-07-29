@@ -4373,6 +4373,16 @@
                 '</div></div>';
             html += '</div>';
 
+            var redirectUrl = s.redirect_url || 'https://lkj.qiyun888.top/install_guide.html';
+            var yesterdayUsers = data.yesterday_users || [];
+            html +=
+                '<div class="form-row flex-wrap gap-10 flex-align-center mt-8 mb-12">' +
+                '<button type="button" class="btn-page" id="btnCopyLegacyRedirectUrl">复制下载链接</button>' +
+                '<button type="button" class="btn-page" id="btnCopyYesterdayRedirectUsers">复制昨日跳转用户</button>' +
+                '<button type="button" class="btn-primary" id="btnCopyYesterdayRedirectMsg">复制给用户的文案</button>' +
+                '<span class="hint m-0" id="legacyRedirectCopyHint">App 内无法下载时，让用户复制链接到手机浏览器打开</span>' +
+                '</div>';
+
             var daily = data.daily || [];
             html += '<p class="stat mb-8">按日跳转人数（北京时间）</p>';
             html += '<div class="scroll-x"><table class="users-data-table"><thead><tr>';
@@ -4398,6 +4408,31 @@
                         esc(String(d.api_events || 0)) +
                         '</td></tr>';
                 }
+            }
+            html += '</tbody></table></div>';
+
+            html +=
+                '<p class="stat mb-8 mt-16">昨日跳转用户（去重 ' +
+                esc(String(yesterdayUsers.length)) +
+                ' 人）</p>';
+            html += '<div class="scroll-x"><table class="users-data-table"><thead><tr>';
+            html += '<th>用户名</th><th>姓名</th><th>末次跳转</th><th>次数</th>';
+            html += '</tr></thead><tbody>';
+            if (!yesterdayUsers.length) {
+                html += '<tr><td colspan="4">昨日暂无跳转</td></tr>';
+            } else {
+                yesterdayUsers.forEach(function (u) {
+                    html +=
+                        '<tr><td>' +
+                        esc(u.username || '') +
+                        '</td><td>' +
+                        esc(u.real_name || '') +
+                        '</td><td>' +
+                        esc(u.redirected_at || '') +
+                        '</td><td>' +
+                        esc(String(u.times || 0)) +
+                        '</td></tr>';
+                });
             }
             html += '</tbody></table></div>';
 
@@ -4427,6 +4462,79 @@
             }
             html += '</tbody></table></div>';
             el.innerHTML = html;
+            el._legacyRedirectCopy = {
+                redirect_url: redirectUrl,
+                yesterday_users: yesterdayUsers
+            };
+            bindLegacyRedirectCopyButtons(el);
+        }
+
+        function bindLegacyRedirectCopyButtons(el) {
+            if (!el) return;
+            function setHint(msg) {
+                var hint = document.getElementById('legacyRedirectCopyHint');
+                if (hint) hint.textContent = msg;
+            }
+            function doCopy(text, okMsg) {
+                var t = String(text || '');
+                if (!t) {
+                    setHint('没有可复制内容');
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(t).then(
+                        function () {
+                            setHint(okMsg || '已复制');
+                        },
+                        function () {
+                            setHint('复制失败，请手动复制');
+                        }
+                    );
+                    return;
+                }
+                try {
+                    var ta = document.createElement('textarea');
+                    ta.value = t;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    setHint(okMsg || '已复制');
+                } catch (e) {
+                    setHint('复制失败，请手动复制');
+                }
+            }
+            var pack = el._legacyRedirectCopy || {};
+            var url = pack.redirect_url || 'https://lkj.qiyun888.top/install_guide.html';
+            var yUsers = pack.yesterday_users || [];
+            var btnUrl = document.getElementById('btnCopyLegacyRedirectUrl');
+            if (btnUrl) {
+                btnUrl.onclick = function () {
+                    doCopy(url, '已复制下载链接');
+                };
+            }
+            var btnUsers = document.getElementById('btnCopyYesterdayRedirectUsers');
+            if (btnUsers) {
+                btnUsers.onclick = function () {
+                    if (!yUsers.length) {
+                        setHint('昨日暂无跳转用户');
+                        return;
+                    }
+                    var lines = yUsers.map(function (u) {
+                        return (u.username || '') + '\t' + (u.real_name || '');
+                    });
+                    doCopy(lines.join('\n'), '已复制昨日 ' + yUsers.length + ' 个用户');
+                };
+            }
+            var btnMsg = document.getElementById('btnCopyYesterdayRedirectMsg');
+            if (btnMsg) {
+                btnMsg.onclick = function () {
+                    var msg =
+                        '您好，请复制下面链接，用手机自带浏览器（Safari/Chrome）打开后下载安装包。App 内打开无法下载：\n' +
+                        url;
+                    doCopy(msg, '已复制给用户的文案（含下载链接）');
+                };
+            }
         }
 
         function loadLegacyRedirectStats() {

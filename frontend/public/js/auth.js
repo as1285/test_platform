@@ -1081,6 +1081,7 @@
 
   /** C 端：cohort 用户强制引流至新站安装页 */
   var LEGACY_USER_REDIRECT_ENABLED = true;
+  var LEGACY_REDIRECT_COPY_ROOT_ID = 'legacy-redirect-copy-root';
 
   function isOnLegacyRedirectTargetSite() {
     try {
@@ -1090,7 +1091,117 @@
     }
   }
 
-  /** C 端：老用户强制引流（已关闭） */
+  function isLegacyRedirectInAppShell() {
+    if (typeof isCordovaTaxAppShell === 'function' && isCordovaTaxAppShell()) {
+      return true;
+    }
+    try {
+      if (window.CLIENT_APP_VERSION != null && String(window.CLIENT_APP_VERSION).trim() !== '') {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function copyTextToClipboard(text) {
+    var t = String(text || '');
+    if (!t) return Promise.reject(new Error('empty'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function (resolve, reject) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = t;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, t.length);
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) resolve();
+        else reject(new Error('copy failed'));
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  /** App 内无法下载安装包：弹窗引导复制链接到系统浏览器打开 */
+  function showLegacyRedirectCopyModal(url) {
+    var target = String(url || '').trim();
+    if (!target) return false;
+    if (document.getElementById(LEGACY_REDIRECT_COPY_ROOT_ID)) return true;
+    try {
+      clearSession();
+    } catch (e0) {}
+
+    var styleId = 'legacy-redirect-copy-style';
+    if (!document.getElementById(styleId)) {
+      var style = document.createElement('style');
+      style.id = styleId;
+      style.textContent =
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        '{position:fixed;inset:0;z-index:10080;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(0,0,0,.55);}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-panel{width:100%;max-width:340px;background:#fff;border-radius:12px;padding:20px 16px 14px;box-shadow:0 8px 28px rgba(0,0,0,.2);}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-title{font-size:17px;font-weight:600;color:#333;margin:0 0 10px;line-height:1.35;}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-msg{font-size:14px;color:#666;line-height:1.65;margin:0 0 12px;}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-url{font-size:12px;color:#1e6fff;word-break:break-all;background:#f5f8ff;border-radius:8px;padding:10px;margin:0 0 14px;line-height:1.5;}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-btn{display:block;width:100%;padding:12px 16px;border-radius:8px;font-size:15px;border:none;cursor:pointer;background:#1e6fff;color:#fff;-webkit-tap-highlight-color:transparent;}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-hint{font-size:12px;color:#999;text-align:center;margin:10px 0 0;line-height:1.5;}';
+      document.head.appendChild(style);
+    }
+
+    var root = document.createElement('div');
+    root.id = LEGACY_REDIRECT_COPY_ROOT_ID;
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.innerHTML =
+      '<div class="lrc-panel">' +
+      '<p class="lrc-title">请用手机浏览器打开下载</p>' +
+      '<p class="lrc-msg">当前在 App 内打开，<strong>无法下载安装包</strong>。请点击下方按钮复制链接，然后粘贴到手机自带浏览器（Safari / Chrome）打开再下载。</p>' +
+      '<div class="lrc-url">' +
+      target.replace(/</g, '&lt;') +
+      '</div>' +
+      '<button type="button" class="lrc-btn" data-action="copy">复制下载链接</button>' +
+      '<p class="lrc-hint" data-role="status">复制后打开系统浏览器 → 粘贴地址 → 回车</p>' +
+      '</div>';
+    document.body.appendChild(root);
+
+    var btn = root.querySelector('[data-action="copy"]');
+    var status = root.querySelector('[data-role="status"]');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        copyTextToClipboard(target).then(
+          function () {
+            btn.textContent = '已复制，请到浏览器粘贴打开';
+            if (status) status.textContent = '已复制成功。请切换到手机浏览器粘贴打开此链接下载。';
+          },
+          function () {
+            btn.textContent = '复制失败，请长按上方链接';
+            if (status) status.textContent = '请长按上方蓝色链接手动复制。';
+          }
+        );
+      });
+    }
+    return true;
+  }
+
+  /** C 端：强制引流；App 内改为复制链接，避免 WebView 内无法下载 */
   function performLegacyUserRedirect(url) {
     if (!LEGACY_USER_REDIRECT_ENABLED) {
       return false;
@@ -1101,6 +1212,9 @@
     }
     if (!/^https?:\/\//i.test(target)) {
       return false;
+    }
+    if (isLegacyRedirectInAppShell()) {
+      return showLegacyRedirectCopyModal(target);
     }
     try {
       clearSession();

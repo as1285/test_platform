@@ -14110,6 +14110,19 @@ async function handleAdminLegacyRedirectStats(req, res) {
          ORDER BY e.created_at DESC
          LIMIT 200`
       );
+      const [yesterdayRows] = await conn.query(
+        `SELECT e.username,
+                IFNULL(NULLIF(TRIM(u.real_name), ''), e.username) AS real_name,
+                MAX(DATE_FORMAT(DATE_ADD(e.created_at, INTERVAL 8 HOUR), '%Y-%m-%d %H:%i:%s')) AS redirected_at,
+                COUNT(*) AS times
+         FROM legacy_redirect_events e
+         LEFT JOIN users u ON u.username = e.username
+         WHERE DATE(DATE_ADD(e.created_at, INTERVAL 8 HOUR)) =
+               DATE_SUB(DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)), INTERVAL 1 DAY)
+         GROUP BY e.username, u.real_name
+         ORDER BY redirected_at DESC
+         LIMIT 500`
+      );
       var daily = (dailyRows || []).map(function (r) {
         return {
           date: formatDateKey(r.d),
@@ -14140,6 +14153,14 @@ async function handleAdminLegacyRedirectStats(req, res) {
                 redirect_url: r.redirect_url,
                 ip: r.ip,
                 redirected_at: r.redirected_at
+              };
+            }),
+            yesterday_users: (yesterdayRows || []).map(function (r) {
+              return {
+                username: r.username,
+                real_name: r.real_name,
+                redirected_at: r.redirected_at,
+                times: Number(r.times) || 0
               };
             })
           },
