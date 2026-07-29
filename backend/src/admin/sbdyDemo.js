@@ -555,32 +555,110 @@ function buildLinks(req, authCode, token) {
 
 var ROWS_PER_PAGE_HTML = 24;
 
+function computeContiguousSpans(list, getter, splitByYear) {
+  var spans = [];
+  var i = 0;
+  while (i < list.length) {
+    var r = list[i];
+    if (!r) {
+      i += 1;
+      continue;
+    }
+    var val = getter(r);
+    if (val == null || String(val) === '') {
+      i += 1;
+      continue;
+    }
+    val = String(val);
+    var year = String(r.year || '');
+    var j = i + 1;
+    while (j < list.length) {
+      var rj = list[j];
+      if (!rj || String(getter(rj) || '') !== val) break;
+      if (splitByYear && String(rj.year || '') !== year) break;
+      j += 1;
+    }
+    spans.push({ start: i, end: j - 1, val: val });
+    i = j;
+  }
+  return spans;
+}
+
 function padMonthRowsHtml(months, minRows) {
   var list = Array.isArray(months) ? months.slice() : [];
   var target = Math.max(minRows || ROWS_PER_PAGE_HTML, list.length);
-  /* 向上取整到整页行数，避免半页 */
   var pageRows = ROWS_PER_PAGE_HTML;
   target = Math.ceil(target / pageRows) * pageRows;
   if (target < pageRows) target = pageRows;
+  while (list.length < target) list.push(null);
+
+  var yearSpans = computeContiguousSpans(list, function (r) {
+    return r.year;
+  }, false);
+  var unitSpans = computeContiguousSpans(list, function (r) {
+    return r.unit_code;
+  }, true);
+  var areaSpans = computeContiguousSpans(list, function (r) {
+    return r.area;
+  }, true);
+  var unempAreaSpans = computeContiguousSpans(
+    list,
+    function (r) {
+      return r.unemp_area || r.area;
+    },
+    true
+  );
+
+  function spanAt(spans, idx) {
+    var s;
+    for (s = 0; s < spans.length; s++) {
+      if (idx >= spans[s].start && idx <= spans[s].end) return spans[s];
+    }
+    return null;
+  }
+
   var html = '';
   var i;
   for (i = 0; i < target; i++) {
     var r = list[i];
     if (r) {
+      var ySpan = spanAt(yearSpans, i);
+      var uSpan = spanAt(unitSpans, i);
+      var aSpan = spanAt(areaSpans, i);
+      var uaSpan = spanAt(unempAreaSpans, i);
+      html += '<tr>';
+      if (ySpan && ySpan.start === i) {
+        html +=
+          '<td rowspan="' +
+          (ySpan.end - ySpan.start + 1) +
+          '">' +
+          escHtml(ySpan.val) +
+          '</td>';
+      } else if (!ySpan) {
+        html += '<td>' + escHtml(r.year) + '</td>';
+      }
+      html += '<td>' + escHtml(r.month) + '</td>';
+      if (uSpan && uSpan.start === i) {
+        html +=
+          '<td class="unit" rowspan="' +
+          (uSpan.end - uSpan.start + 1) +
+          '">' +
+          escHtml(uSpan.val) +
+          '</td>';
+      } else if (!uSpan) {
+        html += '<td class="unit">' + escHtml(r.unit_code || '') + '</td>';
+      }
+      if (aSpan && aSpan.start === i) {
+        html +=
+          '<td rowspan="' +
+          (aSpan.end - aSpan.start + 1) +
+          '">' +
+          escHtml(aSpan.val) +
+          '</td>';
+      } else if (!aSpan) {
+        html += '<td>' + escHtml(r.area || '') + '</td>';
+      }
       html +=
-        '<tr>' +
-        '<td>' +
-        escHtml(r.year) +
-        '</td>' +
-        '<td>' +
-        escHtml(r.month) +
-        '</td>' +
-        '<td class="unit">' +
-        escHtml(r.unit_code || '') +
-        '</td>' +
-        '<td>' +
-        escHtml(r.area || '') +
-        '</td>' +
         '<td>' +
         escHtml(formatMoney(r.pension_base)) +
         '</td>' +
@@ -589,10 +667,18 @@ function padMonthRowsHtml(months, minRows) {
         '</td>' +
         '<td>' +
         escHtml(r.pension_status || '已到账') +
-        '</td>' +
-        '<td>' +
-        escHtml(r.unemp_area || r.area || '') +
-        '</td>' +
+        '</td>';
+      if (uaSpan && uaSpan.start === i) {
+        html +=
+          '<td rowspan="' +
+          (uaSpan.end - uaSpan.start + 1) +
+          '">' +
+          escHtml(uaSpan.val) +
+          '</td>';
+      } else if (!uaSpan) {
+        html += '<td>' + escHtml(r.unemp_area || r.area || '') + '</td>';
+      }
+      html +=
         '<td>' +
         escHtml(formatMoney(r.unemp_base != null ? r.unemp_base : r.pension_base)) +
         '</td>' +
@@ -838,7 +924,7 @@ function renderCertHtml(payload, links, opts) {
           escHtml(p.gender || '') +
           '</td>' +
           '</tr>' +
-          '<tr class="sec sec-plain"><th colspan="12">参加社会保险基本情况</th></tr>' +
+          '<tr class="sec"><th colspan="12">参加社会保险基本情况</th></tr>' +
           '<tr class="basic">' +
           '<th class="lab" colspan="3">险　　种</th>' +
           '<th class="ins" colspan="3">养老保险</th><th class="ins" colspan="3">工伤保险</th><th class="ins" colspan="3">失业保险</th>' +
@@ -900,14 +986,14 @@ function renderCertHtml(payload, links, opts) {
     'table.cert th{font-weight:700;font-size:12px}' +
     'table.cert td{font-weight:300;font-size:10px}' +
     'table.cert tr.sec th{font-size:14px;font-weight:700;letter-spacing:2px;padding:6px 4px}' +
-    'table.cert tr.sec-plain th{font-weight:400;font-size:12.5px}' +
     'table.cert tr.info th{white-space:nowrap;font-size:12.5px;font-weight:700}' +
     'table.cert tr.info td{font-size:10px;font-weight:300}' +
     'table.cert tr.basic th.lab{white-space:nowrap;font-size:12.5px;font-weight:700}' +
-    'table.cert tr.basic th.ins{font-weight:300;font-size:10px}' +
-    'table.cert tr.basic td,table.cert tr.basic th:not(.lab):not(.ins){font-size:10px;font-weight:300}' +
+    'table.cert tr.basic th.ins{font-weight:700;font-size:12.5px}' +
+    'table.cert tr.basic td{font-size:10px;font-weight:300}' +
     'table.cert tr.dhead th{font-size:11.5px;font-weight:700;padding:3px 1px}' +
-    'table.cert td.unit{font-size:9.5px;font-weight:300}' +
+    'table.cert td.unit{font-size:9.5px;font-weight:300;vertical-align:top}' +
+    'table.cert td[rowspan]{vertical-align:top}' +
     'table.cert tr.empty td{height:17px;padding:0}' +
     '.tail{position:relative;margin-top:8px;min-height:160px}' +
     '.notes{font-size:9.5px;font-weight:300;line-height:1.75;text-align:left;padding-right:150px}' +

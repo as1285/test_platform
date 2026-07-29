@@ -326,13 +326,13 @@ def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=N
     cell_box(page, font_path, fontname, line2, x0, x1, mid - 0.5, y1, size=size, align='center', min_size=6.0)
 
 
-# 表头/标签加粗用字（「参加社会保险基本情况」与基本情况表险种名用正文字重）
+# 表头/标签加粗用字
 BOLD_LABEL_CHARS = (
     '姓名社会保障号证件类型证件号码性别'
-    '险　　种参保状态参保单位'
+    '险　　种参保状态参保单位养老保险工伤保险失业保险'
+    '参加社会保险基本情况'
     '出具证明前个月缴费情况（续）'
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
-    '养老保险失业保险'
     '共页第'
 )
 
@@ -414,6 +414,75 @@ def draw_title_chrome(page, font_body, body_name, font_title, title_name, qr_pat
     )
 
 
+def contiguous_spans(month_chunk, n_body, getter, split_by_year=False):
+    """连续相同值合并区间；split_by_year 时跨年拆开（对齐官方样张）。"""
+    spans = []
+    i = 0
+    while i < n_body:
+        r = month_chunk[i] if i < len(month_chunk) else None
+        if not r:
+            i += 1
+            continue
+        val = getter(r)
+        if val is None or str(val) == '':
+            i += 1
+            continue
+        val = str(val)
+        year = str(r.get('year') or '')
+        j = i + 1
+        while j < n_body:
+            rj = month_chunk[j] if j < len(month_chunk) else None
+            if not rj or str(getter(rj) or '') != val:
+                break
+            if split_by_year and str(rj.get('year') or '') != year:
+                break
+            j += 1
+        spans.append((i, j - 1, val))
+        i = j
+    return spans
+
+
+def paint_merged_cell(
+    page,
+    font_path,
+    fontname,
+    text,
+    col_i,
+    start,
+    end,
+    y3_h2,
+    row_h,
+    size=None,
+):
+    """盖掉合并区内横线，文字垂直居中（偏上一点）。"""
+    if size is None:
+        size = SIZE_BODY
+    y0 = y3_h2 + row_h * start
+    y1 = y3_h2 + row_h * (end + 1)
+    if end > start:
+        page.draw_rect(
+            fitz.Rect(COL_X[col_i] + 0.5, y0 + 0.5, COL_X[col_i + 1] - 0.5, y1 - 0.5),
+            color=(1, 1, 1),
+            fill=(1, 1, 1),
+            width=0,
+        )
+    # 偏上：取合并区顶部至最多 3 行高度作为文字盒
+    text_y1 = y0 + row_h * min(3, end - start + 1)
+    cell_box(
+        page,
+        font_path,
+        fontname,
+        text,
+        COL_X[col_i],
+        COL_X[col_i + 1],
+        y0,
+        text_y1,
+        size=size,
+        align='center',
+        min_size=5.5,
+    )
+
+
 def draw_payment_table(
     page,
     font_body,
@@ -430,6 +499,7 @@ def draw_payment_table(
     - 年 / 月 / 单位编号 / 备注：纵向跨两行表头（无中间横线）
     - 养老保险 / 失业保险：横向各合并 4 列（顶行无内部竖线）
     - 子列竖线仅从表头第二行起向下画
+    - 数据区：年、单位编号、参保地纵向合并（单位/参保地跨年拆分）
     """
     y3_h1 = y3_0 + 14.7
     y3_h2 = y3_0 + 40.9
@@ -445,7 +515,7 @@ def draw_payment_table(
         color=(0, 0, 0),
         width=0.6,
     )
-    # 表头底线 + 数据行横线（单位编号合并区稍后再盖掉中间横线）
+    # 表头底线 + 数据行横线（合并区稍后再盖掉中间横线）
     draw_hline(page, y3_h2)
     for i in range(1, n_body):
         draw_hline(page, y3_h2 + row_h * i)
@@ -485,53 +555,39 @@ def draw_payment_table(
                 page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, SIZE_SUBLABEL
             )
 
-    # 单位编号纵向合并：连续相同编号只画一次
-    unit_spans = []
-    i = 0
-    while i < n_body:
-        r = month_chunk[i] if i < len(month_chunk) else None
-        code = str((r.get('unit_code') if r else None) or '')
-        if not r or not code:
-            i += 1
-            continue
-        j = i + 1
-        while j < n_body:
-            rj = month_chunk[j] if j < len(month_chunk) else None
-            if not rj or str(rj.get('unit_code') or '') != code:
-                break
-            j += 1
-        unit_spans.append((i, j - 1, code))
-        i = j
+    year_spans = contiguous_spans(
+        month_chunk, n_body, lambda r: r.get('year'), split_by_year=False
+    )
+    unit_spans = contiguous_spans(
+        month_chunk, n_body, lambda r: r.get('unit_code'), split_by_year=True
+    )
+    area_spans = contiguous_spans(
+        month_chunk, n_body, lambda r: r.get('area'), split_by_year=True
+    )
+    unemp_area_spans = contiguous_spans(
+        month_chunk,
+        n_body,
+        lambda r: r.get('unemp_area') or r.get('area'),
+        split_by_year=True,
+    )
 
-    drawn_unit_row = set()
-    for start, end, code in unit_spans:
+    skip = {0: set(), 2: set(), 3: set(), 7: set()}
+    for start, end, val in year_spans:
         for k in range(start, end + 1):
-            drawn_unit_row.add(k)
-        y0 = y3_h2 + row_h * start
-        y1 = y3_h2 + row_h * (end + 1)
-        if end > start:
-            # 盖住合并区内横线
-            page.draw_rect(
-                fitz.Rect(COL_X[2] + 0.5, y0 + 0.5, COL_X[3] - 0.5, y1 - 0.5),
-                color=(1, 1, 1),
-                fill=(1, 1, 1),
-                width=0,
-            )
-        # 文字靠合并区上部（官方样张同段编号出现在区块靠上位置）
-        text_y1 = y0 + row_h * min(3, end - start + 1)
-        cell_box(
-            page,
-            font_body,
-            body_name,
-            code,
-            COL_X[2],
-            COL_X[3],
-            y0,
-            text_y1,
-            size=SIZE_BODY,
-            align='center',
-            min_size=5.5,
-        )
+            skip[0].add(k)
+        paint_merged_cell(page, font_body, body_name, val, 0, start, end, y3_h2, row_h)
+    for start, end, val in unit_spans:
+        for k in range(start, end + 1):
+            skip[2].add(k)
+        paint_merged_cell(page, font_body, body_name, val, 2, start, end, y3_h2, row_h)
+    for start, end, val in area_spans:
+        for k in range(start, end + 1):
+            skip[3].add(k)
+        paint_merged_cell(page, font_body, body_name, val, 3, start, end, y3_h2, row_h)
+    for start, end, val in unemp_area_spans:
+        for k in range(start, end + 1):
+            skip[7].add(k)
+        paint_merged_cell(page, font_body, body_name, val, 7, start, end, y3_h2, row_h)
 
     for i in range(n_body):
         y0 = y3_h2 + row_h * i
@@ -542,19 +598,20 @@ def draw_payment_table(
         vals = [
             (0, r['year']),
             (1, r['month']),
+            (2, r.get('unit_code') or ''),
             (3, r['area']),
             (4, money(r['pension_base'])),
             (5, money(r['pension_pay'])),
             (6, r['pension_status']),
-            (7, r['unemp_area']),
+            (7, r.get('unemp_area') or r.get('area') or ''),
             (8, money(r['unemp_base'])),
             (9, money(r['unemp_pay'])),
             (10, r['unemp_status']),
             (11, r.get('remark') or ''),
         ]
-        if i not in drawn_unit_row:
-            vals.insert(2, (2, r.get('unit_code') or ''))
         for ci, val in vals:
+            if ci in skip and i in skip[ci]:
+                continue
             cell_box(
                 page,
                 font_body,
@@ -707,8 +764,8 @@ def render(payload, auth_code, qr_url, out_path):
                     )
                 cell_center(
                     page,
-                    font_body,
-                    body_name,
+                    font_title,
+                    title_name,
                     '参加社会保险基本情况',
                     X0,
                     X1,
@@ -739,8 +796,8 @@ def render(payload, auth_code, qr_url, out_path):
                 ]
                 for ri, row in enumerate(rows2):
                     for ci, val in enumerate(row):
-                        # 险种名称（养老保险等）不用黑体；仅左侧行标签加粗
-                        use_bold = ci == 0
+                        # 第一行险种名与左侧标签均加粗；第二行仅左侧标签加粗
+                        use_bold = ri == 0 or ci == 0
                         cell_center(
                             page,
                             font_title if use_bold else font_body,
