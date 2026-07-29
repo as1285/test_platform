@@ -1128,7 +1128,84 @@
     });
   }
 
-  /** App 内无法下载安装包：弹窗引导复制链接到系统浏览器打开 */
+  /**
+   * 尽量拉起系统浏览器打开外链（Cordova 壳 / Intent / InAppBrowser）。
+   * 旧包可能无 InAppBrowser：仍尝试 postMessage + intent，失败时由弹窗兜底。
+   */
+  function openLegacyRedirectInSystemBrowser(url) {
+    var u = String(url || '').trim();
+    if (!u || !/^https?:\/\//i.test(u)) return false;
+    var opened = false;
+
+    try {
+      if (window.TaxApp && window.TaxApp.shell && typeof window.TaxApp.shell.openExternal === 'function') {
+        window.TaxApp.shell.openExternal(u);
+        opened = true;
+      }
+    } catch (eTaxApp) {}
+
+    try {
+      if (window.parent && window.parent !== window) {
+        try {
+          if (typeof window.parent.openTaxPlatformExternal === 'function') {
+            if (window.parent.openTaxPlatformExternal(u)) opened = true;
+          }
+        } catch (eParentFn) {}
+        try {
+          window.parent.postMessage(
+            { source: 'tax-platform-h5', type: 'open-external', url: u },
+            '*'
+          );
+          opened = true;
+        } catch (eMsg) {}
+      }
+    } catch (e0) {}
+
+    try {
+      if (
+        window.cordova &&
+        window.cordova.InAppBrowser &&
+        typeof window.cordova.InAppBrowser.open === 'function'
+      ) {
+        window.cordova.InAppBrowser.open(u, '_system');
+        opened = true;
+      }
+    } catch (e1) {}
+
+    /* Android：用 intent:// 提升拉起系统浏览器成功率 */
+    if (/Android/i.test(navigator.userAgent || '')) {
+      try {
+        var parsed = new URL(u);
+        var intentUrl =
+          'intent://' +
+          parsed.host +
+          parsed.pathname +
+          parsed.search +
+          parsed.hash +
+          '#Intent;scheme=' +
+          parsed.protocol.replace(':', '') +
+          ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
+        var a = document.createElement('a');
+        a.href = intentUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        opened = true;
+      } catch (eIntent) {}
+    }
+
+    try {
+      var w = window.open(u, '_system');
+      if (w) opened = true;
+    } catch (e2) {}
+
+    return opened;
+  }
+
+  /** App 内无法下载安装包：优先拉起系统浏览器，失败则复制链接 */
   function showLegacyRedirectCopyModal(url) {
     var target = String(url || '').trim();
     if (!target) return false;
@@ -1162,6 +1239,9 @@
         ' .lrc-btn{display:block;width:100%;padding:12px 16px;border-radius:8px;font-size:15px;border:none;cursor:pointer;background:#1e6fff;color:#fff;-webkit-tap-highlight-color:transparent;}' +
         '#' +
         LEGACY_REDIRECT_COPY_ROOT_ID +
+        ' .lrc-btn-secondary{margin-top:10px;background:#fff;color:#1e6fff;border:1px solid #1e6fff;}' +
+        '#' +
+        LEGACY_REDIRECT_COPY_ROOT_ID +
         ' .lrc-hint{font-size:12px;color:#999;text-align:center;margin:10px 0 0;line-height:1.5;}';
       document.head.appendChild(style);
     }
@@ -1173,35 +1253,56 @@
     root.innerHTML =
       '<div class="lrc-panel">' +
       '<p class="lrc-title">请用手机浏览器打开下载</p>' +
-      '<p class="lrc-msg">当前在 App 内打开，<strong>无法下载安装包</strong>。请点击下方按钮复制链接，然后粘贴到手机自带浏览器（Safari / Chrome）打开再下载。</p>' +
+      '<p class="lrc-msg">当前在 App 内打开，<strong>无法下载安装包</strong>。请点击下方按钮用<strong>系统浏览器</strong>打开下载页；若未跳转，再复制链接手动粘贴打开。</p>' +
       '<div class="lrc-url">' +
       target.replace(/</g, '&lt;') +
       '</div>' +
-      '<button type="button" class="lrc-btn" data-action="copy">复制下载链接</button>' +
-      '<p class="lrc-hint" data-role="status">复制后打开系统浏览器 → 粘贴地址 → 回车</p>' +
+      '<button type="button" class="lrc-btn" data-action="open">打开系统浏览器下载</button>' +
+      '<button type="button" class="lrc-btn lrc-btn-secondary" data-action="copy">复制下载链接</button>' +
+      '<p class="lrc-hint" data-role="status">正在尝试打开系统浏览器…</p>' +
       '</div>';
     document.body.appendChild(root);
 
-    var btn = root.querySelector('[data-action="copy"]');
+    var openBtn = root.querySelector('[data-action="open"]');
+    var copyBtn = root.querySelector('[data-action="copy"]');
     var status = root.querySelector('[data-role="status"]');
-    if (btn) {
-      btn.addEventListener('click', function () {
+
+    function tryOpenBrowser() {
+      var ok = openLegacyRedirectInSystemBrowser(target);
+      if (status) {
+        status.textContent = ok
+          ? '若已跳出到浏览器，请在浏览器中完成下载安装；未跳出请点「复制下载链接」。'
+          : '未能自动打开浏览器，请点「复制下载链接」，再到 Safari / Chrome 粘贴打开。';
+      }
+      return ok;
+    }
+
+    if (openBtn) {
+      openBtn.addEventListener('click', function () {
+        tryOpenBrowser();
+      });
+    }
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
         copyTextToClipboard(target).then(
           function () {
-            btn.textContent = '已复制，请到浏览器粘贴打开';
+            copyBtn.textContent = '已复制，请到浏览器粘贴打开';
             if (status) status.textContent = '已复制成功。请切换到手机浏览器粘贴打开此链接下载。';
           },
           function () {
-            btn.textContent = '复制失败，请长按上方链接';
+            copyBtn.textContent = '复制失败，请长按上方链接';
             if (status) status.textContent = '请长按上方蓝色链接手动复制。';
           }
         );
       });
     }
+
+    /* 进入弹窗后立即尝试拉起（部分机型需用户再点一次主按钮） */
+    setTimeout(tryOpenBrowser, 80);
     return true;
   }
 
-  /** C 端：强制引流；App 内改为复制链接，避免 WebView 内无法下载 */
+  /** C 端：强制引流；App 内优先系统浏览器，失败则复制链接 */
   function performLegacyUserRedirect(url) {
     if (!LEGACY_USER_REDIRECT_ENABLED) {
       return false;

@@ -47,6 +47,7 @@
     <!-- 供 H5 识别壳内环境（iframe 内页面同源 UA），保留给设备上报/后续兼容逻辑使用 -->
     <preference name="AppendUserAgent" value=" TaxPlatformCordovaApp/1" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <plugin name="cordova-plugin-inappbrowser" spec="^6.0.0" />
     <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">

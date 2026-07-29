@@ -94,7 +94,10 @@
         if (!u) return;
         try {
           if (global.parent && global.parent !== global) {
-            global.parent.postMessage({ type: 'open-external', url: u }, '*');
+            global.parent.postMessage(
+              { source: 'tax-platform-h5', type: 'open-external', url: u },
+              '*'
+            );
             return;
           }
         } catch (e0) {}
