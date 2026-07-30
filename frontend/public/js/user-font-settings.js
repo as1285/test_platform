@@ -216,7 +216,8 @@
     function saveConfig(cfg) {
         try {
             cfg = normalizeConfig(cfg);
-            if (configIsEmpty(cfg)) {
+            /* 无样式时仍保留 activeTarget，避免切分区后重开面板又回到「全局」 */
+            if (configIsEmpty(cfg) && (cfg.activeTarget || 'all') === 'all') {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
@@ -283,10 +284,14 @@
                 refreshPanelUi(panelHost, runtimeCfg);
             }
         }
-        if (configIsEmpty(runtimeCfg) && panelHost) {
-            panelHost.classList.remove('is-open');
-        }
+        /* 勿因「尚无自定义样式」自动收起：切分区标签只改 activeTarget，此前会立刻关面板导致无法切换 */
         return runtimeCfg;
+    }
+
+    function setActiveTarget(targetId) {
+        var next = normalizeConfig(runtimeCfg);
+        next.activeTarget = migrateLegacyActiveTarget(targetId || 'all');
+        return commitConfig(next, { refreshPanel: true });
     }
 
     function toggleProp(cfg, targetId, key, value) {
@@ -529,6 +534,7 @@
             var chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'ufs-target-chip';
+            chip.setAttribute('data-ufs-target-id', role.id);
             if (role.id === active) chip.classList.add('is-active');
             var hasCustom =
                 role.id === 'all'
@@ -536,12 +542,6 @@
                     : targetHasStyle(getEffectiveStyle(cfg, role.id));
             if (hasCustom) chip.classList.add('has-custom');
             chip.textContent = role.label;
-            chip.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                runtimeCfg.activeTarget = role.id;
-                commitConfig(runtimeCfg, { refreshPanel: true });
-            });
             panelUi.chips.appendChild(chip);
         });
 
@@ -579,6 +579,15 @@
 
         var chips = document.createElement('div');
         chips.className = 'ufs-target-chips';
+        chips.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || typeof t.closest !== 'function') return;
+            var chip = t.closest('.ufs-target-chip');
+            if (!chip || !chips.contains(chip)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setActiveTarget(chip.getAttribute('data-ufs-target-id') || 'all');
+        });
         panel.appendChild(chips);
 
         var editingLabel = document.createElement('div');

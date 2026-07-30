@@ -9,6 +9,13 @@
     pointer-events: none;
 }
 
+/* 展开时铺满屏：避免部分 WebView 对「父盒外绝对定位子元素」丢触摸 */
+.ufs-host.is-open {
+    inset: 0;
+    width: auto;
+    height: auto;
+}
+
 .ufs-host .ufs-fab,
 .ufs-host .ufs-panel {
     pointer-events: auto;
@@ -29,6 +36,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.ufs-host.is-open .ufs-fab {
+    position: absolute;
+    right: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
 .ufs-fab:active {
@@ -53,6 +66,8 @@
 
 .ufs-host.is-open .ufs-panel {
     display: block;
+    right: 14px;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
 }
 
 .ufs-panel-title {
@@ -78,6 +93,10 @@
     font-size: 12px;
     cursor: pointer;
     touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    position: relative;
+    z-index: 1;
 }
 
 .ufs-target-chip.is-active {
@@ -259,9 +278,11 @@ html.user-font-custom.platform-ios [data-ufs-target] .top-fixed .summary .summar
 }
 
 html.user-font-custom.app-android-huawei-cls-al00 [data-ufs-target] .top-fixed .summary .summary-label .icon {
-    font-size: 8px !important;
-    width: 12px !important;
-    height: 12px !important;
+    font-size: 0.72em !important;
+    width: 1.05em !important;
+    height: 1.05em !important;
+    min-width: 1.05em !important;
+    min-height: 1.05em !important;
 }
 
 html.user-font-custom.app-android-redmi-k70 [data-ufs-target] .top-fixed .summary .summary-label .icon,
