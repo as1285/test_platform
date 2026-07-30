@@ -183,6 +183,42 @@ https://www.installguide1.top/
 
 环境变量与数据库初始化见 `docker-compose.yml`、`.env.example` 及 `backend/` 内说明；勿将 `.env`、凭据提交入库。
 
+### 本地联调
+
+如果你要在本机直接跑接口联调，先确认这几个前置条件：
+
+- `Node.js >= 20.18.1`
+- `MySQL` 可用，库名默认 `personal_tax`
+- `Redis` 可用
+- 后端依赖已安装：`cd backend && npm install`
+
+常用启动方式：
+
+```bash
+# 启动依赖服务
+docker compose up -d db redis
+
+# 启动后端
+cd backend
+npm start
+```
+
+如果本机只想验证 Docker 环境，直接使用仓库里的 `docker compose up -d` 即可，`backend` 容器会连接同一套 `db` / `redis` 服务。
+
+### 验证方式
+
+我们建议在改代码后做三步检查：
+
+1. 前端构建：`cd frontend && npm run build`
+2. 后端语法 / 依赖：`cd backend && npm install && npm start`
+3. 容器联调：`docker compose up -d db redis backend frontend`
+
+如果你遇到“接口联调失败”，通常先看这三项：
+
+- MySQL 是否已启动且端口映射正确
+- Redis 是否已启动，后端容器内应使用 `redis:6379`
+- 当前 Node 版本是否满足 `backend/package.json` 的 `engines` 要求
+
 ### 多域名 / 多服务器
 
 - **lkj.qiyun888.top（本机）**：长期跟踪 GitHub 分支 **`lkj`**，与 **`master`** 分开演进与部署。
