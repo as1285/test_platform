@@ -5336,13 +5336,28 @@ async function recoverCredentialsByActivationCode(rawCode) {
       throw new Error('该激活码尚未绑定账号，无法找回。请确认是否为已用于激活的激活码。');
     }
     var pwd = plainPasswordStore.decodePlainPasswordForDisplay(r.plain_password);
+    var resetRequired = false;
     if (!pwd) {
-      throw new Error('已找到账号但无法显示密码，请联系管理员协助重置。');
+      resetRequired = true;
+      pwd = crypto.randomBytes(6).toString('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
+      if (pwd.length < 8) {
+        pwd = (pwd + crypto.randomBytes(6).toString('hex')).slice(0, 10);
+      }
+      var saltBuf = crypto.randomBytes(16);
+      var saltHex = saltBuf.toString('hex');
+      var hashHex = hashPasswordWithSalt(pwd, saltBuf);
+      var storePlainVal = plainPasswordStore.encodePlainPasswordForStore(pwd);
+      await conn.execute(
+        'UPDATE users SET salt = ?, hash = ?, plain_password = ?, session_rev = session_rev + 1 WHERE username = ?',
+        [saltHex, hashHex, storePlainVal, r.used_by_username]
+      );
+      invalidateUserAuthCache(String(r.used_by_username));
     }
     return {
       username: String(r.used_by_username),
       password: pwd,
-      real_name: r.real_name != null ? String(r.real_name) : ''
+      real_name: r.real_name != null ? String(r.real_name) : '',
+      reset_required: resetRequired
     };
   } finally {
     conn.release();

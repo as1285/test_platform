@@ -392,6 +392,9 @@
                 document.getElementById('recoverUsername').textContent = data.username || '--';
                 document.getElementById('recoverPassword').textContent = data.password || '--';
                 resultEl.classList.add('is-show');
+                if (data && data.reset_required) {
+                    setMsg('已通过激活码验证并重置密码，请尽快登录后修改为新密码。', false);
+                }
             }
 
             function copyText(text) {
@@ -438,7 +441,9 @@
                             btn.disabled = false;
                             if (data.code === 200 && data.data) {
                                 showResult(data.data);
-                                setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                if (!data.data.reset_required) {
+                                    setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                }
                                 return;
                             }
                             setMsg(data.msg || '找回失败', true);
@@ -459,7 +464,9 @@
                             btn.disabled = false;
                             if (data.code === 200 && data.data) {
                                 showResult(data.data);
-                                setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                if (!data.data.reset_required) {
+                                    setMsg('请妥善保管账号密码，并尽快登录修改密码。', false);
+                                }
                                 return;
                             }
                             setMsg(data.msg || '找回失败', true);
