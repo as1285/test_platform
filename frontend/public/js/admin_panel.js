@@ -6786,29 +6786,30 @@
         }
 
         var ADMIN_MENU_LABELS = {
-            settings: '增长与触达配置',
-            'install-guide': '引导安装',
-            appearance: '用户端外观',
+            settings: '定价与弹窗',
+            'install-guide': '安装分发',
+            appearance: '外观',
             codes: '激活码',
             users: '注册用户',
-            'guest-users': '游客用户',
+            'guest-users': '游客',
             'user-data': '用户数据',
-            'tax-records-edit': '个税记录维护',
-            'activated-user-analysis': '激活用户分析',
-            'login-log': '管理账号登录流水',
-            'user-login-log': '普通用户登录流水',
+            'tax-records-edit': '个税维护',
+            'activated-user-analysis': '激活分析',
+            'login-log': '管理登录',
+            'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
             'analytics-conversion': '转化与触达',
             'analytics-purchase': '支付页埋点',
             'analytics-register': '注册分析',
             'analytics-activity': '用户活跃',
             'analytics-tracking': '埋点分析',
-            'install-guide-stats': '安装页统计',
+            'install-guide-stats': '安装统计',
             'share-stats': '分享统计',
             'channel-analysis': '渠道分析',
-            'admin-accounts': '后台账号权限',
-            'server-monitor': '服务器监控',
-            'sbdy-demo': '社保演示生成'
+            'admin-accounts': '账号权限',
+            'server-monitor': '监控',
+            'sbdy-demo': '社保演示',
+            'blocked-ips': 'IP 黑名单'
         };
 
         function applyMenuDefsFromServer(defs) {
@@ -8937,7 +8938,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v6-admin-fix';
+                var MENU_TREE_VER = 'ops-ia-v7-concise';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

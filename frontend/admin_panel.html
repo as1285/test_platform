@@ -2,18 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260729-splash"></script>
+    <script src="/js/admin_auth.js?v=20260731-concise"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>运营控制台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260729-ops-shell">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260729-ops-shell">
+    <title>运营台</title>
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260731-concise">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260731-concise">
 </head>
 <body>
     <div class="layout">
         <aside class="sidebar" aria-label="功能导航">
             <div class="sidebar-brand">
-                <span class="sidebar-brand-title">运营控制台</span>
-                <span class="sidebar-brand-sub">Ops Console</span>
+                <span class="sidebar-brand-title">运营台</span>
             </div>
             <nav id="adminSidebarNav" class="sidebar-nav" aria-live="polite">
                 <!-- 侧栏由 /api/admin/me 的 menu_tree 渲染（阶段 2） -->
@@ -23,22 +22,19 @@
             <div class="top">
                 <div class="top-inner">
                     <h1 id="pageTitle">转化与触达</h1>
-                    <button type="button" class="btn-logout" id="btnAdminLogout">退出管理</button>
+                    <button type="button" class="btn-logout" id="btnAdminLogout">退出</button>
                 </div>
             </div>
             <div class="wrap">
                 <div id="page-settings" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">定价实验与激活引导弹窗</p></div>
                     <section>
-                        <h2>增长与触达配置</h2>
-                        <p class="hint mt-0">优先配置定价实验；下方为弹窗与 QQ / 微信触达入口。效果请到「转化与触达」查看。</p>
-                    </section>
-                    <section>
-                        <h2>定价/支付页 A/B</h2>
-                        <p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
+                        <h2>支付页 A/B</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
                             <strong>A</strong>：支付宝「398 永久」+ 激活码；
                             <strong>B</strong>：支付宝多档（298 日 / 398 周 / 498 月 / 698 年 / 998 永久）+ 激活码。
                             A+B 必须为 100%。
-                        </p>
+                        </p></details>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label><input type="checkbox" id="pricingAbEnabled" checked> 启用支付页 A/B</label>
@@ -118,17 +114,14 @@
                 </div>
 
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">安装包、代理渠道与引导视频</p></div>
                     <section>
-                        <h2>引导安装（用户端）</h2>
-                        <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）与「操作教程」（<a href="tutorial_video.html" target="_blank" rel="noopener">在新标签预览</a>）。下方可配置<strong>安装包下载</strong>、<strong>引导视频</strong>与<strong>首屏效果预览</strong>（动图 + 截图横滑）；其它界面配图仍在左侧「用户端外观」。</p>
+                        <h2>落地页说明</h2>
+                        <p class="hint">分流见「定价与弹窗」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
                     </section>
                     <section>
-                        <h2>落地页 B/C（跟随支付页 A/B）</h2>
-                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
-                    </section>
-                    <section>
-                        <h2>安装包下载（用户端）</h2>
-                        <p class="hint">用户在「安装包和使用方法」页<strong>只看到下载按钮</strong>。推荐在此<strong>本地上传</strong>安装包（写入站点 <code>uploads/</code>）；也可手填外链（安卓须 https 完整 URL）或站内路径（苹果如 <code>/personal.mobileconfig</code>）。留空则对应按钮不显示。</p>
+                        <h2>安装包下载</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">用户在「安装包和使用方法」页<strong>只看到下载按钮</strong>。推荐在此<strong>本地上传</strong>安装包（写入站点 <code>uploads/</code>）；也可手填外链（安卓须 https 完整 URL）或站内路径（苹果如 <code>/personal.mobileconfig</code>）。留空则对应按钮不显示。</p></details>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label for="androidApkDownloadUrl">安卓安装包（APK）</label>
@@ -145,7 +138,7 @@
                                     <input type="file" class="install-pkg-file" accept=".apk,application/vnd.android.package-archive" data-target="agentAndroidApkDownloadUrl" hidden>
                                     <button type="button" class="btn-file install-pkg-pick">上传 APK</button>
                                 </div>
-                                <p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。默认<strong>允许 App 内注册</strong>（仍绑定渠道）；若需禁注册加 <code>--no-register</code>。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p>
+                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。默认<strong>允许 App 内注册</strong>（仍绑定渠道）；若需禁注册加 <code>--no-register</code>。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p></details>
                             </div>
                             <div class="form-field mt-12">
                                 <label for="iosMobileconfigDownloadUrl">苹果描述文件（mobileconfig）</label>
@@ -168,11 +161,11 @@
                                     <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>
                                 </div>
                                 <div id="agentPromoLinksMount" class="agent-promo-links-mount mt-12" style="display:none;"></div>
-                                <p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（15 分钟内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p>
+                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（15 分钟内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p></details>
                             </div>
                             <div class="form-field mt-16">
                                 <label>下属代理专属渠道</label>
-                                <p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下，并<strong>强制支付方案（默认 C）</strong>；勾选「仅激活码」后用户端隐藏价格/支付宝/闲鱼等全部自助支付，接口也会拒绝下单。渠道 ID 仅支持字母数字下划线（如 <code>quan_c</code>），备注可写中文名。保存后会自动加入上方「隐藏闲鱼」列表。</p>
+                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下，并<strong>强制支付方案（默认 C）</strong>；勾选「仅激活码」后用户端隐藏价格/支付宝/闲鱼等全部自助支付，接口也会拒绝下单。渠道 ID 仅支持字母数字下划线（如 <code>quan_c</code>），备注可写中文名。保存后会自动加入上方「隐藏闲鱼」列表。</p></details>
                                 <div class="mine-ui-block max-w-760 mt-10" id="agentExclusiveChannelsBox">
                                     <div class="flex-actions gap-10 flex-wrap flex-align-end">
                                         <div class="form-field" style="min-width:140px;flex:1;">
@@ -238,7 +231,7 @@
                     </section>
                     <section>
                         <h2>安装页效果预览</h2>
-                        <p class="hint">在「安装包和使用方法」页<strong>首屏</strong>展示个税明细效果：1 张动图（GIF/WebP 自动循环）+ 最多 3 张静图横滑（明细 / 申报 / 税记录）。支持 <code>uploads/</code> 相对路径或 https 外链；留空则不显示对应位。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">在「安装包和使用方法」页<strong>首屏</strong>展示个税明细效果：1 张动图（GIF/WebP 自动循环）+ 最多 3 张静图横滑（明细 / 申报 / 税记录）。支持 <code>uploads/</code> 相对路径或 https 外链；留空则不显示对应位。</p></details>
                         <div class="mine-ui-block max-w-760">
                             <div class="mine-ui-row">
                                 <label for="img_install_showcase_gif">首屏动图（5–8 秒循环）</label>
@@ -279,7 +272,7 @@
 
                 <div id="page-appearance" class="page-panel" role="tabpanel">
                     <section>
-                        <h2>用户端外观（个人中心 / 六个 TAB / 各页顶图）</h2>
+                        <h2>外观素材</h2>
                         <div class="mine-ui-block">
                             <div>
                                 <label for="mineTheme">主题</label>
@@ -495,7 +488,7 @@
                                 <button type="button" class="btn-primary" id="btnSaveMineUi">保存外观配置</button>
                             </div>
                         </div>
-                        <p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。安装引导视频请在「引导安装」中配置。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">与官方类似的<strong>蓝 / 黄</strong>两套主题。下方可配置<strong>首页横幅、置顶区、轮播、待办/办查/消息页顶栏整图、我的票夹两页整图</strong>等；地址可手填（如 <code>caidan/sy1.png</code>、<code>message_header.jpg</code>、<code>piaojia-goumai.png</code>、<code>uploads/xxx.jpg</code> 或 https），也可<strong>本地上传</strong>写入 <code>uploads/</code>。安装引导视频请在「引导安装」中配置。某项留空并保存时<strong>不修改</strong>该项已有配置；主题必选其一。</p></details>
                     </section>
                 </div>
 
@@ -788,7 +781,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p></details>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -896,7 +889,7 @@
                 <div id="page-guest-users" class="page-panel" role="tabpanel">
                     <section>
                         <h2>游客用户</h2>
-                        <p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。统计区间按<strong>北京时间自然日</strong>：「近 1 天」= 当天 0 点起。仅超级管理员可见。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。统计区间按<strong>北京时间自然日</strong>：「近 1 天」= 当天 0 点起。仅超级管理员可见。</p></details>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                             <div>
@@ -1028,7 +1021,7 @@
                 <div id="page-tax-records-edit" class="page-panel" role="tabpanel">
                     <section>
                         <h2>个税记录维护</h2>
-                        <p class="hint mt-0">按用户名加载该账号个税明细，支持<strong>批量录入（与 C 端相同）</strong>及单条新增 / 修改 / 软删除。写入与 C 端共用 <code>tax_records</code>，用户端列表会同步变化。非超级管理员仅能操作自己权限范围内的用户。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按用户名加载该账号个税明细，支持<strong>批量录入（与 C 端相同）</strong>及单条新增 / 修改 / 软删除。写入与 C 端共用 <code>tax_records</code>，用户端列表会同步变化。非超级管理员仅能操作自己权限范围内的用户。</p></details>
                         <div class="form-row flex-align-center mt-8 flex-wrap gap-10">
                             <div>
                                 <label for="taxEditUsername">用户名</label>
@@ -1331,7 +1324,7 @@
                 <div id="page-activated-user-analysis" class="page-panel" role="tabpanel">
                     <section>
                         <h2>激活用户分析</h2>
-                        <p class="hint">聚焦<strong>已激活</strong>账号：个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint">聚焦<strong>已激活</strong>账号：个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p></details>
                         <div class="form-row flex-align-center mb-8">
                             <div>
                                 <label for="auaOverviewDays">日活趋势天数</label>
@@ -1444,7 +1437,7 @@
                 <div id="page-share-stats" class="page-panel" role="tabpanel">
                     <section>
                         <h2>分享统计</h2>
-                        <p class="hint mt-0">统计分享发出 → <code>from=share</code> 打开 → 注册 / 登录 / 下载。不含代理 ch，主站流量；归因 7 天。漏斗展示发出→打开率、打开→注册/登录率；注册以用户数（<code>registered_from_share</code>）为准。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计分享发出 → <code>from=share</code> 打开 → 注册 / 登录 / 下载。不含代理 ch，主站流量；归因 7 天。漏斗展示发出→打开率、打开→注册/登录率；注册以用户数（<code>registered_from_share</code>）为准。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="shareStatsDays">统计区间</label>
@@ -1459,7 +1452,7 @@
                 <div id="page-install-guide-stats" class="page-panel" role="tabpanel">
                     <section>
                         <h2>安装页访问统计</h2>
-                        <p class="hint mt-0">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>、<strong>页面加载耗时</strong>（DOM 就绪 + 安装包接口网络/渲染）及按钮/视频等行为。另含<strong>下载→打开→注册漏斗</strong>（A 落地 / B 下载 / C App 首次打开 / D 注册弹窗 / E 稍后或去注册 / F 注册成功，按 <code>client_id</code>、北京时间）与<strong>已打开未注册</strong>队列。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；另有<strong>访客时段分布</strong>（北京时间：凌晨/上午/下午/晚上 + 24 小时柱状图）。<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。页面浏览/UV/下载/漏斗按<strong>同一 IP 去重</strong>（无 IP 再退回 <code>client_id</code>）；未登录事件仍上报 <code>client_id</code>；离开页面时上报停留秒数；打开页面后上报加载耗时。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>、<strong>页面加载耗时</strong>（DOM 就绪 + 安装包接口网络/渲染）及按钮/视频等行为。另含<strong>下载→打开→注册漏斗</strong>（A 落地 / B 下载 / C App 首次打开 / D 注册弹窗 / E 稍后或去注册 / F 注册成功，按 <code>client_id</code>、北京时间）与<strong>已打开未注册</strong>队列。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；另有<strong>访客时段分布</strong>（北京时间：凌晨/上午/下午/晚上 + 24 小时柱状图）。<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。页面浏览/UV/下载/漏斗按<strong>同一 IP 去重</strong>（无 IP 再退回 <code>client_id</code>）；未登录事件仍上报 <code>client_id</code>；离开页面时上报停留秒数；打开页面后上报加载耗时。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="installGuideStatsDays">统计区间</label>
@@ -1575,13 +1568,10 @@
                             </div>
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>转化与触达</h2>
-                        <p class="hint mt-0">运营日常首页：看转化 KPI、定价实验、未激活用户，并可一键群发站内信。增长实验开关在左侧「增长与触达配置」。</p>
-                    </section>
+                    <div class="page-lede"><p class="page-lede-text">转化与触达</p></div>
                     <section>
                         <h2>支付页 A/B</h2>
-                            <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=398 永久仅支付宝；B=298 日 / 398 周 / 498 月 / 698 年 / 998 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p>
+                            <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=398 永久仅支付宝；B=298 日 / 398 周 / 498 月 / 698 年 / 998 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
@@ -1593,7 +1583,7 @@
                     </section>
                     <section>
                         <h2>注册转化率</h2>
-                        <p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>代理推广</strong>：注册链接/表单显式带了「引导安装 → 代理推广渠道」中的 <code>ch</code>；<strong>闲鱼 / 支付宝 / 酷发卡激活</strong>：分别统计对应码/渠道激活的用户数。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>代理推广</strong>：注册链接/表单显式带了「引导安装 → 代理推广渠道」中的 <code>ch</code>；<strong>闲鱼 / 支付宝 / 酷发卡激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsConversionDays">统计区间</label>
@@ -1605,7 +1595,7 @@
                     </section>
                     <section>
                         <h2>四段转化漏斗</h2>
-                        <p class="hint mt-0">按用户<strong>注册日</strong> cohort：<strong>注册 → 7 日内激活 → 7 日内有个税 → 7 日内看收入明细</strong>（<code>shuiming</code> / <code>xiangqing</code>；激活数不含已退款、已删除账号）。下方分<strong>自有流量</strong>与<strong>代理推广</strong>两套漏斗；按注册来源渠道拆分见侧栏「渠道分析」。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按用户<strong>注册日</strong> cohort：<strong>注册 → 7 日内激活 → 7 日内有个税 → 7 日内看收入明细</strong>（<code>shuiming</code> / <code>xiangqing</code>；激活数不含已退款、已删除账号）。下方分<strong>自有流量</strong>与<strong>代理推广</strong>两套漏斗；按注册来源渠道拆分见侧栏「渠道分析」。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsFunnelDays">统计区间</label>
@@ -1617,7 +1607,7 @@
                     </section>
                     <section>
                         <h2>运营 KPI</h2>
-                        <p class="hint mt-0"><strong>激活后 1 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 24 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 1 日明细查看率</strong> = 窗口内首次有个税的用户中，24 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0"><strong>激活后 1 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 24 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 1 日明细查看率</strong> = 窗口内首次有个税的用户中，24 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsConversionKpiDays">统计区间</label>
@@ -1668,7 +1658,7 @@
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
                     <section>
                         <h2>支付页埋点</h2>
-                        <p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付）。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPurchaseDays">统计区间</label>
@@ -1872,7 +1862,7 @@
                             <button type="button" class="btn-page" id="btnRefreshAnalyticsTracking">刷新行为埋点</button>
                         </div>
                         <h2>激活 / 购买页埋点（详细）</h2>
-                        <p class="hint mt-0 mb-8">覆盖购买激活页全链路：页浏览 → 确认激活 / 支付宝生成码与打开付款 → 酷发卡 / 微信 / 闲鱼 / 客服。按<strong>北京时间自然日</strong>汇总；可展开查看当日账号及每人各按钮次数。数据来自 <code>user_page_events</code>。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0 mb-8">覆盖购买激活页全链路：页浏览 → 确认激活 / 支付宝生成码与打开付款 → 酷发卡 / 微信 / 闲鱼 / 客服。按<strong>北京时间自然日</strong>汇总；可展开查看当日账号及每人各按钮次数。数据来自 <code>user_page_events</code>。</p></details>
                         <div class="scroll-x mb-10">
                             <table>
                                 <thead>
@@ -1921,7 +1911,7 @@
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
                     <section>
                         <h2>注册渠道分析</h2>
-                        <p class="hint mt-0">仅统计注册时<strong>已选择来源渠道</strong>的用户（<code>users.register_source_channel</code> 非空）；未选择渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。折线图展示<strong>每日各渠道注册人数</strong>（全部注册用户模式下趋势图为近 90 日）。非超级管理员仅统计自己激活码关联的用户。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">仅统计注册时<strong>已选择来源渠道</strong>的用户（<code>users.register_source_channel</code> 非空）；未选择渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。折线图展示<strong>每日各渠道注册人数</strong>（全部注册用户模式下趋势图为近 90 日）。非超级管理员仅统计自己激活码关联的用户。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="channelAnalysisDays">统计范围</label>
@@ -2266,12 +2256,12 @@
         </div>
     </div>
     <script src="/js/admin/loader.js?v=20260728-remove-weekly-page"></script>
-    <script src="/js/admin/nav.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/admin/nav.js?v=20260731-concise"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin-panel-utils.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/consult-core.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/consult-batch-tax.js?v=20260728-purchase-users-fix"></script>
     <script src="/js/admin-tax-batch-bridge.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260730-pv-ip"></script>
+    <script src="/js/admin_panel.js?v=20260731-concise"></script>
 </body>
 </html>

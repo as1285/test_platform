@@ -119,41 +119,36 @@ body {
     align-items: stretch;
 }
 .sidebar {
-    width: 248px;
+    width: 220px;
     flex-shrink: 0;
-    background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-mid) 48%, var(--admin-sidebar-to) 100%);
+    background: var(--admin-sidebar-from);
     color: var(--admin-nav-text-active);
-    padding: 0 0 28px;
+    padding: 0 0 20px;
     display: flex;
     flex-direction: column;
-    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.18), 4px 0 24px rgba(20, 24, 32, 0.12);
+    border-right: 1px solid rgba(0, 0, 0, 0.35);
     position: sticky;
     top: 0;
     height: 100vh;
     z-index: 20;
 }
 .sidebar-brand {
-    padding: 22px 20px 18px;
+    padding: 18px 16px 14px;
     border-bottom: 1px solid var(--admin-nav-divider);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
 }
 .sidebar-brand-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 650;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
     color: #fff;
     line-height: 1.3;
 }
 .sidebar-brand-sub {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--admin-nav-accent);
-    opacity: 0.9;
+    display: none;
 }
 .sidebar-nav {
     display: flex;
@@ -170,16 +165,16 @@ body {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 10px 14px;
+    padding: 8px 12px;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     background: transparent;
     color: var(--admin-nav-text);
-    font-size: 13.5px;
+    font-size: 13px;
     cursor: pointer;
-    border-left: 3px solid transparent;
+    border-left: 2px solid transparent;
     margin-left: 0;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .nav-item:hover {
     background: var(--admin-nav-hover-bg);
@@ -200,9 +195,9 @@ body {
     background: var(--admin-bg);
 }
 .top {
-    background: linear-gradient(180deg, var(--admin-top-from) 0%, var(--admin-top-to) 100%);
+    background: var(--admin-surface);
     color: var(--admin-heading);
-    padding: 14px 28px;
+    padding: 12px 24px;
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
@@ -210,7 +205,6 @@ body {
     position: sticky;
     top: 0;
     z-index: 15;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 .top-inner {
     width: 100%;
@@ -221,17 +215,17 @@ body {
     gap: 12px;
 }
 .top h1 {
-    font-size: 18px;
-    font-weight: 650;
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--admin-heading);
 }
 .top .btn-logout {
-    background: var(--admin-surface);
-    border: 1px solid var(--admin-border-strong);
+    background: transparent;
+    border: 1px solid var(--admin-border);
     color: var(--admin-text-secondary);
-    padding: 8px 16px;
-    border-radius: var(--admin-radius-sm);
+    padding: 6px 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
@@ -246,7 +240,7 @@ body {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: var(--admin-space-6) 28px 48px;
+    padding: 20px 24px 40px;
     flex: 1;
     position: relative;
     z-index: 1;
@@ -255,12 +249,39 @@ body {
 .page-panel { display: none; }
 .page-panel.active {
     display: block;
-    max-width: 1440px;
-    animation: adminPageIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    max-width: 1280px;
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 4px 22px 18px;
+    animation: adminPageIn 0.2s ease;
 }
 @keyframes adminPageIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.page-lede {
+    padding: 14px 2px 6px;
+    border-bottom: 1px solid var(--admin-border-light);
+    margin-bottom: 4px;
+}
+.page-lede-text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--admin-text-muted);
+    line-height: 1.45;
+}
+.page-panel > section {
+    background: transparent;
+    border-radius: 0;
+    padding: 18px 2px;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: 1px solid var(--admin-border-light);
+    box-shadow: none;
+}
+.page-panel > section:last-child {
+    border-bottom: none;
 }
 section {
     background: var(--admin-surface);
@@ -268,15 +289,15 @@ section {
     padding: 22px 22px 20px;
     margin-bottom: var(--admin-space-4);
     border: 1px solid var(--admin-border);
-    box-shadow: var(--admin-shadow-sm);
+    box-shadow: none;
 }
 section h2 {
-    font-size: 15px;
+    font-size: 14px;
     margin-bottom: var(--admin-space-3);
     color: var(--admin-heading);
     border-bottom: none;
     padding-bottom: 0;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: -0.01em;
 }
 .form-row { display: flex; flex-wrap: wrap; gap: var(--admin-space-3); align-items: flex-end; margin-bottom: var(--admin-space-3); }
@@ -1334,7 +1355,7 @@ tr.ud-salary-bucket-high td {
 
 /* 侧栏分组 */
 .nav-group {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 .nav-group:last-child {
     margin-bottom: 0;
@@ -1344,13 +1365,13 @@ tr.ud-salary-bucket-high td {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 12px 14px 6px;
+    padding: 8px 12px 4px;
     border: none;
     background: transparent;
-    font-size: 10.5px;
-    font-weight: 650;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: none;
     color: var(--admin-nav-group);
     user-select: none;
     cursor: pointer;
@@ -1375,23 +1396,32 @@ tr.ud-salary-bucket-high td {
     gap: 2px;
 }
 .page-hint-details {
-    margin: 0 0 12px;
-    background: var(--admin-surface);
-    border-radius: 10px;
-    padding: 0 14px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    margin: 0 0 10px;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
 }
 .page-hint-details summary {
     cursor: pointer;
-    padding: 12px 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--admin-slate);
+    padding: 2px 0 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--admin-text-muted);
     list-style: none;
 }
 .page-hint-details summary::-webkit-details-marker { display: none; }
+.page-hint-details summary::before {
+    content: '▸ ';
+    font-size: 10px;
+    opacity: 0.7;
+}
+.page-hint-details[open] summary::before {
+    content: '▾ ';
+}
 .page-hint-details .hint {
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     padding-top: 0;
 }
 
@@ -2310,11 +2340,12 @@ tr.ud-salary-bucket-high td {
     justify-content: space-between;
     gap: var(--admin-space-3) var(--admin-space-4);
     margin-bottom: var(--admin-space-4);
-    padding: 16px 18px;
-    background: linear-gradient(180deg, #f8faf9 0%, var(--admin-surface-muted) 100%);
-    border-radius: 12px;
-    border: 1px solid var(--admin-border);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    padding: 12px 0 14px;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--admin-border-light);
+    box-shadow: none;
 }
 .admin-panel-inset {
     margin-top: var(--admin-space-4);

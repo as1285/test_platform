@@ -4,15 +4,15 @@
  * - page：前端 hash / data-page（可与 menu_key 不同，如 users-deleted）
  * - module：前端懒加载模块名
  *
- * 信息架构以「运营」为中心：工作台 → 配置 → 用户客服 → 数据洞察 → 系统与安全
+ * 信息架构：工作台 → 配置 → 用户 → 工具 → 数据 → 系统
  */
 const ADMIN_MENU_GROUPS = [
-  { id: 'ops-desk', label: '运营工作台', order: 10 },
-  { id: 'ops-config', label: '运营配置', order: 20 },
-  { id: 'users', label: '用户与客服', order: 30 },
-  { id: 'cert-tools', label: '证明工具', order: 35 },
-  { id: 'insights', label: '数据洞察', order: 40 },
-  { id: 'system', label: '系统与安全', order: 50 }
+  { id: 'ops-desk', label: '工作台', order: 10 },
+  { id: 'ops-config', label: '配置', order: 20 },
+  { id: 'users', label: '用户', order: 30 },
+  { id: 'cert-tools', label: '工具', order: 35 },
+  { id: 'insights', label: '数据', order: 40 },
+  { id: 'system', label: '系统', order: 50 }
 ];
 
 /**
@@ -29,7 +29,7 @@ const ADMIN_MENU_GROUPS = [
 
 /** @type {AdminPageDef[]} */
 const ADMIN_PAGE_DEFS = [
-  /* —— 运营工作台 —— */
+  /* —— 工作台 —— */
   {
     page: 'analytics-conversion',
     menu_key: 'analytics-conversion',
@@ -56,11 +56,11 @@ const ADMIN_PAGE_DEFS = [
   },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
 
-  /* —— 运营配置 —— */
+  /* —— 配置 —— */
   {
     page: 'settings',
     menu_key: 'settings',
-    label: '增长与触达配置',
+    label: '定价与弹窗',
     group: 'ops-config',
     module: 'settings',
     order: 10
@@ -68,15 +68,23 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'install-guide',
     menu_key: 'install-guide',
-    label: '引导安装',
+    label: '安装分发',
     group: 'ops-config',
     module: 'settings',
     order: 20
   },
   {
+    page: 'appearance',
+    menu_key: 'appearance',
+    label: '外观',
+    group: 'ops-config',
+    module: 'settings',
+    order: 25
+  },
+  {
     page: 'install-guide-stats',
     menu_key: 'install-guide-stats',
-    label: '安装页统计',
+    label: '安装统计',
     group: 'ops-config',
     module: 'analytics',
     order: 30
@@ -90,12 +98,12 @@ const ADMIN_PAGE_DEFS = [
     order: 35
   },
 
-  /* —— 用户与客服 —— */
+  /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
   {
     page: 'guest-users',
     menu_key: 'guest-users',
-    label: '游客用户',
+    label: '游客',
     group: 'users',
     module: 'users',
     order: 20,
@@ -104,7 +112,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'users-deleted',
     menu_key: 'users',
-    label: '已删除账号',
+    label: '已删除',
     group: 'users',
     module: 'users',
     order: 30,
@@ -114,7 +122,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'tax-records-edit',
     menu_key: 'tax-records-edit',
-    label: '个税记录维护',
+    label: '个税维护',
     group: 'users',
     module: 'user-data',
     order: 65
@@ -122,23 +130,23 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'activated-user-analysis',
     menu_key: 'activated-user-analysis',
-    label: '激活用户分析',
+    label: '激活分析',
     group: 'users',
     module: 'user-data',
     order: 80
   },
 
-  /* —— 证明工具 —— */
+  /* —— 工具 —— */
   {
     page: 'sbdy-demo',
     menu_key: 'sbdy-demo',
-    label: '社保演示生成',
+    label: '社保演示',
     group: 'cert-tools',
     module: 'sbdy-demo',
     order: 10
   },
 
-  /* —— 数据洞察 —— */
+  /* —— 数据 —— */
   {
     page: 'analytics-register',
     menu_key: 'analytics-register',
@@ -164,19 +172,11 @@ const ADMIN_PAGE_DEFS = [
     order: 30
   },
 
-  /* —— 系统与安全 —— */
-  {
-    page: 'appearance',
-    menu_key: 'appearance',
-    label: '用户端外观',
-    group: 'system',
-    module: 'settings',
-    order: 10
-  },
+  /* —— 系统 —— */
   {
     page: 'admin-accounts',
     menu_key: 'admin-accounts',
-    label: '后台账号权限',
+    label: '账号权限',
     group: 'system',
     module: 'accounts',
     order: 20
@@ -184,7 +184,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'login-log',
     menu_key: 'login-log',
-    label: '管理账号登录流水',
+    label: '管理登录',
     group: 'system',
     module: 'logs',
     order: 30
@@ -192,7 +192,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'user-login-log',
     menu_key: 'login-log',
-    label: '普通用户登录流水',
+    label: '用户登录',
     group: 'system',
     module: 'logs',
     order: 40,
@@ -201,7 +201,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'server-monitor',
     menu_key: 'server-monitor',
-    label: '服务器监控',
+    label: '监控',
     group: 'system',
     module: 'monitor',
     order: 50

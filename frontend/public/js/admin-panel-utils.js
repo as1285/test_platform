@@ -381,18 +381,18 @@
 
     U.menuLabel = function menuLabel(key) {
         var map = {
-            'settings': '增长与触达', 'install-guide': '引导安装',
-            'appearance': '用户端外观', 'codes': '激活码',
-            'admin-accounts': '后台权限', 'users': '注册用户',
+            'settings': '定价与弹窗', 'install-guide': '安装分发',
+            'appearance': '外观', 'codes': '激活码',
+            'admin-accounts': '账号权限', 'users': '注册用户',
             'guest-users': '游客', 'users-deleted': '已删除',
             'user-data': '用户数据', 'tax-records-edit': '个税维护', 'user-behavior': '用户行为',
             'activated-user-analysis': '激活分析', 'feedback': '反馈',
             'chat': '客服', 'login-log': '管理登录', 'user-login-log': '用户登录',
             'server-monitor': '监控', 'sbdy-demo': '社保演示',
-            'analytics-conversion': '转化', 'analytics-purchase': '支付',
-            'analytics-register': '注册', 'analytics-activity': '日活',
-            'analytics-tracking': '埋点', 'analytics-devices': '设备',
-            'channel-analysis': '渠道', 'api-analytics': '接口',
+            'analytics-conversion': '转化与触达', 'analytics-purchase': '支付页埋点',
+            'analytics-register': '注册分析', 'analytics-activity': '用户活跃',
+            'analytics-tracking': '埋点分析', 'analytics-devices': '设备',
+            'channel-analysis': '渠道分析', 'api-analytics': '接口',
             'install-guide-stats': '安装统计', 'share-stats': '分享统计',
             'blocked-ips': 'IP 黑名单'
         };

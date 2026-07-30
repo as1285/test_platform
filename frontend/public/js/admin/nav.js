@@ -28,9 +28,26 @@
       var items = Array.isArray(g.items) ? g.items : [];
       if (!items.length) return;
       var gid = String(g.id || 'g');
-      html += '<div class="nav-group" data-nav-group="' + esc(gid) + '">';
+      var hasActive = items.some(function (it) {
+        return String(it.page || '') === activePage;
+      });
+      var collapsed = !hasActive;
+      try {
+        var saved = sessionStorage.getItem('admin_nav_' + gid);
+        if (saved === '1') collapsed = false;
+        if (saved === '0') collapsed = true;
+        if (hasActive) collapsed = false;
+      } catch (e0) {}
       html +=
-        '<button type="button" class="nav-group-label" aria-expanded="true">' +
+        '<div class="nav-group' +
+        (collapsed ? ' is-collapsed' : '') +
+        '" data-nav-group="' +
+        esc(gid) +
+        '">';
+      html +=
+        '<button type="button" class="nav-group-label" aria-expanded="' +
+        (collapsed ? 'false' : 'true') +
+        '">' +
         esc(g.label || gid) +
         '</button>';
       html += '<div class="nav-group-items">';
