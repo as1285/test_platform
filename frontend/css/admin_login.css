@@ -1,7 +1,26 @@
+/* Align with admin_panel — graphite + teal ops shell */
+:root {
+  --admin-login-bg-from: #12151b;
+  --admin-login-bg-to: #1a1d24;
+  --admin-login-card: #232833;
+  --admin-login-input-bg: #1a1d24;
+  --admin-login-border: rgba(148, 163, 184, 0.22);
+  --admin-login-text: #eef2f6;
+  --admin-login-muted: #94a3b8;
+  --admin-primary: #0f9f8a;
+  --admin-primary-hover: #0d8a78;
+  --admin-danger: #f28b82;
+  --admin-primary-ring: rgba(15, 159, 138, 0.28);
+  --admin-nav-accent: #2dd4bf;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
-  background: #1a1d24;
+  background:
+    radial-gradient(ellipse 80% 60% at 18% 8%, rgba(15, 159, 138, 0.2), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 92% 88%, rgba(45, 212, 191, 0.1), transparent 50%),
+    linear-gradient(160deg, var(--admin-login-bg-from) 0%, var(--admin-login-bg-to) 100%);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -11,57 +30,76 @@ body {
 .card {
   width: 100%;
   max-width: 380px;
-  background: #252a33;
-  border-radius: 12px;
-  padding: 32px 28px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  background: var(--admin-login-card);
+  border: 1px solid var(--admin-login-border);
+  border-radius: 16px;
+  padding: 34px 28px;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.4);
 }
 h1 {
-  color: #e8eaed;
+  color: var(--admin-login-text);
   font-size: 20px;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 6px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.card::before {
+  content: 'OPS';
+  display: block;
+  text-align: center;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--admin-nav-accent);
+  margin-bottom: 10px;
 }
 .field { margin-bottom: 16px; }
 label {
   display: block;
-  color: #9aa0a6;
+  color: var(--admin-login-muted);
   font-size: 13px;
   margin-bottom: 6px;
 }
 input {
   width: 100%;
   height: 44px;
-  border: 1px solid #3c4043;
-  border-radius: 8px;
-  background: #1a1d24;
-  color: #e8eaed;
+  border: 1px solid var(--admin-login-border);
+  border-radius: 9px;
+  background: var(--admin-login-input-bg);
+  color: var(--admin-login-text);
   padding: 0 12px;
   font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 input:focus {
   outline: none;
-  border-color: #8ab4f8;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
 }
 .btn {
   width: 100%;
   height: 46px;
   margin-top: 8px;
-  background: #8ab4f8;
-  color: #202124;
+  background: var(--admin-primary);
+  color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgba(15, 159, 138, 0.28);
+}
+.btn:hover:not(:disabled) {
+  background: var(--admin-primary-hover);
 }
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 .err {
-  color: #f28b82;
+  color: var(--admin-danger);
   font-size: 13px;
   margin-top: 12px;
   min-height: 1.2em;
@@ -71,7 +109,10 @@ input:focus {
   margin-top: 20px;
 }
 .back a {
-  color: #8ab4f8;
+  color: var(--admin-nav-accent);
   font-size: 14px;
   text-decoration: none;
+}
+.back a:hover {
+  text-decoration: underline;
 }

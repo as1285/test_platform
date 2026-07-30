@@ -9,7 +9,6 @@ const { registerTaxRoutes } = require('./tax/routes');
 const { registerPaymentsRoutes } = require('./payments/routes');
 const { registerGrowthRoutes } = require('./growth/routes');
 const { registerAdminRoutes } = require('./admin/routes');
-const { registerChatRoutes } = require('./chat/routes');
 const { registerPlatformRoutes } = require('./platform/routes');
 
 /** 创建 Express 应用并按域挂载全部路由 */
@@ -23,7 +22,6 @@ function buildApp() {
   registerAuthRoutes(app, deps);
   registerUserRoutes(app, deps);
   registerTaxRoutes(app, deps);
-  registerChatRoutes(app, deps);
   registerPaymentsRoutes(app, deps);
   registerGrowthRoutes(app, deps);
   registerAdminRoutes(app, deps);

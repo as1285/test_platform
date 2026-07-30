@@ -18,6 +18,7 @@
     'login.html': true,
     'register.html': true,
     'install_guide.html': true,
+    'install-ios.html': true,
     'admin_login.html': true,
     'admin_panel.html': true
   };

@@ -127,12 +127,14 @@
                 var cfg = window.__TAX_DISTRIBUTION__ || {};
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
-                    return (
-                        base +
+                    var q =
                         'index.html?ch=' +
-                        encodeURIComponent(ch.toLowerCase()) +
-                        '&distributor_app=1'
-                    );
+                        encodeURIComponent(ch.toLowerCase());
+                    /* 仅当明确禁用 App 内注册时才打 distributor_app 标记 */
+                    if (cfg.disableInAppRegister === true) {
+                        q += '&distributor_app=1';
+                    }
+                    return base + q;
                 }
                 return APP_ORIGIN;
             }

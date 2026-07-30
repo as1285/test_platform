@@ -5,7 +5,8 @@
 #   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
 #   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 2 小时备份，最多保留 1 天
 #
-# 默认：保留 24 小时，最多 12 份（配合每 2 小时一次）。
+# 默认：保留 48 小时，最多 36 份（配合每 2 小时一次 ≈ 3 天热备）。
+# 更长保留见 scripts/sync-backup-offsite.sh（日备 14 天 / 周备 8 周）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -13,8 +14,8 @@ SCRIPT_PATH="$ROOT/scripts/backup-mysql.sh"
 DB_CONTAINER="${DB_CONTAINER:-test_platform_db}"
 DB_NAME="${DB_NAME:-personal_tax}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT/data/db-backups}"
-RETAIN_HOURS="${RETAIN_HOURS:-24}"
-MAX_BACKUPS="${MAX_BACKUPS:-12}"
+RETAIN_HOURS="${RETAIN_HOURS:-48}"
+MAX_BACKUPS="${MAX_BACKUPS:-36}"
 LOG_FILE="${MYSQL_BACKUP_LOG:-/var/log/test_platform-mysql-backup.log}"
 CRON_EXPR="0 */2 * * *"
 CRON_LINE="${CRON_EXPR} /bin/bash ${SCRIPT_PATH} >> ${LOG_FILE} 2>&1"

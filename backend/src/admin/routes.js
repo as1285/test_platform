@@ -43,6 +43,12 @@ app.post(
   function (req, res, next) {
     mw.adminUpload.single('file')(req, res, function (err) {
       if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            code: 413,
+            msg: '文件过大，管理上传上限约 ' + Math.round((Number(process.env.ADMIN_UPLOAD_MAX_BYTES) || 83886080) / 1024 / 1024) + 'MB'
+          });
+        }
         return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
       }
       next();
@@ -60,18 +66,6 @@ app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('us
 app.get('/api/admin/guest-users', mw.requireAdminAuth, mw.requireAdminMenu('guest-users'), h.handleAdminGuestUsers);
 app.get('/api/admin/users', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUsers);
 app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-data'), h.handleAdminUserDataList);
-app.get(
-  '/api/admin/user-data/analytics',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('user-data'),
-  h.handleAdminUserDataAnalytics
-);
-app.get(
-  '/api/admin/user-data/salary-high/charts',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('user-data'),
-  h.handleAdminUserDataSalaryHighCharts
-);
 app.get(
   '/api/admin/user-data/detail',
   mw.requireAdminAuth,
@@ -163,46 +157,22 @@ app.get(
   h.handleAdminRegisterTimeDistribution
 );
 app.get(
-  '/api/admin/analytics/register-gender',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-register', 'analytics', 'channel-analysis']),
-  h.handleAdminRegisterGenderStats
-);
-app.get(
   '/api/admin/analytics/register-channels',
   mw.requireAdminAuth,
   mw.requireAdminMenu('channel-analysis'),
   h.handleAdminRegisterChannelStats
 );
 app.get(
-  '/api/admin/analytics/female-age',
+  '/api/admin/analytics/overview',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-register', 'analytics']),
-  h.handleAdminFemaleAgeStats
+  mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),
+  h.handleAdminAnalyticsOverview
 );
 app.get(
-  '/api/admin/user-data/female-age',
+  '/api/admin/analytics/dau-users',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('user-data'),
-  h.handleAdminFemaleAgeStats
-);
-app.get(
-  '/api/admin/user-data/no-tax-behavior',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('user-behavior'),
-  h.handleAdminUserDataNoTaxBehavior
-);
-app.get(
-  '/api/admin/user-data/no-tax-behavior/path',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('user-behavior'),
-  h.handleAdminUserDataNoTaxBehaviorPath
-);
-app.get(
-  '/api/admin/user-data/no-tax-behavior/export',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('user-behavior'),
-  h.handleAdminUserDataNoTaxBehaviorExport
+  mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),
+  h.handleAdminAnalyticsDauUsers
 );
 app.get(
   '/api/admin/activated-user-analysis/overview',
@@ -236,18 +206,6 @@ app.post(
   mw.requireAdminMenu('codes'),
   h.handleAdminIssueCodeBatch
 );
-app.post(
-  '/api/admin/issue-weekly-code',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('weekly-codes'),
-  h.handleAdminIssueWeeklyCode
-);
-app.post(
-  '/api/admin/issue-weekly-code-batch',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('weekly-codes'),
-  h.handleAdminIssueWeeklyCodeBatch
-);
 app.get(
   '/api/admin/activation-batch-channels',
   mw.requireAdminAuth,
@@ -263,7 +221,7 @@ app.post(
 app.get(
   '/api/admin/codes',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['codes', 'weekly-codes']),
+  mw.requireAdminMenu('codes'),
   h.handleAdminCodes
 );
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
@@ -276,20 +234,8 @@ app.get('/api/admin/blocked-ips', mw.requireAdminAuth, mw.requireAdminMenu('user
 app.post('/api/admin/user-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeleteUser);
 app.post('/api/admin/user-refund', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRefund);
 app.post('/api/admin/user-restore', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRestore);
+app.post('/api/admin/user-hard-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserHardDelete);
 app.post('/api/admin/users/purge-bots', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminPurgeBotUsers);
-app.get(
-  '/api/admin/analytics/overview',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),
-  h.handleAdminAnalyticsOverview
-);
-app.get(
-  '/api/admin/analytics/dau-users',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),
-  h.handleAdminAnalyticsDauUsers
-);
-app.get('/api/admin/analytics/api-stats', mw.requireAdminAuth, mw.requireAdminMenu('api-analytics'), h.handleAdminAnalyticsApi);
 app.get(
   '/api/admin/analytics/events',
   mw.requireAdminAuth,
@@ -314,29 +260,9 @@ app.post(
   mw.requireAdminAnyMenu(['analytics-tracking', 'analytics']),
   h.handleAdminAnalyticsEventsClear
 );
-app.get(
-  '/api/admin/analytics/devices',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-devices', 'analytics']),
-  h.handleAdminAnalyticsDevices
-);
-app.get(
-  '/api/admin/analytics/device-stats',
-  mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['analytics-devices', 'analytics']),
-  h.handleAdminAnalyticsDeviceStats
-);
 app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminAnalyticsLoginRecent);
 app.get('/api/admin/admin-login-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminLoginLogs);
 app.get('/api/admin/admin-operation-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminOperationLogs);
-app.get('/api/admin/feedback', mw.requireAdminAuth, mw.requireAdminMenu('feedback'), h.handleAdminFeedbackList);
-app.post('/api/admin/feedback/reply', mw.requireAdminAuth, mw.requireAdminMenu('feedback'), h.handleAdminFeedbackReply);
-app.get('/api/admin/chat/conversations', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatConversations);
-app.get('/api/admin/chat/messages', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatMessages);
-app.post('/api/admin/chat/send', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatSend);
-app.post('/api/admin/chat/bot-paused', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatBotPaused);
-app.get('/api/admin/chat/auto-reply', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatAutoReplyGet);
-app.post('/api/admin/chat/auto-reply', mw.requireAdminAuth, mw.requireAdminMenu('chat'), h.handleAdminChatAutoReplySave);
 app.get('/api/admin/accounts', mw.requireAdminAuth, h.handleAdminAccountsList);
 app.get('/api/admin/accounts/activated-users', mw.requireAdminAuth, h.handleAdminAccountActivatedUsers);
 app.post('/api/admin/accounts/create', mw.requireAdminAuth, h.handleAdminAccountsCreate);

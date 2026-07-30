@@ -127,6 +127,47 @@
             }
         }
 
+        /** 渠道分析页：预设注册来源链接（?src=），与代理 ?ch= 分离 */
+        var CHANNEL_SOURCE_LINK_ITEMS = [
+            { key: 'douyin', label: '抖音' },
+            { key: 'bilibili', label: 'B站' },
+            { key: 'tieba', label: '贴吧' },
+            { key: 'zhihu', label: '知乎' },
+            { key: 'friend', label: '朋友介绍' },
+            { key: 'github', label: 'GitHub' }
+        ];
+
+        function renderChannelSourceLinks() {
+            var tbody = document.getElementById('channelLinksTbody');
+            if (!tbody) return;
+            var origin = (window.location && window.location.origin) || '';
+            var rows = CHANNEL_SOURCE_LINK_ITEMS.map(function (item) {
+                var url = origin + '/register.html?src=' + encodeURIComponent(item.key);
+                return (
+                    '<tr>' +
+                    '<td>' +
+                    esc(item.label) +
+                    '</td>' +
+                    '<td><code class="channel-source-link-url">' +
+                    esc(url) +
+                    '</code></td>' +
+                    '<td><button type="button" class="btn-secondary btn-sm btn-copy-channel-src" data-copy="' +
+                    esc(url) +
+                    '">复制</button></td>' +
+                    '</tr>'
+                );
+            });
+            tbody.innerHTML = rows.join('');
+            if (tbody.getAttribute('data-copy-bound') !== '1') {
+                tbody.setAttribute('data-copy-bound', '1');
+                tbody.addEventListener('click', function (e) {
+                    var btn = e.target.closest('.btn-copy-channel-src');
+                    if (!btn) return;
+                    copyCode(btn.getAttribute('data-copy') || '');
+                });
+            }
+        }
+
         function formatLocalDateTimeForExport(d) {
             d = d || new Date();
             var Y = d.getFullYear();
@@ -456,7 +497,7 @@
                 .then(function (data) {
                     var list = (data && data.data && data.data.accounts) || data.data || [];
                     if (!Array.isArray(list)) list = [];
-                    var html = '<option value="">选择下属代理</option>';
+                    var html = '<option value="">可留空（平台自有）</option>';
                     list.forEach(function (a) {
                         if (!a || a.is_super || a.banned) return;
                         var u = String(a.username || '').trim();
@@ -489,21 +530,25 @@
             var origin = window.location.origin || '';
             var html =
                 '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr>' +
-                '<th>渠道 ID</th><th>下属代理</th><th>默认支付</th><th>状态</th><th>备注</th><th>推广链接</th><th></th>' +
+                '<th>渠道 ID</th><th>下属代理</th><th>支付</th><th>仅激活码</th><th>状态</th><th>备注</th><th>推广链接</th><th></th>' +
                 '</tr></thead><tbody>';
             _agentExclusiveChannelsCache.forEach(function (row) {
                 var ch = String(row.channel_id || '');
                 var link = buildAgentPromoLink(origin, 'install_guide.html', ch);
+                var codeOnly = !!(row.hide_self_serve_pay || row.code_only || String(row.default_pricing_abc || '') === 'c');
                 html +=
                     '<tr>' +
                     '<td><code>' +
                     esc(ch) +
                     '</code></td>' +
                     '<td>' +
-                    esc(row.owner_admin_username || '') +
+                    esc(row.owner_admin_username || '—') +
                     '</td>' +
                     '<td>' +
                     esc(String(row.default_pricing_abc || 'c').toUpperCase()) +
+                    '</td>' +
+                    '<td>' +
+                    (codeOnly ? '是' : '否') +
                     '</td>' +
                     '<td>' +
                     (row.enabled ? '启用' : '停用') +
@@ -566,13 +611,12 @@
                     if (abc !== 'a' && abc !== 'b' && abc !== 'c') abc = 'c';
                     var note = (document.getElementById('agentExNote') || {}).value || '';
                     var enabled = !!(document.getElementById('agentExEnabled') || {}).checked;
+                    var hidePayEl = document.getElementById('agentExHideSelfServePay');
+                    var hideSelfServePay = hidePayEl ? !!hidePayEl.checked : abc === 'c';
+                    if (hideSelfServePay) abc = 'c';
                     channelId = String(channelId).trim().toLowerCase();
                     if (!/^[a-z0-9_-]{1,64}$/.test(channelId)) {
                         alert('渠道 ID 无效（字母数字下划线连字符）');
-                        return;
-                    }
-                    if (!String(owner).trim()) {
-                        alert('请选择下属代理账号');
                         return;
                     }
                     saveBtn.disabled = true;
@@ -583,6 +627,8 @@
                             channel_id: channelId,
                             owner_admin_username: String(owner).trim(),
                             default_pricing_abc: abc,
+                            hide_self_serve_pay: hideSelfServePay,
+                            code_only: hideSelfServePay,
                             enabled: enabled,
                             note: note
                         })
@@ -848,89 +894,7 @@
             if (k === 'track_purchase_back_click') {
                 return { button: '购买页返回', page: '购买页（purchase.html）' };
             }
-            if (k === 'track_tax_formula_open') {
-                return { button: '展开个税计算公式', page: '我要咨询 · 税务记录' };
-            }
-            if (k === 'track_tax_formula_close') {
-                return { button: '收起个税计算公式', page: '我要咨询 · 税务记录' };
-            }
-            if (k === 'track_tax_formula_try') {
-                return { button: '个税公式快速试算', page: '我要咨询 · 税务记录' };
-            }
-            if (k === 'track_tax_paste_import_open') {
-                return { button: '打开粘贴导入个税', page: '我要咨询 · 税务记录' };
-            }
-            if (k === 'track_tax_paste_import_fill') {
-                return { button: '粘贴导入填充', page: '我要咨询 · 税务记录' };
-            }
-            if (k === 'track_tax_paste_import_generate') {
-                return { button: '粘贴导入生成', page: '我要咨询 · 税务记录' };
-            }
-            if (k.indexOf('track_jump_') === 0) {
-                var raw = k.substring('track_jump_'.length);
-                if (raw === '_history_back__' || raw === '__history_back__') {
-                    return { button: '返回按钮', page: '返回上一页' };
-                }
-                var m = raw.match(/^([a-z0-9]+)_html(?:_(.*))?$/);
-                var pageKey = m ? m[1] : '';
-                var rest = m && m[2] ? m[2] : '';
-                var button = '页面跳转按钮';
-                if (rest.indexOf('tab_') === 0) {
-                    var tabName = rest.substring(4);
-                    var tabMap = {
-                        employers: '任职信息',
-                        messages: '消息通知',
-                        records: '税务记录',
-                        profile: '个人资料'
-                    };
-                    button = '标签切换：' + (tabMap[tabName] || tabName);
-                } else if (rest && !/^id_tr_|^id_|^tr_/.test(rest)) {
-                    button = '跳转动作：' + rest;
-                }
-                return { button: button, page: pageNameFromTrackKey(pageKey) };
-            }
             return { button: '其他埋点', page: '—' };
-        }
-
-        function computeClientTaxAvgSalary6mLabel(records) {
-            if (!records || !records.length) return '未填写';
-            var byMonth = {};
-            records.forEach(function (r) {
-                var y = r.year != null ? Number(r.year) : NaN;
-                var m = r.month != null ? Number(r.month) : NaN;
-                if (isNaN(y) || isNaN(m)) {
-                    var tp = r.tax_period ? String(r.tax_period).trim() : '';
-                    var mm = tp.match(/^(\d{4})-(\d{1,2})/);
-                    if (mm) {
-                        y = Number(mm[1]);
-                        m = Number(mm[2]);
-                    }
-                }
-                if (isNaN(y) || isNaN(m)) return;
-                var key = y + '-' + String(m).padStart(2, '0');
-                var inc = Number(r.income);
-                if (isNaN(inc)) {
-                    inc = parseFloat(String(r.income || '').replace(/,/g, '')) || 0;
-                }
-                if (inc < 0) inc = 0;
-                if (!byMonth[key]) byMonth[key] = 0;
-                byMonth[key] += inc;
-            });
-            var keys = Object.keys(byMonth).sort().reverse().slice(0, 6);
-            var picked = keys.filter(function (k) {
-                return byMonth[k] > 0;
-            });
-            if (!picked.length) return '未填写';
-            var sum = 0;
-            picked.forEach(function (k) {
-                sum += byMonth[k];
-            });
-            var avg = Math.round((sum / picked.length) * 100) / 100;
-            var label = avg.toFixed(2) + ' 元';
-            if (picked.length < 6) {
-                label += '（' + picked.length + '个月平均）';
-            }
-            return label;
         }
 
         function formatTaxChangeVal(v) {
@@ -1185,16 +1149,6 @@
                 html += '</tbody></table></div>';
             }
 
-            var avgSalLabel =
-                payload && payload.avg_salary_6m_label ? String(payload.avg_salary_6m_label) : '未填写';
-            if ((!avgSalLabel || avgSalLabel === '未填写') && records.length) {
-                avgSalLabel = computeClientTaxAvgSalary6mLabel(records);
-            }
-            html +=
-                '<div style="margin:12px 0 8px 0;padding:10px 12px;background:#f8fbff;border-radius:8px;color:#333;">近六个月平均工资（个税记录收入）：<strong>' +
-                esc(avgSalLabel) +
-                '</strong></div>';
-
             html += buildTodayTaxChangesHtml(payload);
 
             html += '<div style="margin:10px 0 8px 0;color:#666;">个税记录（' + records.length + ' 条）</div>';
@@ -1229,11 +1183,9 @@
             }
         })();
         var codePage = 1;
-        var codeLimit = 10;
-        var weeklyCodePage = 1;
-        var weeklyCodeLimit = 10;
+        var codeLimit = 8;
         var xianyuCodePage = 1;
-        var xianyuCodeLimit = 10;
+        var xianyuCodeLimit = 8;
         var loginLogMode = 'admin-login';
         var loginRecentPage = 1;
         var loginRecentLimit = 20;
@@ -1249,22 +1201,18 @@
         var guestUsersPage = 1;
         var guestUsersLimit = 20;
         var _adminUserDataLoaded = false;
-        var _adminUserBehaviorLoaded = false;
         var _adminActivatedUserAnalysisLoaded = false;
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
-        var _adminWeeklyCodesLoaded = false;
-        var _adminAnalyticsActivitySeen = false;
         var _adminAnalyticsRegisterSeen = false;
         var _adminAnalyticsPurchaseSeen = false;
         var _adminAnalyticsTrackingSeen = false;
-        var _adminAnalyticsDevicesSeen = false;
+        var _adminAnalyticsActivitySeen = false;
         var _adminInstallGuideStatsSeen = false;
         var _adminShareStatsSeen = false;
         var _adminTaxRecordsEditSeen = false;
         var _adminChannelAnalysisSeen = false;
-        var _adminApiAnalyticsSeen = false;
         var _adminServerMonitorSeen = false;
         var _adminBlockedIpsSeen = false;
         var _channelAnalysisChartInstances = [];
@@ -1292,7 +1240,6 @@
                 'analytics-purchase',
                 'settings',
                 'codes',
-                'weekly-codes',
                 'channel-analysis',
                 'install-guide',
                 'install-guide-stats',
@@ -1300,17 +1247,12 @@
                 'users',
                 'guest-users',
                 'users-deleted',
-                'feedback',
-                'chat',
                 'user-data',
                 'tax-records-edit',
-                'user-behavior',
                 'activated-user-analysis',
                 'analytics-register',
-                                'analytics-activity',
+                'analytics-activity',
                 'analytics-tracking',
-                'analytics-devices',
-                'api-analytics',
                 'appearance',
                 'admin-accounts',
                 'login-log',
@@ -1366,7 +1308,9 @@
             }
             var batchWrap = document.getElementById('batchIssueWrap');
             if (batchWrap) {
-                batchWrap.style.display = currentAdminProfile && currentAdminProfile.is_super ? 'flex' : 'none';
+                var showBatch = !!(currentAdminProfile && currentAdminProfile.is_super);
+                batchWrap.classList.toggle('is-hidden', !showBatch);
+                batchWrap.style.display = '';
             }
             var xianyuSection = document.getElementById('xianyuCodesSection');
             if (xianyuSection) {
@@ -1405,27 +1349,21 @@
                 'install-guide': 1,
                 appearance: 1,
                 codes: 1,
-                'weekly-codes': 1,
                 'admin-accounts': 1,
                 users: 1,
                 'guest-users': 1,
                 'users-deleted': 1,
                 'user-data': 1,
                 'tax-records-edit': 1,
-                'user-behavior': 1,
                 'activated-user-analysis': 1,
-                feedback: 1,
-                chat: 1,
                 'analytics-conversion': 1,
-                'analytics-activity': 1,
                 'analytics-register': 1,
+                'analytics-activity': 1,
                                 'analytics-purchase': 1,
                 'analytics-tracking': 1,
-                'analytics-devices': 1,
                 'install-guide-stats': 1,
                 'share-stats': 1,
                 'channel-analysis': 1,
-                'api-analytics': 1,
                 'login-log': 1,
                 'user-login-log': 1,
                 'server-monitor': 1,
@@ -1477,12 +1415,7 @@
             }
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
-                loadUserDataAnalytics();
                 loadUserDataList(1);
-            }
-            if (pageKey === 'user-behavior' && !_adminUserBehaviorLoaded) {
-                _adminUserBehaviorLoaded = true;
-                loadNoTaxBehaviorList(1);
             }
             if (pageKey === 'activated-user-analysis' && !_adminActivatedUserAnalysisLoaded) {
                 _adminActivatedUserAnalysisLoaded = true;
@@ -1496,10 +1429,6 @@
                     loadXianyuCodes(1);
                 }
             }
-            if (pageKey === 'weekly-codes' && !_adminWeeklyCodesLoaded) {
-                _adminWeeklyCodesLoaded = true;
-                loadWeeklyCodes(1);
-            }
             if (pageKey === 'admin-accounts' && !_adminAccountsLoaded) {
                 _adminAccountsLoaded = true;
                 loadAdminAccounts();
@@ -1507,13 +1436,13 @@
             if (pageKey === 'analytics-conversion') {
                 loadAnalyticsConversionPage();
             }
-            if (pageKey === 'analytics-activity' && !_adminAnalyticsActivitySeen) {
-                _adminAnalyticsActivitySeen = true;
-                loadAnalyticsActivityPage();
-            }
             if (pageKey === 'analytics-register' && !_adminAnalyticsRegisterSeen) {
                 _adminAnalyticsRegisterSeen = true;
                 loadAnalyticsRegisterPage();
+            }
+            if (pageKey === 'analytics-activity' && !_adminAnalyticsActivitySeen) {
+                _adminAnalyticsActivitySeen = true;
+                loadAnalyticsActivityPage();
             }
             if (pageKey === 'analytics-purchase') {
                 loadAnalyticsPurchasePage();
@@ -1521,10 +1450,6 @@
             if (pageKey === 'analytics-tracking' && !_adminAnalyticsTrackingSeen) {
                 _adminAnalyticsTrackingSeen = true;
                 loadAnalyticsTrackingPage();
-            }
-            if (pageKey === 'analytics-devices' && !_adminAnalyticsDevicesSeen) {
-                _adminAnalyticsDevicesSeen = true;
-                loadAnalyticsDevicesPage();
             }
             if (pageKey === 'install-guide-stats' && !_adminInstallGuideStatsSeen) {
                 _adminInstallGuideStatsSeen = true;
@@ -1540,11 +1465,8 @@
             }
             if (pageKey === 'channel-analysis' && !_adminChannelAnalysisSeen) {
                 _adminChannelAnalysisSeen = true;
+                renderChannelSourceLinks();
                 loadChannelAnalysis();
-            }
-            if (pageKey === 'api-analytics' && !_adminApiAnalyticsSeen) {
-                _adminApiAnalyticsSeen = true;
-                loadApiAnalyticsPanel();
             }
             if (pageKey === 'server-monitor' && !_adminServerMonitorSeen) {
                 _adminServerMonitorSeen = true;
@@ -1581,423 +1503,27 @@
                 }
                 loadUserLoginRecentPage(1);
             }
-            if (pageKey === 'feedback') {
-                feedbackAdminPage = 1;
-                loadAdminFeedbackPage(1);
             }
-            if (pageKey === 'chat') {
-                chatAdminPage = 1;
-                loadAdminChatAutoReply();
-                loadAdminChatConversations(1);
-                startAdminChatPoll();
-            } else {
-                stopAdminChatPoll();
-            }
+            function safeRunRouteBody() {
+                try {
+                    runRouteBody();
+                } catch (err) {
+                    console.error('applyAdminRoute', pageKey, err);
+                }
             }
             if (window.AdminLoader && AdminLoader.ensureForPage) {
-                AdminLoader.ensureForPage(pageKey).then(runRouteBody).catch(function (e) {
+                AdminLoader.ensureForPage(pageKey).then(safeRunRouteBody).catch(function (e) {
                     console.error('AdminLoader', e);
-                    runRouteBody();
+                    safeRunRouteBody();
                 });
             } else {
-                runRouteBody();
+                safeRunRouteBody();
             }
         }
 
-        var feedbackAdminPage = 1;
-        var feedbackAdminLimit = 15;
-        var feedbackAdminLastItems = [];
-        var feedbackReplyEditingId = null;
-
-        /* chat: /js/admin/modules/chat.js (lazy) — 必须挂 window，供懒加载覆盖；勿改成仅局部 function */
-        var chatAdminPage = 1;
-        var chatAdminLimit = 20;
-        var chatAdminActiveId = 0;
-        var chatAdminLastMsgId = 0;
-        var chatAdminKnownIds = {};
-        var chatAdminPollTimer = null;
-        var chatAdminSending = false;
-        var chatAutoReplyDefaults = { welcome: '', reply: '', ai_prompt: '' };
-        function stopAdminChatPoll() {
-            if (chatAdminPollTimer) {
-                clearInterval(chatAdminPollTimer);
-                chatAdminPollTimer = null;
-            }
-        }
-        window.stopAdminChatPoll = stopAdminChatPoll;
-        window.startAdminChatPoll = function () {};
-        window.loadAdminChatAutoReply = function () {};
-        window.loadAdminChatConversations = function () {};
-        window.loadAdminChatThread = function () {};
-        window.sendAdminChatMessage = function () {};
-        window.resumeAdminChatAi = function () {};
-        window.saveAdminChatAutoReply = function () {};
-        function startAdminChatPoll() {
-            return window.startAdminChatPoll.apply(this, arguments);
-        }
-        function loadAdminChatAutoReply() {
-            return window.loadAdminChatAutoReply.apply(this, arguments);
-        }
-        function loadAdminChatConversations() {
-            return window.loadAdminChatConversations.apply(this, arguments);
-        }
-        function loadAdminChatThread() {
-            return window.loadAdminChatThread.apply(this, arguments);
-        }
-        function sendAdminChatMessage() {
-            return window.sendAdminChatMessage.apply(this, arguments);
-        }
-        function resumeAdminChatAi() {
-            return window.resumeAdminChatAi.apply(this, arguments);
-        }
-        function saveAdminChatAutoReply() {
-            return window.saveAdminChatAutoReply.apply(this, arguments);
-        }
-
-        function closeFeedbackReplyModal() {
-            var bd = document.getElementById('feedbackReplyBackdrop');
-            if (bd) {
-                bd.setAttribute('hidden', '');
-            }
-            feedbackReplyEditingId = null;
-        }
-
-        /* ========== Feedback Management ========== */
-        function openFeedbackReplyModal(row) {
-            feedbackReplyEditingId = row.id;
-            var meta =
-                'ID #' +
-                row.id +
-                ' · 账号 ' +
-                (row.user_id || '') +
-                ' · ' +
-                (row.real_name_snapshot || '—') +
-                '\n\n用户原文：\n' +
-                (row.content || '');
-            document.getElementById('feedbackReplyMeta').textContent = meta;
-            document.getElementById('feedbackReplyText').value =
-                row.admin_reply != null ? String(row.admin_reply) : '';
-            var bd = document.getElementById('feedbackReplyBackdrop');
-            if (bd) {
-                bd.removeAttribute('hidden');
-            }
-        }
-
-        function loadAdminFeedbackPage(page) {
-            if (page != null && isFinite(page)) {
-                feedbackAdminPage = Math.max(1, parseInt(page, 10) || 1);
-            }
-            var typeF = document.getElementById('feedbackFilterType');
-            var activeF = document.getElementById('feedbackFilterActive');
-            var t = typeF ? typeF.value : '';
-            var active = activeF ? activeF.value : '';
-            var q =
-                'api/admin/feedback?page=' +
-                encodeURIComponent(feedbackAdminPage) +
-                '&limit=' +
-                encodeURIComponent(feedbackAdminLimit);
-            if (t) {
-                q += '&type=' + encodeURIComponent(t);
-            }
-            if (active) {
-                q += '&active=' + encodeURIComponent(active);
-            }
-            document.getElementById('feedbackAdminTbody').innerHTML =
-                '<tr><td colspan="10">加载中…</td></tr>';
-            adminFetch(q)
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        document.getElementById('feedbackAdminTbody').innerHTML =
-                            '<tr><td colspan="10">' + esc(j.msg || '加载失败') + '</td></tr>';
-                        return;
-                    }
-                    var items = j.data.items || [];
-                    feedbackAdminLastItems = items;
-                    var total = j.data.total != null ? Number(j.data.total) : 0;
-                    var tp = j.data.total_pages != null ? Number(j.data.total_pages) : 1;
-                    if (tp < 1) {
-                        tp = 1;
-                    }
-                    document.getElementById('feedbackAdminPageInfo').textContent =
-                        '第 ' + feedbackAdminPage + ' / ' + tp + ' 页 · 共 ' + total + ' 条';
-                    var prev = document.getElementById('feedbackAdminPrev');
-                    var next = document.getElementById('feedbackAdminNext');
-                    if (prev) {
-                        prev.disabled = feedbackAdminPage <= 1;
-                    }
-                    if (next) {
-                        next.disabled = feedbackAdminPage >= tp;
-                    }
-                    var html = '';
-                    if (!items.length) {
-                        html = '<tr><td colspan="10">暂无数据</td></tr>';
-                    } else {
-                        items.forEach(function (r) {
-                            var typLabel = r.feedback_type === 'bug' ? 'BUG' : '意见优化';
-                            var actLabel = r.account_active
-                                ? '<span class="badge badge-yes">已激活</span>'
-                                : '<span class="badge badge-no">未激活</span>';
-                            var snippet = String(r.content || '');
-                            if (snippet.length > 100) {
-                                snippet = snippet.substring(0, 100) + '…';
-                            }
-                            var hasReply = r.admin_reply && String(r.admin_reply).trim();
-                            var repSnippet = hasReply ? String(r.admin_reply) : '';
-                            if (repSnippet.length > 60) {
-                                repSnippet = repSnippet.substring(0, 60) + '…';
-                            }
-                            html += '<tr>';
-                            html += '<td class="cell-break">' + esc(r.user_id || '') + '</td>';
-                            html += '<td>' + esc(r.real_name_snapshot || '—') + '</td>';
-                            html += '<td>' + actLabel + '</td>';
-                            html += '<td>' + esc(typLabel) + '</td>';
-                            html += '<td class="cell-break">' + esc(snippet) + '</td>';
-                            html += '<td>' + esc(formatDt(r.created_at)) + '</td>';
-                            html += '<td>' + esc(hasReply ? '已回复' : '待回复') + '</td>';
-                            html +=
-                                '<td class="cell-break">' + esc(hasReply ? repSnippet : '—') + '</td>';
-                            html +=
-                                '<td><button type="button" class="btn-sm btn-copy" data-feedback-id="' +
-                                esc(String(r.id)) +
-                                '">' +
-                                esc(hasReply ? '修改回复' : '回复') +
-                                '</button></td>';
-                            html += '</tr>';
-                        });
-                    }
-                    document.getElementById('feedbackAdminTbody').innerHTML = html;
-                })
-                .catch(function () {
-                    document.getElementById('feedbackAdminTbody').innerHTML =
-                        '<tr><td colspan="9">网络错误</td></tr>';
-                });
-        }
 
         /* ========== API Analytics ========== */
-        function formatApiLatencyMs(ms) {
-            if (ms == null || ms === '' || isNaN(Number(ms))) {
-                return '—';
-            }
-            var n = Math.round(Number(ms));
-            if (n <= 0) {
-                return '—';
-            }
-            if (n >= 1000) {
-                return (n / 1000).toFixed(n >= 10000 ? 1 : 2) + ' s';
-            }
-            return String(n) + ' ms';
-        }
 
-        function loadApiAnalyticsPanel() {
-            var daysA = analyticsPeriodVal(document.getElementById('apiAnalyticsDays'));
-            document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                '<tr><td colspan="4">加载中…</td></tr>';
-            document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                '<tr><td colspan="5">加载中…</td></tr>';
-            var slowTopEl = document.getElementById('apiSlowTopTbody');
-            var slowRecentEl = document.getElementById('apiSlowRecentTbody');
-            var slowHintEl = document.getElementById('apiSlowSummaryHint');
-            var errTopEl = document.getElementById('apiErrorTopTbody');
-            var errRecentEl = document.getElementById('apiErrorRecentTbody');
-            var errHintEl = document.getElementById('apiErrorSummaryHint');
-            if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
-            if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
-            if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
-            if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">加载中…</td></tr>';
-            adminFetch('api/admin/analytics/api-stats?days=' + encodeURIComponent(daysA))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (api) {
-                    if (api.code === 200 && api.data) {
-                        var ch = '';
-                        (api.data.by_category || []).forEach(function (row) {
-                            ch +=
-                                '<tr><td>' +
-                                esc(row.category) +
-                                '</td><td>' +
-                                esc(String(row.calls)) +
-                                '</td><td>' +
-                                esc(formatApiLatencyMs(row.avg_ms)) +
-                                '</td><td>' +
-                                esc(formatApiLatencyMs(row.max_ms)) +
-                                '</td></tr>';
-                        });
-                        document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                            ch || '<tr><td colspan="4">暂无数据</td></tr>';
-                        var rh = '';
-                        (api.data.top_routes || []).slice(0, 10).forEach(function (row) {
-                            rh +=
-                                '<tr><td>' +
-                                esc(row.category) +
-                                '</td><td class="cell-break"><code>' +
-                                esc(row.route_key) +
-                                '</code></td><td>' +
-                                esc(String(row.cnt)) +
-                                '</td><td>' +
-                                esc(formatApiLatencyMs(row.avg_ms)) +
-                                '</td><td>' +
-                                esc(formatApiLatencyMs(row.max_ms)) +
-                                '</td></tr>';
-                        });
-                        document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                            rh || '<tr><td colspan="5">暂无数据</td></tr>';
-
-                        var slow = api.data.slow || {};
-                        var ss = slow.summary || {};
-                        if (slowHintEl) {
-                            var clientHeavy =
-                                (ss.client_cnt || 0) > 0 &&
-                                (ss.server_cnt || 0) === 0;
-                            slowHintEl.textContent =
-                                '阈值 ≥ ' +
-                                (ss.threshold_ms != null ? ss.threshold_ms : 3000) +
-                                ' ms；本区间异常 ' +
-                                (ss.total != null ? ss.total : 0) +
-                                ' 次（服务端 ' +
-                                (ss.server_cnt != null ? ss.server_cnt : 0) +
-                                ' · 客户端 ' +
-                                (ss.client_cnt != null ? ss.client_cnt : 0) +
-                                '）' +
-                                (ss.avg_total_ms != null
-                                    ? '；平均 ' + formatApiLatencyMs(ss.avg_total_ms)
-                                    : '') +
-                                (ss.max_total_ms
-                                    ? '；最大 ' + formatApiLatencyMs(ss.max_total_ms)
-                                    : '') +
-                                '。' +
-                                (clientHeavy
-                                    ? '当前几乎全是客户端网络等待（4G/Cloudflare 排队），服务端处理通常仅数毫秒，不属于 SQL 慢查询。'
-                                    : '「网络」列为客户端整段等待，不等于服务端耗时。');
-                        }
-                        if (slowTopEl) {
-                            var sth = '';
-                            (slow.top_routes || []).forEach(function (row) {
-                                sth +=
-                                    '<tr><td class="cell-break"><code>' +
-                                    esc(row.route_key) +
-                                    '</code></td><td>' +
-                                    esc(String(row.cnt)) +
-                                    '</td><td>' +
-                                    esc(formatApiLatencyMs(row.avg_ms)) +
-                                    '</td><td>' +
-                                    esc(formatApiLatencyMs(row.max_ms)) +
-                                    '</td></tr>';
-                            });
-                            slowTopEl.innerHTML = sth || '<tr><td colspan="4">暂无慢请求</td></tr>';
-                        }
-                        if (slowRecentEl) {
-                            var srh = '';
-                            (slow.recent || []).forEach(function (row) {
-                                srh +=
-                                    '<tr><td>' +
-                                    esc(row.created_at ? formatDt(row.created_at) : '—') +
-                                    '</td><td>' +
-                                    esc(row.source === 'client' ? '客户端' : '服务端') +
-                                    '</td><td class="cell-break"><code>' +
-                                    esc(row.route_key) +
-                                    '</code></td><td>' +
-                                    esc(formatApiLatencyMs(row.net_ms)) +
-                                    '</td><td>' +
-                                    esc(formatApiLatencyMs(row.render_ms)) +
-                                    '</td><td>' +
-                                    esc(formatApiLatencyMs(row.total_ms)) +
-                                    '</td><td>' +
-                                    esc(row.item_count != null ? String(row.item_count) : '—') +
-                                    '</td><td class="cell-break"><code>' +
-                                    esc(row.username || '—') +
-                                    '</code></td><td class="cell-break"><code>' +
-                                    esc(row.client_id || '—') +
-                                    '</code></td><td class="cell-break">' +
-                                    esc(row.page_path || '—') +
-                                    '</td><td>' +
-                                    esc(row.net_type || '—') +
-                                    '</td></tr>';
-                            });
-                            slowRecentEl.innerHTML = srh || '<tr><td colspan="7">暂无明细</td></tr>';
-                        }
-
-                        var errors = api.data.errors || {};
-                        var es = errors.summary || {};
-                        if (errHintEl) {
-                            errHintEl.textContent =
-                                '本区间用户侧 5xx 报错 ' +
-                                (es.total != null ? es.total : 0) +
-                                ' 次（HTTP 5xx ' +
-                                (es.http_5xx_cnt != null ? es.http_5xx_cnt : 0) +
-                                ' · 业务 code 5xx ' +
-                                (es.biz_5xx_cnt != null ? es.biz_5xx_cnt : 0) +
-                                '）；不含管理后台。';
-                        }
-                        if (errTopEl) {
-                            var eth = '';
-                            (errors.top_routes || []).forEach(function (row) {
-                                eth +=
-                                    '<tr><td class="cell-break"><code>' +
-                                    esc(row.route_key) +
-                                    '</code></td><td>' +
-                                    esc(String(row.cnt)) +
-                                    '</td><td>' +
-                                    esc(row.http_status != null ? String(row.http_status) : '—') +
-                                    '</td><td>' +
-                                    esc(row.biz_code != null ? String(row.biz_code) : '—') +
-                                    '</td></tr>';
-                            });
-                            errTopEl.innerHTML = eth || '<tr><td colspan="4">暂无 5xx 报错</td></tr>';
-                        }
-                        if (errRecentEl) {
-                            var erh = '';
-                            (errors.recent || []).forEach(function (row) {
-                                erh +=
-                                    '<tr><td>' +
-                                    esc(row.created_at ? formatDt(row.created_at) : '—') +
-                                    '</td><td class="cell-break"><code>' +
-                                    esc(row.route_key) +
-                                    '</code></td><td>' +
-                                    esc(row.biz_category || '—') +
-                                    '</td><td>' +
-                                    esc(row.http_status != null ? String(row.http_status) : '—') +
-                                    '</td><td>' +
-                                    esc(row.biz_code != null ? String(row.biz_code) : '—') +
-                                    '</td><td>' +
-                                    esc(formatApiLatencyMs(row.latency_ms)) +
-                                    '</td><td class="cell-break"><code>' +
-                                    esc(row.username || '—') +
-                                    '</code></td><td class="cell-break">' +
-                                    esc(row.page_path || '—') +
-                                    '</td><td class="cell-break">' +
-                                    esc(row.ip || '—') +
-                                    '</td></tr>';
-                            });
-                            errRecentEl.innerHTML = erh || '<tr><td colspan="9">暂无明细</td></tr>';
-                        }
-                    } else {
-                        document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                            '<tr><td colspan="4">' + esc(api.msg || '加载失败') + '</td></tr>';
-                        document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                            '<tr><td colspan="5">—</td></tr>';
-                        if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
-                        if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">—</td></tr>';
-                        if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">—</td></tr>';
-                        if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">—</td></tr>';
-                    }
-                })
-                .catch(function () {
-                    document.getElementById('apiAnalyticsCatTbody').innerHTML =
-                        '<tr><td colspan="4">网络错误</td></tr>';
-                    document.getElementById('apiAnalyticsRoutesTbody').innerHTML =
-                        '<tr><td colspan="5">网络错误</td></tr>';
-                    if (slowTopEl) slowTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
-                    if (slowRecentEl) slowRecentEl.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
-                    if (errTopEl) errTopEl.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
-                    if (errRecentEl) errRecentEl.innerHTML = '<tr><td colspan="9">网络错误</td></tr>';
-                });
-        }
-
-        var DAU_USERS_PAGE_LIMIT = 10;
         var ACTIVATE_USERS_PAGE_LIMIT = 15;
         var ACTIVATE_EVENT_KEYS = [
             'track_purchase_page_view',
@@ -2224,130 +1750,6 @@
                 dh || '<tr><td colspan="' + ACTIVATE_EVENTS_TABLE_COLSPAN + '">暂无数据</td></tr>';
         }
 
-        function dauDateDomKey(dateStr) {
-            return String(dateStr || '').replace(/[^0-9]/g, '');
-        }
-
-        function normalizeDauUserRow(item) {
-            if (item != null && typeof item === 'object' && item.username != null) {
-                return {
-                    username: String(item.username),
-                    has_tax_records: !!(item.has_tax_records === true || item.has_tax_records === 1),
-                    tax_modified_on_date: !!(
-                        item.tax_modified_on_date === true || item.tax_modified_on_date === 1
-                    )
-                };
-            }
-            return {
-                username: String(item == null ? '' : item),
-                has_tax_records: false,
-                tax_modified_on_date: false
-            };
-        }
-
-        function dauTaxBadgeHtml(user) {
-            if (user.tax_modified_on_date) {
-                return '<span class="dau-tax-badge modified-today">当日修改个税</span>';
-            }
-            if (user.has_tax_records) {
-                return '<span class="dau-tax-badge has-records">有个税记录</span>';
-            }
-            return '';
-        }
-
-        function renderDauUsersPanel(box, dateStr, data) {
-            if (!box) return;
-            var rawUsers = Array.isArray(data.users)
-                ? data.users
-                : Array.isArray(data.usernames)
-                  ? data.usernames
-                  : [];
-            var users = rawUsers.map(normalizeDauUserRow);
-            var page = Number(data.page) || 1;
-            var total = Number(data.total) || 0;
-            var totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / DAU_USERS_PAGE_LIMIT) || 1);
-            var modifiedOnPage = users.filter(function (u) {
-                return u.tax_modified_on_date;
-            }).length;
-            var hasRecordsOnPage = users.filter(function (u) {
-                return u.has_tax_records;
-            }).length;
-            box.setAttribute('data-date', dateStr);
-            box.setAttribute('data-page', String(page));
-            box.setAttribute('data-loaded', '1');
-
-            var html = '<div class="dau-users-panel">';
-            html +=
-                '<div class="dau-users-title">' +
-                esc(dateStr) +
-                ' 活跃用户账号（共 ' +
-                total +
-                ' 个；本页 ' +
-                modifiedOnPage +
-                ' 个当日修改个税，' +
-                hasRecordsOnPage +
-                ' 个有个税记录）</div>';
-            if (!users.length) {
-                html += '<div class="dau-users-list">暂无账号</div>';
-            } else {
-                html += '<div class="dau-users-list">';
-                users.forEach(function (u, idx) {
-                    var n = (page - 1) * DAU_USERS_PAGE_LIMIT + idx + 1;
-                    var badge = dauTaxBadgeHtml(u);
-                    html += '<div class="dau-user-item">';
-                    html += '<span class="dau-user-name">' + n + '. ' + esc(u.username) + '</span>';
-                    if (badge) html += badge;
-                    html += '</div>';
-                });
-                html += '</div>';
-            }
-            html += '<div class="pagination">';
-            html +=
-                '<button type="button" class="btn-page dau-users-prev" data-date="' +
-                esc(dateStr) +
-                '"' +
-                (page <= 1 ? ' disabled' : '') +
-                '>上一页</button>';
-            html += '<span>第 ' + page + ' / ' + totalPages + ' 页</span>';
-            html +=
-                '<button type="button" class="btn-page dau-users-next" data-date="' +
-                esc(dateStr) +
-                '"' +
-                (page >= totalPages ? ' disabled' : '') +
-                '>下一页</button>';
-            html += '</div></div>';
-            box.innerHTML = html;
-        }
-
-        /* ========== Analytics — Conversion & Funnel ========== */
-        function loadDauUsersPage(dateStr, page, box) {
-            if (!box || !dateStr) return;
-            box.removeAttribute('data-loaded');
-            box.innerHTML = '<div class="dau-users-panel" style="color:#888;">加载中…</div>';
-            adminFetch(
-                'api/admin/analytics/dau-users?date=' +
-                    encodeURIComponent(dateStr) +
-                    '&page=' +
-                    encodeURIComponent(String(page || 1)) +
-                    '&limit=' +
-                    DAU_USERS_PAGE_LIMIT
-            )
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        box.innerHTML =
-                            '<div class="dau-users-panel" style="color:#c00;">' + esc(j.msg || '加载失败') + '</div>';
-                        return;
-                    }
-                    renderDauUsersPanel(box, dateStr, j.data);
-                })
-                .catch(function () {
-                    box.innerHTML = '<div class="dau-users-panel" style="color:#c00;">网络错误</div>';
-                });
-        }
-
         /* ========== Analytics — Pricing A/B ========== */
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
@@ -2461,7 +1863,6 @@
         function loadAnalyticsRegisterPage() {
             loadAnalyticsRegisterPlatform();
             loadAnalyticsRegisterTime();
-            loadAnalyticsRegisterGender();
         }
 
         var PURCHASE_USERS_PAGE_LIMIT = 20;
@@ -2572,6 +1973,215 @@
         }
 
         /* ========== Analytics — Activity / DAU ========== */
+        var DAU_USERS_PAGE_LIMIT = 10;
+
+        function dauDateDomKey(dateStr) {
+            return String(dateStr || '').replace(/[^0-9]/g, '');
+        }
+
+        function normalizeDauUserRow(item) {
+            if (item != null && typeof item === 'object' && item.username != null) {
+                return {
+                    username: String(item.username),
+                    has_tax_records: !!(item.has_tax_records === true || item.has_tax_records === 1),
+                    tax_modified_on_date: !!(
+                        item.tax_modified_on_date === true || item.tax_modified_on_date === 1
+                    )
+                };
+            }
+            return {
+                username: String(item == null ? '' : item),
+                has_tax_records: false,
+                tax_modified_on_date: false
+            };
+        }
+
+        function dauTaxBadgeHtml(user) {
+            if (user.tax_modified_on_date) {
+                return '<span class="dau-tax-badge modified-today">当日修改个税</span>';
+            }
+            if (user.has_tax_records) {
+                return '<span class="dau-tax-badge has-records">有个税记录</span>';
+            }
+            return '';
+        }
+
+        function renderDauUsersPanel(box, dateStr, data) {
+            if (!box) return;
+            var rawUsers = Array.isArray(data.users)
+                ? data.users
+                : Array.isArray(data.usernames)
+                  ? data.usernames
+                  : [];
+            var users = rawUsers.map(normalizeDauUserRow);
+            var page = Number(data.page) || 1;
+            var total = Number(data.total) || 0;
+            var totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / DAU_USERS_PAGE_LIMIT) || 1);
+            var modifiedOnPage = users.filter(function (u) {
+                return u.tax_modified_on_date;
+            }).length;
+            var hasRecordsOnPage = users.filter(function (u) {
+                return u.has_tax_records;
+            }).length;
+            box.setAttribute('data-date', dateStr);
+            box.setAttribute('data-page', String(page));
+            box.setAttribute('data-loaded', '1');
+
+            var html = '<div class="dau-users-panel">';
+            html +=
+                '<div class="dau-users-title">' +
+                esc(dateStr) +
+                ' 活跃用户账号（共 ' +
+                total +
+                ' 个；本页 ' +
+                modifiedOnPage +
+                ' 个当日修改个税，' +
+                hasRecordsOnPage +
+                ' 个有个税记录）</div>';
+            if (!users.length) {
+                html += '<div class="dau-users-list">暂无账号</div>';
+            } else {
+                html += '<div class="dau-users-list">';
+                users.forEach(function (u, idx) {
+                    var n = (page - 1) * DAU_USERS_PAGE_LIMIT + idx + 1;
+                    var badge = dauTaxBadgeHtml(u);
+                    html += '<div class="dau-user-item">';
+                    html += '<span class="dau-user-name">' + n + '. ' + esc(u.username) + '</span>';
+                    if (badge) html += badge;
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '<div class="pagination">';
+            html +=
+                '<button type="button" class="btn-page dau-users-prev" data-date="' +
+                esc(dateStr) +
+                '"' +
+                (page <= 1 ? ' disabled' : '') +
+                '>上一页</button>';
+            html += '<span>第 ' + page + ' / ' + totalPages + ' 页</span>';
+            html +=
+                '<button type="button" class="btn-page dau-users-next" data-date="' +
+                esc(dateStr) +
+                '"' +
+                (page >= totalPages ? ' disabled' : '') +
+                '>下一页</button>';
+            html += '</div></div>';
+            box.innerHTML = html;
+        }
+
+        function loadDauUsersPage(dateStr, page, box) {
+            if (!box || !dateStr) return;
+            box.removeAttribute('data-loaded');
+            box.innerHTML = '<div class="dau-users-panel" style="color:#888;">加载中…</div>';
+            adminFetch(
+                'api/admin/analytics/dau-users?date=' +
+                    encodeURIComponent(dateStr) +
+                    '&page=' +
+                    encodeURIComponent(String(page || 1)) +
+                    '&limit=' +
+                    DAU_USERS_PAGE_LIMIT
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        box.innerHTML =
+                            '<div class="dau-users-panel" style="color:#c00;">' + esc(j.msg || '加载失败') + '</div>';
+                        return;
+                    }
+                    renderDauUsersPanel(box, dateStr, j.data);
+                })
+                .catch(function () {
+                    box.innerHTML = '<div class="dau-users-panel" style="color:#c00;">网络错误</div>';
+                });
+        }
+
+        function loadAnalyticsActivityPage() {
+            var daysEl = document.getElementById('analyticsOverviewDays');
+            var daysO = analyticsPeriodVal(daysEl);
+            var dauTbody = document.getElementById('analyticsDauTbody');
+            var loginTbody = document.getElementById('analyticsLoginTbody');
+            var reasonTbody = document.getElementById('analyticsLoginReasonTbody');
+            if (dauTbody) dauTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            if (loginTbody) loginTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
+            if (reasonTbody) reasonTbody.innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
+            adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (ov) {
+                    if (ov.code === 200 && ov.data && ov.data.dau) {
+                        var dh = '';
+                        ov.data.dau.forEach(function (row) {
+                            var dk = dauDateDomKey(row.date);
+                            dh += '<tr class="dau-summary-row">';
+                            dh += '<td>' + esc(row.date) + '</td>';
+                            dh += '<td>' + esc(String(row.active_users)) + '</td>';
+                            dh +=
+                                '<td><button type="button" class="btn-sm btn-detail btn-dau-users-toggle" data-date="' +
+                                esc(row.date) +
+                                '">查看账号</button></td>';
+                            dh += '</tr>';
+                            dh +=
+                                '<tr id="dau_users_row_' +
+                                dk +
+                                '" class="dau-users-detail-row" style="display:none;"><td colspan="3"><div id="dau_users_box_' +
+                                dk +
+                                '" class="dau-users-box">点击「查看账号」加载列表…</div></td></tr>';
+                        });
+                        if (dauTbody) {
+                            dauTbody.innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
+                        }
+                    } else if (dauTbody) {
+                        dauTbody.innerHTML =
+                            '<tr><td colspan="3">' + esc(ov.msg || '加载失败') + '</td></tr>';
+                    }
+
+                    if (ov.code === 200 && ov.data && ov.data.logins) {
+                        var lh = '';
+                        ov.data.logins.forEach(function (row) {
+                            lh +=
+                                '<tr><td>' +
+                                esc(row.date) +
+                                '</td><td>' +
+                                esc(String(row.success)) +
+                                '</td><td>' +
+                                esc(String(row.fail)) +
+                                '</td></tr>';
+                        });
+                        if (loginTbody) {
+                            loginTbody.innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
+                        }
+                    } else if (loginTbody) {
+                        loginTbody.innerHTML = '<tr><td colspan="3">—</td></tr>';
+                    }
+                    if (ov.code === 200 && ov.data && Array.isArray(ov.data.fail_reasons)) {
+                        var rh2 = '';
+                        ov.data.fail_reasons.forEach(function (row) {
+                            rh2 +=
+                                '<tr><td class="cell-break">' +
+                                esc(row.reason_label || row.reason_key || '未知错误') +
+                                '</td><td>' +
+                                esc(String(row.cnt || 0)) +
+                                '</td></tr>';
+                        });
+                        if (reasonTbody) {
+                            reasonTbody.innerHTML =
+                                rh2 || '<tr><td colspan="2">暂无失败记录</td></tr>';
+                        }
+                    } else if (reasonTbody) {
+                        reasonTbody.innerHTML = '<tr><td colspan="2">—</td></tr>';
+                    }
+                })
+                .catch(function () {
+                    if (dauTbody) dauTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    if (loginTbody) loginTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
+                    if (reasonTbody) reasonTbody.innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
+                });
+        }
+
         function loadAnalyticsPurchasePage() {
             var days = analyticsPeriodVal(document.getElementById('analyticsPurchaseDays'));
             var summaryEl = document.getElementById('analyticsPurchaseSummary');
@@ -2754,71 +2364,6 @@
         }
 
         /* ========== Analytics — Tracking / Activate Events ========== */
-        function loadAnalyticsActivityPage() {
-            var daysO = analyticsPeriodVal(document.getElementById('analyticsOverviewDays'));
-            document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">加载中…</td></tr>';
-            adminFetch('api/admin/analytics/overview?days=' + encodeURIComponent(daysO))
-                .then(function (r) { return r.json(); })
-                .then(function (ov) {
-                    if (ov.code === 200 && ov.data && ov.data.dau) {
-                        var dh = '';
-                        ov.data.dau.forEach(function (row) {
-                            var dk = dauDateDomKey(row.date);
-                            dh += '<tr class="dau-summary-row">';
-                            dh += '<td>' + esc(row.date) + '</td>';
-                            dh += '<td>' + esc(String(row.active_users)) + '</td>';
-                            dh +=
-                                '<td><button type="button" class="btn-sm btn-detail btn-dau-users-toggle" data-date="' +
-                                esc(row.date) +
-                                '">查看账号</button></td>';
-                            dh += '</tr>';
-                            dh +=
-                                '<tr id="dau_users_row_' +
-                                dk +
-                                '" class="dau-users-detail-row" style="display:none;"><td colspan="3"><div id="dau_users_box_' +
-                                dk +
-                                '" class="dau-users-box">点击「查看账号」加载列表…</div></td></tr>';
-                        });
-                        document.getElementById('analyticsDauTbody').innerHTML = dh || '<tr><td colspan="3">暂无数据</td></tr>';
-                    } else {
-                        document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="3">' + esc(ov.msg || '加载失败') + '</td></tr>';
-                    }
-
-                    if (ov.code === 200 && ov.data && ov.data.logins) {
-                        var lh = '';
-                        ov.data.logins.forEach(function (row) {
-                            lh += '<tr><td>' + esc(row.date) + '</td><td>' + esc(String(row.success)) + '</td><td>' + esc(String(row.fail)) + '</td></tr>';
-                        });
-                        document.getElementById('analyticsLoginTbody').innerHTML = lh || '<tr><td colspan="3">暂无数据</td></tr>';
-                    } else {
-                        document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="3">—</td></tr>';
-                    }
-                    if (ov.code === 200 && ov.data && Array.isArray(ov.data.fail_reasons)) {
-                        var rh2 = '';
-                        ov.data.fail_reasons.forEach(function (row) {
-                            rh2 +=
-                                '<tr><td class="cell-break">' +
-                                esc(row.reason_label || row.reason_key || '未知错误') +
-                                '</td><td>' +
-                                esc(String(row.cnt || 0)) +
-                                '</td></tr>';
-                        });
-                        document.getElementById('analyticsLoginReasonTbody').innerHTML =
-                            rh2 || '<tr><td colspan="2">暂无失败记录</td></tr>';
-                    } else {
-                        document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">—</td></tr>';
-                    }
-                })
-                .catch(function () {
-                    document.getElementById('analyticsDauTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
-                    document.getElementById('analyticsLoginTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
-                    document.getElementById('analyticsLoginReasonTbody').innerHTML = '<tr><td colspan="2">网络错误</td></tr>';
-                });
-        }
-
-        /* ========== Analytics — Device Stats ========== */
         function loadAnalyticsTrackingPage() {
             loadInstallTrackStats();
             syncActivateEventsTableHead();
@@ -2897,110 +2442,6 @@
                 }
             });
         }
-
-        function loadAnalyticsDeviceStats() {
-            document.getElementById('deviceStatsOsTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('deviceStatsModelTbody').innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            document.getElementById('deviceStatsSummary').textContent = '加载中…';
-            destroyDeviceStatsCharts();
-            var chartsWrapInit = document.getElementById('deviceStatsChartsWrap');
-            if (chartsWrapInit) {
-                chartsWrapInit.style.display = 'none';
-            }
-            renderDeviceStatsLegend([]);
-            var _mHint = document.getElementById('deviceStatsModelHint');
-            if (_mHint) {
-                _mHint.textContent = '';
-            }
-
-            adminFetch('api/admin/analytics/device-stats')
-                .then(function (r) { return r.json(); })
-                .then(function (dev) {
-                    if (dev.code === 200 && dev.data) {
-                        var totalDev = dev.data.total_devices != null ? Number(dev.data.total_devices) : 0;
-                        document.getElementById('deviceStatsSummary').textContent =
-                            '当前共有 ' + totalDev + ' 条设备指纹记录。';
-                        renderDeviceStatsLegend(dev.data.icon_summary || []);
-                        renderDeviceStatsCharts(dev.data);
-
-                        var osRows = dev.data.by_os || [];
-                        var oh = '';
-                        osRows.forEach(function (row) {
-                            var hint = row.icon_hint ? ' title="' + esc(row.icon_hint) + '"' : '';
-                            oh +=
-                                '<tr' +
-                                hint +
-                                '><td>' +
-                                statIconHtml(row.icon_key) +
-                                '</td><td>' +
-                                esc(row.label) +
-                                '</td><td>' +
-                                esc(String(row.count)) +
-                                '</td></tr>';
-                        });
-                        document.getElementById('deviceStatsOsTbody').innerHTML =
-                            oh || '<tr><td colspan="3">暂无数据</td></tr>';
-
-                        var modelRows = dev.data.by_model || [];
-                        var maxModelRows = 40;
-                        var slice = modelRows.slice(0, maxModelRows);
-                        var mh = '';
-                        slice.forEach(function (row) {
-                            mh += deviceStatRowHtml(row);
-                        });
-                        document.getElementById('deviceStatsModelTbody').innerHTML =
-                            mh || '<tr><td colspan="3">暂无数据</td></tr>';
-                        var mhHint = document.getElementById('deviceStatsModelHint');
-                        if (mhHint) {
-                            if (modelRows.length > maxModelRows) {
-                                mhHint.textContent =
-                                    '仅展示设备数前 ' +
-                                    maxModelRows +
-                                    ' 种机型（共 ' +
-                                    modelRows.length +
-                                    ' 种）。';
-                            } else {
-                                mhHint.textContent = '';
-                            }
-                        }
-                    } else {
-                        renderDeviceStatsLegend([]);
-                        destroyDeviceStatsCharts();
-                        var chartsWrapFail = document.getElementById('deviceStatsChartsWrap');
-                        if (chartsWrapFail) {
-                            chartsWrapFail.style.display = 'none';
-                        }
-                        document.getElementById('deviceStatsSummary').textContent =
-                            esc(dev.msg || '设备分布加载失败');
-                        document.getElementById('deviceStatsOsTbody').innerHTML =
-                            '<tr><td colspan="3">—</td></tr>';
-                        document.getElementById('deviceStatsModelTbody').innerHTML =
-                            '<tr><td colspan="3">—</td></tr>';
-                        var mhHintE = document.getElementById('deviceStatsModelHint');
-                        if (mhHintE) {
-                            mhHintE.textContent = '';
-                        }
-                    }
-                })
-                .catch(function () {
-                    renderDeviceStatsLegend([]);
-                    destroyDeviceStatsCharts();
-                    var chartsWrapErr = document.getElementById('deviceStatsChartsWrap');
-                    if (chartsWrapErr) {
-                        chartsWrapErr.style.display = 'none';
-                    }
-                    document.getElementById('deviceStatsSummary').textContent = '设备分布加载失败（网络错误）';
-                    document.getElementById('deviceStatsOsTbody').innerHTML =
-                        '<tr><td colspan="2">网络错误</td></tr>';
-                    document.getElementById('deviceStatsModelTbody').innerHTML =
-                        '<tr><td colspan="2">网络错误</td></tr>';
-                });
-        }
-
-        function loadAnalyticsDevicesPage() {
-            loadAnalyticsDeviceStats();
-        }
-
 
         function formatMonitorUptime(sec) {
             var s = parseInt(sec, 10) || 0;
@@ -3370,36 +2811,9 @@
                 });
         }
 
-        function loadAnalyticsDevices() {
-            var u = document.getElementById('analyticsDeviceUser').value.trim();
-            if (!u) {
-                alert('请输入用户账号');
-                return;
-            }
-            document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
-            adminFetch('api/admin/analytics/devices?username=' + encodeURIComponent(u))
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code !== 200 || !data.data) {
-                        document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">' + esc(data.msg || '查询失败') + '</td></tr>';
-                        return;
-                    }
-                    var list = data.data.devices || [];
-                    var h = '';
-                    list.forEach(function (d) {
-                        h += '<tr><td class="cell-break">' + esc(d.summary || '—') + '</td><td class="cell-break">' + esc(d.user_agent_short) + '</td><td>' + esc(d.ip_last) + '</td><td>' + esc(d.city_last) + '</td><td>' + formatDt(d.first_seen) + '</td><td>' + formatDt(d.last_seen) + '</td><td>' + esc(String(d.login_count)) + '</td></tr>';
-                    });
-                    document.getElementById('analyticsDevicesTbody').innerHTML = h || '<tr><td colspan="7">暂无设备记录（需客户端携带 X-Client-Device 或发生过登录）</td></tr>';
-                })
-                .catch(function () {
-                    document.getElementById('analyticsDevicesTbody').innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
-                });
-        }
-
         var USER_LOGIN_REASON_FILTER_OPTIONS = [
             { key: 'ok', label: '成功' },
             { key: 'invalid_credentials', label: '账号或密码错误' },
-            { key: 'wrong_password', label: '密码错误' },
             { key: 'empty_password', label: '密码为空' },
             { key: 'account_banned', label: '账号已封禁' },
             { key: 'invalid_username', label: '账号格式错误' },
@@ -3655,6 +3069,30 @@
             }
             html += '</tbody></table></div>' + (collapsed ? '</details>' : '</div>');
             return html;
+        }
+
+        function loadAnalyticsDailyConversion() {
+            var el = document.getElementById('analyticsDailyConversion');
+            if (!el) return;
+            var daysEl = document.getElementById('analyticsConversionDays');
+            var periodVal = analyticsPeriodVal(daysEl);
+            el.textContent = '转化率加载中…';
+            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(periodVal))
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (j) {
+                    if (j.code !== 200 || !j.data) {
+                        analyticsConvCache = null;
+                        el.textContent = j.msg || '转化率加载失败';
+                        return;
+                    }
+                    renderAnalyticsDailyConversion(j.data);
+                })
+                .catch(function () {
+                    analyticsConvCache = null;
+                    el.textContent = '转化率加载失败';
+                });
         }
 
         function renderAnalyticsDailyConversion(data) {
@@ -3942,11 +3380,11 @@
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">页面浏览 (PV)</div><div class="ud-val">' +
                 esc(String(s.page_views != null ? s.page_views : 0)) +
-                '</div></div>';
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">按同一 IP 去重</div></div>';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">独立访客 (UV)</div><div class="ud-val">' +
                 esc(String(s.unique_visitors != null ? s.unique_visitors : 0)) +
-                '</div></div>';
+                '</div><div class="hint" style="margin-top:4px;font-size:12px;">按同一 IP 去重</div></div>';
             html +=
                 '<div class="user-data-stat-card"><div class="ud-label">安装页→注册率</div><div class="ud-val">' +
                 esc(s.register_rate_pct || '—') +
@@ -4054,7 +3492,7 @@
                 '<p class="hint" style="margin:0 0 10px;">' +
                 esc(
                     (dlFunnel && dlFunnel.definition) ||
-                        '按 client_id 对齐（北京时间）。准口径「已打开未注册」最有用。'
+                        '按 IP 优先去重对齐（北京时间）。准口径「已打开未注册」最有用。'
                 ) +
                 (dlFunnel && dlFunnel.using_c_proxy
                     ? ' 当前 C 段暂用「注册弹窗展示」代理（first_open 尚无样本）。'
@@ -4557,26 +3995,75 @@
                 });
         }
 
+        function cnDateTodayYmd() {
+            try {
+                return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+            } catch (e0) {
+                return '';
+            }
+        }
+
         function renderShareStats(data) {
             var el = document.getElementById('shareStatsMount');
             if (!el) return;
             if (!data || !data.summary) {
-                el.textContent = '暂无分享统计数据';
+                el.innerHTML = '<div class="share-stats-empty">暂无分享统计数据</div>';
                 return;
             }
             var s = data.summary;
+            var shareOut = s.share_out != null ? s.share_out : 0;
+            var landPv = s.land_pv || 0;
+            var landUv = s.land_uv || 0;
+            var registerUsers = s.register_users || 0;
+            var loginTimes = s.login_times || 0;
+            var downloadClicks = s.download_clicks || 0;
+            var todayYmd = cnDateTodayYmd();
+
             var html = analyticsPeriodHintHtml(data);
             if (data.note) {
                 html +=
-                    '<p class="hint" style="margin:0 0 12px;">' +
+                    '<p class="hint share-stats-note">' +
                     esc(String(data.note)) +
                     '</p>';
             }
-            html += '<div class="user-data-stats" style="margin-bottom:14px;">';
+
+            html += '<div class="share-funnel" aria-label="分享转化漏斗">';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">分享发出</div><div class="ud-val">' +
-                esc(String(s.share_out != null ? s.share_out : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">首页 ' +
+                '<div class="share-funnel-step"><span class="share-funnel-label">发出</span><span class="share-funnel-val">' +
+                esc(String(shareOut)) +
+                '</span></div>';
+            html += '<div class="share-funnel-arrow" aria-hidden="true">→</div>';
+            html +=
+                '<div class="share-funnel-step"><span class="share-funnel-label">打开 UV</span><span class="share-funnel-val">' +
+                esc(String(landUv)) +
+                '</span><span class="share-funnel-sub">打开率 ' +
+                esc(s.open_rate_pct || '—') +
+                '</span></div>';
+            html += '<div class="share-funnel-arrow" aria-hidden="true">→</div>';
+            html +=
+                '<div class="share-funnel-step is-convert"><span class="share-funnel-label">注册</span><span class="share-funnel-val">' +
+                esc(String(registerUsers)) +
+                '</span><span class="share-funnel-sub">' +
+                esc(s.register_rate_pct || '—') +
+                '</span></div>';
+            html +=
+                '<div class="share-funnel-step"><span class="share-funnel-label">登录</span><span class="share-funnel-val">' +
+                esc(String(loginTimes)) +
+                '</span><span class="share-funnel-sub">' +
+                esc(s.login_rate_pct || '—') +
+                '</span></div>';
+            html +=
+                '<div class="share-funnel-step"><span class="share-funnel-label">下载</span><span class="share-funnel-val">' +
+                esc(String(downloadClicks)) +
+                '</span></div>';
+            html += '</div>';
+
+            html += '<div class="share-kpi-section-label">发出</div>';
+            html += '<div class="share-kpi-grid">';
+            html +=
+                '<div class="share-kpi-card is-emit"><div class="ud-label">分享发出</div><div class="ud-val">' +
+                esc(String(shareOut)) +
+                '</div><div class="share-kpi-sub">首页 ' +
                 esc(String(s.share_home || 0)) +
                 ' · 我的 ' +
                 esc(String(s.share_mine || 0)) +
@@ -4586,65 +4073,107 @@
                 esc(String(s.share_copy || 0)) +
                 '</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">面板 / 完成 / 海报</div><div class="ud-val">' +
+                '<div class="share-kpi-card is-emit"><div class="ud-label">面板打开</div><div class="ud-val">' +
                 esc(String(s.share_panel_open || 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">完成 ' +
+                '</div><div class="share-kpi-sub">完成 ' +
                 esc(String(s.share_done || 0)) +
                 ' · 海报 ' +
                 esc(String(s.share_poster_save || 0)) +
                 '</div></div>';
+            html += '</div>';
+
+            html += '<div class="share-kpi-section-label">触达</div>';
+            html += '<div class="share-kpi-grid">';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">打开 PV / UV</div><div class="ud-val">' +
-                esc(String(s.land_pv || 0)) +
-                ' / ' +
-                esc(String(s.land_uv || 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">from=share 落地</div></div>';
+                '<div class="share-kpi-card is-reach"><div class="ud-label">打开 PV</div><div class="ud-val">' +
+                esc(String(landPv)) +
+                '</div><div class="share-kpi-sub">from=share 落地</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">分享→注册</div><div class="ud-val">' +
-                esc(String(s.register_users || 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">事件 ' +
+                '<div class="share-kpi-card is-reach"><div class="ud-label">打开 UV</div><div class="ud-val">' +
+                esc(String(landUv)) +
+                '</div><div class="share-kpi-sub">发出→打开 ' +
+                esc(s.open_rate_pct || '—') +
+                '</div></div>';
+            html += '</div>';
+
+            var landPages = Array.isArray(data.land_by_page) ? data.land_by_page : [];
+            if (landPages.length) {
+                html += '<div class="share-land-pages">';
+                html += '<p class="share-daily-title">打开落地页拆分</p>';
+                html += '<div class="scroll-x"><table><thead><tr>';
+                html +=
+                    '<th>落地页</th><th class="num">PV</th><th class="num">UV</th></tr></thead><tbody>';
+                landPages.forEach(function (row) {
+                    html +=
+                        '<tr><td>' +
+                        esc(String(row.page || '—')) +
+                        '</td><td class="num">' +
+                        esc(String(row.pv || 0)) +
+                        '</td><td class="num">' +
+                        esc(String(row.uv || 0)) +
+                        '</td></tr>';
+                });
+                html += '</tbody></table></div></div>';
+            }
+
+            html += '<div class="share-kpi-section-label">转化</div>';
+            html += '<div class="share-kpi-grid">';
+            html +=
+                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→注册</div><div class="ud-val">' +
+                esc(String(registerUsers)) +
+                '</div><div class="share-kpi-sub">用户数 · 事件 ' +
                 esc(String(s.register_times || 0)) +
                 ' · 占打开 UV ' +
                 esc(s.register_rate_pct || '—') +
                 '</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">分享→登录</div><div class="ud-val">' +
-                esc(String(s.login_times || 0)) +
+                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→登录</div><div class="ud-val">' +
+                esc(String(loginTimes)) +
+                '</div><div class="share-kpi-sub">占打开 UV ' +
+                esc(s.login_rate_pct || '—') +
                 '</div></div>';
             html +=
-                '<div class="user-data-stat-card"><div class="ud-label">分享→下载</div><div class="ud-val">' +
-                esc(String(s.download_clicks || 0)) +
+                '<div class="share-kpi-card is-convert"><div class="ud-label">分享→下载</div><div class="ud-val">' +
+                esc(String(downloadClicks)) +
                 '</div></div>';
             html += '</div>';
 
             var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
-            html += '<p class="stat" style="margin:0 0 8px;">分日明细（北京时间）</p>';
-            html += '<div class="scroll-x" style="margin-bottom:16px;"><table><thead><tr>';
+            html += '<div class="share-daily">';
             html +=
-                '<th>日期</th><th>发出</th><th>打开 PV</th><th>打开 UV</th><th>注册</th><th>登录</th><th>下载</th></tr></thead><tbody>';
+                '<p class="share-daily-title">分日明细（北京时间；「注册」列为事件次数）</p>';
+            html += '<div class="scroll-x"><table><thead><tr>';
+            html +=
+                '<th>日期</th><th class="num">发出</th><th class="num">打开 PV</th><th class="num">打开 UV</th><th class="num">注册</th><th class="num">登录</th><th class="num">下载</th></tr></thead><tbody>';
             if (!daily.length) {
-                html += '<tr><td colspan="7">暂无分日数据；产生分享/打开后开始累计</td></tr>';
+                html +=
+                    '<tr><td colspan="7" class="share-daily-empty">暂无分日数据；产生分享/打开后开始累计</td></tr>';
             } else {
                 daily.forEach(function (row) {
+                    var day = row.day || '—';
+                    var isToday = todayYmd && String(day).slice(0, 10) === todayYmd;
                     html +=
-                        '<tr><td>' +
-                        esc(row.day || '—') +
-                        '</td><td>' +
+                        '<tr' +
+                        (isToday ? ' class="is-today"' : '') +
+                        '><td>' +
+                        esc(day) +
+                        (isToday ? ' <span class="share-today-tag">今日</span>' : '') +
+                        '</td><td class="num">' +
                         esc(String(row.share_out || 0)) +
-                        '</td><td>' +
+                        '</td><td class="num">' +
                         esc(String(row.land_pv || 0)) +
-                        '</td><td>' +
+                        '</td><td class="num">' +
                         esc(String(row.land_uv || 0)) +
-                        '</td><td>' +
+                        '</td><td class="num">' +
                         esc(String(row.register || 0)) +
-                        '</td><td>' +
+                        '</td><td class="num">' +
                         esc(String(row.login || 0)) +
-                        '</td><td>' +
+                        '</td><td class="num">' +
                         esc(String(row.download || 0)) +
                         '</td></tr>';
                 });
             }
-            html += '</tbody></table></div>';
+            html += '</tbody></table></div></div>';
             el.innerHTML = html;
         }
 
@@ -4653,20 +4182,23 @@
             if (!el) return;
             var daysEl = document.getElementById('shareStatsDays');
             var days = analyticsPeriodVal(daysEl);
-            el.textContent = '加载中…';
+            el.innerHTML = '<div class="share-stats-loading">加载中…</div>';
             adminFetch('api/admin/analytics/share-stats?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
                 })
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
-                        el.textContent = j.msg || '加载失败';
+                        el.innerHTML =
+                            '<div class="share-stats-error">' +
+                            esc(j.msg || '加载失败') +
+                            '</div>';
                         return;
                     }
                     renderShareStats(j.data);
                 })
                 .catch(function () {
-                    el.textContent = '加载失败';
+                    el.innerHTML = '<div class="share-stats-error">加载失败</div>';
                 });
         }
 
@@ -4764,7 +4296,10 @@
 
         function hideTaxEditForm() {
             var wrap = document.getElementById('taxEditFormWrap');
-            if (wrap) wrap.style.display = 'none';
+            if (wrap) {
+                wrap.classList.add('is-hidden');
+                wrap.style.display = '';
+            }
             var idEl = document.getElementById('taxEditId');
             if (idEl) idEl.value = '';
         }
@@ -4801,7 +4336,8 @@
             if (title) title.textContent = rec.id ? '编辑记录' : '新增记录';
             var wrap = document.getElementById('taxEditFormWrap');
             if (wrap) {
-                wrap.style.display = 'block';
+                wrap.classList.remove('is-hidden');
+                wrap.style.display = '';
                 try {
                     wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } catch (eScr) {}
@@ -5323,539 +4859,7 @@
                 });
         }
 
-        function exportNoTaxBehaviorCsv() {
-            adminFetch('api/admin/user-data/no-tax-behavior/export')
-                .then(function (r) {
-                    if (!r.ok) throw new Error('export failed');
-                    return r.blob();
-                })
-                .then(function (blob) {
-                    var a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = 'no_tax_users_' + new Date().toISOString().slice(0, 10) + '.csv';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                })
-                .catch(function () {
-                    alert('导出失败，请稍后重试');
-                });
-        }
 
-        function loadAnalyticsDailyConversion() {
-            var el = document.getElementById('analyticsDailyConversion');
-            if (!el) return;
-            var daysEl = document.getElementById('analyticsConversionDays');
-            var periodVal = analyticsPeriodVal(daysEl);
-            el.textContent = '转化率加载中…';
-            adminFetch('api/admin/analytics/daily-conversion?days=' + encodeURIComponent(periodVal))
-                .then(function (r) { return r.json(); })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        analyticsConvCache = null;
-                        el.textContent = '转化率加载失败';
-                        return;
-                    }
-                    renderAnalyticsDailyConversion(j.data);
-                })
-                .catch(function () {
-                    analyticsConvCache = null;
-                    el.textContent = '转化率加载失败';
-                });
-        }
-
-        function keyForUserData(username) {
-            return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
-        }
-
-        function destroyUdGenderCharts() {
-            _udGenderChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e0) {}
-            });
-            _udGenderChartInstances = [];
-        }
-
-        function chartColorAtIndex(index) {
-            return DEVICE_CHART_FALLBACK[index % DEVICE_CHART_FALLBACK.length];
-        }
-
-        function renderUdGenderCharts(data) {
-            destroyUdGenderCharts();
-            var wrap = document.getElementById('userDataGenderChartsWrap');
-            var grid = document.getElementById('userDataGenderChartsGrid');
-            var emptyEl = document.getElementById('userDataGenderChartsEmpty');
-            var summaryEl = document.getElementById('udGenderSummary');
-            if (!wrap) return;
-
-            wrap.style.display = 'block';
-            var total = Number(data && data.total) || 0;
-            var items = (data && data.items) || [];
-            var male = items.find(function (it) {
-                return it.key === 'male';
-            });
-            var female = items.find(function (it) {
-                return it.key === 'female';
-            });
-            var maleCount = male ? Number(male.count) || 0 : 0;
-            var femaleCount = female ? Number(female.count) || 0 : 0;
-            var malePct = male && male.pct_text ? male.pct_text : '—';
-            var femalePct = female && female.pct_text ? female.pct_text : '—';
-
-            if (summaryEl) {
-                var cards = [
-                    { label: '总人数', val: total + ' 人' },
-                    { label: '男', val: maleCount + ' 人' },
-                    { label: '女', val: femaleCount + ' 人' },
-                    { label: '男占比', val: malePct },
-                    { label: '女占比', val: femalePct }
-                ];
-                var sh = '';
-                cards.forEach(function (c) {
-                    sh +=
-                        '<div class="user-data-stat-card"><div class="ud-label">' +
-                        esc(c.label) +
-                        '</div><div class="ud-val">' +
-                        esc(String(c.val != null ? c.val : '—')) +
-                        '</div></div>';
-                });
-                summaryEl.innerHTML = sh;
-            }
-
-            if (!total || typeof Chart === 'undefined') {
-                if (grid) grid.style.display = 'none';
-                if (emptyEl) {
-                    emptyEl.style.display = 'block';
-                    emptyEl.textContent =
-                        typeof Chart === 'undefined'
-                            ? '图表库未加载，请刷新页面'
-                            : '暂无用户性别数据';
-                }
-                return;
-            }
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (grid) grid.style.display = 'grid';
-
-            var chartItems = items.filter(function (it) {
-                return it.key === 'male' || it.key === 'female';
-            });
-            if (!chartItems.length) {
-                chartItems = items;
-            }
-            var distLabels = chartItems.map(function (it) {
-                return it.label;
-            });
-            var distCounts = chartItems.map(function (it) {
-                return Number(it.count) || 0;
-            });
-            var distColors = chartItems.map(function (it) {
-                return REGISTER_GENDER_CHART_COLORS[it.key] || chartColorAtIndex(0);
-            });
-
-            var barOpts = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-                }
-            };
-
-            _udGenderChartInstances.push(
-                new Chart(document.getElementById('udChartGenderBar'), {
-                    type: 'bar',
-                    data: {
-                        labels: distLabels,
-                        datasets: [
-                            {
-                                label: '用户数',
-                                data: distCounts,
-                                backgroundColor: distColors.map(function (c) {
-                                    return c + 'cc';
-                                }),
-                                borderColor: distColors,
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: barOpts
-                })
-            );
-
-            var pieLegend = {
-                position: 'bottom',
-                labels: { boxWidth: 12, padding: 8, font: { size: 11 } }
-            };
-            _udGenderChartInstances.push(
-                new Chart(document.getElementById('udChartGenderPie'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: distLabels,
-                        datasets: [
-                            {
-                                data: distCounts,
-                                backgroundColor: distColors,
-                                borderWidth: 1,
-                                borderColor: '#fff'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: pieLegend,
-                            tooltip: {
-                                callbacks: {
-                                    label: function (ctx) {
-                                        var v = ctx.parsed || 0;
-                                        var pct = total ? ((v / total) * 100).toFixed(1) : '0';
-                                        return ' ' + ctx.label + ': ' + v + ' 人 (' + pct + '%)';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                })
-            );
-        }
-
-        function destroyUdFemaleAgeCharts() {
-            _udFemaleAgeChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e0) {}
-            });
-            _udFemaleAgeChartInstances = [];
-        }
-
-        function renderUdFemaleAge(data) {
-            destroyUdFemaleAgeCharts();
-            var summaryEl = document.getElementById('udFemaleAgeSummary');
-            var cardsEl = document.getElementById('udFemaleAgeSummaryCards');
-            var tbody = document.getElementById('udFemaleUnder30Tbody');
-            var grid = document.getElementById('udFemaleAgeChartsGrid');
-            var emptyEl = document.getElementById('udFemaleAgeChartsEmpty');
-            if (!summaryEl) return;
-
-            var femaleTotal = Number(data && data.female_total) || 0;
-            var underCount = Number(data && data.under_max_age_count) || 0;
-            var withAge = Number(data && data.with_age_count) || 0;
-            var noAge = Number(data && data.no_age_count) || 0;
-            var filterLabel = (data && data.filter_label) || '未满30岁';
-
-            if (!femaleTotal) {
-                summaryEl.textContent = (data && data.scope_label) || '女性用户' + '：暂无数据。';
-                if (cardsEl) cardsEl.innerHTML = '';
-                if (tbody) tbody.innerHTML = '<tr><td colspan="5">暂无女性用户</td></tr>';
-                if (grid) grid.style.display = 'none';
-                if (emptyEl) {
-                    emptyEl.style.display = 'block';
-                    emptyEl.textContent = '暂无女性用户';
-                }
-                return;
-            }
-
-            summaryEl.textContent =
-                (data.scope_label || '') +
-                '，共 ' +
-                femaleTotal +
-                ' 人；已解析年龄 ' +
-                withAge +
-                ' 人，未知 ' +
-                noAge +
-                ' 人；' +
-                filterLabel +
-                ' ' +
-                underCount +
-                ' 人（占女性 ' +
-                (data.under_max_age_pct_text || '—') +
-                '）。';
-
-            if (cardsEl) {
-                var cards = [
-                    { label: '女性总数', val: femaleTotal + ' 人', hi: false },
-                    { label: filterLabel, val: underCount + ' 人', hi: true },
-                    { label: '占女性比例', val: data.under_max_age_pct_text || '—', hi: true },
-                    { label: '有年龄资料', val: withAge + ' 人', hi: false },
-                    { label: '年龄未知', val: noAge + ' 人', hi: false }
-                ];
-                cardsEl.innerHTML = cards
-                    .map(function (c) {
-                        return (
-                            '<div class="user-data-stat-card' +
-                            (c.hi ? ' gender-female-highlight' : '') +
-                            '"><div class="ud-label">' +
-                            esc(c.label) +
-                            '</div><div class="ud-val">' +
-                            esc(String(c.val)) +
-                            '</div></div>'
-                        );
-                    })
-                    .join('');
-            }
-
-            var list = (data && data.under_max_age_users) || [];
-            if (tbody) {
-                if (!list.length) {
-                    tbody.innerHTML = '<tr><td colspan="5">暂无' + esc(filterLabel) + '的女性用户</td></tr>';
-                } else {
-                    tbody.innerHTML = list
-                        .map(function (u) {
-                            var src =
-                                u.birth_source === 'tax_id'
-                                    ? '税号'
-                                    : u.birth_source === 'profile'
-                                      ? '资料'
-                                      : '—';
-                            return (
-                                '<tr><td>' +
-                                esc(u.username) +
-                                '</td><td>' +
-                                esc(u.real_name || '—') +
-                                '</td><td>' +
-                                esc(String(u.age)) +
-                                '</td><td>' +
-                                esc(u.birth_date || '—') +
-                                '</td><td>' +
-                                esc(src) +
-                                '</td></tr>'
-                            );
-                        })
-                        .join('');
-                }
-            }
-
-            var buckets = (data && data.age_buckets) || [];
-            var chartBuckets = buckets.filter(function (b) {
-                return Number(b.count) > 0;
-            });
-            if (!chartBuckets.length || typeof Chart === 'undefined') {
-                if (grid) grid.style.display = 'none';
-                if (emptyEl) {
-                    emptyEl.style.display = 'block';
-                    emptyEl.textContent =
-                        typeof Chart === 'undefined'
-                            ? '图表库未加载'
-                            : '暂无足够年龄数据生成图表';
-                }
-                return;
-            }
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (grid) grid.style.display = 'grid';
-
-            var labels = chartBuckets.map(function (b) {
-                return b.label;
-            });
-            var counts = chartBuckets.map(function (b) {
-                return Number(b.count) || 0;
-            });
-            var colors = chartBuckets.map(function (b) {
-                return FEMALE_AGE_CHART_COLORS[b.key] || chartColorAtIndex(0);
-            });
-
-            _udFemaleAgeChartInstances.push(
-                new Chart(document.getElementById('udChartFemaleAgeBar'), {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: '人数',
-                                data: counts,
-                                backgroundColor: colors.map(function (c) {
-                                    return c + 'cc';
-                                }),
-                                borderColor: colors,
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-                        }
-                    }
-                })
-            );
-        }
-
-        function isUdGenderSectionOpen() {
-            var el = document.getElementById('udGenderSection');
-            return !!(el && el.open);
-        }
-
-        function isUdFemaleAgeSectionOpen() {
-            var el = document.getElementById('udFemaleAgeSection');
-            return !!(el && el.open);
-        }
-
-        function loadUdFemaleAge() {
-            var daysEl = document.getElementById('udFemaleAgeDays');
-            var days = daysEl ? String(daysEl.value) : '0';
-            var summaryEl = document.getElementById('udFemaleAgeSummary');
-            var tbody = document.getElementById('udFemaleUnder30Tbody');
-            if (summaryEl) summaryEl.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载中…</td></tr>';
-            destroyUdFemaleAgeCharts();
-            adminFetch('api/admin/user-data/female-age?days=' + encodeURIComponent(days) + '&max_age=30')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        if (summaryEl) summaryEl.textContent = j.msg || '女性年龄分析加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
-                        return;
-                    }
-                    renderUdFemaleAge(j.data);
-                })
-                .catch(function () {
-                    if (summaryEl) summaryEl.textContent = '女性年龄分析加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
-                });
-        }
-
-        function loadUdGenderCharts() {
-            var wrap = document.getElementById('userDataGenderChartsWrap');
-            var daysEl = document.getElementById('udFemaleAgeDays');
-            var days = daysEl ? String(daysEl.value) : '0';
-            if (wrap) wrap.style.display = 'block';
-            if (!isUdGenderSectionOpen()) return;
-            if (isUdFemaleAgeSectionOpen()) {
-                loadUdFemaleAge();
-            }
-            adminFetch('api/admin/analytics/register-gender?days=' + encodeURIComponent(days))
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        destroyUdGenderCharts();
-                        var emptyEl = document.getElementById('userDataGenderChartsEmpty');
-                        if (emptyEl) {
-                            emptyEl.style.display = 'block';
-                            emptyEl.textContent = j.msg || '性别分析加载失败';
-                        }
-                        return;
-                    }
-                    renderUdGenderCharts(j.data);
-                })
-                .catch(function () {
-                    destroyUdGenderCharts();
-                    var emptyEl = document.getElementById('userDataGenderChartsEmpty');
-                    if (emptyEl) {
-                        emptyEl.style.display = 'block';
-                        emptyEl.textContent = '性别分析加载失败';
-                    }
-                });
-        }
-
-        function renderUserDataAnalytics(data) {
-            var wrap = document.getElementById('userDataAnalytics');
-            var tablesWrap = document.getElementById('userDataAnalyticsTables');
-            if (!wrap || !data) return;
-            var cards = [
-                { label: '注册用户', val: data.total_users },
-                { label: '有个税记录', val: data.users_with_tax_records },
-                { label: '个税条数', val: data.total_tax_records },
-                { label: '已填家人', val: data.users_with_family },
-                { label: '已绑银行卡', val: data.users_with_bank },
-                { label: '不同公司数', val: data.distinct_companies },
-                { label: '税务机关数', val: data.distinct_tax_authorities }
-            ];
-            var html = '';
-            cards.forEach(function (c) {
-                html +=
-                    '<div class="user-data-stat-card"><div class="ud-label">' +
-                    esc(c.label) +
-                    '</div><div class="ud-val">' +
-                    esc(String(c.val != null ? c.val : '—')) +
-                    '</div></div>';
-            });
-            wrap.innerHTML = html;
-            if (tablesWrap) tablesWrap.style.display = '';
-
-            var buckTb = document.getElementById('userDataSalaryBucketsTbody');
-            if (buckTb) {
-                var bhtml = '';
-                (data.salary_buckets || []).forEach(function (b) {
-                    var isHigh = b.label === '2万以上' || (b.min != null && Number(b.min) >= 20000);
-                    var rowCls = isHigh ? ' class="ud-salary-bucket-high"' : '';
-                    var extra = isHigh ? ' <span class="hint" style="font-weight:normal;">· 见下方图表</span>' : '';
-                    bhtml +=
-                        '<tr' +
-                        rowCls +
-                        '><td>' +
-                        esc(b.label) +
-                        extra +
-                        '</td><td>' +
-                        esc(b.count) +
-                        '</td></tr>';
-                });
-                buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-            var compTb = document.getElementById('userDataTopCompaniesTbody');
-            if (compTb) {
-                var chtml = '';
-                (data.top_companies || []).forEach(function (c) {
-                    chtml += '<tr><td class="cell-break">' + esc(c.name) + '</td><td>' + esc(c.user_count) + '</td></tr>';
-                });
-                compTb.innerHTML = chtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-            var authTb = document.getElementById('userDataTopAuthTbody');
-            if (authTb) {
-                var ahtml = '';
-                (data.top_tax_authorities || []).forEach(function (a) {
-                    ahtml += '<tr><td class="cell-break">' + esc(a.name) + '</td><td>' + esc(a.count) + '</td></tr>';
-                });
-                authTb.innerHTML = ahtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-        }
-
-        var noTaxBehaviorPage = 1;
-        var noTaxBehaviorLimit = 20;
-
-        function renderNoTaxBehaviorSummary(summary) {
-            var wrap = document.getElementById('udNoTaxSummary');
-            if (!wrap || !summary) return;
-            var cards = [
-                { label: '未填个税用户', val: summary.total_no_tax_users },
-                { label: '有页面行为', val: summary.with_page_activity },
-                { label: '无页面行为', val: summary.without_page_activity },
-                { label: '活跃户均停留', val: summary.avg_stay_label || '—' }
-            ];
-            var html = '';
-            cards.forEach(function (c) {
-                html +=
-                    '<div class="user-data-stat-card"><div class="ud-label">' +
-                    esc(c.label) +
-                    '</div><div class="ud-val">' +
-                    esc(String(c.val != null ? c.val : '—')) +
-                    '</div></div>';
-            });
-            wrap.innerHTML = html;
-        }
-
-        function renderNoTaxBehaviorTopPages(topPages) {
-            var tb = document.getElementById('udNoTaxTopPagesTbody');
-            if (!tb) return;
-            if (!topPages || !topPages.length) {
-                tb.innerHTML = '<tr><td colspan="2">暂无</td></tr>';
-                return;
-            }
-            var html = '';
-            topPages.forEach(function (p) {
-                html += '<tr><td>' + esc(p.title || '—') + '</td><td>' + esc(p.hit_count) + '</td></tr>';
-            });
-            tb.innerHTML = html;
-        }
-
-        /* ========== User Behavior / No-Tax ========== */
         function buildNoTaxPathDetailHtml(username, data) {
             var metrics = data.metrics || {};
             var timeline = data.timeline || [];
@@ -5893,124 +4897,6 @@
             return html;
         }
 
-        function loadNoTaxBehaviorList(p) {
-            if (p != null) noTaxBehaviorPage = p;
-            var stat = document.getElementById('udNoTaxListStat');
-            var tbody = document.getElementById('udNoTaxBehaviorTbody');
-            if (stat) stat.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
-            adminFetch(
-                'api/admin/user-data/no-tax-behavior?page=' +
-                    noTaxBehaviorPage +
-                    '&limit=' +
-                    noTaxBehaviorLimit
-            )
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="10">' + esc(j.msg || '加载失败') + '</td></tr>';
-                        return;
-                    }
-                    var d = j.data;
-                    renderNoTaxBehaviorSummary(d.summary || {});
-                    renderNoTaxBehaviorTopPages(d.top_pages || []);
-                    var total = d.total || 0;
-                    if (stat) stat.textContent = '未填个税用户 ' + total + ' 人（本页 ' + (d.items || []).length + ' 人）';
-                    var totalPages = Math.ceil(total / noTaxBehaviorLimit) || 1;
-                    var pageInfo = document.getElementById('udNoTaxPageInfo');
-                    if (pageInfo) {
-                        pageInfo.textContent = '第 ' + noTaxBehaviorPage + ' 页 / 共 ' + totalPages + ' 页';
-                    }
-                    var prevBtn = document.getElementById('udNoTaxPrev');
-                    var nextBtn = document.getElementById('udNoTaxNext');
-                    if (prevBtn) prevBtn.disabled = noTaxBehaviorPage <= 1;
-                    if (nextBtn) nextBtn.disabled = noTaxBehaviorPage >= totalPages;
-                    var html = '';
-                    (d.items || []).forEach(function (row) {
-                        var key = keyForUser(row.username);
-                        html += '<tr>';
-                        html += '<td class="cell-break"><code>' + esc(row.username) + '</code></td>';
-                        html += '<td>' + esc(row.real_name || '—') + '</td>';
-                        html += '<td>' + esc(row.created_at ? formatDt(row.created_at) : '—') + '</td>';
-                        html += '<td>' + esc(row.stay_label || '无记录') + '</td>';
-                        var deviceCell = '—';
-                        if (row.device_model_label) {
-                            deviceCell = row.device_model_label;
-                            if (row.device_os_label) {
-                                deviceCell += ' · ' + row.device_os_label;
-                            }
-                        }
-                        html +=
-                            '<td class="cell-break" style="font-size:12px;color:#555;" title="' +
-                            esc(deviceCell) +
-                            '">' +
-                            esc(deviceCell) +
-                            '</td>';
-                        html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
-                        html += '<td>' + esc(row.distinct_page_count != null ? row.distinct_page_count : 0) + '</td>';
-                        html += '<td class="cell-break" style="font-size:12px;color:#555;">' + esc(row.path_summary || '—') + '</td>';
-                        html += '<td>' + esc(row.last_at ? formatDt(row.last_at) : '—') + '</td>';
-                        html +=
-                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-no-tax-path" data-u="' +
-                            esc(row.username) +
-                            '" data-k="' +
-                            key +
-                            '">路径</button></td>';
-                        html += '</tr>';
-                        html += '<tr id="ud_notax_path_row_' + key + '" class="users-detail-row" style="display:none;">';
-                        html +=
-                            '<td colspan="10"><div id="ud_notax_path_box_' +
-                            key +
-                            '">加载中…</div></td></tr>';
-                    });
-                    if (tbody) {
-                        tbody.innerHTML = html || '<tr><td colspan="10">暂无未填个税用户</td></tr>';
-                        tbody.querySelectorAll('.btn-no-tax-path').forEach(function (btn) {
-                            btn.onclick = function () {
-                                var name = btn.getAttribute('data-u');
-                                var key = btn.getAttribute('data-k');
-                                var row = document.getElementById('ud_notax_path_row_' + key);
-                                var box = document.getElementById('ud_notax_path_box_' + key);
-                                if (!row || !box) return;
-                                var opening = row.style.display === 'none';
-                                if (!opening) {
-                                    row.style.display = 'none';
-                                    btn.textContent = '路径';
-                                    return;
-                                }
-                                row.style.display = '';
-                                btn.textContent = '收起';
-                                box.textContent = '加载中…';
-                                adminFetch(
-                                    'api/admin/user-data/no-tax-behavior/path?username=' +
-                                        encodeURIComponent(name)
-                                )
-                                    .then(function (r) {
-                                        return r.json();
-                                    })
-                                    .then(function (d) {
-                                        if (d.code !== 200 || !d.data) {
-                                            box.textContent = d.msg || '加载失败';
-                                            return;
-                                        }
-                                        box.innerHTML = buildNoTaxPathDetailHtml(name, d.data);
-                                    })
-                                    .catch(function () {
-                                        box.textContent = '网络错误';
-                                    });
-                            };
-                        });
-                    }
-                })
-                .catch(function () {
-                    if (stat) stat.textContent = '加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载失败</td></tr>';
-                });
-        }
-
         var auaUsersPage = 1;
         var auaUsersLimit = 20;
 
@@ -6035,9 +4921,6 @@
                 { label: '已激活用户', val: data.total_activated },
                 { label: '已填写个税', val: data.with_tax_records },
                 { label: '未填写个税', val: data.without_tax_records },
-                { label: '有工资数据', val: data.with_salary_filled },
-                { label: '平均工资', val: data.salary_avg_6m_label || '—' },
-                { label: '工资中位数', val: data.salary_median_6m_label || '—' },
                 { label: '今日日活', val: data.dau_today },
                 { label: '个税总条数', val: data.total_tax_records },
                 {
@@ -6067,26 +4950,6 @@
             wrap.innerHTML = html;
             if (tablesWrap) tablesWrap.style.display = '';
 
-            var salaryStat = document.getElementById('auaSalaryStat');
-            if (salaryStat) {
-                var filled = data.with_salary_filled != null ? Number(data.with_salary_filled) : 0;
-                salaryStat.textContent =
-                    '工资收入分布（近6月平均）· 已填写 ' +
-                    filled +
-                    ' 人 · 平均 ' +
-                    (data.salary_avg_6m_label || '—') +
-                    ' · 中位数 ' +
-                    (data.salary_median_6m_label || '—');
-            }
-
-            var buckTb = document.getElementById('auaSalaryBucketsTbody');
-            if (buckTb) {
-                var bhtml = '';
-                (data.salary_buckets || []).forEach(function (b) {
-                    bhtml += '<tr><td>' + esc(b.label) + '</td><td>' + esc(b.count) + '</td></tr>';
-                });
-                buckTb.innerHTML = bhtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
             var taxTb = document.getElementById('auaTaxBucketsTbody');
             if (taxTb) {
                 var thtml = '';
@@ -6198,12 +5061,10 @@
             var stat = document.getElementById('auaUserListStat');
             var tbody = document.getElementById('auaUsersTbody');
             if (stat) stat.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="12">加载中…</td></tr>';
             var username = document.getElementById('auaFilterUsername');
             var taxF = document.getElementById('auaFilterTax');
             var actF = document.getElementById('auaFilterActivity');
-            var salMin = document.getElementById('auaFilterSalaryMin');
-            var salMax = document.getElementById('auaFilterSalaryMax');
             var actDaysEl = document.getElementById('auaActivityDays');
             var actDays = actDaysEl ? parseInt(actDaysEl.value, 10) || 30 : 30;
             var q =
@@ -6222,12 +5083,6 @@
             if (actF && actF.value) {
                 q += '&activity=' + encodeURIComponent(actF.value);
             }
-            if (salMin && salMin.value.trim()) {
-                q += '&salary_min=' + encodeURIComponent(salMin.value.trim());
-            }
-            if (salMax && salMax.value.trim()) {
-                q += '&salary_max=' + encodeURIComponent(salMax.value.trim());
-            }
             adminFetch(q)
                 .then(function (r) {
                     return r.json();
@@ -6235,7 +5090,7 @@
                 .then(function (j) {
                     if (j.code !== 200 || !j.data) {
                         if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="13">' + esc(j.msg || '加载失败') + '</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="12">' + esc(j.msg || '加载失败') + '</td></tr>';
                         return;
                     }
                     var d = j.data;
@@ -6265,12 +5120,6 @@
                         html += '<tr>';
                         html += '<td class="cell-break"><code>' + esc(row.username) + '</code></td>';
                         html += '<td>' + esc(row.real_name || '—') + '</td>';
-                        html +=
-                            '<td title="' +
-                            esc(row.avg_salary_6m_label || '未填写') +
-                            '">' +
-                            esc(row.avg_salary_6m_label || '未填写') +
-                            '</td>';
                         html += '<td>' + esc(row.has_tax_records ? row.tax_record_count : '未填') + '</td>';
                         html += '<td>' + esc(row.name_change_count != null ? row.name_change_count : 0) + '</td>';
                         html += '<td>' + esc(row.tax_edit_count != null ? row.tax_edit_count : 0) + '</td>';
@@ -6289,12 +5138,12 @@
                         html += '</tr>';
                         html += '<tr id="aua_path_row_' + key + '" class="users-detail-row" style="display:none;">';
                         html +=
-                            '<td colspan="7"><div id="aua_path_box_' +
+                            '<td colspan="12"><div id="aua_path_box_' +
                             key +
                             '">加载中…</div></td></tr>';
                     });
                     if (tbody) {
-                        tbody.innerHTML = html || '<tr><td colspan="7">暂无已激活用户</td></tr>';
+                        tbody.innerHTML = html || '<tr><td colspan="12">暂无已激活用户</td></tr>';
                         tbody.querySelectorAll('.btn-aua-path').forEach(function (btn) {
                             btn.onclick = function () {
                                 var name = btn.getAttribute('data-u');
@@ -6334,28 +5183,7 @@
                 })
                 .catch(function () {
                     if (stat) stat.textContent = '加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
-                });
-        }
-
-        function loadUserDataAnalytics() {
-            var wrap = document.getElementById('userDataAnalytics');
-            if (wrap) wrap.textContent = '分析数据加载中…';
-            destroyUdGenderCharts();
-            destroyUdFemaleAgeCharts();
-            adminFetch('api/admin/user-data/analytics')
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        if (wrap) wrap.textContent = j.msg || '分析加载失败';
-                        return;
-                    }
-                    renderUserDataAnalytics(j.data);
-                })
-                .catch(function () {
-                    if (wrap) wrap.textContent = '分析加载失败';
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="12">加载失败</td></tr>';
                 });
         }
 
@@ -6371,8 +5199,6 @@
             html +=
                 '<div style="margin-bottom:10px;padding:10px 12px;background:#f8fbff;border-radius:8px;">渠道分析：<strong>' +
                 esc(srcLabel) +
-                '</strong> · 近六个月平均工资：<strong>' +
-                esc(data.avg_salary_6m_label || '未填写') +
                 '</strong></div>';
 
             html += '<div style="margin:8px 0;color:#666;">扣缴义务人 / 公司（' + (data.companies || []).length + '）</div>';
@@ -6632,17 +5458,26 @@
             }
         }
 
+        function keyForUserData(username) {
+            return String(username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
+        }
+
         function loadUserDataList(p) {
             if (p != null) userDataPage = p;
             var stat = document.getElementById('userDataStat');
-            var username = document.getElementById('udFilterUsername').value.trim();
-            var realName = document.getElementById('udFilterRealName').value.trim();
-            var company = document.getElementById('udFilterCompany').value.trim();
-            var hasFamily = document.getElementById('udFilterFamily').value;
-            var hasBank = document.getElementById('udFilterBank').value;
-            var salaryMin = document.getElementById('udFilterSalaryMin').value.trim();
-            var salaryMax = document.getElementById('udFilterSalaryMax').value.trim();
-
+            var tbody = document.getElementById('userDataTbody');
+            var usernameEl = document.getElementById('udFilterUsername');
+            var realNameEl = document.getElementById('udFilterRealName');
+            var companyEl = document.getElementById('udFilterCompany');
+            var familyEl = document.getElementById('udFilterFamily');
+            var bankEl = document.getElementById('udFilterBank');
+            var username = usernameEl ? usernameEl.value.trim() : '';
+            var realName = realNameEl ? realNameEl.value.trim() : '';
+            var company = companyEl ? companyEl.value.trim() : '';
+            var hasFamily = familyEl ? familyEl.value : '';
+            var hasBank = bankEl ? bankEl.value : '';
+            if (stat) stat.textContent = '列表加载中…';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10">加载中…</td></tr>';
             var url =
                 'api/admin/user-data?page=' +
                 userDataPage +
@@ -6653,9 +5488,6 @@
             if (company) url += '&company=' + encodeURIComponent(company);
             if (hasFamily !== '') url += '&has_family=' + encodeURIComponent(hasFamily);
             if (hasBank !== '') url += '&has_bank=' + encodeURIComponent(hasBank);
-            if (salaryMin !== '') url += '&salary_min=' + encodeURIComponent(salaryMin);
-            if (salaryMax !== '') url += '&salary_max=' + encodeURIComponent(salaryMax);
-
             adminFetch(url)
                 .then(function (r) {
                     return r.json();
@@ -6663,98 +5495,142 @@
                 .then(function (data) {
                     if (data.code !== 200 || !data.data) {
                         if (stat) stat.textContent = data.msg || '加载失败';
+                        if (tbody) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="10">' + esc(data.msg || '加载失败') + '</td></tr>';
+                        }
                         return;
                     }
                     var list = data.data.items || [];
                     var total = data.data.total || 0;
                     if (stat) stat.textContent = '共 ' + total + ' 条用户数据';
                     var totalPages = Math.ceil(total / userDataLimit) || 1;
-                    document.getElementById('userDataPageInfo').textContent =
-                        '第 ' + userDataPage + ' 页 / 共 ' + totalPages + ' 页';
-                    document.getElementById('userDataPrev').disabled = userDataPage <= 1;
-                    document.getElementById('userDataNext').disabled = userDataPage >= totalPages;
+                    var pageInfo = document.getElementById('userDataPageInfo');
+                    if (pageInfo) {
+                        pageInfo.textContent =
+                            '第 ' + userDataPage + ' 页 / 共 ' + totalPages + ' 页';
+                    }
+                    var prevBtn = document.getElementById('userDataPrev');
+                    var nextBtn = document.getElementById('userDataNext');
+                    if (prevBtn) prevBtn.disabled = userDataPage <= 1;
+                    if (nextBtn) nextBtn.disabled = userDataPage >= totalPages;
 
                     var html = '';
-                    list.forEach(function (row) {
-                        var key = keyForUserData(row.username);
-                        var fam =
-                            row.family_count > 0
-                                ? esc(row.family_summary) + ' <span style="color:#888;">(' + row.family_count + ')</span>'
-                                : '<span style="color:#bbb;">未填写</span>';
-                        var bank =
-                            row.bank_count > 0
-                                ? esc(row.bank_summary) + ' <span style="color:#888;">(' + row.bank_count + ')</span>'
-                                : '<span style="color:#bbb;">未绑定</span>';
-                        html += '<tr>';
-                        html += '<td class="cell-break">' + esc(row.username) + '</td>';
-                        html += '<td>' + esc(row.real_name || '—') + '</td>';
-                        html +=
-                            '<td class="cell-break">' +
-                            esc(row.channel_analysis_label || row.register_source_channel_label || '—') +
-                            '</td>';
-                        html += '<td class="cell-break">' + esc(row.avg_salary_6m_label || '未填写') + '</td>';
-                        html += '<td class="cell-break">' + esc(row.companies_summary || '—') + '</td>';
-                        html +=
-                            '<td class="cell-break">' +
-                            esc(row.id_card_label || row.id_card || '未填写') +
-                            '</td>';
-                        html += '<td class="cell-break">' + esc(row.tax_authorities_summary || '—') + '</td>';
-                        html += '<td class="cell-break">' + fam + '</td>';
-                        html += '<td class="cell-break">' + bank + '</td>';
-                        html += '<td>' + esc(row.tax_record_count) + '</td>';
-                        html +=
-                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-user-data-detail" data-u="' +
-                            esc(row.username) +
-                            '" data-k="' +
-                            key +
-                            '">档案</button></td>';
-                        html += '</tr>';
-                        html += '<tr id="ud_detail_row_' + key + '" class="users-detail-row" style="display:none;">';
-                        html +=
-                            '<td colspan="7"><div id="ud_detail_box_' +
-                            key +
-                            '" style="padding:4px 0;color:#888;">点击「档案」加载完整数据…</div></td>';
-                        html += '</tr>';
-                    });
-                    document.getElementById('userDataTbody').innerHTML =
-                        html || '<tr><td colspan="7">暂无数据</td></tr>';
-
-                    document.getElementById('userDataTbody').querySelectorAll('.btn-user-data-detail').forEach(function (btn) {
-                        btn.onclick = function () {
-                            var name = btn.getAttribute('data-u');
-                            var key = btn.getAttribute('data-k');
-                            var row = document.getElementById('ud_detail_row_' + key);
-                            var box = document.getElementById('ud_detail_box_' + key);
-                            if (!row || !box) return;
-                            var opening = row.style.display === 'none';
-                            if (!opening) {
-                                row.style.display = 'none';
-                                btn.textContent = '档案';
-                                return;
-                            }
-                            row.style.display = '';
-                            btn.textContent = '收起';
-                            box.textContent = '加载中…';
-                            adminFetch('api/admin/user-data/detail?username=' + encodeURIComponent(name))
-                                .then(function (r) {
-                                    return r.json();
-                                })
-                                .then(function (d) {
-                                    if (d.code !== 200 || !d.data) {
-                                        box.textContent = d.msg || '加载失败';
-                                        return;
-                                    }
-                                    box.innerHTML = buildUserDataDetailHtml(name, d.data);
-                                    mountUserDataCertificate(name, d.data);
-                                })
-                                .catch(function () {
-                                    box.textContent = '网络错误';
-                                });
-                        };
-                    });
+                    try {
+                        list.forEach(function (row) {
+                            var key = String(row.username || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
+                            var fam =
+                                row.family_count > 0
+                                    ? esc(row.family_summary) +
+                                      ' <span style="color:#888;">(' +
+                                      row.family_count +
+                                      ')</span>'
+                                    : '<span style="color:#bbb;">未填写</span>';
+                            var bank =
+                                row.bank_count > 0
+                                    ? esc(row.bank_summary) +
+                                      ' <span style="color:#888;">(' +
+                                      row.bank_count +
+                                      ')</span>'
+                                    : '<span style="color:#bbb;">未绑定</span>';
+                            html += '<tr>';
+                            html += '<td class="cell-break">' + esc(row.username) + '</td>';
+                            html += '<td>' + esc(row.real_name || '—') + '</td>';
+                            html +=
+                                '<td class="cell-break">' +
+                                esc(
+                                    row.channel_analysis_label ||
+                                        row.register_source_channel_label ||
+                                        '—'
+                                ) +
+                                '</td>';
+                            html +=
+                                '<td class="cell-break">' +
+                                esc(row.companies_summary || '—') +
+                                '</td>';
+                            html +=
+                                '<td class="cell-break">' +
+                                esc(row.id_card_label || row.id_card || '未填写') +
+                                '</td>';
+                            html +=
+                                '<td class="cell-break">' +
+                                esc(row.tax_authorities_summary || '—') +
+                                '</td>';
+                            html += '<td class="cell-break">' + fam + '</td>';
+                            html += '<td class="cell-break">' + bank + '</td>';
+                            html += '<td>' + esc(row.tax_record_count) + '</td>';
+                            html +=
+                                '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-user-data-detail" data-u="' +
+                                esc(row.username) +
+                                '" data-k="' +
+                                key +
+                                '">档案</button></td>';
+                            html += '</tr>';
+                            html +=
+                                '<tr id="ud_detail_row_' +
+                                key +
+                                '" class="users-detail-row" style="display:none;">';
+                            html +=
+                                '<td colspan="10"><div id="ud_detail_box_' +
+                                key +
+                                '" style="padding:4px 0;color:#888;">点击「档案」加载完整数据…</div></td>';
+                            html += '</tr>';
+                        });
+                    } catch (renderErr) {
+                        console.error('user-data render', renderErr);
+                        if (stat) stat.textContent = '列表渲染失败';
+                        if (tbody) {
+                            tbody.innerHTML =
+                                '<tr><td colspan="10">列表渲染失败，请强制刷新后重试</td></tr>';
+                        }
+                        return;
+                    }
+                    if (tbody) {
+                        tbody.innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
+                        tbody.querySelectorAll('.btn-user-data-detail').forEach(function (btn) {
+                            btn.onclick = function () {
+                                var name = btn.getAttribute('data-u');
+                                var key = btn.getAttribute('data-k');
+                                var row = document.getElementById('ud_detail_row_' + key);
+                                var box = document.getElementById('ud_detail_box_' + key);
+                                if (!row || !box) return;
+                                var opening = row.style.display === 'none';
+                                if (!opening) {
+                                    row.style.display = 'none';
+                                    btn.textContent = '档案';
+                                    return;
+                                }
+                                row.style.display = '';
+                                btn.textContent = '收起';
+                                box.textContent = '加载中…';
+                                adminFetch(
+                                    'api/admin/user-data/detail?username=' +
+                                        encodeURIComponent(name)
+                                )
+                                    .then(function (r) {
+                                        return r.json();
+                                    })
+                                    .then(function (d) {
+                                        if (d.code !== 200 || !d.data) {
+                                            box.textContent = d.msg || '加载失败';
+                                            return;
+                                        }
+                                        box.innerHTML = buildUserDataDetailHtml(name, d.data);
+                                        mountUserDataCertificate(name, d.data);
+                                    })
+                                    .catch(function () {
+                                        box.textContent = '网络错误';
+                                    });
+                            };
+                        });
+                    }
                 })
-                .catch(function () {
+                .catch(function (err) {
+                    console.error('user-data load', err);
                     if (stat) stat.textContent = '加载失败';
+                    if (tbody) {
+                        tbody.innerHTML = '<tr><td colspan="10">加载失败（网络或脚本错误）</td></tr>';
+                    }
                 });
         }
 
@@ -7194,14 +6070,14 @@
             var riskEl = document.getElementById('filterRisk');
             var exact = exactEl && exactEl.checked;
             var risk = riskEl ? riskEl.value : '';
-            var salaryMinEl = document.getElementById('filterSalaryMin');
-            var salaryMaxEl = document.getElementById('filterSalaryMax');
-            var salaryMin = salaryMinEl ? salaryMinEl.value.trim() : '';
-            var salaryMax = salaryMaxEl ? salaryMaxEl.value.trim() : '';
             var taxModEl = document.getElementById('filterTaxModifiedToday');
             var taxModifiedToday = taxModEl ? taxModEl.value : '';
             var loginInactiveEl = document.getElementById('filterLoginInactive');
             var loginInactiveDays = loginInactiveEl ? loginInactiveEl.value : '';
+            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+            var nameChangesGt = nameChangesGtEl ? String(nameChangesGtEl.value || '').trim() : '';
+            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            var taxModDaysGt = taxModDaysGtEl ? String(taxModDaysGtEl.value || '').trim() : '';
 
             var url = 'api/admin/users?page=' + userPage + '&limit=' + userLimit;
             if (username) url += '&username=' + encodeURIComponent(username);
@@ -7210,13 +6086,17 @@
             if (banned !== '') url += '&banned=' + banned;
             if (exact) url += '&exact=1';
             if (risk !== '') url += '&risk=' + encodeURIComponent(risk);
-            if (salaryMin !== '') url += '&salary_min=' + encodeURIComponent(salaryMin);
-            if (salaryMax !== '') url += '&salary_max=' + encodeURIComponent(salaryMax);
             if (taxModifiedToday !== '') {
                 url += '&tax_modified_today=' + encodeURIComponent(taxModifiedToday);
             }
             if (loginInactiveDays !== '') {
                 url += '&login_inactive_days=' + encodeURIComponent(loginInactiveDays);
+            }
+            if (nameChangesGt !== '') {
+                url += '&name_changes_gt=' + encodeURIComponent(nameChangesGt);
+            }
+            if (taxModDaysGt !== '') {
+                url += '&tax_mod_days_gt=' + encodeURIComponent(taxModDaysGt);
             }
 
             adminFetch(url)
@@ -7235,7 +6115,35 @@
 
                     var html = '';
                     list.forEach(function (u) {
-                        var act = u.account_active ? '<span class="badge badge-yes">已激活</span>' : '<span class="badge badge-no">未激活</span>';
+                        var actOwner = u.activation_owner_admin != null ? String(u.activation_owner_admin).trim() : '';
+                        var actOwnerName =
+                            u.activation_owner_admin_full_name != null
+                                ? String(u.activation_owner_admin_full_name).trim()
+                                : '';
+                        var actOwnerLower = actOwner.toLowerCase();
+                        var actOwnedByAdmin = !actOwner || actOwnerLower === 'admin';
+                        var actOwnerDisplay = actOwnerName || actOwner;
+                        var act;
+                        if (!u.account_active) {
+                            act = '<span class="badge badge-no">未激活</span>';
+                        } else if (actOwnedByAdmin) {
+                            act =
+                                '<span class="badge badge-yes" title="' +
+                                (actOwner
+                                    ? '上线：' +
+                                      esc(actOwner) +
+                                      (actOwnerName ? '（' + esc(actOwnerName) + '）' : '')
+                                    : 'admin 名下 / 未标注归属') +
+                                '">已激活</span>';
+                        } else {
+                            act =
+                                '<span class="badge badge-activated-other" title="上线：' +
+                                esc(actOwner) +
+                                (actOwnerName ? '（' + esc(actOwnerName) + '）' : '') +
+                                '（非 admin 名下）">已激活（' +
+                                esc(actOwnerDisplay) +
+                                '）</span>';
+                        }
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var riskCell = '<span class="risk-hint-line">—</span>';
                         if (u.risk && u.risk_messages && u.risk_messages.length) {
@@ -7280,6 +6188,15 @@
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
+                        var taxModDays = Number(u.tax_modified_days) || 0;
+                        if (taxModDays > 0) {
+                            taxModBadge +=
+                                '<div style="margin-top:3px;font-size:11px;color:' +
+                                (taxModDays >= 5 ? '#b45309' : '#888') +
+                                ';" title="有个税记录修改的不同天数">' +
+                                esc(String(taxModDays)) +
+                                '天</div>';
+                        }
                         var nameChangeCount = Number(u.name_change_count) || 0;
                         var nameChangeBadge =
                             '<span style="display:inline-block;margin-left:5px;padding:1px 5px;border-radius:8px;' +
@@ -7316,18 +6233,14 @@
                         html += '<td>' + act + '</td>';
                         html += '<td>' + ban + '</td>';
                         html += '<td class="cell-break">' + riskCell + '</td>';
-                        html +=
-                            '<td class="cell-break">' +
-                            esc(u.avg_salary_6m_label != null ? String(u.avg_salary_6m_label) : '未填写') +
-                            '</td>';
                         html += '<td>' + formatDt(u.created_at) + '</td>';
                         html += '<td class="col-ops">' + ops + '</td>';
                         html += '</tr>';
                         html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html += '<td colspan="11"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
+                        html += '<td colspan="10"><div id="user_detail_box_' + detailKey + '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
                         html += '</tr>';
                     });
-                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="11">暂无数据</td></tr>';
+                    document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
                     
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-user-password').forEach(function (btn) {
@@ -7347,7 +6260,7 @@
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var pick = prompt(
-                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=199永久  B=多档价  C=仅激活码',
+                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=320周卡  B=320周/499月/999年  C=仅激活码',
                                 'A'
                             );
                             if (pick == null) return;
@@ -7560,12 +6473,18 @@
                                 '<td class="col-ops"><span class="badge badge-no" style="margin-right:6px;" title="曾执行激活退款">已退款</span>' +
                                 '<button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
                                 esc(u.username) +
-                                '" data-refunded="1">恢复</button></td>';
+                                '" data-refunded="1">恢复</button> ' +
+                                '<button type="button" class="btn-sm btn-del-user btn-hard-delete-user" data-u="' +
+                                esc(u.username) +
+                                '">彻底删除</button></td>';
                         } else {
                             html +=
                                 '<td class="col-ops"><button type="button" class="btn-sm btn-unban btn-restore-user" data-u="' +
                                 esc(u.username) +
-                                '">恢复</button></td>';
+                                '">恢复</button> ' +
+                                '<button type="button" class="btn-sm btn-del-user btn-hard-delete-user" data-u="' +
+                                esc(u.username) +
+                                '">彻底删除</button></td>';
                         }
                         html += '</tr>';
                     });
@@ -7597,6 +6516,34 @@
                                 .catch(function () { alert('网络错误'); });
                         };
                     });
+                    document.getElementById('deletedUserTbody').querySelectorAll('.btn-hard-delete-user').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u');
+                            if (
+                                !confirm(
+                                    '确定彻底删除账号「' +
+                                        name +
+                                        '」？\n将永久清除数据库中该账号及个税、家人、银行卡、登录记录等相关数据，不可恢复。'
+                                )
+                            ) {
+                                return;
+                            }
+                            if (!confirm('再次确认：彻底删除「' + name + '」，此操作不可撤销。')) return;
+                            adminFetch('api/admin/user-hard-delete', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        loadDeletedUsers();
+                                    } else {
+                                        alert(d.msg || '彻底删除失败');
+                                    }
+                                })
+                                .catch(function () { alert('网络错误'); });
+                        };
+                    });
                 })
                 .catch(function () {
                     document.getElementById('deletedUserStat').textContent = '加载失败';
@@ -7604,16 +6551,23 @@
         }
 
         function codeOwnerLabel(c) {
-            return c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
-                ? esc(String(c.owner_admin_username).trim())
-                : '—';
+            var u =
+                c.owner_admin_username && String(c.owner_admin_username).trim() !== ''
+                    ? String(c.owner_admin_username).trim()
+                    : '';
+            if (!u) return '—';
+            var n =
+                c.owner_admin_full_name && String(c.owner_admin_full_name).trim() !== ''
+                    ? String(c.owner_admin_full_name).trim()
+                    : '';
+            if (n) return esc(u) + '（' + esc(n) + '）';
+            return esc(u);
         }
 
         /* ========== Activation Code Management ========== */
         function renderCodeTableRows(list, options) {
             options = options || {};
             var showChannel = !!options.showChannel;
-            var showWeeklyType = !!options.showWeeklyType;
             var html = '';
             list.forEach(function (c) {
                 var usedAt =
@@ -7627,9 +6581,6 @@
                 html += '<tr>';
                 html += '<td>' + esc(c.code) + '</td>';
                 html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
-                if (showWeeklyType) {
-                    html += '<td>周卡·7天</td>';
-                }
                 html += '<td>' + codeOwnerLabel(c) + '</td>';
                 html += '<td>' + usedBy + '</td>';
                 if (showChannel) {
@@ -7664,7 +6615,7 @@
             var codeExact = !!(codeExactEl && codeExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
             var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
-            var limit = isSuper && !hasFilter ? 20 : codeLimit;
+            var limit = codeLimit;
             var q = 'api/admin/codes?page=' + codePage + '&limit=' + limit + '&scope=general';
             if (ownerAdmin) {
                 q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
@@ -7726,65 +6677,6 @@
                 .catch(function () {});
         }
 
-        function loadWeeklyCodes(p) {
-            if (p != null) weeklyCodePage = p;
-            var ownerAdmin = '';
-            var ownerInput = document.getElementById('weeklyCodeOwnerAdminFilter');
-            if (ownerInput) ownerAdmin = String(ownerInput.value || '').trim();
-            var usedBy = '';
-            var usedInput = document.getElementById('weeklyCodeUsedByFilter');
-            if (usedInput) usedBy = String(usedInput.value || '').trim();
-            var usedExactEl = document.getElementById('weeklyCodeUsedByExact');
-            var usedExact = !!(usedExactEl && usedExactEl.checked);
-            var usageFilterEl = document.getElementById('weeklyCodeUsageFilter');
-            var usageStatus = usageFilterEl ? String(usageFilterEl.value || '').trim() : '';
-            var codeQ = '';
-            var codeInput = document.getElementById('weeklyCodeCodeFilter');
-            if (codeInput) codeQ = String(codeInput.value || '').trim();
-            var codeExactEl = document.getElementById('weeklyCodeCodeExact');
-            var codeExact = !!(codeExactEl && codeExactEl.checked);
-            var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
-            var hasFilter = !!(ownerAdmin || usedBy || usageStatus || codeQ);
-            var limit = isSuper && !hasFilter ? 20 : weeklyCodeLimit;
-            var q = 'api/admin/codes?page=' + weeklyCodePage + '&limit=' + limit + '&scope=weekly';
-            if (ownerAdmin) q += '&owner_admin=' + encodeURIComponent(ownerAdmin);
-            if (usedBy) {
-                q += '&used_by=' + encodeURIComponent(usedBy);
-                if (usedExact) q += '&used_by_exact=1';
-            }
-            if (usageStatus) q += '&usage_status=' + encodeURIComponent(usageStatus);
-            if (codeQ) {
-                q += '&code=' + encodeURIComponent(codeQ);
-                if (codeExact) q += '&code_exact=1';
-            }
-            adminFetch(q)
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data.code !== 200 || !data.data) return;
-                    var list = data.data.codes || [];
-                    var total = data.data.total || 0;
-                    var statEl = document.getElementById('weeklyCodeListStat');
-                    if (statEl) {
-                        statEl.textContent = '共 ' + total + ' 条周卡激活码（7 天时效）';
-                    }
-                    var totalPages = Math.ceil(total / limit) || 1;
-                    var pageInfo = document.getElementById('weeklyCodePageInfo');
-                    var prevBtn = document.getElementById('weeklyCodePrev');
-                    var nextBtn = document.getElementById('weeklyCodeNext');
-                    if (pageInfo) pageInfo.textContent = '第 ' + weeklyCodePage + ' 页 / 共 ' + totalPages + ' 页';
-                    if (prevBtn) prevBtn.disabled = weeklyCodePage <= 1;
-                    if (nextBtn) nextBtn.disabled = weeklyCodePage >= totalPages;
-                    var tbody = document.getElementById('weeklyCodeTbody');
-                    if (tbody) {
-                        var html = renderCodeTableRows(list, { showWeeklyType: true });
-                        tbody.innerHTML = html || '<tr><td colspan="6">暂无周卡激活码</td></tr>';
-                    }
-                })
-                .catch(function () {});
-        }
-
         function loadXianyuCodes(p) {
             if (p != null) {
                 xianyuCodePage = p;
@@ -7809,7 +6701,7 @@
             var codeExact = !!(codeExactEl && codeExactEl.checked);
             var isSuper = !!(currentAdminProfile && currentAdminProfile.is_super);
             var hasFilter = !!(channelFilter || ownerAdmin || usedBy || usageStatus || codeQ);
-            var limit = isSuper && !hasFilter ? 20 : xianyuCodeLimit;
+            var limit = xianyuCodeLimit;
             var q =
                 'api/admin/codes?page=' +
                 xianyuCodePage +
@@ -7903,23 +6795,18 @@
             'guest-users': '游客用户',
             'user-data': '用户数据',
             'tax-records-edit': '个税记录维护',
-            'user-behavior': '用户行为',
             'activated-user-analysis': '激活用户分析',
-            feedback: '用户反馈',
-            chat: '在线客服',
             'login-log': '管理账号登录流水',
             'user-login-log': '普通用户登录流水',
             analytics: '数据统计（旧）',
             'analytics-conversion': '转化与触达',
             'analytics-purchase': '支付页埋点',
-            'analytics-activity': '用户活跃',
             'analytics-register': '注册分析',
+            'analytics-activity': '用户活跃',
             'analytics-tracking': '埋点分析',
-            'analytics-devices': '设备分析',
             'install-guide-stats': '安装页统计',
             'share-stats': '分享统计',
             'channel-analysis': '渠道分析',
-            'api-analytics': '接口统计',
             'admin-accounts': '后台账号权限',
             'server-monitor': '服务器监控',
             'sbdy-demo': '社保演示生成'
@@ -8216,36 +7103,8 @@
                 document.getElementById('udFilterCompany').value = '';
                 document.getElementById('udFilterFamily').value = '';
                 document.getElementById('udFilterBank').value = '';
-                document.getElementById('udFilterSalaryMin').value = '';
-                document.getElementById('udFilterSalaryMax').value = '';
                 loadUserDataList(1);
             };
-        }
-        var btnRefreshUserDataAnalytics = document.getElementById('btnRefreshUserDataAnalytics');
-        if (btnRefreshUserDataAnalytics) {
-            btnRefreshUserDataAnalytics.onclick = function () {
-                loadUserDataAnalytics();
-            };
-        }
-        var btnRefreshUdFemaleAge = document.getElementById('btnRefreshUdFemaleAge');
-        if (btnRefreshUdFemaleAge) {
-            btnRefreshUdFemaleAge.onclick = function () {
-                loadUdFemaleAge();
-            };
-        }
-        var udFemaleAgeDays = document.getElementById('udFemaleAgeDays');
-        if (udFemaleAgeDays) {
-            udFemaleAgeDays.addEventListener('change', function () {
-                if (isUdFemaleAgeSectionOpen()) loadUdFemaleAge();
-            });
-        }
-        var udFemaleAgeSection = document.getElementById('udFemaleAgeSection');
-        if (udFemaleAgeSection) {
-            udFemaleAgeSection.addEventListener('toggle', function () {
-                if (udFemaleAgeSection.open) {
-                    loadUdFemaleAge();
-                }
-            });
         }
         var userDataPrev = document.getElementById('userDataPrev');
         if (userDataPrev) {
@@ -8257,30 +7116,6 @@
         if (userDataNext) {
             userDataNext.onclick = function () {
                 loadUserDataList(userDataPage + 1);
-            };
-        }
-        var btnRefreshNoTaxBehavior = document.getElementById('btnRefreshNoTaxBehavior');
-        if (btnRefreshNoTaxBehavior) {
-            btnRefreshNoTaxBehavior.onclick = function () {
-                loadNoTaxBehaviorList(noTaxBehaviorPage);
-            };
-        }
-        var btnExportNoTaxBehavior = document.getElementById('btnExportNoTaxBehavior');
-        if (btnExportNoTaxBehavior) {
-            btnExportNoTaxBehavior.onclick = function () {
-                exportNoTaxBehaviorCsv();
-            };
-        }
-        var udNoTaxPrev = document.getElementById('udNoTaxPrev');
-        if (udNoTaxPrev) {
-            udNoTaxPrev.onclick = function () {
-                if (noTaxBehaviorPage > 1) loadNoTaxBehaviorList(noTaxBehaviorPage - 1);
-            };
-        }
-        var udNoTaxNext = document.getElementById('udNoTaxNext');
-        if (udNoTaxNext) {
-            udNoTaxNext.onclick = function () {
-                loadNoTaxBehaviorList(noTaxBehaviorPage + 1);
             };
         }
         var btnRefreshAuaOverview = document.getElementById('btnRefreshAuaOverview');
@@ -8302,13 +7137,9 @@
                 var u = document.getElementById('auaFilterUsername');
                 var t = document.getElementById('auaFilterTax');
                 var a = document.getElementById('auaFilterActivity');
-                var sm = document.getElementById('auaFilterSalaryMin');
-                var sx = document.getElementById('auaFilterSalaryMax');
                 if (u) u.value = '';
                 if (t) t.value = '';
                 if (a) a.value = '';
-                if (sm) sm.value = '';
-                if (sx) sx.value = '';
                 loadActivatedUserAnalysisUsers(1);
             };
         }
@@ -8333,14 +7164,14 @@
             if (exactEl) exactEl.checked = false;
             var riskEl = document.getElementById('filterRisk');
             if (riskEl) riskEl.value = '';
-            var salaryMinEl = document.getElementById('filterSalaryMin');
-            var salaryMaxEl = document.getElementById('filterSalaryMax');
-            if (salaryMinEl) salaryMinEl.value = '';
-            if (salaryMaxEl) salaryMaxEl.value = '';
             var taxModReset = document.getElementById('filterTaxModifiedToday');
             if (taxModReset) taxModReset.value = '';
             var loginInactiveReset = document.getElementById('filterLoginInactive');
             if (loginInactiveReset) loginInactiveReset.value = '';
+            var nameChangesGtReset = document.getElementById('filterNameChangesGt');
+            if (nameChangesGtReset) nameChangesGtReset.value = '';
+            var taxModDaysGtReset = document.getElementById('filterTaxModDaysGt');
+            if (taxModDaysGtReset) taxModDaysGtReset.value = '';
             loadUsers(1);
         };
 
@@ -8498,123 +7329,6 @@
         }
         bindCodeCopyDelegation('codeTbody');
         bindCodeCopyDelegation('xianyuCodeTbody');
-        bindCodeCopyDelegation('weeklyCodeTbody');
-
-        var weeklyCodePrev = document.getElementById('weeklyCodePrev');
-        var weeklyCodeNext = document.getElementById('weeklyCodeNext');
-        if (weeklyCodePrev) {
-            weeklyCodePrev.onclick = function () {
-                if (weeklyCodePage > 1) loadWeeklyCodes(weeklyCodePage - 1);
-            };
-        }
-        if (weeklyCodeNext) {
-            weeklyCodeNext.onclick = function () {
-                loadWeeklyCodes(weeklyCodePage + 1);
-            };
-        }
-
-        var btnIssueWeeklyCode = document.getElementById('btnIssueWeeklyCode');
-        if (btnIssueWeeklyCode) {
-            btnIssueWeeklyCode.addEventListener('click', function () {
-                btnIssueWeeklyCode.disabled = true;
-                adminFetch('api/admin/issue-weekly-code', {
-                    method: 'POST',
-                    body: JSON.stringify({})
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200 && data.data && data.data.code) {
-                            var el = document.getElementById('weeklyIssueOut');
-                            if (el) {
-                                el.textContent =
-                                    '周卡激活码：' + data.data.code + '（时效 7 天、仅可激活一个账号）';
-                                el.classList.add('show');
-                            }
-                            loadWeeklyCodes(1);
-                        } else {
-                            alert(data.msg || '生成失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnIssueWeeklyCode.disabled = false;
-                    });
-            });
-        }
-
-        var btnIssueWeeklyBatch = document.getElementById('btnIssueWeeklyBatch');
-        if (btnIssueWeeklyBatch) {
-            btnIssueWeeklyBatch.addEventListener('click', function () {
-                var countEl = document.getElementById('weeklyBatchCount');
-                var count = countEl ? parseInt(countEl.value, 10) : 0;
-                if (!count || count < 1) {
-                    alert('请输入大于 0 的批量数量');
-                    return;
-                }
-                if (count > 5000) {
-                    alert('单次批量数量不能超过 5000');
-                    return;
-                }
-                if (
-                    !confirm(
-                        '将一次性生成 ' +
-                            count +
-                            ' 个周卡激活码（固定 7 天时效），写入数据库并下载 TXT。是否继续？'
-                    )
-                ) {
-                    return;
-                }
-                btnIssueWeeklyBatch.disabled = true;
-                adminFetch('api/admin/issue-weekly-code-batch', {
-                    method: 'POST',
-                    body: JSON.stringify({ count: count })
-                })
-                    .then(function (r) {
-                        return r.json();
-                    })
-                    .then(function (data) {
-                        if (data.code === 200 && data.data && data.data.codes && data.data.codes.length) {
-                            var el = document.getElementById('weeklyIssueOut');
-                            if (el) {
-                                el.textContent =
-                                    '已批量生成 ' + data.data.count + ' 个周卡激活码，正在下载 TXT…';
-                                el.classList.add('show');
-                            }
-                            downloadActivationCodesTxt(data.data.codes, {
-                                channel_label: '周卡',
-                                note: data.data.note || '周卡批量',
-                                filename:
-                                    'weekly-activation-codes-' +
-                                    formatLocalDateTimeForExport(new Date()).replace(/[:\s]/g, '-') +
-                                    '.txt',
-                                generated_at: formatLocalDateTimeForExport(
-                                    data.data.generated_at
-                                        ? new Date(data.data.generated_at)
-                                        : new Date()
-                                ),
-                                owner_admin:
-                                    currentAdminProfile && currentAdminProfile.username
-                                        ? String(currentAdminProfile.username)
-                                        : '—'
-                            });
-                            loadWeeklyCodes(1);
-                        } else {
-                            alert(data.msg || '批量生成失败');
-                        }
-                    })
-                    .catch(function () {
-                        alert('网络错误');
-                    })
-                    .finally(function () {
-                        btnIssueWeeklyBatch.disabled = false;
-                    });
-            });
-        }
-
         document.getElementById('btnIssue').addEventListener('click', function () {
             var btn = document.getElementById('btnIssue');
             var daysEl = document.getElementById('issueGrantDays');
@@ -8870,36 +7584,6 @@
             if (codeExactReset) codeExactReset.checked = false;
             loadCodes(1);
         });
-        var btnSearchWeeklyCodes = document.getElementById('btnSearchWeeklyCodes');
-        if (btnSearchWeeklyCodes) {
-            btnSearchWeeklyCodes.addEventListener('click', function () {
-                loadWeeklyCodes(1);
-            });
-        }
-        var btnRefreshWeeklyCodes = document.getElementById('btnRefreshWeeklyCodes');
-        if (btnRefreshWeeklyCodes) {
-            btnRefreshWeeklyCodes.addEventListener('click', function () {
-                loadWeeklyCodes(1);
-            });
-        }
-        var btnResetWeeklyCodesFilter = document.getElementById('btnResetWeeklyCodesFilter');
-        if (btnResetWeeklyCodesFilter) {
-            btnResetWeeklyCodesFilter.addEventListener('click', function () {
-                var input = document.getElementById('weeklyCodeOwnerAdminFilter');
-                if (input) input.value = '';
-                var usedInput = document.getElementById('weeklyCodeUsedByFilter');
-                if (usedInput) usedInput.value = '';
-                var usedExactEl = document.getElementById('weeklyCodeUsedByExact');
-                if (usedExactEl) usedExactEl.checked = false;
-                var usageFilterReset = document.getElementById('weeklyCodeUsageFilter');
-                if (usageFilterReset) usageFilterReset.value = '';
-                var codeFilterReset = document.getElementById('weeklyCodeCodeFilter');
-                if (codeFilterReset) codeFilterReset.value = '';
-                var codeExactReset = document.getElementById('weeklyCodeCodeExact');
-                if (codeExactReset) codeExactReset.checked = false;
-                loadWeeklyCodes(1);
-            });
-        }
         var btnResetXianyuCodesFilter = document.getElementById('btnResetXianyuCodesFilter');
         if (btnResetXianyuCodesFilter) {
             btnResetXianyuCodesFilter.addEventListener('click', function () {
@@ -9065,40 +7749,11 @@
         });
 
         /* ========== Settings / Configuration ========== */
-        function updateWechatPayQrPreview(displayUrl) {
-            var wrap = document.getElementById('wechatPayQrPreviewWrap');
-            var img = document.getElementById('wechatPayQrPreview');
-            if (!wrap || !img) return;
-            var u = displayUrl != null ? String(displayUrl).trim() : '';
-            if (!u) {
-                wrap.hidden = true;
-                img.removeAttribute('src');
-                return;
-            }
-            img.src = u;
-            wrap.hidden = false;
-        }
-
         function loadAdminSettings() {
             adminFetch('api/admin/settings')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.code === 200 && data.data) {
-                        var qrEl = document.getElementById('wechatPayQrcodeUrl');
-                        if (qrEl) {
-                            qrEl.value =
-                                data.data.wechat_pay_qrcode_url != null
-                                    ? String(data.data.wechat_pay_qrcode_url)
-                                    : '';
-                        }
-                        updateWechatPayQrPreview(
-                            data.data.wechat_pay_qrcode_display_url ||
-                                (qrEl && qrEl.value ? '/' + String(qrEl.value).replace(/^\//, '') : '')
-                        );
-                        var qqEl = document.getElementById('qqAddUrl');
-                        if (qqEl && data.data.qq_add_url != null) {
-                            qqEl.value = String(data.data.qq_add_url);
-                        }
                         var landingAb = data.data.landing_ab;
                         if (landingAb) {
                             var landingEnabled = document.getElementById('landingAbEnabled');
@@ -9218,32 +7873,6 @@
                 .catch(function () {});
         }
 
-        document.getElementById('btnSaveQqAddUrl').addEventListener('click', function () {
-            var btn = document.getElementById('btnSaveQqAddUrl');
-            var url = document.getElementById('qqAddUrl').value.trim();
-            btn.disabled = true;
-            adminFetch('api/admin/settings', {
-                method: 'POST',
-                body: JSON.stringify({ qq_add_url: url })
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data.code === 200) {
-                        alert('QQ 链接已保存');
-                        loadAdminSettings();
-                    } else {
-                        alert(data.msg || '保存失败');
-                    }
-                })
-                .catch(function () {
-                    alert('网络错误');
-                })
-                .finally(function () {
-                    btn.disabled = false;
-                });
-        });
         function updatePricingAbcSplitHint() {
             var aEl = document.getElementById('pricingAbAPercent');
             var bEl = document.getElementById('pricingAbBPercent');
@@ -9452,66 +8081,6 @@
             });
         }
 
-        document.getElementById('btnSaveWechatPayQr').addEventListener('click', function () {
-            var btn = document.getElementById('btnSaveWechatPayQr');
-            var path = document.getElementById('wechatPayQrcodeUrl').value.trim();
-            btn.disabled = true;
-            adminFetch('api/admin/settings', {
-                method: 'POST',
-                body: JSON.stringify({ wechat_pay_qrcode_url: path })
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data.code === 200) {
-                        alert('收款码已保存');
-                        loadAdminSettings();
-                    } else {
-                        alert(data.msg || '保存失败');
-                    }
-                })
-                .catch(function () {
-                    alert('网络错误');
-                })
-                .finally(function () {
-                    btn.disabled = false;
-                });
-        });
-
-        document.getElementById('btnClearWechatPayQr').addEventListener('click', function () {
-            document.getElementById('wechatPayQrcodeUrl').value = '';
-            updateWechatPayQrPreview('');
-        });
-
-        document.querySelector('.wechat-pay-qr-pick').addEventListener('click', function () {
-            var fi = document.querySelector('.wechat-pay-qr-file');
-            if (fi) fi.click();
-        });
-        document.querySelector('.wechat-pay-qr-file').addEventListener('change', function () {
-            var fileInput = document.querySelector('.wechat-pay-qr-file');
-            var f = fileInput.files && fileInput.files[0];
-            if (!f) return;
-            fileInput.disabled = true;
-            adminUploadAsset(f)
-                .then(function (data) {
-                    if (data.code === 200 && data.data && data.data.path) {
-                        document.getElementById('wechatPayQrcodeUrl').value = data.data.path;
-                        updateWechatPayQrPreview('/' + String(data.data.path).replace(/^\//, ''));
-                        alert('已上传，请点击「保存收款码」生效');
-                    } else {
-                        alert(data.msg || '上传失败');
-                    }
-                })
-                .catch(function () {
-                    alert('网络错误');
-                })
-                .finally(function () {
-                    fileInput.disabled = false;
-                    fileInput.value = '';
-                });
-        });
-
         document.getElementById('btnSaveInstallPackages').addEventListener('click', function () {
             var btn = document.getElementById('btnSaveInstallPackages');
             btn.disabled = true;
@@ -9555,7 +8124,7 @@
             'header_male', 'header_female', 'icon_family', 'icon_employer', 'icon_bank',
             'nav_sy_1', 'nav_sy_2', 'nav_db_1', 'nav_db_2', 'nav_bc_1', 'nav_bc_2',
             'nav_xx_1', 'nav_xx_2', 'nav_w_1', 'nav_w_2',
-            'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'daiban_header', 'bancha_header', 'message_header',
+            'shouye_banner', 'shouye_zdfwdb', 'shouye_lb', 'shouye_zdb', 'daiban_header', 'bancha_header', 'message_header',
             'piaojia_goumai', 'piaojia_xiaoshou'
         ];
 
@@ -9705,9 +8274,6 @@
         bindAgentExclusiveChannelsUi();
         loadAdminSettings();
 
-        document.getElementById('btnRefreshAnalytics').addEventListener('click', function () {
-            loadAnalyticsActivityPage();
-        });
         var btnRefreshServerMonitor = document.getElementById('btnRefreshServerMonitor');
         if (btnRefreshServerMonitor) {
             btnRefreshServerMonitor.addEventListener('click', function () {
@@ -9769,6 +8335,65 @@
         document.getElementById('btnRefreshConversion').addEventListener('click', function () {
             loadAnalyticsDailyConversion();
         });
+        var btnRefreshAnalytics = document.getElementById('btnRefreshAnalytics');
+        if (btnRefreshAnalytics) {
+            btnRefreshAnalytics.addEventListener('click', function () {
+                loadAnalyticsActivityPage();
+            });
+        }
+        var analyticsOverviewDays = document.getElementById('analyticsOverviewDays');
+        if (analyticsOverviewDays) {
+            analyticsOverviewDays.addEventListener('change', function () {
+                loadAnalyticsActivityPage();
+            });
+        }
+        var btnGotoLoginLog = document.getElementById('btnGotoLoginLog');
+        if (btnGotoLoginLog) {
+            btnGotoLoginLog.addEventListener('click', function () {
+                location.hash = 'user-login-log';
+            });
+        }
+        var analyticsDauTbody = document.getElementById('analyticsDauTbody');
+        if (analyticsDauTbody) {
+            analyticsDauTbody.addEventListener('click', function (e) {
+                var toggleBtn = e.target.closest('.btn-dau-users-toggle');
+                if (toggleBtn) {
+                    var dateT = toggleBtn.getAttribute('data-date');
+                    var keyT = dauDateDomKey(dateT);
+                    var rowT = document.getElementById('dau_users_row_' + keyT);
+                    var boxT = document.getElementById('dau_users_box_' + keyT);
+                    if (!rowT || !boxT) return;
+                    var opening = rowT.style.display === 'none';
+                    if (!opening) {
+                        rowT.style.display = 'none';
+                        toggleBtn.textContent = '查看账号';
+                        return;
+                    }
+                    rowT.style.display = '';
+                    toggleBtn.textContent = '收起';
+                    if (boxT.getAttribute('data-loaded') === '1') return;
+                    loadDauUsersPage(dateT, 1, boxT);
+                    return;
+                }
+                var prevBtn = e.target.closest('.dau-users-prev');
+                if (prevBtn && !prevBtn.disabled) {
+                    var dateP = prevBtn.getAttribute('data-date');
+                    var boxP = prevBtn.closest('.dau-users-box');
+                    if (!boxP || !dateP) return;
+                    var pageP = (parseInt(boxP.getAttribute('data-page'), 10) || 1) - 1;
+                    loadDauUsersPage(dateP, pageP, boxP);
+                    return;
+                }
+                var nextBtn = e.target.closest('.dau-users-next');
+                if (nextBtn && !nextBtn.disabled) {
+                    var dateN = nextBtn.getAttribute('data-date');
+                    var boxN = nextBtn.closest('.dau-users-box');
+                    if (!boxN || !dateN) return;
+                    var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
+                    loadDauUsersPage(dateN, pageN, boxN);
+                }
+            });
+        }
         document.getElementById('analyticsConversionDays').addEventListener('change', function () {
             loadAnalyticsDailyConversion();
         });
@@ -9830,12 +8455,6 @@
         if (analyticsTrackingDays) {
             analyticsTrackingDays.addEventListener('change', function () {
                 if (_adminAnalyticsTrackingSeen) loadAnalyticsTrackingPage();
-            });
-        }
-        var btnRefreshDeviceStats = document.getElementById('btnRefreshDeviceStats');
-        if (btnRefreshDeviceStats) {
-            btnRefreshDeviceStats.addEventListener('click', function () {
-                loadAnalyticsDeviceStats();
             });
         }
         var btnRefreshInstallTrack = document.getElementById('btnRefreshInstallTrack');
@@ -10040,18 +8659,6 @@
                 loadAnalyticsRegisterPlatform();
             });
         }
-        var btnRefreshRegisterGender = document.getElementById('btnRefreshRegisterGender');
-        if (btnRefreshRegisterGender) {
-            btnRefreshRegisterGender.addEventListener('click', function () {
-                loadAnalyticsRegisterGender();
-            });
-        }
-        var analyticsRegisterGenderDays = document.getElementById('analyticsRegisterGenderDays');
-        if (analyticsRegisterGenderDays) {
-            analyticsRegisterGenderDays.addEventListener('change', function () {
-                loadAnalyticsRegisterGender();
-            });
-        }
         var btnRefreshChannelAnalysis = document.getElementById('btnRefreshChannelAnalysis');
         if (btnRefreshChannelAnalysis) {
             btnRefreshChannelAnalysis.addEventListener('click', function () {
@@ -10102,44 +8709,6 @@
                     btn.disabled = false;
                 });
         });
-        document.getElementById('analyticsDauTbody').addEventListener('click', function (e) {
-            var toggleBtn = e.target.closest('.btn-dau-users-toggle');
-            if (toggleBtn) {
-                var dateT = toggleBtn.getAttribute('data-date');
-                var keyT = dauDateDomKey(dateT);
-                var rowT = document.getElementById('dau_users_row_' + keyT);
-                var boxT = document.getElementById('dau_users_box_' + keyT);
-                if (!rowT || !boxT) return;
-                var opening = rowT.style.display === 'none';
-                if (!opening) {
-                    rowT.style.display = 'none';
-                    toggleBtn.textContent = '查看账号';
-                    return;
-                }
-                rowT.style.display = '';
-                toggleBtn.textContent = '收起';
-                if (boxT.getAttribute('data-loaded') === '1') return;
-                loadDauUsersPage(dateT, 1, boxT);
-                return;
-            }
-            var prevBtn = e.target.closest('.dau-users-prev');
-            if (prevBtn && !prevBtn.disabled) {
-                var dateP = prevBtn.getAttribute('data-date');
-                var boxP = prevBtn.closest('.dau-users-box');
-                if (!boxP || !dateP) return;
-                var pageP = (parseInt(boxP.getAttribute('data-page'), 10) || 1) - 1;
-                loadDauUsersPage(dateP, pageP, boxP);
-                return;
-            }
-            var nextBtn = e.target.closest('.dau-users-next');
-            if (nextBtn && !nextBtn.disabled) {
-                var dateN = nextBtn.getAttribute('data-date');
-                var boxN = nextBtn.closest('.dau-users-box');
-                if (!boxN || !dateN) return;
-                var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
-                loadDauUsersPage(dateN, pageN, boxN);
-            }
-        });
         document.getElementById('activateEventsDailyTbody').addEventListener('click', function (e) {
             var toggleBtn = e.target.closest('.btn-activate-users-toggle');
             if (toggleBtn) {
@@ -10184,54 +8753,55 @@
                 }
                 var pageN = (parseInt(boxN.getAttribute('data-page'), 10) || 1) + 1;
                 loadActivateUsersForDate(dateN, pageN, boxN);
-                return;
             }
-            var purchaseToggle = e.target.closest('.btn-purchase-users-toggle');
-            if (purchaseToggle) {
-                var datePu = purchaseToggle.getAttribute('data-date');
-                var keyPu = purchaseDateDomKey(datePu);
-                var rowPu = document.getElementById('purchase_users_row_' + keyPu);
-                var boxPu = document.getElementById('purchase_users_box_' + keyPu);
-                if (!rowPu || !boxPu) return;
-                var openingPu = rowPu.style.display === 'none';
-                if (!openingPu) {
-                    rowPu.style.display = 'none';
-                    purchaseToggle.textContent = '查看用户';
+        });
+        var purchaseDailyTbody = document.getElementById('analyticsPurchaseDailyTbody');
+        if (purchaseDailyTbody) {
+            purchaseDailyTbody.addEventListener('click', function (e) {
+                var purchaseToggle = e.target.closest('.btn-purchase-users-toggle');
+                if (purchaseToggle) {
+                    var datePu = purchaseToggle.getAttribute('data-date');
+                    var keyPu = purchaseDateDomKey(datePu);
+                    var rowPu = document.getElementById('purchase_users_row_' + keyPu);
+                    var boxPu = document.getElementById('purchase_users_box_' + keyPu);
+                    if (!rowPu || !boxPu) return;
+                    var openingPu = rowPu.style.display === 'none';
+                    if (!openingPu) {
+                        rowPu.style.display = 'none';
+                        purchaseToggle.textContent = '查看用户';
+                        return;
+                    }
+                    rowPu.style.display = '';
+                    purchaseToggle.textContent = '收起';
+                    if (boxPu.getAttribute('data-loaded') === '1') return;
+                    loadPurchaseUsersForDate(datePu, 1, boxPu);
                     return;
                 }
-                rowPu.style.display = '';
-                purchaseToggle.textContent = '收起';
-                if (boxPu.getAttribute('data-loaded') === '1') return;
-                loadPurchaseUsersForDate(datePu, 1, boxPu);
-                return;
-            }
-            var purchasePrev = e.target.closest('.purchase-users-prev');
-            if (purchasePrev && !purchasePrev.disabled) {
-                var datePp = purchasePrev.getAttribute('data-date');
-                var boxPp = purchasePrev.closest('.activate-users-box');
-                if (!boxPp || !datePp) return;
-                loadPurchaseUsersForDate(
-                    datePp,
-                    (parseInt(boxPp.getAttribute('data-page'), 10) || 1) - 1,
-                    boxPp
-                );
-                return;
-            }
-            var purchaseNext = e.target.closest('.purchase-users-next');
-            if (purchaseNext && !purchaseNext.disabled) {
-                var datePn = purchaseNext.getAttribute('data-date');
-                var boxPn = purchaseNext.closest('.activate-users-box');
-                if (!boxPn || !datePn) return;
-                loadPurchaseUsersForDate(
-                    datePn,
-                    (parseInt(boxPn.getAttribute('data-page'), 10) || 1) + 1,
-                    boxPn
-                );
-            }
-        });
-        document.getElementById('btnGotoLoginLog').addEventListener('click', function () {
-            location.hash = 'login-log';
-        });
+                var purchasePrev = e.target.closest('.purchase-users-prev');
+                if (purchasePrev && !purchasePrev.disabled) {
+                    var datePp = purchasePrev.getAttribute('data-date');
+                    var boxPp = purchasePrev.closest('.activate-users-box');
+                    if (!boxPp || !datePp) return;
+                    loadPurchaseUsersForDate(
+                        datePp,
+                        (parseInt(boxPp.getAttribute('data-page'), 10) || 1) - 1,
+                        boxPp
+                    );
+                    return;
+                }
+                var purchaseNext = e.target.closest('.purchase-users-next');
+                if (purchaseNext && !purchaseNext.disabled) {
+                    var datePn = purchaseNext.getAttribute('data-date');
+                    var boxPn = purchaseNext.closest('.activate-users-box');
+                    if (!boxPn || !datePn) return;
+                    loadPurchaseUsersForDate(
+                        datePn,
+                        (parseInt(boxPn.getAttribute('data-page'), 10) || 1) + 1,
+                        boxPn
+                    );
+                }
+            });
+        }
         document.getElementById('loginLogPrev').addEventListener('click', function () {
             if (loginRecentPage > 1) {
                 loadLoginRecentPage(loginRecentPage - 1);
@@ -10275,24 +8845,6 @@
             });
         }
 
-        document.getElementById('feedbackAdminTbody').addEventListener('click', function (e) {
-            var b = e.target.closest('button[data-feedback-id]');
-            if (!b) {
-                return;
-            }
-            var id = parseInt(b.getAttribute('data-feedback-id'), 10);
-            var row = (feedbackAdminLastItems || []).filter(function (x) {
-                return Number(x.id) === id;
-            })[0];
-            if (row) {
-                openFeedbackReplyModal(row);
-            }
-        });
-        document.getElementById('feedbackReplyBackdrop').addEventListener('click', function (e) {
-            if (e.target.id === 'feedbackReplyBackdrop') {
-                closeFeedbackReplyModal();
-            }
-        });
         var userPasswordBackdrop = document.getElementById('userPasswordBackdrop');
         if (userPasswordBackdrop) {
             userPasswordBackdrop.addEventListener('click', function (e) {
@@ -10343,120 +8895,6 @@
                 }
             });
         }
-        document.getElementById('feedbackReplyCancel').addEventListener('click', closeFeedbackReplyModal);
-        document.getElementById('feedbackReplySave').addEventListener('click', function () {
-            if (!feedbackReplyEditingId) {
-                return;
-            }
-            var text = document.getElementById('feedbackReplyText').value.trim();
-            if (!text) {
-                alert('请填写回复内容');
-                return;
-            }
-            adminFetch('api/admin/feedback/reply', {
-                method: 'POST',
-                body: JSON.stringify({ id: feedbackReplyEditingId, reply: text })
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code === 200) {
-                        closeFeedbackReplyModal();
-                        loadAdminFeedbackPage(feedbackAdminPage);
-                    } else {
-                        alert(j.msg || '保存失败');
-                    }
-                })
-                .catch(function () {
-                    alert('网络错误');
-                });
-        });
-        document.getElementById('btnRefreshFeedback').addEventListener('click', function () {
-            loadAdminFeedbackPage(feedbackAdminPage);
-        });
-        document.getElementById('feedbackFilterType').addEventListener('change', function () {
-            loadAdminFeedbackPage(1);
-        });
-        document.getElementById('feedbackFilterActive').addEventListener('change', function () {
-            loadAdminFeedbackPage(1);
-        });
-        document.getElementById('feedbackAdminPrev').addEventListener('click', function () {
-            if (feedbackAdminPage > 1) {
-                loadAdminFeedbackPage(feedbackAdminPage - 1);
-            }
-        });
-        document.getElementById('feedbackAdminNext').addEventListener('click', function () {
-            loadAdminFeedbackPage(feedbackAdminPage + 1);
-        });
-
-        document.getElementById('btnRefreshChatAdmin').addEventListener('click', function () {
-            loadAdminChatConversations(chatAdminPage);
-            if (chatAdminActiveId) loadAdminChatThread(chatAdminActiveId, false);
-        });
-        var btnSaveChatAutoReply = document.getElementById('btnSaveChatAutoReply');
-        if (btnSaveChatAutoReply) {
-            btnSaveChatAutoReply.addEventListener('click', saveAdminChatAutoReply);
-        }
-        var btnResetChatAutoReply = document.getElementById('btnResetChatAutoReply');
-        if (btnResetChatAutoReply) {
-            btnResetChatAutoReply.addEventListener('click', function () {
-                var w = document.getElementById('chatAutoReplyWelcome');
-                var rp = document.getElementById('chatAutoReplyReply');
-                var aiPrompt = document.getElementById('chatAiPrompt');
-                if (w) w.value = chatAutoReplyDefaults.welcome || '';
-                if (rp) rp.value = chatAutoReplyDefaults.reply || '';
-                if (aiPrompt) aiPrompt.value = chatAutoReplyDefaults.ai_prompt || '';
-            });
-        }
-        document.getElementById('chatAdminFilterUnread').addEventListener('change', function () {
-            loadAdminChatConversations(1);
-        });
-        document.getElementById('chatAdminSearchQ').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                loadAdminChatConversations(1);
-            }
-        });
-        document.getElementById('chatAdminPrev').addEventListener('click', function () {
-            if (chatAdminPage > 1) loadAdminChatConversations(chatAdminPage - 1);
-        });
-        document.getElementById('chatAdminNext').addEventListener('click', function () {
-            loadAdminChatConversations(chatAdminPage + 1);
-        });
-        document.getElementById('chatAdminConvTbody').addEventListener('click', function (e) {
-            var tr = e.target.closest('tr[data-conv-id]');
-            if (!tr) return;
-            var id = parseInt(tr.getAttribute('data-conv-id'), 10);
-            if (!id) return;
-            document.querySelectorAll('#chatAdminConvTbody tr.is-active').forEach(function (el) {
-                el.classList.remove('is-active');
-            });
-            tr.classList.add('is-active');
-            loadAdminChatThread(id, false);
-        });
-        document.getElementById('chatAdminSendBtn').addEventListener('click', sendAdminChatMessage);
-        var chatAdminResumeAiBtn = document.getElementById('chatAdminResumeAiBtn');
-        if (chatAdminResumeAiBtn) {
-            chatAdminResumeAiBtn.addEventListener('click', resumeAdminChatAi);
-        }
-        document.getElementById('chatAdminInput').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendAdminChatMessage();
-            }
-        });
-
-        document.getElementById('analyticsOverviewDays').addEventListener('change', function () {
-            if (_adminAnalyticsActivitySeen) loadAnalyticsActivityPage();
-        });
-        document.getElementById('apiAnalyticsDays').addEventListener('change', function () {
-            if (_adminApiAnalyticsSeen) loadApiAnalyticsPanel();
-        });
-        document.getElementById('btnRefreshApiAnalytics').addEventListener('click', function () {
-            loadApiAnalyticsPanel();
-        });
-        document.getElementById('btnLoadDevices').addEventListener('click', loadAnalyticsDevices);
 
 
         function initNavGroupCollapse() {
@@ -10510,7 +8948,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v5-no-sales-contacts';
+                var MENU_TREE_VER = 'ops-ia-v6-admin-fix';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

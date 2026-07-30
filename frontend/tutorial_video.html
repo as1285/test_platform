@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <script src="/js/auth.js?v=20260729-splash"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>操作教程</title>
     <style>
@@ -158,11 +158,6 @@
                 s.src = src;
                 s.type = 'video/mp4';
                 v.appendChild(s);
-                v.addEventListener('play', function () {
-                    if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_tutorial_video_play', { page: 'tutorial_video' });
-                    }
-                }, { once: true });
                 var wrap = document.createElement('div');
                 wrap.className = 'video-wrap';
                 wrap.appendChild(v);

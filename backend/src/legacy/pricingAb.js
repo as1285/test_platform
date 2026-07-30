@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * A(control)=199 永久 + 全渠道；B(treatment)=多档支付宝；C=仅下载+激活码。
+ * A(control)=320 周卡 + 仅支付宝；B(treatment)=320 周 / 499 月 / 999 年；C=仅下载+激活码。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,69 +8,51 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-var SKU_CONTROL_199_PERM = {
-  id: 'sku_199_perm_legacy',
-  amount: '199.00',
-  label: '永久激活',
-  subject: '激活码',
-  grant_kind: 'permanent',
+/** A 方案：单档 320 周卡 */
+var SKU_CONTROL_320_WEEK = {
+  id: 'sku_320_7d',
+  amount: '320.00',
+  label: '周卡',
+  subject: '激活码·周卡',
+  grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 0,
+  grant_days: 7,
   grant_minutes: 0
 };
 
-var SKU_9_9_30M = {
-  id: 'sku_9_9_30m',
-  amount: '9.90',
-  label: '体验30分钟',
-  subject: '激活码',
+/** 兼容旧订单 id（sku_199_perm_legacy）查询；权益改为周卡 */
+var SKU_CONTROL_199_PERM = SKU_CONTROL_320_WEEK;
+
+var SKU_320_WEEK = {
+  id: 'sku_320_7d',
+  amount: '320.00',
+  label: '周卡',
+  subject: '激活码·周卡',
   grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 0,
-  grant_minutes: 30
-};
-
-var SKU_49_24H = {
-  id: 'sku_49_24h',
-  amount: '49.00',
-  label: '24小时',
-  subject: '激活码',
-  grant_kind: 'trial',
-  grant_hours: 24,
-  grant_days: 0,
+  grant_days: 7,
   grant_minutes: 0
 };
 
-var SKU_99_3D = {
-  id: 'sku_99_3d',
-  amount: '99.00',
-  label: '3天',
-  subject: '激活码',
+var SKU_499_MONTH = {
+  id: 'sku_499_30d',
+  amount: '499.00',
+  label: '月卡',
+  subject: '激活码·月卡',
   grant_kind: 'trial',
   grant_hours: 0,
-  grant_days: 3,
+  grant_days: 30,
   grant_minutes: 0
 };
 
-var SKU_199_1Y = {
-  id: 'sku_199_1y',
-  amount: '199.00',
-  label: '1年',
-  subject: '激活码',
+var SKU_999_YEAR = {
+  id: 'sku_999_365d',
+  amount: '999.00',
+  label: '年卡',
+  subject: '激活码·年卡',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 365,
-  grant_minutes: 0
-};
-
-var SKU_499_PERM = {
-  id: 'sku_499_perm',
-  amount: '499.00',
-  label: '永久',
-  subject: '激活码',
-  grant_kind: 'permanent',
-  grant_hours: 0,
-  grant_days: 0,
   grant_minutes: 0
 };
 
@@ -80,8 +62,8 @@ var DEFAULT_PRICING_AB = {
   b_percent: 50,
   c_percent: 0,
   treatment_percent: 50,
-  control_skus: [SKU_CONTROL_199_PERM],
-  treatment_skus: [SKU_9_9_30M, SKU_49_24H, SKU_99_3D, SKU_199_1Y, SKU_499_PERM]
+  control_skus: [SKU_CONTROL_320_WEEK],
+  treatment_skus: [SKU_320_WEEK, SKU_499_MONTH, SKU_999_YEAR]
 };
 
 function cloneSku(s) {
@@ -225,7 +207,14 @@ function grantDurationMs(sku) {
 
 function findSkuById(cfg, skuId) {
   var id = String(skuId || '');
-  var lists = [cfg.control_skus || [], cfg.treatment_skus || []];
+  /* 旧订单 SKU id → 新档 */
+  var legacyMap = {
+    sku_199_perm_legacy: 'sku_320_7d',
+    sku_499_perm: 'sku_499_30d',
+    sku_199_1y: 'sku_999_365d'
+  };
+  if (legacyMap[id]) id = legacyMap[id];
+  var lists = [cfg.control_skus || [], cfg.treatment_skus || [], [SKU_320_WEEK, SKU_499_MONTH, SKU_999_YEAR]];
   var i;
   var j;
   for (i = 0; i < lists.length; i++) {

@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260721-perf-fix"></script>
+    <script src="/js/admin_auth.js?v=20260729-splash"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>管理员登录</title>
-    <link rel="stylesheet" href="/css/admin_login.css?v=20260721-p2">
+    <link rel="stylesheet" href="/css/admin_login.css?v=20260729-ops-shell">
 </head>
 <body>
     <div class="card">
@@ -18,10 +18,15 @@
             <label for="p">密码</label>
             <input type="password" id="p" autocomplete="current-password" placeholder="密码">
         </div>
+        <div class="field" id="otpField" hidden>
+            <label for="otp">邮件验证码</label>
+            <input type="text" id="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位验证码" maxlength="8">
+            <p class="hint" id="otpHint" style="margin:6px 0 0;font-size:12px;opacity:.75;"></p>
+        </div>
         <p class="err" id="err"></p>
         <button type="button" class="btn" id="btn">登录</button>
         <div class="back"><a href="/index.html">返回用户登录</a></div>
     </div>
-    <script src="/js/admin/login.js?v=20260721-p2"></script>
+    <script src="/js/admin/login.js?v=20260729-otp-lock"></script>
 </body>
 </html>

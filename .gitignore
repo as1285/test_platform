@@ -32,3 +32,8 @@ deploy/runtime/
 data/db-backups/
 *.sql.gz
 personal_tax.sql
+
+.venv-dr/
+data/db-backups-daily/
+data/db-backups-weekly/
+data/uploads-backups/

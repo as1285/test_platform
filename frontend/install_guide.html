@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <script src="/js/site-config.js"></script>
-    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -18,6 +18,31 @@
                 query = new URLSearchParams(window.location.search);
             } catch (e0) {}
             var downloadOnly = query && query.get('download') === '1';
+            /* 代理推广 ?ch=：必须留在安装页下包，禁止跳「我的」/游客落地 */
+            var hasSalesCh = !!(
+                query &&
+                String(query.get('ch') || query.get('sales_ch') || query.get('channel') || '').trim()
+            );
+            var stayOnInstall = !!(downloadOnly || hasSalesCh);
+            /**
+             * 已登录正式账号再进安装页（书签 / 桌面图标 / 旧链接）会一直停在 B 版安装页。
+             * 非「仅下载 / 代理渠道」意图时直接进「我的」；?download=1 或 ?ch= 仍保留安装页。
+             */
+            try {
+                var earlyToken = localStorage.getItem('token') || '';
+                var earlyUserId = localStorage.getItem('user_id') || localStorage.getItem('userName') || '';
+                var earlyGuest = localStorage.getItem('landing_guest_v1') === '1';
+                if (
+                    !stayOnInstall &&
+                    earlyToken &&
+                    earlyUserId &&
+                    String(earlyUserId).indexOf('__guest_') !== 0 &&
+                    !earlyGuest
+                ) {
+                    window.location.replace('/mine.html');
+                    return;
+                }
+            } catch (eEarlyLoggedIn) {}
             var entry = {
                 referrer: String(document.referrer || '').substring(0, 500),
                 utm_source: query ? String(query.get('utm_source') || '').substring(0, 80) : '',
@@ -108,6 +133,10 @@
                             utm_source: entry.utm_source,
                             sales_ch: entry.sales_ch
                         });
+                    }
+                    /* 代理渠道 / 仅下载：C 方案也不走游客→我的，直接展示安装下载 */
+                    if (variant === 'c' && stayOnInstall) {
+                        return reveal('b');
                     }
                     if (variant === 'c' && !downloadOnly) {
                         try {
@@ -574,84 +603,75 @@
             margin-top: 4px;
         }
         .lp-caps, .lp-demo { display: none !important; }
-        /* ── Download Intent Mode（税印夜幕） ── */
+        /* ── Download Intent Mode（简洁浅色） ── */
         .dl-intent-header {
             display: block;
-            padding: calc(28px + var(--safe-t)) 24px 6px;
-            animation: lpRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+            padding: calc(20px + var(--safe-t)) 22px 8px;
         }
         .dl-intent-top {
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 18px;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
         }
         .dl-seal {
             flex: 0 0 auto;
-            width: 58px;
-            height: 58px;
-            border: 2.5px solid var(--seal);
-            color: var(--seal);
-            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            border: 1.5px solid #1d6fd8;
+            color: #1d6fd8;
+            border-radius: 12px;
             display: grid;
             place-items: center;
             font-family: var(--font-display);
-            font-size: 1.45rem;
-            letter-spacing: 0.08em;
-            transform: rotate(-11deg);
-            box-shadow:
-                inset 0 0 0 1px rgba(194, 59, 46, 0.35),
-                0 0 0 6px var(--seal-soft);
-            animation: sealIn 0.75s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+            font-size: 1.25rem;
+            letter-spacing: 0.04em;
+            transform: none;
+            box-shadow: none;
+            animation: none;
+            background: #eff6ff;
         }
-        .dl-intent-kicker {
-            display: inline-block;
-            font-size: 0.72rem;
-            letter-spacing: 0.22em;
-            text-transform: uppercase;
-            color: var(--gold);
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
+        .dl-intent-kicker { display: none; }
         .dl-intent-brand {
             font-family: var(--font-display);
-            font-size: clamp(2.15rem, 8.2vw, 2.75rem);
+            font-size: clamp(1.65rem, 6.5vw, 2rem);
             font-weight: 400;
-            letter-spacing: 0.06em;
-            line-height: 1.08;
-            color: #f4f8fb;
-            margin-bottom: 12px;
+            letter-spacing: 0.04em;
+            line-height: 1.15;
+            color: #0f172a;
+            margin: 0;
         }
         .dl-intent-headline {
-            font-size: 1.2rem;
+            font-size: 1.05rem;
             font-weight: 600;
-            color: rgba(244, 248, 251, 0.92);
+            color: #334155;
             line-height: 1.4;
-            margin-bottom: 8px;
+            margin: 0 0 6px;
         }
         .dl-intent-support {
-            font-size: 0.92rem;
-            color: rgba(215, 230, 239, 0.72);
-            line-height: 1.65;
-            max-width: 22rem;
+            font-size: 0.88rem;
+            color: #64748b;
+            line-height: 1.55;
+            max-width: 20rem;
+            margin: 0;
         }
         .dl-intent-register {
             display: block;
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: rgba(215, 230, 239, 0.62);
+            margin-top: 18px;
+            font-size: 0.88rem;
+            color: #64748b;
             text-align: center;
         }
         .dl-intent-register a {
-            color: #7ee0cf;
+            color: #1d6fd8;
             font-weight: 600;
             text-decoration: none;
-            border-bottom: 1px solid rgba(126, 224, 207, 0.35);
+            border-bottom: none;
         }
-        .dl-intent-register a:hover { border-bottom-color: #7ee0cf; }
+        .dl-intent-register a:hover { opacity: 0.85; }
         .dl-intent-sep {
-            color: rgba(215, 230, 239, 0.35);
-            margin: 0 2px;
+            color: #cbd5e1;
+            margin: 0 4px;
         }
         .install-btn-skeleton {
             display: flex;
@@ -660,29 +680,37 @@
         }
         .install-btn-skeleton[hidden] { display: none !important; }
         .skeleton-btn {
-            width: 100%;
-            min-height: 58px;
-            border-radius: var(--radius-md);
-            background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.16) 45%, rgba(255,255,255,0.08) 90%);
+            height: 52px;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 50%, #eef2f7 75%);
             background-size: 200% 100%;
-            animation: skShine 1.15s ease-in-out infinite;
+            animation: skShine 1.2s linear infinite;
         }
         .skeleton-hint {
-            font-size: 0.86rem;
-            color: rgba(215, 230, 239, 0.65);
+            font-size: 0.84rem;
+            color: #94a3b8;
             text-align: center;
         }
         @keyframes skShine {
             0% { background-position: 100% 0; }
             100% { background-position: -100% 0; }
         }
-        /* 下载意图布局（全站安装页统一） */
+        body.is-download-intent {
+            color: #0f172a;
+            padding-bottom: calc(72px + var(--safe-b));
+            background: #f4f7fb;
+            background-attachment: scroll;
+        }
+        body.is-download-intent::before,
+        body.is-download-intent .lp-atmos {
+            display: none !important;
+        }
         body.is-download-intent .lp-hero,
         body.is-download-intent .showcase-card {
             display: none !important;
         }
         body.is-download-intent .lp-download {
-            padding-top: 10px;
+            padding: 8px 22px 28px;
             border-top: none;
         }
         body.is-download-intent .lp-download > .lp-section-title,
@@ -690,50 +718,41 @@
             display: none !important;
         }
         body.is-download-intent .install-top-download {
-            margin-bottom: 22px;
-            padding: 22px 18px 20px;
-            background:
-                linear-gradient(155deg, rgba(18, 42, 54, 0.92), rgba(8, 22, 32, 0.88));
-            border: 1px solid rgba(126, 224, 207, 0.18);
-            border-radius: var(--radius-xl);
-            box-shadow:
-                0 0 0 1px rgba(201, 164, 92, 0.08) inset,
-                0 20px 50px rgba(0, 0, 0, 0.35);
-            position: relative;
-            overflow: hidden;
+            margin: 16px 0 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: visible;
+            position: static;
         }
-        body.is-download-intent .install-top-download::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 12%;
-            right: 12%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(201, 164, 92, 0.55), transparent);
-        }
+        body.is-download-intent .install-top-download::before { display: none; }
+        body.is-download-intent .install-actions { gap: 10px; }
         body.is-download-intent .install-actions .btn {
-            min-height: 58px;
-            font-size: 1.08rem;
-            letter-spacing: 0.04em;
-            border-radius: 14px;
+            min-height: 52px;
+            font-size: 1rem;
+            letter-spacing: 0.01em;
+            border-radius: 12px;
+            box-shadow: none;
+            font-weight: 600;
         }
         body.is-download-intent .install-actions .btn.btn-primary {
-            position: relative;
-            overflow: hidden;
+            background: #1d6fd8;
+            color: #fff;
+            position: static;
+            overflow: visible;
         }
-        body.is-download-intent .install-actions .btn.btn-primary::after {
-            content: "";
-            position: absolute;
-            inset: 0 auto 0 -40%;
-            width: 35%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-            transform: skewX(-18deg);
-            animation: btnSheen 3.2s ease-in-out infinite;
+        body.is-download-intent .install-actions .btn.btn-primary:hover {
+            background: #1860be;
+            transform: none;
+            box-shadow: none;
         }
+        body.is-download-intent .install-actions .btn.btn-primary::after { display: none; }
         body.is-download-intent .install-actions .btn.btn-secondary-platform {
-            background: rgba(255, 255, 255, 0.06);
-            color: rgba(232, 241, 244, 0.82);
-            border: 1px solid rgba(215, 230, 239, 0.16);
+            background: #fff;
+            color: #334155;
+            border: 1px solid #d8e0ea;
             box-shadow: none;
             font-weight: 500;
             min-height: 48px;
@@ -741,56 +760,63 @@
             letter-spacing: 0;
         }
         body.is-download-intent .hint,
-        body.is-download-intent .lp-disclaimer,
-        body.is-download-intent #installEmptyHint {
-            color: rgba(215, 230, 239, 0.72);
-        }
+        body.is-download-intent #installEmptyHint { color: #94a3b8; }
         body.is-download-intent .lp-disclaimer {
-            border-top-color: rgba(215, 230, 239, 0.12);
-            color: rgba(215, 230, 239, 0.45);
+            border-top: 1px solid #e8eef5;
+            color: #94a3b8;
+            margin-top: 28px;
+            padding-top: 16px;
+            font-size: 0.78rem;
+            text-align: center;
         }
         body.is-download-intent .desktop-qr img {
-            border-color: rgba(215, 230, 239, 0.16);
+            border-color: #e2e8f0;
             background: #fff;
+            box-shadow: none;
         }
-        body.is-download-intent .desktop-qr p {
-            color: rgba(215, 230, 239, 0.7);
-        }
+        body.is-download-intent .desktop-qr p { color: #64748b; }
         body.is-download-intent .sticky-register-bar {
             transform: translateY(110%);
-            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.25s ease;
             pointer-events: none;
-            background: rgba(6, 16, 24, 0.88);
-            border-top-color: rgba(126, 224, 207, 0.14);
-            box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+            background: rgba(255, 255, 255, 0.96);
+            border-top: 1px solid #e8eef5;
+            box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
         body.is-download-intent .sticky-register-bar.is-sticky-visible {
             transform: translateY(0);
             pointer-events: auto;
         }
-        body.is-download-intent .sticky-register-btn {
-            display: none !important;
-        }
-        body.is-download-intent .sticky-btn-row {
-            display: block;
-        }
+        body.is-download-intent .sticky-register-btn { display: none !important; }
+        body.is-download-intent .sticky-btn-row { display: block; }
         body.is-download-intent .sticky-download-btn.is-visible {
             width: 100%;
             flex: none;
+            background: #1d6fd8;
+            box-shadow: none;
+            border-radius: 12px;
+        }
+        body.is-download-intent .sticky-download-btn:hover {
+            background: #1860be;
+            transform: none;
+            box-shadow: none;
         }
         body.is-download-intent .sticky-register-hint {
             text-align: center;
             margin-bottom: 8px;
-            color: rgba(215, 230, 239, 0.7);
+            color: #64748b;
         }
         body.is-download-intent .in-app-banner {
-            background: rgba(11, 143, 122, 0.12);
-            border-left-color: var(--accent-light);
-            color: rgba(232, 241, 244, 0.86);
+            background: #eff6ff;
+            border-left: 3px solid #1d6fd8;
+            color: #334155;
+            border-radius: 8px;
+            margin-bottom: 14px;
         }
-        body.is-download-intent .in-app-banner strong {
-            color: #7ee0cf;
-        }
+        body.is-download-intent .in-app-banner strong { color: #1d6fd8; }
+
         /* ── Download Section ── */
         .lp-download {
             background: transparent;
@@ -1065,8 +1091,8 @@
                     <h1 class="dl-intent-brand">个人所得税</h1>
                 </div>
             </div>
-            <p class="dl-intent-headline">把 App 装到手机</p>
-            <p class="dl-intent-support">识别当前系统后一键下载安装包，装好打开即可注册使用</p>
+            <p class="dl-intent-headline">下载安装</p>
+            <p class="dl-intent-support">按系统一键下载，装好即可注册使用</p>
         </header>
 
         <section class="lp-section lp-download" id="download">
@@ -1104,7 +1130,7 @@
     <div class="sticky-register-bar" id="stickyInstallBar">
         <div class="sticky-register-inner">
             <div class="sticky-row">
-                <p class="sticky-register-hint" id="stickyInstallHint">下载 App 或注册账号，解锁完整明细与完税证明</p>
+                <p class="sticky-register-hint" id="stickyInstallHint">下载安装包到手机</p>
                 <div class="sticky-btn-row">
                     <a href="#" class="sticky-download-btn" id="stickyDownloadBtn" hidden>下载 App</a>
                     <a href="register.html?from=install_guide" class="sticky-register-btn install-register-link" id="installRegisterLink">注册账号</a>
@@ -1744,10 +1770,11 @@
                 var iosUrl = body.data.ios_mobileconfig_download_url != null ? String(body.data.ios_mobileconfig_download_url).trim() : '';
                 row.innerHTML = '';
                 var showApk = layout.showApk && apk;
-                var showIos = layout.showIos && iosUrl;
+                /* iOS 引导页不依赖描述文件；有 mobileconfig 时桌面端仍可下载备用 */
+                var showIos = layout.showIos && (iosUrl || isLikelyIOSClient());
                 if (layout.inApp && !showApk && !showIos) {
                     showApk = !!apk;
-                    showIos = !!iosUrl;
+                    showIos = !!(iosUrl || isLikelyIOSClient());
                 }
                 if (!showApk && !showIos) {
                     if (empty) {
@@ -1810,27 +1837,82 @@
                     }
                 }
                 if (showIos) {
-                    var href = toSameOriginDownloadUrl(iosUrl);
+                    var onIosPhone = isLikelyIOSClient();
+                    var iosGuideHref = 'install-ios.html';
+                    try {
+                        if (typeof window.appendSalesChannelToUrl === 'function') {
+                            iosGuideHref = window.appendSalesChannelToUrl(iosGuideHref);
+                        }
+                    } catch (eChIos) {}
                     var ia = document.createElement('a');
                     ia.className = 'btn btn-primary';
-                    ia.href = href || iosUrl;
-                    if (!/^https?:\/\//i.test(ia.href)) {
-                        ia.setAttribute('download', 'personal.mobileconfig');
-                    }
-                    ia.textContent = layout.inApp
-                        ? '下载最新 iOS 描述文件'
-                        : layout.desktop
-                          ? '下载 iOS 描述文件（请在 iPhone 打开）'
-                          : '下载 iOS 描述文件';
-                    bindDownloadClick(ia, ia.href, function () {
-                        if (typeof window.trackPublicAction === 'function') {
-                            window.trackPublicAction('track_install_ios_click', { page: 'install_guide' });
+                    /*
+                     * iOS：可选「分享到主屏幕」或「下载描述文件」。
+                     * 手机上两个入口都展示（有配置时）；非 iPhone 仍以下描述文件 / 打开说明为主。
+                     */
+                    if (onIosPhone) {
+                        ia.href = iosGuideHref;
+                        ia.removeAttribute('download');
+                        ia.textContent = layout.inApp
+                            ? '查看 iOS 安装步骤'
+                            : '分享网页到主屏幕（推荐）';
+                        bindDownloadClick(ia, ia.href, function () {
+                            if (typeof window.trackPublicAction === 'function') {
+                                window.trackPublicAction('track_install_ios_click', {
+                                    page: 'install_guide',
+                                    via: 'install_ios_guide'
+                                });
+                            }
+                        });
+                        row.appendChild(ia);
+                        if (iosUrl) {
+                            var ib = document.createElement('a');
+                            ib.className = 'btn btn-secondary-platform';
+                            var mcHref = toSameOriginDownloadUrl(iosUrl);
+                            ib.href = mcHref || iosUrl;
+                            if (mcHref && !/^https?:\/\//i.test(ib.href)) {
+                                ib.setAttribute('download', 'personal.mobileconfig');
+                            }
+                            ib.textContent = '下载描述文件';
+                            bindDownloadClick(ib, ib.href, function () {
+                                if (typeof window.trackPublicAction === 'function') {
+                                    window.trackPublicAction('track_install_ios_click', {
+                                        page: 'install_guide',
+                                        via: 'mobileconfig'
+                                    });
+                                }
+                                if (typeof window.persistSalesChannelAttribution === 'function') {
+                                    window.persistSalesChannelAttribution('install_guide_ios_mobileconfig');
+                                }
+                            });
+                            row.appendChild(ib);
                         }
-                    });
-                    row.appendChild(ia);
+                    } else {
+                        var href = toSameOriginDownloadUrl(iosUrl);
+                        ia.href = href || iosUrl || iosGuideHref;
+                        if (href && !/^https?:\/\//i.test(ia.href)) {
+                            ia.setAttribute('download', 'personal.mobileconfig');
+                        }
+                        ia.textContent = layout.desktop
+                            ? 'iOS 安装说明（请在 iPhone 打开）'
+                            : '下载 iOS 描述文件';
+                        if (layout.desktop && !href) {
+                            ia.href = iosGuideHref;
+                            ia.removeAttribute('download');
+                        }
+                        bindDownloadClick(ia, ia.href, function () {
+                            if (typeof window.trackPublicAction === 'function') {
+                                window.trackPublicAction('track_install_ios_click', {
+                                    page: 'install_guide',
+                                    via: href ? 'mobileconfig' : 'install_ios_guide'
+                                });
+                            }
+                        });
+                        row.appendChild(ia);
+                    }
                     if (!primaryForSticky || preferIos) {
                         primaryForSticky = ia;
-                        primaryLabel = '下载 App';
+                        primaryLabel = onIosPhone ? '安装到主屏幕' : '下载 App';
                     }
                 }
                 /* 下载意图：非主平台按钮弱化，避免双主 CTA */

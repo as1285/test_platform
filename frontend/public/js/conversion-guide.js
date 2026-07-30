@@ -83,7 +83,6 @@
       subEl.textContent = conversionCfg.activate_subtitle;
       subEl.style.display = 'block';
     }
-    track('track_conversion_ab_variant', { variant: conversionCfg.variant || 'a', page: currentPage() });
   }
 
   function getBatchExampleProminent() {
@@ -114,17 +113,13 @@
       } catch (e2) {
         return;
       }
-      track('track_conversion_smart_guide_shown', { page: page, visits: n });
       setTimeout(function () {
         if (
           window.confirm(
             '您已多次查看收入相关页面，但尚未添加税务记录。\n\n点「确定」前往示例填写（约 30 秒），生成后即可在收入纳税明细查看。'
           )
         ) {
-          track('track_conversion_smart_guide_confirm', { page: page });
           goFillTaxRecords();
-        } else {
-          track('track_conversion_smart_guide_cancel', { page: page });
         }
       }, 600);
     }
@@ -399,8 +394,8 @@
       '.cg-empty-cta p{margin:0 0 10px;font-size:13px;color:#888}' +
       '.cg-toast-recovery{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:800;padding:12px 14px;background:#fff8e6;border:1px solid #ffe0a3;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);font-size:13px;color:#664d03;line-height:1.45}' +
       '.cg-toast-recovery .cg-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}' +
-      '.cg-value-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}' +
-      '.cg-value-panel{max-width:340px;width:100%;background:#fff;border-radius:12px;padding:18px 16px}' +
+      '.cg-value-overlay{position:fixed;inset:0;z-index:10200;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}' +
+      '.cg-value-panel{max-width:340px;width:100%;max-height:min(86vh,640px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:12px;padding:18px 16px;box-sizing:border-box}' +
       '.cg-value-panel h3{margin:0 0 8px;font-size:17px;color:#333}' +
       '.cg-value-panel p{margin:0 0 14px;font-size:13px;color:#666;line-height:1.5}' +
       '.cg-value-panel .cg-btn{display:block;width:100%;margin-bottom:8px;padding:11px;border-radius:8px;border:none;font-size:15px;cursor:pointer;font-family:inherit}' +
@@ -470,6 +465,17 @@
       ' #cg-value-action-bar,html.' +
       CAPTURE_HIDE_CLASS +
       ' #cg-value-action-bar{display:none!important}' +
+      /* 演示/修改入口：截图模式与录屏隐私自动隐藏；关闭数据编辑时一并隐藏 */
+      'html.' +
+      SCREENSHOT_MODE_CLASS +
+      ' .cg-demo-only,html.' +
+      CAPTURE_HIDE_CLASS +
+      ' .cg-demo-only,html.' +
+      TAX_EDIT_OFF_CLASS +
+      ' .cg-demo-edit-entry{display:none!important}' +
+      '.cg-detail-edit-entry{margin:20px 16px 28px;padding:0;text-align:center;font-size:13px;color:#999;line-height:1.5}' +
+      '.cg-detail-edit-entry a{color:#1e6fff;text-decoration:none;-webkit-tap-highlight-color:transparent}' +
+      '.cg-detail-edit-entry a:active{opacity:.7}' +
       '.cg-capture-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:1000020;padding:10px 16px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.45;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.2)}' +
       '.cg-capture-toast.is-show{opacity:1}' +
       '.cg-capture-toast.is-tap-dismiss{pointer-events:auto;cursor:pointer}' +
@@ -514,7 +520,6 @@
       else localStorage.setItem(TAX_EDIT_MODE_KEY, '0');
     } catch (e) {}
     syncTaxEditModeClass();
-    track('track_conversion_tax_edit_mode', { enabled: !!on, page: currentPage() });
     if (currentPage() === 'mine.html') {
       showCaptureToast(
         on
@@ -679,7 +684,6 @@
     } catch (e) {}
     syncScreenshotModeClass();
     syncMineScreenshotModeButton();
-    track('track_conversion_screenshot_mode', { enabled: !!on, page: currentPage() });
     showCaptureToast(
       on ? '演示入口已全部隐藏，可截屏录屏\n长按头像可恢复' : '截图模式已关闭，演示入口已恢复',
       { duration: getToastDurationMs(), tapDismiss: on }
@@ -873,7 +877,6 @@
 
   function gateTaxRecords(featureName) {
     if (!hasTaxRecords()) {
-      track('track_conversion_gate_tax', { page: currentPage(), feature: featureName || '' });
       showGateAlert(
         '尚未添加个税记录',
         '请先在「我要咨询」或首页「管理税务数据」中添加记录，也可在税务记录中「示例填写」或「一键生成」。',
@@ -998,7 +1001,6 @@
     if (currentPage() !== 'consult.html') return;
     injectConsultRecordsGate();
     if (urlParam('onboarding') !== ONBOARD_TAX) return;
-    track('track_conversion_onboard_tax', { page: 'consult' });
     if (typeof switchTab === 'function') {
       try {
         switchTab('records', false);
@@ -1061,7 +1063,6 @@
   function showValueConfirmDialog(year) {
     if (document.getElementById('cg-value-overlay')) return;
     ensureGateStyles();
-    track('track_conversion_value_confirm_shown', { page: 'consult' });
     var guest = isLandingGuest();
     var ov = document.createElement('div');
     ov.id = 'cg-value-overlay';
@@ -1074,7 +1075,7 @@
       '<p>' +
       (guest
         ? '已生成个税演示数据。建议立即下载 App 并注册，同步当前填写内容，避免清缓存后丢失。'
-        : '可立即查看收入纳税明细或纳税记录证书预览，感受填写效果。') +
+        : '可立即查看收入纳税明细，或分享给好友体验。') +
       '</p>' +
       '<p style="font-size:12px;color:#666;margin-bottom:10px;">' +
       EDIT_HINT +
@@ -1085,15 +1086,16 @@
       (guest
         ? '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDownload">下载 App 保存资料</button>'
         : '') +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgValueShareFriend">分享给好友</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoDetail"' +
       (guest ? ' style="background:#008afd;"' : '') +
       '>查看收入纳税明细</button>' +
       '<button type="button" class="cg-btn cg-btn-primary" id="cgValueGoNajilu" style="background:#008afd;">纳税记录证书预览</button>' +
+      '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueGoEdit">去修改或补充记录</button>' +
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgValueLater">稍后再说</button>' +
       '</div>';
     document.body.appendChild(ov);
     function closeOv(action) {
-      track('track_conversion_value_confirm_' + action, { page: 'consult' });
       if (ov.parentNode) ov.parentNode.removeChild(ov);
     }
     var dlBtn = document.getElementById('cgValueGoDownload');
@@ -1103,6 +1105,36 @@
         goGuestDownloadSave('value_confirm');
       };
     }
+    var shareBtn = document.getElementById('cgValueShareFriend');
+    if (shareBtn) {
+      shareBtn.onclick = function () {
+        track('track_share_tax_created', { page: currentPage(), source: 'value_confirm' });
+        if (typeof window.sharePageLink === 'function') {
+          window.sharePageLink({
+            page: 'shouye.html',
+            query: { guest: '1', from: 'share', landing_ab: 'c', sv: 'sim1' },
+            title: '个税记录演示',
+            text: '我刚生成了个税演示数据，打开即可体验收入明细与纳税记录',
+            track: 'track_share_tax_created_native'
+          });
+        } else {
+          try {
+            var url =
+              String(window.location.origin || '') +
+              '/shouye.html?guest=1&from=share&landing_ab=c&sv=sim1';
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).then(function () {
+                alert('链接已复制，可粘贴发给好友');
+              });
+            } else {
+              alert('请复制链接分享：\n' + url);
+            }
+          } catch (eShare) {
+            alert('暂时无法分享，请稍后再试');
+          }
+        }
+      };
+    }
     document.getElementById('cgValueGoDetail').onclick = function () {
       closeOv('detail');
       goIncomeDetail(year);
@@ -1110,6 +1142,11 @@
     document.getElementById('cgValueGoNajilu').onclick = function () {
       closeOv('najilu');
       goNajilu();
+    };
+    document.getElementById('cgValueGoEdit').onclick = function () {
+      closeOv('edit');
+      track('track_tax_edit_entry', { page: currentPage(), source: 'value_confirm' });
+      goManageTaxRecords();
     };
     document.getElementById('cgValueLater').onclick = function () {
       closeOv('later');
@@ -1121,7 +1158,6 @@
 
   function afterTaxRecordsCreated(opts) {
     opts = opts || {};
-    track('track_conversion_tax_created', { page: 'consult', source: opts.source || 'batch' });
     var y = normalizeTaxYearLocal(null);
     try {
       var sy = localStorage.getItem('selected_year');
@@ -1173,7 +1209,6 @@
       alert('暂无可分享的图片');
       return;
     }
-    track('track_conversion_value_share', { page: currentPage() });
     if (navigator.share) {
       fetch(dataUrl)
         .then(function (r) {
@@ -1277,7 +1312,6 @@
       '</div>';
     document.body.appendChild(bar);
     document.getElementById('cgValueBarSave').onclick = function () {
-      track('track_conversion_value_save_image', { page: currentPage() });
       var url =
         typeof opts.getDataUrl === 'function'
           ? opts.getDataUrl()
@@ -1323,34 +1357,93 @@
     ensureGateStyles();
     var banner = document.createElement('div');
     banner.id = 'cg-post-tax-banner';
-    banner.className = 'cg-inline-hint';
+    banner.className = 'cg-inline-hint cg-demo-only';
     banner.style.margin = '0 16px 12px';
     if (isLandingGuest()) {
       banner.innerHTML =
         '填写完成！建议 <a href="mine.html?guest_dl=1" style="color:#1e6fff;font-weight:600;">下载 App 同步保存</a>；也可先查看下方明细或 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">纳税记录演示</a>。';
     } else {
       banner.innerHTML =
-        '填写完成！可保存或分享下方预览图；也可 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>。';
+        '填写完成！可查看下方明细，或 <a href="najilu.html" style="color:#1e6fff;font-weight:600;">开具纳税记录演示</a>；需要调整时 <a href="javascript:void(0)" id="cgPostTaxGoEdit" style="color:#1e6fff;font-weight:600;">去修改或补充</a>。';
     }
     var list = document.querySelector('.list');
     if (list && list.parentNode) {
       list.parentNode.insertBefore(banner, list);
     }
+    var editLink = document.getElementById('cgPostTaxGoEdit');
+    if (editLink) {
+      editLink.onclick = function (e) {
+        e.preventDefault();
+        track('track_tax_edit_entry', { page: 'shuiming_result', source: 'post_tax_banner' });
+        goManageTaxRecords();
+      };
+    }
+  }
+
+  /** 个税详情页底部：轻量「去修改」入口（截图模式 / 录屏隐私下自动隐藏） */
+  function mountXiangqingEditEntry() {
+    if (currentPage() !== 'xiangqing.html') return;
+    if (!isLoggedIn()) return;
+    if (document.getElementById('cg-xiangqing-edit-entry')) return;
+    ensureGateStyles();
+    var el = document.createElement('div');
+    el.id = 'cg-xiangqing-edit-entry';
+    el.className = 'cg-detail-edit-entry cg-demo-only cg-demo-edit-entry';
+    el.setAttribute('role', 'note');
+    el.innerHTML =
+      '数据有误？<a href="javascript:void(0)" id="cgXiangqingGoEdit">去修改</a>';
+    document.body.appendChild(el);
+    document.getElementById('cgXiangqingGoEdit').onclick = function (e) {
+      e.preventDefault();
+      if (!isTaxEditModeOn()) {
+        notifyProfileEditLocked();
+        return;
+      }
+      track('track_tax_edit_entry', { page: 'xiangqing', source: 'detail_footer' });
+      goManageTaxRecords();
+    };
+  }
+
+  /** 收入纳税明细列表：有数据时提供管理入口（截图模式隐藏） */
+  function mountShuimingResultManageEntry() {
+    if (currentPage() !== 'shuiming_result.html') return;
+    if (!isLoggedIn() || !hasTaxRecords()) return;
+    if (document.getElementById('cg-shuiming-result-edit-entry')) return;
+    if (document.getElementById('cg-post-tax-banner')) return;
+    ensureGateStyles();
+    var el = document.createElement('div');
+    el.id = 'cg-shuiming-result-edit-entry';
+    el.className = 'cg-detail-edit-entry cg-demo-only cg-demo-edit-entry';
+    el.style.margin = '8px 16px 4px';
+    el.setAttribute('role', 'note');
+    el.innerHTML =
+      '需要调整演示数据？<a href="javascript:void(0)" id="cgShuimingResultGoEdit">去修改</a>';
+    var list = document.getElementById('recordList') || document.querySelector('.list');
+    if (list && list.parentNode) {
+      list.parentNode.insertBefore(el, list);
+    } else {
+      document.body.appendChild(el);
+    }
+    document.getElementById('cgShuimingResultGoEdit').onclick = function (e) {
+      e.preventDefault();
+      if (!isTaxEditModeOn()) {
+        notifyProfileEditLocked();
+        return;
+      }
+      track('track_tax_edit_entry', { page: 'shuiming_result', source: 'list_footer' });
+      goManageTaxRecords();
+    };
   }
 
   function afterEmployerSaved(meta) {
     if (!isAccountActive() || skipConversionPromo()) return;
-    track('track_conversion_employer_saved_nudge', meta || {});
     setTimeout(function () {
       if (
         window.confirm(
           '任职信息已保存。\n\n是否前往「税务记录」生成对应月份的纳税演示数据？'
         )
       ) {
-        track('track_conversion_employer_nudge_confirm', meta || {});
         goFillTaxRecords();
-      } else {
-        track('track_conversion_employer_nudge_cancel', meta || {});
       }
     }, 350);
   }
@@ -1363,7 +1456,6 @@
       n += 1;
       localStorage.setItem(DETAIL_EMPTY_VISIT_KEY, String(n));
     } catch (e) {}
-    track('track_conversion_detail_empty_visit', { visits: n });
     if (n < 2) return;
     try {
       if (localStorage.getItem(DETAIL_RECOVERY_DISMISS_KEY) === '1') return;
@@ -1376,7 +1468,6 @@
   function showDetailRecoveryToast() {
     if (document.getElementById('cg-detail-recovery-toast')) return;
     ensureGateStyles();
-    track('track_conversion_detail_recovery_shown', {});
     var el = document.createElement('div');
     el.id = 'cg-detail-recovery-toast';
     el.className = 'cg-toast-recovery';
@@ -1387,11 +1478,9 @@
       '<button type="button" class="cg-btn cg-btn-ghost" id="cgRecoveryDismiss">不再提示</button></div>';
     document.body.appendChild(el);
     document.getElementById('cgRecoveryGoTax').onclick = function () {
-      track('track_conversion_detail_recovery_confirm', {});
       goFillTaxRecords();
     };
     document.getElementById('cgRecoveryDismiss').onclick = function () {
-      track('track_conversion_detail_recovery_dismiss', {});
       try {
         localStorage.setItem(DETAIL_RECOVERY_DISMISS_KEY, '1');
       } catch (e) {}
@@ -1416,7 +1505,6 @@
     var btn = document.getElementById('cgShuimingGoTax');
     if (btn) {
       btn.onclick = function () {
-        track('track_conversion_shuiming_hint_click', {});
         goFillTaxRecords();
       };
     }
@@ -1475,6 +1563,8 @@
         renderAboutUpdateNudge();
       }
       maybeShowPostTaxSaveBanner();
+      mountXiangqingEditEntry();
+      mountShuimingResultManageEntry();
     }
 
     function runBoot() {
@@ -1519,7 +1609,6 @@
       ? '版本功能已更新。如需补全或调整演示个税数据，请前往 <a href="consult.html?tab=records">我要咨询 · 税务记录</a>。'
       : '欢迎使用。激活并添加税务演示数据后，可体验收入明细与纳税记录开具。 <a href="purchase.html">去激活</a>';
     brand.parentNode.insertBefore(box, brand.nextSibling);
-    track('track_conversion_about_nudge_shown', { has_tax: hasTaxRecords() ? 1 : 0 });
     box.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', function () {
         try {
@@ -1543,7 +1632,6 @@
     hint.innerHTML =
       '关怀版已简化导航。建议先 <a href="consult.html?tab=records&onboarding=tax" style="color:#1e6fff;font-weight:600;">添加税务演示数据</a>，再查看收入明细。';
     wrap.parentNode.insertBefore(hint, wrap);
-    track('track_conversion_care_hint_shown', {});
   }
 
   function beijingDayKey() {

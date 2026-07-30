@@ -93,26 +93,26 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | **216** 个源文件、约 **9.1 万** 行代码（`cloc`，不含 `node_modules`、Cordova 编译产物、`package-lock.json`、JSON/SVG） |
-| **前端页面** | **59** 个 HTML 页面（`frontend/*.html`） |
+| **源码规模** | **222** 个源文件、约 **9.2 万** 行代码（`cloc`，不含 `node_modules`、Cordova 编译产物、`package-lock.json`、JSON/SVG） |
+| **前端页面** | **60** 个 HTML 页面（`frontend/*.html`） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 2 个工作流：Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，2026-07-24）
+### 代码规模（按语言，2026-07-28）
 
 | 语言 | 文件 | 代码行 |
 |------|------|--------|
-| JavaScript | 83 | 56,184 |
-| HTML | 59 | 27,537 |
-| CSS | 9 | 3,135 |
-| Markdown | 20 | 1,341 |
-| Shell | 14 | 875 |
+| JavaScript | 85 | 55,790 |
+| HTML | 60 | 28,951 |
+| CSS | 10 | 3,478 |
+| Markdown | 20 | 1,336 |
+| Shell | 14 | 906 |
 | Python | 3 | 696 |
-| SQL | 14 | 459 |
-| 其它（YAML/XML/TS/Vue/Dockerfile 等） | 14 | 约 889 |
-| **合计** | **216** | **91,116** |
+| SQL | 15 | 465 |
+| 其它（YAML/XML/TS/Vue/Dockerfile 等） | 15 | 578 |
+| **合计** | **222** | **92,200** |
 
 按目录（含空白/注释外的 code）：`frontend/` ≈ 6.2 万 · `backend/` ≈ 2.7 万 · `docs/` / `scripts/` / 其它约占余量。
 

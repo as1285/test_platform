@@ -297,41 +297,6 @@ body {
 
 .empty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }
 
-.fb-type-options label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--color-text); }
-.fb-type-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: var(--radius-full);
-    font-size: 12px;
-    background: var(--color-primary-bg);
-    color: var(--color-primary-dark);
-}
-#fb_content { min-height: 120px; resize: vertical; width: 100%; box-sizing: border-box; }
-
-.feedback-reply-box {
-    margin-top: 10px;
-    padding: 10px 12px;
-    background: var(--color-primary-bg);
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--color-primary);
-    font-size: 13px;
-    line-height: 1.5;
-}
-.feedback-reply-box strong { color: var(--color-primary); font-size: 12px; display: block; margin-bottom: 6px; }
-.feedback-wechat-pay {
-    margin-bottom: 12px;
-    padding: 16px;
-    background: var(--color-surface-alt);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border-light);
-    text-align: center;
-}
-.feedback-wechat-pay-title { font-size: 14px; color: var(--color-text); margin-bottom: 10px; font-weight: 600; }
-.feedback-wechat-pay img { max-width: 220px; width: 100%; height: auto; display: block; margin: 0 auto; border-radius: var(--radius-sm); }
-.feedback-submit-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.feedback-submit-head .card-title { margin-bottom: 0; }
-.feedback-submit-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-#btnFeedbackXianyu, #btnFeedbackQqGroup { flex-shrink: 0; }
 
 .record-card {
     background: var(--color-surface-alt);

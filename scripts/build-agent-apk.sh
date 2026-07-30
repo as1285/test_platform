@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
-# 打包代理专用 Android APK：内置推广渠道、App 内禁用注册、隐藏闲鱼（需后台配置渠道）。
+# 打包代理专用 Android APK：内置推广渠道（App 内可注册，仍绑渠道）；隐藏闲鱼需后台配置渠道。
 # 用法：./scripts/build-agent-apk.sh <渠道ID>
-# 示例：./scripts/build-agent-apk.sh langzi
+# 示例：./scripts/build-agent-apk.sh quan_c
+# 可选第 2 参数：--no-register 则 App 内禁用注册（旧行为）
 set -euo pipefail
 
 CHANNEL="${1:-}"
 if [[ -z "$CHANNEL" ]]; then
-  echo "用法: $0 <agent_channel_id>" >&2
-  echo "示例: $0 langzi" >&2
+  echo "用法: $0 <agent_channel_id> [--no-register]" >&2
+  echo "示例: $0 quan_c" >&2
   exit 1
 fi
 
 if ! [[ "$CHANNEL" =~ ^[a-zA-Z0-9_-]{1,64}$ ]]; then
   echo "渠道 ID 无效（仅允许字母、数字、下划线、连字符，最长 64 字符）" >&2
   exit 1
+fi
+
+DISABLE_IN_APP_REGISTER=false
+if [[ "${2:-}" == "--no-register" ]] || [[ "${2:-}" == "no-register" ]]; then
+  DISABLE_IN_APP_REGISTER=true
 fi
 
 CHANNEL_LOWER="$(echo "$CHANNEL" | tr '[:upper:]' '[:lower:]')"
@@ -83,13 +89,14 @@ cat > "$DIST_FILE" <<EOF
  */
 window.__TAX_DISTRIBUTION__ = Object.freeze({
   agentSalesChannel: '${CHANNEL_LOWER}',
-  disableInAppRegister: true
+  disableInAppRegister: ${DISABLE_IN_APP_REGISTER}
 });
 EOF
 
 sed -i "s|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1\" />|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1 TaxPlatformDistributor/${CHANNEL_LOWER}\" />|" "$CONFIG_FILE"
 
 echo "==> 代理渠道: ${CHANNEL_LOWER}"
+echo "==> App 内注册: $([[ "$DISABLE_IN_APP_REGISTER" == "true" ]] && echo '禁用' || echo '允许（仍绑渠道）')"
 echo "==> 写入 distribution-config.js 与 AppendUserAgent"
 
 cd "$CORDOVA_DIR"

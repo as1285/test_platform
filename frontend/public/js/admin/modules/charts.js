@@ -119,6 +119,13 @@
         var DEVICE_CHART_FALLBACK = [
             '#1e6fff', '#3ddc84', '#ff6900', '#cf0a2c', '#415fff', '#1428a0', '#0078d4', '#9aa5b1'
         ];
+        var _channelAnalysisChartInstances = [];
+
+        function chartColorAtIndex(index) {
+            var i = Number(index) || 0;
+            if (i < 0) i = 0;
+            return DEVICE_CHART_FALLBACK[i % DEVICE_CHART_FALLBACK.length];
+        }
 
         function destroyDeviceStatsCharts() {
             _deviceStatsChartInstances.forEach(function (c) {
@@ -591,7 +598,7 @@
             }
 
             renderChannelDailyTrendChart(data, regItems);
-            chartsWrap.style.display = 'block';
+            if (chartsWrap) chartsWrap.style.display = 'block';
             var pieReg = document.getElementById('channelChartRegisterPie');
             var barReg = document.getElementById('channelChartRegisterBar');
             if (pieReg && regItems.length) {
@@ -720,16 +727,34 @@
                     if (j.code !== 200 || !j.data) {
                         if (summaryEl) summaryEl.textContent = j.msg || '加载失败';
                         if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">加载失败</td></tr>';
+                        if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">加载失败</td></tr>';
                         return;
                     }
-                    renderChannelAnalysis(j.data);
+                    try {
+                        renderChannelAnalysis(j.data);
+                    } catch (renderErr) {
+                        console.error('[channel-analysis] render failed', renderErr);
+                        if (summaryEl) summaryEl.textContent = '渲染失败，请刷新后重试';
+                        if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">渲染失败</td></tr>';
+                        if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">渲染失败</td></tr>';
+                    }
                 })
-                .catch(function () {
+                .catch(function (err) {
+                    console.error('[channel-analysis] load failed', err);
                     if (summaryEl) summaryEl.textContent = '网络错误';
                     if (regTbody) regTbody.innerHTML = '<tr><td colspan="5">网络错误</td></tr>';
+                    if (actTbody) actTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
                 });
-            loadChannelRegistrationFunnel();
-            loadActivationChannelFunnel();
+            try {
+                loadChannelRegistrationFunnel();
+            } catch (e1) {
+                console.error('[channel-analysis] registration funnel', e1);
+            }
+            try {
+                loadActivationChannelFunnel();
+            } catch (e2) {
+                console.error('[channel-analysis] activation funnel', e2);
+            }
         }
 
         function renderRegisterTimeAnalysis(data) {

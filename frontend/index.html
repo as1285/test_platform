@@ -2,11 +2,16 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-login-official"></script>
+    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="个人所得税">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
     <title>个人所得税</title>
     <style>
         * {
@@ -67,26 +72,30 @@
         }
 
         .header-title {
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 600;
-            color: #333333;
-            letter-spacing: 0.02em;
+            color: #1a1a1a;
+            letter-spacing: 0.04em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         /* 头像区域 */
         .avatar-section {
             display: flex;
             justify-content: center;
-            padding: 40px 0 32px;
+            padding: 48px 0 36px;
         }
 
         .avatar {
-            width: 96px;
-            height: 96px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             overflow: hidden;
-            background: #e8f2ff;
+            background: linear-gradient(180deg, #a8d4ff 0%, #e8f4ff 100%);
             flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(22, 119, 255, 0.12);
         }
 
         .avatar-img {
@@ -94,6 +103,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            image-rendering: -webkit-optimize-contrast;
         }
         
         /* 表单区域 */
@@ -110,10 +120,12 @@
         }
 
         .form-label {
-            width: 48px;
+            width: 52px;
             font-size: 16px;
-            color: #333;
+            font-weight: 500;
+            color: #1a1a1a;
             flex-shrink: 0;
+            -webkit-font-smoothing: antialiased;
         }
 
         .form-input {
@@ -134,34 +146,56 @@
         }
 
         .form-help {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             border: none;
-            background: #a8ccf5;
+            background: #8ec0f5;
             color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 18px;
             text-align: center;
             flex-shrink: 0;
+            margin-left: 4px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .form-help:active {
+            opacity: 0.85;
         }
 
-        /* 滑块验证（对齐官方：灰底白块 >>，通过后整条绿底白字） */
+        /* 滑块验证：拖动进度填充；通过后整条绿底 + 白圈勾 +「验证通过!」 */
         .slider-section {
             padding: 18px 24px 0;
         }
         .slider-lane {
             position: relative;
             height: 40px;
-            background: #f0f0f0;
-            border-radius: 3px;
+            background: #ececec;
+            border-radius: 4px;
             overflow: hidden;
         }
+        .slider-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: #b7d978;
+            border-radius: 4px 0 0 4px;
+            z-index: 0;
+            pointer-events: none;
+        }
         .slider-lane.is-verified {
-            background: #94c843;
+            background: #8fc63d;
+        }
+        .slider-lane.is-verified .slider-progress {
+            width: 100% !important;
+            background: #8fc63d;
+            border-radius: 4px;
         }
         .slider-hint {
             position: absolute;
@@ -169,36 +203,40 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
             padding: 0 12px;
             font-size: 14px;
-            color: #bdbdbd;
+            color: #b0b0b0;
             pointer-events: none;
             user-select: none;
             z-index: 1;
         }
         .slider-hint-text {
             line-height: 1.2;
+            letter-spacing: 0.02em;
         }
         .slider-hint-check {
             display: none;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: #fff;
+            border: 2px solid #fff;
+            background: transparent;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            box-sizing: border-box;
         }
         .slider-hint-check svg {
             display: block;
             width: 11px;
             height: 11px;
-            color: #7eb63a;
+            color: #fff;
         }
         .slider-lane.is-verified .slider-hint {
             color: #fff;
-            font-size: 15px;
+            font-size: 16px;
+            font-weight: 500;
         }
         .slider-lane.is-verified .slider-hint-check {
             display: inline-flex;
@@ -210,7 +248,7 @@
             width: 46px;
             height: calc(100% - 4px);
             background: #fff;
-            border-radius: 2px;
+            border-radius: 3px;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
             display: flex;
             align-items: center;
@@ -483,6 +521,33 @@
             margin-top: 0;
             padding: 0 18px;
         }
+        .ios-standalone-tip {
+            display: none;
+            margin: 10px 16px 0;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            color: #9a3412;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .ios-standalone-tip.is-visible { display: block; }
+        .ios-standalone-tip a {
+            color: #c2410c;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+        .ios-standalone-tip .ios-standalone-tip-close {
+            float: right;
+            border: 0;
+            background: transparent;
+            color: #9a3412;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0 0 0 8px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="page-login">
@@ -507,12 +572,17 @@
         </a>
         <span class="header-title">个人所得税</span>
     </div>
+    <div class="ios-standalone-tip" id="iosStandaloneTip" hidden>
+        <button type="button" class="ios-standalone-tip-close" id="iosStandaloneTipClose" aria-label="关闭">×</button>
+        当前仍在 Safari 浏览器中打开（有地址栏）。主屏幕图标需开启「以 Web App 形式打开」才无地址栏。
+        <a id="iosStandaloneTipLink" href="install-ios.html">查看重装步骤</a>
+    </div>
     
     <div id="loginMainWrap">
         <!-- 头像区域 -->
         <div class="avatar-section">
             <div class="avatar">
-                <img class="avatar-img" src="login_avatar.png" width="96" height="96" alt="" decoding="async">
+                <img class="avatar-img" src="login_avatar.png?v=20260729-tax" width="100" height="100" alt="个人所得税" decoding="async">
             </div>
         </div>
 
@@ -531,10 +601,11 @@
 
         <div class="slider-section">
             <div class="slider-lane" id="loginSliderLane">
+                <div class="slider-progress" id="loginSliderProgress" aria-hidden="true"></div>
                 <span class="slider-hint" id="loginSliderHint">
                     <span class="slider-hint-check" id="loginSliderCheck" aria-hidden="true">
                         <svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path d="M2.5 6.2l2.2 2.2 4.8-5.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2.2 6.1l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </span>
                     <span class="slider-hint-text" id="loginSliderHintText">请按住滑块，拖动到最右边</span>
@@ -812,6 +883,7 @@
         function initLoginSlider() {
             var lane = document.getElementById('loginSliderLane');
             var handle = document.getElementById('loginSliderHandle');
+            var progress = document.getElementById('loginSliderProgress');
             var hintText = document.getElementById('loginSliderHintText');
             var loginBtn = document.getElementById('loginSubmitBtn');
             if (!lane || !handle || !hintText || !loginBtn) return;
@@ -825,13 +897,20 @@
             function layout() {
                 maxX = Math.max(0, lane.offsetWidth - handle.offsetWidth - HANDLE_INSET * 2);
             }
+            function setProgress(x) {
+                if (!progress) return;
+                var w = HANDLE_INSET + x + handle.offsetWidth / 2;
+                progress.style.width = Math.max(0, Math.min(lane.offsetWidth, w)) + 'px';
+            }
             function setHandle(x) {
                 x = Math.max(0, Math.min(x, maxX));
                 handle.style.left = HANDLE_INSET + x + 'px';
+                setProgress(x);
             }
             function resetSlider() {
                 lane.classList.remove('is-verified');
                 handle.style.left = HANDLE_INSET + 'px';
+                if (progress) progress.style.width = '0px';
                 hintText.textContent = '请按住滑块，拖动到最右边';
                 setLoginSubmitReady(false);
             }
@@ -856,7 +935,8 @@
                 if (handle.offsetLeft - HANDLE_INSET >= maxX - 2) {
                     lane.classList.add('is-verified');
                     handle.style.left = HANDLE_INSET + 'px';
-                    hintText.textContent = '验证通过！';
+                    if (progress) progress.style.width = '100%';
+                    hintText.textContent = '验证通过!';
                     setLoginSubmitReady(true);
                     showLoginFormTip('');
                 } else {
@@ -1046,6 +1126,52 @@
                     alert('网络错误，请检查服务是否可用');
                 });
         }
+
+        (function showIosStandaloneTip() {
+            function isIos() {
+                try {
+                    var ua = navigator.userAgent || '';
+                    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+                    return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+                } catch (e0) {
+                    return false;
+                }
+            }
+            function isStandalone() {
+                try {
+                    if (window.navigator && window.navigator.standalone === true) return true;
+                } catch (e1) {}
+                try {
+                    return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+                } catch (e2) {
+                    return false;
+                }
+            }
+            if (!isIos() || isStandalone()) return;
+            try {
+                if (sessionStorage.getItem('ios_standalone_tip_dismissed') === '1') return;
+            } catch (e3) {}
+            var tip = document.getElementById('iosStandaloneTip');
+            var closeBtn = document.getElementById('iosStandaloneTipClose');
+            var link = document.getElementById('iosStandaloneTipLink');
+            if (!tip) return;
+            tip.hidden = false;
+            tip.classList.add('is-visible');
+            if (link && typeof window.appendSalesChannelToUrl === 'function') {
+                try {
+                    link.href = window.appendSalesChannelToUrl('install-ios.html');
+                } catch (e4) {}
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    tip.hidden = true;
+                    tip.classList.remove('is-visible');
+                    try {
+                        sessionStorage.setItem('ios_standalone_tip_dismissed', '1');
+                    } catch (e5) {}
+                });
+            }
+        })();
 
     </script>
 </body>

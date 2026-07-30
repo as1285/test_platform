@@ -2,7 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-mine-top-pin"></script>
+    <script>
+        /* 分享完成后首屏前隐藏，避免 App 切页闪一下「分享后消失」 */
+        (function () {
+            try {
+                if (localStorage.getItem('mine_share_done_v1') === '1') {
+                    document.documentElement.classList.add('mine-share-done');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -20,12 +30,12 @@
     <meta property="og:title" content="模拟器APP">
     <meta property="og:description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta property="og:image" content="/grdb.jpg">
-    <meta property="og:url" content="/mine.html?from=share">
+    <meta property="og:url" content="/shouye.html?guest=1&from=share&landing_ab=c">
     <meta name="twitter:card" content="summary">
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta itemprop="image" content="/grdb.jpg">
-    <link rel="stylesheet" href="css/nav.css?v=20260728-mine-top-pin">
+    <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
     <style>
         * {
@@ -54,23 +64,25 @@
         }
 
         /*
-         * 「我的」底栏：位置由 auth.js pinTabBottomNav 用 top 像素硬钉。
-         * 勿写死 bottom:0 / transform:none（会与硬钉冲突）。
+         * 「我的」底栏与其它 TAB 同用 bottom + gap，首屏即悬浮，避免 JS top 硬钉闪烁。
          */
         body.page-mine {
-            --bottom-nav-bottom: 0px;
+            --bottom-nav-bottom: var(--bottom-nav-gap, 8px);
         }
         html body.page-mine > .bottom-nav,
         html body.page-mine > .bottom-nav.ios-device,
         html.app-ios-client body.page-mine > .bottom-nav,
         html.app-ios-client body.page-mine > .bottom-nav.ios-device {
             position: fixed !important;
-            left: var(--bottom-nav-side, 16px) !important;
-            right: var(--bottom-nav-side, 16px) !important;
-            bottom: auto !important;
+            left: var(--bottom-nav-side, 14px) !important;
+            right: var(--bottom-nav-side, 14px) !important;
+            bottom: var(--bottom-nav-bottom, 8px) !important;
+            top: auto !important;
             padding-bottom: 0 !important;
             z-index: 200 !important;
             margin: 0 !important;
+            transform: none !important;
+            -webkit-transform: none !important;
         }
 
         /* 顶部头图：安全区用头图顶入（负 margin），避免纯色垫带与图顶色差接缝 */
@@ -464,7 +476,7 @@
             position: relative;
             z-index: 10;
             padding-top: 10px;
-            padding-bottom: var(--bottom-nav-clearance, calc(98px + env(safe-area-inset-bottom, 0px)));
+            padding-bottom: var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
         }
 
         .user-card {
@@ -1021,6 +1033,20 @@
             display: none !important;
         }
 
+        .menu-item-dot {
+            flex-shrink: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff3b30;
+            margin-right: 6px;
+            box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.18);
+        }
+
+        .menu-item-dot[hidden] {
+            display: none !important;
+        }
+
         /* 与官方一致：右箭头浅灰 */
         .menu-arrow {
             display: inline-flex;
@@ -1101,6 +1127,9 @@
         .mine-share-btn[hidden] {
             display: none !important;
         }
+        html.mine-share-done .mine-share-btn {
+            display: none !important;
+        }
         .mine-share-btn:active {
             opacity: 0.88;
             transform: scale(0.98);
@@ -1163,7 +1192,7 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: calc(var(--bottom-nav-height, 72px) + var(--bottom-nav-bottom, 2px));
+            bottom: calc(var(--bottom-nav-height, 56px) + var(--bottom-nav-bottom, 2px));
             z-index: 50;
             align-items: center;
             gap: 10px;
@@ -1176,7 +1205,7 @@
             display: flex;
         }
         body.guest-download-bar-on .content-wrapper {
-            padding-bottom: calc(var(--bottom-nav-clearance, 98px) + 72px);
+            padding-bottom: calc(var(--bottom-nav-clearance, 78px) + 72px);
         }
         .guest-download-bar-text {
             flex: 1;
@@ -1285,7 +1314,7 @@
                 <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
                 <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
                 <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-                <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
+                <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-item-dot" id="consultTaxDot" hidden aria-label="待添加个税记录"></span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
                 <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
             </div>
             <div class="logout-section">
@@ -2060,6 +2089,20 @@
                 /* 对齐官方：咨询行不展示「我要咨询修改」旁注 */
                 var hint = document.getElementById('consultModifyHint');
                 if (hint) hint.setAttribute('hidden', '');
+                syncConsultTaxDot();
+            }
+
+            /** 无个税记录时，「我要咨询」旁显示红点提示 */
+            function syncConsultTaxDot() {
+                var dot = document.getElementById('consultTaxDot');
+                if (!dot) return;
+                if (hasTaxRecords()) {
+                    dot.setAttribute('hidden', '');
+                    dot.setAttribute('aria-hidden', 'true');
+                } else {
+                    dot.removeAttribute('hidden');
+                    dot.setAttribute('aria-hidden', 'false');
+                }
             }
 
             function updateCountsFromStorage() {
@@ -2073,6 +2116,7 @@
                     bank_card_count: bc != null ? bc : null,
                     tax_record_count: tc != null ? tc : null
                 });
+                syncConsultTaxDot();
             }
 
             function isInactiveAccount() {
@@ -2085,9 +2129,8 @@
             }
 
             window.addEventListener('pageshow', function (ev) {
-                if (ev.persisted) {
-                    updateCountsFromStorage();
-                }
+                updateCountsFromStorage();
+                syncConsultTaxDot();
             });
 
             function goConsultPage() {
@@ -2348,6 +2391,9 @@
 
                 function hideShareBtn() {
                     try {
+                        document.documentElement.classList.add('mine-share-done');
+                    } catch (eCls) {}
+                    try {
                         btn.hidden = true;
                         btn.setAttribute('hidden', '');
                     } catch (e) {
@@ -2360,6 +2406,9 @@
                         hideShareBtn();
                         return;
                     }
+                    try {
+                        document.documentElement.classList.remove('mine-share-done');
+                    } catch (eCls2) {}
                     try {
                         btn.hidden = false;
                         btn.removeAttribute('hidden');
@@ -2445,8 +2494,8 @@
                         u.searchParams.delete('sales_ch');
                         url = u.href;
                     } catch (eUrl) {}
-                    var title = opts.title || '模拟器APP';
-                    var text = opts.text || title;
+                    var title = opts.title || '个税记录演示';
+                    var text = opts.text || '打开即可体验收入明细与纳税记录（演示）';
                     var body = String(text || '').trim();
                     if (body.indexOf(url) < 0) body = body ? body + '\n' + url : url;
                     var isAndroid = /Android/i.test(navigator.userAgent || '');
@@ -2536,22 +2585,17 @@
                 function doSharePage(kind) {
                     var shareFn =
                         typeof window.sharePageLink === 'function' ? window.sharePageLink : localShareFallback;
-                    var opts =
-                        kind === 'mine'
-                            ? {
-                                  page: 'mine.html',
-                                  query: { from: 'share', sv: 'sim1' },
-                                  title: '模拟器APP',
-                                  text: '打开模拟器APP个人中心',
-                                  track: 'track_share_mine'
-                              }
-                            : {
-                                  page: 'shouye.html',
-                                  query: { guest: '1', from: 'share', sv: 'sim1' },
-                                  title: '模拟器APP',
-                                  text: '打开即可体验模拟器APP',
-                                  track: 'track_share_home'
-                              };
+                    /* 分享「我的」也落到游客首页，避免未登录撞登录墙；track 仍区分入口 */
+                    var opts = {
+                        page: 'shouye.html',
+                        query: { guest: '1', from: 'share', landing_ab: 'c', sv: 'sim1' },
+                        title: '个税记录演示',
+                        text:
+                            kind === 'mine'
+                                ? '好友分享个税记录演示，打开即可体验收入明细'
+                                : '打开即可体验收入明细与纳税记录（演示）',
+                        track: kind === 'mine' ? 'track_share_mine' : 'track_share_home'
+                    };
                     /* 跳系统分享前先记 pending：部分 iOS/WebView resolve 不可靠，回 App 也可隐藏 */
                     markSharePending();
                     var ret = shareFn(opts);
@@ -2651,7 +2695,30 @@
                     }
                 }
 
-                /** 下载链接：优先当前机型安装包直链，否则安装引导页 */
+                /** 海报二维码：落到带 from=share 的游客首页，计入分享打开/注册 */
+                function resolveShareLandUrl() {
+                    if (typeof window.buildShareUrl === 'function') {
+                        return window.buildShareUrl(
+                            'shouye.html',
+                            window.DEFAULT_SHARE_LAND_QUERY || {
+                                guest: '1',
+                                from: 'share',
+                                landing_ab: 'c',
+                                sv: 'sim1'
+                            }
+                        );
+                    }
+                    var origin =
+                        typeof location !== 'undefined' && location.origin
+                            ? location.origin
+                            : 'https://lkj.qiyun888.top';
+                    return (
+                        origin +
+                        '/shouye.html?guest=1&from=share&landing_ab=c&sv=sim1'
+                    );
+                }
+
+                /** @deprecated 保留给其它下载入口；海报改用 resolveShareLandUrl */
                 function resolveDownloadShareUrl(pkg) {
                     pkg = pkg || {};
                     var ua = navigator.userAgent || '';
@@ -2666,11 +2733,7 @@
                     var base =
                         (typeof location !== 'undefined' && location.origin
                             ? location.origin + '/'
-                            : 'https://lkj.qiyun888.top/') + 'install_guide.html?download=1';
-                    var ch = getSalesChannelId();
-                    if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
-                        base += '&ch=' + encodeURIComponent(ch.toLowerCase());
-                    }
+                            : 'https://lkj.qiyun888.top/') + 'install_guide.html?download=1&from=share';
                     return base + '#download';
                 }
 
@@ -2680,7 +2743,7 @@
                             reject(new Error('no_qrcode'));
                             return;
                         }
-                        var target = resolveDownloadShareUrl(pkg);
+                        var target = resolveShareLandUrl();
                         QRCode.toDataURL(
                             target,
                             { width: 440, margin: 1, errorCorrectionLevel: 'M' },
@@ -2729,11 +2792,11 @@
                                 ctx.fillText('个人所得税', W / 2, 78);
 
                                 ctx.font = '700 44px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('扫码下载官方 App', W / 2, 148);
+                                ctx.fillText('扫码体验个税演示', W / 2, 148);
 
                                 ctx.font = '400 26px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
                                 ctx.globalAlpha = 0.92;
-                                ctx.fillText('安装后登录，权益与资料自动同步', W / 2, 198);
+                                ctx.fillText('打开即可浏览收入明细 · 注册保存资料', W / 2, 198);
                                 ctx.globalAlpha = 1;
 
                                 /* 白色卡片承载二维码 */
@@ -2754,11 +2817,11 @@
 
                                 ctx.fillStyle = '#1a1a1a';
                                 ctx.font = '600 28px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('微信扫一扫下载', W / 2, cardY + 58);
+                                ctx.fillText('微信扫一扫打开', W / 2, cardY + 58);
 
                                 ctx.fillStyle = '#6b7280';
                                 ctx.font = '400 22px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('支持 Android / iOS', W / 2, cardY + 96);
+                                ctx.fillText('好友分享 · 免费体验', W / 2, cardY + 96);
 
                                 var qrSize = 360;
                                 var qrX = (W - qrSize) / 2;
@@ -2768,7 +2831,7 @@
                                 /* 底部提示 */
                                 ctx.fillStyle = '#334155';
                                 ctx.font = '400 24px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('长按识别二维码 · 立即安装体验', W / 2, cardY + cardH + 70);
+                                ctx.fillText('长按识别二维码 · 打开即可体验', W / 2, cardY + cardH + 70);
 
                                 resolve(canvas.toDataURL('image/png'));
                             } catch (eDraw) {

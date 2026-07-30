@@ -2,352 +2,319 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <script src="/js/auth.js?v=20260730-ui-clean"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/public-editorial.css?v=20260724-editorial">
     <style>
+        :root {
+            --reg-ink: #0f172a;
+            --reg-ink-soft: #475569;
+            --reg-muted: #94a3b8;
+            --reg-line: #e2e8f0;
+            --reg-bg: #f4f7fb;
+            --reg-accent: #1d6fd8;
+            --reg-accent-deep: #1860be;
+            --reg-danger: #dc6b6b;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+        body.page-register {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--reg-ink);
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--reg-bg);
+            padding-bottom: calc(24px + var(--safe-b));
+        }
         .reg-shell {
-            position: relative;
-            z-index: 1;
-            max-width: var(--wrap);
+            max-width: 420px;
             margin: 0 auto;
-            padding: 0 22px;
+            padding: 0 20px;
         }
-        .reg-top {
-            padding: calc(18px + var(--safe-t)) 0 0;
+        .reg-top { padding: calc(12px + var(--safe-t)) 0 0; }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--reg-accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 6px 2px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .reg-top .back-btn { margin-bottom: 28px; }
-        .reg-layout {
-            display: block;
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            opacity: 0.9;
+            filter: brightness(0) saturate(100%) invert(35%) sepia(90%) saturate(1200%) hue-rotate(195deg);
         }
-        .reg-brand .brand { margin-bottom: 12px; }
+        .reg-layout { display: block; padding-top: 12px; }
+        .reg-brand {
+            text-align: left;
+            padding: 8px 0 18px;
+        }
+        .reg-avatar { display: none; }
+        .reg-brand .brand {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--reg-accent);
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
         .reg-brand h1 {
-            font-family: var(--font-display);
-            font-size: 1.35rem;
-            font-weight: 700;
-            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 650;
+            color: var(--reg-ink);
+            margin: 0 0 6px;
             letter-spacing: 0.01em;
-            color: var(--ink);
         }
         .reg-brand .lead {
-            font-size: 0.92rem;
-            line-height: 1.55;
-            color: var(--muted);
-            max-width: 18rem;
-            margin: 0 0 28px;
-        }
-        .reg-points {
-            display: none;
-            list-style: none;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--reg-muted);
             margin: 0;
-            padding: 0;
         }
-        .reg-points li {
-            position: relative;
-            padding: 0 0 14px 18px;
-            font-size: 0.88rem;
-            color: var(--ink-soft);
-            line-height: 1.45;
-        }
-        .reg-points li::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 0.45em;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--accent);
-            opacity: 0.85;
-        }
+        .reg-points { display: none; }
         .card {
             background: transparent;
-            margin: 0;
+            border: none;
             border-radius: 0;
-            padding: 0 0 8px;
+            padding: 0;
             box-shadow: none;
-            border-top: 1px solid var(--line);
-            padding-top: 28px;
-            animation: editorialRise 0.85s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+            animation: none;
         }
-        @media (min-width: 900px) {
-            .reg-shell {
-                max-width: 920px;
-                padding: 0 36px 24px;
-                min-height: calc(100vh - 24px);
-                display: flex;
-                flex-direction: column;
-            }
-            .reg-layout {
-                flex: 1;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 48px;
-                align-items: center;
-                padding: 24px 0 40px;
-            }
-            .reg-brand .lead { max-width: 22rem; margin-bottom: 28px; }
-            .reg-points { display: block; }
-            .card {
-                border-top: none;
-                padding-top: 8px;
-                border-left: 1px solid var(--line);
-                padding-left: 40px;
-            }
-        }
-        .field { margin-bottom: 20px; }
+        .field { margin-bottom: 14px; }
         .field label {
             display: block;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--ink-soft);
-            margin-bottom: 8px;
-            letter-spacing: 0.04em;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--reg-ink-soft);
+            margin-bottom: 7px;
         }
-        .field label .req { color: var(--accent-deep); }
+        .field label .req { color: var(--reg-accent); }
         .input-wrap { position: relative; }
         .field input,
         .field select {
             width: 100%;
-            padding: 14px 0;
-            border: none;
-            border-bottom: 1.5px solid rgba(15, 28, 48, 0.16);
-            border-radius: 0;
-            font-size: 1.05rem;
-            background: transparent;
-            color: var(--ink);
-            transition: border-color 0.18s ease, background 0.18s ease;
+            padding: 13px 14px;
+            border: 1px solid var(--reg-line);
+            border-radius: 10px;
+            font-size: 15px;
+            background: #fff;
+            color: var(--reg-ink);
+            transition: border-color 0.15s ease;
             font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
         }
+        .field input::placeholder { color: #b6c2d1; }
         .field input:focus,
         .field select:focus {
             outline: none;
-            border-bottom-color: var(--accent);
-            background: transparent;
-            box-shadow: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
         }
         .field input.is-invalid,
         .field select.is-invalid {
-            border-bottom-color: var(--danger);
-            background: transparent;
+            border-color: #f0b0b0;
+            background: #fffafa;
         }
-        .field input.is-valid {
-            border-bottom-color: var(--ok);
-        }
+        .field input.is-valid { border-color: #b5dfb8; }
         .field select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235b6b82' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%94a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 0 center;
-            padding-right: 28px;
+            background-position: right 14px center;
+            background-color: #fff;
+            padding-right: 36px;
         }
         .pwd-toggle {
             position: absolute;
-            right: 0;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             border: none;
             background: transparent;
-            color: var(--accent);
-            font-size: 0.82rem;
-            font-weight: 600;
-            padding: 8px 0 8px 12px;
+            color: var(--reg-accent);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 6px;
             cursor: pointer;
             font-family: inherit;
             -webkit-tap-highlight-color: transparent;
         }
-        .input-wrap.has-toggle input { padding-right: 48px; }
+        .input-wrap.has-toggle input { padding-right: 52px; }
         .hint {
-            font-size: 0.78rem;
-            color: var(--muted);
-            margin-top: 8px;
-            line-height: 1.45;
+            font-size: 12px;
+            color: var(--reg-muted);
+            margin-top: 6px;
+            line-height: 1.4;
         }
         .field-msg {
-            font-size: 0.78rem;
+            font-size: 12px;
             margin-top: 6px;
             line-height: 1.4;
             min-height: 0;
         }
-        .field-msg.is-error { color: var(--danger); }
-        .field-msg.is-ok { color: var(--ok); }
+        .field-msg.is-error { color: var(--reg-danger); }
+        .field-msg.is-ok { color: #66a86a; }
         .soft-tip {
-            margin: 4px 0 22px;
-            font-size: 0.82rem;
-            color: var(--muted);
-            line-height: 1.55;
+            margin: 0 0 14px;
+            font-size: 12px;
+            color: var(--reg-muted);
+            line-height: 1.5;
         }
         .guest-tip {
-            margin: 0 0 22px;
-            padding: 12px 0;
-            border-radius: 0;
-            background: transparent;
-            border: none;
-            border-top: 1px solid var(--accent);
-            border-bottom: 1px solid var(--accent);
-            font-size: 0.84rem;
-            color: var(--accent-deep);
-            line-height: 1.55;
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            font-size: 13px;
+            color: var(--reg-accent-deep);
+            line-height: 1.45;
         }
         .guest-tip[hidden] { display: none !important; }
         .optional-block {
-            margin: 0 0 18px;
+            margin: 0 0 12px;
             border: none;
-            border-bottom: 1px solid var(--line);
-            padding-bottom: 6px;
+            border-radius: 0;
+            background: transparent;
+            padding: 0;
         }
         .optional-block > summary {
             list-style: none;
             cursor: pointer;
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: var(--ink-soft);
-            padding: 10px 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--reg-ink-soft);
+            padding: 8px 0;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
         .optional-block > summary::-webkit-details-marker { display: none; }
         .optional-block > summary::after {
-            content: "展开";
+            content: "可选";
             float: right;
-            font-size: 0.75rem;
-            color: var(--accent);
-            font-weight: 600;
+            font-size: 12px;
+            color: var(--reg-muted);
+            font-weight: 500;
         }
-        .optional-block[open] > summary::after { content: "收起"; }
-        .optional-block .field { margin-top: 8px; margin-bottom: 12px; }
+        .optional-block[open] > summary::after { content: "收起"; color: var(--reg-accent); }
+        .optional-block .field { margin-top: 4px; margin-bottom: 10px; }
         .disclaimer {
-            margin: 28px 0 0;
-            text-align: left;
-            font-size: 0.75rem;
-            color: #8090a6;
-            line-height: 1.55;
-            padding-top: 16px;
-            border-top: 1px solid var(--line);
+            margin: 18px 0 0;
+            text-align: center;
+            font-size: 11px;
+            color: #a8b4c4;
+            line-height: 1.5;
+            padding-top: 14px;
+            border-top: 1px solid var(--reg-line);
         }
         .btn-submit {
             width: 100%;
-            margin-top: 8px;
-            padding: 15px;
+            margin-top: 4px;
+            padding: 14px;
             border: none;
             border-radius: 10px;
-            font-size: 1.05rem;
+            font-size: 16px;
             font-weight: 600;
             color: #fff;
-            background: var(--accent);
+            background: var(--reg-accent);
             cursor: pointer;
             font-family: inherit;
             box-shadow: none;
             -webkit-tap-highlight-color: transparent;
-            transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+            transition: background 0.15s ease, opacity 0.15s ease;
         }
-        .btn-submit:hover { background: var(--accent-deep); }
-        .btn-submit:active:not(:disabled) { transform: scale(0.985); }
-        .btn-submit:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .btn-submit:hover { background: var(--reg-accent-deep); }
+        .btn-submit:active:not(:disabled) { opacity: 0.92; }
+        .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
         .footer-link {
-            text-align: left;
-            margin-top: 22px;
-            font-size: 0.92rem;
-            color: var(--muted);
+            margin: 16px 0 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--reg-muted);
         }
         .footer-link a {
-            color: var(--accent-deep);
-            text-decoration: none;
+            color: var(--reg-accent);
             font-weight: 600;
-            border-bottom: 1px solid rgba(17, 94, 89, 0.35);
+            text-decoration: none;
         }
+        .ok-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(28px + var(--safe-b));
+            transform: translateX(-50%) translateY(8px);
+            background: rgba(15, 23, 42, 0.9);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 80;
+            max-width: 86vw;
+            text-align: center;
+        }
+        .ok-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .err-modal[hidden] { display: none !important; }
         .err-modal {
-            display: none;
             position: fixed;
             inset: 0;
-            z-index: 200;
-            align-items: flex-end;
+            z-index: 90;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            padding: 0;
-            box-sizing: border-box;
+            padding: 20px;
         }
-        .err-modal.show { display: flex; }
         .err-modal-mask {
             position: absolute;
             inset: 0;
-            background: rgba(11, 18, 32, 0.48);
+            background: rgba(15, 23, 42, 0.4);
         }
         .err-modal-panel {
             position: relative;
             width: 100%;
-            max-width: var(--wrap);
-            background: var(--paper);
-            border-radius: 18px 18px 0 0;
-            padding: 26px 22px calc(20px + var(--safe-b));
-            box-shadow: none;
-            text-align: left;
-            animation: errModalIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        @keyframes errModalIn {
-            from { opacity: 0; transform: translateY(100%); }
-            to { opacity: 1; transform: translateY(0); }
+            max-width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 22px 18px 16px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
         }
         .err-modal-title {
-            font-family: var(--font-display);
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--ink);
-            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            color: var(--reg-ink);
         }
         .err-modal-msg {
-            font-size: 0.95rem;
-            color: var(--danger);
-            line-height: 1.55;
-            margin: 0 0 20px;
-            word-break: break-word;
-            white-space: pre-line;
-            text-align: left;
+            font-size: 14px;
+            color: var(--reg-ink-soft);
+            line-height: 1.5;
+            margin: 0 0 16px;
         }
         .err-modal-btn {
             width: 100%;
-            padding: 13px;
             border: none;
             border-radius: 10px;
-            background: var(--accent);
+            padding: 12px;
+            background: var(--reg-accent);
             color: #fff;
-            font-size: 1rem;
+            font-size: 15px;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
-        .err-modal-btn:active { opacity: 0.92; }
-        .ok-toast {
-            position: fixed;
-            left: 50%;
-            bottom: calc(40px + var(--safe-b));
-            transform: translateX(-50%);
-            background: var(--ink);
-            color: #fff;
-            font-size: 0.88rem;
-            padding: 11px 16px;
-            border-radius: 8px;
-            z-index: 99;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            max-width: calc(100% - 40px);
-        }
-        .ok-toast.show { opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-            .reg-shell, .card, .err-modal-panel { animation: none !important; }
+        @media (min-width: 900px) {
+            .reg-shell { max-width: 440px; padding-top: 24px; }
         }
     </style>
 </head>
-<body class="page-register editorial-page">
-    <div class="reg-shell editorial-rise">
+<body class="page-register">
+    <div class="reg-shell">
         <div class="reg-top">
             <a href="login.html" class="back-btn" id="regBackBtn">
                 <img src="/jt.png" alt="" width="9" decoding="async">
@@ -356,14 +323,9 @@
         </div>
         <div class="reg-layout">
             <div class="reg-brand">
-                <p class="brand editorial-brand">个人所得税</p>
+                <p class="brand">个人所得税</p>
                 <h1>创建账号</h1>
-                <p class="lead">账号、密码填好就能用，大约半分钟</p>
-                <ul class="reg-points" aria-hidden="true">
-                    <li>本地演示体验，创建后即可登录</li>
-                    <li>需要完整功能时，在个人中心填写激活码</li>
-                    <li>游客体验内容可自动带到新账号</li>
-                </ul>
+                <p class="lead">填写账号和密码即可开始使用</p>
             </div>
 
             <div class="card">
@@ -371,8 +333,7 @@
                     <p class="guest-tip" id="guestRegTip" hidden>你刚才体验留下的内容会自动带到新账号，不用重新填。</p>
                     <div class="field">
                         <label for="username">账号</label>
-                        <input type="text" id="username" name="username" placeholder="手机号或自定义均可" maxlength="32" autocomplete="username" required>
-                        <div class="hint">建议用手机号，方便记住</div>
+                        <input type="text" id="username" name="username" placeholder="手机号或自定义账号" maxlength="32" autocomplete="username" required>
                         <div class="field-msg" id="usernameMsg"></div>
                     </div>
                     <div class="field">
@@ -383,7 +344,7 @@
                         </div>
                     </div>
                     <details class="optional-block" id="optionalSourceBlock">
-                        <summary>选填 · 从哪了解到的？</summary>
+                        <summary>从哪了解到的</summary>
                         <div class="field">
                             <select id="registerSourceChannel" name="register_source_channel">
                                 <option value="">暂不选择</option>
@@ -401,8 +362,7 @@
                             <input type="text" id="registerSourceChannelOther" name="register_source_channel_other" placeholder="如：小红书、微信群" maxlength="64" autocomplete="off">
                         </div>
                     </details>
-
-                    <p class="soft-tip">创建后即可登录使用；需要完整功能时，在个人中心填写激活码即可。</p>
+                    <p class="soft-tip" id="registerSourceAutoTip" hidden style="margin-top:8px;"></p>
 
                     <button type="submit" class="btn-submit" id="btnSubmit">创建账号</button>
                 </form>
@@ -425,12 +385,18 @@
         (function initInstallGuideReferralFromUrl() {
             try {
                 var q = new URLSearchParams(window.location.search);
+                if (q.get('from') === 'share' && typeof window.markShareAttribution === 'function') {
+                    window.markShareAttribution('url_param', 'register');
+                }
                 if (q.get('from') === 'install_guide' && typeof window.markInstallGuideReferral === 'function') {
                     window.markInstallGuideReferral('url_param');
                 }
                 var back = document.getElementById('regBackBtn');
                 if (back && q.get('from') === 'install_guide') {
                     back.setAttribute('href', 'install_guide.html');
+                }
+                if (back && q.get('from') === 'share') {
+                    back.setAttribute('href', 'shouye.html?guest=1&from=share&landing_ab=c');
                 }
                 if (q.get('next_download') === '1') {
                     try {
@@ -458,6 +424,40 @@
                     guestTip.hidden = !isGuest;
                 }
             } catch (e) {}
+        })();
+
+        (function applyRegisterSourceFromLink() {
+            try {
+                if (typeof window.captureRegisterSourceFromUrl === 'function') {
+                    window.captureRegisterSourceFromUrl();
+                }
+                var src =
+                    typeof window.getRegisterSourceChannel === 'function'
+                        ? window.getRegisterSourceChannel()
+                        : '';
+                if (!src) return;
+                var channelEl = document.getElementById('registerSourceChannel');
+                var block = document.getElementById('optionalSourceBlock');
+                var tip = document.getElementById('registerSourceAutoTip');
+                var otherWrap = document.getElementById('registerSourceOtherWrap');
+                if (channelEl) {
+                    channelEl.value = src;
+                    channelEl.disabled = true;
+                }
+                if (otherWrap) otherWrap.hidden = true;
+                if (block) {
+                    block.open = false;
+                    block.hidden = true;
+                }
+                if (tip) {
+                    var label =
+                        typeof window.registerSourceChannelLabel === 'function'
+                            ? window.registerSourceChannelLabel(src)
+                            : src;
+                    tip.textContent = '已通过渠道链接自动识别：' + (label || src);
+                    tip.hidden = false;
+                }
+            } catch (eSrc) {}
         })();
 
         function hideErrModal() {
@@ -616,6 +616,13 @@
                 return;
             }
             var sourceChannel = channelEl ? channelEl.value.trim() : '';
+            var lockedSrc =
+                typeof window.getRegisterSourceChannel === 'function'
+                    ? window.getRegisterSourceChannel()
+                    : '';
+            if (lockedSrc) {
+                sourceChannel = lockedSrc;
+            }
             var sourceChannelOther = '';
             if (sourceChannel === 'other') {
                 sourceChannelOther = otherEl ? otherEl.value.trim() : '';
@@ -623,15 +630,32 @@
                     showErr('选了「其他」的话，请写一下具体来源');
                     if (otherEl) markInvalid(otherEl, true);
                     var block = document.getElementById('optionalSourceBlock');
-                    if (block) block.open = true;
+                    if (block) {
+                        block.hidden = false;
+                        block.open = true;
+                    }
                     return;
                 }
             }
 
             var fromInstallGuide =
                 typeof window.hasInstallGuideReferral === 'function' && window.hasInstallGuideReferral();
+            var fromShareUrl = false;
+            try {
+                fromShareUrl =
+                    String(new URLSearchParams(window.location.search).get('from') || '').toLowerCase() ===
+                    'share';
+            } catch (eFs) {}
+            if (fromShareUrl && typeof window.markShareAttribution === 'function') {
+                window.markShareAttribution('url_param', 'register');
+            }
             var fromShare =
-                typeof window.hasShareAttribution === 'function' && window.hasShareAttribution();
+                fromShareUrl ||
+                (typeof window.hasShareAttribution === 'function' && window.hasShareAttribution());
+            /* 分享注册优先，避免门闸误带的安装引导盖掉 from_share */
+            if (fromShare) {
+                fromInstallGuide = false;
+            }
             if (typeof window.trackPublicAction === 'function') {
                 window.trackPublicAction('track_register_submit', {
                     page: 'register',
@@ -710,6 +734,9 @@
                         }
                         if (typeof window.clearShareAttribution === 'function') {
                             window.clearShareAttribution();
+                        }
+                        if (typeof window.clearRegisterSourceChannel === 'function') {
+                            window.clearRegisterSourceChannel();
                         }
                         if (d.token) {
                             localStorage.setItem('token', d.token);

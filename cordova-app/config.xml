@@ -40,13 +40,13 @@
     <hook type="after_prepare" src="hooks/after_prepare/10-fullscreen-splash.js" />
     <!-- 允许加载 http:// 站点（非 HTTPS）；若以后改为全站 HTTPS 可去掉此段 -->
     <platform name="android">
-        <!-- 桌面图标：同一 PNG 须为每个 density 各写一条，否则只会写入 mdpi，其它密度仍为模板默认「i」图标 -->
-        <icon density="ldpi" src="res/icon/icon.png" />
-        <icon density="mdpi" src="res/icon/icon.png" />
-        <icon density="hdpi" src="res/icon/icon.png" />
-        <icon density="xhdpi" src="res/icon/icon.png" />
-        <icon density="xxhdpi" src="res/icon/icon.png" />
-        <icon density="xxxhdpi" src="res/icon/icon.png" />
+        <!-- 桌面图标：按密度使用真实尺寸，避免全密度塞入 1024 导致包体过大 / 系统缩放发虚 -->
+        <icon density="ldpi" src="res/icon/android/ldpi.png" />
+        <icon density="mdpi" src="res/icon/android/mdpi.png" />
+        <icon density="hdpi" src="res/icon/android/hdpi.png" />
+        <icon density="xhdpi" src="res/icon/android/xhdpi.png" />
+        <icon density="xxhdpi" src="res/icon/android/xxhdpi.png" />
+        <icon density="xxxhdpi" src="res/icon/android/xxxhdpi.png" />
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
@@ -71,5 +71,30 @@
         <resource-file src="res/android/splash_icon_empty.xml" target="app/src/main/res/drawable/splash_icon_empty.xml" />
         <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/splash_icon_empty.xml" />
+    </platform>
+
+    <platform name="ios">
+        <icon height="20" src="res/icon/ios/icon-20.png" width="20" />
+        <icon height="40" src="res/icon/ios/icon-20@2x.png" width="40" />
+        <icon height="60" src="res/icon/ios/icon-20@3x.png" width="60" />
+        <icon height="29" src="res/icon/ios/icon-29.png" width="29" />
+        <icon height="58" src="res/icon/ios/icon-29@2x.png" width="58" />
+        <icon height="87" src="res/icon/ios/icon-29@3x.png" width="87" />
+        <icon height="40" src="res/icon/ios/icon-40.png" width="40" />
+        <icon height="80" src="res/icon/ios/icon-40@2x.png" width="80" />
+        <icon height="120" src="res/icon/ios/icon-40@3x.png" width="120" />
+        <icon height="50" src="res/icon/ios/icon-50.png" width="50" />
+        <icon height="100" src="res/icon/ios/icon-50@2x.png" width="100" />
+        <icon height="57" src="res/icon/ios/icon-57.png" width="57" />
+        <icon height="114" src="res/icon/ios/icon-57@2x.png" width="114" />
+        <icon height="60" src="res/icon/ios/icon-60.png" width="60" />
+        <icon height="120" src="res/icon/ios/icon-60@2x.png" width="120" />
+        <icon height="180" src="res/icon/ios/icon-60@3x.png" width="180" />
+        <icon height="72" src="res/icon/ios/icon-72.png" width="72" />
+        <icon height="144" src="res/icon/ios/icon-72@2x.png" width="144" />
+        <icon height="76" src="res/icon/ios/icon-76.png" width="76" />
+        <icon height="152" src="res/icon/ios/icon-76@2x.png" width="152" />
+        <icon height="167" src="res/icon/ios/icon-83.5@2x.png" width="167" />
+        <icon height="1024" src="res/icon/ios/icon-1024.png" width="1024" />
     </platform>
 </widget>

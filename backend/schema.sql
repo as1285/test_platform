@@ -233,10 +233,13 @@ CREATE TABLE IF NOT EXISTS admin_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     full_name VARCHAR(255) NULL COMMENT '管理后台账号姓名',
+    email VARCHAR(255) NULL COMMENT '管理登录 OTP 收件邮箱',
     salt VARCHAR(255) NOT NULL,
     hash VARCHAR(255) NOT NULL,
     is_super TINYINT(1) NOT NULL DEFAULT 0,
     banned TINYINT(1) NOT NULL DEFAULT 0,
+    login_fail_count INT NOT NULL DEFAULT 0 COMMENT '连续登录失败次数',
+    locked_until DATETIME NULL COMMENT '锁定截止时间',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_admin_username (username)

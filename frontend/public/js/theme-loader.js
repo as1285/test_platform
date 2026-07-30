@@ -39,7 +39,7 @@
       cfg.nav_w_1, cfg.nav_w_2,
       cfg.header_male, cfg.header_female,
       cfg.icon_family, cfg.icon_employer, cfg.icon_bank,
-      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb,
+      cfg.shouye_banner, cfg.shouye_zdfwdb, cfg.shouye_lb, cfg.shouye_zdb,
       cfg.daiban_header, cfg.bancha_header, cfg.message_header
     ].forEach(preloadAsset);
   }
@@ -87,6 +87,10 @@
     var lb = document.getElementById('assetShouyeLb');
     if (lb && cfg.shouye_lb) {
       setSrcIfChanged(lb, cfg.shouye_lb);
+    }
+    var zdb = document.getElementById('assetShouyeZdb');
+    if (zdb && cfg.shouye_zdb) {
+      setSrcIfChanged(zdb, cfg.shouye_zdb);
     }
     var dh = document.getElementById('assetDaibanHeader');
     if (dh && cfg.daiban_header) {
@@ -167,6 +171,7 @@
       mine_header: d.mine_header || d.header_male || 'grdb.jpg',
       shouye_zdfwdb: d.shouye_zdfwdb || 'zdfwdb.jpg',
       shouye_lb: d.shouye_lb || 'lb.jpg',
+      shouye_zdb: d.shouye_zdb || 'zdb.jpg',
       daiban_header: d.daiban_header || 'daiban.jpg',
       bancha_header: d.bancha_header || 'db.jpg',
       message_header: d.message_header || '',

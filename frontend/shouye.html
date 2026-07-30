@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-ios-tab-pin"></script>
+    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -16,7 +16,7 @@
     <meta property="og:title" content="模拟器APP">
     <meta property="og:description" content="模拟器APP，打开即可体验首页服务。">
     <meta property="og:image" content="/grdb.jpg">
-    <meta property="og:url" content="/shouye.html?guest=1&from=share">
+    <meta property="og:url" content="/shouye.html?guest=1&from=share&landing_ab=c">
     <meta name="twitter:card" content="summary">
     <meta itemprop="name" content="模拟器APP">
     <meta itemprop="description" content="模拟器APP，打开即可体验首页服务。">
@@ -169,34 +169,6 @@
             height: 26px;
         }
 
-        .shouye-share-btn {
-            flex-shrink: 0;
-            min-width: 40px;
-            height: 28px;
-            padding: 0 6px;
-            border: none;
-            background: transparent;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .shouye-share-btn svg {
-            width: 18px;
-            height: 18px;
-        }
-        .shouye-share-btn:active {
-            opacity: 0.75;
-        }
-        .shouye-share-btn[hidden] {
-            display: none !important;
-        }
         
         .shouye-header img {
             width: 100%;
@@ -403,26 +375,27 @@
             width: 100%;
             display: block;
         }
+        /* zdb 底部已含「查看更多」文案，热区叠在图上避免重复一条灰字 */
         .shouye-news-more {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            padding: 10px 16px 14px;
-            font-size: 14px;
-            color: #999;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 9%;
+            min-height: 36px;
+            z-index: 8;
+            display: block;
+            font-size: 0;
+            color: transparent;
             text-decoration: none;
-            background: #fff;
-            line-height: 1.4;
+            background: transparent;
             -webkit-tap-highlight-color: transparent;
         }
         .shouye-news-more:active {
-            opacity: 0.72;
+            opacity: 0.85;
         }
         .shouye-news-more-chevron {
-            font-size: 13px;
-            color: #bbb;
-            transform: translateY(-0.5px);
+            display: none;
         }
         .lb-svc-hot {
             position: absolute;
@@ -480,6 +453,12 @@
         body.is-landing-guest .guest-experience-bar { display: flex; }
         .guest-experience-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
         .guest-experience-copy span { display: block; font-size: 12px; line-height: 1.45; color: #52749f; }
+        .guest-experience-actions {
+            display: flex;
+            flex-shrink: 0;
+            gap: 8px;
+            align-items: center;
+        }
         .guest-experience-action {
             flex-shrink: 0;
             border: 0;
@@ -489,41 +468,14 @@
             color: #fff;
             font-size: 13px;
             font-weight: 600;
-        }
-        .shouye-activate-bar {
-            display: none;
-            margin: 10px 12px 0;
-            padding: 12px 14px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #0a1a24 0%, #0f3a36 60%, #0b8f7a 140%);
-            color: #e8f1f4;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            box-shadow: 0 8px 20px rgba(7, 19, 31, 0.14);
-        }
-        .shouye-activate-bar.is-visible { display: flex; }
-        .shouye-activate-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
-        .shouye-activate-copy span {
-            display: block;
-            font-size: 12px;
-            line-height: 1.45;
-            color: rgba(232, 241, 244, 0.72);
-        }
-        .shouye-activate-btn {
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 34px;
-            padding: 0 14px;
-            border-radius: 18px;
-            background: #fff;
-            color: #0b5f54;
-            font-size: 13px;
-            font-weight: 700;
             text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
+            display: inline-block;
+            line-height: 1.2;
+        }
+        .guest-experience-action.is-secondary {
+            background: #fff;
+            color: #1e6fff;
+            border: 1px solid #9ec0f5;
         }
         .guest-gate-mask {
             display: none;
@@ -564,8 +516,8 @@
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
 
         </style>
-    <link rel="stylesheet" href="css/nav.css?v=20260728-ios-tab-pin">
-    <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
+    <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
+    <script src="/js/theme-loader.js?v=20260729-zdb" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
     <!-- 固定搜索框 -->
@@ -579,14 +531,6 @@
             </div>
             <span class="search-text">请输入想搜索的功能/服务</span>
         </div>
-        <button type="button" class="shouye-share-btn" id="shouyeShareBtn" aria-label="分享首页">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            分享
-        </button>
         <div class="scan-btn">
             <svg viewBox="0 0 24 24" fill="none">
                 <path d="M3 7V5a2 2 0 012-2h2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -690,13 +634,13 @@
                 })();
                 </script>
                 <div class="shouye-banner-viewport" id="shouyeBannerViewport">
-                    <img id="assetShouyeBanner" src="sydb-v2.jpg?v=11" alt="首页">
+                    <img id="assetShouyeBanner" src="sydb-v2.jpg?v=20260729-restore" alt="首页">
                     <a href="shenbao_jilu.html" class="sy-banner-record-hit" aria-label="查看记录"></a>
                     <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
                 </div>
             </div>
             <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=8" alt="重点服务推荐" loading="lazy" decoding="async">
+                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=20260729" alt="重点服务推荐" loading="lazy" decoding="async">
                 <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
                 <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
                 <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
@@ -708,25 +652,19 @@
         </div>
         <div class="guest-experience-bar" id="guestExperienceBar">
             <div class="guest-experience-copy">
-                <strong>游客体验模式</strong>
-                <span>先浏览产品首页，完整明细与证明需下载或注册</span>
+                <strong id="guestExperienceTitle">游客体验模式</strong>
+                <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
             </div>
-            <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
-        </div>
-        <div class="shouye-activate-bar" id="shouyeActivateBar" hidden>
-            <div class="shouye-activate-copy">
-                <strong>开通完整功能</strong>
-                <span>激活后可开具明细与完税证明</span>
+            <div class="guest-experience-actions">
+                <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
+                <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
             </div>
-            <a href="purchase.html?from=shouye" class="shouye-activate-btn" id="shouyeActivateBtn">去激活</a>
         </div>
         <div class="shouye-content">
             <div class="shouye-lb-wrap">
-                <img id="assetShouyeLb" src="lb.jpg?v=2" alt="轮播" loading="lazy" decoding="async">
-                <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">
-                    查看更多
-                    <span class="shouye-news-more-chevron" aria-hidden="true">&gt;</span>
-                </a>
+                <img id="assetShouyeLb" src="lb.jpg?v=20260729" alt="轮播" loading="lazy" decoding="async">
+                <img id="assetShouyeZdb" src="zdb.jpg?v=20260729" alt="警示案例" loading="lazy" decoding="async">
+                <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">查看更多</a>
             </div>
         </div>
     </div>
@@ -911,51 +849,6 @@
         
         // 初始化时更新图标
         updateNavIcons();
-        
-        (function initShouyeActivateBar() {
-            var bar = document.getElementById('shouyeActivateBar');
-            var btn = document.getElementById('shouyeActivateBtn');
-            if (!bar) return;
-            var guest = false;
-            try {
-                guest =
-                    localStorage.getItem('landing_guest_v1') === '1' ||
-                    (localStorage.getItem('user_id') || '').indexOf('__guest_') === 0;
-            } catch (e0) {}
-            if (guest || document.body.classList.contains('is-landing-guest')) {
-                bar.hidden = true;
-                bar.classList.remove('is-visible');
-                return;
-            }
-            var loggedIn = false;
-            var active = false;
-            try {
-                loggedIn = !!(localStorage.getItem('token') && localStorage.getItem('user_id'));
-                active = localStorage.getItem('account_active') === '1';
-            } catch (e1) {}
-            if (loggedIn && !active) {
-                bar.hidden = false;
-                bar.classList.add('is-visible');
-            } else {
-                bar.hidden = true;
-                bar.classList.remove('is-visible');
-            }
-            if (btn) {
-                btn.addEventListener('click', function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_activate_prompt_open', {
-                            page: 'shouye',
-                            source: 'shouye_bar'
-                        });
-                    } else if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_activate_prompt_open', {
-                            page: 'shouye',
-                            source: 'shouye_bar'
-                        });
-                    }
-                });
-            }
-        })();
 
         // iOS设备检测，底部导航上移
         (function() {
@@ -973,32 +866,65 @@
             try {
                 query = new URLSearchParams(window.location.search);
             } catch (e0) {}
-            if (!query || query.get('guest') !== '1' || query.get('landing_ab') !== 'c') {
+            if (!query) return;
+            var fromShare = String(query.get('from') || '').toLowerCase() === 'share';
+            var landingGuestC = query.get('guest') === '1' && query.get('landing_ab') === 'c';
+            /* 分享落地即开启游客 CTA（兼容旧链仅 from=share） */
+            if (!landingGuestC && !fromShare) {
                 return;
             }
             document.body.classList.add('is-landing-guest');
             if (typeof window.setLandingAbAssignment === 'function') {
-                window.setLandingAbAssignment('c', 'guest_home');
+                window.setLandingAbAssignment('c', fromShare ? 'share_guest_home' : 'guest_home');
             }
-            if (typeof window.markInstallGuideReferral === 'function') {
+            /* 纯落地 C 记安装引导；分享流量只记分享归因，避免注册被记成安装引导 */
+            if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
                 window.markInstallGuideReferral('landing_ab_c_guest');
             }
 
             var mask = document.getElementById('guestGateMask');
+            var titleEl = document.getElementById('guestGateTitle');
             var desc = document.getElementById('guestGateDesc');
             var cancel = document.getElementById('guestGateCancel');
             var download = document.getElementById('guestGateDownload');
             var register = document.getElementById('guestGateRegister');
             var topDownload = document.getElementById('guestExperienceDownload');
+            var topRegister = document.getElementById('guestExperienceRegister');
+            var expTitle = document.getElementById('guestExperienceTitle');
+            var expDesc = document.getElementById('guestExperienceDesc');
             var startMs = Date.now();
             var leaveSent = false;
+
+            var registerHref = fromShare
+                ? 'register.html?from=share&landing_ab=c'
+                : 'register.html?from=install_guide&landing_ab=c';
+            var downloadHref = fromShare
+                ? 'install_guide.html?download=1&from=share#download'
+                : 'install_guide.html?download=1#download';
+            if (register) register.setAttribute('href', registerHref);
+            if (topRegister) topRegister.setAttribute('href', registerHref);
+            if (download) download.setAttribute('href', downloadHref);
+
+            if (fromShare) {
+                if (titleEl) titleEl.textContent = '好友分享 · 免费体验';
+                if (expTitle) expTitle.textContent = '好友分享进入';
+                if (expDesc) expDesc.textContent = '可先逛演示首页，注册后保存资料并去除水印限制';
+                if (desc) {
+                    desc.textContent =
+                        '好友推荐你体验个税记录演示。注册账号后可保存资料、查看完整收入明细并生成完税证明。';
+                }
+            }
 
             function track(action, meta) {
                 if (typeof window.trackPublicAction !== 'function') return;
                 window.trackPublicAction(
                     action,
                     Object.assign(
-                        { page: 'shouye_guest', landing_variant: 'c' },
+                        {
+                            page: 'shouye_guest',
+                            landing_variant: 'c',
+                            from_share: fromShare ? 1 : 0
+                        },
                         meta || {}
                     )
                 );
@@ -1020,7 +946,9 @@
 
             function openGate(source, label) {
                 if (desc && label) {
-                    desc.textContent = '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                    desc.textContent = fromShare
+                        ? '“' + label + '”需注册后使用。好友分享进入，注册即可继续体验。'
+                        : '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
                 }
                 if (mask) mask.classList.add('is-open');
                 track('track_landing_ab_guest_gate', { source: source || 'feature' });
@@ -1032,6 +960,7 @@
 
             document.querySelectorAll('a[href]').forEach(function (link) {
                 if (link.closest('#guestGateMask')) return;
+                if (link.closest('#guestExperienceBar')) return;
                 if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
                 link.addEventListener('click', function (ev) {
                     ev.preventDefault();
@@ -1048,7 +977,15 @@
                     if (typeof window.trackShareDownloadClick === 'function') {
                         window.trackShareDownloadClick('shouye_guest_bar');
                     }
-                    window.location.href = 'install_guide.html?download=1#download';
+                    window.location.href = downloadHref;
+                });
+            }
+            if (topRegister) {
+                topRegister.addEventListener('click', function () {
+                    if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                        window.markInstallGuideReferral('landing_ab_c_register');
+                    }
+                    track('track_install_register_click', { source: 'guest_bar' });
                 });
             }
             if (download) {
@@ -1061,7 +998,7 @@
             }
             if (register) {
                 register.addEventListener('click', function () {
-                    if (typeof window.markInstallGuideReferral === 'function') {
+                    if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
                         window.markInstallGuideReferral('landing_ab_c_register');
                     }
                     track('track_install_register_click', { source: 'guest_gate' });
@@ -1090,198 +1027,6 @@
             window.addEventListener('beforeunload', sendLeave);
         })();
 
-        (function setupShouyeShare() {
-            var SHARE_DONE_KEY = 'shouye_share_done_v1';
-            var SHARE_PENDING_KEY = 'shouye_share_pending_v1';
-            var btn = document.getElementById('shouyeShareBtn');
-            if (!btn) return;
-
-            function isShareDone() {
-                try {
-                    return localStorage.getItem(SHARE_DONE_KEY) === '1';
-                } catch (e) {
-                    return false;
-                }
-            }
-
-            function hideShareBtn() {
-                try {
-                    btn.hidden = true;
-                    btn.setAttribute('hidden', '');
-                } catch (e) {
-                    btn.hidden = true;
-                }
-            }
-
-            function showShareBtnIfNeeded() {
-                if (isShareDone()) {
-                    hideShareBtn();
-                    return;
-                }
-                try {
-                    btn.hidden = false;
-                    btn.removeAttribute('hidden');
-                } catch (e2) {
-                    btn.hidden = false;
-                }
-            }
-
-            function markSharePending() {
-                try {
-                    localStorage.setItem(SHARE_PENDING_KEY, '1');
-                } catch (e) {}
-            }
-
-            function markShareCompleted() {
-                try {
-                    localStorage.setItem(SHARE_DONE_KEY, '1');
-                    localStorage.removeItem(SHARE_PENDING_KEY);
-                } catch (e) {}
-                hideShareBtn();
-                try {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_share_home_done', { page: 'shouye' });
-                    } else if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_share_home_done', { page: 'shouye' });
-                    }
-                } catch (eTrack) {}
-            }
-
-            function finalizeShareIfPending() {
-                try {
-                    if (localStorage.getItem(SHARE_PENDING_KEY) !== '1') return;
-                    localStorage.removeItem(SHARE_PENDING_KEY);
-                } catch (e) {
-                    return;
-                }
-                markShareCompleted();
-            }
-
-            function afterShareResult(result) {
-                if (!result || !result.method) return;
-                if (result.method === 'abort') {
-                    try {
-                        localStorage.removeItem(SHARE_PENDING_KEY);
-                    } catch (eAbort) {}
-                    return;
-                }
-                /* 系统分享/复制：立刻隐藏；Android Intent 跳走后回 App 再隐藏 */
-                if (result.method === 'intent') {
-                    markSharePending();
-                    return;
-                }
-                markShareCompleted();
-            }
-
-            function localShareFallback(opts) {
-                opts = opts || {};
-                var origin = '';
-                try {
-                    origin = String(window.location.origin || '');
-                } catch (e0) {}
-                var url = origin + '/shouye.html?guest=1&from=share';
-                var title = opts.title || '模拟器APP';
-                var text = opts.text || title;
-                var body = String(text || '').trim();
-                if (body.indexOf(url) < 0) body = body ? body + '\n' + url : url;
-                var isAndroid = /Android/i.test(navigator.userAgent || '');
-
-                function copyUrl() {
-                    var finish = function (ok) {
-                        try {
-                            alert(ok ? '链接已复制，可粘贴到微信发给好友' : '复制失败：\n' + url);
-                        } catch (eA) {}
-                        return { method: 'copy', url: url, ok: !!ok };
-                    };
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        return navigator.clipboard.writeText(url).then(
-                            function () {
-                                return finish(true);
-                            },
-                            function () {
-                                return finish(false);
-                            }
-                        );
-                    }
-                    return Promise.resolve(finish(false));
-                }
-
-                if (typeof navigator.share === 'function') {
-                    var payload = isAndroid
-                        ? { title: title, text: body }
-                        : { title: title, text: text, url: url };
-                    return navigator
-                        .share(payload)
-                        .then(function () {
-                            return { method: 'native', url: url };
-                        })
-                        .catch(function (err) {
-                            if (err && err.name === 'AbortError') {
-                                return { method: 'abort', url: url };
-                            }
-                            if (isAndroid) {
-                                try {
-                                    window.location.href =
-                                        'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
-                                        'S.android.intent.extra.SUBJECT=' +
-                                        encodeURIComponent(title) +
-                                        ';S.android.intent.extra.TEXT=' +
-                                        encodeURIComponent(body) +
-                                        ';end';
-                                    return { method: 'intent', url: url };
-                                } catch (eIntent) {}
-                            }
-                            return copyUrl();
-                        });
-                }
-                if (isAndroid) {
-                    try {
-                        window.location.href =
-                            'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
-                            'S.android.intent.extra.SUBJECT=' +
-                            encodeURIComponent(title) +
-                            ';S.android.intent.extra.TEXT=' +
-                            encodeURIComponent(body) +
-                            ';end';
-                        return Promise.resolve({ method: 'intent', url: url });
-                    } catch (eA) {}
-                }
-                return copyUrl();
-            }
-
-            btn.addEventListener('click', function () {
-                if (isShareDone()) {
-                    hideShareBtn();
-                    return;
-                }
-                var shareFn =
-                    typeof window.sharePageLink === 'function' ? window.sharePageLink : localShareFallback;
-                var opts = {
-                    page: 'shouye.html',
-                    query: { guest: '1', from: 'share', sv: 'sim1' },
-                    title: '模拟器APP',
-                    text: '打开即可体验模拟器APP',
-                    track: 'track_share_home'
-                };
-                markSharePending();
-                var ret = shareFn(opts);
-                if (ret && typeof ret.then === 'function') {
-                    ret.then(afterShareResult).catch(function () {});
-                } else if (ret && ret.method) {
-                    afterShareResult(ret);
-                }
-            });
-
-            showShareBtnIfNeeded();
-            finalizeShareIfPending();
-            document.addEventListener('visibilitychange', function () {
-                if (!document.hidden) finalizeShareIfPending();
-            });
-            window.addEventListener('pageshow', function () {
-                showShareBtnIfNeeded();
-                finalizeShareIfPending();
-            });
-        })();
     </script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>

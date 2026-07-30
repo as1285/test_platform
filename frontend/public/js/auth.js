@@ -18,6 +18,15 @@
   var SALES_CHANNEL_KEY = 'sales_channel_v1';
   var DISTRIBUTOR_APP_KEY = 'distributor_app_v1';
   var SALES_CHANNEL_TTL_MS = 15 * 60 * 1000;
+  var REGISTER_SOURCE_KEY = 'register_source_channel_v1';
+  var REGISTER_SOURCE_LABELS = {
+    douyin: '抖音',
+    bilibili: 'B站',
+    tieba: '百度贴吧',
+    zhihu: '知乎',
+    friend: '朋友介绍',
+    github: 'GitHub'
+  };
 
   /** 尽早占位：后半段初始化异常时，业务页仍可用带 Bearer 的请求（正常路径会被真实 authFetch 覆盖） */
   function bearerTokenFetch(url, opts) {
@@ -48,6 +57,7 @@
     'register.html': true,
     'login.html': true,
     'install_guide.html': true,
+    'install-ios.html': true,
     'tutorial_video.html': true,
     'zhzh_jhm.html': true
   };
@@ -745,15 +755,18 @@
           mineBlue +
           ' !important;overflow:hidden !important;}' +
           'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
-          'html body.page-mine{--bottom-nav-bottom:0px!important;}' +
+          'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
           'position:fixed!important;left:var(--bottom-nav-side,16px)!important;right:var(--bottom-nav-side,16px)!important;' +
-          'bottom:auto!important;padding-bottom:0!important;margin:0!important;z-index:200!important;}';
+          'bottom:var(--bottom-nav-bottom,16px)!important;top:auto!important;margin:0!important;z-index:200!important;' +
+          'transform:none!important;-webkit-transform:none!important;}';
         document.head.appendChild(st);
       } catch (eCss) {}
       try {
-        document.documentElement.style.setProperty('--bottom-nav-bottom', '0px');
+        var mineGap = document.documentElement.classList.contains('app-ios-client') ? '15px' : '16px';
+        document.documentElement.style.setProperty('--bottom-nav-bottom', mineGap);
+        document.documentElement.style.setProperty('--bottom-nav-gap', mineGap);
       } catch (eVar) {}
       syncAppShellStatusbarTop();
       applyImmersiveBlueStatusBar(mineBlue);
@@ -877,14 +890,15 @@
   }
 
   /**
-   * 底栏位置锁：各 TAB / 机型只认 --bottom-nav-bottom（默认 2px；iOS 0px；Cordova 2410=32px）。
-   * 用 html body … 高优先级覆盖页内硬编码（如「我的」曾写死 10px 导致切页跳动）。
+   * 底栏位置锁：对齐参考站悬浮胶囊（默认/Web 16px；iOS 15px；Cordova 2410=32px）。
+   * 用 html body … 高优先级覆盖页内硬编码，保证切 TAB 不跳动。
    */
   function ensureBottomNavLockStyle(opts) {
     opts = opts || {};
-    var bottom = opts.cordovaXiaomi2410 ? '32px' : opts.iosClient ? '0px' : '2px';
+    var bottom = opts.cordovaXiaomi2410 ? '32px' : opts.iosClient ? '15px' : '16px';
     try {
       document.documentElement.style.setProperty('--bottom-nav-bottom', bottom);
+      document.documentElement.style.setProperty('--bottom-nav-gap', bottom);
       if (opts.cordovaXiaomi2410) {
         document.documentElement.style.setProperty('--app-cordova-bottom-inset', '32px');
       }
@@ -898,36 +912,34 @@
     st.textContent =
       'html{--bottom-nav-bottom:' +
       bottom +
+      ' !important;--bottom-nav-gap:' +
+      bottom +
       ' !important;}' +
       'html.app-ios-client{--bottom-nav-bottom:' +
       bottom +
+      ' !important;--bottom-nav-gap:' +
+      bottom +
       ' !important;}' +
-      'html body.page-mine{--bottom-nav-bottom:0px!important;}' +
-      /* 其它 TAB：bottom + transform 锁；「我的」排除（由 pinTabBottomNav 用 top 硬钉） */
-      'html body:not(.page-mine) .bottom-nav,html body:not(.page-mine) > .bottom-nav,' +
+      'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,' +
+      bottom +
+      ')!important;}' +
+      'html body .bottom-nav,html body > .bottom-nav,' +
       'html body.page-shouye > .bottom-nav,' +
       'html body.page-daiban > .bottom-nav,html body.page-bancha > .bottom-nav,' +
-      'html body.page-message > .bottom-nav,html body.tax-app-shell:not(.page-mine) > .bottom-nav,' +
-      'html body:not(.page-mine) .bottom-nav.ios-device{' +
+      'html body.page-message > .bottom-nav,html body.page-mine > .bottom-nav,' +
+      'html body.tax-app-shell > .bottom-nav,' +
+      'html body .bottom-nav.ios-device{' +
       'position:fixed!important;' +
       'left:var(--bottom-nav-side,16px)!important;' +
       'right:var(--bottom-nav-side,16px)!important;' +
       'bottom:var(--bottom-nav-bottom,' +
       bottom +
       ')!important;' +
-      'z-index:200!important;margin:0!important;padding-bottom:0!important;animation:none!important;' +
-      'transform:none!important;-webkit-transform:none!important;' +
-      'view-transition-name:none!important;}' +
-      'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device{' +
-      'position:fixed!important;' +
-      'left:var(--bottom-nav-side,16px)!important;' +
-      'right:var(--bottom-nav-side,16px)!important;' +
-      'bottom:auto!important;' +
-      'z-index:200!important;margin:0!important;padding-bottom:0!important;' +
-      'animation:none!important;view-transition-name:none!important;}' +
-      /* iOS：禁止 html/body overflow-x 破坏 fixed（消息页等曾因此整栏偏高） */
-      'html.app-ios-client,html.app-ios-client body{overflow-x:visible!important;}' +
-      'html body:not(.page-mine) .bottom-nav.ios-device{padding-bottom:0!important;}';
+      'top:auto!important;' +
+      'z-index:10050!important;margin:0!important;animation:none!important;' +
+      'transform:none!important;-webkit-transform:none!important;translate:none!important;' +
+      'view-transition-name:none!important;pointer-events:auto!important;}' +
+      'html.app-ios-client,html.app-ios-client body{overflow-x:visible!important;}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -935,8 +947,8 @@
   var bottomNavPinTimer = 0;
 
   /**
-   * 实测钉死底栏：保证挂在 body 下、fixed，若仍离视口底过远则 translateY 下压。
-   * 「我的」单独用 top 像素硬钉（不用 bottom/translateY，避免 iOS 视口不一致悬空）。
+   * 钉死底栏：始终挂在 body 下，仅用 position:fixed + bottom。
+   * 禁止 translateY / visualViewport.scroll 纠偏——iOS 滚动时会把胶囊顶到页面中间或移出屏外。
    */
   function pinTabBottomNav() {
     var nav = document.querySelector('.bottom-nav');
@@ -949,75 +961,18 @@
       }
     } catch (eMove) {}
 
-    var isMine = document.body.classList.contains('page-mine');
-
     try {
       if (isLikelyIOSViewportClient()) {
         nav.classList.add('ios-device');
       }
     } catch (eIos) {}
 
-    /* 「我的」：按视口像素写死 top，贴屏幕最底边 */
-    if (isMine) {
-      try {
-        document.documentElement.style.setProperty('--bottom-nav-bottom', '0px');
-      } catch (eVar) {}
-
-      function mineScreenBottom() {
-        var bottoms = [window.innerHeight || 0, document.documentElement.clientHeight || 0];
-        try {
-          if (window.visualViewport) {
-            bottoms.push(window.visualViewport.offsetTop + window.visualViewport.height);
-          }
-        } catch (eVv) {}
-        return Math.max.apply(null, bottoms);
-      }
-
-      function applyMineTopPin() {
-        var h = nav.offsetHeight || 72;
-        var screenBottom = mineScreenBottom();
-        var topPx = screenBottom - h;
-        try {
-          nav.style.setProperty('position', 'fixed', 'important');
-          nav.style.setProperty('left', '16px', 'important');
-          nav.style.setProperty('right', '16px', 'important');
-          nav.style.setProperty('bottom', 'auto', 'important');
-          nav.style.setProperty('top', topPx + 'px', 'important');
-          nav.style.setProperty('margin', '0', 'important');
-          nav.style.setProperty('padding-bottom', '0', 'important');
-          nav.style.setProperty('transform', 'none', 'important');
-          nav.style.setProperty('-webkit-transform', 'none', 'important');
-          nav.style.setProperty('z-index', '200', 'important');
-        } catch (eStyle) {}
-      }
-
-      applyMineTopPin();
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          try {
-            applyMineTopPin();
-            var rect = nav.getBoundingClientRect();
-            var screenBottom = mineScreenBottom();
-            var gap = screenBottom - rect.bottom;
-            if (Math.abs(gap) > 2) {
-              var curTop = parseFloat(nav.style.top) || rect.top;
-              nav.style.setProperty('top', curTop + gap + 'px', 'important');
-              nav.style.setProperty('bottom', 'auto', 'important');
-              nav.style.setProperty('transform', 'none', 'important');
-              nav.style.setProperty('-webkit-transform', 'none', 'important');
-            }
-          } catch (eFix) {}
-        });
-      });
-      return;
-    }
-
-    var targetGap = 2;
+    var targetGap = 16;
     try {
       if (document.documentElement.classList.contains('app-cordova-xiaomi-2410')) {
         targetGap = 32;
       } else if (document.documentElement.classList.contains('app-ios-client')) {
-        targetGap = 0;
+        targetGap = 15;
       } else {
         var cssGap = String(
           document.documentElement.style.getPropertyValue('--bottom-nav-bottom') ||
@@ -1032,35 +987,27 @@
     } catch (eGap) {}
 
     try {
+      var sidePx = '16px';
+      try {
+        if (window.matchMedia && window.matchMedia('(max-width: 360px)').matches) {
+          sidePx = '12px';
+        }
+      } catch (eSide) {}
       nav.style.setProperty('position', 'fixed', 'important');
-      nav.style.setProperty('left', '16px', 'important');
-      nav.style.setProperty('right', '16px', 'important');
+      nav.style.setProperty('left', sidePx, 'important');
+      nav.style.setProperty('right', sidePx, 'important');
       nav.style.setProperty('top', 'auto', 'important');
       nav.style.setProperty('bottom', targetGap + 'px', 'important');
       nav.style.setProperty('margin', '0', 'important');
-      nav.style.setProperty('padding-bottom', '0', 'important');
+      nav.style.removeProperty('padding-bottom');
       nav.style.setProperty('transform', 'none', 'important');
       nav.style.setProperty('-webkit-transform', 'none', 'important');
-      nav.style.setProperty('z-index', '200', 'important');
+      nav.style.setProperty('translate', 'none', 'important');
+      nav.style.setProperty('z-index', '10050', 'important');
+      nav.style.setProperty('pointer-events', 'auto', 'important');
+      document.documentElement.style.setProperty('--bottom-nav-bottom', targetGap + 'px');
+      document.documentElement.style.setProperty('--bottom-nav-gap', targetGap + 'px');
     } catch (eStyle) {}
-
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        try {
-          var rect = nav.getBoundingClientRect();
-          var viewBottom = window.innerHeight;
-          if (window.visualViewport) {
-            viewBottom = window.visualViewport.offsetTop + window.visualViewport.height;
-          }
-          var gap = viewBottom - rect.bottom;
-          if (Math.abs(gap - targetGap) > 6) {
-            var dy = gap - targetGap;
-            nav.style.setProperty('transform', 'translateY(' + dy + 'px)', 'important');
-            nav.style.setProperty('-webkit-transform', 'translateY(' + dy + 'px)', 'important');
-          }
-        } catch (eFix) {}
-      });
-    });
   }
 
   function schedulePinTabBottomNav() {
@@ -1089,10 +1036,10 @@
       setTimeout(schedulePinTabBottomNav, 120);
     });
     window.addEventListener('resize', schedulePinTabBottomNav);
+    /* 仅监听 visualViewport.resize；不要监听 scroll，否则滚动时会乱改底栏 */
     try {
       if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', schedulePinTabBottomNav);
-        window.visualViewport.addEventListener('scroll', schedulePinTabBottomNav);
       }
     } catch (eVv) {}
   }
@@ -1173,6 +1120,80 @@
         'apple-mobile-web-app-status-bar-style',
         immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'
       );
+      (function ensureAppIconLinks() {
+        function upsertLink(rel, href, attrs) {
+          var sel = 'link[rel="' + rel + '"]';
+          if (attrs && attrs.sizes) sel += '[sizes="' + attrs.sizes + '"]';
+          if (attrs && attrs.media) sel += '[media="' + attrs.media + '"]';
+          var el = document.head.querySelector(sel);
+          if (!el) {
+            el = document.createElement('link');
+            el.setAttribute('rel', rel);
+            document.head.appendChild(el);
+          }
+          el.setAttribute('href', href);
+          if (attrs) {
+            Object.keys(attrs).forEach(function (k) {
+              el.setAttribute(k, attrs[k]);
+            });
+          }
+        }
+        upsertLink('apple-touch-icon', 'apple-touch-icon.png', { sizes: '180x180' });
+        upsertLink('icon', 'icon-192.png', { type: 'image/png', sizes: '192x192' });
+        upsertLink('icon', 'favicon-32.png', { type: 'image/png', sizes: '32x32' });
+        /* iOS「添加到主屏幕」启动图（Safari / PWA）；mobileconfig 网页剪辑本身无独立启动动画 API */
+        var startups = [
+          {
+            href: 'splash/startup-iphone-14-pro-max.png?v=20260729',
+            media:
+              '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-14-pro.png?v=20260729',
+            media:
+              '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-13-pro-max.png?v=20260729',
+            media:
+              '(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-12-13.png?v=20260729',
+            media:
+              '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-x.png?v=20260729',
+            media:
+              '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-xs-max.png?v=20260729',
+            media:
+              '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-xr.png?v=20260729',
+            media:
+              '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)'
+          },
+          {
+            href: 'splash/startup-iphone-8-plus.png?v=20260729',
+            media:
+              '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-8.png?v=20260729',
+            media:
+              '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)'
+          },
+          { href: 'splash_screen.png?v=20260729', media: '(orientation: portrait)' }
+        ];
+        startups.forEach(function (s) {
+          upsertLink('apple-touch-startup-image', s.href, { media: s.media });
+        });
+      })();
       if (immersiveBlueTop) {
         applyImmersiveBlueStatusBar(immersiveBlueTop);
       }
@@ -1430,8 +1451,8 @@
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg{position:relative;z-index:0 !important;padding-top:var(--app-shell-statusbar-top,0px) !important;overflow:hidden !important;background:#2286ee !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;position:relative !important;z-index:1 !important;display:block !important;width:100% !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .mine-activate-btn{top:calc(var(--mine-activate-btn-top-offset,66px) + var(--app-shell-statusbar-top,0px)) !important;}' +
-          'html body.page-mine{--bottom-nav-bottom:0px!important;}' +
-          'html body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{bottom:auto!important;padding-bottom:0!important;margin:0!important;}' +
+          'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
+          'html body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{bottom:var(--bottom-nav-bottom,16px)!important;top:auto!important;margin:0!important;transform:none!important;-webkit-transform:none!important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-daiban::before,html.app-ios-client.app-top-safe-shell body.page-bancha::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#2b81f2 !important;z-index:40 !important;pointer-events:none !important;}' +
           'html.app-ios-client.app-top-safe-shell body.page-message::before{content:"" !important;display:block !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,59px) !important;background:#1e8fff !important;z-index:40 !important;pointer-events:none !important;}' +
           /* iPhone 12 Pro Max：待办/办查/消息/我的 用头图 bleed，取消固色垫带 */
@@ -1780,6 +1801,74 @@
     } catch (e) {}
   }
 
+  /** 校验注册来源渠道 key（与注册页下拉一致，不含 other） */
+  function sanitizeRegisterSourceChannel(raw) {
+    var s = String(raw != null ? raw : '')
+      .trim()
+      .toLowerCase();
+    if (!s || !REGISTER_SOURCE_LABELS[s]) {
+      return '';
+    }
+    return s;
+  }
+
+  function registerSourceChannelLabel(key) {
+    var k = sanitizeRegisterSourceChannel(key);
+    return k ? REGISTER_SOURCE_LABELS[k] : '';
+  }
+
+  /**
+   * 从 URL ?src= / ?rs= 捕获注册来源并写入 localStorage。
+   * URL 显式带合法 src 时覆盖已存值；非法参数忽略。
+   */
+  function captureRegisterSourceFromUrl() {
+    try {
+      var p = new URLSearchParams(window.location.search || '');
+      var fromUrl = sanitizeRegisterSourceChannel(p.get('src') || p.get('rs') || '');
+      if (!fromUrl) {
+        return getRegisterSourceChannel();
+      }
+      localStorage.setItem(
+        REGISTER_SOURCE_KEY,
+        JSON.stringify({
+          src: fromUrl,
+          at: Date.now(),
+          source: 'url'
+        })
+      );
+      return fromUrl;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getRegisterSourceChannel() {
+    try {
+      var p = new URLSearchParams(window.location.search || '');
+      var urlSrc = sanitizeRegisterSourceChannel(p.get('src') || p.get('rs') || '');
+      if (urlSrc) {
+        return urlSrc;
+      }
+      var raw = localStorage.getItem(REGISTER_SOURCE_KEY);
+      if (!raw) {
+        return '';
+      }
+      var o = JSON.parse(raw);
+      if (!o || !o.src) {
+        return '';
+      }
+      return sanitizeRegisterSourceChannel(o.src);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function clearRegisterSourceChannel() {
+    try {
+      localStorage.removeItem(REGISTER_SOURCE_KEY);
+    } catch (e) {}
+  }
+
   function initDistributorAppFromUrl() {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -1790,6 +1879,14 @@
             at: Date.now()
           })
         );
+        return;
+      }
+      /* 新代理包：只带 ch=、不带 distributor_app → 允许注册，清掉旧禁注册标记 */
+      if (
+        isCordovaTaxAppShell() &&
+        (p.get('ch') || p.get('channel') || p.get('sales_ch') || p.get('allow_register') === '1')
+      ) {
+        localStorage.removeItem(DISTRIBUTOR_APP_KEY);
       }
     } catch (e) {}
   }
@@ -1799,6 +1896,9 @@
       var p = new URLSearchParams(window.location.search);
       if (p.get('distributor_app') === '1' || p.get('distributor') === '1') {
         return true;
+      }
+      if (p.get('distributor_app') === '0' || p.get('allow_register') === '1') {
+        return false;
       }
       return !!localStorage.getItem(DISTRIBUTOR_APP_KEY);
     } catch (e) {
@@ -1810,7 +1910,7 @@
     return isCordovaTaxAppShell() && isDistributorApp();
   }
 
-  /** 注册时绑定代理渠道：优先 URL；安装页来源可沿用本地已存渠道（含 install_packages） */
+  /** 注册时绑定代理渠道：优先 URL；安装页 / App 壳可沿用本地已存渠道 */
   function getRegisterSalesChannel(fromInstallGuide) {
     try {
       var p = new URLSearchParams(window.location.search);
@@ -1818,7 +1918,11 @@
       if (urlCh) {
         return urlCh;
       }
-      if (!fromInstallGuide) {
+      var allowStored =
+        !!fromInstallGuide ||
+        isCordovaTaxAppShell() ||
+        isDistributorApp();
+      if (!allowStored) {
         return '';
       }
       var raw = localStorage.getItem(SALES_CHANNEL_KEY);
@@ -1832,7 +1936,7 @@
       if (Date.now() - Number(o.at) > SALES_CHANNEL_TTL_MS) {
         return '';
       }
-      /* 专属渠道依赖安装页写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
+      /* 专属渠道依赖安装页/壳写入的 ch；不得因 source=install_packages/server_resolve 丢掉 */
       return sanitizeSalesChannelId(o.ch);
     } catch (e) {
       return '';
@@ -2053,16 +2157,21 @@
    * 分享页面链接：优先系统分享面板（安卓把链接放进 text，兼容微信等），失败再 Intent/复制。
    * opts: { page, query, url, title, text, track }
    */
+  /** 分享默认落地：游客首页 + 打开注册 CTA（landing_ab=c） */
+  var DEFAULT_SHARE_LAND_QUERY = {
+    guest: '1',
+    from: 'share',
+    landing_ab: 'c',
+    sv: 'sim1'
+  };
+
   function sharePageLink(opts) {
     opts = opts || {};
     var url =
       opts.url ||
-      buildShareUrl(
-        opts.page || 'shouye.html',
-        opts.query || { guest: '1', from: 'share', sv: 'sim1' }
-      );
-    var title = opts.title || '模拟器APP';
-    var text = opts.text || title;
+      buildShareUrl(opts.page || 'shouye.html', opts.query || DEFAULT_SHARE_LAND_QUERY);
+    var title = opts.title || '个税记录演示';
+    var text = opts.text || '打开即可体验收入明细与纳税记录（演示）';
     var pageKey = String(opts.page || '').replace(/\.html$/i, '') || 'share';
     var isAndroid = /Android/i.test(navigator.userAgent || '');
     var shareBody = String(text || '').trim();
@@ -2217,6 +2326,7 @@
   try {
     window.buildShareUrl = buildShareUrl;
     window.sharePageLink = sharePageLink;
+    window.DEFAULT_SHARE_LAND_QUERY = DEFAULT_SHARE_LAND_QUERY;
     window.copyTextToClipboard = copyTextToClipboard;
   } catch (eShareEarly) {}
 
@@ -2320,6 +2430,7 @@
 
   initSalesChannelFromUrl();
   initDistributorAppFromUrl();
+  captureRegisterSourceFromUrl();
 
   (function bootstrapSalesChannel() {
     var path = (window.location && window.location.pathname) || '';
@@ -2559,18 +2670,25 @@
     v = v.toLowerCase();
     if (v !== 'a' && v !== 'b' && v !== 'c') return null;
     var existing = getPurchaseAbcAssignment();
+    var src = String(source || 'allocation').substring(0, 32);
+    /* 服务端/管理端结果允许覆盖本地 sticky（尤其是误锁的 C） */
+    var allowOverwrite =
+      src === 'server_offer' ||
+      src === 'admin_force' ||
+      src === 'agent_channel' ||
+      src.indexOf('server_') === 0;
     if (existing && existing.variant === v) {
       return existing;
     }
-    /* sticky：已有不同方案时不覆盖 */
-    if (existing && existing.variant) {
+    /* sticky：已有不同方案时默认不覆盖 */
+    if (existing && existing.variant && !allowOverwrite) {
       return existing;
     }
     var next = {
       experiment: 'purchase_abc_v1',
       variant: v,
       assigned_at: Date.now(),
-      source: String(source || 'allocation').substring(0, 32)
+      source: src
     };
     try {
       localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
@@ -2617,6 +2735,25 @@
       abc = String(data.force_pricing_abc || data.default_pricing_abc || '')
         .trim()
         .toLowerCase();
+      if (data.code_only === true || data.hide_self_serve_pay === true) {
+        abc = 'c';
+      }
+    }
+    /*
+     * 已登录用户：安装包接口若未带回 sales_channel（账号未绑代理渠道），
+     * 不得把本地 sticky 强行写成 C（同 IP 测过代理链时曾误伤 A 方案支付宝）。
+     */
+    if (getToken()) {
+      var sc = data && data.sales_channel != null ? String(data.sales_channel).trim() : '';
+      if (!sc && (abc === 'c' || abc === '')) {
+        try {
+          var prevLogged = getPurchaseAbcAssignment();
+          if (prevLogged && prevLogged.source === 'agent_channel') {
+            localStorage.removeItem(PURCHASE_ABC_ASSIGNMENT_KEY);
+          }
+        } catch (eClearLogged) {}
+        return null;
+      }
     }
     /* 仅服务端明确返回 a|b|c 时强制；空=跟随后台增长 A/B/C，并清掉旧渠道锁定 */
     if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
@@ -3180,13 +3317,6 @@
         client_id: typeof getOrCreateClientDeviceId === 'function' ? getOrCreateClientDeviceId() : ''
       };
       if (!payload.route_key) return;
-      runTrackWhenIdle(function () {
-        if (typeof fireTrack === 'function' && hasUserToken()) {
-          fireTrack('track_api_perf', '/event/api_perf', payload);
-        } else if (typeof firePublicTrack === 'function') {
-          firePublicTrack('track_api_perf', '/event/api_perf', payload);
-        }
-      });
     } catch (e) {}
   }
 
@@ -3286,50 +3416,6 @@
     );
   }
 
-  /** 跳转埋点聚合键：只保留路径 + 白名单 query（如 tab），忽略 id_tr 等同页不同参数，避免管理台按 ID 拆行 */
-  var TRACK_JUMP_AGGREGATE_QUERY_ALLOW = /^tab$/i;
-
-  function jumpTrackAggregatePath(normalizedPath) {
-    var s = String(normalizedPath || '').trim();
-    if (!s || s === '__history_back__') return s;
-    var base = '';
-    try {
-      base =
-        typeof window !== 'undefined' && window.location && window.location.href
-          ? window.location.href
-          : 'http://localhost/';
-    } catch (e0) {
-      base = 'http://localhost/';
-    }
-    try {
-      var urlStr = s;
-      if (urlStr.indexOf('://') < 0) {
-        urlStr = new URL(urlStr.charAt(0) === '/' ? urlStr : '/' + urlStr.replace(/^\/+/, ''), base).href;
-      }
-      var u = new URL(urlStr);
-      var path = u.pathname || '/';
-      var allowed = new URLSearchParams();
-      try {
-        u.searchParams.forEach(function (v, k) {
-          if (TRACK_JUMP_AGGREGATE_QUERY_ALLOW.test(String(k))) {
-            allowed.set(String(k).toLowerCase(), String(v == null ? '' : v).trim());
-          }
-        });
-      } catch (e1) {}
-      var q = allowed.toString();
-      return path + (q ? '?' + q : '');
-    } catch (e2) {
-      var qi = s.indexOf('?');
-      var hi = s.indexOf('#');
-      var cut = s.length;
-      if (hi >= 0) cut = Math.min(cut, hi);
-      if (qi >= 0) cut = Math.min(cut, qi);
-      var fallback = s.substring(0, cut);
-      if (fallback && fallback.charAt(0) !== '/') fallback = '/' + fallback.replace(/^\/+/, '');
-      return fallback || '/';
-    }
-  }
-
   function normalizeTrackPath(raw) {
     var s = String(raw || '').trim();
     if (!s) return '';
@@ -3405,61 +3491,6 @@
     });
   }
 
-  function firstText(node) {
-    if (!node) return '';
-    var t = String(node.getAttribute && (node.getAttribute('aria-label') || node.getAttribute('title')) || '').trim();
-    if (t) return t.substring(0, 64);
-    t = String(node.textContent || '').replace(/\s+/g, ' ').trim();
-    return t.substring(0, 64);
-  }
-
-  function detectJumpTarget(el) {
-    if (!el) return '';
-    if (el.tagName && el.tagName.toLowerCase() === 'a') {
-      var href = String(el.getAttribute('href') || '').trim();
-      if (!href || href.charAt(0) === '#') return '';
-      if (/^javascript:\s*history\.back/i.test(href)) return '__history_back__';
-      if (/^javascript:/i.test(href)) return '';
-      return normalizeTrackPath(href);
-    }
-    var oc = '';
-    try {
-      oc = String(el.getAttribute('onclick') || '');
-    } catch (e) {}
-    var m = oc.match(/(?:location\.href|location\.assign|window\.open)\s*\(?\s*['"]([^'"]+)['"]/i);
-    if (m && m[1]) return normalizeTrackPath(m[1]);
-    if (/history\.back/i.test(oc)) return '__history_back__';
-    return '';
-  }
-
-  function autoTrackJumpButtons() {
-    if (typeof document === 'undefined') return;
-    document.addEventListener(
-      'click',
-      function (e) {
-        var t = e.target;
-        if (!t || !t.closest) return;
-        var el = t.closest('a,button,[role="button"]');
-        if (!el) return;
-        if (el.getAttribute && el.getAttribute('data-no-track') === '1') return;
-        var target = detectJumpTarget(el);
-        if (!target) return;
-        var agg = jumpTrackAggregatePath(target);
-        var targetKey = sanitizeTrackKey(
-          String(agg)
-            .replace(/^\/+/, '')
-            .replace(/[/.-]+/g, '_') || 'jump'
-        );
-        fireTrack('track_jump_' + targetKey, '/event/jump/' + targetKey, {
-          from: (window.location && window.location.pathname) || '',
-          to: target,
-          text: firstText(el)
-        });
-      },
-      true
-    );
-  }
-
   window.isCordovaTaxAppShell = isCordovaTaxAppShell;
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
@@ -3491,6 +3522,10 @@
   window.trackShareDownloadClick = trackShareDownloadClick;
   window.getSalesChannel = getSalesChannel;
   window.getRegisterSalesChannel = getRegisterSalesChannel;
+  window.captureRegisterSourceFromUrl = captureRegisterSourceFromUrl;
+  window.getRegisterSourceChannel = getRegisterSourceChannel;
+  window.clearRegisterSourceChannel = clearRegisterSourceChannel;
+  window.registerSourceChannelLabel = registerSourceChannelLabel;
   window.getPublicInstallPackagesUrl = getPublicInstallPackagesUrl;
   window.isDistributorApp = isDistributorApp;
   window.isInAppRegisterDisabled = isInAppRegisterDisabled;
@@ -3500,6 +3535,7 @@
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
   window.buildShareUrl = buildShareUrl;
   window.sharePageLink = sharePageLink;
+  window.DEFAULT_SHARE_LAND_QUERY = DEFAULT_SHARE_LAND_QUERY;
   window.copyTextToClipboard = copyTextToClipboard;
   window.sanitizeLoginNext = sanitizeLoginNext;
   window.getLoginNextTarget = getLoginNextTarget;
@@ -3513,7 +3549,6 @@
   window.trackPublicAction = function (action, meta) {
     firePublicTrack(action, '/event/' + sanitizeTrackKey(action), meta || {});
   };
-  autoTrackJumpButtons();
   try {
     bootstrapShareAttributionFromUrl();
   } catch (eShareBoot) {}
@@ -3542,7 +3577,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260722-act-nudge2';
+    s.src = '/js/conversion-guide.js?v=20260730-value-dialog';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;
@@ -3779,7 +3814,15 @@
             trackPublicAction('track_install_app_shell_register_prompt_ok', { page: currentPageName() });
           }
           closePrompt();
-          window.location.href = 'register.html?from=install_guide';
+          var regUrl = 'register.html?from=install_guide';
+          try {
+            var ch =
+              typeof getSalesChannel === 'function' ? String(getSalesChannel() || '').trim() : '';
+            if (ch) {
+              regUrl += '&ch=' + encodeURIComponent(ch);
+            }
+          } catch (eCh) {}
+          window.location.href = regUrl;
           return;
         }
         if (action === 'later') {

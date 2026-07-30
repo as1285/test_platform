@@ -2,122 +2,114 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260728-android-header-top"></script>
+    <script src="/js/auth.js?v=20260730-force-a-pay"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通权益</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/public-editorial.css?v=20260725-purchase-compact">
     <style>
-        /* 开通页紧凑密度：字号/间距/按钮统一收口，不改业务显隐 */
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; -webkit-font-smoothing: antialiased; }
         body.page-purchase {
-            --wrap-purchase: 520px;
-            --p-pad-x: 16px;
-            --p-hero-brand: clamp(1.2rem, 4.8vw, 1.35rem);
-            --p-hero-h1: 1rem;
-            --p-hero-p: 0.8rem;
-            --p-card-title: 0.92rem;
-            --p-card-hint: 0.78rem;
-            --p-card-pad-y: 13px;
-            --p-btn-pad-y: 10px;
-            --p-btn-pad-x: 12px;
-            --p-btn-fs: 0.88rem;
-            --p-btn-radius: 8px;
-            --p-btn-min-h: 40px;
-            --p-sku-pad-y: 9px;
-            --p-sku-pad-x: 12px;
-            --p-sku-price: 1rem;
-            --p-sku-label: 0.84rem;
-            --p-channel-min-h: 44px;
-            --p-channel-icon: 30px;
-            --p-line-tight: 1.4;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
         }
         .header {
             position: relative;
-            z-index: 100;
-            background: transparent;
-            padding: calc(10px + var(--safe-t)) var(--p-pad-x) 6px;
+            z-index: 10;
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
             gap: 10px;
-            border-bottom: none;
-            max-width: var(--wrap-purchase);
-            margin: 0 auto;
         }
-        .header .back-btn {
-            margin: 0;
-            flex-shrink: 0;
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 4px 2px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn img {
+            width: 9px;
+            height: auto;
+            filter: brightness(0) saturate(100%) invert(35%) sepia(90%) saturate(1200%) hue-rotate(195deg);
         }
         .header-title {
-            font-family: var(--font-display);
-            font-size: 0.95rem;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 600;
             color: var(--ink);
-            letter-spacing: 0.01em;
         }
         .page {
-            position: relative;
-            z-index: 1;
-            padding: 4px var(--p-pad-x) 0;
-            max-width: var(--wrap-purchase);
+            max-width: var(--wrap);
             margin: 0 auto;
-            animation: editorialRise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+            padding: 8px 20px 0;
         }
         .hero {
-            background: transparent;
-            color: var(--ink);
-            border-radius: 0;
-            padding: 8px 0 12px;
-            margin-bottom: 0;
+            padding: 8px 0 18px;
             border-bottom: 1px solid var(--line);
+            margin-bottom: 4px;
         }
         .hero .brand-line {
-            font-family: var(--font-display);
-            font-size: var(--p-hero-brand);
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            line-height: 1.15;
-            margin: 0 0 6px;
-            color: var(--ink);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
         }
         .hero h1 {
-            font-family: var(--font-display);
-            font-size: var(--p-hero-h1);
-            font-weight: 700;
-            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 650;
             color: var(--ink);
+            margin: 0 0 6px;
+            letter-spacing: 0.01em;
         }
         .hero p {
-            font-size: var(--p-hero-p);
-            line-height: var(--p-line-tight);
+            font-size: 14px;
+            line-height: 1.5;
             color: var(--muted);
-            opacity: 1;
             margin: 0;
-            max-width: 28rem;
         }
         .card {
-            background: transparent;
-            border-radius: 0;
-            padding: var(--p-card-pad-y) 0;
-            margin-bottom: 0;
-            box-shadow: none;
+            padding: 18px 0;
             border-bottom: 1px solid var(--line);
+            background: transparent;
+            box-shadow: none;
+            border-radius: 0;
         }
         .card[hidden] { display: none !important; }
         .card-title {
-            font-family: var(--font-display);
-            font-size: var(--p-card-title);
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 600;
             color: var(--ink);
             margin-bottom: 4px;
         }
         .card-hint {
-            font-size: var(--p-card-hint);
+            font-size: 13px;
             color: var(--muted);
-            line-height: var(--p-line-tight);
-            margin-bottom: 10px;
+            line-height: 1.45;
+            margin-bottom: 12px;
         }
         .card-head {
             display: flex;
@@ -129,44 +121,21 @@
         .card-head .card-title { margin-bottom: 0; }
         .badge-auto {
             flex-shrink: 0;
-            font-size: 0.68rem;
+            font-size: 11px;
             font-weight: 600;
             color: var(--accent-deep);
             background: var(--accent-soft);
-            border-radius: 5px;
-            padding: 2px 6px;
-            letter-spacing: 0.02em;
-        }
-        .qr-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 0 2px;
-        }
-        .qr-wrap img {
-            width: 200px;
-            height: 200px;
-            object-fit: contain;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-        }
-        .qr-caption {
-            font-size: 0.76rem;
-            color: var(--muted);
-            text-align: center;
-            line-height: var(--p-line-tight);
-            max-width: 22rem;
+            border-radius: 6px;
+            padding: 3px 7px;
         }
         .pay-status {
-            margin-top: 8px;
-            padding: 8px 10px;
+            margin-top: 10px;
+            padding: 10px 12px;
             border-radius: 8px;
             background: var(--accent-soft);
             color: var(--accent-deep);
-            font-size: 0.78rem;
-            line-height: var(--p-line-tight);
+            font-size: 13px;
+            line-height: 1.45;
             text-align: center;
         }
         .pay-status[hidden] { display: none !important; }
@@ -179,147 +148,121 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            min-height: var(--p-btn-min-h);
+            min-height: 48px;
             border: none;
-            border-radius: var(--p-btn-radius);
-            padding: var(--p-btn-pad-y) var(--p-btn-pad-x);
-            font-size: var(--p-btn-fs);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
             font-weight: 600;
             text-align: center;
             text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
-            cursor: pointer;
             font-family: inherit;
-            box-sizing: border-box;
-            transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s ease, opacity 0.15s ease;
         }
         .btn + .btn { margin-top: 8px; }
-        .btn:active:not(:disabled) { transform: scale(0.985); }
-        .btn-primary {
-            background: var(--accent);
-            color: #fff;
-        }
-        .btn-primary:hover { background: var(--accent-deep); }
-        .btn-secondary {
-            background: var(--accent-soft);
-            color: var(--accent-deep);
-        }
-        .btn-alipay {
-            background: var(--accent);
-            color: #fff;
-        }
-        .btn-alipay:hover { background: var(--accent-deep); }
+        .btn:active:not(:disabled) { opacity: 0.92; }
+        .btn-primary,
+        .btn-alipay,
         .btn-download {
             background: var(--accent);
             color: #fff;
         }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .btn-primary:hover,
+        .btn-alipay:hover,
+        .btn-download:hover { background: var(--accent-deep); }
+        .btn-secondary {
+            background: #fff;
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
         }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .pricing-sku-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            margin: 0 0 10px;
+            gap: 8px;
+            margin: 0 0 12px;
         }
         .pricing-sku-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
-            min-height: 40px;
+            min-height: 48px;
             text-align: left;
-            border: 1.5px solid rgba(15, 28, 48, 0.14);
-            background: transparent;
-            border-radius: 8px;
-            padding: var(--p-sku-pad-y) var(--p-sku-pad-x);
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 14px;
             cursor: pointer;
             font-family: inherit;
-            box-sizing: border-box;
-            transition: border-color 0.15s ease, background 0.15s ease;
         }
         .pricing-sku-item.is-selected {
             border-color: var(--accent);
             background: var(--accent-soft);
-            box-shadow: none;
         }
         .pricing-sku-price {
-            font-size: var(--p-sku-price);
+            font-size: 17px;
             font-weight: 700;
             color: var(--accent-deep);
-            min-width: 60px;
-            font-family: var(--font-display);
+            min-width: 72px;
         }
         .pricing-sku-label {
             flex: 1;
-            font-size: var(--p-sku-label);
+            font-size: 14px;
             color: var(--ink);
+            font-weight: 500;
         }
         .pricing-sku-tag {
-            font-size: 0.68rem;
+            font-size: 12px;
             color: var(--muted);
         }
         .activate-box .field-label {
             display: block;
-            font-size: 0.76rem;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 500;
             color: var(--ink-soft);
-            margin-bottom: 4px;
-            letter-spacing: 0.04em;
+            margin-bottom: 7px;
         }
         .activate-box input {
             width: 100%;
-            border: none;
-            border-bottom: 1.5px solid rgba(15, 28, 48, 0.16);
-            border-radius: 0;
-            padding: 10px 0;
-            font-size: 0.92rem;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 13px 14px;
+            font-size: 15px;
             outline: none;
-            margin-bottom: 10px;
-            background: transparent;
+            margin-bottom: 12px;
+            background: #fff;
             color: var(--ink);
             font-family: inherit;
-            transition: border-color 0.18s ease;
         }
         .activate-box input:focus {
-            border-bottom-color: var(--accent);
-            background: transparent;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
         }
-        .channel-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
+        .channel-list { display: flex; flex-direction: column; }
         .channel-row {
             display: flex;
             align-items: center;
             gap: 10px;
             width: 100%;
-            min-height: var(--p-channel-min-h);
-            padding: 8px 0;
+            min-height: 48px;
+            padding: 10px 0;
             border: none;
             border-bottom: 1px solid var(--line);
-            border-radius: 0;
             background: transparent;
             text-decoration: none;
             color: inherit;
             font-family: inherit;
-            font-size: 13px;
             text-align: left;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            position: relative;
-            z-index: 1;
-            box-sizing: border-box;
         }
         .channel-row[hidden] { display: none !important; }
-        .channel-row:active { background: transparent; opacity: 0.85; }
         .channel-icon {
             flex-shrink: 0;
-            width: var(--p-channel-icon);
-            height: var(--p-channel-icon);
+            width: 30px;
+            height: 30px;
             border-radius: 6px;
             display: flex;
             align-items: center;
@@ -327,62 +270,47 @@
             font-size: 11px;
             font-weight: 700;
             color: #fff;
+            background: var(--accent);
         }
-        .channel-icon.xianyu { background: #c2410c; }
-        .channel-icon.kufaka { background: var(--accent); }
-        .channel-icon.chat { background: var(--ink-soft); }
-        .channel-icon.qq { background: #0e7490; }
-
-        .channel-body {
-            flex: 1;
-            min-width: 0;
-        }
+        .channel-body { flex: 1; min-width: 0; }
         .channel-body strong {
             display: block;
-            font-size: 0.84rem;
+            font-size: 14px;
             font-weight: 600;
             color: var(--ink);
             margin-bottom: 1px;
         }
         .channel-body span {
             display: block;
-            font-size: 0.72rem;
+            font-size: 12px;
             color: var(--muted);
-            line-height: 1.3;
         }
-        .channel-arrow {
-            flex-shrink: 0;
-            color: #a0adbf;
-            font-size: 14px;
-        }
-
+        .channel-arrow { color: #cbd5e1; font-size: 16px; }
         .steps {
-            font-size: 0.78rem;
+            font-size: 13px;
             color: var(--muted);
-            line-height: 1.5;
-            padding-left: 16px;
-            margin: 0;
+            line-height: 1.55;
+            padding-left: 18px;
+            margin: 14px 0 0;
         }
-        .steps li + li { margin-top: 2px; }
+        .steps li + li { margin-top: 4px; }
         .section-label {
-            font-size: 0.72rem;
+            font-size: 12px;
             font-weight: 600;
             color: var(--muted);
-            margin: 12px 0 0;
-            letter-spacing: 0.06em;
-            text-transform: none;
+            margin: 14px 0 0;
         }
         .purchase-toast {
             position: fixed;
             left: 50%;
-            bottom: calc(40px + var(--safe-b));
+            bottom: calc(36px + var(--safe-b));
             transform: translateX(-50%);
             max-width: calc(100% - 48px);
-            background: var(--ink);
+            background: rgba(15, 23, 42, 0.9);
             color: #fff;
-            font-size: 0.82rem;
+            font-size: 13px;
             line-height: 1.4;
-            padding: 9px 14px;
+            padding: 10px 14px;
             border-radius: 8px;
             z-index: 9999;
             pointer-events: none;
@@ -390,16 +318,16 @@
             transition: opacity 0.2s ease;
         }
         .purchase-toast.show { opacity: 1; }
-        .download-box .card-hint { margin-bottom: 10px; }
-        .card#cardDownloadApp[hidden] {
-            display: none !important;
+        .card#cardDownloadApp[hidden] { display: none !important; }
+        .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; }
+        .qr-wrap img {
+            width: 180px; height: 180px; object-fit: contain;
+            background: #fff; border: 1px solid var(--line); border-radius: 8px;
         }
-        @media (prefers-reduced-motion: reduce) {
-            .page { animation: none !important; }
-        }
+        .qr-caption { font-size: 12px; color: var(--muted); text-align: center; }
     </style>
 </head>
-<body class="page-purchase editorial-page">
+<body class="page-purchase">
     <div class="header">
         <a class="back-btn" id="purchaseBackBtn" href="mine.html">
             <img src="/jt.png" alt="" width="9" decoding="async">
@@ -410,19 +338,19 @@
     <div class="page">
         <div class="hero">
             <div class="brand-line">个人所得税</div>
-            <h1>开通完整功能</h1>
-            <p>支付宝可扫码付款后自动开通；也可通过酷发卡购买激活码后在本页确认。</p>
+            <h1>开通权益</h1>
+            <p>支付宝付款自动开通，也可填写已有激活码。</p>
         </div>
 
         <div class="card download-box" id="cardDownloadApp">
             <div class="card-title">下载 App</div>
-            <p class="card-hint">安装官方 App 后使用更流畅；付款开通后账号权益会同步到当前登录账号。</p>
+            <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
             <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
         </div>
 
         <div class="card activate-box">
-            <div class="card-title">已有激活码</div>
-            <p class="card-hint">购买完成后，将激活码粘贴到下方确认开通。</p>
+            <div class="card-title">激活码开通</div>
+            <p class="card-hint">已有激活码可直接填写开通。</p>
             <label class="field-label" for="purchaseActivateCode">激活码</label>
             <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
@@ -433,7 +361,7 @@
                 <div class="card-title">支付宝购买</div>
                 <span class="badge-auto">付款后自动开通</span>
             </div>
-            <p class="card-hint" id="alipayPurchaseHint">支付成功后将自动开通当前登录账号。</p>
+            <p class="card-hint" id="alipayPurchaseHint">选择套餐后打开支付宝付款。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
             <div class="pay-status" id="alipayPayStatus" hidden></div>
@@ -448,15 +376,6 @@
                     <span class="channel-body">
                         <strong>微信支付宝购买</strong>
                         <span>跳转商品页下单获取激活码</span>
-                    </span>
-                    <span class="channel-arrow">›</span>
-                </a>
-
-                <a class="channel-row" id="rowOnlineChat" href="chat.html?from=purchase" hidden>
-                    <span class="channel-icon chat">客</span>
-                    <span class="channel-body">
-                        <strong>在线客服</strong>
-                        <span>购买、激活问题可先咨询</span>
                     </span>
                     <span class="channel-arrow">›</span>
                 </a>
@@ -477,6 +396,22 @@
             return;
         }
     } catch (e0) {}
+
+    /*
+     * 已登录：清掉本地误锁的 C（同 IP 测过代理链 / 旧 sticky），
+     * 购买方案以服务端 alipay/config 为准（全量 A 后应显示支付宝）。
+     */
+    try {
+        if (localStorage.getItem('token')) {
+            var rawAbc = localStorage.getItem('purchase_abc_assignment_v1');
+            if (rawAbc) {
+                var abcObj = JSON.parse(rawAbc);
+                if (abcObj && String(abcObj.variant || '').toLowerCase() === 'c') {
+                    localStorage.removeItem('purchase_abc_assignment_v1');
+                }
+            }
+        }
+    } catch (eClearAbc) {}
 
     var purchasePageInApp = false;
 
@@ -524,7 +459,6 @@
         var map = {
             mine: 'mine.html',
             consult: 'consult.html?tab=records',
-            chat: 'chat.html?from=purchase',
             shouye: 'shouye.html',
             guide: 'install_guide.html',
             register: 'register.html'
@@ -1018,7 +952,7 @@
         skus: [],
         selectedSkuId: ''
     };
-    /** legacy=全入口；treatment=仅支付宝多档；code_only=支付页 C：下载+激活码+联系方式 */
+    /** legacy=支付宝+激活码；treatment=多档支付宝+激活码；code_only=仅下载+激活码 */
     var purchaseUiMode = 'legacy';
 
     function applyPurchaseUiMode() {
@@ -1034,55 +968,55 @@
 
         var page = document.querySelector('.page');
 
-        if (activateBox) activateBox.hidden = isNew;
-        if (otherLabel) otherLabel.hidden = isNew || isCodeOnly;
-        if (otherCard) otherCard.hidden = isNew || isCodeOnly;
+        /* A/B 均保留激活码入口；仅 C（code_only）也保留，不藏 */
+        if (activateBox) activateBox.hidden = false;
+        /* A/B/C 均不展示酷发卡等其它购买渠道 */
+        if (otherLabel) otherLabel.hidden = true;
+        if (otherCard) otherCard.hidden = true;
         /* APP 内不显示下载卡片 */
         if (cardDownload) cardDownload.hidden = purchasePageInApp;
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
-        /* 购买页关闭在线客服入口 */
-        var rowOnlineChat = document.getElementById('rowOnlineChat');
-        if (rowOnlineChat) rowOnlineChat.hidden = true;
 
 
         if (heroP) {
             if (isCodeOnly) {
-                heroP.textContent =
-                    '下载 App 后更流畅；已有激活码请在下方填写。';
+                heroP.textContent = '下载 App 后填写激活码即可开通。';
             } else if (isNew) {
-                heroP.textContent = '选择下方套餐，点「打开支付宝付款」完成后自动开通当前账号。';
+                heroP.textContent = '选择套餐付款，或填写已有激活码开通。';
             } else {
-                heroP.textContent =
-                    '支付宝可一键付款后自动开通；也可通过微信支付宝购买激活码后在本页确认。';
+                heroP.textContent = '支付宝付款自动开通，也可填写已有激活码。';
             }
         }
         if (steps) {
             if (isCodeOnly) {
                 steps.innerHTML =
-                    '<li>点击「立即下载」安装官方 App</li>' +
-                    '<li>输入激活码确认激活</li>' +
-                    '<li>开通后账号权益将同步到当前登录账号</li>';
+                    '<li>下载并安装 App</li>' +
+                    '<li>填写激活码开通</li>' +
+                    '<li>权益同步到当前账号</li>';
             } else if (isNew) {
                 steps.innerHTML =
-                    '<li>选择套餐并点「打开支付宝付款」</li>' +
-                    '<li>在支付宝完成付款</li>' +
-                    '<li>付款成功后自动开通，无需填写激活码</li>';
+                    '<li>选择套餐付款，或填写激活码</li>' +
+                    '<li>完成付款 / 确认激活</li>' +
+                    '<li>权益同步到当前账号</li>';
             } else {
                 steps.innerHTML =
-                    '<li>支付宝：点「打开支付宝付款」完成支付后自动开通当前账号</li>' +
-                    '<li>微信支付宝购买：付款后领取激活码</li>' +
-                    '<li>回到本页顶部输入激活码，点击「确认激活」</li>';
+                    '<li>打开支付宝完成付款</li>' +
+                    '<li>付款成功后自动开通</li>' +
+                    '<li>也可填写激活码开通</li>';
             }
         }
 
-        /* 新方案把支付宝区置顶，紧接说明文案 */
+        /* B 方案：支付宝置顶，激活码紧随其后 */
         if (isNew && page && cardAlipay && heroP && heroP.parentNode === page) {
             var hero = document.querySelector('.hero');
             if (hero && hero.nextSibling !== cardAlipay) {
                 page.insertBefore(cardAlipay, hero.nextSibling);
             }
+            if (activateBox && activateBox.parentNode === page && cardAlipay) {
+                page.insertBefore(activateBox, cardAlipay.nextSibling);
+            }
         }
-        /* C 方案：下载 → 激活码 → 联系方式 */
+        /* C 方案：下载 → 激活码 */
         if (isCodeOnly && page) {
             var heroEl = document.querySelector('.hero');
             if (heroEl && cardDownload && cardDownload.parentNode === page) {
@@ -1170,28 +1104,44 @@
                 var data = x.body && x.body.data ? x.body.data : {};
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
-                var abc = String(data.abc_variant || getPurchaseAbc() || '')
+                var abc = String(data.abc_variant || '')
                     .trim()
                     .toLowerCase();
                 try {
                     if (typeof abc.normalize === 'function') abc = abc.normalize('NFKC').toLowerCase();
                 } catch (eNfkc) {}
-                if (
-                    (data.force_client_abc || data.forced_by_channel) &&
-                    abc &&
-                    typeof window.forcePurchaseAbcAssignment === 'function'
-                ) {
-                    window.forcePurchaseAbcAssignment(
-                        abc,
-                        data.abc_source || (data.forced_by_channel ? 'agent_channel' : 'admin_force')
-                    );
-                } else if (abc && typeof window.forcePurchaseAbcAssignment === 'function' && data.abc_source === 'admin_force') {
-                    window.forcePurchaseAbcAssignment(abc, 'admin_force');
-                } else if (abc && typeof window.setPurchaseAbcAssignment === 'function') {
-                    window.setPurchaseAbcAssignment(abc, 'server_offer');
+                /* 服务端方案优先，强制覆盖本地误写的 C sticky */
+                if (abc === 'a' || abc === 'b' || abc === 'c') {
+                    if (typeof window.forcePurchaseAbcAssignment === 'function') {
+                        window.forcePurchaseAbcAssignment(
+                            abc,
+                            data.abc_source ||
+                                (data.forced_by_channel ? 'agent_channel' : 'server_offer')
+                        );
+                    } else if (typeof window.setPurchaseAbcAssignment === 'function') {
+                        window.setPurchaseAbcAssignment(abc, 'server_offer');
+                    }
+                } else {
+                    abc = String(getPurchaseAbc() || '')
+                        .trim()
+                        .toLowerCase();
                 }
-                /* 以服务端 abc 为准：本地曾 sticky 为 C 时不得盖住管理端/渠道强制的 A/B */
-                if (abc === 'c') {
+                /* 以服务端 abc 为准；admin_force / 服务端 A·B 时忽略残留 code_only */
+                if (x.status === 401 || x.status === 403) {
+                    if (card) card.hidden = true;
+                    purchaseUiMode = 'legacy';
+                    applyPurchaseUiMode();
+                    try {
+                        showToast((x.body && x.body.msg) || '登录已失效，请重新登录后再开通');
+                    } catch (eToast) {}
+                    return;
+                }
+                var serverForcesPay =
+                    data.force_client_abc === true && (abc === 'a' || abc === 'b');
+                var treatAsCodeOnly =
+                    !serverForcesPay &&
+                    (abc === 'c' || data.code_only === true || data.hide_self_serve_pay === true);
+                if (treatAsCodeOnly) {
                     if (card) card.hidden = true;
                     purchaseUiMode = 'code_only';
                     alipayPricing.variant = 'c';
@@ -1210,11 +1160,14 @@
                     if (!skus.length && data.amount) {
                         skus = [
                             {
-                                id: 'sku_199_perm_legacy',
+                                id: 'sku_320_7d',
                                 amount: data.amount,
-                                label: '永久激活',
-                                subject: data.subject || '激活码',
-                                grant_kind: 'permanent'
+                                label: '周卡',
+                                subject: data.subject || '激活码·周卡',
+                                grant_kind: 'trial',
+                                grant_days: 7,
+                                grant_hours: 0,
+                                grant_minutes: 0
                             }
                         ];
                     }
@@ -1222,16 +1175,16 @@
                     var selected = getSelectedAlipaySku();
                     var hint = document.getElementById('alipayPurchaseHint');
                     if (variant === 'treatment' && skus.length > 1) {
-                        hint.textContent =
-                            '可选试用或永久套餐；购买更长档将覆盖当前更短试用。付款成功后自动开通。';
+                        hint.textContent = '选择套餐付款，更长档会覆盖更短时效。';
                         purchaseUiMode = 'treatment';
                     } else {
                         hint.textContent =
                             '支付 ' +
                             (selected ? selected.amount : data.amount || '') +
-                            ' 元后自动开通当前登录账号。';
+                            ' 元后自动开通。';
                         purchaseUiMode = 'legacy';
                     }
+                    if (card) card.hidden = false;
                     applyPurchaseUiMode();
                     trackPurchase(
                         variant === 'treatment'
@@ -1244,15 +1197,21 @@
                         }
                     );
                 } else {
-                    purchaseUiMode = isPurchaseVariantC() ? 'code_only' : 'legacy';
+                    /* 未启用支付宝时：非 C 仍显示卡片区提示，避免误当成「被藏掉」 */
+                    purchaseUiMode = abc === 'c' ? 'code_only' : 'legacy';
                     alipayPricing.variant = 'control';
+                    if (card && purchaseUiMode !== 'code_only' && x.status === 200) {
+                        /* enabled=false 且非 C：保持隐藏（配置未就绪） */
+                        card.hidden = true;
+                    }
                     applyPurchaseUiMode();
                 }
                 return checkAlipayLatestOrder();
             })
             .catch(function () {
                 document.getElementById('cardAlipay').hidden = true;
-                purchaseUiMode = isPurchaseVariantC() ? 'code_only' : 'legacy';
+                /* 接口失败时不要用本地 sticky C 把整页切成仅激活码 */
+                purchaseUiMode = 'legacy';
                 alipayPricing.variant = 'control';
                 applyPurchaseUiMode();
             });
@@ -1262,11 +1221,20 @@
 
     function applyConfig(data) {
         data = data || {};
-        if (typeof window.applyChannelForcedPricingAbc === 'function') {
-            window.applyChannelForcedPricingAbc(data);
-        }
-        if (isPurchaseVariantC()) {
-            purchaseUiMode = 'code_only';
+        /*
+         * 安装包接口可能因 ?ch= / IP 归因带上 code_only，不能据此在购买页提前藏支付宝、
+         * 更不能把本地 sticky 强行写成 C（会盖住真正的 A 方案）。支付宝显隐以 /alipay/config 为准。
+         */
+        if (typeof window.applyChannelForcedPricingAbc === 'function' && data) {
+            var forceAbc = String(data.force_pricing_abc || data.default_pricing_abc || '')
+                .trim()
+                .toLowerCase();
+            if (forceAbc === 'a' || forceAbc === 'b') {
+                window.applyChannelForcedPricingAbc({
+                    force_pricing_abc: forceAbc,
+                    default_pricing_abc: forceAbc
+                });
+            }
         }
         applyPurchaseUiMode();
     }
@@ -1278,7 +1246,6 @@
         trackPurchase('track_purchase_page_view', {
             alipay: !!(cardAlipay && !cardAlipay.hidden),
             kufaka: !!(document.getElementById('rowKufaka') && purchaseUiMode === 'legacy'),
-            online_chat: false,
             code_only: purchaseUiMode === 'code_only'
         });
     }
@@ -1396,14 +1363,6 @@
                 showToast('正在打开购买页…');
                 openExternalUrlOrHint(KUFAKA_PURCHASE_URL, '购买链接已复制，请到系统浏览器打开');
             }
-        });
-    }
-
-    var rowOnlineChatEl = document.getElementById('rowOnlineChat');
-    if (rowOnlineChatEl) {
-        rowOnlineChatEl.hidden = true;
-        rowOnlineChatEl.addEventListener('click', function (ev) {
-            ev.preventDefault();
         });
     }
 

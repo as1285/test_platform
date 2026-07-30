@@ -1,6 +1,7 @@
 /**
  * 代理专属渠道：channel_id → 下属代理账号 + 默认支付 A/B/C
  * 未显式配置 a/b 时一律强制 C（不再跟随增长分流）。
+ * hide_self_serve_pay=1：仅激活码开通，隐藏全部自助支付（强制 C）。
  */
 const CHANNEL_ID_RE = /^[a-z0-9_-]{1,64}$/i;
 
@@ -20,8 +21,9 @@ function createAgentChannels(deps) {
     await pool.execute(
       `CREATE TABLE IF NOT EXISTS agent_channels (
         channel_id VARCHAR(64) NOT NULL,
-        owner_admin_username VARCHAR(64) NOT NULL,
+        owner_admin_username VARCHAR(64) NOT NULL DEFAULT '',
         default_pricing_abc VARCHAR(8) NOT NULL DEFAULT 'c' COMMENT 'a|b|c，空亦按 c（代理专属默认 C）',
+        hide_self_serve_pay TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=仅激活码，隐藏支付宝/闲鱼等自助支付',
         enabled TINYINT(1) NOT NULL DEFAULT 1,
         note VARCHAR(255) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +40,28 @@ function createAgentChannels(deps) {
     } catch (e) {
       if (!(e && (e.code === 'ER_DUP_FIELDNAME' || e.errno === 1060))) throw e;
     }
+    try {
+      await pool.execute(
+        `ALTER TABLE agent_channels
+         ADD COLUMN hide_self_serve_pay TINYINT(1) NOT NULL DEFAULT 0
+         COMMENT '1=仅激活码，隐藏支付宝/闲鱼等自助支付'
+         AFTER default_pricing_abc`
+      );
+      /* 存量：C 方案渠道默认开启仅激活码；显式 A/B 保持可自助支付 */
+      await pool.execute(
+        `UPDATE agent_channels
+         SET hide_self_serve_pay = 1
+         WHERE LOWER(TRIM(IFNULL(default_pricing_abc, ''))) IN ('', 'c')`
+      );
+    } catch (e2) {
+      if (!(e2 && (e2.code === 'ER_DUP_FIELDNAME' || e2.errno === 1060))) throw e2;
+    }
+    try {
+      await pool.execute(
+        `ALTER TABLE agent_channels
+         MODIFY COLUMN owner_admin_username VARCHAR(64) NOT NULL DEFAULT ''`
+      );
+    } catch (e3) {}
   }
 
   function normalizeAbc(raw) {
@@ -62,9 +86,12 @@ function createAgentChannels(deps) {
     return '';
   }
 
-  /** 专属渠道有效默认支付：未显式 a/b/c 时强制 C */
+  /** 专属渠道有效默认支付：未显式 a/b 时默认 A（全站支付宝）；c 视为 a */
   function effectivePricingAbc(raw) {
-    return normalizeAbc(raw) || 'c';
+    var v = normalizeAbc(raw);
+    if (v === 'b') return 'b';
+    if (v === 'c') return 'a';
+    return v || 'a';
   }
 
   function normalizeOwner(raw) {
@@ -76,25 +103,36 @@ function createAgentChannels(deps) {
     return s ? s.slice(0, 255) : null;
   }
 
+  function normalizeHideSelfServePay(raw, abc) {
+    /* 全站取消渠道「仅激活码」：忽略 hide_self_serve_pay */
+    return false;
+  }
+
+  function mapChannelRow(r) {
+    var abc = effectivePricingAbc(r.default_pricing_abc);
+    return {
+      channel_id: String(r.channel_id || ''),
+      owner_admin_username: String(r.owner_admin_username || ''),
+      default_pricing_abc: abc,
+      hide_self_serve_pay: false,
+      code_only: false,
+      enabled: Number(r.enabled) === 1,
+      note: r.note != null ? String(r.note) : '',
+      created_at: r.created_at,
+      updated_at: r.updated_at
+    };
+  }
+
   async function listChannels() {
     await ensureTable();
     var pool = getPool();
     const [rows] = await pool.execute(
-      `SELECT channel_id, owner_admin_username, default_pricing_abc, enabled, note, created_at, updated_at
+      `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay,
+              enabled, note, created_at, updated_at
        FROM agent_channels
        ORDER BY updated_at DESC, channel_id ASC`
     );
-    return (rows || []).map(function (r) {
-      return {
-        channel_id: String(r.channel_id || ''),
-        owner_admin_username: String(r.owner_admin_username || ''),
-        default_pricing_abc: effectivePricingAbc(r.default_pricing_abc),
-        enabled: Number(r.enabled) === 1,
-        note: r.note != null ? String(r.note) : '',
-        created_at: r.created_at,
-        updated_at: r.updated_at
-      };
-    });
+    return (rows || []).map(mapChannelRow);
   }
 
   async function getChannelById(channelId) {
@@ -103,19 +141,12 @@ function createAgentChannels(deps) {
     await ensureTable();
     var pool = getPool();
     const [rows] = await pool.execute(
-      `SELECT channel_id, owner_admin_username, default_pricing_abc, enabled, note
+      `SELECT channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note
        FROM agent_channels WHERE channel_id = ? LIMIT 1`,
       [id]
     );
     if (!rows || !rows.length) return null;
-    var r = rows[0];
-    return {
-      channel_id: String(r.channel_id || ''),
-      owner_admin_username: String(r.owner_admin_username || ''),
-      default_pricing_abc: effectivePricingAbc(r.default_pricing_abc),
-      enabled: Number(r.enabled) === 1,
-      note: r.note != null ? String(r.note) : ''
-    };
+    return mapChannelRow(rows[0]);
   }
 
   async function getEnabledChannelById(channelId) {
@@ -157,8 +188,13 @@ function createAgentChannels(deps) {
 
   async function upsertChannel(input) {
     var channelId = sanitizeSalesChannelId(input && input.channel_id);
+    /* 平台自有渠道可留空下属代理 */
     var owner = normalizeOwner(input && input.owner_admin_username);
-    /* 未传或跟随分流 → 默认 C */
+    var hideSelf = normalizeHideSelfServePay(
+      input && input.hide_self_serve_pay,
+      input && input.default_pricing_abc
+    );
+    /* 全站支付宝：渠道默认 A；显式 B 保留；c/仅激活码不再写入 */
     var abc = effectivePricingAbc(input && input.default_pricing_abc);
     var enabled = input && input.enabled === false ? 0 : 1;
     var note = normalizeNote(input && input.note);
@@ -167,22 +203,19 @@ function createAgentChannels(deps) {
       err.code = 'INVALID_CHANNEL';
       throw err;
     }
-    if (!owner) {
-      var err2 = new Error('请选择下属代理账号');
-      err2.code = 'INVALID_OWNER';
-      throw err2;
-    }
     await ensureTable();
     var pool = getPool();
     await pool.execute(
-      `INSERT INTO agent_channels (channel_id, owner_admin_username, default_pricing_abc, enabled, note)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO agent_channels
+         (channel_id, owner_admin_username, default_pricing_abc, hide_self_serve_pay, enabled, note)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          owner_admin_username = VALUES(owner_admin_username),
          default_pricing_abc = VALUES(default_pricing_abc),
+         hide_self_serve_pay = VALUES(hide_self_serve_pay),
          enabled = VALUES(enabled),
          note = VALUES(note)`,
-      [channelId, owner, abc, enabled, note]
+      [channelId, owner, abc, hideSelf ? 1 : 0, enabled, note]
     );
     return getChannelById(channelId);
   }

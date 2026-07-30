@@ -1282,9 +1282,6 @@ function fillBatchTaxQuickMinimal() {
         fund_ratio: 12,
         special: 0
     });
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_conversion_quick_minimal_template', { page: 'consult' });
-    }
     exitBatchTaxEditMode();
 }
 
@@ -1330,9 +1327,6 @@ function fillBatchTaxOfficeWorkerTemplate(silent) {
         showMsg('已填入上班族一年模板（' + cy + '年1–' + cm + '月），核对后点击「一键生成税务记录」', true);
     }
     exitBatchTaxEditMode();
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_conversion_office_worker_template', { page: 'consult' });
-    }
 }
 
 /** 工具栏：无有效工作经历时先填上班族模板，再提交生成 */
@@ -1340,9 +1334,6 @@ function oneClickGenerateBatchTaxRecords() {
     var parsed = parseBatchEmploymentsFromDom();
     if (!parsed.ok) {
         fillBatchTaxOfficeWorkerTemplate(true);
-    }
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_conversion_one_click_generate', { page: 'consult' });
     }
     batchAddEmploymentTaxRecords();
 }
@@ -1659,6 +1650,28 @@ function afterBatchTaxWriteSuccess() {
     window.__batchTaxUserExpanded = false;
     syncBatchTaxEmptyState();
     setTimeout(scrollToTaxRecordsList, 120);
+}
+
+/** ConversionGuide 为 async 注入：生成成功时可能尚未就绪，短重试避免成功弹窗丢失 */
+function invokeAfterTaxRecordsCreated(opts) {
+    var tries = 0;
+    function run() {
+        if (
+            window.ConversionGuide &&
+            typeof window.ConversionGuide.afterTaxRecordsCreated === 'function'
+        ) {
+            window.ConversionGuide.afterTaxRecordsCreated(opts || {});
+            return true;
+        }
+        return false;
+    }
+    if (run()) return;
+    var timer = setInterval(function () {
+        tries += 1;
+        if (run() || tries >= 50) {
+            clearInterval(timer);
+        }
+    }, 100);
 }
 
 function initConsultRecordsUx() {
@@ -2723,9 +2736,6 @@ function openTaxPasteImportModal() {
             } catch (e0) {}
         }, 50);
     }
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_tax_paste_import_open', { page: 'consult' });
-    }
 }
 
 function closeTaxPasteImportModal() {
@@ -2805,13 +2815,6 @@ function fillTaxPasteImportToForm() {
             '。核对后点「一键生成税务记录」即可写入。',
         true
     );
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_tax_paste_import_fill', {
-            page: 'consult',
-            months: nMon,
-            employers: nEmp
-        });
-    }
 }
 
 function generateTaxPasteImportDirect() {
@@ -2849,13 +2852,6 @@ function generateTaxPasteImportDirect() {
         return;
     }
     closeTaxPasteImportModal();
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_tax_paste_import_generate', {
-            page: 'consult',
-            months: nMon,
-            employers: nEmp
-        });
-    }
     batchAddEmploymentTaxRecords();
 }
 
@@ -3040,9 +3036,6 @@ function openProfilePasteImportModal() {
             } catch (e0) {}
         }, 50);
     }
-    if (typeof window.trackUserAction === 'function') {
-        window.trackUserAction('track_profile_paste_import_open', { page: 'consult' });
-    }
 }
 
 function closeProfilePasteImportModal() {
@@ -3189,12 +3182,6 @@ function applyProfilePasteImport() {
             if (parsed.address) bits.push('地址');
             if (parsed.card_no && parsed.phone) bits.push('银行卡');
             showMsg('已写入：' + (bits.join('、') || '个人资料'), true);
-            if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_profile_paste_import_apply', {
-                    page: 'consult',
-                    has_bank: !!(parsed.card_no && parsed.phone)
-                });
-            }
             try {
                 loadUserInfoFromApi();
             } catch (eLoad) {}
@@ -3262,6 +3249,9 @@ function applyProfilePasteImport() {
 })();
 
 (function bindTaxRecycleBinModal() {
+    if (typeof closeTaxRecycleBin !== 'function') {
+        return;
+    }
     var mask = document.getElementById('taxRecycleBinModalMask');
     var closeX = document.getElementById('taxRecycleBinModalCloseX');
     var closeBtn = document.getElementById('taxRecycleBinClose');
@@ -3277,13 +3267,13 @@ function applyProfilePasteImport() {
     if (closeBtn) {
         closeBtn.addEventListener('click', closeTaxRecycleBin);
     }
-    if (restoreAllBtn) {
+    if (restoreAllBtn && typeof restoreAllDeletedTaxRecords === 'function') {
         restoreAllBtn.addEventListener('click', restoreAllDeletedTaxRecords);
     }
-    if (restoreCompanyBtn) {
+    if (restoreCompanyBtn && typeof restoreDeletedTaxRecordsByCompany === 'function') {
         restoreCompanyBtn.addEventListener('click', restoreDeletedTaxRecordsByCompany);
     }
-    if (exportBtn) {
+    if (exportBtn && typeof exportDeletedTaxRecordsJson === 'function') {
         exportBtn.addEventListener('click', exportDeletedTaxRecordsJson);
     }
 })();
@@ -3618,9 +3608,7 @@ function batchAddEmploymentTaxRecords() {
             if (window.ConversionGuide && typeof window.ConversionGuide.refresh === 'function') {
                 window.ConversionGuide.refresh();
             }
-            if (window.ConversionGuide && typeof window.ConversionGuide.afterTaxRecordsCreated === 'function') {
-                window.ConversionGuide.afterTaxRecordsCreated();
-            }
+            invokeAfterTaxRecordsCreated({ source: 'batch' });
             return refreshRecordList().then(function (list) {
                 afterBatchTaxWriteSuccess();
                 return list;

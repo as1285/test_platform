@@ -47,6 +47,29 @@ const LOGIN_RATE_PER_USER_MIN = parseInt(process.env.LOGIN_RATE_PER_USER_MIN || 
 const ADMIN_LOGIN_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_LOGIN_RATE_PER_IP_MIN || '10', 10);
 const ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.ADMIN_API_RATE_PER_IP_MIN || '240', 10);
 const HEAVY_ADMIN_API_RATE_PER_IP_MIN = parseInt(process.env.HEAVY_ADMIN_API_RATE_PER_IP_MIN || '60', 10);
+/** 游客会话创建：每 IP 每分钟上限 */
+const GUEST_SESSION_RATE_PER_IP_MIN = parseInt(process.env.GUEST_SESSION_RATE_PER_IP_MIN || '8', 10);
+/** 埋点写入：每 IP 每分钟上限 */
+const TRACK_RATE_PER_IP_MIN = parseInt(process.env.TRACK_RATE_PER_IP_MIN || '60', 10);
+/** 管理登录连续失败锁定 */
+const ADMIN_LOGIN_MAX_FAILS = parseInt(process.env.ADMIN_LOGIN_MAX_FAILS || '5', 10) || 5;
+const ADMIN_LOGIN_LOCK_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCK_MINUTES || '30', 10) || 30;
+/** 管理登录邮件 OTP：1/true 开启（需 SMTP + 账号 email 或 ADMIN_OTP_EMAIL） */
+const ADMIN_LOGIN_EMAIL_OTP =
+  String(process.env.ADMIN_LOGIN_EMAIL_OTP || '0').trim() === '1' ||
+  String(process.env.ADMIN_LOGIN_EMAIL_OTP || '').toLowerCase() === 'true';
+const ADMIN_OTP_EMAIL = String(process.env.ADMIN_OTP_EMAIL || '').trim();
+const ADMIN_OTP_TTL_SEC = parseInt(process.env.ADMIN_OTP_TTL_SEC || '300', 10) || 300;
+/** 管理上传单文件上限（字节），默认 80MB */
+const ADMIN_UPLOAD_MAX_BYTES =
+  parseInt(process.env.ADMIN_UPLOAD_MAX_BYTES || String(80 * 1024 * 1024), 10) || 80 * 1024 * 1024;
+/**
+ * 明文密码策略：0/off 不存；1/plain 明文（不推荐）；encrypt 用 JWT_SECRET 派生密钥加密存储
+ * 默认关闭
+ */
+const REGISTER_STORE_PLAIN_PASSWORD = String(
+  process.env.REGISTER_STORE_PLAIN_PASSWORD != null ? process.env.REGISTER_STORE_PLAIN_PASSWORD : '0'
+).trim();
 const DB_POOL_SIZE = parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30;
 const DB_POOL_QUEUE_LIMIT = parseInt(process.env.DB_POOL_QUEUE_LIMIT || '60', 10) || 60;
 /** 安装包等敏感下载签名密钥；空则回退 JWT_SECRET */
@@ -82,6 +105,15 @@ module.exports = {
   ADMIN_LOGIN_RATE_PER_IP_MIN,
   ADMIN_API_RATE_PER_IP_MIN,
   HEAVY_ADMIN_API_RATE_PER_IP_MIN,
+  GUEST_SESSION_RATE_PER_IP_MIN,
+  TRACK_RATE_PER_IP_MIN,
+  ADMIN_LOGIN_MAX_FAILS,
+  ADMIN_LOGIN_LOCK_MINUTES,
+  ADMIN_LOGIN_EMAIL_OTP,
+  ADMIN_OTP_EMAIL,
+  ADMIN_OTP_TTL_SEC,
+  ADMIN_UPLOAD_MAX_BYTES,
+  REGISTER_STORE_PLAIN_PASSWORD,
   DB_POOL_SIZE,
   DB_POOL_QUEUE_LIMIT
 };

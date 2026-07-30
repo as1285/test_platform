@@ -55,14 +55,6 @@ const ADMIN_PAGE_DEFS = [
     order: 20
   },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
-  {
-    page: 'weekly-codes',
-    menu_key: 'weekly-codes',
-    label: '周卡激活码',
-    group: 'ops-desk',
-    module: 'codes',
-    order: 35
-  },
 
   /* —— 运营配置 —— */
   {
@@ -118,8 +110,6 @@ const ADMIN_PAGE_DEFS = [
     order: 30,
     assignable: false
   },
-  { page: 'feedback', menu_key: 'feedback', label: '用户反馈', group: 'users', module: 'feedback', order: 40 },
-  { page: 'chat', menu_key: 'chat', label: '在线客服', group: 'users', module: 'chat', order: 50 },
   { page: 'user-data', menu_key: 'user-data', label: '用户数据', group: 'users', module: 'user-data', order: 60 },
   {
     page: 'tax-records-edit',
@@ -128,14 +118,6 @@ const ADMIN_PAGE_DEFS = [
     group: 'users',
     module: 'user-data',
     order: 65
-  },
-  {
-    page: 'user-behavior',
-    menu_key: 'user-behavior',
-    label: '用户行为',
-    group: 'users',
-    module: 'user-data',
-    order: 70
   },
   {
     page: 'activated-user-analysis',
@@ -180,22 +162,6 @@ const ADMIN_PAGE_DEFS = [
     group: 'insights',
     module: 'analytics',
     order: 30
-  },
-  {
-    page: 'analytics-devices',
-    menu_key: 'analytics-devices',
-    label: '设备分析',
-    group: 'insights',
-    module: 'analytics',
-    order: 40
-  },
-  {
-    page: 'api-analytics',
-    menu_key: 'api-analytics',
-    label: '接口统计',
-    group: 'insights',
-    module: 'analytics',
-    order: 50
   },
 
   /* —— 系统与安全 —— */
@@ -256,8 +222,7 @@ const ADMIN_PREFERRED_FIRST_PAGES = [
   'settings',
   'codes',
   'channel-analysis',
-  'users',
-  'chat'
+  'users'
 ];
 
 const ADMIN_MENU_KEYS = (function () {

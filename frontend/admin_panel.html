@@ -2,16 +2,19 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/admin_auth.js?v=20260727-share-stats"></script>
+    <script src="/js/admin_auth.js?v=20260729-splash"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营控制台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260724-tab-display">
-    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260727-btn-scope">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260729-ops-shell">
+    <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260729-ops-shell">
 </head>
 <body>
     <div class="layout">
         <aside class="sidebar" aria-label="功能导航">
-            <div class="sidebar-brand">运营控制台</div>
+            <div class="sidebar-brand">
+                <span class="sidebar-brand-title">运营控制台</span>
+                <span class="sidebar-brand-sub">Ops Console</span>
+            </div>
             <nav id="adminSidebarNav" class="sidebar-nav" aria-live="polite">
                 <!-- 侧栏由 /api/admin/me 的 menu_tree 渲染（阶段 2） -->
             </nav>
@@ -32,8 +35,8 @@
                     <section>
                         <h2>定价/支付页 A/B/C</h2>
                         <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A</strong>：支付宝仅「199 永久」+ 其它渠道 + 激活码（落地页 B）；
-                            <strong>B</strong>：支付宝多档价，收起其它渠道（落地页 B）；
+                            <strong>A</strong>：支付宝「320 周卡」+ 激活码（无酷发卡等其它渠道；落地页 B）；
+                            <strong>B</strong>：支付宝多档（320 周 / 499 月 / 999 年）+ 其它渠道 + 激活码；
                             <strong>C</strong>：下载 App + 激活码 + 专属客服联系方式（落地页游客沙盒；无支付宝/其它购买渠道）。
                             A+B+C 必须为 100%。
                         </p>
@@ -58,7 +61,7 @@
                                 <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B/C</button>
                             </div>
                         </div>
-                        <div class="form-row form-stack" style="margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb;">
+                        <div class="form-row form-stack admin-panel-inset">
                             <p class="hint mt-0"><strong>指定账号分配方案</strong>（即刻生效，覆盖该账号原有 sticky；优先于代理渠道默认方案。用户下次打开购买页会强制同步。）</p>
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignUsername">账号</label>
@@ -67,8 +70,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 199 永久 + 全渠道</option>
-                                    <option value="b">B · 支付宝多档</option>
+                                    <option value="a">A · 320 周卡 + 仅支付宝</option>
+                                    <option value="b">B · 320周/499月/999年</option>
                                     <option value="c">C · 仅下载 + 激活码</option>
                                 </select>
                             </div>
@@ -114,40 +117,6 @@
                             </div>
                         </div>
                     </section>
-                    <section>
-                        <h2>QQ 添加链接（个人中心顶栏）</h2>
-                        <p class="hint">用户在「我要咨询 / 个人中心」页顶栏点击「添加QQ号」时打开此链接（如 QQ 好友加号页，须为 https 完整地址）。留空并保存则点击时提示未配置。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field">
-                                <label for="qqAddUrl">QQ 添加链接</label>
-                                <input type="text" id="qqAddUrl" class="input-block" maxlength="2048" placeholder="如 https://qm.qq.com/…（个人 QQ）">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveQqAddUrl">保存 QQ 链接</button>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>微信收款码（用户反馈页）</h2>
-                        <p class="hint">上传后将在用户端「购买激活」页与「我要咨询 → 我要反馈」展示。支持本地上传（写入 <code>uploads/</code>）或填写 <code>uploads/…</code> / https 图片地址；留空并保存则不显示。</p>
-                        <div class="form-row form-stack">
-                            <div class="form-field form-field-narrow">
-                                <div id="wechatPayQrPreviewWrap" class="img-preview-wrap" hidden>
-                                    <img id="wechatPayQrPreview" class="img-preview" alt="微信收款码预览">
-                                </div>
-                                <label for="wechatPayQrcodeUrl">收款码图片地址</label>
-                                <div class="mine-ui-controls field-gap-top">
-                                    <input type="text" id="wechatPayQrcodeUrl" maxlength="500" placeholder="上传后自动填入 uploads/…">
-                                    <input type="file" class="wechat-pay-qr-file hidden-file" accept="image/jpeg,image/png,image/gif,image/webp">
-                                    <button type="button" class="btn-page wechat-pay-qr-pick">上传图片</button>
-                                </div>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSaveWechatPayQr">保存收款码</button>
-                                <button type="button" class="btn-page" id="btnClearWechatPayQr">清空</button>
-                            </div>
-                        </div>
-                    </section>
                 </div>
 
                 <div id="page-install-guide" class="page-panel" role="tabpanel">
@@ -178,7 +147,7 @@
                                     <input type="file" class="install-pkg-file" accept=".apk,application/vnd.android.package-archive" data-target="agentAndroidApkDownloadUrl" hidden>
                                     <button type="button" class="btn-file install-pkg-pick">上传 APK</button>
                                 </div>
-                                <p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p>
+                                <p class="hint mt-6">用 <code>scripts/build-agent-apk.sh 渠道ID</code> 打包后上传此处。默认<strong>允许 App 内注册</strong>（仍绑定渠道）；若需禁注册加 <code>--no-register</code>。用户从代理推广链接（<code>?ch=渠道ID</code> 且在上方隐藏闲鱼列表中）进入安装页时，将下载此包而非普通 APK；也可直接发给客户安装。</p>
                             </div>
                             <div class="form-field mt-12">
                                 <label for="iosMobileconfigDownloadUrl">苹果描述文件（mobileconfig）</label>
@@ -205,15 +174,15 @@
                             </div>
                             <div class="form-field mt-16">
                                 <label>下属代理专属渠道</label>
-                                <p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下，并<strong>强制支付方案（默认 C）</strong>；如需支付宝购买页可改为 A 或 B。保存后会自动加入上方「隐藏闲鱼」列表。</p>
+                                <p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下，并<strong>强制支付方案（默认 C）</strong>；勾选「仅激活码」后用户端隐藏价格/支付宝/闲鱼等全部自助支付，接口也会拒绝下单。渠道 ID 仅支持字母数字下划线（如 <code>quan_c</code>），备注可写中文名。保存后会自动加入上方「隐藏闲鱼」列表。</p>
                                 <div class="mine-ui-block max-w-760 mt-10" id="agentExclusiveChannelsBox">
                                     <div class="flex-actions gap-10 flex-wrap flex-align-end">
                                         <div class="form-field" style="min-width:140px;flex:1;">
                                             <label for="agentExChannelId">渠道 ID</label>
-                                            <input class="input-block" type="text" id="agentExChannelId" maxlength="64" placeholder="如 agent_zhang">
+                                            <input class="input-block" type="text" id="agentExChannelId" maxlength="64" placeholder="如 quan_c">
                                         </div>
                                         <div class="form-field" style="min-width:160px;flex:1;">
-                                            <label for="agentExOwnerAdmin">下属代理账号</label>
+                                            <label for="agentExOwnerAdmin">下属代理账号（可空）</label>
                                             <select class="input-block" id="agentExOwnerAdmin">
                                                 <option value="">加载中…</option>
                                             </select>
@@ -228,8 +197,12 @@
                                         </div>
                                         <div class="form-field" style="min-width:120px;flex:1;">
                                             <label for="agentExNote">备注</label>
-                                            <input class="input-block" type="text" id="agentExNote" maxlength="255" placeholder="可选">
+                                            <input class="input-block" type="text" id="agentExNote" maxlength="255" placeholder="如 全C方案">
                                         </div>
+                                        <label class="flex-align-center gap-6" style="margin-bottom:8px;" title="隐藏价格与全部自助支付，只留激活码">
+                                            <input type="checkbox" id="agentExHideSelfServePay" checked>
+                                            <span>仅激活码</span>
+                                        </label>
                                         <label class="flex-align-center gap-6" style="margin-bottom:8px;">
                                             <input type="checkbox" id="agentExEnabled" checked>
                                             <span>启用</span>
@@ -473,6 +446,14 @@
                                 </div>
                             </div>
                             <div class="mine-ui-row">
+                                <label for="img_shouye_zdb">首页警示案例图</label>
+                                <div class="mine-ui-controls">
+                                    <input type="text" id="img_shouye_zdb" maxlength="500" placeholder="默认 zdb.jpg">
+                                    <input type="file" class="mine-ui-file" accept="image/jpeg,image/png,image/gif,image/webp" data-target="img_shouye_zdb" hidden>
+                                    <button type="button" class="btn-file mine-ui-pick">本地上传</button>
+                                </div>
+                            </div>
+                            <div class="mine-ui-row">
                                 <label for="img_daiban_header">待办页顶部整图</label>
                                 <div class="mine-ui-controls">
                                     <input type="text" id="img_daiban_header" maxlength="500" placeholder="默认 daiban.jpg">
@@ -536,7 +517,7 @@
                             <button type="button" class="btn-primary mb-1" id="btnIssue">生成 1 个</button>
                         </div>
                         <p class="hint" style="margin-top:0;">天数与小时都填 0（或不填）时生成<strong>永久</strong>激活码；任一项大于 0 则为时效码（可叠加，如 0 天 + 2 小时）。</p>
-                        <div class="form-row flex-wrap gap-10" id="batchIssueWrap" style="display:none; align-items:flex-end; margin-top:8px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                        <div class="form-row flex-wrap gap-10 admin-soft-box is-hidden" id="batchIssueWrap">
                             <div>
                                 <label for="batchIssueChannel">批量渠道</label>
                                 <select class="filter-select input-w-140 mt-6" id="batchIssueChannel">
@@ -561,7 +542,7 @@
                             </div>
                             <div>
                                 <label for="codeOwnerAdminFilter">管理员账号</label>
-                                <input type="text" id="codeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                                <input type="text" id="codeOwnerAdminFilter" placeholder="账号或姓名模糊查询">
                             </div>
                             <div>
                                 <label for="codeUsedByFilter">使用账号</label>
@@ -630,7 +611,7 @@
                             </div>
                             <div>
                                 <label for="xianyuCodeOwnerAdminFilter">管理员账号</label>
-                                <input type="text" id="xianyuCodeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
+                                <input type="text" id="xianyuCodeOwnerAdminFilter" placeholder="账号或姓名模糊查询">
                             </div>
                             <div>
                                 <label for="xianyuCodeUsedByFilter">使用账号</label>
@@ -678,78 +659,6 @@
                             <button type="button" class="btn-page" id="xianyuCodePrev">上一页</button>
                             <span id="xianyuCodePageInfo">第 1 页</span>
                             <button type="button" class="btn-page" id="xianyuCodeNext">下一页</button>
-                        </div>
-                    </section>
-                </div>
-
-                <div id="page-weekly-codes" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>周卡激活码</h2>
-                        <p class="hint mt-0">本页<strong>只能生成周卡</strong>（激活后开通 <strong>7 天</strong>试用时效）。不可生成永久码或其它天数。</p>
-                        <div class="form-row flex-wrap gap-10" style="align-items:flex-end;margin-bottom:10px;">
-                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyCode">生成 1 个周卡码</button>
-                            <div>
-                                <label for="weeklyBatchCount">批量数量</label>
-                                <input class="filter-select input-w-100 mt-6" type="number" id="weeklyBatchCount" min="1" max="5000" value="100" inputmode="numeric">
-                            </div>
-                            <button type="button" class="btn-primary mb-1" id="btnIssueWeeklyBatch">批量生成周卡码</button>
-                        </div>
-                        <div class="code-result" id="weeklyIssueOut"></div>
-                        <div class="form-row mb-12 flex-wrap">
-                            <div>
-                                <label for="weeklyCodeCodeFilter">激活码</label>
-                                <input type="text" id="weeklyCodeCodeFilter" placeholder="按激活码查询" autocomplete="off" autocapitalize="characters">
-                            </div>
-                            <div>
-                                <label for="weeklyCodeOwnerAdminFilter">管理员账号</label>
-                                <input type="text" id="weeklyCodeOwnerAdminFilter" placeholder="按归属管理员模糊查询">
-                            </div>
-                            <div>
-                                <label for="weeklyCodeUsedByFilter">使用账号</label>
-                                <input type="text" id="weeklyCodeUsedByFilter" placeholder="按使用账号查询">
-                            </div>
-                            <div>
-                                <label for="weeklyCodeUsageFilter">使用状态</label>
-                                <select id="weeklyCodeUsageFilter" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="unused">未使用</option>
-                                    <option value="used">已使用</option>
-                                </select>
-                            </div>
-                            <div class="flex-row-end filter-tools-row">
-                                <label class="inline-check-label nowrap">
-                                    <input type="checkbox" id="weeklyCodeCodeExact"> 激活码精准查询
-                                </label>
-                                <label class="inline-check-label nowrap">
-                                    <input type="checkbox" id="weeklyCodeUsedByExact"> 使用账号精准查询
-                                </label>
-                            </div>
-                            <div class="flex-row-end">
-                                <button type="button" class="btn-primary" id="btnSearchWeeklyCodes">查询</button>
-                                <button type="button" class="btn-page" id="btnResetWeeklyCodesFilter">重置</button>
-                                <button type="button" class="btn-primary" id="btnRefreshWeeklyCodes">刷新列表</button>
-                            </div>
-                        </div>
-                        <p class="stat" id="weeklyCodeListStat"></p>
-                        <div class="scroll-x">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>激活码</th>
-                                        <th>复制</th>
-                                        <th>类型</th>
-                                        <th>归属管理员</th>
-                                        <th>使用账号</th>
-                                        <th>使用时间</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="weeklyCodeTbody"></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="weeklyCodePagination">
-                            <button type="button" class="btn-page" id="weeklyCodePrev">上一页</button>
-                            <span id="weeklyCodePageInfo">第 1 页</span>
-                            <button type="button" class="btn-page" id="weeklyCodeNext">下一页</button>
                         </div>
                     </section>
                 </div>
@@ -842,14 +751,6 @@
                                 </select>
                             </div>
                             <div>
-                                <label>工资收入（元）</label>
-                                <div class="filter-salary-range flex-inline">
-                                    <input class="filter-select input-w-100" type="number" id="filterSalaryMin" min="0" step="0.01" placeholder="最低">
-                                    <span class="text-muted">—</span>
-                                    <input class="filter-select input-w-100" type="number" id="filterSalaryMax" min="0" step="0.01" placeholder="最高">
-                                </div>
-                            </div>
-                            <div>
                                 <label>当日有否修改</label>
                                 <select id="filterTaxModifiedToday" class="filter-select">
                                     <option value="">全部</option>
@@ -864,6 +765,20 @@
                                     <option value="30">30天未登录</option>
                                 </select>
                             </div>
+                            <div>
+                                <label for="filterNameChangesGt">改名次数</label>
+                                <select id="filterNameChangesGt" class="filter-select" title="按姓名历史修改次数筛选">
+                                    <option value="">全部</option>
+                                    <option value="3">大于3次</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterTaxModDaysGt">修改天数</label>
+                                <select id="filterTaxModDaysGt" class="filter-select" title="有个税记录修改的不同日历天数（按变更审计）">
+                                    <option value="">全部</option>
+                                    <option value="5">≥5天</option>
+                                </select>
+                            </div>
                             <div class="flex-actions">
                                 <button type="button" class="btn-primary" id="btnSearchUsers">查询</button>
                                 <button type="button" class="btn-page" id="btnResetUsers">重置</button>
@@ -876,7 +791,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。近六个月平均工资来自个税收入月均。当日修改按北京时间当日个税变更。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -890,7 +805,6 @@
                                         <th class="col-w-72">激活</th>
                                         <th class="col-w-72">封禁</th>
                                         <th class="col-w-140">风控</th>
-                                        <th class="col-w-120">近六个月平均工资</th>
                                         <th class="col-w-150">注册时间</th>
                                         <th class="col-ops">操作</th>
                                     </tr>
@@ -923,7 +837,7 @@
                 <div id="page-users-deleted" class="page-panel" role="tabpanel">
                     <section>
                         <h2>已删除账号</h2>
-                        <p class="hint">此处展示从「注册用户」列表软删除的账号；<strong>数据库数据仍保留</strong>。普通删除与<strong>激活退款</strong>均可恢复；恢复已退款账号时将解除封禁、恢复激活状态，激活数据重新计入统计。</p>
+                        <p class="hint">此处展示从「注册用户」列表软删除的账号；普通删除与<strong>激活退款</strong>均可<strong>恢复</strong>。「彻底删除」将永久清除该账号及个税/家人/银行卡等相关数据，<strong>不可恢复</strong>。</p>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
                             <div>
@@ -1049,74 +963,7 @@
                 <div id="page-user-data" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户数据</h2>
-                        <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>近六个月平均工资</strong>（来自个税记录收入）、<strong>身份证号</strong>（C 端个人信息中的纳税人识别号）、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与数据分析。APP 行为分析请见侧栏<strong>用户行为</strong>。非超级管理员仅能看到自己激活码关联的账号。</p>
-                        <div id="userDataAnalytics" class="user-data-stats" aria-live="polite">分析数据加载中…</div>
-                        <div class="user-data-analytics-grid" id="userDataAnalyticsTables" style="display:none;">
-                            <div class="scroll-x">
-                                <p class="stat">工资收入分布（近6月平均）</p>
-                                <table>
-                                    <thead><tr><th>区间</th><th>用户数</th></tr></thead>
-                                    <tbody id="userDataSalaryBucketsTbody"></tbody>
-                                </table>
-                            </div>
-                            <div class="scroll-x">
-                                <p class="stat">扣缴义务人 TOP（按关联用户数）</p>
-                                <table>
-                                    <thead><tr><th>公司名称</th><th>用户数</th></tr></thead>
-                                    <tbody id="userDataTopCompaniesTbody"></tbody>
-                                </table>
-                            </div>
-                            <div class="scroll-x">
-                                <p class="stat">税务机关 TOP</p>
-                                <table>
-                                    <thead><tr><th>税务机关</th><th>出现次数</th></tr></thead>
-                                    <tbody id="userDataTopAuthTbody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <details id="udFemaleAgeSection" class="ud-female-age-section ud-female-age-collapsible mt-20">
-                            <summary class="ud-female-age-summary">女性用户 · 年龄分析</summary>
-                            <div class="ud-female-age-body">
-                                <p class="hint mb-10 mt-0">年龄按出生日期或纳税人识别号解析（北京时间周岁）。性别分布请见侧栏「注册分析」。</p>
-                                <div class="form-row flex-align-center my-8-4">
-                                    <div>
-                                        <label for="udFemaleAgeDays">统计范围</label>
-                                        <select class="filter-select" id="udFemaleAgeDays">
-                                            <option value="0" selected>全部注册用户</option>
-                                            <option value="7">最近 7 天注册</option>
-                                            <option value="30">最近 30 天注册</option>
-                                            <option value="90">最近 90 天注册</option>
-                                            <option value="365">最近 365 天注册</option>
-                                        </select>
-                                    </div>
-                                    <button type="button" class="btn-page" id="btnRefreshUdFemaleAge">刷新</button>
-                                </div>
-                                <p id="udFemaleAgeSummary" class="stat">点击上方标题展开后加载</p>
-                                <div id="udFemaleAgeSummaryCards" class="user-data-stats ud-female-age-summary mt-8"></div>
-                                <p id="udFemaleAgeChartsEmpty" class="hint" style="display:none;">暂无女性年龄数据</p>
-                                <div class="device-stats-charts ud-female-age-charts-grid mt-12" id="udFemaleAgeChartsGrid" style="display:none;">
-                                    <div class="device-stats-chart-card chart-card-wide">
-                                        <h4>女性年龄分布（人数）</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="udChartFemaleAgeBar" aria-label="女性年龄分布柱状图"></canvas></div>
-                                    </div>
-                                </div>
-                                <div class="scroll-x mt-14">
-                                    <p class="stat mb-8">未满 30 岁女性用户列表</p>
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>账号</th>
-                                                <th>姓名</th>
-                                                <th>年龄</th>
-                                                <th>出生日期</th>
-                                                <th>来源</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="udFemaleUnder30Tbody"><tr><td colspan="5">展开后加载</td></tr></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </details>
+                        <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>身份证号</strong>（C 端个人信息中的纳税人识别号）、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与档案查看。非超级管理员仅能看到自己激活码关联的账号。</p>
                         <div class="user-filter-bar mt-16">
                             <div class="user-filter-fields">
                                 <div>
@@ -1147,18 +994,9 @@
                                         <option value="0">未绑定</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label>工资收入（元）</label>
-                                    <div class="filter-salary-range flex-inline">
-                                        <input class="filter-select input-w-90" type="number" id="udFilterSalaryMin" min="0" step="0.01" placeholder="最低">
-                                        <span class="text-muted">—</span>
-                                        <input class="filter-select input-w-90" type="number" id="udFilterSalaryMax" min="0" step="0.01" placeholder="最高">
-                                    </div>
-                                </div>
                                 <div class="flex-actions-nowrap">
                                     <button type="button" class="btn-primary" id="btnSearchUserData">查询</button>
                                     <button type="button" class="btn-page" id="btnResetUserData">重置</button>
-                                    <button type="button" class="btn-page" id="btnRefreshUserDataAnalytics">刷新分析</button>
                                 </div>
                             </div>
                         </div>
@@ -1170,7 +1008,6 @@
                                         <th class="col-w-110">账号</th>
                                         <th class="col-w-72">姓名</th>
                                         <th class="col-w-120">渠道分析</th>
-                                        <th class="col-w-120">近6月平均工资</th>
                                         <th class="input-w-160">公司（扣缴义务人）</th>
                                         <th class="col-w-130">身份证号</th>
                                         <th class="col-w-130">税务机关</th>
@@ -1180,7 +1017,7 @@
                                         <th class="col-ops">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="userDataTbody"><tr><td colspan="11">进入本页后加载…</td></tr></tbody>
+                                <tbody id="userDataTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
                             </table>
                         </div>
                         <div class="pagination" id="userDataPagination">
@@ -1206,7 +1043,7 @@
                         </div>
                         <div id="taxEditUserMeta" class="hint mt-8" aria-live="polite">请输入用户名后加载</div>
                         <div id="taxEditListMount" class="mt-12" aria-live="polite"></div>
-                        <div id="taxEditFormWrap" class="mt-16" style="display:none;max-width:920px;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;background:#fafafa;">
+                        <div id="taxEditFormWrap" class="mt-16 admin-form-card is-hidden">
                             <h3 class="mt-0 mb-10" id="taxEditFormTitle" style="font-size:16px;">编辑记录</h3>
                             <input type="hidden" id="taxEditId">
                             <div class="form-row flex-wrap gap-10">
@@ -1463,7 +1300,7 @@
                             <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
                             <span class="batch-emp-month-salary-badge" hidden></span>
                         </div>
-                        <div class="batch-emp-bonus-block" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;">
+                        <div class="batch-emp-bonus-block admin-divider-dashed">
                             <div class="form-group">
                                 <label>年终奖（元，可选；单独计税并生成独立记录）</label>
                                 <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
@@ -1494,58 +1331,10 @@
                     </section>
                 </div>
 
-                <div id="page-user-behavior" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>用户行为</h2>
-                        <p class="hint">分析<strong>注册但未填写个税记录</strong>的用户在 APP 内的行为：停留时间、访问页面与行为路径。数据来自 <code>user_page_events</code>。非超级管理员仅能看到自己激活码关联的账号。</p>
-                        <div id="udNoTaxBehaviorSection" class="ud-no-tax-behavior-section">
-                            <h3 class="mb-8 mt-0 section-title-inline">注册未填个税 · 行为分析</h3>
-                            <p class="hint mb-12 mt-0">筛选条件：<strong>无个税明细记录</strong>的注册账号。停留时间为按自然日估算（当日首次与末次行为间隔，单日上限 4 小时；仅 1 次行为按 2 分钟计）。<strong>APP 停留低于 10 分钟</strong>的用户会展示最近上报的<strong>机型</strong>（来自 <code>X-Client-Device</code> / UA）。</p>
-                            <div id="udNoTaxSummary" class="user-data-stats" aria-live="polite">进入本页后加载…</div>
-                            <div class="scroll-x mt-12">
-                                <p class="stat mb-8">该群体热门页面 TOP（按访问次数）</p>
-                                <table class="user-detail-table">
-                                    <thead><tr><th>中文标题</th><th>访问次数</th></tr></thead>
-                                    <tbody id="udNoTaxTopPagesTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="flex-actions gap-10 mt-16 flex-align-center">
-                                <p class="stat m-0" id="udNoTaxListStat">用户列表进入本页后加载…</p>
-                                <button type="button" class="btn-page" id="btnRefreshNoTaxBehavior">刷新</button>
-                                <button type="button" class="btn-page" id="btnExportNoTaxBehavior">导出 CSV</button>
-                            </div>
-                            <div class="scroll-x mt-8">
-                                <table class="users-data-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="col-w-110">账号</th>
-                                            <th class="col-w-72">姓名</th>
-                                            <th class="col-w-100">注册时间</th>
-                                            <th class="col-w-88">APP停留</th>
-                                            <th class="col-w-120">机型</th>
-                                            <th class="col-w-56">活跃天</th>
-                                            <th class="col-w-56">页面数</th>
-                                            <th class="input-w-200">行为路径摘要</th>
-                                            <th class="col-w-130">最近活跃</th>
-                                            <th class="col-ops">操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="udNoTaxBehaviorTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="pagination" id="udNoTaxBehaviorPagination">
-                                <button type="button" class="btn-page" id="udNoTaxPrev">上一页</button>
-                                <span id="udNoTaxPageInfo">第 1 页</span>
-                                <button type="button" class="btn-page" id="udNoTaxNext">下一页</button>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-activated-user-analysis" class="page-panel" role="tabpanel">
                     <section>
                         <h2>激活用户分析</h2>
-                        <p class="hint">聚焦<strong>已激活</strong>账号：工资收入（近6月平均）、个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
+                        <p class="hint">聚焦<strong>已激活</strong>账号：个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p>
                         <div class="form-row flex-align-center mb-8">
                             <div>
                                 <label for="auaOverviewDays">日活趋势天数</label>
@@ -1569,13 +1358,6 @@
                         </div>
                         <div id="auaSummary" class="user-data-stats" aria-live="polite">进入本页后加载…</div>
                         <div class="user-data-analytics-grid mt-12" id="auaAnalyticsTables" style="display:none;">
-                            <div class="scroll-x">
-                                <p class="stat" id="auaSalaryStat">工资收入分布（近6月平均）</p>
-                                <table>
-                                    <thead><tr><th>区间</th><th>用户数</th></tr></thead>
-                                    <tbody id="auaSalaryBucketsTbody"></tbody>
-                                </table>
-                            </div>
                             <div class="scroll-x">
                                 <p class="stat">个税记录条数分布</p>
                                 <table>
@@ -1626,14 +1408,6 @@
                                     <option value="inactive_7d">无活跃</option>
                                 </select>
                             </div>
-                            <div>
-                                <label>工资下限(元)</label>
-                                <input type="number" id="auaFilterSalaryMin" class="filter-text-wide" placeholder="可选" min="0" step="100">
-                            </div>
-                            <div>
-                                <label>工资上限(元)</label>
-                                <input type="number" id="auaFilterSalaryMax" class="filter-text-wide" placeholder="可选" min="0" step="100">
-                            </div>
                             <div class="flex-row-end">
                                 <button type="button" class="btn-primary" id="btnSearchAuaUsers">查询</button>
                                 <button type="button" class="btn-page" id="btnResetAuaUsers">重置</button>
@@ -1647,7 +1421,6 @@
                                     <tr>
                                         <th class="col-w-110">账号</th>
                                         <th class="col-w-72">姓名</th>
-                                        <th class="col-w-100">近6月平均工资</th>
                                         <th class="col-w-72">个税条数</th>
                                         <th class="col-w-56">改名</th>
                                         <th class="col-w-72">改个税</th>
@@ -1660,7 +1433,7 @@
                                         <th class="col-ops">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="auaUsersTbody"><tr><td colspan="13">进入本页后加载…</td></tr></tbody>
+                                <tbody id="auaUsersTbody"><tr><td colspan="12">进入本页后加载…</td></tr></tbody>
                             </table>
                         </div>
                         <div class="pagination" id="auaUsersPagination">
@@ -1671,165 +1444,25 @@
                     </section>
                 </div>
 
-                <div id="page-feedback" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>用户反馈</h2>
-                        <p class="hint">用户在个人中心「用户反馈」提交的 BUG 与优化建议；可回复后，用户在同一页面查看官方回复。</p>
-                        <div class="form-row flex-align-end">
-                            <div>
-                                <label for="feedbackFilterType">类型</label>
-                                <select class="filter-select" id="feedbackFilterType">
-                                    <option value="">全部</option>
-                                    <option value="bug">BUG</option>
-                                    <option value="suggestion">意见优化</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="feedbackFilterActive">账号激活状态</label>
-                                <select class="filter-select" id="feedbackFilterActive">
-                                    <option value="">全部</option>
-                                    <option value="1">已激活</option>
-                                    <option value="0">未激活</option>
-                                </select>
-                            </div>
-                            <button type="button" class="btn-primary" id="btnRefreshFeedback">刷新</button>
-                        </div>
-                        <div class="scroll-x mt-12">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>账号</th>
-                                        <th>姓名</th>
-                                        <th>账号激活状态</th>
-                                        <th>类型</th>
-                                        <th>内容</th>
-                                        <th>提交时间</th>
-                                        <th>状态</th>
-                                        <th>官方回复</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="feedbackAdminTbody"><tr><td colspan="10">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="feedbackAdminPagination">
-                            <button type="button" class="btn-page" id="feedbackAdminPrev">上一页</button>
-                            <span id="feedbackAdminPageInfo">第 1 页</span>
-                            <button type="button" class="btn-page" id="feedbackAdminNext">下一页</button>
-                        </div>
-                    </section>
-                </div>
-
-                <div id="page-chat" class="page-panel" role="tabpanel">
-                    <section class="admin-chat-page">
-                        <h2>在线客服</h2>
-                        <p class="hint">用户在「购买激活 / 我要咨询 → 在线客服」发起会话。左侧选会话、右侧回复；未读会自动刷新。</p>
-
-                        <details class="admin-chat-settings" id="chatAutoReplySettings" open>
-                            <summary>自动回复设置</summary>
-                            <div class="admin-chat-settings-body">
-                                <div class="admin-chat-settings-grid">
-                                    <div class="form-stack">
-                                        <h3 class="admin-chat-settings-title">固定话术</h3>
-                                        <div class="form-field">
-                                            <label for="chatAutoReplyWelcome">开场自动回复（首次进入空会话）</label>
-                                            <textarea id="chatAutoReplyWelcome" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送开场话术"></textarea>
-                                        </div>
-                                        <div class="form-field">
-                                            <label for="chatAutoReplyReply">固定自动回复（用户发消息后的兜底）</label>
-                                            <textarea id="chatAutoReplyReply" class="textarea-block" rows="3" maxlength="2000" placeholder="留空则不发送兜底回复"></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="form-stack" id="chatAiSettingsPanel" hidden>
-                                        <h3 class="admin-chat-settings-title">AI 自动回复</h3>
-                                        <div class="form-field admin-chat-ai-toggle-row">
-                                            <label class="admin-chat-check-label" for="chatAiEnabled">
-                                                <input type="checkbox" id="chatAiEnabled">
-                                                启用 AI 客服（用户发消息后自动生成回复）
-                                            </label>
-                                            <p class="hint mt-4 mb-0" id="chatAiStatusHint">密钥未配置时无法启用实际调用。</p>
-                                        </div>
-                                        <div class="form-field">
-                                            <label for="chatAiPrompt">系统提示词（人设与业务边界）</label>
-                                            <textarea id="chatAiPrompt" class="textarea-block" rows="6" maxlength="4000" placeholder="描述产品、回答范围与转人工规则…"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-actions mt-8">
-                                    <button type="button" class="btn-primary" id="btnSaveChatAutoReply">保存设置</button>
-                                    <button type="button" class="btn-page" id="btnResetChatAutoReply">恢复默认话术</button>
-                                </div>
-                            </div>
-                        </details>
-
-                        <div class="form-row flex-align-end mt-12">
-                            <div>
-                                <label for="chatAdminFilterUnread">未读</label>
-                                <select class="filter-select" id="chatAdminFilterUnread">
-                                    <option value="">全部</option>
-                                    <option value="1">仅未读</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="chatAdminSearchQ">搜索账号/姓名</label>
-                                <input type="text" id="chatAdminSearchQ" class="input-block" maxlength="64" placeholder="账号或姓名">
-                            </div>
-                            <button type="button" class="btn-primary" id="btnRefreshChatAdmin">刷新</button>
-                        </div>
-                        <div class="admin-chat-layout mt-12">
-                            <div class="admin-chat-list-pane">
-                                <div class="scroll-x">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>账号</th>
-                                                <th>未读</th>
-                                                <th>最近消息</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="chatAdminConvTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
-                                    </table>
-                                </div>
-                                <div class="pagination" id="chatAdminPagination">
-                                    <button type="button" class="btn-page" id="chatAdminPrev">上一页</button>
-                                    <span id="chatAdminPageInfo">第 1 页</span>
-                                    <button type="button" class="btn-page" id="chatAdminNext">下一页</button>
-                                </div>
-                            </div>
-                            <div class="admin-chat-thread-pane">
-                                <div class="admin-chat-thread-head" id="chatAdminThreadHead">
-                                    <span id="chatAdminThreadTitle">请选择左侧会话</span>
-                                    <button type="button" class="btn-page admin-chat-resume-ai" id="chatAdminResumeAiBtn" hidden>恢复 AI</button>
-                                </div>
-                                <div class="admin-chat-thread-body" id="chatAdminThreadBody"></div>
-                                <div class="admin-chat-composer">
-                                    <textarea id="chatAdminInput" class="textarea-block" rows="3" maxlength="2000" placeholder="输入回复内容…（发送后该会话将暂停 AI）" disabled></textarea>
-                                    <button type="button" class="btn-primary" id="chatAdminSendBtn" disabled>发送</button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-share-stats" class="page-panel" role="tabpanel">
                     <section>
                         <h2>分享统计</h2>
-                        <p class="hint mt-0">统计「我的 / 首页」分享发出、好友经 <code>from=share</code> 打开、以及后续<strong>注册 / 登录 / 下载</strong>转化。分享链接<strong>不含代理 ch</strong>，全部记为主站流量，与渠道分析分开。归因窗口 7 天（本地标记 + 服务端事件）。</p>
+                        <p class="hint mt-0">统计分享发出 → <code>from=share</code> 打开 → 注册 / 登录 / 下载。不含代理 ch，主站流量；归因 7 天。漏斗展示发出→打开率、打开→注册/登录率；注册以用户数（<code>registered_from_share</code>）为准。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="shareStatsDays">统计区间</label>
                                 <select id="shareStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-page" id="btnRefreshShareStats">刷新统计</button>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshShareStats">刷新统计</button>
                         </div>
-                        <div id="shareStatsMount" class="analytics-conv-wrap" aria-live="polite">加载中…</div>
+                        <div id="shareStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
                     </section>
                 </div>
 
                 <div id="page-install-guide-stats" class="page-panel" role="tabpanel">
                     <section>
                         <h2>安装页访问统计</h2>
-                        <p class="hint mt-0">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>、<strong>页面加载耗时</strong>（DOM 就绪 + 安装包接口网络/渲染）及按钮/视频等行为。另含<strong>下载→打开→注册漏斗</strong>（A 落地 / B 下载 / C App 首次打开 / D 注册弹窗 / E 稍后或去注册 / F 注册成功，按 <code>client_id</code>、北京时间）与<strong>已打开未注册</strong>队列。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；另有<strong>访客时段分布</strong>（北京时间：凌晨/上午/下午/晚上 + 24 小时柱状图）。<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。未登录用户通过 <code>client_id</code> 识别；离开页面时上报停留秒数；打开页面后上报加载耗时。</p>
+                        <p class="hint mt-0">统计用户端 <a href="install_guide.html" target="_blank" rel="noopener">install_guide.html</a>（安装包和使用方法）的<strong>浏览量</strong>、<strong>独立访客</strong>、<strong>停留时间</strong>、<strong>页面加载耗时</strong>（DOM 就绪 + 安装包接口网络/渲染）及按钮/视频等行为。另含<strong>下载→打开→注册漏斗</strong>（A 落地 / B 下载 / C App 首次打开 / D 注册弹窗 / E 稍后或去注册 / F 注册成功，按 <code>client_id</code>、北京时间）与<strong>已打开未注册</strong>队列。下方<strong>访问→注册曲线</strong>按日对比独立访客与注册数；另有<strong>访客时段分布</strong>（北京时间：凌晨/上午/下午/晚上 + 24 小时柱状图）。<strong>注册率</strong> = 归因注册 ÷ 当日独立访客。归因含<strong>同日设备匹配</strong>（<code>client_id</code> / 设备指纹）与注册时客户端上报的<strong>安装页引流</strong>（7 日内访问过安装页或从安装页跳转注册，App/WebView 内注册成功时回传）。页面浏览/UV/下载/漏斗按<strong>同一 IP 去重</strong>（无 IP 再退回 <code>client_id</code>）；未登录事件仍上报 <code>client_id</code>；离开页面时上报停留秒数；打开页面后上报加载耗时。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="installGuideStatsDays">统计区间</label>
@@ -1844,7 +1477,7 @@
                 <div id="page-sbdy-demo" class="page-panel" role="tabpanel">
                     <section>
                         <h2>社保演示生成</h2>
-                        <p class="hint mt-0" style="color:#b45309;">生成的是<strong>演示样例</strong>（非正式社会保险参保证明），带水印与本站核验码，不能用于贷款/入职/签证等正式用途。</p>
+                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式社会保险参保证明），带水印与本站核验码，不能用于贷款/入职/签证等正式用途。</p>
                         <div class="form-row form-stack" style="max-width:880px;">
                             <div class="form-row flex-wrap gap-10">
                                 <div>
@@ -1951,7 +1584,7 @@
                     </section>
                     <section>
                         <h2>支付页 A/B/C</h2>
-                        <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=199 永久全渠道；B=多档支付宝；C=仅下载+激活码。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单（C 通常无支付宝单）。</p>
+                        <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=320 周卡仅支付宝；B=320 周 / 499 月 / 999 年；C=仅下载+激活码。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单（C 通常无支付宝单）。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>
@@ -2106,6 +1739,45 @@
                 </div>
 
                 
+                <div id="page-analytics-activity" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>用户日活与登录趋势</h2>
+                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。登录流水详见侧栏「登录流水」。</p>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="analyticsOverviewDays">统计区间</label>
+                                <select id="analyticsOverviewDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshAnalytics">刷新统计</button>
+                            <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
+                        </div>
+                        <div class="analytics-grid">
+                            <div class="scroll-x">
+                                <p class="stat">日活（去重用户数）</p>
+                                <table>
+                                    <thead><tr><th>日期</th><th>活跃用户数</th><th>操作</th></tr></thead>
+                                    <tbody id="analyticsDauTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="scroll-x">
+                                <p class="stat">登录次数（按日）</p>
+                                <table>
+                                    <thead><tr><th>日期</th><th>成功</th><th>失败</th></tr></thead>
+                                    <tbody id="analyticsLoginTbody"><tr><td colspan="3">—</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="scroll-x">
+                                <p class="stat">登录失败原因（统计区间内）</p>
+                                <table>
+                                    <thead><tr><th>失败原因</th><th>次数</th></tr></thead>
+                                    <tbody id="analyticsLoginReasonTbody"><tr><td colspan="2">—</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
+                    </section>
+                </div>
+
                 <div id="page-analytics-register" class="page-panel" role="tabpanel">
                     <section>
                         <h2>每日注册 · 安卓 / 苹果占比</h2>
@@ -2179,81 +1851,6 @@
                             </div>
                         </div>
                     </section>
-                    <section>
-                        <h2>注册用户性别统计</h2>
-                        <p class="hint mt-0">统计注册用户资料中的<strong>性别</strong>（<code>users.gender</code>：1=男，2=女；用户在「我的」或个人信息中保存后写入）。</p>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsRegisterGenderDays">统计范围</label>
-                                <select id="analyticsRegisterGenderDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshRegisterGender">刷新性别统计</button>
-                        </div>
-                        <div id="registerGenderAnalysisWrap" class="register-gender-analysis-wrap" aria-live="polite">
-                            <p id="registerGenderSummary" class="stat">加载中…</p>
-                            <div id="registerGenderCards" class="register-gender-cards"></div>
-                            <div class="scroll-x mt-12">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>性别</th>
-                                            <th>人数</th>
-                                            <th>占比</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="registerGenderTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div id="registerGenderChartsWrap" class="device-stats-charts-wrap register-gender-charts-wrap mt-14" style="display:none;">
-                                <p id="registerGenderChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
-                                <div class="device-stats-charts register-gender-charts-grid">
-                                    <div class="device-stats-chart-card">
-                                        <h4>性别占比</h4>
-                                        <div class="chart-canvas-wrap"><canvas id="registerGenderChartPie"></canvas></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <div id="page-analytics-activity" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>用户日活与登录趋势</h2>
-                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。登录流水详见侧栏「登录流水」。</p>
-                        <div class="form-row flex-align-center">
-                            <div>
-                                <label for="analyticsOverviewDays">统计区间</label>
-                                <select id="analyticsOverviewDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-primary" id="btnRefreshAnalytics">刷新统计</button>
-                            <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
-                        </div>
-                        <div class="analytics-grid">
-                            <div class="scroll-x">
-                                <p class="stat">日活（去重用户数）</p>
-                                <table>
-                                    <thead><tr><th>日期</th><th>活跃用户数</th><th>操作</th></tr></thead>
-                                    <tbody id="analyticsDauTbody"><tr><td colspan="3">进入本页后加载…</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="scroll-x">
-                                <p class="stat">登录次数（按日）</p>
-                                <table>
-                                    <thead><tr><th>日期</th><th>成功</th><th>失败</th></tr></thead>
-                                    <tbody id="analyticsLoginTbody"><tr><td colspan="3">—</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="scroll-x">
-                                <p class="stat">登录失败原因（统计区间内）</p>
-                                <table>
-                                    <thead><tr><th>失败原因</th><th>次数</th></tr></thead>
-                                    <tbody id="analyticsLoginReasonTbody"><tr><td colspan="2">—</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <p class="hint">登录失败包含密码错误、账号不存在、封禁等拦截前校验失败的情形。</p>
-                    </section>
                 </div>
 
                 <div id="page-analytics-tracking" class="page-panel" role="tabpanel">
@@ -2310,7 +1907,7 @@
                         <div class="section-head-actions">
                             <div>
                                 <h2>C端行为埋点</h2>
-                                <p class="hint mt-8 mb-0">展示 C 端其它埋点（<code>track_jump_*</code> 页面跳转、<code>track_register_*</code>/<code>register_*</code> 注册等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
+                                <p class="hint mt-8 mb-0">展示 C 端其它埋点（<code>track_register_*</code>/<code>register_*</code> 注册等；<strong>不含</strong>上方激活相关事件）。统计区间与上方“统计天数”一致。</p>
                             </div>
                             <button type="button" class="btn-sm btn-ban" id="btnClearAnalyticsEvents">删除数据</button>
                         </div>
@@ -2324,75 +1921,6 @@
                     </section>
                 </div>
 
-                <div id="page-analytics-devices" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>机型与操作系统分布</h2>
-                        <p class="hint mb-8 mt-0">按 <code>user_devices</code> 每条设备指纹统计：优先解析上报 JSON（<code>X-Client-Device</code>），否则从 UA 推断。</p>
-                        <button type="button" class="btn-page mb-10" id="btnRefreshDeviceStats">刷新设备分布</button>
-                        <p id="deviceStatsSummary" class="hint mb-8 mt-0">加载中…</p>
-                        <div id="deviceStatsLegend" class="device-stats-legend" style="display:none;"></div>
-                        <div id="deviceStatsChartsWrap" class="device-stats-charts-wrap" style="display:none;">
-                            <h3>图表分析</h3>
-                            <p id="deviceStatsChartsEmpty" class="hint" style="display:none;">暂无足够数据生成图表</p>
-                            <div class="device-stats-charts" id="deviceStatsChartsGrid">
-                                <div class="device-stats-chart-card">
-                                    <h4>平台 / 品牌占比</h4>
-                                    <div class="chart-canvas-wrap"><canvas id="deviceChartPlatform" aria-label="平台品牌占比饼图"></canvas></div>
-                                </div>
-                                <div class="device-stats-chart-card">
-                                    <h4>操作系统家族占比</h4>
-                                    <div class="chart-canvas-wrap"><canvas id="deviceChartOsFamily" aria-label="操作系统家族占比饼图"></canvas></div>
-                                </div>
-                                <div class="device-stats-chart-card chart-card-wide">
-                                    <h4>操作系统版本 TOP 12</h4>
-                                    <div class="chart-canvas-wrap"><canvas id="deviceChartOsVersion" aria-label="操作系统版本排行"></canvas></div>
-                                </div>
-                                <div class="device-stats-chart-card chart-card-wide">
-                                    <h4>机型 / 平台 TOP 15</h4>
-                                    <div class="chart-canvas-wrap"><canvas id="deviceChartModel" aria-label="机型排行"></canvas></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="device-stats-grid">
-                            <div>
-                                <h3>操作系统</h3>
-                                <div class="scroll-x">
-                                    <table>
-                                        <thead><tr><th class="col-w-40">图标</th><th>系统</th><th>设备数</th></tr></thead>
-                                        <tbody id="deviceStatsOsTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div>
-                                <h3>机型 / 平台</h3>
-                                <div class="scroll-x">
-                                    <table>
-                                        <thead><tr><th class="col-w-40">图标</th><th>机型</th><th>设备数</th></tr></thead>
-                                        <tbody id="deviceStatsModelTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
-                                    </table>
-                                </div>
-                                <p id="deviceStatsModelHint" class="hint mt-8 mb-0"></p>
-                            </div>
-                        </div>
-                    </section>
-                    <section>
-                        <h2>账号登录设备</h2>
-                        <div class="form-row flex-align-end">
-                            <div>
-                                <label for="analyticsDeviceUser">用户账号</label>
-                                <input class="input-w-220" type="text" id="analyticsDeviceUser" placeholder="输入 username">
-                            </div>
-                            <button type="button" class="btn-primary" id="btnLoadDevices">查询设备</button>
-                        </div>
-                        <div class="scroll-x mt-12">
-                            <table>
-                                <thead><tr><th>摘要</th><th>UA 摘要</th><th>最近 IP</th><th>最近城市</th><th>首次出现</th><th>最近活跃</th><th>登录次数</th></tr></thead>
-                                <tbody id="analyticsDevicesTbody"><tr><td colspan="7">输入账号后查询</td></tr></tbody>
-                            </table>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
                     <section>
                         <h2>注册渠道分析</h2>
@@ -2403,6 +1931,22 @@
                                 <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                             </div>
                             <button type="button" class="btn-primary" id="btnRefreshChannelAnalysis">刷新分析</button>
+                        </div>
+                        <div id="channelLinksSection" class="channel-links-section mt-14">
+                            <p class="stat mb-6">渠道连接</p>
+                            <p class="hint mt-0 mb-10">投放各平台时复制对应链接发给用户。用户打开后注册会<strong>自动记入该来源渠道</strong>，无需再选手动填写。参数为 <code>src</code>（与代理推广 <code>ch</code> 不同）。</p>
+                            <div class="scroll-x">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>渠道</th>
+                                            <th>注册链接</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="channelLinksTbody"><tr><td colspan="3">加载中…</td></tr></tbody>
+                                </table>
+                            </div>
                         </div>
                         <div id="channelAnalysisWrap" class="channel-analysis-wrap" aria-live="polite">
                             <p id="channelAnalysisSummary" class="stat">加载中…</p>
@@ -2485,62 +2029,6 @@
                             <button type="button" class="btn-page" id="btnRefreshActivationChannelFunnel">刷新激活渠道漏斗</button>
                         </div>
                         <div id="analyticsActivationChannelFunnel" class="analytics-conv-wrap" aria-live="polite">进入本页后加载…</div>
-                    </section>
-                </div>
-
-                <div id="page-api-analytics" class="page-panel" role="tabpanel">
-                    <section>
-                        <h2>接口调用（按业务分类）</h2>
-                        <p class="hint mb-12 mt-0">按自然日聚合各 API 与业务分类，含<strong>平均/最大响应时间</strong>（后端处理耗时）；另含<strong>≥3 秒慢请求异常</strong>（服务端处理耗时 + 客户端网络/渲染上报，带 client_id）与<strong>用户侧 5xx 报错</strong>。下方「按业务分类」合计<strong>含</strong>管理后台；高频 TOP / 5xx 列表<strong>不含</strong>管理后台类接口。</p>
-                        <div class="form-row flex-align-center">
-                            <div>
-                                <label for="apiAnalyticsDays">统计区间</label>
-                                <select id="apiAnalyticsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-primary" id="btnRefreshApiAnalytics">刷新</button>
-                        </div>
-                        <div class="scroll-x mt-12">
-                            <table>
-                                <thead><tr><th>业务分类</th><th>调用次数（合计）</th><th>平均响应</th><th>最大响应</th></tr></thead>
-                                <tbody id="apiAnalyticsCatTbody"><tr><td colspan="4">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <h3 class="section-subhead">高频接口 TOP 10（当前区间内）</h3>
-                        <p class="hint mb-8 mt-0">仅显示调用量前 10 名；不含「管理后台」类接口；上方「按业务分类」合计仍含管理后台。</p>
-                        <div class="scroll-x">
-                            <table>
-                                <thead><tr><th>分类</th><th>接口标识</th><th>次数</th><th>平均响应</th><th>最大响应</th></tr></thead>
-                                <tbody id="apiAnalyticsRoutesTbody"><tr><td colspan="5">—</td></tr></tbody>
-                            </table>
-                        </div>
-                        <h3 class="section-subhead">慢请求异常（≥3 秒）</h3>
-                        <p class="hint mb-8 mt-0" id="apiSlowSummaryHint">「网络」列为客户端整段等待（含 4G/Cloudflare 排队），不等于服务端 SQL。若来源几乎全是「客户端」而服务端日均仅数毫秒，属弱网/并发问题而非接口算力。服务端处理≥3s 才会记「服务端」。</p>
-                        <div class="scroll-x mb-12">
-                            <table>
-                                <thead><tr><th>接口标识</th><th>异常次数</th><th>平均总耗时</th><th>最大总耗时</th></tr></thead>
-                                <tbody id="apiSlowTopTbody"><tr><td colspan="4">—</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="scroll-x">
-                            <table>
-                                <thead><tr><th>时间</th><th>来源</th><th>接口</th><th>网络</th><th>渲染</th><th>总计</th><th>条数</th><th>账号</th><th>client_id</th><th>页面</th><th>网络类型</th></tr></thead>
-                                <tbody id="apiSlowRecentTbody"><tr><td colspan="11">—</td></tr></tbody>
-                            </table>
-                        </div>
-                        <h3 class="section-subhead">用户接口报错（5xx）</h3>
-                        <p class="hint mb-8 mt-0" id="apiErrorSummaryHint">仅统计用户侧接口：HTTP 状态码 5xx，或业务 JSON <code>code</code> 为 5xx；不含管理后台。</p>
-                        <div class="scroll-x mb-12">
-                            <table>
-                                <thead><tr><th>接口标识</th><th>报错次数</th><th>HTTP</th><th>业务 code</th></tr></thead>
-                                <tbody id="apiErrorTopTbody"><tr><td colspan="4">—</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="scroll-x">
-                            <table>
-                                <thead><tr><th>时间</th><th>接口</th><th>分类</th><th>HTTP</th><th>业务 code</th><th>耗时</th><th>账号</th><th>页面</th><th>IP</th></tr></thead>
-                                <tbody id="apiErrorRecentTbody"><tr><td colspan="9">—</td></tr></tbody>
-                            </table>
-                        </div>
                     </section>
                 </div>
 
@@ -2778,27 +2266,15 @@
             </div>
         </div>
     </div>
-
-            
-    <div id="feedbackReplyBackdrop" class="admin-modal-backdrop" hidden>
-        <div class="admin-modal-box" onclick="event.stopPropagation()">
-            <h2 class="admin-modal-title">回复用户反馈</h2>
-            <p class="hint admin-modal-meta" id="feedbackReplyMeta"></p>
-            <label class="field-label" for="feedbackReplyText">回复内容（用户将在个人中心查看）</label>
-            <textarea id="feedbackReplyText" class="textarea-block" rows="8" maxlength="4000"></textarea>
-            <div class="form-actions modal-actions">
-                <button type="button" class="btn-primary" id="feedbackReplySave">保存回复</button>
-                <button type="button" class="btn-page" id="feedbackReplyCancel">取消</button>
-            </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260727-no-sales-contacts"></script>
-    <script src="/js/admin/nav.js?v=20260722-ops"></script>
-    <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
-    <script src="/js/admin-panel-utils.js?v=20260727-no-sales-contacts"></script>
-    <script src="/js/consult-core.js?v=20260727-tax-batch-fix2"></script>
-    <script src="/js/consult-batch-tax.js?v=20260727-tax-batch-fix2"></script>
-    <script src="/js/admin-tax-batch-bridge.js?v=20260727-tax-batch-fix2"></script>
-    <script src="/js/admin_panel.js?v=20260727-no-sales-contacts"></script>
+    <script src="/js/admin/loader.js?v=20260728-remove-weekly-page"></script>
+    <script src="/js/admin/nav.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/admin-panel-utils.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/consult-core.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/consult-batch-tax.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/admin-tax-batch-bridge.js?v=20260728-purchase-users-fix"></script>
+    <script src="/js/admin_panel.js?v=20260730-pv-ip"></script>
 </body>
 </html>

@@ -19,6 +19,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # 主机重启后必须自动拉起；否则 API 会因连不上 db 起不来
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: test_platform_redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - personal_tax_redis_data:/data
+    networks:
+      - test_platform_default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
   backend:
     build:
@@ -31,6 +48,11 @@ services:
       DB_USER: root
       DB_PASSWORD: password
       DB_DATABASE: personal_tax
+      # 限流 / OTP challenge：Redis（多实例与重启不丢）
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
       # 生产环境请设置强随机串；未设置时使用 server.js 内默认开发密钥
       JWT_SECRET: ${JWT_SECRET:-}
       # 管理员发激活码：POST api/auth.php action=admin_issue_code，请求体带 admin_key 与同值；未设置则无法发码
@@ -41,8 +63,17 @@ services:
       ADMIN_PANEL_FULL_NAME: ${ADMIN_PANEL_FULL_NAME:-系统管理员}
       # 管理端 IP 黑名单（逗号分隔）；经 CF 的真实访客 IP
       ADMIN_IP_DENYLIST: ${ADMIN_IP_DENYLIST:-}
-      # 用户注册/登录时写入 plain_password，供管理后台「用户管理」展示密码（设为 0 可关闭）
-      REGISTER_STORE_PLAIN_PASSWORD: ${REGISTER_STORE_PLAIN_PASSWORD:-1}
+      # 管理登录：连续失败锁定 + 可选邮件 OTP（1=开启，需 SMTP）
+      ADMIN_LOGIN_MAX_FAILS: ${ADMIN_LOGIN_MAX_FAILS:-5}
+      ADMIN_LOGIN_LOCK_MINUTES: ${ADMIN_LOGIN_LOCK_MINUTES:-30}
+      ADMIN_LOGIN_EMAIL_OTP: ${ADMIN_LOGIN_EMAIL_OTP:-0}
+      ADMIN_OTP_EMAIL: ${ADMIN_OTP_EMAIL:-}
+      ADMIN_OTP_TTL_SEC: ${ADMIN_OTP_TTL_SEC:-300}
+      ADMIN_UPLOAD_MAX_BYTES: ${ADMIN_UPLOAD_MAX_BYTES:-83886080}
+      GUEST_SESSION_RATE_PER_IP_MIN: ${GUEST_SESSION_RATE_PER_IP_MIN:-8}
+      TRACK_RATE_PER_IP_MIN: ${TRACK_RATE_PER_IP_MIN:-60}
+      # 明文密码：0=不存（默认）；1=明文；encrypt=AES 加密存入 plain_password
+      REGISTER_STORE_PLAIN_PASSWORD: ${REGISTER_STORE_PLAIN_PASSWORD:-0}
       # 服务器监控告警收件人
       MONITOR_ALERT_EMAIL: ${MONITOR_ALERT_EMAIL:-498771018@qq.com}
       MONITOR_CHECK_INTERVAL_MS: ${MONITOR_CHECK_INTERVAL_MS:-60000}
@@ -106,6 +137,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - uploads_static:/data/uploads
     networks:
@@ -139,6 +172,8 @@ volumes:
     name: test_platform_uploads_static
   personal_tax_mysql_data:
     name: personal_tax_mysql_data
+  personal_tax_redis_data:
+    name: personal_tax_redis_data
 
 networks:
   test_platform_default:

@@ -1,4 +1,4 @@
-/** consult-core: tabs/utils/employers/messages/feedback/boot */
+/** consult-core: tabs/utils/employers/messages/boot */
 function pad2(n) {
     n = parseInt(n, 10);
     return (n < 10 ? '0' : '') + n;
@@ -130,9 +130,6 @@ function switchTab(tab, pushHistory) {
     if (typeof window.forceHidePageLoading === 'function') {
         window.forceHidePageLoading();
     }
-    if (tab === 'feedback' || tab === 'chat') {
-        tab = 'records';
-    }
     if (tab === 'profile') {
         tab = 'employers';
     }
@@ -180,177 +177,6 @@ function switchTab(tab, pushHistory) {
     }
 }
 
-function renderFeedbackWechatPayQr(displayUrl, showQr) {
-    var card = document.getElementById('feedbackWechatPayCard');
-    var img = document.getElementById('feedbackWechatPayImg');
-    if (!card || !img) return;
-    if (!showQr) {
-        card.style.display = 'none';
-        img.removeAttribute('src');
-        return;
-    }
-    var u = displayUrl != null ? String(displayUrl).trim() : '';
-    if (!u) {
-        card.style.display = 'none';
-        img.removeAttribute('src');
-        return;
-    }
-    img.src = u;
-    card.style.display = 'block';
-}
-
-var feedbackXianyuPurchaseUrl = '';
-var feedbackQqGroupUrl = '';
-
-function updateFeedbackXianyuButton(xianyuText, show) {
-    var btn = document.getElementById('btnFeedbackXianyu');
-    if (!btn) return;
-    feedbackXianyuPurchaseUrl = xianyuText != null ? String(xianyuText).trim() : '';
-    btn.style.display = show && feedbackXianyuPurchaseUrl ? '' : 'none';
-}
-
-function updateFeedbackQqGroupButton(qqUrl, show) {
-    var btn = document.getElementById('btnFeedbackQqGroup');
-    if (!btn) return;
-    feedbackQqGroupUrl = qqUrl != null ? String(qqUrl).trim() : '';
-    btn.style.display = show && feedbackQqGroupUrl ? '' : 'none';
-}
-
-function openFeedbackQqGroupUrl(url) {
-    var u = url != null ? String(url).trim() : '';
-    if (!u) {
-        alert('暂未开放 QQ 群入口');
-        return;
-    }
-    try {
-        var opened = window.open(u, '_blank');
-        if (!opened) {
-            window.location.href = u;
-        }
-    } catch (eOpen) {
-        window.location.href = u;
-    }
-}
-
-function applyFeedbackConfigData(data) {
-    if (!data) {
-        renderFeedbackWechatPayQr('', false);
-        updateFeedbackXianyuButton('', false);
-        updateFeedbackQqGroupButton('', false);
-        return;
-    }
-    var show = data.show_xianyu_purchase !== false;
-    var qrUrl = data.wechat_pay_qrcode_display_url || data.wechat_pay_qrcode_url;
-    renderFeedbackWechatPayQr(qrUrl, show && !!qrUrl);
-    var xy = data.xianyu_purchase_url != null ? String(data.xianyu_purchase_url).trim() : '';
-    updateFeedbackXianyuButton(xy, show && !!xy);
-    var qq =
-        data.qq_group_url != null ? String(data.qq_group_url).trim() : '';
-    var showQq = data.show_qq_group !== false;
-    updateFeedbackQqGroupButton(qq, showQq && !!qq);
-}
-
-function loadFeedbackWechatPayQr() {
-    return window.authFetch('api/feedback?action=config')
-        .then(function (r) {
-            return r.json();
-        })
-        .then(function (res) {
-            if (res.code === 200 && res.data) {
-                applyFeedbackConfigData(res.data);
-                return;
-            }
-            applyFeedbackConfigData(null);
-        })
-        .catch(function () {
-            applyFeedbackConfigData(null);
-        });
-}
-
-(function bindFeedbackQqGroupButton() {
-    var btn = document.getElementById('btnFeedbackQqGroup');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_qq_group_click', {
-                page: 'consult',
-                source: 'feedback_tab'
-            });
-        }
-        if (feedbackQqGroupUrl) {
-            openFeedbackQqGroupUrl(feedbackQqGroupUrl);
-            return;
-        }
-        window.authFetch('api/feedback?action=config')
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (res) {
-                if (res.code === 200 && res.data) {
-                    applyFeedbackConfigData(res.data);
-                    openFeedbackQqGroupUrl(
-                        res.data.qq_group_url != null
-                            ? String(res.data.qq_group_url).trim()
-                            : ''
-                    );
-                    return;
-                }
-                openFeedbackQqGroupUrl('');
-            })
-            .catch(function () {
-                alert('网络错误');
-            });
-    });
-})();
-
-(function bindFeedbackXianyuButton() {
-    var btn = document.getElementById('btnFeedbackXianyu');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-        if (typeof window.trackUserAction === 'function') {
-            window.trackUserAction('track_xianyu_purchase_click', {
-                page: 'consult',
-                source: 'feedback_tab'
-            });
-        }
-        function doCopy(txt) {
-            if (!txt) {
-                alert('暂未配置闲鱼购买文案，请在管理后台「引导安装」中填写');
-                return;
-            }
-            if (typeof copyXianyuPurchaseText !== 'function') {
-                alert('复制功能不可用');
-                return;
-            }
-            copyXianyuPurchaseText(txt).catch(function () {
-                alert('复制失败，请长按手动复制');
-            });
-        }
-        if (feedbackXianyuPurchaseUrl) {
-            doCopy(feedbackXianyuPurchaseUrl);
-            return;
-        }
-        window.authFetch('api/feedback?action=config')
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (res) {
-                if (res.code === 200 && res.data) {
-                    applyFeedbackConfigData(res.data);
-                    var t =
-                        res.data.xianyu_purchase_url != null
-                            ? String(res.data.xianyu_purchase_url).trim()
-                            : '';
-                    doCopy(t);
-                    return;
-                }
-                doCopy('');
-            })
-            .catch(function () {
-                alert('网络错误');
-            });
-    });
-})();
 
 function initTabs() {
     document.querySelectorAll('.tabs .tab').forEach(function(a) {
@@ -363,7 +189,6 @@ function initTabs() {
     });
     var tab = getUrlParam('tab') || 'records';
     if (tab === 'batch' || tab === 'batch_records') tab = 'records';
-    if (tab === 'feedback' || tab === 'chat') tab = 'records';
     var valid = ['employers', 'messages', 'records'];
     if (tab === 'profile') tab = 'employers';
     if (valid.indexOf(tab) < 0) tab = 'records';
@@ -977,16 +802,6 @@ function updateTaxTryResult() {
         parts.push('<span style="color:#64748b;font-size:12px;">月度换算 ' + formatTaxYuan(bonus / 12) + ' 元</span>');
     }
     out.innerHTML = parts.join('<br>');
-    clearTimeout(updateTaxTryResult._trackTimer);
-    updateTaxTryResult._trackTimer = setTimeout(function () {
-        if (typeof window.trackUserAction !== 'function') return;
-        window.trackUserAction('track_tax_formula_try', {
-            page: 'consult',
-            tab: 'records',
-            has_cumulative: hasCum ? 1 : 0,
-            has_bonus: hasBonus ? 1 : 0
-        });
-    }, 800);
 }
 
 function initTaxFormulaCard() {
@@ -996,12 +811,6 @@ function initTaxFormulaCard() {
         toggle.addEventListener('click', function () {
             var open = card.classList.toggle('is-open');
             toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction(
-                    open ? 'track_tax_formula_open' : 'track_tax_formula_close',
-                    { page: 'consult', tab: 'records' }
-                );
-            }
         });
     }
     var cumEl = document.getElementById('taxTryCumulative');
@@ -2374,117 +2183,6 @@ function setDefaultMsgDate() {
     if (!el || el.value) return;
     var d = new Date();
     el.value = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-}
-
-function feedbackTypeLabel(t) {
-    return t === 'bug' ? 'BUG' : '意见优化';
-}
-
-function formatFeedbackTime(iso) {
-    if (!iso) return '';
-    var s = String(iso).replace('T', ' ').replace(/\.\d{3}Z?$/, '');
-    return s.length > 19 ? s.substring(0, 19) : s;
-}
-
-function renderFeedbackListFromArray(items) {
-    var mount = document.getElementById('feedbackListMount');
-    if (!mount) return;
-    if (!items.length) {
-        mount.innerHTML = '<div class="empty">暂无反馈记录</div>';
-        return;
-    }
-    var html = '';
-    items.forEach(function (it) {
-        var typ = feedbackTypeLabel(it.feedback_type);
-        var replyBlock;
-        if (it.admin_reply && String(it.admin_reply).trim()) {
-            replyBlock =
-                '<div class="feedback-reply-box"><strong>官方回复</strong><div>' +
-                escapeHtml(it.admin_reply) +
-                '</div>';
-            if (it.replied_at) {
-                replyBlock +=
-                    '<div class="hint" style="margin-top:6px;">' +
-                    escapeHtml(formatFeedbackTime(it.replied_at)) +
-                    '</div>';
-            }
-            replyBlock += '</div>';
-        } else {
-            replyBlock = '<p class="hint" style="margin-top:8px;">暂未回复，请耐心等待</p>';
-        }
-        html += '<div class="list-item" style="flex-direction:column;align-items:stretch;">';
-        html +=
-            '<div><span class="fb-type-badge">' +
-            escapeHtml(typ) +
-            '</span> <span class="hint">' +
-            escapeHtml(formatFeedbackTime(it.created_at)) +
-            '</span></div>';
-        html +=
-            '<div style="margin-top:8px;line-height:1.5;font-size:14px;color:#333;">' +
-            escapeHtml(it.content || '') +
-            '</div>';
-        html += replyBlock;
-        html += '</div>';
-    });
-    mount.innerHTML = html;
-}
-
-function refreshFeedbackList() {
-    return window.authFetch('api/feedback?action=list')
-        .then(function (r) {
-            return r.json();
-        })
-        .then(function (res) {
-            if (res.code === 200 && res.data && Array.isArray(res.data.items)) {
-                applyFeedbackConfigData(res.data);
-                renderFeedbackListFromArray(res.data.items);
-                return;
-            }
-            throw new Error(res.msg || '加载失败');
-        });
-}
-
-function loadFeedbackList() {
-    var mount = document.getElementById('feedbackListMount');
-    if (mount) {
-        mount.innerHTML = '<div class="empty" style="padding:24px;">加载中…</div>';
-    }
-    refreshFeedbackList().catch(function (err) {
-        if (mount) {
-            mount.innerHTML =
-                '<div class="empty">' + escapeHtml(err.message || '加载失败') + '</div>';
-        }
-    });
-}
-
-function submitUserFeedback() {
-    var typeEl = document.querySelector('#panel-feedback input[name="fb_type"]:checked');
-    var type = typeEl ? typeEl.value : 'suggestion';
-    var ta = document.getElementById('fb_content');
-    var content = ta ? ta.value.trim() : '';
-    if (!content) {
-        showMsg('请填写反馈内容', false);
-        return;
-    }
-    window.authFetch('api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedback_type: type, content: content })
-    })
-        .then(function (r) {
-            return r.json();
-        })
-        .then(function (res) {
-            if (res.code === 200) {
-                if (ta) ta.value = '';
-                showMsg('提交成功，感谢您的反馈', true);
-                return loadFeedbackList();
-            }
-            throw new Error(res.msg || '提交失败');
-        })
-        .catch(function (err) {
-            showMsg('提交失败：' + (err.message || ''), false);
-        });
 }
 
 function boot() {

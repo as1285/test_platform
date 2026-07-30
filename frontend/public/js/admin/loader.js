@@ -6,7 +6,7 @@
   var inflight = Object.create(null);
 
   var MODULE_SRC = {
-    charts: '/js/admin/modules/charts.js?v=20260722-charts-window-fix',
+    charts: '/js/admin/modules/charts.js?v=20260728-channel-analysis-fix',
     chat: '/js/admin/modules/chat.js?v=20260722-chat-window-fix',
     analytics: '/js/admin/modules/analytics.js?v=20260721-p2',
     feedback: '/js/admin/modules/feedback.js?v=20260721-p2',
@@ -25,7 +25,6 @@
     'install-guide': 'settings',
     appearance: 'settings',
     codes: 'codes',
-    'weekly-codes': 'codes',
     'sbdy-demo': 'sbdy-demo',
     'admin-accounts': 'accounts',
     users: 'users',
