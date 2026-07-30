@@ -1,6 +1,6 @@
 /**
  * 支付页 A/B/C：
- * A(control)=320 周卡 + 仅支付宝；B(treatment)=320 周 / 499 月 / 999 年；C=仅下载+激活码。
+ * A(control)=398 永久；B(treatment)=298 日卡 / 398 周卡 / 498 月卡 / 698 年卡 / 998 永久。
  * Sticky：登录用户写入 pricing_ab_assignments；改占比只影响未分配用户。
  */
 'use strict';
@@ -8,24 +8,35 @@
 var SETTING_KEY_PRICING_AB = 'pricing_ab_json';
 var SETTING_KEY_LANDING_AB = 'landing_ab_json';
 
-/** A 方案：单档 320 周卡 */
+/** A 方案：单档 398 永久 */
 var SKU_CONTROL_320_WEEK = {
-  id: 'sku_320_7d',
-  amount: '320.00',
-  label: '周卡',
-  subject: '激活码·周卡',
-  grant_kind: 'trial',
+  id: 'sku_398_perm',
+  amount: '398.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
   grant_hours: 0,
-  grant_days: 7,
+  grant_days: 0,
   grant_minutes: 0
 };
 
-/** 兼容旧订单 id（sku_199_perm_legacy）查询；权益改为周卡 */
+/** 兼容旧订单 id（sku_199_perm_legacy）查询；权益改为永久 */
 var SKU_CONTROL_199_PERM = SKU_CONTROL_320_WEEK;
 
-var SKU_320_WEEK = {
-  id: 'sku_320_7d',
-  amount: '320.00',
+var SKU_298_DAY = {
+  id: 'sku_298_1d',
+  amount: '298.00',
+  label: '日卡',
+  subject: '激活码·日卡',
+  grant_kind: 'trial',
+  grant_hours: 0,
+  grant_days: 1,
+  grant_minutes: 0
+};
+
+var SKU_398_WEEK = {
+  id: 'sku_398_7d',
+  amount: '398.00',
   label: '周卡',
   subject: '激活码·周卡',
   grant_kind: 'trial',
@@ -34,9 +45,9 @@ var SKU_320_WEEK = {
   grant_minutes: 0
 };
 
-var SKU_499_MONTH = {
-  id: 'sku_499_30d',
-  amount: '499.00',
+var SKU_498_MONTH = {
+  id: 'sku_498_30d',
+  amount: '498.00',
   label: '月卡',
   subject: '激活码·月卡',
   grant_kind: 'trial',
@@ -45,14 +56,25 @@ var SKU_499_MONTH = {
   grant_minutes: 0
 };
 
-var SKU_999_YEAR = {
-  id: 'sku_999_365d',
-  amount: '999.00',
+var SKU_698_YEAR = {
+  id: 'sku_698_365d',
+  amount: '698.00',
   label: '年卡',
   subject: '激活码·年卡',
   grant_kind: 'trial',
   grant_hours: 0,
   grant_days: 365,
+  grant_minutes: 0
+};
+
+var SKU_998_PERM = {
+  id: 'sku_998_perm',
+  amount: '998.00',
+  label: '永久',
+  subject: '激活码·永久',
+  grant_kind: 'permanent',
+  grant_hours: 0,
+  grant_days: 0,
   grant_minutes: 0
 };
 
@@ -63,7 +85,7 @@ var DEFAULT_PRICING_AB = {
   c_percent: 0,
   treatment_percent: 50,
   control_skus: [SKU_CONTROL_320_WEEK],
-  treatment_skus: [SKU_320_WEEK, SKU_499_MONTH, SKU_999_YEAR]
+  treatment_skus: [SKU_298_DAY, SKU_398_WEEK, SKU_498_MONTH, SKU_698_YEAR, SKU_998_PERM]
 };
 
 function cloneSku(s) {
@@ -79,13 +101,42 @@ function cloneSku(s) {
   };
 }
 
+/** UTF-8 中文被当成 Latin-1 再存回时会出现 æ/å/Ã 等乱码 */
+function looksMojibakeText(s) {
+  var t = String(s || '');
+  if (!t) return false;
+  if (/[\u4e00-\u9fff]/.test(t)) return false;
+  return /[æåøÃÂäé]/.test(t);
+}
+
+function defaultSkuById(id) {
+  var all = []
+    .concat(DEFAULT_PRICING_AB.control_skus || [])
+    .concat(DEFAULT_PRICING_AB.treatment_skus || []);
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].id === id) return cloneSku(all[i]);
+  }
+  return null;
+}
+
 function normalizeSkuList(list, fallback) {
   if (!Array.isArray(list) || !list.length) {
     return (fallback || []).map(cloneSku);
   }
-  return list.map(cloneSku).filter(function (s) {
-    return s.id && s.amount;
-  });
+  return list
+    .map(function (raw) {
+      var s = cloneSku(raw);
+      if (!s.id || !s.amount) return null;
+      if (looksMojibakeText(s.label) || looksMojibakeText(s.subject)) {
+        var def = defaultSkuById(s.id);
+        if (def) {
+          if (looksMojibakeText(s.label)) s.label = def.label;
+          if (looksMojibakeText(s.subject)) s.subject = def.subject;
+        }
+      }
+      return s;
+    })
+    .filter(Boolean);
 }
 
 function clampPct(v, fallback) {
@@ -141,7 +192,6 @@ function resolvePricingAbVariant(seed, treatmentPercent) {
 
 function abcToOfferVariant(abc) {
   if (abc === 'b') return 'treatment';
-  if (abc === 'c') return 'c';
   return 'control';
 }
 
@@ -189,6 +239,14 @@ function normalizeAbcPercents(raw, landingCPercent) {
       }
     }
   }
+  c = 0;
+  if (a + b === 0) {
+    a = 100;
+    b = 0;
+  } else if (a + b !== 100) {
+    var rest = 100 - a;
+    b = rest;
+  }
   return {
     a_percent: a,
     b_percent: b,
@@ -209,12 +267,12 @@ function findSkuById(cfg, skuId) {
   var id = String(skuId || '');
   /* 旧订单 SKU id → 新档 */
   var legacyMap = {
-    sku_199_perm_legacy: 'sku_320_7d',
-    sku_499_perm: 'sku_499_30d',
-    sku_199_1y: 'sku_999_365d'
+    sku_199_perm_legacy: 'sku_398_perm',
+    sku_499_perm: 'sku_498_30d',
+    sku_199_1y: 'sku_698_365d'
   };
   if (legacyMap[id]) id = legacyMap[id];
-  var lists = [cfg.control_skus || [], cfg.treatment_skus || [], [SKU_320_WEEK, SKU_499_MONTH, SKU_999_YEAR]];
+  var lists = [cfg.control_skus || [], cfg.treatment_skus || [], [SKU_298_DAY, SKU_398_WEEK, SKU_498_MONTH, SKU_698_YEAR, SKU_998_PERM]];
   var i;
   var j;
   for (i = 0; i < lists.length; i++) {
@@ -536,15 +594,18 @@ function createPricingAb(deps) {
         };
       }
       if (forcedAbc === 'c') {
+        forcedAbc = 'b';
+      }
+      if (forcedAbc === 'b') {
         if (seed !== 'guest') {
-          await setStickyAbc(seed, 'c', 'agent_channel', true);
+          await setStickyAbc(seed, 'b', 'agent_channel', true);
         }
         return {
-          enabled: false,
-          variant: 'c',
-          abc_variant: 'c',
+          enabled: true,
+          variant: 'treatment',
+          abc_variant: 'b',
           abc_source: 'agent_channel',
-          skus: [],
+          skus: cfg.treatment_skus.map(cloneSku),
           pricing_ab_enabled: false,
           forced_by_channel: true,
           force_client_abc: true
@@ -584,12 +645,7 @@ function createPricingAb(deps) {
         await setStickyAbc(seed, abc, 'agent_channel', true);
       }
     } else if (sticky && sticky.variant) {
-      if (
-        sticky.variant === 'c' &&
-        !forcedAbc &&
-        (sticky.source !== 'admin_force')
-      ) {
-        /* 非管理端强制的 C：仅渠道 abc 存续时有效；否则作废重分 */
+      if (sticky.variant === 'c' && sticky.source !== 'admin_force') {
         sticky = null;
         repairedNonChannelC = true;
       } else {
@@ -603,7 +659,11 @@ function createPricingAb(deps) {
         abc = pref;
         abcSource = 'client_sticky';
       } else {
-        abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, cfg.c_percent);
+        abc = resolvePurchaseAbcVariant(seed, cfg.a_percent, cfg.b_percent, 0);
+        abcSource = repairedNonChannelC ? 'repair_non_channel_c' : 'allocation';
+      }
+      if (abc === 'c') {
+        abc = 'b';
         abcSource = repairedNonChannelC ? 'repair_non_channel_c' : 'allocation';
       }
       if (seed !== 'guest') {
@@ -618,31 +678,26 @@ function createPricingAb(deps) {
 
     var variant = abcToOfferVariant(abc);
     var skus = [];
-    if (abc === 'c') {
-      skus = [];
-    } else if (abc === 'b') {
+    if (abc === 'b') {
       skus = cfg.treatment_skus.map(cloneSku);
     } else {
       skus = cfg.control_skus.map(cloneSku);
     }
-    if (abc !== 'c' && !skus.length) {
+    if (!skus.length) {
       skus = [cloneSku(SKU_CONTROL_199_PERM)];
       variant = 'control';
       abc = 'a';
       abcSource = abcSource || 'fallback_a';
     }
     return {
-      enabled: abc !== 'c',
+      enabled: true,
       variant: variant,
       abc_variant: abc,
       abc_source: abcSource,
       skus: skus,
       pricing_ab_enabled: true,
       forced_by_channel: !!forcedAbc && abcSource === 'agent_channel',
-      force_client_abc:
-        abcSource === 'admin_force' ||
-        (!!forcedAbc && abcSource === 'agent_channel') ||
-        repairedNonChannelC
+      force_client_abc: abcSource === 'admin_force' || (!!forcedAbc && abcSource === 'agent_channel') || repairedNonChannelC
     };
   }
 
@@ -665,9 +720,9 @@ function createPricingAb(deps) {
     return {
       enabled: enabled,
       a_percent: enabled ? cfg.a_percent : 100,
-      b_percent: enabled ? cfg.b_percent : 0,
-      c_percent: enabled ? cfg.c_percent : 0,
-      b_landing_percent: enabled ? cfg.a_percent + cfg.b_percent : 100,
+      b_percent: enabled ? 100 - cfg.a_percent : 0,
+      c_percent: 0,
+      b_landing_percent: enabled ? 100 - cfg.a_percent : 100,
       experiment: 'purchase_abc_v1',
       delegated: true
     };

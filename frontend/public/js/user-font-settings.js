@@ -543,6 +543,7 @@
             if (hasCustom) chip.classList.add('has-custom');
             chip.textContent = role.label;
             panelUi.chips.appendChild(chip);
+            bindChip(chip);
         });
 
         refreshPresetButtons(host, cfg);
@@ -592,6 +593,22 @@
         );
     }
 
+    function bindChip(chip) {
+        /* 事件直接绑在按钮上，避免 WKWebView 在动态 DOM + 滚动容器中
+         * 将委托事件的 target 错判为容器，导致分区 TAB 看得到但切不动。 */
+        var lastTs = 0;
+        function pick(e) {
+            var now = Date.now();
+            if (now - lastTs < 320) return;
+            lastTs = now;
+            e.preventDefault();
+            e.stopPropagation();
+            setActiveTarget(chip.getAttribute('data-ufs-target-id') || 'all');
+        }
+        chip.addEventListener('pointerup', pick);
+        chip.addEventListener('click', pick);
+    }
+
     function buildPanel(host) {
         var panel = document.createElement('div');
         panel.className = 'ufs-panel';
@@ -608,7 +625,6 @@
 
         var chips = document.createElement('div');
         chips.className = 'ufs-target-chips';
-        bindChipTargetSwitch(chips);
         head.appendChild(chips);
 
         var editingLabel = document.createElement('div');

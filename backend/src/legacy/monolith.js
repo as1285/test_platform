@@ -2485,6 +2485,7 @@ async function initDatabase() {
       user: DB_USER,
       password: DB_PASSWORD,
       database: DB_DATABASE,
+      charset: 'utf8mb4',
       waitForConnections: true,
       // 业务页常并发 auth+user+tax+埋点；原 10 易排队，弱网下表现为接口集体变慢
       connectionLimit: parseInt(process.env.DB_POOL_SIZE || '30', 10) || 30,
@@ -5578,42 +5579,34 @@ async function handleAlipayConfig(req, res) {
       envProduct.subject,
       readPreferredPurchaseAbc(req)
     );
-    if (offer.abc_variant === 'c' || offer.variant === 'c') {
-      return res.json({
-        code: 200,
-        data: {
-          enabled: false,
-          subject: envProduct.subject,
-          amount: envProduct.amount,
-          pricing_variant: 'c',
-          abc_variant: 'c',
-          abc_source: offer.abc_source || '',
-          pricing_ab_enabled: !!offer.pricing_ab_enabled,
-          forced_by_channel: !!offer.forced_by_channel,
-          force_client_abc: !!offer.force_client_abc,
-          code_only: true,
-          hide_self_serve_pay: true,
-          skus: []
-        }
-      });
-    }
     try {
       if (req.authUserId && (await userMustHideSelfServePay(req.authUserId))) {
         return res.json({
           code: 200,
           data: {
-            enabled: false,
+            enabled: true,
             subject: envProduct.subject,
             amount: envProduct.amount,
-            pricing_variant: 'c',
-            abc_variant: 'c',
+            pricing_variant: 'control',
+            abc_variant: 'b',
             abc_source: 'agent_channel',
             pricing_ab_enabled: !!offer.pricing_ab_enabled,
             forced_by_channel: true,
             force_client_abc: true,
-            code_only: true,
-            hide_self_serve_pay: true,
-            skus: []
+            code_only: false,
+            hide_self_serve_pay: false,
+            skus: [
+              {
+                id: 'sku_398_perm',
+                amount: '398.00',
+                label: '永久',
+                subject: '激活码·永久',
+                grant_kind: 'permanent',
+                grant_days: 0,
+                grant_hours: 0,
+                grant_minutes: 0
+              }
+            ]
           }
         });
       }
@@ -5821,10 +5814,8 @@ async function handleAlipayCreateOrder(req, res) {
     return res.status(500).json({ code: 500, msg: '读取定价配置失败' });
   }
   if (offer.abc_variant === 'c' || offer.variant === 'c') {
-    return res.status(403).json({
-      code: 403,
-      msg: '当前方案仅支持激活码开通，请使用下载与激活码入口'
-    });
+    offer.abc_variant = 'b';
+    offer.variant = 'treatment';
   }
   try {
     if (await userMustHideSelfServePay(req.authUserId || '')) {

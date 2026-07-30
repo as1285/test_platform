@@ -535,7 +535,7 @@
             _agentExclusiveChannelsCache.forEach(function (row) {
                 var ch = String(row.channel_id || '');
                 var link = buildAgentPromoLink(origin, 'install_guide.html', ch);
-                var codeOnly = !!(row.hide_self_serve_pay || row.code_only || String(row.default_pricing_abc || '') === 'c');
+                var codeOnly = !!(row.hide_self_serve_pay || row.code_only);
                 html +=
                     '<tr>' +
                     '<td><code>' +
@@ -545,7 +545,7 @@
                     esc(row.owner_admin_username || '—') +
                     '</td>' +
                     '<td>' +
-                    esc(String(row.default_pricing_abc || 'c').toUpperCase()) +
+                    esc(String(row.default_pricing_abc || 'a').toUpperCase()) +
                     '</td>' +
                     '<td>' +
                     (codeOnly ? '是' : '否') +
@@ -605,15 +605,14 @@
                 saveBtn.addEventListener('click', function () {
                     var channelId = (document.getElementById('agentExChannelId') || {}).value || '';
                     var owner = (document.getElementById('agentExOwnerAdmin') || {}).value || '';
-                    var abc = String((document.getElementById('agentExPricingAbc') || {}).value || 'c')
+                    var abc = String((document.getElementById('agentExPricingAbc') || {}).value || 'b')
                         .trim()
                         .toLowerCase();
-                    if (abc !== 'a' && abc !== 'b' && abc !== 'c') abc = 'c';
+                    if (abc !== 'a' && abc !== 'b') abc = 'b';
                     var note = (document.getElementById('agentExNote') || {}).value || '';
                     var enabled = !!(document.getElementById('agentExEnabled') || {}).checked;
                     var hidePayEl = document.getElementById('agentExHideSelfServePay');
-                    var hideSelfServePay = hidePayEl ? !!hidePayEl.checked : abc === 'c';
-                    if (hideSelfServePay) abc = 'c';
+                    var hideSelfServePay = hidePayEl ? !!hidePayEl.checked : false;
                     channelId = String(channelId).trim().toLowerCase();
                     if (!/^[a-z0-9_-]{1,64}$/.test(channelId)) {
                         alert('渠道 ID 无效（字母数字下划线连字符）');
@@ -1812,7 +1811,7 @@
                                 ? 'A·对照'
                                 : a.variant === 'treatment'
                                   ? 'B·多档'
-                                  : a.variant === 'c'
+                                  : a.variant === 'b'
                                     ? 'C·激活码'
                                     : a.variant;
                         html +=
@@ -6260,7 +6259,7 @@
                         btn.onclick = function () {
                             var name = btn.getAttribute('data-u');
                             var pick = prompt(
-                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=320周卡  B=320周/499月/999年  C=仅激活码',
+                                '为「' + name + '」分配支付方案（输入 A / B / C，大小写均可）：\nA=398永久  B=298日/398周/498月/698年/998永久  C=仅激活码',
                                 'A'
                             );
                             if (pick == null) return;
@@ -7900,22 +7899,12 @@
                 var a = parseInt(document.getElementById('pricingAbAPercent').value, 10);
                 var b = parseInt(document.getElementById('pricingAbBPercent').value, 10);
                 var c = parseInt(document.getElementById('pricingAbCPercent').value, 10);
-                if (
-                    !isFinite(a) ||
-                    !isFinite(b) ||
-                    !isFinite(c) ||
-                    a < 0 ||
-                    b < 0 ||
-                    c < 0 ||
-                    a > 100 ||
-                    b > 100 ||
-                    c > 100
-                ) {
-                    alert('A/B/C 占比请各输入 0–100 的整数');
+                if (!isFinite(a) || !isFinite(b) || a < 0 || b < 0 || a > 100 || b > 100) {
+                    alert('A/B 占比请各输入 0–100 的整数');
                     return;
                 }
-                if (a + b + c !== 100) {
-                    alert('A+B+C 必须等于 100（当前 ' + (a + b + c) + '）');
+                if (a + b !== 100) {
+                    alert('A+B 必须等于 100（当前 ' + (a + b) + '）');
                     return;
                 }
                 btn.disabled = true;
@@ -7926,7 +7915,7 @@
                             enabled: !!document.getElementById('pricingAbEnabled').checked,
                             a_percent: a,
                             b_percent: b,
-                            c_percent: c
+                            c_percent: 0
                         }
                     })
                 })
@@ -7935,7 +7924,7 @@
                     })
                     .then(function (data) {
                         if (data.code === 200) {
-                            alert('支付页 A/B/C 已保存');
+                            alert('支付页 A/B 已保存');
                             loadAdminSettings();
                         } else {
                             alert(data.msg || '保存失败');

@@ -2668,7 +2668,9 @@
       if (typeof v.normalize === 'function') v = v.normalize('NFKC');
     } catch (eNfkc) {}
     v = v.toLowerCase();
-    if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+    /* 历史 C（仅激活码）已下线，统一归一为 B（多档支付宝） */
+    if (v === 'c') v = 'b';
+    if (v !== 'a' && v !== 'b') return null;
     var existing = getPurchaseAbcAssignment();
     var src = String(source || 'allocation').substring(0, 32);
     /* 服务端/管理端结果允许覆盖本地 sticky（尤其是误锁的 C） */
@@ -2693,8 +2695,8 @@
     try {
       localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
     } catch (e) {}
-    /* 同步落地页：C→落地 C，A/B→落地 B */
-    setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc');
+    /* 落地实验仅保留 B 支路 */
+    setLandingAbAssignment('b', 'from_purchase_abc');
     return next;
   }
 
@@ -2705,7 +2707,8 @@
       if (typeof v.normalize === 'function') v = v.normalize('NFKC');
     } catch (eNfkc) {}
     v = v.toLowerCase();
-    if (v !== 'a' && v !== 'b' && v !== 'c') return null;
+    if (v === 'c') v = 'b';
+    if (v !== 'a' && v !== 'b') return null;
     var next = {
       experiment: 'purchase_abc_v1',
       variant: v,
@@ -2715,7 +2718,7 @@
     try {
       localStorage.setItem(PURCHASE_ABC_ASSIGNMENT_KEY, JSON.stringify(next));
     } catch (e) {}
-    setLandingAbAssignment(v === 'c' ? 'c' : 'b', 'from_purchase_abc_force');
+    setLandingAbAssignment('b', 'from_purchase_abc_force');
     return next;
   }
 
@@ -2723,7 +2726,7 @@
   function hasAgentChannelForcedPurchaseAbc() {
     try {
       var a = getPurchaseAbcAssignment();
-      return !!(a && a.source === 'agent_channel' && (a.variant === 'a' || a.variant === 'b' || a.variant === 'c'));
+      return !!(a && a.source === 'agent_channel' && (a.variant === 'a' || a.variant === 'b'));
     } catch (e) {
       return false;
     }
@@ -2735,9 +2738,7 @@
       abc = String(data.force_pricing_abc || data.default_pricing_abc || '')
         .trim()
         .toLowerCase();
-      if (data.code_only === true || data.hide_self_serve_pay === true) {
-        abc = 'c';
-      }
+      /* hide_self_serve / code_only 只影响购买页显隐，不改写 A/B 支付方案 */
     }
     /*
      * 已登录用户：安装包接口若未带回 sales_channel（账号未绑代理渠道），
@@ -2745,7 +2746,7 @@
      */
     if (getToken()) {
       var sc = data && data.sales_channel != null ? String(data.sales_channel).trim() : '';
-      if (!sc && (abc === 'c' || abc === '')) {
+      if (!sc && (abc === '' || abc === 'b')) {
         try {
           var prevLogged = getPurchaseAbcAssignment();
           if (prevLogged && prevLogged.source === 'agent_channel') {
@@ -2755,8 +2756,8 @@
         return null;
       }
     }
-    /* 仅服务端明确返回 a|b|c 时强制；空=跟随后台增长 A/B/C，并清掉旧渠道锁定 */
-    if (abc !== 'a' && abc !== 'b' && abc !== 'c') {
+    /* 仅服务端明确返回 a|b 时强制；空=跟随后台增长配置，并清掉旧渠道锁定 */
+    if (abc !== 'a' && abc !== 'b') {
       try {
         var prev = getPurchaseAbcAssignment();
         if (prev && prev.source === 'agent_channel') {
@@ -2816,15 +2817,14 @@
     }
     var bucket = (h >>> 0) % 100;
     if (bucket < a) return 'a';
-    if (bucket < a + b) return 'b';
-    return 'c';
+    return 'b';
   }
 
   function getLandingAbVariant() {
     migratePurchaseAbcFromLanding();
     var purchase = getPurchaseAbcAssignment();
     if (purchase) {
-      return purchase.variant === 'c' ? 'c' : 'b';
+      return purchase.variant === 'a' ? 'a' : 'b';
     }
     var assignment = getLandingAbAssignment();
     return assignment ? assignment.variant : '';
@@ -2832,7 +2832,7 @@
 
   function setLandingAbAssignment(variant, source) {
     var v = String(variant || '').toLowerCase();
-    if (v !== 'b' && v !== 'c') return null;
+    if (v !== 'b') return null;
     var existing = getLandingAbAssignment();
     if (existing && existing.variant === v) {
       return existing;

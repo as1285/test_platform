@@ -33,16 +33,15 @@
                         <p class="hint mt-0">优先配置定价实验；下方为弹窗与 QQ / 微信触达入口。效果请到「转化与触达」查看。</p>
                     </section>
                     <section>
-                        <h2>定价/支付页 A/B/C</h2>
-                        <p class="hint">统一控制支付页与落地页分流（改占比只影响新访客，已分配用户锁定不变）。
-                            <strong>A</strong>：支付宝「320 周卡」+ 激活码（无酷发卡等其它渠道；落地页 B）；
-                            <strong>B</strong>：支付宝多档（320 周 / 499 月 / 999 年）+ 其它渠道 + 激活码；
-                            <strong>C</strong>：下载 App + 激活码 + 专属客服联系方式（落地页游客沙盒；无支付宝/其它购买渠道）。
-                            A+B+C 必须为 100%。
+                        <h2>定价/支付页 A/B</h2>
+                        <p class="hint">统一控制支付页分流（改占比只影响新访客，已分配用户锁定不变）。
+                            <strong>A</strong>：支付宝「398 永久」+ 激活码；
+                            <strong>B</strong>：支付宝多档（298 日 / 398 周 / 498 月 / 698 年 / 998 永久）+ 激活码。
+                            A+B 必须为 100%。
                         </p>
                         <div class="form-row form-stack">
                             <div class="form-field">
-                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用支付页 A/B/C</label>
+                                <label><input type="checkbox" id="pricingAbEnabled" checked> 启用支付页 A/B</label>
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbAPercent">A 方案流量占比 %</label>
@@ -54,11 +53,11 @@
                             </div>
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbCPercent">C 方案流量占比 %</label>
-                                <input type="number" id="pricingAbCPercent" min="0" max="100" step="1" value="0">
+                                <input type="number" id="pricingAbCPercent" min="0" max="100" step="1" value="0" disabled>
                             </div>
-                            <p class="hint mt-6" id="pricingAbcSplitHint">A 50% · B 50% · C 0%</p>
+                            <p class="hint mt-6" id="pricingAbcSplitHint">A 50% · B 50% · C 0%（已停用）</p>
                             <div class="form-actions">
-                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B/C</button>
+                                <button type="button" class="btn-primary" id="btnSavePricingAb">保存支付页 A/B</button>
                             </div>
                         </div>
                         <div class="form-row form-stack admin-panel-inset">
@@ -70,9 +69,8 @@
                             <div class="form-field form-field-narrow">
                                 <label for="pricingAbcAssignVariant">方案</label>
                                 <select id="pricingAbcAssignVariant">
-                                    <option value="a">A · 320 周卡 + 仅支付宝</option>
-                                    <option value="b">B · 320周/499月/999年</option>
-                                    <option value="c">C · 仅下载 + 激活码</option>
+                                    <option value="a">A · 398 永久 + 仅支付宝</option>
+                                    <option value="b">B · 298日/398周/498月/698年/998永久</option>
                                 </select>
                             </div>
                             <div class="form-actions">
@@ -125,8 +123,8 @@
                         <p class="hint">用户打开的页面为「安装包和使用方法」（<a href="install_guide.html" target="_blank" rel="noopener">在新标签预览</a>）与「操作教程」（<a href="tutorial_video.html" target="_blank" rel="noopener">在新标签预览</a>）。下方可配置<strong>安装包下载</strong>、<strong>引导视频</strong>与<strong>首屏效果预览</strong>（动图 + 截图横滑）；其它界面配图仍在左侧「用户端外观」。</p>
                     </section>
                     <section>
-                        <h2>落地页 B/C（跟随支付页 A/B/C）</h2>
-                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B/C」。<strong>支付页 C</strong> 同时进入落地页游客沙盒；A/B 走迷你产品首页。此处不再单独配置流量占比，避免两套打架。C 方案购买页展示「下载 App」「激活码」以及专属客服联系方式。</p>
+                        <h2>落地页 B/C（跟随支付页 A/B）</h2>
+                        <p class="hint">分流已统一到左侧「增长与触达配置 → 定价/支付页 A/B」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
                     </section>
                     <section>
                         <h2>安装包下载（用户端）</h2>
@@ -190,9 +188,8 @@
                                         <div class="form-field" style="min-width:100px;">
                                             <label for="agentExPricingAbc">默认支付</label>
                                             <select class="input-block" id="agentExPricingAbc">
-                                                <option value="c" selected>C（默认）</option>
+                                                <option value="b" selected>B（默认）</option>
                                                 <option value="a">A</option>
-                                                <option value="b">B</option>
                                             </select>
                                         </div>
                                         <div class="form-field" style="min-width:120px;flex:1;">
@@ -1583,8 +1580,8 @@
                         <p class="hint mt-0">运营日常首页：看转化 KPI、定价实验、未激活用户，并可一键群发站内信。增长实验开关在左侧「增长与触达配置」。</p>
                     </section>
                     <section>
-                        <h2>支付页 A/B/C</h2>
-                        <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=320 周卡仅支付宝；B=320 周 / 499 月 / 999 年；C=仅下载+激活码。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单（C 通常无支付宝单）。</p>
+                        <h2>支付页 A/B</h2>
+                            <p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=398 永久仅支付宝；B=298 日 / 398 周 / 498 月 / 698 年 / 998 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsPricingAbDays">统计区间</label>

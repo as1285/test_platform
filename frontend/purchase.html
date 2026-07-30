@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260730-force-a-pay"></script>
+    <script src="/js/auth.js?v=20260731-selftest-abc"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通权益</title>
     <style>
@@ -952,7 +952,7 @@
         skus: [],
         selectedSkuId: ''
     };
-    /** legacy=支付宝+激活码；treatment=多档支付宝+激活码；code_only=仅下载+激活码 */
+    /** legacy=支付宝+激活码；treatment=多档支付宝+激活码 */
     var purchaseUiMode = 'legacy';
 
     function applyPurchaseUiMode() {
@@ -968,9 +968,9 @@
 
         var page = document.querySelector('.page');
 
-        /* A/B 均保留激活码入口；仅 C（code_only）也保留，不藏 */
+        /* A/B 均保留激活码入口 */
         if (activateBox) activateBox.hidden = false;
-        /* A/B/C 均不展示酷发卡等其它购买渠道 */
+        /* 不展示酷发卡等其它购买渠道 */
         if (otherLabel) otherLabel.hidden = true;
         if (otherCard) otherCard.hidden = true;
         /* APP 内不显示下载卡片 */
@@ -1016,7 +1016,6 @@
                 page.insertBefore(activateBox, cardAlipay.nextSibling);
             }
         }
-        /* C 方案：下载 → 激活码 */
         if (isCodeOnly && page) {
             var heroEl = document.querySelector('.hero');
             if (heroEl && cardDownload && cardDownload.parentNode === page) {
@@ -1110,8 +1109,8 @@
                 try {
                     if (typeof abc.normalize === 'function') abc = abc.normalize('NFKC').toLowerCase();
                 } catch (eNfkc) {}
-                /* 服务端方案优先，强制覆盖本地误写的 C sticky */
-                if (abc === 'a' || abc === 'b' || abc === 'c') {
+                /* 服务端方案优先，强制覆盖本地 sticky */
+                if (abc === 'a' || abc === 'b') {
                     if (typeof window.forcePurchaseAbcAssignment === 'function') {
                         window.forcePurchaseAbcAssignment(
                             abc,
@@ -1126,7 +1125,7 @@
                         .trim()
                         .toLowerCase();
                 }
-                /* 以服务端 abc 为准；admin_force / 服务端 A·B 时忽略残留 code_only */
+                /* 以服务端 abc 为准；忽略残留 code_only */
                 if (x.status === 401 || x.status === 403) {
                     if (card) card.hidden = true;
                     purchaseUiMode = 'legacy';
@@ -1138,9 +1137,7 @@
                 }
                 var serverForcesPay =
                     data.force_client_abc === true && (abc === 'a' || abc === 'b');
-                var treatAsCodeOnly =
-                    !serverForcesPay &&
-                    (abc === 'c' || data.code_only === true || data.hide_self_serve_pay === true);
+                var treatAsCodeOnly = !serverForcesPay && data.hide_self_serve_pay === true;
                 if (treatAsCodeOnly) {
                     if (card) card.hidden = true;
                     purchaseUiMode = 'code_only';
@@ -1198,7 +1195,7 @@
                     );
                 } else {
                     /* 未启用支付宝时：非 C 仍显示卡片区提示，避免误当成「被藏掉」 */
-                    purchaseUiMode = abc === 'c' ? 'code_only' : 'legacy';
+                    purchaseUiMode = 'legacy';
                     alipayPricing.variant = 'control';
                     if (card && purchaseUiMode !== 'code_only' && x.status === 200) {
                         /* enabled=false 且非 C：保持隐藏（配置未就绪） */
@@ -1210,7 +1207,7 @@
             })
             .catch(function () {
                 document.getElementById('cardAlipay').hidden = true;
-                /* 接口失败时不要用本地 sticky C 把整页切成仅激活码 */
+                /* 接口失败时不要用本地 sticky 把整页切成仅激活码 */
                 purchaseUiMode = 'legacy';
                 alipayPricing.variant = 'control';
                 applyPurchaseUiMode();
@@ -1222,8 +1219,8 @@
     function applyConfig(data) {
         data = data || {};
         /*
-         * 安装包接口可能因 ?ch= / IP 归因带上 code_only，不能据此在购买页提前藏支付宝、
-         * 更不能把本地 sticky 强行写成 C（会盖住真正的 A 方案）。支付宝显隐以 /alipay/config 为准。
+         * 安装包接口可能因 ?ch= / IP 归因带上 code_only，不能据此在购买页提前藏支付宝。
+         * 支付宝显隐以 /alipay/config 为准。
          */
         if (typeof window.applyChannelForcedPricingAbc === 'function' && data) {
             var forceAbc = String(data.force_pricing_abc || data.default_pricing_abc || '')

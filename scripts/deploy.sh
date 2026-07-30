@@ -63,13 +63,15 @@ echo "[deploy] compose ps:"
 docker compose ps
 
 if command -v curl >/dev/null 2>&1; then
-  if curl -sfS --max-time 5 -o /dev/null "http://127.0.0.1/"; then
+  # CI / 受控环境可能设置 http_proxy/https_proxy，导致本机探测请求被劫持并误报 502。
+  # 这里强制绕过代理，确保探测真实命中本机 nginx。
+  if curl --noproxy '*' -sfS --max-time 5 -o /dev/null "http://127.0.0.1/"; then
     echo "[deploy] probe OK: http://127.0.0.1/ responded"
   else
     echo "[deploy] WARN: http://127.0.0.1/ did not return HTTP 2xx — check: docker compose logs frontend"
   fi
   if [[ "${ENABLE_ORIGIN_HTTPS:-1}" != "0" ]]; then
-    if curl -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
+    if curl --noproxy '*' -kfsS --max-time 5 -o /dev/null "https://127.0.0.1/"; then
       echo "[deploy] probe OK: https://127.0.0.1/ responded"
     else
       echo "[deploy] WARN: https://127.0.0.1/ failed — check certs mount and docker compose logs frontend"
