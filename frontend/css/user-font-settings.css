@@ -3,22 +3,38 @@
     position: fixed;
     right: 14px;
     bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-    z-index: 1000015;
+    /* 高于未激活水印(1000000)，保证面板可点 */
+    z-index: 2147483000;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
     pointer-events: none;
 }
 
-/* 展开时铺满屏：避免部分 WebView 对「父盒外绝对定位子元素」丢触摸 */
+/* 展开：整屏可点蒙层 + 面板；勿再依赖父级 pointer-events:none 子级 auto（iOS WKWebView 易丢触摸） */
 .ufs-host.is-open {
     inset: 0;
     width: auto;
     height: auto;
+    pointer-events: auto;
+}
+
+.ufs-backdrop {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    z-index: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ufs-host.is-open .ufs-backdrop {
+    display: block;
 }
 
 .ufs-host .ufs-fab,
 .ufs-host .ufs-panel {
     pointer-events: auto;
+    z-index: 1;
 }
 
 .ufs-fab {
@@ -36,12 +52,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .ufs-host.is-open .ufs-fab {
     position: absolute;
     right: 14px;
     bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index: 2;
 }
 
 .ufs-fab:active {
@@ -55,19 +74,42 @@
     bottom: 52px;
     width: min(300px, calc(100vw - 28px));
     max-height: min(72vh, 520px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
-    padding: 14px 14px 12px;
+    padding: 0;
     box-sizing: border-box;
+    flex-direction: column;
+    z-index: 2;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 .ufs-host.is-open .ufs-panel {
-    display: block;
+    display: flex;
     right: 14px;
     bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 标题 + 分区标签不参与滚动，避免 iOS 把点击当成滚动手势 */
+.ufs-panel-head {
+    flex-shrink: 0;
+    padding: 14px 14px 0;
+    background: #fff;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+    z-index: 2;
+}
+
+.ufs-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 14px 12px;
+    overscroll-behavior: contain;
 }
 
 .ufs-panel-title {
@@ -82,21 +124,28 @@
     flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 10px;
+    position: relative;
+    z-index: 3;
 }
 
 .ufs-target-chip {
-    padding: 5px 10px;
+    padding: 8px 12px;
+    min-height: 32px;
     border-radius: 16px;
     border: 1px solid #e0e0e0;
     background: #fafafa;
     color: #555;
     font-size: 12px;
+    line-height: 1.2;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
     position: relative;
-    z-index: 1;
+    z-index: 3;
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
 }
 
 .ufs-target-chip.is-active {
@@ -140,6 +189,7 @@
 
 .ufs-opt {
     min-width: 44px;
+    min-height: 36px;
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
@@ -149,6 +199,9 @@
     line-height: 1.2;
     cursor: pointer;
     text-align: center;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .ufs-opt.is-active {
@@ -161,6 +214,7 @@
     width: 28px;
     height: 28px;
     min-width: 28px;
+    min-height: 28px;
     padding: 0;
     border-radius: 50%;
     border: 2px solid #d0d0d0;
@@ -182,6 +236,9 @@
     color: #666;
     font-size: 14px;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .ufs-reset:active {
@@ -211,6 +268,9 @@
     color: #333;
     font-size: 13px;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .ufs-action-btn.is-on {
@@ -242,7 +302,7 @@ html.ufs-fab-hidden body.page-xiangqing .header-right {
     left: 50%;
     top: calc(12px + env(safe-area-inset-top, 0px));
     transform: translateX(-50%);
-    z-index: 1000020;
+    z-index: 2147483647;
     max-width: 88vw;
     padding: 10px 14px;
     border-radius: 8px;

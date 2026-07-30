@@ -83,7 +83,8 @@
             'top:0', 'left:0', 'right:0', 'bottom:0',
             'width:100%', 'height:100%',
             'pointer-events:none',
-            'z-index:2147483647',
+            /* 低于字体设置等交互浮层，避免 iOS WKWebView 点不穿 */
+            'z-index:1000000',
             'background-image:url(' + dataUrl + ')',
             'background-repeat:repeat',
             'background-size:' + w + 'px ' + h + 'px',

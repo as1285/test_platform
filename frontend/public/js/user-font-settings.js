@@ -566,33 +566,59 @@
         });
     }
 
-    function buildPanel(host) {
-        var panel = document.createElement('div');
-        panel.className = 'ufs-panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', '字体设置');
-
-        var title = document.createElement('div');
-        title.className = 'ufs-panel-title';
-        title.textContent = '字体设置';
-        panel.appendChild(title);
-
-        var chips = document.createElement('div');
-        chips.className = 'ufs-target-chips';
-        chips.addEventListener('click', function (e) {
+    function bindChipTargetSwitch(chips) {
+        var lastTs = 0;
+        function onPick(e) {
             var t = e.target;
             if (!t || typeof t.closest !== 'function') return;
             var chip = t.closest('.ufs-target-chip');
             if (!chip || !chips.contains(chip)) return;
             e.preventDefault();
             e.stopPropagation();
+            var now = Date.now();
+            if (now - lastTs < 320) return;
+            lastTs = now;
             setActiveTarget(chip.getAttribute('data-ufs-target-id') || 'all');
-        });
-        panel.appendChild(chips);
+        }
+        /* iOS：scroll 容器内 click 易丢，touchend + click 双保险 */
+        chips.addEventListener('click', onPick);
+        chips.addEventListener(
+            'touchend',
+            function (e) {
+                if (e.touches && e.touches.length) return;
+                onPick(e);
+            },
+            { passive: false }
+        );
+    }
+
+    function buildPanel(host) {
+        var panel = document.createElement('div');
+        panel.className = 'ufs-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', '字体设置');
+
+        var head = document.createElement('div');
+        head.className = 'ufs-panel-head';
+
+        var title = document.createElement('div');
+        title.className = 'ufs-panel-title';
+        title.textContent = '字体设置';
+        head.appendChild(title);
+
+        var chips = document.createElement('div');
+        chips.className = 'ufs-target-chips';
+        bindChipTargetSwitch(chips);
+        head.appendChild(chips);
 
         var editingLabel = document.createElement('div');
         editingLabel.className = 'ufs-editing-label';
-        panel.appendChild(editingLabel);
+        head.appendChild(editingLabel);
+
+        panel.appendChild(head);
+
+        var body = document.createElement('div');
+        body.className = 'ufs-panel-body';
 
         function addPresetGroup(label, key, isColor) {
             var group = document.createElement('div');
@@ -622,7 +648,7 @@
                 opts.appendChild(btn);
             });
             group.appendChild(opts);
-            panel.appendChild(group);
+            body.appendChild(group);
         }
 
         addPresetGroup('字号', 'size', false);
@@ -644,7 +670,7 @@
             delete next.targets[tid];
             commitConfig(next);
         });
-        panel.appendChild(clearTargetBtn);
+        body.appendChild(clearTargetBtn);
 
         var closePanelBtn = document.createElement('button');
         closePanelBtn.type = 'button';
@@ -654,7 +680,7 @@
             e.stopPropagation();
             host.classList.remove('is-open');
         });
-        panel.appendChild(closePanelBtn);
+        body.appendChild(closePanelBtn);
 
         var actions = document.createElement('div');
         actions.className = 'ufs-row-actions';
@@ -670,7 +696,7 @@
             showToast('已隐藏；点击右上角「' + getRestoreLinkLabel() + '」可恢复');
         });
         actions.appendChild(hideNowBtn);
-        panel.appendChild(actions);
+        body.appendChild(actions);
 
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
@@ -682,12 +708,14 @@
             commitConfig(runtimeCfg);
             host.classList.remove('is-open');
         });
-        panel.appendChild(resetBtn);
+        body.appendChild(resetBtn);
 
         var hint = document.createElement('div');
         hint.className = 'ufs-hint';
         hint.textContent = getPanelHint();
-        panel.appendChild(hint);
+        body.appendChild(hint);
+
+        panel.appendChild(body);
 
         panelUi = {
             chips: chips,
@@ -699,7 +727,7 @@
         }
         panel.addEventListener('click', stopPanelEvent);
         panel.addEventListener('touchstart', stopPanelEvent, { passive: true });
-        panel.addEventListener('pointerdown', stopPanelEvent);
+        panel.addEventListener('touchend', stopPanelEvent, { passive: true });
 
         host.appendChild(panel);
         refreshPanelUi(host, runtimeCfg);
@@ -710,9 +738,20 @@
         if (panelHost) panelHost.classList.remove('is-open');
     }
 
-    function bindPanelOutsideClose(host) {
+    function bindPanelOutsideClose(host, backdrop) {
         if (host.getAttribute('data-ufs-outside-bound') === '1') return;
         host.setAttribute('data-ufs-outside-bound', '1');
+
+        function onBackdrop(e) {
+            if (!host.classList.contains('is-open')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            closeFontPanel();
+        }
+        if (backdrop) {
+            backdrop.addEventListener('click', onBackdrop);
+            backdrop.addEventListener('touchend', onBackdrop, { passive: false });
+        }
 
         document.addEventListener('click', function (e) {
             if (!host.classList.contains('is-open')) return;
@@ -751,6 +790,11 @@
         host.className = 'ufs-host';
         panelHost = host;
 
+        var backdrop = document.createElement('div');
+        backdrop.className = 'ufs-backdrop';
+        backdrop.setAttribute('aria-hidden', 'true');
+        host.appendChild(backdrop);
+
         var fab = document.createElement('button');
         fab.type = 'button';
         fab.className = 'ufs-fab';
@@ -766,6 +810,7 @@
         buildPanel(host);
 
         fab.addEventListener('click', function (e) {
+            e.preventDefault();
             e.stopPropagation();
             host.classList.toggle('is-open');
             if (host.classList.contains('is-open')) {
@@ -774,19 +819,12 @@
             }
         });
 
-        host.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-        host.addEventListener('touchstart', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-
         host.appendChild(fab);
         document.body.appendChild(host);
         markScope();
         syncFabVisibility();
         bindHeaderRightRestore();
-        bindPanelOutsideClose(host);
+        bindPanelOutsideClose(host, backdrop);
 
         if (!captureHideButtonsBound) {
             captureHideButtonsBound = true;
