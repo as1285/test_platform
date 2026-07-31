@@ -128,5 +128,6 @@ async function generateReply(opts) {
 module.exports = {
   isConfigured: isConfigured,
   getPublicStatus: getPublicStatus,
+  sanitizeReplyText: sanitizeReplyText,
   generateReply: generateReply
 };

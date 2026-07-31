@@ -138,6 +138,10 @@ https://www.installguide1.top/
 | 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 2 小时、保留 24h / 最多 12 份） |
 | 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
+| 后端单元测试 | `cd backend && npm test`（Vitest；覆盖率：`npm run test:coverage`） |
+| 前端单元测试 | `cd frontend && npm test`（Vitest + jsdom） |
+
+单元测试目录：`backend/tests/unit/**`、`frontend/tests/unit/**`。CI 见 `.github/workflows/unit-tests.yml`（PR / `lkj` 推送触发）。
 
 ### 管理后台能力
 
