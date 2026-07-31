@@ -84,6 +84,35 @@ jobs:
           EOF
           sed -i "s|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1\" />|<preference name=\"AppendUserAgent\" value=\" TaxPlatformCordovaApp/1 TaxPlatformDistributor/${CHANNEL_LOWER}\" />|" config.xml
 
+      # 可选：仓库 Settings → Secrets → APP_ORIGIN（如 https://lkj.qiyun888.top/）
+      # 未设置时沿用 www/index.html 内默认值；本机代理包请用 scripts/build-agent-apk.sh
+      - name: Override APP_ORIGIN from secret
+        env:
+          APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
+        working-directory: cordova-app
+        run: |
+          if [ -z "${APP_ORIGIN:-}" ]; then
+            echo "No APP_ORIGIN secret; keep www/index.html default"
+            exit 0
+          fi
+          ORIGIN="${APP_ORIGIN%/}/"
+          python3 - "$ORIGIN" <<'PY'
+          import pathlib, re, sys
+          origin = sys.argv[1]
+          path = pathlib.Path("www/index.html")
+          text = path.read_text(encoding="utf-8")
+          new, n = re.subn(
+              r"var APP_ORIGIN = '[^']*';",
+              f"var APP_ORIGIN = '{origin}';",
+              text,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit("未能替换 APP_ORIGIN")
+          path.write_text(new, encoding="utf-8")
+          print(f"APP_ORIGIN = {origin}")
+          PY
+
       - name: Generate splash & icon assets
         run: |
           python3 -m pip install --user --quiet Pillow

@@ -3,7 +3,7 @@
 # - 热备：data/db-backups（由 backup-mysql.sh 维护，2 小时一份）
 # - 日备：data/db-backups-daily（每天 1 份，默认留 14 天）
 # - 周备：data/db-backups-weekly（每周 1 份，默认留 8 周）
-# - 异地：配置 COS_* 后上传日备/周备与 uploads
+# - 异地：配置 COS_* 后上传日备/周备与 uploads（同名且同大小则跳过）
 # cron 建议：15 3 * * * （在凌晨备份之后）
 set -euo pipefail
 
@@ -22,12 +22,33 @@ WEEKLY_KEEP="${BACKUP_WEEKLY_KEEP:-8}"
 UPLOADS_KEEP="${BACKUP_UPLOADS_KEEP:-7}"
 LOG_FILE="${OFFSITE_BACKUP_LOG:-/var/log/test_platform-offsite-backup.log}"
 VENV_PY="${ROOT}/.venv-dr/bin/python"
+LOCK_FILE="${OFFSITE_LOCK_FILE:-/var/lock/test_platform-offsite-backup.lock}"
 
 log() {
   echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"
 }
 
-mkdir -p "$DAILY_DIR" "$WEEKLY_DIR" "$UPLOADS_DIR" "$(dirname "$LOG_FILE")"
+mkdir -p "$DAILY_DIR" "$WEEKLY_DIR" "$UPLOADS_DIR" "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
+
+# 单实例锁，避免 cron 重叠
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "已有异地同步在运行，退出"
+  exit 0
+fi
+
+assert_gzip_ok() {
+  local f="$1"
+  if [[ ! -f "$f" ]]; then
+    log "ERROR: 文件不存在: $f"
+    return 1
+  fi
+  if ! gzip -t "$f" 2>/dev/null; then
+    log "ERROR: gzip 损坏: $f"
+    return 1
+  fi
+  return 0
+}
 
 latest_hot() {
   ls -1t "$HOT_DIR"/${DB_NAME}-[0-9]*.sql.gz 2>/dev/null | head -1 || true
@@ -40,15 +61,17 @@ promote_daily() {
     log "ERROR: 无热备可晋升日备"
     return 1
   fi
+  assert_gzip_ok "$src" || return 1
   day="$(date +%Y%m%d)"
   dest="$DAILY_DIR/${DB_NAME}-daily-${day}.sql.gz"
   if [[ -f "$dest" ]]; then
     log "日备已存在: $dest"
   else
-    cp -f "$src" "$dest"
+    local tmp="${dest}.tmp.$$"
+    cp -f "$src" "$tmp"
+    mv -f "$tmp" "$dest"
     log "日备已写入: $dest (from $(basename "$src"))"
   fi
-  # 清理超期日备
   mapfile -t old < <(ls -1t "$DAILY_DIR"/${DB_NAME}-daily-*.sql.gz 2>/dev/null | tail -n +"$((DAILY_KEEP + 1))" || true)
   if ((${#old[@]})); then
     rm -f "${old[@]}"
@@ -57,7 +80,6 @@ promote_daily() {
 }
 
 promote_weekly() {
-  # 周一晋升；或 FORCE_WEEKLY=1
   local dow
   dow="$(date +%u)"
   if [[ "${FORCE_WEEKLY:-0}" != "1" && "$dow" != "1" ]]; then
@@ -69,12 +91,15 @@ promote_weekly() {
     log "ERROR: 无文件可晋升周备"
     return 1
   fi
+  assert_gzip_ok "$src" || return 1
   week="$(date +%Y%W)"
   dest="$WEEKLY_DIR/${DB_NAME}-weekly-${week}.sql.gz"
   if [[ -f "$dest" ]]; then
     log "周备已存在: $dest"
   else
-    cp -f "$src" "$dest"
+    local tmp="${dest}.tmp.$$"
+    cp -f "$src" "$tmp"
+    mv -f "$tmp" "$dest"
     log "周备已写入: $dest"
   fi
   mapfile -t old < <(ls -1t "$WEEKLY_DIR"/${DB_NAME}-weekly-*.sql.gz 2>/dev/null | tail -n +"$((WEEKLY_KEEP + 1))" || true)
@@ -96,7 +121,14 @@ snapshot_uploads() {
   if [[ -f "$dest" ]]; then
     log "uploads 日包已存在: $dest"
   else
-    tar -C "$vol_path" -czf "$dest" .
+    local tmp="${dest}.tmp.$$"
+    tar -C "$vol_path" -czf "$tmp" .
+    if ! gzip -t "$tmp" 2>/dev/null; then
+      log "ERROR: uploads 包 gzip 校验失败"
+      rm -f "$tmp"
+      return 1
+    fi
+    mv -f "$tmp" "$dest"
     log "uploads 日包: $dest ($(du -h "$dest" | awk '{print $1}'))"
   fi
   mapfile -t old < <(ls -1t "$UPLOADS_DIR"/uploads-*.tar.gz 2>/dev/null | tail -n +"$((UPLOADS_KEEP + 1))" || true)
@@ -116,7 +148,7 @@ sync_cos() {
     return 0
   fi
   if [[ ! -x "$VENV_PY" ]]; then
-    log "ERROR: 缺少 $VENV_PY，无法上传 COS"
+    log "ERROR: 缺少 $VENV_PY，无法上传 COS（请先执行 ./scripts/dr-install.sh）"
     return 1
   fi
   local prefix="${COS_PREFIX:-test_platform/dr}"
@@ -134,7 +166,7 @@ token = os.environ.get("COS_TOKEN") or None
 cfg = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Token=token, Scheme="https")
 client = CosS3Client(cfg)
 
-files = []
+uploaded = skipped = 0
 for d, label in [
     (r"${DAILY_DIR}", "daily"),
     (r"${WEEKLY_DIR}", "weekly"),
@@ -147,11 +179,21 @@ for d, label in [
         if not os.path.isfile(path):
             continue
         key = f"{prefix}/{label}/{name}"
+        local_size = os.path.getsize(path)
+        try:
+            meta = client.head_object(Bucket=bucket, Key=key)
+            remote_size = int(meta.get("Content-Length") or 0)
+            if remote_size == local_size and local_size > 0:
+                print(f"[cos] skip (same size) {key}", flush=True)
+                skipped += 1
+                continue
+        except Exception:
+            pass
         print(f"[cos] upload {path} -> cos://{bucket}/{key}", flush=True)
         client.upload_file(Bucket=bucket, LocalFilePath=path, Key=key)
-        files.append(key)
+        uploaded += 1
 
-print(f"[cos] done {len(files)} files", flush=True)
+print(f"[cos] done uploaded={uploaded} skipped={skipped}", flush=True)
 PY
 }
 
@@ -184,7 +226,6 @@ EOF
     fi
     exit 1
   fi
-  # 成功时每周一发一封确认（可选）
   if [[ "${BACKUP_SUCCESS_MAIL:-0}" == "1" ]] && [[ "$(date +%u)" == "1" ]]; then
     if dr_alert_cooldown_ok "offsite-ok" 86400; then
       dr_send_mail "[灾容] 周备份完成 $(hostname)" "$summary" || true

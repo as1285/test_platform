@@ -3,7 +3,7 @@
 # 用法：
 #   ./scripts/backup-mysql.sh                 # 写入 data/db-backups/
 #   ./scripts/backup-mysql.sh --stdout        # 输出到 stdout（供管道使用）
-#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 2 小时备份，最多保留 1 天
+#   ./scripts/backup-mysql.sh --install-cron  # 幂等安装：每 2 小时备份（默认 48h / 36 份）
 #
 # 默认：保留 48 小时，最多 36 份（配合每 2 小时一次 ≈ 3 天热备）。
 # 更长保留见 scripts/sync-backup-offsite.sh（日备 14 天 / 周备 8 周）。
@@ -77,20 +77,28 @@ if [[ "$STDOUT" -eq 1 ]]; then
 fi
 
 mkdir -p "$BACKUP_DIR"
-docker exec "$DB_CONTAINER" mysqldump "${DUMP_ARGS[@]}" | gzip -c > "$OUT"
+TMP_OUT="${OUT}.tmp.$$"
+cleanup_tmp() { rm -f "$TMP_OUT"; }
+trap cleanup_tmp EXIT
+docker exec "$DB_CONTAINER" mysqldump "${DUMP_ARGS[@]}" | gzip -c > "$TMP_OUT"
 
 # 空备份或异常小文件视为失败（避免静默写出几 KB 废文件）
 MIN_BYTES="${BACKUP_MIN_BYTES:-4096}"
-SZ="$(wc -c < "$OUT" | tr -d ' ')"
+SZ="$(wc -c < "$TMP_OUT" | tr -d ' ')"
 if [[ "$SZ" -lt "$MIN_BYTES" ]]; then
-  echo "[backup] ERROR: 备份过小 (${SZ} bytes): $OUT" >&2
-  rm -f "$OUT"
+  echo "[backup] ERROR: 备份过小 (${SZ} bytes): $TMP_OUT" >&2
   exit 1
 fi
+if ! gzip -t "$TMP_OUT" 2>/dev/null; then
+  echo "[backup] ERROR: gzip 校验失败: $TMP_OUT" >&2
+  exit 1
+fi
+mv -f "$TMP_OUT" "$OUT"
+trap - EXIT
 
 echo "[backup] 已写入 $OUT ($(du -h "$OUT" | awk '{print $1}'))"
 
-# 按小时清理（默认 24h；find -mmin 单位为分钟）
+# 按小时清理（默认 48h；find -mmin 单位为分钟）
 RETAIN_MINS=$((RETAIN_HOURS * 60))
 find "$BACKUP_DIR" -name "${DB_NAME}-[0-9]*.sql.gz" -mmin +"$RETAIN_MINS" -delete 2>/dev/null || true
 

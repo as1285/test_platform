@@ -23,8 +23,8 @@ RUN set -eux; \
     pillow \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package.json ./
-RUN npm install --omit=dev --registry=https://registry.npmmirror.com
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --registry=https://registry.npmmirror.com
 
 COPY server.js alipay.js chatAi.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js ./
 COPY src ./src
@@ -39,5 +39,10 @@ RUN python3 /app/scripts/sbdy_extract_cjk_font.py \
 
 ENV SBDY_PYTHON=python3
 
+# 说明：运行时 /data/uploads 为命名卷，默认 root 可写；若改 USER node 需先 chown 卷
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["node", "server.js"]

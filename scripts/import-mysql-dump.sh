@@ -2,6 +2,7 @@
 # 将 MySQL 备份导入本项目的 Docker MySQL（personal_tax）。
 # 用法：
 #   ./scripts/import-mysql-dump.sh /root/mysql_all.sql
+#   ./scripts/import-mysql-dump.sh /path/to/personal_tax-*.sql.gz
 #   ./scripts/import-mysql-dump.sh /root/mysql_all.sql --only personal_tax
 set -euo pipefail
 
@@ -11,7 +12,7 @@ ONLY_DB="${3:-}"
 if [[ "${2:-}" == "--only" && -n "${3:-}" ]]; then
   ONLY_DB="$3"
 elif [[ "${2:-}" == "--only" ]]; then
-  echo "用法: $0 <dump.sql> [--only personal_tax]" >&2
+  echo "用法: $0 <dump.sql|.sql.gz> [--only personal_tax]" >&2
   exit 1
 fi
 
@@ -38,16 +39,38 @@ echo "[import] 目标容器: $DB_CONTAINER / 数据库: $DB_NAME"
 BACKUP_DIR="$ROOT/data/db-backups"
 mkdir -p "$BACKUP_DIR"
 STAMP="$(date +%Y%m%d-%H%M%S)"
-CURRENT_BACKUP="$BACKUP_DIR/personal_tax-before-import-$STAMP.sql"
+CURRENT_BACKUP="$BACKUP_DIR/personal_tax-before-import-$STAMP.sql.gz"
 
 echo "[import] 导出当前库备份 -> $CURRENT_BACKUP"
 docker exec "$DB_CONTAINER" mysqldump -uroot -p"$DB_ROOT_PASSWORD" \
   --single-transaction --routines --triggers --databases "$DB_NAME" \
-  > "$CURRENT_BACKUP" 2>/dev/null || true
+  | gzip -c > "$CURRENT_BACKUP" 2>/dev/null || true
 
 TMP_DUMP="$(mktemp)"
 cleanup() { rm -f "$TMP_DUMP"; }
 trap cleanup EXIT
+
+# 支持 .sql.gz / .gz 与明文 .sql
+decompress_dump() {
+  local src="$1" dest="$2"
+  case "$src" in
+    *.sql.gz|*.gz)
+      if ! gzip -t "$src" 2>/dev/null; then
+        echo "[import] ERROR: gzip 损坏或不是有效压缩包: $src" >&2
+        exit 1
+      fi
+      gzip -dc "$src" > "$dest"
+      ;;
+    *)
+      cat "$src" > "$dest"
+      ;;
+  esac
+}
+
+PLAIN_SRC="$(mktemp)"
+cleanup_plain() { rm -f "$TMP_DUMP" "$PLAIN_SRC"; }
+trap cleanup_plain EXIT
+decompress_dump "$DUMP" "$PLAIN_SRC"
 
 if [[ -n "$ONLY_DB" ]]; then
   echo "[import] 从全库备份中提取库: $ONLY_DB"
@@ -58,13 +81,13 @@ if [[ -n "$ONLY_DB" ]]; then
       keep = 0; next
     }
     keep { print }
-  ' "$DUMP" > "$TMP_DUMP"
+  ' "$PLAIN_SRC" > "$TMP_DUMP"
   if [[ ! -s "$TMP_DUMP" ]]; then
     echo "[import] 未在备份中找到库 $ONLY_DB，将尝试直接导入完整文件" >&2
-    cp "$DUMP" "$TMP_DUMP"
+    cp "$PLAIN_SRC" "$TMP_DUMP"
   fi
 else
-  cp "$DUMP" "$TMP_DUMP"
+  cp "$PLAIN_SRC" "$TMP_DUMP"
 fi
 
 echo "[import] 重建数据库 $DB_NAME ..."

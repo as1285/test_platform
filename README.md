@@ -97,7 +97,7 @@ https://www.installguide1.top/
 | **前端页面** | **60** 个 HTML 页面（`frontend/*.html`） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
-| **GitHub Actions** | 2 个工作流：Android APK、iOS 打包 |
+| **GitHub Actions** | 3 个工作流：单元测试、Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
 ### 代码规模（按语言，2026-07-28）
@@ -135,8 +135,8 @@ https://www.installguide1.top/
 |------|------|
 | 一键部署 | `./scripts/deploy.sh`（需 Docker，访问 `docker.sock`） |
 | 仅部署前端/后端 | `DEPLOY_SERVICES="frontend backend" ./scripts/deploy.sh` |
-| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 2 小时、保留 24h / 最多 12 份） |
-| 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql` |
+| 本地备份数据库 | `./scripts/backup-mysql.sh` → `data/db-backups/`（整库 `personal_tax`，每 2 小时、保留 48h / 最多 36 份） |
+| 导入 SQL 备份 | `./scripts/import-mysql-dump.sh /path/to/dump.sql[.gz]` |
 | 转化引导脚本 | `frontend/public/js/conversion-guide.js`（由 `auth.js` 注入） |
 | 后端单元测试 | `cd backend && npm test`（Vitest；覆盖率：`npm run test:coverage`） |
 | 前端单元测试 | `cd frontend && npm test`（Vitest + jsdom） |
@@ -178,9 +178,10 @@ https://www.installguide1.top/
 
 ### 数据库备份
 
-- **本机**：cron 每 2 小时执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron`；最多保留 1 天 / 12 份）
+- **本机热备**：cron 每 2 小时执行 `./scripts/backup-mysql.sh` → `data/db-backups/personal_tax-*.sql.gz`（安装：`./scripts/backup-mysql.sh --install-cron` 或 `./scripts/dr-install.sh`）
 - **内容**：整库 `personal_tax`（用户/个税记录/激活码/埋点/管理端/支付与客服等表；含 routines/triggers），不含系统库与前端静态资源
-- **保留**：**24 小时**、最多约 50 份
+- **热备保留**：**48 小时**、最多 **36** 份（可用 `RETAIN_HOURS` / `MAX_BACKUPS` 覆盖）
+- **日备 / 周备 / uploads**：`./scripts/sync-backup-offsite.sh`（日备 14 天、周备 8 周；配置 `COS_*` 后异地上传）
 - GitHub Actions 远端每日备份已取消
 
 > 完整生产库 **不建议** commit 进 Git；本地备份目录 `data/db-backups/` 已加入 `.gitignore`。
@@ -255,7 +256,8 @@ cp .env.example .env
 - 前端：`scripts/render-site-config.sh` 生成 `site-config.js`（分享链接 / 受信 Host）
 - 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
 - Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
-- Cordova 壳内 `APP_ORIGIN` 仍需按渠道打包时修改（与 H5 多域名无关）
+- Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`；本机代理包用 `./scripts/build-agent-apk.sh <渠道>` 从 `.env` 的 `PUBLIC_SITE_URL`/`APP_URL` 写入。GitHub Actions（`cordova-android.yml`）打 Debug 包时用仓库内默认值，可用 Secret `APP_ORIGIN` 覆盖（见工作流步骤）
+- 前端另有未接入生产的 Vite/Vue 源码树（`frontend/src`），线上仍为静态 HTML 多页；勿与 `public/` 混淆
 
 ### 在线客服 AI 自动回复
 

@@ -10,7 +10,6 @@ export default defineConfig({
       include: [
         'public/js/tax-year.js',
         'public/js/admin-analytics-period.js',
-        'public/js/admin-panel-utils.js',
         'public/js/bank_card_bins.js',
         'public/js/shenbao_jilu_store.js'
       ],
