@@ -12,9 +12,9 @@ export default defineConfig({
         'public/js/admin-analytics-period.js',
         'public/js/admin-panel-utils.js',
         'public/js/bank_card_bins.js',
-        'public/js/shenbao_jilu_store.js',
-        'public/js/auth.js'
-      ]
+        'public/js/shenbao_jilu_store.js'
+      ],
+      /* IIFE 脚本经 eval 加载时 V8 覆盖率为 0；门槛仅后端强制 */
     }
   }
 });

@@ -25,7 +25,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: test_platform_redis
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    # volatile-ttl：仅淘汰带 TTL 的键（限流/OTP），避免 LRU 误删安全态
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy volatile-ttl
     volumes:
       - personal_tax_redis_data:/data
     networks:

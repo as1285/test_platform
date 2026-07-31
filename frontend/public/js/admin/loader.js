@@ -107,6 +107,22 @@
     return loadScript('/js/najilu.js?v=20260721-stamp-single');
   }
 
+  /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */
+  function ensureTaxBatchScripts() {
+    var scripts = [
+      '/js/consult-core.js?v=20260731-p1-lazy',
+      '/js/consult-batch-tax.js?v=20260731-p1-lazy',
+      '/js/admin-tax-batch-bridge.js?v=20260731-p1-lazy'
+    ];
+    var chain = Promise.resolve();
+    scripts.forEach(function (src) {
+      chain = chain.then(function () {
+        return loadScript(src);
+      });
+    });
+    return chain;
+  }
+
   function ensureModule(name) {
     var src = MODULE_SRC[name];
     if (!src) return Promise.resolve();
@@ -126,6 +142,9 @@
     }
     if (mod === 'users' || mod === 'user-data') {
       chain = chain.then(ensureNajilu);
+    }
+    if (pageKey === 'tax-records-edit') {
+      chain = chain.then(ensureTaxBatchScripts);
     }
     if (mod) {
       chain = chain.then(function () {
@@ -149,6 +168,7 @@
     ensureChart: ensureChart,
     ensureQrcode: ensureQrcode,
     ensureNajilu: ensureNajilu,
+    ensureTaxBatchScripts: ensureTaxBatchScripts,
     ensureModule: ensureModule,
     ensureForPage: ensureForPage,
     setPageModuleMap: setPageModuleMap,

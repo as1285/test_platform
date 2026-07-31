@@ -27,7 +27,12 @@ module.exports = defineConfig({
         'chatAi.js',
         'src/admin/sbdyDemo.js',
         'serverMonitor.js'
-      ]
+      ],
+      thresholds: {
+        lines: 50,
+        functions: 40,
+        statements: 50
+      }
     }
   }
 });

@@ -26,4 +26,13 @@ describe('rateLimit memory', () => {
     await rl.kvDel(k);
     expect(await rl.kvGet(k)).toBe(null);
   });
+
+  it('kvSetNx only sets once', async () => {
+    const rl = require('../../src/shared/rateLimit');
+    const k = 'kv-nx-' + Date.now();
+    expect(await rl.kvSetNx(k, '1', 30000)).toBe(true);
+    expect(await rl.kvSetNx(k, '2', 30000)).toBe(false);
+    expect(await rl.kvGet(k)).toBe('1');
+  });
 });
+

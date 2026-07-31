@@ -27,6 +27,7 @@ const settingsPolicy = require('../shared/settingsPolicy');
 const {
   consumeRateLimit,
   kvSet,
+  kvSetNx,
   kvGet,
   kvDel,
   rateLimitBackendLabel
@@ -9319,8 +9320,10 @@ function inferPagePathFromRequest(req) {
 
 var PAGE_EVENT_DEBOUNCE_MS = parseInt(process.env.PAGE_EVENT_DEBOUNCE_MS || '3000', 10) || 3000;
 var _pageEventDebounce = new Map();
-var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '60000', 10) || 60000;
+var DEVICE_SYNC_THROTTLE_MS = parseInt(process.env.DEVICE_SYNC_THROTTLE_MS || '300000', 10) || 300000;
 var _deviceSyncThrottle = new Map();
+/** 同用户同日 DAU 去重（进程内）；跨实例再靠 Redis SET NX */
+var _dauTouchThrottle = new Map();
 
 /** 记录：user page event */
 function recordUserPageEvent(req, routeKey) {
@@ -9760,19 +9763,37 @@ function installGuidePerfLoadLabel(perf) {
   return parts.length ? parts.join(' · ') : '—';
 }
 
-/** touch user daily activity */
+/** touch user daily activity（每用户每日最多写一次） */
 function touchUserDailyActivity(username) {
   if (!pool || username == null) {
     return;
   }
-  var u = String(username).trim();
+  var u = String(username).trim().substring(0, 255);
   if (!u) {
     return;
   }
-  pool
-    .execute('INSERT IGNORE INTO user_daily_activity (activity_date, username) VALUES (CURDATE(), ?)', [
-      u.substring(0, 255)
-    ])
+  var day = chinaDateKeyNow();
+  var memKey = u + '|' + day;
+  if (_dauTouchThrottle.has(memKey)) {
+    return;
+  }
+  _dauTouchThrottle.set(memKey, 1);
+  if (_dauTouchThrottle.size > 20000) {
+    _dauTouchThrottle.clear();
+    _dauTouchThrottle.set(memKey, 1);
+  }
+  /* 跨实例：已写过则跳过 DB；失败则仍 INSERT IGNORE */
+  var ttlMs = 36 * 3600 * 1000;
+  Promise.resolve(kvSetNx('dau:' + day + ':' + u, '1', ttlMs))
+    .then(function (isFirst) {
+      if (isFirst === false) {
+        return null;
+      }
+      return pool.execute(
+        'INSERT IGNORE INTO user_daily_activity (activity_date, username) VALUES (CURDATE(), ?)',
+        [u]
+      );
+    })
     .catch(function (e) {
       console.error('touchUserDailyActivity', e);
     });
@@ -12535,23 +12556,40 @@ async function handleAdminAccountsList(req, res) {
       const [rows] = await conn.execute(
         'SELECT id, username, full_name, is_super, banned, created_at FROM admin_accounts ORDER BY id ASC'
       );
+      var menuByAdmin = Object.create(null);
+      if (rows.length) {
+        var ids = rows.map(function (r) {
+          return Number(r.id) || 0;
+        }).filter(Boolean);
+        if (ids.length) {
+          var placeholders = ids.map(function () {
+            return '?';
+          }).join(',');
+          const [menuRows] = await conn.execute(
+            'SELECT admin_id, menu_key FROM admin_account_menus WHERE admin_id IN (' +
+              placeholders +
+              ') ORDER BY admin_id ASC, menu_key ASC',
+            ids
+          );
+          for (var mi = 0; mi < menuRows.length; mi++) {
+            var aid = Number(menuRows[mi].admin_id) || 0;
+            if (!menuByAdmin[aid]) menuByAdmin[aid] = [];
+            menuByAdmin[aid].push(menuRows[mi].menu_key);
+          }
+        }
+      }
       var out = [];
       for (var i = 0; i < rows.length; i++) {
-        const [menuRows] = await conn.execute(
-          'SELECT menu_key FROM admin_account_menus WHERE admin_id = ? ORDER BY menu_key ASC',
-          [rows[i].id]
-        );
+        var id = Number(rows[i].id) || 0;
         out.push({
-          id: Number(rows[i].id) || 0,
+          id: id,
           username: String(rows[i].username),
           full_name: rows[i].full_name != null ? String(rows[i].full_name) : '',
           is_super: rows[i].is_super === 1 || rows[i].is_super === true,
           banned: rows[i].banned === 1 || rows[i].banned === true,
           created_at: rows[i].created_at ? rows[i].created_at.toISOString() : '',
           menus: normalizeAdminMenuList(
-            menuRows.map(function (m) {
-              return m.menu_key;
-            }),
+            menuByAdmin[id] || [],
             rows[i].is_super === 1 || rows[i].is_super === true
           )
         });
@@ -12616,10 +12654,17 @@ async function handleAdminAccountsCreate(req, res) {
         [username, fullName, saltHex, hashHex]
       );
       var adminId = ins.insertId ? Number(ins.insertId) : 0;
-      for (var i = 0; i < menus.length; i++) {
+      if (menus.length && adminId) {
+        var values = menus.map(function () {
+          return '(?, ?)';
+        }).join(',');
+        var params = [];
+        for (var i = 0; i < menus.length; i++) {
+          params.push(adminId, menus[i]);
+        }
         await conn.execute(
-          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-          [adminId, menus[i]]
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES ' + values,
+          params
         );
       }
       return res.json({ code: 200, data: { username: username } });
@@ -12666,10 +12711,17 @@ async function handleAdminAccountsUpdate(req, res) {
         return res.status(400).json({ code: 400, msg: '不能修改 admin 超级账号权限' });
       }
       await conn.execute('DELETE FROM admin_account_menus WHERE admin_id = ?', [admin.id]);
-      for (var i = 0; i < menus.length; i++) {
+      if (menus.length) {
+        var valuesUp = menus.map(function () {
+          return '(?, ?)';
+        }).join(',');
+        var paramsUp = [];
+        for (var i = 0; i < menus.length; i++) {
+          paramsUp.push(admin.id, menus[i]);
+        }
         await conn.execute(
-          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES (?, ?)',
-          [admin.id, menus[i]]
+          'INSERT INTO admin_account_menus (admin_id, menu_key) VALUES ' + valuesUp,
+          paramsUp
         );
       }
       await conn.execute('UPDATE admin_accounts SET full_name = ? WHERE id = ?', [fullName, admin.id]);
