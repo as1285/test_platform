@@ -36,7 +36,8 @@
 
         body.page-shouye {
             --sy-rpx: calc(100vw / 750);
-            --shouye-top-bar-rgb: 44, 128, 244;
+            /* 与 ahead.png 顶栏蓝一致，避免安全区垫色色差 */
+            --shouye-top-bar-rgb: 71, 127, 236;
             background: #f4f6f9;
         }
 
@@ -403,7 +404,7 @@
 <body class="page-shouye tax-app-shell has-bottom-nav">
     <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
     <div class="search-bar-wrapper" id="syAheadWrap">
-        <img class="sy-apk-ahead" src="/img/home/ahead-flat.png?v=20260802-top-flat" alt="搜索" width="1284" height="167">
+        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260802-top-fix" alt="搜索" width="1284" height="167">
         <a href="help_center.html" class="sy-ahead-hit sy-hit-search" aria-label="搜索功能与服务"></a>
         <button type="button" class="sy-ahead-hit sy-hit-scan" id="syScanBtn" aria-label="扫一扫"></button>
     </div>

@@ -143,12 +143,12 @@
       root.style.setProperty('--app-accent-mid', '#008afd');
       root.style.setProperty('--app-accent-soft', '#5aa3ff');
       /* 首页顶部与下滑固定搜索条：与蓝主题一致 */
-      root.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+      root.style.setProperty('--shouye-top-bar-rgb', '71, 127, 236');
     } else {
       root.style.setProperty('--app-accent', '#1e6fff');
       root.style.setProperty('--app-accent-mid', '#008afd');
       root.style.setProperty('--app-accent-soft', '#5aa3ff');
-      root.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+      root.style.setProperty('--shouye-top-bar-rgb', '71, 127, 236');
     }
     window.__MINE_UI_CONFIG = {
       theme: theme,
@@ -245,7 +245,7 @@
   document.documentElement.style.setProperty('--app-accent', '#1e6fff');
   document.documentElement.style.setProperty('--app-accent-mid', '#008afd');
   document.documentElement.style.setProperty('--app-accent-soft', '#5aa3ff');
-  document.documentElement.style.setProperty('--shouye-top-bar-rgb', '44, 128, 244');
+  document.documentElement.style.setProperty('--shouye-top-bar-rgb', '71, 127, 236');
   // 有缓存时立刻放行加载转圈，后台静默刷新主题，避免每个 TAB 都卡在 mine-ui 请求上
   var hadThemeCache = applyCached();
   if (hadThemeCache) {
