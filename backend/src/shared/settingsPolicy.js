@@ -18,10 +18,6 @@ const OPS_SETTING_KEYS = [
   'pricing_ab_json',
   'activation_nudge_json',
   'activation_batch_channels_json',
-  'chat_auto_reply_welcome',
-  'chat_auto_reply_reply',
-  'chat_ai_enabled',
-  'chat_ai_prompt',
   'migration_activation_codes_no_expiry_v1',
 ];
 
@@ -35,7 +31,6 @@ const ENV_ONLY_SECRET_KEYS = [
   'ALIPAY_PRIVATE_KEY',
   'ALIPAY_PUBLIC_KEY',
   'ALIPAY_APP_ID',
-  'CHAT_AI_API_KEY',
   'REGISTER_APP_SIGN_SECRET'
 ];
 
@@ -74,24 +69,10 @@ function isOpsSettingKey(key) {
   return OPS_SETTING_KEYS.indexOf(k) >= 0;
 }
 
-/**
- * 检测文本是否像误粘贴的密钥（用于 AI prompt 等软告警）
- * @param {string} text
- */
-function looksLikeSecretBlob(text) {
-  var s = String(text || '');
-  if (!s) return false;
-  if (/-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/.test(s)) return true;
-  if (/\bsk-[A-Za-z0-9]{20,}\b/.test(s)) return true;
-  if (/Bearer\s+[A-Za-z0-9\-._~+/]+=*/i.test(s) && s.length > 40) return true;
-  return false;
-}
-
 module.exports = {
   OPS_SETTING_KEYS,
   ENV_ONLY_SECRET_KEYS,
   classifySettingKey,
   isForbiddenSettingKey,
-  isOpsSettingKey,
-  looksLikeSecretBlob
+  isOpsSettingKey
 };

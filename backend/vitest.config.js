@@ -24,7 +24,6 @@ module.exports = defineConfig({
         'register-guard.js',
         'bank_card_bins.js',
         'dbLogRetention.js',
-        'chatAi.js',
         'src/admin/sbdyDemo.js',
         'serverMonitor.js'
       ],

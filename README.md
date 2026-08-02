@@ -174,7 +174,6 @@ https://www.installguide1.top/
 - **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
 - **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
 - **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
-- **管理端在线客服 AI**：OpenAI 兼容协议；人工介入可暂停 / 恢复（见下节；C 端客服入口已下线）
 
 ### 数据库备份
 
@@ -257,21 +256,7 @@ cp .env.example .env
 - 后端：读取 `PUBLIC_SITE_URL`、`SITE_TRUSTED_HOSTS`
 - Nginx：`server_name _` 接受任意 Host；直连 HTTPS 可参考 `docker-compose.override.example.yml`
 - Cordova 壳：`www/index.html` 默认 `APP_ORIGIN=https://lkj.qiyun888.top/`；本机代理包用 `./scripts/build-agent-apk.sh <渠道>` 从 `.env` 的 `PUBLIC_SITE_URL`/`APP_URL` 写入。GitHub Actions（`cordova-android.yml`）打 Debug 包时用仓库内默认值，可用 Secret `APP_ORIGIN` 覆盖（见工作流步骤）
-- 前端另有未接入生产的 Vite/Vue 源码树（`frontend/src`），线上仍为静态 HTML 多页；勿与 `public/` 混淆
-
-### 在线客服 AI 自动回复
-
-默认关闭。在管理控制台「在线客服」中可开启 AI，并编辑系统提示词。API 密钥**仅**通过服务器 `.env` 配置（OpenAI 兼容协议，默认 DeepSeek）：
-
-```dotenv
-CHAT_AI_API_KEY=你的密钥
-CHAT_AI_BASE_URL=https://api.deepseek.com
-CHAT_AI_MODEL=deepseek-chat
-```
-
-- 开场欢迎语仍为固定话术；用户发消息后优先走 AI，失败时回退到固定自动回复。
-- 人工客服发送消息后该会话会暂停 AI（可点「恢复 AI」重新启用）。
-- 不要将 `CHAT_AI_API_KEY` 写入后台设置或提交到 Git。
+- 前端生产构建直接组装静态 HTML 多页与 `public/` 资源，不依赖已下线的 Vue 演示脚手架。
 
 ### 支付宝自动开通
 

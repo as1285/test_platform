@@ -7,6 +7,7 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage/
 
 # Frontend
 node_modules/
@@ -21,6 +22,15 @@ site/
 # Logs
 logs/
 *.log
+/log/
+
+# Local runtime uploads (production uses a Docker volume)
+/data/uploads/
+/backend/uploads/
+
+# Generated/debug artifacts
+/frontend/static/
+/tmp_*
 
 # Docker
 docker-compose.override.yml

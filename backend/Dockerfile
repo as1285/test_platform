@@ -27,7 +27,7 @@ RUN set -eux; \
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --registry=https://registry.npmmirror.com
 
-COPY server.js alipay.js chatAi.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js ./
+COPY server.js alipay.js register-guard.js mail.js serverMonitor.js dbLogRetention.js bank_card_bins.js ./
 COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts
