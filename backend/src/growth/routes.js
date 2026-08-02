@@ -3,7 +3,11 @@
  */
 function registerGrowthRoutes(app, deps) {
   var h = deps.handlers;
+  var mw = deps.middleware;
 
+  app.get('/api/growth/bilibili-share/status', mw.requireAuth, h.handleBilibiliShareStatus);
+  app.post('/api/growth/bilibili-share/start', mw.requireAuth, h.handleBilibiliShareStart);
+  app.post('/api/growth/bilibili-share/complete', mw.requireAuth, h.handleBilibiliShareComplete);
   app.get('/api/public/mine-ui', h.handlePublicMineUi);
   app.get('/api/public/install-packages', h.handlePublicInstallPackages);
   app.get('/api/public/asset', h.handlePublicAssetGet);

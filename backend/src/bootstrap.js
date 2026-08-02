@@ -3,6 +3,10 @@
  */
 const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy/monolith');
 const sbdyDemo = require('./admin/sbdyDemo');
+const lizhiCert = require('./admin/lizhiCert');
+const lizhiCertUser = require('./user/lizhiCertUser');
+const ylbxPs = require('./admin/ylbxPs');
+const najiluQr = require('./admin/najiluQr');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -15,7 +19,15 @@ const { registerPlatformRoutes } = require('./platform/routes');
 function buildApp() {
   const app = createApp();
   const deps = {
-    handlers: Object.assign({}, getHandlers(), sbdyDemo.getHandlers()),
+    handlers: Object.assign(
+      {},
+      getHandlers(),
+      sbdyDemo.getHandlers(),
+      lizhiCert.getHandlers(),
+      lizhiCertUser.getHandlers(),
+      ylbxPs.getHandlers(),
+      najiluQr.getHandlers()
+    ),
     middleware: getMiddleware()
   };
 

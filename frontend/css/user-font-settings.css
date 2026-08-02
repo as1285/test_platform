@@ -320,36 +320,33 @@ html.ufs-fab-hidden body.page-xiangqing .header-right {
     opacity: 1;
 }
 
-/* 汇总区自定义字号：问号圆随 label 字号，「?」约为圆的 0.7 */
-html.user-font-custom [data-ufs-target] .top-fixed .summary .summary-label .icon {
-    width: 1em !important;
-    height: 1em !important;
-    min-width: 1em !important;
-    min-height: 1em !important;
-    font-size: 0.6875em !important;
+/*
+ * 自定义字体开启时：顶部说明问号保持固定几何，不随汇总区/全局字号缩放。
+ * （旧版用 em 相对 label，改字号后圆标与「?」会变形）
+ */
+html.user-font-custom [data-ufs-target] .top-fixed .summary .summary-label .icon,
+html.user-font-custom [data-ufs-target] .top-fixed .summary .summary-help-with-colon .icon {
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    min-height: 13px !important;
+    font-size: 9px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    color: #0e60f1 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+    font-synthesis: none !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
 }
 
-html.user-font-custom.platform-ios [data-ufs-target] .top-fixed .summary .summary-label .icon {
-    font-size: inherit !important;
-    width: 1em !important;
-    height: 1em !important;
-    min-width: 1em !important;
-    min-height: 1em !important;
-}
-
-html.user-font-custom.app-android-huawei-cls-al00 [data-ufs-target] .top-fixed .summary .summary-label .icon {
-    font-size: 0.72em !important;
-    width: 1.05em !important;
-    height: 1.05em !important;
-    min-width: 1.05em !important;
-    min-height: 1.05em !important;
-}
-
-html.user-font-custom.app-android-redmi-k70 [data-ufs-target] .top-fixed .summary .summary-label .icon,
-html.user-font-custom.app-android-mi-family [data-ufs-target] .top-fixed .summary .summary-label .icon {
-    width: 1.15em !important;
-    height: 1.15em !important;
-    min-width: 1.15em !important;
-    min-height: 1.15em !important;
-    font-size: 0.78em !important;
+html.user-font-custom.platform-android [data-ufs-target] .top-fixed .summary .summary-label .icon,
+html.user-font-custom.platform-android [data-ufs-target] .top-fixed .summary .summary-help-with-colon .icon {
+    width: 15px !important;
+    height: 15px !important;
+    min-width: 15px !important;
+    min-height: 15px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
 }

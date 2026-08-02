@@ -102,6 +102,8 @@ CREATE TABLE IF NOT EXISTS tax_issue_applications (
     scope VARCHAR(64) NULL,
     status VARCHAR(64) NULL,
     query_code VARCHAR(32) NULL,
+    qr_image_url VARCHAR(512) NULL COMMENT '自定义二维码图片',
+    qr_block_image_url VARCHAR(512) NULL COMMENT '二维码+验证码整块图',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="/js/auth.js?v=20260802-lizhi"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>离职证明生成</title>
+    <style>
+        :root {
+            --ink: #0f172a;
+            --ink-soft: #475569;
+            --muted: #94a3b8;
+            --line: #e2e8f0;
+            --bg: #f4f7fb;
+            --accent: #1d6fd8;
+            --accent-deep: #1860be;
+            --accent-soft: #eff6ff;
+            --warn: #b45309;
+            --warn-soft: #fff7e8;
+            --safe-t: env(safe-area-inset-top, 0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --wrap: 440px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            background: var(--bg);
+            padding-bottom: calc(28px + var(--safe-b));
+        }
+        .header {
+            max-width: var(--wrap);
+            margin: 0 auto;
+            padding: calc(12px + var(--safe-t)) 20px 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .back-btn {
+            color: var(--accent);
+            font-size: 15px;
+            text-decoration: none;
+            padding: 4px 2px;
+        }
+        .header-title { font-size: 16px; font-weight: 600; }
+        .page { max-width: var(--wrap); margin: 0 auto; padding: 8px 20px 0; }
+        .hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f4c9a 0%, #1d6fd8 55%, #5aa3f0 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.18);
+        }
+        .hero h1 { font-size: 20px; margin: 0 0 6px; }
+        .hero p { font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.88); margin: 0; }
+        .card {
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+        }
+        .card[hidden] { display: none !important; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card-hint { font-size: 13px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+        .warn-box {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--warn-soft);
+            color: var(--warn);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .field-label {
+            display: block;
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin: 0 0 6px;
+        }
+        .field {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            background: #fff;
+        }
+        .field:focus {
+            outline: none;
+            border-color: #93c0f0;
+            box-shadow: 0 0 0 3px rgba(29, 111, 216, 0.12);
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            background: var(--accent);
+        }
+        .btn + .btn { margin-top: 8px; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-secondary {
+            background: #fff;
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--accent-deep);
+            text-align: center;
+        }
+        .status.is-err { color: #b91c1c; }
+        .qr-wrap {
+            margin-top: 12px;
+            text-align: center;
+            min-height: 40px;
+        }
+        .qr-wrap img {
+            width: 180px;
+            height: 180px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #166534;
+            background: #ecfdf3;
+            border-radius: 6px;
+            padding: 3px 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+</head>
+<body>
+    <div class="header">
+        <a class="back-btn" href="purchase.html" id="lizhiBack">‹ 返回</a>
+        <div class="header-title">离职证明</div>
+    </div>
+    <div class="page">
+        <div class="hero">
+            <h1>离职证明生成</h1>
+            <p>支付宝付 ¥50 开通后，本账号可无限次生成。含电子章；仅供个人留存演示。</p>
+        </div>
+
+        <div class="warn-box" id="lizhiNote">
+            电子生成件，仅供个人留存，非用人单位出具。请勿用于入职、签证等正式用途。
+        </div>
+
+        <div class="card" id="cardPay" hidden>
+            <div class="card-title">开通权益 · ¥50</div>
+            <p class="card-hint">付款成功后自动解锁，无需激活码。已开通用户可直接生成。</p>
+            <button type="button" class="btn" id="btnLizhiPay">支付宝付款开通</button>
+            <div class="qr-wrap" id="lizhiQrWrap" hidden></div>
+            <p class="status" id="lizhiPayStatus" hidden></p>
+        </div>
+
+        <div class="card" id="cardForm">
+            <span class="badge" id="lizhiUnlockBadge">测试中 · 暂免支付</span>
+            <div class="card-title">填写并生成</div>
+            <p class="card-hint">已按账号资料预填，可修改后下载 PDF。</p>
+            <label class="field-label" for="lzName">姓名</label>
+            <input class="field" id="lzName" maxlength="64" autocomplete="name">
+            <label class="field-label" for="lzId">身份证号</label>
+            <input class="field" id="lzId" maxlength="32" autocomplete="off">
+            <label class="field-label" for="lzCompany">公司全称</label>
+            <input class="field" id="lzCompany" maxlength="128" autocomplete="organization">
+            <label class="field-label" for="lzHire">入职日期</label>
+            <input class="field" id="lzHire" maxlength="32" placeholder="2025/12/15">
+            <label class="field-label" for="lzLeave">离职日期</label>
+            <input class="field" id="lzLeave" maxlength="32" placeholder="2026/7/10">
+            <label class="field-label" for="lzIssue">开具日期</label>
+            <input class="field" id="lzIssue" maxlength="48" placeholder="2026 年 7 月 13 日">
+            <button type="button" class="btn" id="btnLizhiGenerate">生成并下载 PDF</button>
+            <button type="button" class="btn btn-secondary" id="btnLizhiPrefill">重新预填</button>
+            <p class="status" id="lizhiGenStatus" hidden></p>
+        </div>
+    </div>
+
+    <script>
+(function () {
+    function token() {
+        try { return String(localStorage.getItem('token') || '').trim(); } catch (e) { return ''; }
+    }
+    function authFetch(url, opts) {
+        opts = opts || {};
+        var headers = Object.assign({ Accept: 'application/json' }, opts.headers || {});
+        var t = token();
+        if (t) headers.Authorization = 'Bearer ' + t;
+        return fetch(url, Object.assign({}, opts, { headers: headers }));
+    }
+    function setStatus(el, text, isErr) {
+        if (!el) return;
+        if (!text) {
+            el.hidden = true;
+            el.textContent = '';
+            return;
+        }
+        el.hidden = false;
+        el.textContent = text;
+        el.classList.toggle('is-err', !!isErr);
+    }
+    function downloadBase64Pdf(b64, filename) {
+        var bin = atob(b64);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        var blob = new Blob([arr], { type: 'application/pdf' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename || '离职证明.pdf';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            URL.revokeObjectURL(a.href);
+            a.remove();
+        }, 1500);
+    }
+
+    var cardPay = document.getElementById('cardPay');
+    var cardForm = document.getElementById('cardForm');
+    var payStatus = document.getElementById('lizhiPayStatus');
+    var genStatus = document.getElementById('lizhiGenStatus');
+    var qrWrap = document.getElementById('lizhiQrWrap');
+    var pollTimer = null;
+    var pendingOtn = '';
+    var feeAmount = '50.00';
+
+    try {
+        var ref = document.referrer || '';
+        if (/mine\.html/i.test(ref)) {
+            document.getElementById('lizhiBack').setAttribute('href', 'mine.html');
+        }
+    } catch (e0) {}
+
+    if (!token()) {
+        window.location.replace(
+            typeof window.buildLoginPageUrl === 'function'
+                ? window.buildLoginPageUrl('lizhi_cert.html')
+                : 'login.html?redirect=' + encodeURIComponent('lizhi_cert.html')
+        );
+        return;
+    }
+
+    function applyUnlocked(unlocked, payDisabled) {
+        if (unlocked || payDisabled) {
+            cardPay.hidden = true;
+            cardForm.hidden = false;
+            var badge = document.getElementById('lizhiUnlockBadge');
+            if (badge) {
+                badge.textContent = payDisabled ? '测试中 · 暂免支付' : '已开通 · 可无限次生成';
+            }
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        } else {
+            cardPay.hidden = false;
+            cardForm.hidden = true;
+        }
+    }
+
+    function fillForm(d) {
+        if (!d) return;
+        if (d.name != null) document.getElementById('lzName').value = d.name;
+        if (d.id_number != null) document.getElementById('lzId').value = d.id_number;
+        if (d.company_name != null) document.getElementById('lzCompany').value = d.company_name;
+        if (d.hire_date != null) document.getElementById('lzHire').value = d.hire_date;
+        if (d.leave_date != null) document.getElementById('lzLeave').value = d.leave_date;
+        if (d.issue_date != null) document.getElementById('lzIssue').value = d.issue_date;
+        if (d.note) document.getElementById('lizhiNote').textContent = d.note;
+    }
+
+    function defaultIssueDate() {
+        var n = new Date();
+        return n.getFullYear() + ' 年 ' + (n.getMonth() + 1) + ' 月 ' + n.getDate() + ' 日';
+    }
+
+    function loadStatus() {
+        return authFetch('/api/lizhi-cert/status')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) throw new Error((j && j.msg) || '读取失败');
+                feeAmount = j.data.fee_amount || feeAmount;
+                if (j.data.note) document.getElementById('lizhiNote').textContent = j.data.note;
+                applyUnlocked(!!j.data.unlocked, !!j.data.pay_disabled);
+                document.getElementById('btnLizhiPay').textContent =
+                    '支付宝付款开通 ¥' + feeAmount;
+                if (j.data.unlocked || j.data.pay_disabled) return loadPrefill();
+            })
+            .catch(function (e) {
+                setStatus(payStatus, (e && e.message) || '读取权益失败', true);
+            });
+    }
+
+    function loadPrefill() {
+        return authFetch('/api/lizhi-cert/prefill')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j && j.code === 200 && j.data) {
+                    fillForm(j.data);
+                    if (!document.getElementById('lzIssue').value) {
+                        document.getElementById('lzIssue').value = defaultIssueDate();
+                    }
+                }
+            })
+            .catch(function () {});
+    }
+
+    function startPay() {
+        setStatus(payStatus, '正在创建订单…');
+        qrWrap.hidden = false;
+        qrWrap.innerHTML = '<p style="color:#888;font-size:13px;">生成付款码…</p>';
+        authFetch('/api/payments/alipay/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product: 'lizhi_cert', sku_id: 'sku_lizhi_cert_50' })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j || j.code !== 200 || !j.data) {
+                    setStatus(payStatus, (j && j.msg) || '创建订单失败', true);
+                    qrWrap.innerHTML = '';
+                    return;
+                }
+                var qr = j.data.qr_code || j.data.payment_url || '';
+                pendingOtn = j.data.order && j.data.order.out_trade_no ? String(j.data.order.out_trade_no) : '';
+                if (typeof QRCode !== 'undefined' && QRCode.toDataURL && qr) {
+                    QRCode.toDataURL(qr, { width: 180, margin: 2, errorCorrectionLevel: 'M' }, function (err, dataUrl) {
+                        if (err || !dataUrl) {
+                            qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请在支付宝打开：<br>' + qr + '</p>';
+                            return;
+                        }
+                        qrWrap.innerHTML = '<img src="' + dataUrl + '" alt="付款码">';
+                    });
+                } else if (qr) {
+                    qrWrap.innerHTML = '<p style="font-size:12px;word-break:break-all;">请复制到支付宝打开：<br>' + qr + '</p>';
+                }
+                setStatus(payStatus, '请使用支付宝扫码支付 ¥' + feeAmount);
+                if (pollTimer) clearInterval(pollTimer);
+                pollTimer = setInterval(pollPay, 2500);
+            })
+            .catch(function () {
+                setStatus(payStatus, '网络错误', true);
+            });
+    }
+
+    function pollPay() {
+        authFetch('/api/payments/alipay/latest')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                var ord = j && j.code === 200 && j.data ? j.data.order : null;
+                if (!ord) return;
+                var st = String(ord.status || '');
+                var sku = String(ord.sku_id || '');
+                var otn = String(ord.out_trade_no || '');
+                if (
+                    st === 'paid' &&
+                    (sku === 'sku_lizhi_cert_50' || !pendingOtn || otn === pendingOtn)
+                ) {
+                    setStatus(payStatus, '支付成功，正在解锁…');
+                    if (pollTimer) {
+                        clearInterval(pollTimer);
+                        pollTimer = null;
+                    }
+                    loadStatus();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function generate() {
+        var payload = {
+            name: document.getElementById('lzName').value.trim(),
+            id_number: document.getElementById('lzId').value.trim(),
+            company_name: document.getElementById('lzCompany').value.trim(),
+            hire_date: document.getElementById('lzHire').value.trim(),
+            leave_date: document.getElementById('lzLeave').value.trim(),
+            issue_date: document.getElementById('lzIssue').value.trim() || defaultIssueDate()
+        };
+        if (!payload.name || !payload.id_number) {
+            setStatus(genStatus, '请填写姓名与身份证号', true);
+            return;
+        }
+        if (!payload.company_name) {
+            setStatus(genStatus, '请填写公司全称', true);
+            return;
+        }
+        var btn = document.getElementById('btnLizhiGenerate');
+        btn.disabled = true;
+        setStatus(genStatus, '正在生成 PDF…');
+        authFetch('/api/lizhi-cert/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (res) {
+                var j = res.j;
+                if (j && j.code === 402) {
+                    applyUnlocked(false);
+                    setStatus(payStatus, j.msg || '请先付款开通', true);
+                    return;
+                }
+                if (!j || j.code !== 200 || !j.data || !j.data.pdf_base64) {
+                    setStatus(genStatus, (j && j.msg) || '生成失败', true);
+                    return;
+                }
+                downloadBase64Pdf(j.data.pdf_base64, j.data.filename || '离职证明.pdf');
+                setStatus(genStatus, '已开始下载');
+            })
+            .catch(function () {
+                setStatus(genStatus, '网络错误', true);
+            })
+            .finally(function () {
+                btn.disabled = false;
+            });
+    }
+
+    document.getElementById('btnLizhiPay').addEventListener('click', startPay);
+    document.getElementById('btnLizhiGenerate').addEventListener('click', generate);
+    document.getElementById('btnLizhiPrefill').addEventListener('click', function () {
+        loadPrefill().then(function () {
+            setStatus(genStatus, '已重新预填');
+        });
+    });
+    document.getElementById('lzIssue').value = defaultIssueDate();
+    loadStatus();
+})();
+    </script>
+</body>
+</html>

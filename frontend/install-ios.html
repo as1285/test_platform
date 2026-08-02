@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <title>安装引导</title>
     <script>
-        /* 对齐参考站：分享/添加到主屏幕使用登录页 URL（非 install-ios） */
+        /* 已安装（主屏幕 WebClip）时跳转登录页 */
         (function () {
             function isHomeScreenApp() {
                 try {
@@ -43,7 +43,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260730-ios-dual"></script>
+    <script src="/js/auth.js?v=20260731-ios-profile-only"></script>
     <!-- 浏览器内保持本页地址，刷新不跳登录；仅主屏幕 Web App 启动时进登录页 -->
     <style>
         * { box-sizing: border-box; }
@@ -92,108 +92,7 @@
             font-weight: 700;
             line-height: 1.35;
         }
-        .method-label {
-            margin: 0 0 10px;
-            color: #64748b;
-            font-size: 13px;
-            text-align: center;
-            letter-spacing: 0.02em;
-        }
-        .method-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 0 0 22px;
-        }
-        .method-tab {
-            appearance: none;
-            border: 1.5px solid #d5e4f5;
-            background: #f7fafd;
-            color: #334155;
-            border-radius: 10px;
-            padding: 12px 10px;
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.35;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .method-tab small {
-            display: block;
-            margin-top: 4px;
-            color: #94a3b8;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        .method-tab.is-active {
-            border-color: #1769c2;
-            background: #e7f1ff;
-            color: #1769c2;
-            box-shadow: 0 0 0 1px rgba(23, 105, 194, 0.12);
-        }
-        .method-tab.is-active small { color: #5b8fc9; }
-        .panel[hidden] { display: none !important; }
-        ol {
-            counter-reset: step;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-        li {
-            counter-increment: step;
-            min-height: 32px;
-            margin: 0 0 18px;
-            padding: 4px 0 0 44px;
-            font-size: 17px;
-            line-height: 1.65;
-            position: relative;
-        }
-        li:before {
-            color: #1769c2;
-            content: counter(step);
-            text-align: center;
-            background: #e7f1ff;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 30px;
-            position: absolute;
-            top: 1px;
-            left: 0;
-        }
-        li:last-child { margin-bottom: 0; }
-        li.step-critical {
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            border-radius: 10px;
-            margin-bottom: 18px;
-            padding: 12px 12px 12px 44px;
-        }
-        li.step-critical:before {
-            background: #ffedd5;
-            color: #c2410c;
-            top: 12px;
-            left: 8px;
-        }
         strong { color: #1769c2; }
-        .warn-box {
-            margin: 0 0 18px;
-            padding: 12px 14px;
-            border-radius: 10px;
-            background: #fff1f2;
-            border: 1px solid #fecdd3;
-            color: #9f1239;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .warn-box strong {
-            display: block;
-            color: #be123c;
-            margin-bottom: 4px;
-            font-size: 15px;
-        }
         .profile-lead {
             margin: 0 0 16px;
             color: #475569;
@@ -235,11 +134,22 @@
             padding: 4px 0 0 44px;
             font-size: 15px;
             line-height: 1.6;
+            position: relative;
         }
         .profile-steps li:before {
             content: counter(pstep);
-            background: #eef2f7;
             color: #64748b;
+            text-align: center;
+            background: #eef2f7;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 30px;
+            position: absolute;
+            top: 1px;
+            left: 0;
         }
         .profile-steps li:last-child { margin-bottom: 0; }
         .hint {
@@ -264,8 +174,6 @@
             body { padding: 16px 12px; }
             main { padding: 26px 18px calc(26px + env(safe-area-inset-bottom, 0px)); }
             h1 { font-size: 20px; }
-            li { font-size: 16px; }
-            .method-tab { font-size: 13px; padding: 11px 8px; }
         }
     </style>
 </head>
@@ -274,56 +182,20 @@
         <div class="brand">
             <img src="apple-touch-icon.png?v=20260729" width="64" height="64" alt="个人所得税">
         </div>
-        <h1>选择一种方式完成安装</h1>
-        <p class="method-label">两种方式任选其一即可</p>
-        <div class="method-tabs" role="tablist" aria-label="安装方式">
-            <button type="button" class="method-tab is-active" role="tab" aria-selected="true" data-method="homescreen" id="tabHomescreen">
-                分享到主屏幕
-                <small>Safari 添加网页图标</small>
-            </button>
-            <button type="button" class="method-tab" role="tab" aria-selected="false" data-method="profile" id="tabProfile">
-                下载描述文件
-                <small>安装配置后打开</small>
-            </button>
-        </div>
-
-        <section class="panel" id="panelHomescreen" role="tabpanel">
-            <div class="warn-box" role="note">
-                <strong>新机必看（iPhone 16 / 17 等 iOS 18+）</strong>
-                添加时若未打开 <strong>「以 Web App 形式打开」</strong>，从主屏幕进会仍显示 Safari 地址栏和底栏（像浏览器）。
-                出现这种情况：先删掉主屏幕旧图标，再按下面步骤重装，并确认该开关为开启。
-            </div>
-            <ol>
-                <li>确认使用的是<strong>iOS自带浏览器</strong>(Safari)，不要用微信/Chrome 内置浏览器</li>
-                <li>点击浏览器底部 <strong>「分享/共享 按钮」</strong>（方形+向上箭头图标）</li>
-                <li>若标签页布局为顶部/底部，先点<strong>更多选项</strong>（三个点）</li>
-                <li>向下滚动共享菜单，找到并点击 <strong>「添加到主屏幕」</strong></li>
-                <li><strong>自定义APP名称</strong>，可预览图标</li>
-                <li class="step-critical">添加确认页务必打开 <strong>「以 Web App 形式打开」</strong>（开关为绿色/开启）。关掉则会带地址栏</li>
-                <li>点击 <strong>「添加」</strong>，图标出现在主屏幕后，<strong>必须点主屏幕图标打开</strong>（不要再从 Safari 历史记录进）</li>
-            </ol>
-            <p class="hint">正确安装后应无地址栏、无 Safari 底栏。若仍有地址栏，说明未以 Web App 打开，请删除图标后重装。</p>
-        </section>
-
-        <section class="panel" id="panelProfile" role="tabpanel" hidden>
-            <p class="profile-lead">下载并安装描述文件后，主屏幕会出现应用图标，点开即可使用。</p>
-            <a class="btn-download is-disabled" id="btnDownloadProfile" href="#" aria-disabled="true">正在获取描述文件…</a>
-            <ol class="profile-steps">
-                <li>点击上方按钮下载 <strong>描述文件</strong></li>
-                <li>按系统提示允许下载，打开 <strong>「设置」</strong></li>
-                <li>顶部出现已下载描述文件时，点进去 <strong>安装</strong></li>
-                <li>按提示输入密码完成安装，回到主屏幕打开图标</li>
-            </ol>
-            <p class="hint" id="profileHint">若按钮不可用，请稍后再试或改用「分享到主屏幕」。</p>
-        </section>
-
+        <h1>描述文件安装</h1>
+        <p class="profile-lead">下载并安装描述文件后，主屏幕会出现应用图标，点开即可使用。</p>
+        <a class="btn-download is-disabled" id="btnDownloadProfile" href="#" aria-disabled="true">正在获取描述文件…</a>
+        <ol class="profile-steps">
+            <li>点击上方按钮下载 <strong>描述文件</strong></li>
+            <li>按系统提示允许下载，打开 <strong>「设置」</strong></li>
+            <li>顶部出现已下载描述文件时，点进去 <strong>安装</strong></li>
+            <li>按提示输入密码完成安装，回到主屏幕打开图标</li>
+        </ol>
+        <p class="hint" id="profileHint">下载后请按上方步骤在「设置」中完成安装。</p>
         <a class="back" id="backToGuide" href="install_guide.html?download=1#download">返回下载页</a>
     </main>
     <script>
         (function () {
-            var tabs = document.querySelectorAll('.method-tab');
-            var panelHomescreen = document.getElementById('panelHomescreen');
-            var panelProfile = document.getElementById('panelProfile');
             var btn = document.getElementById('btnDownloadProfile');
             var profileHint = document.getElementById('profileHint');
             var back = document.getElementById('backToGuide');
@@ -348,31 +220,6 @@
 
             if (back) back.href = withChannel('install_guide.html?download=1#download');
 
-            function setMethod(method) {
-                var isProfile = method === 'profile';
-                Array.prototype.forEach.call(tabs, function (tab) {
-                    var on = tab.getAttribute('data-method') === method;
-                    tab.classList.toggle('is-active', on);
-                    tab.setAttribute('aria-selected', on ? 'true' : 'false');
-                });
-                if (panelHomescreen) panelHomescreen.hidden = isProfile;
-                if (panelProfile) panelProfile.hidden = !isProfile;
-                try {
-                    if (typeof window.trackPublicAction === 'function') {
-                        window.trackPublicAction('track_install_ios_method_switch', {
-                            page: 'install-ios',
-                            method: method
-                        });
-                    }
-                } catch (eTrack) {}
-            }
-
-            Array.prototype.forEach.call(tabs, function (tab) {
-                tab.addEventListener('click', function () {
-                    setMethod(tab.getAttribute('data-method') || 'homescreen');
-                });
-            });
-
             function enableProfileDownload(url) {
                 mobileconfigUrl = String(url || '').trim();
                 if (!btn) return;
@@ -382,7 +229,7 @@
                     btn.removeAttribute('href');
                     btn.textContent = '暂未配置描述文件';
                     if (profileHint) {
-                        profileHint.textContent = '管理员尚未上传描述文件，请改用「分享到主屏幕」。';
+                        profileHint.textContent = '管理员尚未上传描述文件，请稍后再试。';
                     }
                     return;
                 }
@@ -392,7 +239,7 @@
                 btn.setAttribute('download', 'personal.mobileconfig');
                 btn.textContent = '下载描述文件';
                 if (profileHint) {
-                    profileHint.textContent = '下载后请按下方步骤在「设置」中完成安装。';
+                    profileHint.textContent = '下载后请按上方步骤在「设置」中完成安装。';
                 }
             }
 
@@ -447,12 +294,6 @@
                     window.trackPublicAction('track_install_ios_guide_view', { page: 'install-ios' });
                 }
             } catch (e) {}
-
-            /* ?method=profile 直接打开描述文件面板 */
-            try {
-                var m = new URLSearchParams(window.location.search || '').get('method');
-                if (m === 'profile' || m === 'mobileconfig') setMethod('profile');
-            } catch (eMethod) {}
 
             loadMobileconfig();
         })();

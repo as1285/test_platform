@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
+    <script src="/js/auth.js?v=20260802-home-apk"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -10,6 +10,10 @@
     <script src="/js/app/core.js"></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2c80f4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>个人所得税</title>
     <meta name="description" content="模拟器APP，打开即可体验首页服务。">
     <meta property="og:type" content="website">
@@ -22,53 +26,37 @@
     <meta itemprop="description" content="模拟器APP，打开即可体验首页服务。">
     <meta itemprop="image" content="/grdb.jpg">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
-            background: #f6f7fb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f4f6f9;
             min-height: 100vh;
         }
-        
-        .shouye-page {
-            min-height: 100vh;
-            background: #f6f7fb;
+
+        body.page-shouye {
+            --sy-rpx: calc(100vw / 750);
+            --shouye-top-bar-rgb: 44, 128, 244;
+            background: #f4f6f9;
         }
-        
-        /* 为固定搜索条留白；顶栏区用蓝色铺满，避免 padding 露出 #f6f7fb 白条 */
-        body.page-shouye .shouye-header {
-            margin-top: calc(-1 * var(--shouye-fixed-top-h, 52px));
-            padding-top: var(--shouye-fixed-top-h, 52px);
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-        }
-        
-        /* 搜索框容器：横幅在搜索条下方（非叠层），顶栏须始终铺蓝，避免首屏透明露灰底 */
+
+        /* 固定顶栏：原版 ahead.png（搜索+扫码），安全区铺蓝 */
         .search-bar-wrapper {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 999;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 4px 12px 4px 14px;
+            padding: 0;
             background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
             box-shadow: none;
+            display: block;
+            line-height: 0;
+            /* 绝对热区相对顶栏定位 */
+            overflow: visible;
         }
 
-        /* iPhone 16 Pro：状态栏安全区与顶栏同色（auth.js 亦注入，此处兜底） */
-        html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-        }
-
-        /* iPhone 15/16 Pro Max：状态栏区与搜索顶栏同蓝 */
-        html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye::before,
-        html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye::before {
+        html.app-ios-client.app-top-safe-shell body.page-shouye::before {
             content: "";
             position: fixed;
             left: 0;
@@ -80,362 +68,254 @@
             pointer-events: none;
         }
 
-        html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: calc(6px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px)));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+        html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
+        html.app-top-safe-shell body.page-shouye .search-bar-wrapper {
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
         }
 
-        /* 小米/红米/HyperOS（含 K70 / 至尊）：黑条状态栏时搜索条仅 6px */
         html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-redmi-k70.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 6px;
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-        }
-
-        /* 荣耀等 Android 顶栏安全区（auth.js 亦注入，此处兜底） */
-        html.app-android-honor-magic.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-pgt-an20.app-top-safe-shell body.page-shouye .search-bar-wrapper,
-        html.app-android-honor-ptp-an00.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-        }
-
-        /* 华为 Pura 70 Cordova：壳已留状态栏，搜索条贴顶；内容区顶距由 JS 同步 */
+        html.app-android-xiaomi-14.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 6px;
-            padding-bottom: 6px;
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+            padding-top: 0;
         }
 
-        html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper {
-            padding-top: calc(6px + var(--app-shell-statusbar-top, 32px));
-            background: rgb(var(--shouye-top-bar-rgb, 44, 128, 244));
-            box-shadow: none;
+        .sy-apk-ahead {
+            display: block;
+            width: 100%;
+            height: auto;
+            vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
         }
 
-        /* Android 壳/客户端：首屏顶距与实测搜索条高度对齐（约 78px），避免 JS 未跑完前错位 */
+        .sy-ahead-hit {
+            position: absolute;
+            z-index: 2;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .search-bar-wrapper { position: fixed; }
+
+        .sy-hit-search {
+            top: calc(12 * var(--sy-rpx));
+            left: 0;
+            right: 40px;
+            bottom: 0;
+        }
+
+        .sy-hit-scan {
+            top: 13px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+        }
+
+        .shouye-page {
+            min-height: 100vh;
+            background: #f4f6f9;
+            padding-top: var(--shouye-fixed-top-h, 52px);
+            padding-bottom: var(--bottom-nav-clearance, 70px);
+        }
+
         html.app-top-safe-shell.app-android-client {
             --shouye-fixed-top-h: 78px;
         }
 
-        /* 内容区顶距由 JS 写入 --shouye-fixed-top-h，与固定搜索条等高 */
-        html.app-top-safe-shell body.page-shouye .shouye-page,
-        body.page-shouye .shouye-page {
-            padding-top: var(--shouye-fixed-top-h, 52px);
-        }
-
-        
-        .search-bar {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 8px;
-            padding: 9px 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .search-bar .search-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-        }
-        
-        .search-bar .search-icon svg {
-            width: 18px;
-            height: 18px;
-        }
-        
-        .search-bar .search-text {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.9);
-            letter-spacing: 0.5px;
-        }
-        
-        .scan-btn {
-            width: 28px;
-            height: 28px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .scan-btn svg {
-            width: 26px;
-            height: 26px;
-        }
-
-        
-        .shouye-header img {
+        /* 原版：整页 widthFix 切片 + 绝对热区 */
+        .sy-apk-stack {
+            position: relative;
             width: 100%;
-            display: block;
-        }
-        
-        .shouye-content {
-            background: #f6f7fb;
-            position: relative;
-            z-index: 5;
-            min-height: calc(100vh - 120px);
-            padding-bottom: var(--bottom-nav-clearance);
-        }
-        
-        /* 通知条独立占位 + 下边距；横幅图裁掉顶部蓝条，避免与通知条叠层重合 */
-        .shouye-banner-wrap {
-            position: relative;
-            margin-top: 0;
-        }
-
-        .shouye-banner-wrap .notice-bar {
-            position: relative;
-            margin: 2px 12px 14px;
-            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
-            border-radius: 10px;
-            padding: 7px 12px 7px 10px;
-            display: flex;
-            align-items: center;
-            z-index: 12;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        html.app-top-safe-shell body.page-shouye .shouye-banner-wrap .notice-bar {
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            margin: 2px 12px 14px !important;
-        }
-
-        .shouye-banner-viewport {
-            position: relative;
-            overflow: hidden;
+            background: #f4f6f9;
             line-height: 0;
-            aspect-ratio: 1024 / 610;
         }
 
-        .shouye-banner-viewport img {
-            width: 100%;
+        .sy-apk-slice {
             display: block;
+            width: 100%;
+            height: auto;
             vertical-align: top;
-            transform: translateY(var(--shouye-banner-shift, 0));
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .sy-apk-block {
+            position: relative;
+            width: 100%;
+            line-height: 0;
+        }
+
+        .sy-apk-hit {
+            position: absolute;
+            z-index: 10;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            text-decoration: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* a1 通知条叠字 */
+        .sy-apk-a1 {
+            position: relative;
+            background: #2c80f4;
+        }
+
+        .sy-apk-marquee {
+            position: absolute;
+            top: 25px;
+            left: 50px;
+            width: calc(100% - 80px);
+            margin-right: 30px;
+            color: #b27a39;
+            font-size: 16px;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .sy-apk-marquee span {
+            display: inline-block;
+            padding-left: 100%;
+            animation: sy-marquee 18s linear infinite;
+        }
+
+        @keyframes sy-marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* a32/a33 热区（相对卡片容器，rpx） */
+        .sy-hit-zonghe-tab {
+            top: 0;
+            right: calc(23 * var(--sy-rpx));
+            width: calc(250 * var(--sy-rpx));
+            height: calc(70 * var(--sy-rpx));
+        }
+
+        .sy-hit-record {
+            top: calc(266 * var(--sy-rpx));
+            right: calc(363 * var(--sy-rpx));
+            width: calc(330 * var(--sy-rpx));
+            height: calc(90 * var(--sy-rpx));
+        }
+
+        /* a3：相关政策 / 我要填报（对齐原版 jumpToss / jumpTos 热区） */
+        .sy-hit-policy {
+            top: calc(120 * var(--sy-rpx));
+            left: calc(500 * var(--sy-rpx));
+            width: calc(200 * var(--sy-rpx));
+            height: calc(70 * var(--sy-rpx));
+        }
+
+        .sy-hit-fill {
+            top: calc(320 * var(--sy-rpx));
+            left: calc(100 * var(--sy-rpx));
+            width: calc(550 * var(--sy-rpx));
+            height: calc(90 * var(--sy-rpx));
+        }
+
+        /* 横向 a6 */
+        .sy-apk-hscroll {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            background: #f4f6f9;
+            padding: 4px 0 8px;
+        }
+
+        .sy-apk-hscroll::-webkit-scrollbar { display: none; }
+
+        .sy-apk-hitem {
+            display: inline-block;
+            width: 30%;
+            margin-left: 2.5%;
+            vertical-align: top;
+            text-decoration: none;
+        }
+
+        .sy-apk-hitem:first-child { margin-left: 3%; }
+
+        .sy-apk-hitem img {
+            display: block;
+            width: 100%;
+            height: calc(300 * var(--sy-rpx));
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        /* 轮播 */
+        .sy-apk-swiper-wrap {
+            width: 93%;
+            margin: 8px auto 12px;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #fff;
+            line-height: 0;
+        }
+
+        .sy-apk-swiper-track {
+            display: flex;
+            transition: transform 0.35s ease;
             will-change: transform;
         }
-        
-        .notice-icon {
-            width: 21px;
-            height: 21px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            margin-right: 8px;
-        }
-        
-        .notice-icon svg {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .notice-content {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 20px;
-        }
-        
-        .notice-text {
-            white-space: nowrap;
-            font-size: 14px;
-            color: #d48806;
-            font-weight: 500;
-            display: inline-block;
-        }
-        
-        
-        .notice-slider {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            height: 20px;
-        }
 
-        .notice-row {
-            display: flex;
-            align-items: center;
-            position: absolute;
+        .sy-apk-swiper-track img {
+            flex: 0 0 100%;
             width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            transition: transform 0.4s ease;
-        }
-
-        .notice-row.current {
-            transform: translateY(0);
-        }
-
-        .notice-row.next-below {
-            transform: translateY(100%);
-        }
-
-        .notice-row.exit-up {
-            transform: translateY(-100%);
-        }
-
-        /* 重点服务推荐：整图 zdfwdb（含专项附加扣除 + 下方三卡，无横滑） */
-        .svc-cards-wrap {
-            position: relative;
-            display: block;
-            background: #f6f7fb;
-        }
-        .svc-cards-wrap > img {
-            width: 100%;
+            height: auto;
             display: block;
             vertical-align: top;
         }
-        .svc-hot {
-            position: absolute;
-            z-index: 4;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            top: 52%;
-            bottom: 2%;
-        }
-        .svc-hot-left { left: 0; width: 33.33%; }
-        .svc-hot-mid { left: 33.33%; width: 33.33%; }
-        .svc-hot-right { left: 66.66%; width: 33.34%; }
-        /* 重点服务推荐 · 专项附加扣除卡片中部文案：拦截点击 */
-        .svc-zxk-banner-noop {
-            position: absolute;
-            z-index: 5;
-            left: 12%;
-            width: 76%;
-            top: 21%;
-            height: 14%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            cursor: default;
-        }
-        /* 专项附加扣除横幅 ·「相关政策」→ 政策介绍页 */
-        .svc-zxk-banner-policy {
-            position: absolute;
-            z-index: 6;
-            right: 0;
-            width: 38%;
-            top: 12%;
-            height: 9%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「填报」→ 专项附加扣除页 */
-        .svc-zxk-banner-fill {
-            position: absolute;
-            z-index: 6;
-            left: 5%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「我要查询」→ 专项附加扣除页 */
-        .svc-zxk-banner-query {
-            position: absolute;
-            z-index: 6;
-            left: 52%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
 
-        /* 轮播图内「重点服务推荐」三卡热区（相对 lb 图比例，与常见稿式对齐；若与设计稿有偏差可微调 top/height） */
-        .shouye-lb-wrap {
-            position: relative;
-            display: block;
-            line-height: 0;
-            background: #fff;
-        }
-        .shouye-lb-wrap > img {
-            width: 100%;
-            display: block;
-        }
-        /* zdb 底部已含「查看更多」文案，热区叠在图上避免重复一条灰字 */
-        .shouye-news-more {
+        .sy-apk-swiper-dots {
             position: absolute;
             left: 0;
             right: 0;
-            bottom: 0;
-            height: 9%;
-            min-height: 36px;
-            z-index: 8;
-            display: block;
-            font-size: 0;
-            color: transparent;
-            text-decoration: none;
-            background: transparent;
-            -webkit-tap-highlight-color: transparent;
+            bottom: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            pointer-events: none;
+            z-index: 2;
+            line-height: normal;
         }
-        .shouye-news-more:active {
-            opacity: 0.85;
-        }
-        .shouye-news-more-chevron {
-            display: none;
-        }
-        .lb-svc-hot {
-            position: absolute;
-            z-index: 6;
-            left: 0;
-            width: 33.33%;
-            top: 8%;
-            height: 42%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        .lb-svc-hot-mid { left: 33.33%; }
-        .lb-svc-hot-right { left: 66.66%; width: 33.34%; }
 
-        /* 首页横幅：「查看记录」「进入专题页」点击热区 */
-        .sy-banner-record-hit {
-            position: absolute;
-            left: 10%;
-            width: 38%;
-            top: 54%;
-            height: 18%;
-            z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
+        .sy-apk-swiper-dots i {
+            width: 6px;
+            height: 6px;
+            border-radius: 1px;
+            background: rgba(0, 0, 0, 0.2);
         }
-        .sy-banner-zonghe-hit {
-            position: absolute;
-            left: 72%;
-            width: 26%;
-            top: 6%;
-            height: 14%;
-            z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
+
+        .sy-apk-swiper-dots i.is-on {
+            width: 12px;
+            background: #2c80f4;
+        }
+
+        .sy-hit-more {
+            left: 0;
+            right: 0;
+            top: 0;
+            height: calc(80 * var(--sy-rpx));
         }
 
         .guest-experience-bar {
@@ -449,6 +329,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            line-height: normal;
         }
         body.is-landing-guest .guest-experience-bar { display: flex; }
         .guest-experience-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
@@ -486,6 +367,7 @@
             align-items: center;
             justify-content: center;
             background: rgba(15, 23, 42, .5);
+            line-height: normal;
         }
         .guest-gate-mask.is-open { display: flex; }
         .guest-gate-panel {
@@ -514,157 +396,91 @@
         .guest-gate-download { color: #fff; background: #1e6fff; }
         .guest-gate-register { color: #1e6fff; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
-
-        </style>
+    </style>
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260729-zdb" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
-    <!-- 固定搜索框 -->
-    <div class="search-bar-wrapper">
-        <div class="search-bar">
-            <div class="search-icon">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <circle cx="11" cy="11" r="7" stroke="rgba(255,255,255,0.9)" stroke-width="2"/>
-                    <path d="M21 21l-4.35-4.35" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </div>
-            <span class="search-text">请输入想搜索的功能/服务</span>
-        </div>
-        <div class="scan-btn">
-            <svg viewBox="0 0 24 24" fill="none">
-                <path d="M3 7V5a2 2 0 012-2h2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M17 3h2a2 2 0 012 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M21 17v2a2 2 0 01-2 2h-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7 21H5a2 2 0 01-2-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="9" y1="12" x2="15" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-        </div>
+    <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
+    <div class="search-bar-wrapper" id="syAheadWrap">
+        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260802-home" alt="搜索" width="1284" height="167">
+        <a href="help_center.html" class="sy-ahead-hit sy-hit-search" aria-label="搜索功能与服务"></a>
+        <button type="button" class="sy-ahead-hit sy-hit-scan" id="syScanBtn" aria-label="扫一扫"></button>
     </div>
-    
+
     <div class="shouye-page">
-        <div class="shouye-header">
-            <div class="shouye-banner-wrap">
-                <div class="notice-bar">
-                    <div class="notice-icon" style="flex-shrink:0;"><img src="ld.png" style="width:21px;object-fit:contain;"></div>
-                    <div class="notice-slider">
-                        <div id="noticeRow0" class="notice-row current">
-                            <span class="notice-text" id="noticeText0">国家税务总局令第57号：《个人所得税综合所得汇算清缴管理办法》</span>
-                        </div>
-                        <div id="noticeRow1" class="notice-row next-below">
-                            <span class="notice-text" id="noticeText1">关于近期虚假退税宣传的温馨提示</span>
-                        </div>
-                    </div>
-                </div>
-                <script>
-                (function() {
-                    var row0 = document.getElementById('noticeRow0');
-                    var row1 = document.getElementById('noticeRow1');
-                    var text0 = document.getElementById('noticeText0');
-                    var rafId = null;
-
-                    function startScroll() {
-                        row0.style.transition = 'none';
-                        row1.style.transition = 'none';
-                        row0.className = 'notice-row current';
-                        row1.className = 'notice-row next-below';
-                        text0.style.transform = 'translateX(0)';
-
-                        requestAnimationFrame(function() {
-                            // notice-slider是text0的祖父元素（text0 -> notice-row -> notice-slider）
-                            var slider = text0.parentElement.parentElement;
-                            slider.style.overflow = 'visible';
-                            var containerLeft = slider.getBoundingClientRect().left;
-                            var initialRight = text0.getBoundingClientRect().right;
-                            slider.style.overflow = '';
-                            // 文字右边缘到容器左边缘的距离 = 文字真实宽度
-                            var total = initialRight - containerLeft;
-                            var speed = 80; // px/s
-                            var pos = 0;
-                            var last = null;
-
-                            function step(ts) {
-                                if (!last) last = ts;
-                                var delta = (ts - last) / 1000;
-                                last = ts;
-                                pos += speed * delta;
-                                text0.style.transform = 'translateX(-' + pos + 'px)';
-                                if (pos < total) {
-                                    rafId = requestAnimationFrame(step);
-                                } else {
-                                    slideUp();
-                                }
-                            }
-                            rafId = requestAnimationFrame(step);
-                        });
-                    }
-
-                    function slideUp() {
-                        // 两行同时向上滑动
-                        row0.style.transition = 'transform 0.4s ease';
-                        row1.style.transition = 'transform 0.4s ease';
-                        row0.className = 'notice-row exit-up';
-                        row1.className = 'notice-row current';
-                        // 第二条静止1秒后滑回
-                        setTimeout(function() {
-                            slideDown();
-                        }, 1000);
-                    }
-
-                    function slideDown() {
-                        // 第一条从下方进入，第二条滑出上方
-                        row0.style.transition = 'none';
-                        row0.className = 'notice-row next-below';
-                        requestAnimationFrame(function() {
-                            requestAnimationFrame(function() {
-                                row0.style.transition = 'transform 0.4s ease';
-                                row1.style.transition = 'transform 0.4s ease';
-                                row0.className = 'notice-row current';
-                                row1.className = 'notice-row exit-up';
-                                setTimeout(function() {
-                                    // 回到第一条，暂停500ms后滚动
-                                    setTimeout(startScroll, 500);
-                                }, 400);
-                            });
-                        });
-                    }
-
-                    // 初始暂停500ms后开始滚动
-                    setTimeout(startScroll, 500);
-                })();
-                </script>
-                <div class="shouye-banner-viewport" id="shouyeBannerViewport">
-                    <img id="assetShouyeBanner" src="sydb-v2.jpg?v=20260729-restore" alt="首页">
-                    <a href="shenbao_jilu.html" class="sy-banner-record-hit" aria-label="查看记录"></a>
-                    <a href="zonghe.html" class="sy-banner-zonghe-hit" aria-label="进入专题页"></a>
+        <div class="sy-apk-stack" id="syApkStack">
+            <!-- a1 通知条 -->
+            <div class="sy-apk-block sy-apk-a1">
+                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260802-home" alt="" width="1284" height="223">
+                <div class="sy-apk-marquee" aria-hidden="true">
+                    <span>国家税务总局令第57号:《个人所得税综合所得汇算清缴管理办法》</span>
                 </div>
             </div>
-            <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=20260729" alt="重点服务推荐" loading="lazy" decoding="async">
-                <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
-                <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-query" aria-label="我要查询"></a>
-                <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
-                <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
-                <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
+
+            <!-- 汇算卡片：未登录 a32 / 已登录 a33 -->
+            <div class="sy-apk-block" id="syDeclareBlock">
+                <a href="zonghe.html" id="syDeclareImgLink" aria-label="综合所得年度汇算">
+                    <img
+                        id="syDeclareImg"
+                        class="sy-apk-slice"
+                        src="/img/home/a32.png?v=20260802-home"
+                        alt="综合所得年度汇算"
+                        width="1179"
+                        height="610"
+                        style="pointer-events:auto"
+                    >
+                </a>
+                <a href="zonghe.html" class="sy-apk-hit sy-hit-zonghe-tab" aria-label="进入专题页"></a>
+                <a href="shenbao_jilu.html" class="sy-apk-hit sy-hit-record" id="syRecordHit" aria-label="查看记录"></a>
             </div>
-        </div>
-        <div class="guest-experience-bar" id="guestExperienceBar">
-            <div class="guest-experience-copy">
-                <strong id="guestExperienceTitle">游客体验模式</strong>
-                <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
+
+            <!-- a3 重点服务推荐 -->
+            <div class="sy-apk-block">
+                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805">
+                <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
+                <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
             </div>
-            <div class="guest-experience-actions">
-                <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
-                <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+
+            <div class="guest-experience-bar" id="guestExperienceBar">
+                <div class="guest-experience-copy">
+                    <strong id="guestExperienceTitle">游客体验模式</strong>
+                    <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
+                </div>
+                <div class="guest-experience-actions">
+                    <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
+                    <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+                </div>
             </div>
-        </div>
-        <div class="shouye-content">
-            <div class="shouye-lb-wrap">
-                <img id="assetShouyeLb" src="lb.jpg?v=20260729" alt="轮播" loading="lazy" decoding="async">
-                <img id="assetShouyeZdb" src="zdb.jpg?v=20260729" alt="警示案例" loading="lazy" decoding="async">
-                <a href="help_center.html" class="shouye-news-more" aria-label="查看更多资讯">查看更多</a>
+
+            <!-- a6 横向入口 -->
+            <div class="sy-apk-hscroll" id="syHScroll">
+                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260802-home" alt=""></a>
+                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260802-home" alt=""></a>
+                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260802-home" alt=""></a>
+                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260802-home" alt=""></a>
+            </div>
+
+            <!-- 轮播 a4_* -->
+            <div class="sy-apk-swiper-wrap" id="sySwiper" aria-label="首页轮播">
+                <div class="sy-apk-swiper-track" id="sySwiperTrack">
+                    <img src="/img/home/a4_1_2.png?v=20260802-home" alt="">
+                    <img src="/img/home/a4_4_2.png?v=20260802-home" alt="">
+                    <img src="/img/home/a4_2.png?v=20260802-home" alt="">
+                    <img src="/img/home/a4_3.png?v=20260802-home" alt="">
+                    <img src="/img/home/a4_4.png?v=20260802-home" alt="">
+                </div>
+                <div class="sy-apk-swiper-dots" id="sySwiperDots" aria-hidden="true"></div>
+            </div>
+
+            <!-- a4 / a5 资讯与查看更多 -->
+            <div class="sy-apk-block">
+                <img class="sy-apk-slice" src="/img/home/a4.png?v=20260802-home" alt="资讯" width="1284" height="1814">
+                <a href="help_center.html" class="sy-apk-hit" style="inset:0;z-index:5" aria-label="查看资讯"></a>
+            </div>
+            <div class="sy-apk-block">
+                <img class="sy-apk-slice" src="/img/home/a5.png?v=20260802-home" alt="" width="1284" height="678">
+                <a href="help_center.html" class="sy-apk-hit sy-hit-more" aria-label="查看更多"></a>
             </div>
         </div>
     </div>
@@ -680,353 +496,305 @@
             </div>
         </div>
     </div>
-    
-    <!-- 底部导航 -->
+
     <div class="bottom-nav">
         <a href="shouye.html" class="nav-item active" data-icon="sy">
-            <div class="nav-icon">
-                <img src="caidan/sy1.png" width="19" height="19" alt="首页">
-            </div>
+            <div class="nav-icon"><img src="caidan/sy1.png" width="19" height="19" alt="首页"></div>
             <span class="nav-text">首页</span>
         </a>
         <a href="daiban.html" class="nav-item" data-icon="db">
-            <div class="nav-icon">
-                <img src="caidan/db2.png" width="19" height="19" alt="待办">
-            </div>
+            <div class="nav-icon"><img src="caidan/db2.png" width="19" height="19" alt="待办"></div>
             <span class="nav-text">待办</span>
         </a>
         <a href="bancha.html" class="nav-item" data-icon="bc">
-            <div class="nav-icon">
-                <img src="caidan/bc2.png" width="19" height="19" alt="办查">
-            </div>
+            <div class="nav-icon"><img src="caidan/bc2.png" width="19" height="19" alt="办查"></div>
             <span class="nav-text">办&查</span>
         </a>
         <a href="message.html" class="nav-item" data-icon="xx">
-            <div class="nav-icon">
-                <img src="caidan/xx2.png" width="19" height="19" alt="消息">
-            </div>
+            <div class="nav-icon"><img src="caidan/xx2.png" width="19" height="19" alt="消息"></div>
             <span class="nav-text">消息</span>
         </a>
         <a href="mine.html" class="nav-item" data-icon="w">
-            <div class="nav-icon">
-                <img src="caidan/w2.png" width="19" height="19" alt="我的">
-            </div>
+            <div class="nav-icon"><img src="caidan/w2.png" width="19" height="19" alt="我的"></div>
             <span class="nav-text">我的</span>
         </a>
     </div>
+
     <script>
-        // 顶栏主题色（蓝/金）与内容区顶距：横幅在搜索条下方，顶栏始终实色蓝
-        var searchWrapper = document.querySelector('.search-bar-wrapper');
-
-        function shouyeTopBarRgb() {
-            var raw = getComputedStyle(document.documentElement).getPropertyValue('--shouye-top-bar-rgb').trim();
-            return raw || '44, 128, 244';
-        }
-
-        function updateSearchBarTopBg() {
-            if (!searchWrapper) return;
-            searchWrapper.style.background = 'rgb(' + shouyeTopBarRgb() + ')';
-        }
-
-        window.addEventListener('mineUiConfig', function () {
-            updateSearchBarTopBg();
-            syncShouyeBannerCrop();
-        });
-        window.syncShouyeBannerCrop = syncShouyeBannerCrop;
-        updateSearchBarTopBg();
-
-        /** Web / Android / iOS：测量固定搜索条高度，内容区顶距与其一致，消除顶栏下灰白条 */
-        /** 新横幅仅为卡片图，无需裁掉顶部蓝条 */
-        var SHOUYE_BANNER_WHITE_RATIO = 0;
-
-        function syncShouyeBannerCrop() {
-            var img = document.getElementById('assetShouyeBanner');
-            var viewport = document.getElementById('shouyeBannerViewport');
-            if (!img || !viewport) {
-                return;
-            }
-            function apply() {
-                var fullH = img.offsetHeight || img.getBoundingClientRect().height || 0;
-                if (fullH <= 0) {
-                    return;
-                }
-                var shift = Math.round(fullH * SHOUYE_BANNER_WHITE_RATIO);
-                var visibleH = Math.max(0, fullH - shift);
-                img.style.transform = 'translateY(-' + shift + 'px)';
-                if (shift > 0) {
-                    viewport.style.height = visibleH + 'px';
-                } else {
-                    viewport.style.height = '';
-                }
-                document.documentElement.style.setProperty('--shouye-banner-shift', (-shift) + 'px');
-            }
-            if (img.complete) {
-                apply();
-            } else {
-                img.addEventListener('load', apply, { once: true });
-            }
-            requestAnimationFrame(function () {
-                apply();
-                requestAnimationFrame(apply);
-            });
-        }
-
-        function syncShouyeTopPadding() {
+        (function () {
+            var ASSET_V = '?v=20260802-home';
+            var searchWrapper = document.getElementById('syAheadWrap') || document.querySelector('.search-bar-wrapper');
             var page = document.querySelector('.shouye-page');
-            if (!searchWrapper || !page) {
-                return;
-            }
-            var html = document.documentElement;
-            function apply() {
-                if (html.classList.contains('app-cordova-huawei-pura70')) {
-                    var vv = window.visualViewport;
-                    var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
-                    searchWrapper.style.paddingTop = (6 + topInset) + 'px';
-                }
-                var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
-                if (h > 0) {
-                    html.style.setProperty('--shouye-fixed-top-h', h + 'px');
-                    page.style.paddingTop = h + 'px';
-                }
-                syncShouyeBannerCrop();
-                window.scrollTo(0, 0);
-            }
-            apply();
-            requestAnimationFrame(function () {
-                apply();
-                requestAnimationFrame(apply);
-            });
-        }
+            var declareImg = document.getElementById('syDeclareImg');
+            var recordHit = document.getElementById('syRecordHit');
 
-        function applyCordovaHuaweiShouyeChrome() {
-            if (!document.documentElement.classList.contains('app-cordova-huawei-pura70')) {
-                return;
-            }
-            var names = ['theme-color', 'msapplication-navbutton-color'];
-            for (var i = 0; i < names.length; i++) {
-                var el = document.querySelector('meta[name="' + names[i] + '"]');
-                if (!el) {
-                    el = document.createElement('meta');
-                    el.setAttribute('name', names[i]);
-                    document.head.appendChild(el);
-                }
-                el.setAttribute('content', '#2c80f4');
-            }
-        }
-
-        applyCordovaHuaweiShouyeChrome();
-        syncShouyeTopPadding();
-        window.addEventListener('load', syncShouyeTopPadding);
-        window.addEventListener('pageshow', function (ev) {
-            if (ev.persisted) {
-                syncShouyeTopPadding();
-            }
-        });
-        window.addEventListener('resize', function () {
-            syncShouyeTopPadding();
-            syncShouyeBannerCrop();
-        });
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', syncShouyeTopPadding);
-        }
-        
-        // 更新底部导航图标状态
-        function updateNavIcons() {
-            var navItems = document.querySelectorAll('.bottom-nav .nav-item');
-            navItems.forEach(function(item) {
-                var icon = item.getAttribute('data-icon');
-                var img = item.querySelector('.nav-icon img');
-                if (item.classList.contains('active')) {
-                    img.src = 'caidan/' + icon + '1.png';
-                } else {
-                    img.src = 'caidan/' + icon + '2.png';
-                }
-            });
-            if (window.__refreshNavFromMineUi) {
-                window.__refreshNavFromMineUi();
-            }
-        }
-        
-        // 初始化时更新图标
-        updateNavIcons();
-
-        // iOS设备检测，底部导航上移
-        (function() {
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            if (isIOS) {
-                var bottomNav = document.querySelector('.bottom-nav');
-                if (bottomNav) {
-                    bottomNav.classList.add('ios-device');
-                }
-            }
-        })();
-
-        (function initLandingGuestMode() {
-            var query = null;
-            try {
-                query = new URLSearchParams(window.location.search);
-            } catch (e0) {}
-            if (!query) return;
-            var fromShare = String(query.get('from') || '').toLowerCase() === 'share';
-            var landingGuestC = query.get('guest') === '1' && query.get('landing_ab') === 'c';
-            /* 分享落地即开启游客 CTA（兼容旧链仅 from=share） */
-            if (!landingGuestC && !fromShare) {
-                return;
-            }
-            document.body.classList.add('is-landing-guest');
-            if (typeof window.setLandingAbAssignment === 'function') {
-                window.setLandingAbAssignment('c', fromShare ? 'share_guest_home' : 'guest_home');
-            }
-            /* 纯落地 C 记安装引导；分享流量只记分享归因，避免注册被记成安装引导 */
-            if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
-                window.markInstallGuideReferral('landing_ab_c_guest');
-            }
-
-            var mask = document.getElementById('guestGateMask');
-            var titleEl = document.getElementById('guestGateTitle');
-            var desc = document.getElementById('guestGateDesc');
-            var cancel = document.getElementById('guestGateCancel');
-            var download = document.getElementById('guestGateDownload');
-            var register = document.getElementById('guestGateRegister');
-            var topDownload = document.getElementById('guestExperienceDownload');
-            var topRegister = document.getElementById('guestExperienceRegister');
-            var expTitle = document.getElementById('guestExperienceTitle');
-            var expDesc = document.getElementById('guestExperienceDesc');
-            var startMs = Date.now();
-            var leaveSent = false;
-
-            var registerHref = fromShare
-                ? 'register.html?from=share&landing_ab=c'
-                : 'register.html?from=install_guide&landing_ab=c';
-            var downloadHref = fromShare
-                ? 'install_guide.html?download=1&from=share#download'
-                : 'install_guide.html?download=1#download';
-            if (register) register.setAttribute('href', registerHref);
-            if (topRegister) topRegister.setAttribute('href', registerHref);
-            if (download) download.setAttribute('href', downloadHref);
-
-            if (fromShare) {
-                if (titleEl) titleEl.textContent = '好友分享 · 免费体验';
-                if (expTitle) expTitle.textContent = '好友分享进入';
-                if (expDesc) expDesc.textContent = '可先逛演示首页，注册后保存资料并去除水印限制';
-                if (desc) {
-                    desc.textContent =
-                        '好友推荐你体验个税记录演示。注册账号后可保存资料、查看完整收入明细并生成完税证明。';
-                }
-            }
-
-            function track(action, meta) {
-                if (typeof window.trackPublicAction !== 'function') return;
-                window.trackPublicAction(
-                    action,
-                    Object.assign(
-                        {
-                            page: 'shouye_guest',
-                            landing_variant: 'c',
-                            from_share: fromShare ? 1 : 0
-                        },
-                        meta || {}
-                    )
-                );
-            }
-
-            function sourceMeta() {
-                var out = {};
+            function isLoggedIn() {
                 try {
-                    var raw = sessionStorage.getItem('landing_bc_entry_v1');
-                    var entry = raw ? JSON.parse(raw) : null;
-                    if (entry) {
-                        out.referrer = entry.referrer || '';
-                        out.utm_source = entry.utm_source || '';
-                        out.sales_ch = entry.sales_ch || '';
-                    }
-                } catch (e1) {}
-                return out;
-            }
-
-            function openGate(source, label) {
-                if (desc && label) {
-                    desc.textContent = fromShare
-                        ? '“' + label + '”需注册后使用。好友分享进入，注册即可继续体验。'
-                        : '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                    return !!String(localStorage.getItem('token') || '').trim();
+                } catch (e) {
+                    return false;
                 }
-                if (mask) mask.classList.add('is-open');
-                track('track_landing_ab_guest_gate', { source: source || 'feature' });
             }
 
-            function closeGate() {
-                if (mask) mask.classList.remove('is-open');
+            function syncDeclareCard() {
+                if (!declareImg) return;
+                var logged = isLoggedIn();
+                declareImg.src = (logged ? '/img/home/a33.png' : '/img/home/a32.png') + ASSET_V;
+                declareImg.width = 1179;
+                declareImg.height = logged ? 613 : 610;
+                if (recordHit) {
+                    /* 未登录 a32 主按钮是「进入专题页」，热区仍指向专题；已登录绿框为「查看记录」 */
+                    recordHit.href = logged ? 'shenbao_jilu.html' : 'zonghe.html';
+                    recordHit.setAttribute('aria-label', logged ? '查看记录' : '进入专题页');
+                }
+            }
+            syncDeclareCard();
+
+            function syncShouyeTopPadding() {
+                if (!searchWrapper || !page) return;
+                function apply() {
+                    var html = document.documentElement;
+                    if (html.classList.contains('app-cordova-huawei-pura70')) {
+                        var vv = window.visualViewport;
+                        var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
+                        searchWrapper.style.paddingTop = topInset + 'px';
+                    }
+                    var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
+                    if (h > 0) {
+                        html.style.setProperty('--shouye-fixed-top-h', h + 'px');
+                        page.style.paddingTop = h + 'px';
+                    }
+                }
+                apply();
+                requestAnimationFrame(function () {
+                    apply();
+                    requestAnimationFrame(apply);
+                });
             }
 
-            document.querySelectorAll('a[href]').forEach(function (link) {
-                if (link.closest('#guestGateMask')) return;
-                if (link.closest('#guestExperienceBar')) return;
-                if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
-                link.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    openGate(
-                        link.getAttribute('href') || 'feature',
-                        link.getAttribute('aria-label') || link.textContent.trim() || '此功能'
+            syncShouyeTopPadding();
+            window.addEventListener('load', syncShouyeTopPadding);
+            window.addEventListener('resize', syncShouyeTopPadding);
+            window.addEventListener('pageshow', function (ev) {
+                if (ev.persisted) syncShouyeTopPadding();
+                syncDeclareCard();
+            });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', syncShouyeTopPadding);
+            }
+
+            var scanBtn = document.getElementById('syScanBtn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', function () {
+                    window.location.href = 'help_center.html';
+                });
+            }
+
+            /* 简易轮播 */
+            (function initSwiper() {
+                var track = document.getElementById('sySwiperTrack');
+                var dots = document.getElementById('sySwiperDots');
+                if (!track || !dots) return;
+                var slides = track.querySelectorAll('img');
+                var n = slides.length;
+                if (!n) return;
+                var i = 0;
+                for (var d = 0; d < n; d++) {
+                    var el = document.createElement('i');
+                    if (d === 0) el.className = 'is-on';
+                    dots.appendChild(el);
+                }
+                var dotNodes = dots.querySelectorAll('i');
+                function go(idx) {
+                    i = (idx + n) % n;
+                    track.style.transform = 'translateX(-' + i * 100 + '%)';
+                    for (var k = 0; k < dotNodes.length; k++) {
+                        dotNodes[k].className = k === i ? 'is-on' : '';
+                    }
+                }
+                setInterval(function () { go(i + 1); }, 3500);
+            })();
+
+            function updateNavIcons() {
+                var navItems = document.querySelectorAll('.bottom-nav .nav-item');
+                navItems.forEach(function (item) {
+                    var icon = item.getAttribute('data-icon');
+                    var img = item.querySelector('.nav-icon img');
+                    if (!img || !icon) return;
+                    img.src = item.classList.contains('active')
+                        ? 'caidan/' + icon + '1.png'
+                        : 'caidan/' + icon + '2.png';
+                });
+                if (window.__refreshNavFromMineUi) window.__refreshNavFromMineUi();
+            }
+            updateNavIcons();
+
+            (function () {
+                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (isIOS) {
+                    var bottomNav = document.querySelector('.bottom-nav');
+                    if (bottomNav) bottomNav.classList.add('ios-device');
+                }
+            })();
+
+            (function initLandingGuestMode() {
+                var query = null;
+                try { query = new URLSearchParams(window.location.search); } catch (e0) {}
+                if (!query) return;
+                var fromShare = String(query.get('from') || '').toLowerCase() === 'share';
+                var landingGuestC = query.get('guest') === '1' && query.get('landing_ab') === 'c';
+                if (!landingGuestC && !fromShare) return;
+
+                document.body.classList.add('is-landing-guest');
+                if (typeof window.setLandingAbAssignment === 'function') {
+                    window.setLandingAbAssignment('c', fromShare ? 'share_guest_home' : 'guest_home');
+                }
+                if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                    window.markInstallGuideReferral('landing_ab_c_guest');
+                }
+
+                var mask = document.getElementById('guestGateMask');
+                var titleEl = document.getElementById('guestGateTitle');
+                var desc = document.getElementById('guestGateDesc');
+                var cancel = document.getElementById('guestGateCancel');
+                var download = document.getElementById('guestGateDownload');
+                var register = document.getElementById('guestGateRegister');
+                var topDownload = document.getElementById('guestExperienceDownload');
+                var topRegister = document.getElementById('guestExperienceRegister');
+                var expTitle = document.getElementById('guestExperienceTitle');
+                var expDesc = document.getElementById('guestExperienceDesc');
+                var startMs = Date.now();
+                var leaveSent = false;
+
+                var registerHref = fromShare
+                    ? 'register.html?from=share&landing_ab=c'
+                    : 'register.html?from=install_guide&landing_ab=c';
+                var downloadHref = fromShare
+                    ? 'install_guide.html?download=1&from=share#download'
+                    : 'install_guide.html?download=1#download';
+                if (register) register.setAttribute('href', registerHref);
+                if (topRegister) topRegister.setAttribute('href', registerHref);
+                if (download) download.setAttribute('href', downloadHref);
+
+                if (fromShare) {
+                    if (titleEl) titleEl.textContent = '好友分享 · 免费体验';
+                    if (expTitle) expTitle.textContent = '好友分享进入';
+                    if (expDesc) expDesc.textContent = '可先逛演示首页，注册后保存资料并去除水印限制';
+                    if (desc) {
+                        desc.textContent =
+                            '好友推荐你体验个税记录演示。注册账号后可保存资料、查看完整收入明细并生成完税证明。';
+                    }
+                }
+
+                function track(action, meta) {
+                    if (typeof window.trackPublicAction !== 'function') return;
+                    window.trackPublicAction(
+                        action,
+                        Object.assign(
+                            { page: 'shouye_guest', landing_variant: 'c', from_share: fromShare ? 1 : 0 },
+                            meta || {}
+                        )
                     );
-                });
-            });
+                }
 
-            if (topDownload) {
-                topDownload.addEventListener('click', function () {
-                    track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
-                    if (typeof window.trackShareDownloadClick === 'function') {
-                        window.trackShareDownloadClick('shouye_guest_bar');
-                    }
-                    window.location.href = downloadHref;
-                });
-            }
-            if (topRegister) {
-                topRegister.addEventListener('click', function () {
-                    if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
-                        window.markInstallGuideReferral('landing_ab_c_register');
-                    }
-                    track('track_install_register_click', { source: 'guest_bar' });
-                });
-            }
-            if (download) {
-                download.addEventListener('click', function () {
-                    track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
-                    if (typeof window.trackShareDownloadClick === 'function') {
-                        window.trackShareDownloadClick('shouye_guest_gate');
-                    }
-                });
-            }
-            if (register) {
-                register.addEventListener('click', function () {
-                    if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
-                        window.markInstallGuideReferral('landing_ab_c_register');
-                    }
-                    track('track_install_register_click', { source: 'guest_gate' });
-                });
-            }
-            if (cancel) cancel.addEventListener('click', closeGate);
-            if (mask) {
-                mask.addEventListener('click', function (ev) {
-                    if (ev.target === mask) closeGate();
-                });
-            }
+                function sourceMeta() {
+                    var out = {};
+                    try {
+                        var raw = sessionStorage.getItem('landing_bc_entry_v1');
+                        var entry = raw ? JSON.parse(raw) : null;
+                        if (entry) {
+                            out.referrer = entry.referrer || '';
+                            out.utm_source = entry.utm_source || '';
+                            out.sales_ch = entry.sales_ch || '';
+                        }
+                    } catch (e1) {}
+                    return out;
+                }
 
-            track('track_install_page_view', sourceMeta());
-            track('track_landing_ab_view', sourceMeta());
+                function openGate(source, label) {
+                    if (desc && label) {
+                        desc.textContent = fromShare
+                            ? '“' + label + '”需注册后使用。好友分享进入，注册即可继续体验。'
+                            : '“' + label + '”属于完整功能，安装 App 或注册账号后即可继续使用。';
+                    }
+                    if (mask) mask.classList.add('is-open');
+                    track('track_landing_ab_guest_gate', { source: source || 'feature' });
+                }
 
-            function sendLeave() {
-                if (leaveSent) return;
-                leaveSent = true;
-                var sec = Math.max(0, Math.min(86400, Math.round((Date.now() - startMs) / 1000)));
-                track('track_install_page_leave', { dwell_seconds: sec });
-            }
-            document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'hidden') sendLeave();
-            });
-            window.addEventListener('pagehide', sendLeave);
-            window.addEventListener('beforeunload', sendLeave);
+                function closeGate() {
+                    if (mask) mask.classList.remove('is-open');
+                }
+
+                document.querySelectorAll('a[href]').forEach(function (link) {
+                    if (link.closest('#guestGateMask')) return;
+                    if (link.closest('#guestExperienceBar')) return;
+                    if (link.classList.contains('active') && link.getAttribute('href') === 'shouye.html') return;
+                    link.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        openGate(
+                            link.getAttribute('href') || 'feature',
+                            link.getAttribute('aria-label') || link.textContent.trim() || '此功能'
+                        );
+                    });
+                });
+
+                if (topDownload) {
+                    topDownload.addEventListener('click', function () {
+                        track('track_landing_ab_guest_download_entry', { source: 'guest_bar' });
+                        if (typeof window.trackShareDownloadClick === 'function') {
+                            window.trackShareDownloadClick('shouye_guest_bar');
+                        }
+                        window.location.href = downloadHref;
+                    });
+                }
+                if (topRegister) {
+                    topRegister.addEventListener('click', function () {
+                        if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                            window.markInstallGuideReferral('landing_ab_c_register');
+                        }
+                        track('track_install_register_click', { source: 'guest_bar' });
+                    });
+                }
+                if (download) {
+                    download.addEventListener('click', function () {
+                        track('track_landing_ab_guest_download_entry', { source: 'guest_gate' });
+                        if (typeof window.trackShareDownloadClick === 'function') {
+                            window.trackShareDownloadClick('shouye_guest_gate');
+                        }
+                    });
+                }
+                if (register) {
+                    register.addEventListener('click', function () {
+                        if (!fromShare && typeof window.markInstallGuideReferral === 'function') {
+                            window.markInstallGuideReferral('landing_ab_c_register');
+                        }
+                        track('track_install_register_click', { source: 'guest_gate' });
+                    });
+                }
+                if (cancel) cancel.addEventListener('click', closeGate);
+                if (mask) {
+                    mask.addEventListener('click', function (ev) {
+                        if (ev.target === mask) closeGate();
+                    });
+                }
+
+                track('track_install_page_view', sourceMeta());
+                track('track_landing_ab_view', sourceMeta());
+
+                function sendLeave() {
+                    if (leaveSent) return;
+                    leaveSent = true;
+                    var sec = Math.max(0, Math.min(86400, Math.round((Date.now() - startMs) / 1000)));
+                    track('track_install_page_leave', { dwell_seconds: sec });
+                }
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'hidden') sendLeave();
+                });
+                window.addEventListener('pagehide', sendLeave);
+                window.addEventListener('beforeunload', sendLeave);
+            })();
         })();
-
     </script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
 </body>

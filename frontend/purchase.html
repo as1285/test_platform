@@ -67,36 +67,41 @@
             padding: 8px 20px 0;
         }
         .hero {
-            padding: 8px 0 18px;
-            border-bottom: 1px solid var(--line);
-            margin-bottom: 4px;
+            padding: 20px 18px;
+            border: none;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, #1264cc 0%, #2c86eb 58%, #70b8ff 100%);
+            box-shadow: 0 10px 24px rgba(29, 111, 216, 0.2);
         }
         .hero .brand-line {
             font-size: 13px;
             font-weight: 600;
-            color: var(--accent);
+            color: rgba(255, 255, 255, 0.82);
             letter-spacing: 0.06em;
             margin-bottom: 6px;
         }
         .hero h1 {
             font-size: 22px;
             font-weight: 650;
-            color: var(--ink);
+            color: #fff;
             margin: 0 0 6px;
             letter-spacing: 0.01em;
         }
         .hero p {
             font-size: 14px;
             line-height: 1.5;
-            color: var(--muted);
+            color: rgba(255, 255, 255, 0.82);
             margin: 0;
         }
         .card {
-            padding: 18px 0;
-            border-bottom: 1px solid var(--line);
-            background: transparent;
-            box-shadow: none;
-            border-radius: 0;
+            padding: 17px 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            background: #fff;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
+            border-radius: 16px;
         }
         .card[hidden] { display: none !important; }
         .card-title {
@@ -207,6 +212,17 @@
             font-weight: 700;
             color: var(--accent-deep);
             min-width: 72px;
+        }
+        .pricing-sku-price del {
+            display: block;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.2;
+        }
+        .pricing-sku-price .discount-price {
+            display: block;
+            color: #e5484d;
         }
         .pricing-sku-label {
             flex: 1;
@@ -325,6 +341,82 @@
             background: #fff; border: 1px solid var(--line); border-radius: 8px;
         }
         .qr-caption { font-size: 12px; color: var(--muted); text-align: center; }
+        .share-activity-card {
+            position: relative;
+            overflow: hidden;
+            color: #fff;
+            border: none;
+            background: linear-gradient(135deg, #fb7299 0%, #f05b87 48%, #7b61ff 100%);
+            box-shadow: 0 10px 26px rgba(240, 91, 135, 0.22);
+        }
+        .share-activity-card::after {
+            content: "";
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            right: -70px;
+            top: -80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+        }
+        .share-activity-head {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .share-activity-title { font-size: 17px; font-weight: 700; }
+        .share-activity-sub { margin-top: 3px; font-size: 12px; color: rgba(255,255,255,.82); }
+        .share-discount-badge {
+            flex: none;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: #fff;
+            color: #e54873;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .share-progress {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 8px;
+            margin: 15px 0 11px;
+        }
+        .share-progress-dot {
+            flex: 1;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.28);
+            transition: background .2s ease;
+        }
+        .share-progress-dot.is-done { background: #fff; }
+        .share-activity-status {
+            position: relative;
+            z-index: 1;
+            min-height: 20px;
+            font-size: 13px;
+            color: rgba(255,255,255,.9);
+        }
+        .btn-bilibili-share {
+            position: relative;
+            z-index: 1;
+            margin-top: 12px;
+            background: #fff;
+            color: #e54873;
+        }
+        .btn-bilibili-share:disabled { opacity: .7; }
+        .share-rules {
+            position: relative;
+            z-index: 1;
+            margin-top: 9px;
+            font-size: 11px;
+            line-height: 1.45;
+            color: rgba(255,255,255,.7);
+        }
     </style>
 </head>
 <body class="page-purchase">
@@ -342,6 +434,40 @@
             <p>支付宝付款自动开通，也可填写已有激活码。</p>
         </div>
 
+        <div class="card" id="cardAlipay" hidden>
+            <div class="card-head">
+                <div class="card-title">支付宝购买</div>
+                <span class="badge-auto">付款后自动开通</span>
+            </div>
+            <p class="card-hint" id="alipayPurchaseHint">选择套餐后打开支付宝付款。</p>
+            <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
+            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
+            <div class="pay-status" id="alipayPayStatus" hidden></div>
+        </div>
+
+        <div class="card share-activity-card" id="cardShareActivity" hidden>
+            <div class="share-activity-head">
+                <div>
+                    <div class="share-activity-title">分享到 B 站，立减 50 元</div>
+                    <div class="share-activity-sub">每完成一次分享，活动进度加 1</div>
+                </div>
+                <span class="share-discount-badge">5 次减 ¥50</span>
+            </div>
+            <div class="share-progress" id="bilibiliShareProgress" aria-label="分享进度"></div>
+            <p class="share-activity-status" id="bilibiliShareStatus">正在读取活动进度…</p>
+            <button type="button" class="btn btn-bilibili-share" id="btnBilibiliShare">立即分享到 B 站</button>
+            <p class="share-rules">分享完成后返回本页自动计数；满 5 次后，创建支付宝订单时由服务器自动减 50 元。每 5 次仅可抵扣 1 笔订单。</p>
+        </div>
+
+        <div class="card" id="cardLizhiCert">
+            <div class="card-head">
+                <div class="card-title">离职证明生成</div>
+                <span class="badge-auto">测试 · 暂免</span>
+            </div>
+            <p class="card-hint">测试期暂免支付，登录后可直接生成演示离职证明（含电子章）。电子生成件仅供个人留存，非用人单位出具。</p>
+            <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html">去生成</a>
+        </div>
+
         <div class="card download-box" id="cardDownloadApp">
             <div class="card-title">下载 App</div>
             <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
@@ -354,17 +480,6 @@
             <label class="field-label" for="purchaseActivateCode">激活码</label>
             <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
-        </div>
-
-        <div class="card" id="cardAlipay" hidden>
-            <div class="card-head">
-                <div class="card-title">支付宝购买</div>
-                <span class="badge-auto">付款后自动开通</span>
-            </div>
-            <p class="card-hint" id="alipayPurchaseHint">选择套餐后打开支付宝付款。</p>
-            <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
-            <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
-            <div class="pay-status" id="alipayPayStatus" hidden></div>
         </div>
 
         <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
@@ -863,6 +978,248 @@
         });
     }
 
+    var BILIBILI_SHARE_PENDING_KEY = 'purchase_bilibili_share_pending_v1';
+    var shareActivityState = {
+        completed_count: 0,
+        available_count: 0,
+        reserved_count: 0,
+        progress_count: 0,
+        remaining_count: 5,
+        threshold: 5,
+        discount_amount: '50.00',
+        pending_discount_amount: '0.00',
+        pending_discount_applied: false,
+        eligible: false,
+        completing: false
+    };
+
+    function shareDiscountUnlocked() {
+        return (
+            shareActivityState.eligible === true ||
+            shareActivityState.pending_discount_applied === true ||
+            Number(shareActivityState.pending_discount_amount) > 0
+        );
+    }
+
+    function discountedSkuAmount(amount) {
+        var original = Math.round((Number(amount) || 0) * 100);
+        if (!shareDiscountUnlocked() || original <= 0) return '';
+        var discountYuan =
+            Number(shareActivityState.pending_discount_amount) > 0
+                ? Number(shareActivityState.pending_discount_amount)
+                : Number(shareActivityState.discount_amount) || 50;
+        var discount = Math.round(discountYuan * 100);
+        return (Math.max(1, original - discount) / 100).toFixed(2);
+    }
+
+    function refreshShareDiscountPricingUi() {
+        if (typeof renderAlipaySkus === 'function' && alipayPricing && alipayPricing.skus) {
+            renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
+        }
+        var selected = typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
+        var hint = document.getElementById('alipayPurchaseHint');
+        var payBtn = document.getElementById('btnPurchaseAlipay');
+        var discounted = selected ? discountedSkuAmount(selected.amount) : '';
+        if (discounted && hint) {
+            hint.textContent =
+                '分享优惠已解锁：原价 ' +
+                selected.amount +
+                ' 元，本次实付 ' +
+                discounted +
+                ' 元。';
+        }
+        if (payBtn) {
+            payBtn.textContent = discounted ? '优惠价 ¥' + discounted + ' · 打开支付宝付款' : '打开支付宝付款';
+        }
+    }
+
+    function renderBilibiliShareActivity(data) {
+        data = data || {};
+        Object.keys(shareActivityState).forEach(function (key) {
+            if (data[key] != null) shareActivityState[key] = data[key];
+        });
+        shareActivityState.threshold = Math.max(1, Number(shareActivityState.threshold) || 5);
+        shareActivityState.progress_count = Math.max(
+            0,
+            Math.min(
+                shareActivityState.threshold,
+                Number(shareActivityState.progress_count != null
+                    ? shareActivityState.progress_count
+                    : shareActivityState.available_count) || 0
+            )
+        );
+        shareActivityState.eligible =
+            data.eligible === true ||
+            Number(shareActivityState.available_count) >= shareActivityState.threshold;
+        shareActivityState.pending_discount_applied =
+            data.pending_discount_applied === true ||
+            Number(shareActivityState.pending_discount_amount) > 0;
+        if (shareActivityState.pending_discount_applied && !shareActivityState.progress_count) {
+            shareActivityState.progress_count = shareActivityState.threshold;
+        }
+        var progress = document.getElementById('bilibiliShareProgress');
+        var status = document.getElementById('bilibiliShareStatus');
+        var btn = document.getElementById('btnBilibiliShare');
+        if (progress) {
+            var dots = '';
+            var i;
+            for (i = 0; i < shareActivityState.threshold; i++) {
+                dots += '<span class="share-progress-dot' +
+                    (i < shareActivityState.progress_count ? ' is-done' : '') +
+                    '"></span>';
+            }
+            progress.innerHTML = dots;
+            progress.setAttribute(
+                'aria-label',
+                '已完成 ' + shareActivityState.progress_count + ' 次，共需 ' + shareActivityState.threshold + ' 次'
+            );
+        }
+        if (status) {
+            if (shareActivityState.pending_discount_applied) {
+                status.textContent =
+                    '优惠已用于当前待支付订单：本次实付自动减 ¥' +
+                    (shareActivityState.pending_discount_amount ||
+                        shareActivityState.discount_amount);
+            } else if (shareActivityState.eligible) {
+                status.textContent =
+                    '优惠已解锁！本次支付宝订单将自动立减 ¥' + shareActivityState.discount_amount;
+            } else {
+                status.textContent =
+                    '已完成 ' +
+                    shareActivityState.progress_count +
+                    '/' +
+                    shareActivityState.threshold +
+                    ' 次，再分享 ' +
+                    Math.max(0, shareActivityState.threshold - shareActivityState.progress_count) +
+                    ' 次可立减 ¥' +
+                    shareActivityState.discount_amount;
+            }
+        }
+        if (btn) {
+            btn.textContent =
+                shareActivityState.eligible || shareActivityState.pending_discount_applied
+                    ? '优惠已解锁，再分享可累积下次优惠'
+                    : '立即分享到 B 站';
+        }
+        refreshShareDiscountPricingUi();
+    }
+
+    function loadBilibiliShareStatus() {
+        return paymentFetch('/api/growth/bilibili-share/status')
+            .then(function (x) {
+                if (x.status === 200 && x.body && x.body.data) {
+                    renderBilibiliShareActivity(x.body.data);
+                    return x.body.data;
+                }
+                throw new Error((x.body && x.body.msg) || '读取分享进度失败');
+            })
+            .catch(function (e) {
+                var status = document.getElementById('bilibiliShareStatus');
+                if (status) status.textContent = e && e.message ? e.message : '读取分享进度失败';
+                return null;
+            });
+    }
+
+    function readPendingBilibiliShare() {
+        try {
+            var raw = sessionStorage.getItem(BILIBILI_SHARE_PENDING_KEY);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            return parsed && parsed.share_session_id ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function clearPendingBilibiliShare() {
+        try { sessionStorage.removeItem(BILIBILI_SHARE_PENDING_KEY); } catch (e) {}
+    }
+
+    function completePendingBilibiliShare() {
+        var pending = readPendingBilibiliShare();
+        if (!pending || shareActivityState.completing) return Promise.resolve(null);
+        var age = Date.now() - Number(pending.started_at || 0);
+        if (age < 2100) {
+            setTimeout(completePendingBilibiliShare, Math.max(200, 2200 - age));
+            return Promise.resolve(null);
+        }
+        shareActivityState.completing = true;
+        return paymentFetch('/api/growth/bilibili-share/complete', {
+            method: 'POST',
+            body: JSON.stringify({ share_session_id: pending.share_session_id })
+        })
+            .then(function (x) {
+                if (x.status === 200 && x.body && x.body.data) {
+                    clearPendingBilibiliShare();
+                    renderBilibiliShareActivity(x.body.data);
+                    showToast('分享成功，活动进度 +1');
+                    trackPurchase('track_purchase_bilibili_share_complete', {
+                        completed_count: x.body.data.completed_count,
+                        available_count: x.body.data.available_count
+                    });
+                    return x.body.data;
+                }
+                if (x.status === 409) {
+                    setTimeout(completePendingBilibiliShare, 1200);
+                    return null;
+                }
+                clearPendingBilibiliShare();
+                throw new Error((x.body && x.body.msg) || '分享次数领取失败');
+            })
+            .catch(function (e) {
+                showToast(e && e.message ? e.message : '分享次数领取失败');
+                return null;
+            })
+            .then(function (data) {
+                shareActivityState.completing = false;
+                return data;
+            });
+    }
+
+    function startBilibiliDiscountShare() {
+        var btn = document.getElementById('btnBilibiliShare');
+        if (btn) btn.disabled = true;
+        trackPurchase('track_purchase_bilibili_share_start');
+        paymentFetch('/api/growth/bilibili-share/start', {
+            method: 'POST',
+            body: '{}'
+        })
+            .then(function (x) {
+                if (x.status !== 200 || !x.body || !x.body.data) {
+                    throw new Error((x.body && x.body.msg) || '暂时无法开始分享');
+                }
+                var sessionId = x.body.data.share_session_id;
+                try {
+                    sessionStorage.setItem(
+                        BILIBILI_SHARE_PENDING_KEY,
+                        JSON.stringify({ share_session_id: sessionId, started_at: Date.now() })
+                    );
+                } catch (e) {}
+                if (typeof window.shareToBilibili !== 'function') {
+                    throw new Error('当前环境暂不支持 B 站分享');
+                }
+                return window.shareToBilibili({
+                    page: 'shouye.html',
+                    query: { guest: '1', from: 'share', landing_ab: 'c', sv: 'pay50' },
+                    title: '个税记录演示',
+                    text: '个税记录演示：打开即可体验收入明细与纳税记录',
+                    track: 'track_purchase_share_bilibili'
+                });
+            })
+            .then(function (result) {
+                if (result && result.method === 'copy') {
+                    setTimeout(completePendingBilibiliShare, 2300);
+                }
+            })
+            .catch(function (e) {
+                clearPendingBilibiliShare();
+                showToast(e && e.message ? e.message : '分享失败，请稍后重试');
+            })
+            .then(function () {
+                if (btn) btn.disabled = false;
+            });
+    }
+
     function setAlipayStatus(text, waiting) {
         var el = document.getElementById('alipayPayStatus');
         if (!el) return;
@@ -964,6 +1321,7 @@
         var heroP = document.querySelector('.hero p');
         var steps = document.querySelector('.steps');
         var cardAlipay = document.getElementById('cardAlipay');
+        var cardShare = document.getElementById('cardShareActivity');
         var cardDownload = document.getElementById('cardDownloadApp');
 
         var page = document.querySelector('.page');
@@ -976,6 +1334,7 @@
         /* APP 内不显示下载卡片 */
         if (cardDownload) cardDownload.hidden = purchasePageInApp;
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
+        if (isCodeOnly && cardShare) cardShare.hidden = true;
 
 
         if (heroP) {
@@ -1009,8 +1368,11 @@
         /* B 方案：支付宝置顶，激活码紧随其后 */
         if (isNew && page && cardAlipay && heroP && heroP.parentNode === page) {
             var hero = document.querySelector('.hero');
-            if (hero && hero.nextSibling !== cardAlipay) {
-                page.insertBefore(cardAlipay, hero.nextSibling);
+            if (hero && cardShare && hero.nextSibling !== cardShare) {
+                page.insertBefore(cardShare, hero.nextSibling);
+            }
+            if (cardShare && cardShare.nextSibling !== cardAlipay) {
+                page.insertBefore(cardAlipay, cardShare.nextSibling);
             }
             if (activateBox && activateBox.parentNode === page && cardAlipay) {
                 page.insertBefore(activateBox, cardAlipay.nextSibling);
@@ -1067,14 +1429,18 @@
         list.innerHTML = alipayPricing.skus
             .map(function (s) {
                 var selected = s.id === alipayPricing.selectedSkuId ? ' is-selected' : '';
+                var discounted = discountedSkuAmount(s.amount);
+                var priceHtml = discounted
+                    ? '<del>¥' + String(s.amount || '') + '</del><span class="discount-price">¥' + discounted + '</span>'
+                    : '¥' + String(s.amount || '');
                 return (
                     '<button type="button" class="pricing-sku-item' +
                     selected +
                     '" data-sku-id="' +
                     String(s.id).replace(/"/g, '') +
                     '">' +
-                    '<span class="pricing-sku-price">¥' +
-                    String(s.amount || '') +
+                    '<span class="pricing-sku-price">' +
+                    priceHtml +
                     '</span>' +
                     '<span class="pricing-sku-label">' +
                     String(s.label || s.subject || '') +
@@ -1103,6 +1469,7 @@
                 var data = x.body && x.body.data ? x.body.data : {};
                 var enabled = x.status === 200 && data.enabled === true;
                 var card = document.getElementById('cardAlipay');
+                var shareCard = document.getElementById('cardShareActivity');
                 var abc = String(data.abc_variant || '')
                     .trim()
                     .toLowerCase();
@@ -1128,6 +1495,7 @@
                 /* 以服务端 abc 为准；忽略残留 code_only */
                 if (x.status === 401 || x.status === 403) {
                     if (card) card.hidden = true;
+                    if (shareCard) shareCard.hidden = true;
                     purchaseUiMode = 'legacy';
                     applyPurchaseUiMode();
                     try {
@@ -1151,6 +1519,7 @@
                     return checkAlipayLatestOrder();
                 }
                 card.hidden = !enabled;
+                if (shareCard) shareCard.hidden = !enabled;
                 if (enabled) {
                     var variant = data.pricing_variant || 'control';
                     var skus = Array.isArray(data.skus) ? data.skus : [];
@@ -1385,6 +1754,7 @@
             alipayPricing.selectedSkuId = btn.getAttribute('data-sku-id') || '';
             alipayPendingPayUrl = '';
             renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
+            refreshShareDiscountPricingUi();
         });
     }
     document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
@@ -1414,9 +1784,33 @@
                 if (x.status !== 200 || !x.body || !x.body.data) {
                     throw new Error((x.body && x.body.msg) || '创建支付订单失败');
                 }
+                var createdOrder = x.body.data.order || {};
+                if (Number(createdOrder.discount_amount || 0) > 0) {
+                    showToast(
+                        '分享优惠已生效：已减 ¥' +
+                        createdOrder.discount_amount +
+                        '，实付 ¥' +
+                        createdOrder.amount
+                    );
+                    trackPurchase('track_purchase_share_discount_applied', {
+                        sku_id: sku.id,
+                        list_amount: createdOrder.list_amount,
+                        discount_amount: createdOrder.discount_amount,
+                        amount: createdOrder.amount
+                    });
+                    renderBilibiliShareActivity({
+                        pending_discount_applied: true,
+                        pending_discount_amount: createdOrder.discount_amount,
+                        progress_count: shareActivityState.threshold,
+                        remaining_count: 0,
+                        eligible: false,
+                        available_count: 0
+                    });
+                }
                 var payUrl = x.body.data.qr_code || x.body.data.payment_url;
                 launchAlipayPay(payUrl);
                 btn.disabled = false;
+                return loadBilibiliShareStatus();
             })
             .catch(function (e) {
                 setAlipayStatus('', false);
@@ -1434,6 +1828,10 @@
     document.getElementById('purchaseBackBtn').addEventListener('click', function () {
         trackPurchase('track_purchase_back_click');
     });
+    var bilibiliShareBtn = document.getElementById('btnBilibiliShare');
+    if (bilibiliShareBtn) {
+        bilibiliShareBtn.addEventListener('click', startBilibiliDiscountShare);
+    }
 
     ensurePurchaseAbcAssigned()
         .then(function () {
@@ -1441,6 +1839,9 @@
         })
         .then(function () {
             return loadAlipayPurchase();
+        })
+        .then(function () {
+            return loadBilibiliShareStatus();
         });
     /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
     setTimeout(function () {
@@ -1451,10 +1852,16 @@
         } catch (eHide) {}
     }, 900);
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) checkAlipayLatestOrder();
+        if (!document.hidden) {
+            checkAlipayLatestOrder();
+            completePendingBilibiliShare();
+            loadBilibiliShareStatus();
+        }
     });
     window.addEventListener('pageshow', function () {
         checkAlipayLatestOrder();
+        completePendingBilibiliShare();
+        loadBilibiliShareStatus();
         try {
             if (typeof window.forceHidePageLoading === 'function') {
                 window.forceHidePageLoading();

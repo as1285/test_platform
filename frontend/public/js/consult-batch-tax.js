@@ -1331,6 +1331,12 @@ function fillBatchTaxOfficeWorkerTemplate(silent) {
 
 /** 工具栏：无有效工作经历时先填上班族模板，再提交生成 */
 function oneClickGenerateBatchTaxRecords() {
+    if (
+        typeof window.ensureBilibiliShareBeforeTaxGenerate === 'function' &&
+        !window.ensureBilibiliShareBeforeTaxGenerate()
+    ) {
+        return;
+    }
     var parsed = parseBatchEmploymentsFromDom();
     if (!parsed.ok) {
         fillBatchTaxOfficeWorkerTemplate(true);

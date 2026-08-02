@@ -359,6 +359,8 @@
         scope: s.scope || (prev && prev.scope) || '全国',
         status: s.status || (prev && prev.status) || '制作成功',
         query_code: s.query_code || (prev && prev.query_code) || '',
+        qr_image_url: s.qr_image_url || (prev && prev.qr_image_url) || '',
+        qr_block_image_url: s.qr_block_image_url || (prev && prev.qr_block_image_url) || '',
         user: (prev && prev.user) || undefined,
         records: (prev && prev.records) || undefined
       });
@@ -564,29 +566,63 @@
     return raw;
   }
 
-  /** 章面机关名：官方样式为「国家税务总局××市税务局」，只保留到市级，不写区/县/新区 */
+  /** 章面机关名：官方样式为「国家税务总局××市税务局」，开发区/区局归到所属市 */
   function authorityToCityStampText(raw) {
     var v = cleanText(raw);
     if (!v || /^[\dA-Z]{15,20}$/.test(v)) return '';
+
+    // 已是「××市」：国家税务总局武汉市东湖… / 深圳市南山区…
     var city =
-      (v.match(/国家税务总局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
-      (v.match(/国家税务局\s*([^省自治区直辖市]+?市)/) || [])[1] ||
-      (v.match(/([^省自治区直辖市]+?市)/) || [])[1] ||
+      (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,6}?市)/) || [])[1] ||
+      (v.match(/国家税务局\s*([\u4e00-\u9fa5]{2,6}?市)/) || [])[1] ||
       '';
+
+    // 无「市」字的开发区/高新区等：武汉东湖新技术开发区 → 武汉市
+    if (!city) {
+      var zone =
+        v.match(
+          /国家税务总局\s*([\u4e00-\u9fa5]{2,3})(?:东湖|高新|经济技术|经济|技术|产业|保税|旅游|化学工业)?(?:开发区|高新技术产业开发区|新技术开发区|工业园区|新区)/
+        ) || [];
+      if (zone[1]) city = zone[1] + '市';
+    }
+
+    // 仍无市：尝试「××区税务局」前的地级地名（不含「市」的表述）
+    if (!city) {
+      var dist = (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,3})(?:[\u4e00-\u9fa5]{0,6}?)区税务局/) || [])[1];
+      // 排除「市辖区」等；常见如「黄岛区」不好推断，仅在明确地级前缀时使用
+      if (dist && /^(武汉|广州|深圳|成都|杭州|南京|西安|郑州|长沙|青岛|大连|厦门|苏州|宁波|济南|沈阳|哈尔滨|长春|福州|合肥|南昌|昆明|贵阳|南宁|海口|石家庄|太原|呼和浩特|乌鲁木齐|兰州|西宁|银川|拉萨)$/.test(dist)) {
+        city = dist + '市';
+      }
+    }
+
     if (city) {
       city = city.replace(/.*(重庆|上海|北京|天津)市$/, '$1市');
+      if (!/市$/.test(city)) city = city + '市';
       return '国家税务总局' + city + '税务局';
     }
+
+    // 县局保留县级，避免落到错误默认市
+    var county = (v.match(/国家税务总局\s*([\u4e00-\u9fa5]{2,8}?县)/) || [])[1];
+    if (county) return '国家税务总局' + county + '税务局';
+
+    // 已是完整机关名则原样用于盖章，与表格入库税务机关一致
+    if (/^国家税务总局.+税务局$/.test(v)) return v;
+
     if (v.indexOf('深圳') >= 0) return '国家税务总局深圳市税务局';
     return '';
   }
 
   function stampAuthority(rows) {
     rows = Array.isArray(rows) ? rows : [];
+    var firstRaw = '';
     for (var i = 0; i < rows.length; i++) {
-      var t = authorityToCityStampText(rows[i] && rows[i].tax_authority);
+      var raw = cleanText(rows[i] && rows[i].tax_authority);
+      if (!raw || /^[\dA-Z]{15,20}$/.test(raw)) continue;
+      if (!firstRaw) firstRaw = raw;
+      var t = authorityToCityStampText(raw);
       if (t) return t;
     }
+    if (firstRaw && /税务局/.test(firstRaw)) return firstRaw;
     return '国家税务总局深圳市税务局';
   }
 
@@ -1193,6 +1229,50 @@
     ctx.restore();
   }
 
+  /** 管理后台整块替换：二维码 +「查询验证码」+ 验证码文字 */
+  function drawQrVerifyBlock(ctx, x, y, width, blockImg) {
+    if (!blockImg || !blockImg.complete || !blockImg.naturalWidth) return false;
+    var nw = blockImg.naturalWidth;
+    var nh = blockImg.naturalHeight;
+    var h = Math.max(1, Math.round((width * nh) / nw));
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x, y, width, h);
+    ctx.imageSmoothingEnabled = true;
+    if (typeof ctx.imageSmoothingQuality === 'string') {
+      ctx.imageSmoothingQuality = 'high';
+    }
+    ctx.drawImage(blockImg, x, y, width, h);
+    ctx.restore();
+    return true;
+  }
+
+  function loadImageUrl(src) {
+    return new Promise(function (resolve) {
+      var url = cleanText(src);
+      if (!url) {
+        resolve(null);
+        return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  function resolveCertAssetUrl(raw) {
+    var s = cleanText(raw);
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s) || s.indexOf('data:') === 0) return s;
+    if (s.charAt(0) === '/') return s;
+    return '/' + s.replace(/^\/+/, '');
+  }
+
   function certificatePublicOrigin() {
     if (typeof window.sitePublicOrigin === 'function') {
       var fromCfg = String(window.sitePublicOrigin() || '').replace(/\/+$/, '');
@@ -1335,10 +1415,19 @@
     var showStamp = Object.prototype.hasOwnProperty.call(options, 'showStamp')
       ? options.showStamp === true
       : shouldShowClientStamp();
+    if (options.query_code) {
+      app = Object.assign({}, app, { query_code: options.query_code });
+    }
     var verifyCode = queryCode(app);
     var verifyUrl = buildCertificateVerifyUrl(app);
+    var qrBlockUrl = resolveCertAssetUrl(
+      options.qr_block_image_url || options.qrBlockImageUrl || (app && app.qr_block_image_url) || ''
+    );
+    var qrOnlyUrl = resolveCertAssetUrl(
+      options.qr_image_url || options.qrImageUrl || (app && app.qr_image_url) || ''
+    );
 
-    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg) {
+    function paintCertificatePage(pageRows, pageNum, pageCount, allRows, qrImg, headerImg, qrBlockImg) {
       var isLastPage = pageNum === pageCount;
       var rows = pageRows;
       var width = 1240;
@@ -1383,20 +1472,23 @@
       if (!drawTaxRecordHeader(ctx, headerImg, width / 2, certHeaderTop, CERT_HEADER_DISPLAY_W)) {
         drawCertificateTitleFallback(ctx, width / 2, certTitleFont);
       }
-      drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
-      drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
-      drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
-      drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
-        size: 26,
-        align: 'center',
-        color: '#222',
-        font: 'sans-serif'
-      });
+      var usedBlock = drawQrVerifyBlock(ctx, width - 257, 42, 185, qrBlockImg);
+      if (!usedBlock) {
+        drawSharpQr(ctx, width - 257, 42, 185, qrImg, app.id + verifyCode);
+        drawText(ctx, '查询验证码', width - 164, 248, { size: 22, align: 'center', color: '#555' });
+        drawText(ctx, queryCodeLine(verifyCode, 0, 3), width - 164, 288, {
+          size: 26,
+          align: 'center',
+          color: '#222',
+          font: 'sans-serif'
+        });
+        drawText(ctx, queryCodeLine(verifyCode, 12, 1), width - 164, 328, {
+          size: 26,
+          align: 'center',
+          color: '#222',
+          font: 'sans-serif'
+        });
+      }
 
       var name = app.user && app.user.real_name ? app.user.real_name : '';
       var rawTaxId = app.user && app.user.tax_id ? app.user.tax_id : '';
@@ -1527,17 +1619,42 @@
       return canvas.toDataURL('image/png');
     }
 
-    function paintAllPages(qrImg, headerImg) {
+    function paintAllPages(qrImg, headerImg, qrBlockImg) {
       var allRows = normalizeRecords(app.records || []);
       var pageChunks = chunkRecords(allRows, CERT_MAX_ROWS_PER_PAGE);
       return pageChunks.map(function (pageRows, idx) {
-        return paintCertificatePage(pageRows, idx + 1, pageChunks.length, allRows, qrImg, headerImg);
+        return paintCertificatePage(
+          pageRows,
+          idx + 1,
+          pageChunks.length,
+          allRows,
+          qrImg,
+          headerImg,
+          qrBlockImg
+        );
       });
     }
 
     return loadTaxRecordHeader().then(function (headerImg) {
+      function finishWithQr(qrImg, qrBlockImg) {
+        var urls = paintAllPages(qrImg, headerImg, qrBlockImg);
+        return urls.length === 1 ? urls[0] : urls;
+      }
+
+      if (qrBlockUrl) {
+        return loadImageUrl(qrBlockUrl).then(function (blockImg) {
+          return finishWithQr(null, blockImg);
+        });
+      }
+
+      if (qrOnlyUrl) {
+        return loadImageUrl(qrOnlyUrl).then(function (customQr) {
+          return finishWithQr(customQr, null);
+        });
+      }
+
       if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-        return paintAllPages(null, headerImg);
+        return finishWithQr(null, null);
       }
       return new Promise(function (resolve) {
         QRCode.toDataURL(
@@ -1550,21 +1667,19 @@
           },
           function (err, dataUrl) {
             if (err || !dataUrl) {
-              resolve(paintAllPages(null, headerImg));
+              resolve(finishWithQr(null, null));
               return;
             }
             var img = new Image();
             img.onload = function () {
-              resolve(paintAllPages(img, headerImg));
+              resolve(finishWithQr(img, null));
             };
             img.onerror = function () {
-              resolve(paintAllPages(null, headerImg));
+              resolve(finishWithQr(null, null));
             };
             img.src = dataUrl;
           }
         );
-      }).then(function (urls) {
-        return urls.length === 1 ? urls[0] : urls;
       });
     });
   }
@@ -1697,7 +1812,10 @@
 
   /** 纳税记录右下角章（标准单圈：细红圆框、上弧机关名、正中「业务专用章」） */
   function drawStamp(ctx, cx, cy, authority) {
-    var name = authorityToCityStampText(authority) || '国家税务总局深圳市税务局';
+    var name =
+      authorityToCityStampText(authority) ||
+      cleanText(authority) ||
+      '国家税务总局深圳市税务局';
     var stampRed = '#e53935';
     var radius = 90;
     var font = 'STSong, SimSun, "Songti SC", "Noto Serif CJK SC", serif';
@@ -2061,6 +2179,8 @@
       id: issue.id ? String(issue.id) : 'admin_' + String(user.username || 'user'),
       record_no: issue.record_no ? String(issue.record_no) : '',
       query_code: issue.query_code ? String(issue.query_code) : '',
+      qr_image_url: issue.qr_image_url ? String(issue.qr_image_url) : '',
+      qr_block_image_url: issue.qr_block_image_url ? String(issue.qr_block_image_url) : '',
       apply_time: applyTime,
       apply_date_compact: compactDate(new Date(applyTime.replace(/-/g, '/') || Date.now())),
       period_start: periodStart,

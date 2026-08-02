@@ -16,6 +16,11 @@ function registerUserRoutes(app, deps) {
     app.get(p, authMw, h.handleMessageGet);
     app.post(p, authMw, h.handleMessagePost);
   });
+
+  /* 离职证明：仅需登录，不要求账号已激活 */
+  app.get('/api/lizhi-cert/status', mw.requireAuth, h.handleLizhiCertStatus);
+  app.get('/api/lizhi-cert/prefill', mw.requireAuth, h.handleLizhiCertPrefill);
+  app.post('/api/lizhi-cert/generate', mw.requireAuth, h.handleLizhiCertGenerate);
 }
 
 module.exports = { registerUserRoutes };

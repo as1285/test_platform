@@ -69,7 +69,26 @@ app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-d
 app.get(
   '/api/admin/user-data/detail',
   mw.requireAdminAuth,
-  mw.requireAdminMenu('user-data'),
+  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'ylbx-ps', 'najilu-qr']),
+  h.handleAdminUserDataDetail
+);
+/* 工具页预填：独立路径，避免部分浏览器扩展把 /user-data/ 当成追踪接口拦截（表现为 Failed to fetch） */
+app.get(
+  '/api/admin/lizhi-cert/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['lizhi-cert', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.get(
+  '/api/admin/ylbx-ps/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ylbx-ps', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.get(
+  '/api/admin/najilu-qr/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['najilu-qr', 'user-data']),
   h.handleAdminUserDataDetail
 );
 app.get(
@@ -226,6 +245,12 @@ app.get(
 );
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
 app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
+app.post(
+  '/api/admin/user-rename-fee-exempt',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserRenameFeeExempt
+);
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);
 app.post('/api/admin/block-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockIp);
@@ -281,6 +306,50 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminMenu('sbdy-demo'),
   h.handleAdminSbdyDemoList
+);
+app.post(
+  '/api/admin/lizhi-cert/generate',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('lizhi-cert'),
+  h.handleAdminLizhiCertGenerate
+);
+app.post(
+  '/api/admin/ylbx-ps/edit',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('ylbx-ps'),
+  function (req, res, next) {
+    mw.adminUpload.single('file')(req, res, function (err) {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ code: 413, msg: '图片过大' });
+        }
+        return res.status(400).json({ code: 400, msg: (err && err.message) || '上传失败' });
+      }
+      return h.handleAdminYlbxPsEdit(req, res);
+    });
+  }
+);
+app.get(
+  '/api/admin/najilu-qr/list',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('najilu-qr'),
+  h.handleAdminNajiluQrList
+);
+app.post(
+  '/api/admin/najilu-qr/save',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('najilu-qr'),
+  function (req, res, next) {
+    mw.adminUpload.single('file')(req, res, function (err) {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ code: 413, msg: '图片过大' });
+        }
+        return res.status(400).json({ code: 400, msg: (err && err.message) || '上传失败' });
+      }
+      return h.handleAdminNajiluQrSave(req, res);
+    });
+  }
 );
 }
 

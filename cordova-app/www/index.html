@@ -128,7 +128,7 @@
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
                     var q =
-                        'index.html?ch=' +
+                        'mine.html?ch=' +
                         encodeURIComponent(ch.toLowerCase());
                     /* 仅当明确禁用 App 内注册时才打 distributor_app 标记 */
                     if (cfg.disableInAppRegister === true) {
@@ -136,7 +136,7 @@
                     }
                     return base + q;
                 }
-                return APP_ORIGIN;
+                return base + 'mine.html';
             }
 
             var lastGoodAppUrl = buildAppStartUrl();
@@ -323,7 +323,9 @@
                 StatusBar.styleDefault();
             });
 
-            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default */
+            /* H5 iframe（跨域）通过 postMessage 请求改状态栏：蓝顶栏页 light，白顶栏页 default。
+             * StatusBar 可用顶栏蓝；壳层 html/body/iframe 底色用 shell_bg（默认浅灰），
+             * 切勿用顶栏蓝整页铺色，否则 iOS Home Indicator 区域露蓝。 */
             window.addEventListener('message', function (ev) {
                 var d = ev && ev.data;
                 if (!d || d.source !== 'tax-h5' || d.type !== 'status-bar') {
@@ -335,6 +337,8 @@
                 try {
                     if (d.overlays !== false) {
                         StatusBar.overlaysWebView(true);
+                    } else {
+                        StatusBar.overlaysWebView(false);
                     }
                     if (d.style === 'default') {
                         StatusBar.styleDefault();
@@ -343,6 +347,37 @@
                     }
                     if (d.color) {
                         StatusBar.backgroundColorByHexString(String(d.color));
+                    }
+                    if (d.paint_shell !== false) {
+                        var PAGE_BG = '#f5f6fa';
+                        var rawShell = String(d.shell_bg != null ? d.shell_bg : '').trim();
+                        var statusColor = String(d.color || '').trim().toLowerCase();
+                        var shellBg = rawShell;
+                        /* 未单独传 shell_bg 时：勿回退到顶栏蓝，避免底栏下整条蓝带 */
+                        if (!shellBg) {
+                            shellBg = d.style === 'default' ? '#ffffff' : PAGE_BG;
+                        } else if (
+                            shellBg !== '#00000000' &&
+                            shellBg !== 'transparent' &&
+                            statusColor &&
+                            shellBg.toLowerCase() === statusColor &&
+                            /^(#1677ff|#1e6fff|#2b81f2|#2286ee|#1e8fff)$/i.test(shellBg)
+                        ) {
+                            shellBg = PAGE_BG;
+                        }
+                        if (shellBg && shellBg !== '#00000000' && shellBg !== 'transparent') {
+                            document.documentElement.style.background = shellBg;
+                            document.body.style.background = shellBg;
+                            var frame = document.getElementById('app-frame');
+                            if (frame) frame.style.background = shellBg;
+                            try {
+                                var meta = document.querySelector('meta[name="theme-color"]');
+                                if (meta) meta.setAttribute('content', String(d.color || shellBg));
+                            } catch (eMeta) {}
+                        } else if (d.style === 'default') {
+                            document.documentElement.style.background = '#ffffff';
+                            document.body.style.background = '#ffffff';
+                        }
                     }
                 } catch (eSbMsg) {}
             });

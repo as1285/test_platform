@@ -18,10 +18,10 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260731-selftest-abc"></script>
-    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260730-ios-ufs-tap">
+    <script src="/js/auth.js?v=20260731-iphone14pro-spacing"></script>
+    <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/user-font-settings.js?v=20260731-selftest-abc" data-scope=".page-root"></script>
+    <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>收入纳税明细</title>
     <style>
@@ -162,7 +162,7 @@
             gap: 8px;
             padding: 6px 0;
             padding-bottom: 9px;
-            margin-bottom: 3px;
+            margin-bottom: 0;
             position: relative;
             border-bottom: none;
         }
@@ -170,6 +170,13 @@
         /* 仅「收入合计」与「已申报税额合计」之间保留横线；税额下方不再画线（对齐正版） */
         .summary > .summary-item:first-child {
             border-bottom: 1px solid #e5e5e5;
+            margin-bottom: 0;
+        }
+
+        /* 末行无底线：去掉多余底距，避免汇总白底与列表之间空一大截 */
+        .summary > .summary-item:last-of-type {
+            padding-bottom: 4px;
+            margin-bottom: 0;
         }
 
         .sm-activate-card {
@@ -329,6 +336,43 @@
         html.platform-android body.page-shuiming-result .list-date,
         html.platform-android body.page-shuiming-result .list-amount {
             font-synthesis: none;
+        }
+
+        /*
+         * Android：汇总与列表缝隙（见 syncTopFixedHeight）。
+         * 底部分隔约 10px，避免贴太紧或空太大。
+         */
+        html.platform-android body.page-shuiming-result .page-root {
+            --list-summary-pad: 72px;
+        }
+
+        html.platform-android body.page-shuiming-result .summary {
+            padding: 6px 16px 0;
+            border-top: 10px solid #f5f6fa;
+            border-bottom: 10px solid #f5f6fa;
+        }
+
+        html.platform-android body.page-shuiming-result .summary-item {
+            padding: 4px 0 5px;
+            margin-bottom: 0;
+        }
+
+        html.platform-android body.page-shuiming-result .summary > .summary-item:first-child {
+            padding-bottom: 6px;
+        }
+
+        html.platform-android body.page-shuiming-result .summary > .summary-item:last-of-type {
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        html.platform-android body.page-shuiming-result .sm-activate-card:not([hidden]) {
+            margin: 6px 0 2px;
+        }
+
+        /* 首条卡片不要再叠一层顶距（避免加载节点替换后 :first-child 失效） */
+        html.platform-android body.page-shuiming-result .list > .list-item:first-of-type {
+            margin-top: 0;
         }
 
         /* 列表顶部留白：避开固定汇总区（高度用 JS 实测写入 --list-summary-pad） */
@@ -613,8 +657,12 @@
         }
 
         html.app-android-huawei-cls-al00 body.page-shuiming-result .summary-item {
-            padding: 7px 0 10px;
-            margin-bottom: 2px;
+            padding: 5px 0 7px;
+            margin-bottom: 0;
+        }
+
+        html.app-android-huawei-cls-al00 body.page-shuiming-result .summary > .summary-item:last-of-type {
+            padding-bottom: 2px;
         }
 
         /* iPhone 11 Pro：顶栏标题、列表主标题（工资薪金）及汇总 PingFang 偏厚，单独降字重 */
@@ -639,6 +687,50 @@
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.012em;
+        }
+
+        /*
+         * iPhone 14 Pro（393×852）：中心标题突出、两侧操作收小；
+         * 明细四行固定为约 27px 基线节奏，避免 PingFang 行高忽紧忽松。
+         */
+        html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .header-title {
+            font-size: 19px !important;
+            line-height: 24px !important;
+            font-weight: 400;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .back-btn {
+            font-size: 14px !important;
+            line-height: 20px !important;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .back-btn .back-icon {
+            width: 8px;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .top-fixed .header .header-right {
+            font-size: 14px !important;
+            line-height: 20px !important;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .list-header {
+            margin-bottom: 3px !important;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .list-title,
+        html.app-ios-iphone14pro body.page-shuiming-result .list-date {
+            line-height: 20px !important;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .list-row,
+        html.app-ios-iphone14pro body.page-shuiming-result .list-row-with-arrow {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+        }
+
+        html.app-ios-iphone14pro body.page-shuiming-result .list-label,
+        html.app-ios-iphone14pro body.page-shuiming-result .list-company {
+            line-height: 21px !important;
         }
 
 
@@ -1036,12 +1128,12 @@
                 <span class="summary-value" id="incomeTotal">0.00元</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">已申报税额合计：</span>
+                <span class="summary-label"><span class="summary-label-text">已申报税额合计：</span></span>
                 <span class="summary-value" id="taxTotal">0.00元</span>
             </div>
             <div class="sm-activate-card" id="smActivateCard" hidden>
                 <p class="sm-activate-title">开通完整功能</p>
-                <p class="sm-activate-desc">激活后可完整查看明细并体验完税证明等能力</p>
+                <p class="sm-activate-desc">激活后可去水印并体验完税证明；也可先下方「示例填写个税」生成演示数据</p>
                 <a href="purchase.html?from=shuiming_result" class="sm-activate-btn" id="smActivateBtn">立即激活</a>
             </div>
         </div>
@@ -1062,17 +1154,56 @@
     <script>
         function syncTopFixedHeight() {
             var summary = document.querySelector('.summary');
+            var list = document.getElementById('recordList');
             var root = document.querySelector('.page-root');
             function measureAndApply() {
-                var pad = 102;
-                if (summary) {
-                    var r = summary.getBoundingClientRect();
-                    var h = r.height;
-                    if (!(h > 0)) {
-                        h = summary.offsetHeight || summary.scrollHeight || 0;
-                    }
-                    if (h > 0) {
-                        pad = Math.ceil(h) + 4;
+                var isAndroid = false;
+                try {
+                    isAndroid =
+                        document.documentElement.classList.contains('platform-android') ||
+                        /Android/i.test(navigator.userAgent || '');
+                } catch (eA) {}
+                var pad = isAndroid ? 64 : 102;
+                if (summary && list) {
+                    var summaryRect = summary.getBoundingClientRect();
+                    var listRect = list.getBoundingClientRect();
+                    /*
+                     * 以汇总区盒子底边对齐列表内容顶：
+                     * list.top 不受 padding-top 影响，pad = summary.bottom - list.top 即可贴齐，
+                     * 避免「内容高 + 经验加成」把灰缝撑大。
+                     */
+                    if (summaryRect.height > 0 && listRect.top > 0) {
+                        var aligned = Math.ceil(summaryRect.bottom - listRect.top);
+                        if (aligned > 0) {
+                            /* Android：贴齐底边后再加一点呼吸缝；iOS 略留缓冲 */
+                            pad = isAndroid
+                                ? Math.max(48, aligned + 6)
+                                : Math.max(48, aligned + 2);
+                        }
+                    } else if (summaryRect.height > 0) {
+                        var contentBottom = 0;
+                        var items = summary.querySelectorAll('.summary-item');
+                        var i;
+                        for (i = 0; i < items.length; i++) {
+                            var ir = items[i].getBoundingClientRect();
+                            if (ir.height > 0) contentBottom = Math.max(contentBottom, ir.bottom);
+                        }
+                        var activate = summary.querySelector('.sm-activate-card');
+                        if (activate && !activate.hasAttribute('hidden')) {
+                            var ar = activate.getBoundingClientRect();
+                            if (ar.height > 0) contentBottom = Math.max(contentBottom, ar.bottom);
+                        }
+                        var h = 0;
+                        if (contentBottom > 0) {
+                            h = Math.max(0, contentBottom - summaryRect.top);
+                        } else {
+                            h = summaryRect.height || summary.offsetHeight || 0;
+                        }
+                        if (h > 0) {
+                            pad = isAndroid
+                                ? Math.max(48, Math.ceil(h) + 10)
+                                : Math.ceil(h) + 10;
+                        }
                     }
                 }
                 if (root) {
@@ -1228,6 +1359,7 @@
             if (window.UserFontSettings && window.UserFontSettings.apply) {
                 window.UserFontSettings.apply(window.UserFontSettings.load());
             }
+            requestAnimationFrame(syncTopFixedHeight);
         }
 
         function syncRecordEmptyUi(hasRecords) {

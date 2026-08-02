@@ -1019,32 +1019,62 @@
     }, 500);
   }
 
+  function buildShuimingEmptyFillCtaHtml() {
+    if (hasTaxRecords()) return '';
+    ensureGateStyles();
+    if (isLandingGuest()) {
+      return (
+        '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>游客可先示例填写个税，再下载 App 带走资料</p>' +
+        '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">示例填写个税</a></div>'
+      );
+    }
+    /* 未激活也可填写（仅水印）；顶部已有「立即激活」卡，空态主推填写引导 */
+    var tip = isAccountActive()
+      ? '添加税务记录后即可查看本页明细'
+      : '暂无个税演示数据。可先示例填写（约 30 秒），激活后可去水印并体验完税证明';
+    return (
+      '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>' +
+      tip +
+      '</p>' +
+      '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">示例填写个税</a></div>'
+    );
+  }
+
   function patchShuimingResultEmpty() {
     if (currentPage() !== 'shuiming_result.html') return;
     var orig = window.getNoRecordsHtml;
-    if (typeof orig !== 'function' || orig.__cgPatched) return;
+    if (typeof orig !== 'function') return;
+    if (orig.__cgPatched) return;
+    var unpatched = orig;
     function patched() {
-      var html = orig();
-      if (document.getElementById('cg-empty-cta-injected')) return html;
-      ensureGateStyles();
-      var cta = '';
-      if (isLandingGuest() && !hasTaxRecords()) {
-        cta =
-          '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>游客可先示例填写个税，再下载 App 带走资料</p>' +
-          '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">示例填写个税</a></div>';
-      } else if (!isAccountActive()) {
-        cta =
-          '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>激活后可添加个税演示数据</p>' +
-          '<a href="purchase.html" class="cg-btn-primary">去激活</a></div>';
-      } else if (!skipConversionPromo() && !hasTaxRecords()) {
-        cta =
-          '<div class="cg-empty-cta" id="cg-empty-cta-injected"><p>添加税务记录后即可查看本页明细</p>' +
-          '<a href="consult.html?tab=records&onboarding=tax" class="cg-btn-primary">去添加税务记录</a></div>';
-      }
-      return html + cta;
+      var html = unpatched();
+      if (html.indexOf('cg-empty-cta-injected') >= 0) return html;
+      return html + buildShuimingEmptyFillCtaHtml();
     }
     patched.__cgPatched = true;
+    patched.__cgOrig = unpatched;
     window.getNoRecordsHtml = patched;
+  }
+
+  /** 列表常先于 conversion-guide 渲染：引导脚本就绪后补打空态填写 CTA */
+  function refreshShuimingResultEmptyCta() {
+    if (currentPage() !== 'shuiming_result.html') return;
+    if (hasTaxRecords()) return;
+    patchShuimingResultEmpty();
+    if (document.getElementById('cg-empty-cta-injected')) return;
+    var list = document.getElementById('recordList');
+    if (!list) return;
+    if (list.querySelector('.list-item')) return;
+    if (list.querySelector('.list-loading-spin')) return;
+    if (typeof window.getNoRecordsHtml !== 'function') return;
+    list.innerHTML = window.getNoRecordsHtml();
+    var root = document.querySelector('.page-root');
+    if (root) root.classList.add('is-record-empty');
+    if (typeof window.syncTopFixedHeight === 'function') {
+      try {
+        window.syncTopFixedHeight();
+      } catch (e) {}
+    }
   }
 
   function afterActivateSuccess() {
@@ -1550,6 +1580,7 @@
       runMineOnboarding();
       runConsultOnboarding();
       patchShuimingResultEmpty();
+      refreshShuimingResultEmptyCta();
       removeShuimingResultValueBar();
       renderShouyeTaxManageEntry();
       renderShouyeRetentionCard();
@@ -1565,6 +1596,8 @@
       maybeShowPostTaxSaveBanner();
       mountXiangqingEditEntry();
       mountShuimingResultManageEntry();
+      /* 列表异步返回后可能再次变空：短延迟再补一次 */
+      setTimeout(refreshShuimingResultEmptyCta, 400);
     }
 
     function runBoot() {

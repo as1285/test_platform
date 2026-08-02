@@ -3,16 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        /* 分享完成后首屏前隐藏，避免 App 切页闪一下「分享后消失」 */
+        /* 分享完成后首屏前隐藏；未登录提前标记游客态，避免闪出已登录卡片 */
         (function () {
             try {
                 if (localStorage.getItem('mine_share_done_v1') === '1') {
                     document.documentElement.classList.add('mine-share-done');
                 }
             } catch (e) {}
+            try {
+                var tok = String(localStorage.getItem('token') || '').trim();
+                if (!tok) {
+                    document.documentElement.classList.add('mine-guest');
+                }
+            } catch (e2) {
+                document.documentElement.classList.add('mine-guest');
+            }
         })();
     </script>
-    <script src="/js/auth.js?v=20260729-alipay-a-fix"></script>
+    <script src="/js/auth.js?v=20260801-mine-e1b"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -22,8 +30,10 @@
     <!-- TAX_APP_SHELL_END -->
     <script src="/js/browser-install-prompt.js?v=20260717-download" defer></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#2286ee">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1677ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>我的 · 个人所得税</title>
     <meta name="description" content="模拟器APP个人中心，登录后管理资料与服务。">
     <meta property="og:type" content="website">
@@ -64,6 +74,357 @@
         }
 
         /*
+         * 原版 APK（pages/index tab=4）：整页 e1_*.png + rpx 绝对叠字/热区。
+         * 1rpx = 100vw/750；姓名 top:380 left:90；税号 top:438 color:#c87930。
+         */
+        body.page-mine {
+            background: #f4f6f9 !important;
+            --mine-rpx: calc(100vw / 750);
+        }
+
+        .mine-e1-canvas {
+            position: relative;
+            width: 100%;
+            z-index: 1;
+            background: #1677ff;
+            /* 安全区：头图顶色顶入，避免刘海露白 */
+            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            overflow: hidden;
+        }
+
+        .mine-e1-canvas > .mine-e1-img,
+        .mine-e1-canvas > #headerImg {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            margin-top: calc(-1 * var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
+            vertical-align: top;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .mine-e1-layer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            /* 与 widthFix 图对齐：图负 margin 顶入安全区，叠层从画布顶对齐图顶 */
+            top: 0;
+            width: 100%;
+            height: 0;
+            padding-bottom: calc(2127 / 1284 * 100%); /* e1 原始比例 1284×2127 */
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .mine-e1-layer > * {
+            pointer-events: auto;
+        }
+
+        .mine-ov-name {
+            position: absolute;
+            top: calc(380 * var(--mine-rpx));
+            left: calc(90 * var(--mine-rpx));
+            /* 仅随文字收缩，勿拉满到「个人信息」左侧，否则会显一条空白底 */
+            right: auto;
+            max-width: calc(420 * var(--mine-rpx));
+            width: max-content;
+            z-index: 100;
+            margin: 0;
+            padding: 0;
+            font-size: calc(30 * var(--mine-rpx));
+            font-weight: 500;
+            color: #333;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: transparent;
+            text-shadow: none !important;
+            -webkit-text-stroke: 0 !important;
+            letter-spacing: 0 !important;
+        }
+
+        .mine-ov-tax {
+            position: absolute;
+            top: calc(438 * var(--mine-rpx));
+            left: calc(90 * var(--mine-rpx));
+            /* 可铺到卡片右侧；眼睛跟在号码后，避免固定 415rpx 把号码截断 */
+            right: calc(36 * var(--mine-rpx));
+            width: auto;
+            max-width: none;
+            z-index: 100;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: calc(5 * var(--mine-rpx));
+            margin: 0;
+            padding: 0;
+            color: #c87930;
+            font-size: calc(24 * var(--mine-rpx));
+            font-weight: 500;
+            line-height: 1.25;
+            background: transparent;
+            text-shadow: none !important;
+            -webkit-text-stroke: 0 !important;
+            letter-spacing: 0 !important;
+        }
+
+        .mine-ov-tax .user-tax-label {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            font-size: calc(24 * var(--mine-rpx));
+            font-weight: 500;
+            letter-spacing: 0 !important;
+            text-shadow: none !important;
+        }
+
+        .mine-ov-tax .user-tax-value {
+            flex: 0 1 auto;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+            font-size: calc(25 * var(--mine-rpx));
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0 !important;
+            text-shadow: none !important;
+        }
+
+        .mine-ov-eye {
+            position: relative;
+            top: auto;
+            left: auto;
+            flex: 0 0 auto;
+            width: calc(40 * var(--mine-rpx));
+            height: calc(20 * var(--mine-rpx));
+            margin-left: calc(4 * var(--mine-rpx));
+            z-index: 201;
+            border: none;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: none !important;
+            filter: none !important;
+        }
+
+        .mine-ov-eye img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: none !important;
+            -webkit-filter: none !important;
+        }
+
+        .mine-ov-eye.reveal {
+            width: calc(36 * var(--mine-rpx));
+            height: calc(22 * var(--mine-rpx));
+        }
+
+        .mine-hit {
+            position: absolute;
+            z-index: 99;
+            display: block;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            text-decoration: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .mine-hit-profile {
+            top: calc(390 * var(--mine-rpx));
+            left: calc(540 * var(--mine-rpx));
+            width: calc(160 * var(--mine-rpx));
+            height: calc(50 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        .mine-hit-family {
+            top: calc(520 * var(--mine-rpx));
+            left: calc(25 * var(--mine-rpx));
+            width: calc(220 * var(--mine-rpx));
+            height: calc(230 * var(--mine-rpx));
+        }
+
+        .mine-hit-employer {
+            top: calc(520 * var(--mine-rpx));
+            left: calc(265 * var(--mine-rpx));
+            width: calc(220 * var(--mine-rpx));
+            height: calc(230 * var(--mine-rpx));
+        }
+
+        .mine-hit-bank {
+            top: calc(520 * var(--mine-rpx));
+            left: calc(505 * var(--mine-rpx));
+            width: calc(220 * var(--mine-rpx));
+            height: calc(230 * var(--mine-rpx));
+        }
+
+        .mine-hit-care {
+            top: calc(810 * var(--mine-rpx));
+            left: 0;
+            width: 100%;
+            height: calc(70 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        .mine-hit-aqzx {
+            top: calc(880 * var(--mine-rpx));
+            left: 0;
+            width: 100%;
+            height: calc(70 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        .mine-hit-help {
+            top: calc(950 * var(--mine-rpx));
+            left: 0;
+            width: 100%;
+            height: calc(70 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        .mine-hit-consult {
+            top: calc(1020 * var(--mine-rpx));
+            left: 0;
+            width: 100%;
+            height: calc(70 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        .mine-hit-about {
+            top: calc(1090 * var(--mine-rpx));
+            left: 0;
+            width: 100%;
+            height: calc(70 * var(--mine-rpx));
+            z-index: 100;
+        }
+
+        /* 三宫格状态 pill：图内 pill 已擦除，此处单层绘制 */
+        .mine-e1-pill {
+            position: absolute;
+            z-index: 110;
+            top: calc(688 * var(--mine-rpx));
+            min-width: calc(72 * var(--mine-rpx));
+            height: calc(36 * var(--mine-rpx));
+            padding: 0 calc(14 * var(--mine-rpx));
+            border-radius: 999px;
+            font-size: calc(22 * var(--mine-rpx));
+            font-weight: 500;
+            line-height: calc(34 * var(--mine-rpx));
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
+            white-space: nowrap;
+            pointer-events: none;
+            -webkit-tap-highlight-color: transparent;
+            text-shadow: none !important;
+            box-shadow: none !important;
+            -webkit-text-stroke: 0 !important;
+            letter-spacing: 0 !important;
+        }
+
+        .mine-e1-pill.is-empty {
+            background: #ffffff;
+            color: #3b82f6;
+            border: 1px solid #3b82f6;
+        }
+
+        .mine-e1-pill.is-filled {
+            background: #3b82f6;
+            color: #fff;
+            border: 1px solid #3b82f6;
+        }
+
+        /* 三列卡片中轴约 135 / 375 / 615 rpx，pill 居中 */
+        .mine-e1-pill-family {
+            left: calc(99 * var(--mine-rpx));
+        }
+
+        .mine-e1-pill-employer {
+            left: calc(339 * var(--mine-rpx));
+        }
+
+        .mine-e1-pill-bank {
+            left: calc(579 * var(--mine-rpx));
+        }
+
+        .mine-avatar-edit-hit {
+            position: absolute;
+            left: 50%;
+            top: calc(120 * var(--mine-rpx));
+            width: calc(140 * var(--mine-rpx));
+            height: calc(140 * var(--mine-rpx));
+            margin-left: calc(-70 * var(--mine-rpx));
+            border: none;
+            padding: 0;
+            background: transparent;
+            z-index: 120;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mine-e1-footer {
+            position: relative;
+            z-index: 5;
+            background: #f4f6f9;
+            padding: 8px 16px var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
+        }
+
+        /* 游客：叠字隐藏，登录钮落在信息卡中央 */
+        html.mine-guest body.page-mine .mine-ov-name,
+        html.mine-guest body.page-mine .mine-ov-tax,
+        html.mine-guest body.page-mine .mine-ov-eye,
+        html.mine-guest body.page-mine .mine-hit-profile,
+        html.mine-guest body.page-mine .mine-e1-pill,
+        html.mine-guest body.page-mine .mine-avatar-edit-hit,
+        html.mine-guest body.page-mine .mine-e1-footer .logout-section {
+            display: none !important;
+        }
+
+        html.mine-guest body.page-mine .mine-guest-login-btn {
+            display: inline-flex !important;
+            position: absolute;
+            top: calc(395 * var(--mine-rpx));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 130;
+            min-width: calc(200 * var(--mine-rpx));
+            padding: calc(12 * var(--mine-rpx)) calc(40 * var(--mine-rpx));
+            border-radius: 999px;
+            background: #fff;
+            color: #d4923a;
+            font-size: calc(28 * var(--mine-rpx));
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .mine-consult-dot {
+            position: absolute;
+            top: calc(1038 * var(--mine-rpx));
+            left: calc(190 * var(--mine-rpx));
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff4d4f;
+            z-index: 120;
+            pointer-events: none;
+        }
+
+        .mine-consult-dot[hidden] {
+            display: none !important;
+        }
+
+        /*
          * 「我的」底栏与其它 TAB 同用 bottom + gap，首屏即悬浮，避免 JS top 硬钉闪烁。
          */
         body.page-mine {
@@ -92,11 +453,13 @@
             width: 100%;
             overflow: hidden;
             --mine-safe-top: env(safe-area-inset-top, 0px);
-            /* 与 grdb.jpg 顶部取样对齐 */
-            --mine-header-blue-top: #2286ee;
+            /* 与原版 APK statusbar.background / 头图顶行对齐 */
+            --mine-header-blue-top: #1677ff;
             --mine-header-blue-mid: #1e81fb;
             --mine-header-blue-bot: #2c80f4;
-            background: var(--mine-header-blue-top);
+            /* grdb.jpg 第 0 行逐点采样：顶行是横向渐变，纯色垫带必然有接缝 */
+            --mine-header-grad: linear-gradient(90deg, #2d4cf2 0%, #094ee9 12%, #0b56ed 25%, #0972e8 38%, #0c8ef0 50%, #0e9fee 63%, #30b1f2 75%, #64c3f3 88%, #97caf5 100%);
+            background: var(--mine-header-grad);
         }
 
         /* 安全区留白 + 头图上推进安全区，整段视觉连续 */
@@ -112,8 +475,8 @@
 
         html.app-ios-client.app-top-safe-shell {
             --mine-ios-header-lift: 0px;
-            /* 与 grdb.jpg 顶部取样一致 */
-            --mine-header-blue-top: #2286ee;
+            /* 原版 APK statusbar.background */
+            --mine-header-blue-top: #1677ff;
         }
 
         /*
@@ -130,7 +493,7 @@
             z-index: 0;
             padding-top: var(--app-shell-statusbar-top, var(--mine-safe-top));
             overflow: hidden;
-            background: var(--mine-header-blue-top, #2286ee);
+            background: var(--mine-header-grad, #2286ee);
         }
 
         html.app-ios-client.app-top-safe-shell body.page-mine .header-bg > img {
@@ -149,7 +512,7 @@
         /* Cordova 23127PN0CC：固定定位，避免被 header-bg overflow 或黑状态栏裁切 */
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg {
             padding-top: var(--app-cordova-statusbar-chrome, 40px);
-            background: var(--mine-header-blue-top, #2286ee);
+            background: var(--mine-header-grad, #2286ee);
             overflow: hidden;
         }
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .header-bg > img {
@@ -159,7 +522,7 @@
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-card {
             margin: -38px 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 16px 14px 14px;
+            padding: 16px 0 14px 14px;
         }
 
         html.app-cordova-xiaomi-23127.app-top-safe-shell body.page-mine .user-name {
@@ -221,7 +584,7 @@
 
         /* 红米 Note 13 Pro：缩小「个人信息」与税号字号，避免挡住眼睛按钮 */
         html.app-android-redmi-note13-pro body.page-mine .user-card {
-            padding: 12px 88px 14px 14px;
+            padding: 12px 0 14px 14px;
         }
 
         html.app-android-redmi-note13-pro body.page-mine .user-info-text {
@@ -479,15 +842,23 @@
             padding-bottom: var(--bottom-nav-clearance, calc(78px + env(safe-area-inset-bottom, 0px)));
         }
 
+        /*
+         * 个人信息卡：对齐原版 uni APK（pages/home/my）
+         * 原版是整页大图 e1_*.png + 姓名/税号绝对叠字（left:90rpx / top:380·438rpx，色 #c87930），
+         * 「个人信息 >」画在图里。这里用真实 DOM 复刻同款比例与色值。
+         */
         .user-card {
-            background: linear-gradient(105deg, #f8ead8 0%, #f3e2cc 42%, #edd9bf 100%);
+            background: linear-gradient(105deg, #fce5d0 0%, #f5d4b5 45%, #f0c9a4 100%);
             margin: -70px 16px 0;
             border-radius: 12px 12px 0 0;
-            padding: 14px 86px 14px 16px;
+            padding: 16px 0 16px 22px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             position: relative;
             z-index: 11;
             overflow: visible;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         /* 头像热区：卡通头像在顶图内，信息卡上移后会挡住点击，单独留出触控区 */
@@ -508,7 +879,10 @@
         }
 
         .user-info {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
             min-width: 0;
         }
 
@@ -530,12 +904,12 @@
         }
 
         .user-name.user-name--editable {
-            display: inline-block;
+            display: block;
             max-width: 100%;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
-            padding: 0 2px;
+            padding: 0;
             min-height: 0;
         }
 
@@ -547,21 +921,24 @@
             font-size: 16px;
             color: #1a1a1a;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin: 0 0 6px;
+            padding: 0;
             line-height: 1.25;
         }
 
         .user-id {
             display: flex;
             flex-direction: row;
-            align-items: center;
+            align-items: baseline;
             flex-wrap: nowrap;
-            gap: 4px;
+            gap: 5px;
             width: 100%;
             min-width: 0;
+            margin: 0;
+            padding: 0;
             font-size: 12px;
             font-weight: 500;
-            color: #c8863a;
+            color: #c87930;
             line-height: 1.25;
         }
 
@@ -569,12 +946,13 @@
             flex: 0 0 auto;
             white-space: nowrap;
             font-size: 12px;
+            font-weight: 500;
         }
 
         .user-tax-value {
             flex: 0 0 auto;
             white-space: nowrap;
-            font-size: 12px;
+            font-size: 12.5px;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.02em;
         }
@@ -584,28 +962,32 @@
         html[class*='app-ios'] body.page-mine .user-name {
             font-size: 16px;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             line-height: 1.25;
         }
 
-        html.app-ios-client body.page-mine .user-id,
-        html[class*='app-ios'] body.page-mine .user-id {
-            font-size: 12px;
-            gap: 3px;
+        html.app-ios-client body.page-mine .mine-ov-tax.user-id,
+        html[class*='app-ios'] body.page-mine .mine-ov-tax.user-id {
+            font-size: calc(24 * var(--mine-rpx));
+            gap: calc(5 * var(--mine-rpx));
+            color: #c87930;
+            letter-spacing: 0 !important;
         }
 
-        html.app-ios-client body.page-mine .user-tax-label,
-        html[class*='app-ios'] body.page-mine .user-tax-label,
-        html.app-ios-client body.page-mine .user-tax-value,
-        html[class*='app-ios'] body.page-mine .user-tax-value {
-            font-size: 12px;
-            letter-spacing: -0.05em;
+        html.app-ios-client body.page-mine .mine-ov-tax .user-tax-label,
+        html[class*='app-ios'] body.page-mine .mine-ov-tax .user-tax-label,
+        html.app-ios-client body.page-mine .mine-ov-tax .user-tax-value,
+        html[class*='app-ios'] body.page-mine .mine-ov-tax .user-tax-value {
+            font-size: calc(24 * var(--mine-rpx));
+            letter-spacing: 0 !important;
+            text-shadow: none !important;
         }
 
         html.app-ios-client body.page-mine .tax-eye-btn,
         html[class*='app-ios'] body.page-mine .tax-eye-btn {
             width: 16px;
             height: 16px;
+            color: #c87930;
         }
 
         html.app-ios-client body.page-mine .tax-eye-btn svg,
@@ -616,23 +998,30 @@
 
         html.app-ios-client body.page-mine .personal-info-btn,
         html[class*='app-ios'] body.page-mine .personal-info-btn {
-            font-size: 11px;
-            padding: 5px 10px 5px 12px;
+            font-size: 12px;
+            padding: 7px 12px 7px 14px;
+            background: #ebad72;
         }
 
-        /* iPhone Safari 模拟/真机：未命中 app-ios-client 时税号仍 12px 单行 */
+        /*
+         * iOS / Cordova：原版 APK statusbar.immersed + background #1677ff。
+         * 壳 iframe 的 env(safe-area-inset-top) 常为 0，必须用 --app-shell-statusbar-top 顶入，
+         * 并用横向渐变垫在 html 顶，避免刘海下露白。
+         */
+        html.app-ios-client.app-top-safe-shell body.page-mine .user-card,
+        html.app-ios-client body.page-mine .user-card {
+            margin: -70px 16px 0;
+            padding: 16px 0 16px 22px;
+        }
+
+        /* e1 叠字页：勿再压负字距，避免 iOS 税号重影 */
         @supports (-webkit-touch-callout: none) {
             @media (max-width: 428px) {
-                body.page-mine .user-id,
-                body.page-mine .user-tax-label,
-                body.page-mine .user-tax-value {
-                    font-size: 12px;
-                    line-height: 1.25;
-                    white-space: nowrap;
-                }
-
-                body.page-mine .user-tax-value {
-                    letter-spacing: -0.05em;
+                body.page-mine .mine-ov-tax,
+                body.page-mine .mine-ov-tax .user-tax-label,
+                body.page-mine .mine-ov-tax .user-tax-value {
+                    letter-spacing: 0 !important;
+                    text-shadow: none !important;
                 }
             }
         }
@@ -642,11 +1031,12 @@
             height: 18px;
             border: none;
             background: transparent;
-            color: #c8863a;
+            color: #c87930;
             line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            align-self: center;
             cursor: pointer;
             padding: 0;
             flex-shrink: 0;
@@ -676,14 +1066,13 @@
         }
 
         .personal-info-btn {
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #edaa66;
+            position: static;
+            align-self: center;
+            margin-left: auto;
+            background: #ebad72;
             border: none;
             border-radius: 20px 0 0 20px;
-            padding: 6px 10px 6px 14px;
+            padding: 7px 12px 7px 14px;
             font-size: 12px;
             font-weight: 500;
             color: #fff;
@@ -694,7 +1083,7 @@
             flex-shrink: 0;
             text-decoration: none;
             white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            box-shadow: none;
             z-index: 2;
             -webkit-tap-highlight-color: transparent;
         }
@@ -833,9 +1222,8 @@
             opacity: 0.9;
         }
 
-        /* 已激活：隐藏截图模式条、税务演示入口 */
-        body.page-mine.mine-account-active #cgMineScreenshotBar,
-        body.page-mine.mine-account-active #mineTaxEntryLink {
+        /* 已激活：隐藏截图模式条（税务入口保留，便于填写/分享） */
+        body.page-mine.mine-account-active #cgMineScreenshotBar {
             display: none !important;
         }
 
@@ -1079,6 +1467,27 @@
         }
 
         /* 退出登录：官方为菜单下方独立白底圆角条 */
+        .mine-lizhi-entry {
+            display: block;
+            margin: 12px 16px 0;
+            padding: 14px 20px;
+            border-radius: 12px;
+            background: #fff;
+            border: 1px solid #cfe2ff;
+            color: #1d6fd8;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mine-lizhi-entry:active { opacity: 0.9; }
+        html.mine-guest body.page-mine .mine-lizhi-entry {
+            display: none !important;
+        }
+
         .logout-section {
             background: #fff;
             margin: 12px 16px 0;
@@ -1102,25 +1511,32 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* 我的页分享：头图右上角；分享成功后隐藏 */
+        /* 我的页分享：放在「填写个税记录」卡片旁；分享成功后隐藏 */
+        .mine-tax-share-block {
+            margin: 10px 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .mine-tax-share-block .mine-tax-entry {
+            margin: 0;
+        }
         .mine-share-btn {
-            position: fixed;
-            top: calc(10px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
-            right: 14px;
-            z-index: 80;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 5px;
-            padding: 7px 12px;
+            width: 100%;
+            padding: 11px 14px;
             border: none;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #1e6fff;
-            font-size: 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #fb7299 0%, #e84a7f 100%);
+            color: #fff;
+            font-size: 14px;
             font-weight: 600;
             font-family: inherit;
             white-space: nowrap;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 2px 10px rgba(232, 74, 127, 0.28);
             -webkit-tap-highlight-color: transparent;
             cursor: pointer;
         }
@@ -1130,17 +1546,23 @@
         html.mine-share-done .mine-share-btn {
             display: none !important;
         }
+        html.mine-share-done .mine-tax-entry-desc--need-share {
+            display: none !important;
+        }
+        .mine-tax-entry-desc--shared {
+            display: none;
+        }
+        html.mine-share-done .mine-tax-entry-desc--shared {
+            display: block;
+        }
         .mine-share-btn:active {
             opacity: 0.88;
             transform: scale(0.98);
         }
         .mine-share-btn svg {
-            width: 15px;
-            height: 15px;
+            width: 16px;
+            height: 16px;
             flex-shrink: 0;
-        }
-        html.app-cordova-xiaomi-23127.app-top-safe-shell .mine-share-btn {
-            top: calc(10px + var(--app-cordova-statusbar-chrome, 40px));
         }
         .mine-share-modal-panel {
             text-align: center;
@@ -1186,6 +1608,56 @@
             text-align: left;
         }
 
+        /* 未登录：个人信息卡改为居中「注册/登录」 */
+        html.mine-guest body.page-mine .user-info,
+        html.mine-guest body.page-mine .personal-info-btn,
+        html.mine-guest body.page-mine .logout-section,
+        html.mine-guest body.page-mine .mine-tax-share-block,
+        html.mine-guest body.page-mine #mineAvatarEditHit,
+        body.page-mine.mine-guest .user-info,
+        body.page-mine.mine-guest .personal-info-btn,
+        body.page-mine.mine-guest .logout-section,
+        body.page-mine.mine-guest .mine-tax-share-block,
+        body.page-mine.mine-guest #mineAvatarEditHit {
+            display: none !important;
+        }
+
+        html.mine-guest body.page-mine .user-card,
+        body.page-mine.mine-guest .user-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 16px;
+            min-height: 52px;
+        }
+
+        .mine-guest-login-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-width: 132px;
+            padding: 9px 28px;
+            border-radius: 999px;
+            background: #fff;
+            color: #d4923a;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            text-decoration: none;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html.mine-guest body.page-mine .mine-guest-login-btn,
+        body.page-mine.mine-guest .mine-guest-login-btn {
+            display: inline-flex;
+        }
+
+        .mine-guest-login-btn:active {
+            opacity: 0.88;
+            transform: scale(0.98);
+        }
+
         /* 游客沙盒：底部下载引导条（压在底栏之上） */
         .guest-download-bar {
             display: none;
@@ -1204,6 +1676,7 @@
         body.guest-download-bar-on .guest-download-bar {
             display: flex;
         }
+        body.guest-download-bar-on .mine-e1-footer,
         body.guest-download-bar-on .content-wrapper {
             padding-bottom: calc(var(--bottom-nav-clearance, 78px) + 72px);
         }
@@ -1240,83 +1713,78 @@
 </head>
 <body class="page-mine tax-app-shell has-bottom-nav">
     <div class="mine-stack">
-        <div class="header-bg">
-            <img id="headerImg" src="grdb.jpg" alt="个人中心头像，长按切换截图模式，连续点击5次切换数据编辑">
-        </div>
-
-        <button type="button" class="mine-share-btn" id="mineShareBtn" aria-label="分享后消失">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            分享后消失
-        </button>
-
-        <div class="user-card" id="mineUserCardEditHit">
-            <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
-            <a href="personal_info.html" class="personal-info-btn">个人信息</a>
-            <div class="user-info user-info-text" id="mineProfileEditHit">
+        <!-- 原版 APK：整页 e1_*.png + 叠字/热区（pages/index tab=4） -->
+        <div class="mine-e1-canvas" id="mineE1Canvas">
+            <img
+                id="headerImg"
+                class="mine-e1-img"
+                src="/img/mine/e1_01.png?v=20260802-eye2"
+                alt="个人中心"
+                width="1284"
+                height="2127"
+            >
+            <script>
+                (function () {
+                    var hi = document.getElementById('headerImg');
+                    if (!hi) return;
+                    var v = '?v=20260802-eye2';
+                    try {
+                        if (!String(localStorage.getItem('token') || '').trim()) {
+                            hi.src = '/img/mine/e1_01.png' + v;
+                            return;
+                        }
+                        var g = Number(localStorage.getItem('gender'));
+                        var female = g === 2;
+                        hi.src = (female ? '/img/mine/e1_02.png' : '/img/mine/e1_01.png') + v;
+                    } catch (e) {}
+                })();
+            </script>
+            <div class="mine-e1-layer" id="mineE1Layer">
+                <button type="button" class="mine-avatar-edit-hit" id="mineAvatarEditHit" aria-label="切换数据编辑模式"></button>
                 <div
-                    class="user-name user-name--editable"
+                    class="mine-ov-name user-name user-name--editable"
                     id="mineDisplayName"
                     role="button"
                     tabindex="0"
                     aria-label="修改姓名、纳税人识别号与性别"
                 >点击我修改名字</div>
-                <div class="user-id" id="userTaxId">
+                <div class="mine-ov-tax user-id" id="userTaxId">
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
-                    <button type="button" class="tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
-                            <svg class="tax-eye-closed" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M926.03392 339.87072c-9.86624 0-19.16928 4.14208-26.17856 11.0848-14.09024 13.94688-39.44448 30.94016-79.85664 47.27808-79.86176 32.28672-192.12288 50.80064-307.9936 50.80064s-228.13696-18.51392-307.9936-50.80064c-40.41216-16.33792-65.7664-33.3312-79.85664-47.27808-7.0144-6.94272-16.31232-11.07968-26.17856-11.07968-33.05472 0-48.9984 40.35584-24.9856 63.07328 72.832 68.89472 241.9712 117.1712 439.01952 117.1712s366.18752-48.2816 439.01952-117.1712c24.00256-22.72256 8.05376-63.0784-24.99584-63.0784z" fill="currentColor"></path>
-                                <path d="M353.83808 642.41152l22.92224-130.00192a35.54816 35.54816 0 0 1 70.00064 12.3392l-22.92224 130.00192a35.53792 35.53792 0 1 1-70.00064-12.3392zM610.31424 654.75584l-22.92224-130.00192a35.5328 35.5328 0 0 1 28.83072-41.16992 35.5328 35.5328 0 0 1 41.16992 28.83072l22.92224 130.00192a35.54816 35.54816 0 0 1-70.00064 12.3392zM878.7968 589.37856l-93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304-50.26304l93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304 50.26304zM105.09824 539.11552l93.34272-93.34272a35.53792 35.53792 0 1 1 50.26304 50.26304l-93.34272 93.34272a35.53792 35.53792 0 1 1-50.26304-50.26304z" fill="currentColor"></path>
-                            </svg>
-                            <svg class="tax-eye-open" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M512 256c-209.768 0-390.024 120.056-480 294.248C121.976 724.44 302.232 844.496 512 844.496S902.024 724.44 992 550.248C902.024 376.056 721.768 256 512 256z m0 490.416c-108.272 0-196.168-87.896-196.168-196.168S403.728 354.08 512 354.08s196.168 87.896 196.168 196.168S620.272 746.416 512 746.416z" fill="#c8863a"></path>
-                                <path d="M512 432.336c-65.096 0-117.912 52.816-117.912 117.912S446.904 668.16 512 668.16s117.912-52.816 117.912-117.912S577.096 432.336 512 432.336z" fill="#c8863a"></path>
-                            </svg>
-                        </button>
+                    <button type="button" class="mine-ov-eye tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
+                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260802-eye2" alt="">
+                    </button>
                 </div>
+                <div id="mineProfileEditHit" hidden aria-hidden="true"></div>
+                <div id="mineUserCardEditHit" hidden aria-hidden="true"></div>
+                <a href="personal_info.html" class="mine-hit mine-hit-profile" id="minePersonalInfoHit" aria-label="个人信息"></a>
+                <a href="login.html" class="mine-guest-login-btn" id="mineGuestLoginBtn">注册/登录</a>
+
+                <a href="jtcy.html" class="mine-hit mine-hit-family" aria-label="家庭成员"></a>
+                <a href="renzhi.html" class="mine-hit mine-hit-employer" aria-label="任职受雇"></a>
+                <a href="yhk.html" class="mine-hit mine-hit-bank" aria-label="银行卡"></a>
+
+                <a href="jtcy_add.html" class="mine-e1-pill mine-e1-pill-family is-empty" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount">添加</span></a>
+                <span class="mine-e1-pill mine-e1-pill-employer is-empty" id="employerCount">暂无</span>
+                <a href="yhk_add.html" class="mine-e1-pill mine-e1-pill-bank is-empty" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount">添加</span></a>
+
+                <a class="mine-hit mine-hit-care" href="care_version.html" id="mineCareVersionLink" aria-label="切换关怀版"></a>
+                <a class="mine-hit mine-hit-aqzx" href="aqzx.html" aria-label="安全中心"></a>
+                <a class="mine-hit mine-hit-help" href="help_center.html" id="mineHelpCenterLink" aria-label="帮助中心"></a>
+                <a class="mine-hit mine-hit-consult" href="consult.html?v=20260721d-bonus" id="consultModifyLink" aria-label="我要咨询"></a>
+                <span class="mine-consult-dot" id="consultTaxDot" hidden aria-label="待添加个税记录"></span>
+                <a class="mine-hit mine-hit-about" href="about_update.html" aria-label="关于与更新"></a>
+
+                <!-- 兼容旧 JS 引用的隐藏图标节点 -->
+                <img id="mineIconFamily" src="jtcy.jpg" alt="" hidden>
+                <img id="mineIconEmployer" src="rzsp.jpg" alt="" hidden>
+                <img id="mineIconBank" src="yhk.jpg" alt="" hidden>
+                <span id="consultModifyMenuText" hidden>我要咨询</span>
             </div>
         </div>
 
-        <div class="content-wrapper">
-            <div class="function-cards">
-                <div class="function-card function-card--split">
-                    <a href="jtcy.html" class="function-card-hit" aria-label="家庭成员">
-                        <div class="function-icon">
-                            <img id="mineIconFamily" src="jtcy.jpg" alt="">
-                        </div>
-                        <div class="function-title">家庭成员</div>
-                    </a>
-                    <a href="jtcy_add.html" class="function-btn orange" id="familyCountWrap" aria-label="添加家庭成员"><span id="familyCount" role="text">添加</span></a>
-                </div>
-                <a class="function-card" href="renzhi.html">
-                    <div class="function-icon">
-                        <img id="mineIconEmployer" src="rzsp.jpg" alt="">
-                    </div>
-                    <div class="function-title">任职受雇</div>
-                    <span class="function-btn orange" id="employerCount" role="text">暂无</span>
-                </a>
-                <div class="function-card function-card--split">
-                    <a href="yhk.html" class="function-card-hit" aria-label="银行卡">
-                        <div class="function-icon">
-                            <img id="mineIconBank" src="yhk.jpg" alt="">
-                        </div>
-                        <div class="function-title">银行卡</div>
-                    </a>
-                    <a href="yhk_add.html" class="function-btn orange" id="bankCardAddWrap" aria-label="添加银行卡"><span id="bankCardCount" role="text">添加</span></a>
-                </div>
-            </div>
-
-            <div class="menu-list">
-                <a class="menu-item" href="care_version.html" id="mineCareVersionLink"><span class="menu-icon"><img src="caidan/gh.png" alt="" width="20" height="20"></span><span class="menu-text">切换关怀版</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-                <a class="menu-item" href="aqzx.html"><span class="menu-icon"><img src="caidan/aq.png" alt="" width="19" height="19"></span><span class="menu-text">安全中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-                <a class="menu-item" href="help_center.html" id="mineHelpCenterLink"><span class="menu-icon"><img src="caidan/bz.png" alt="" width="19" height="19"></span><span class="menu-text">帮助中心</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-                <a class="menu-item" href="consult.html?v=20260721d-bonus" id="consultModifyLink"><span class="menu-icon"><img src="caidan/zx.png" alt="" width="19" height="19"></span><span class="menu-text" id="consultModifyMenuText">我要咨询</span><span class="menu-item-dot" id="consultTaxDot" hidden aria-label="待添加个税记录"></span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-                <a class="menu-item" href="about_update.html"><span class="menu-icon"><img src="caidan/gy.png" alt="" width="19" height="19"></span><span class="menu-text">关于&amp;更新</span><span class="menu-arrow" aria-hidden="true"><svg viewBox="0 0 8 14" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6-6 6"/></svg></span></a>
-            </div>
+        <div class="mine-e1-footer">
+            <a href="lizhi_cert.html" class="mine-lizhi-entry" id="mineLizhiEntry">离职证明生成（测试免支付）</a>
             <div class="logout-section">
                 <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
             </div>
@@ -1326,20 +1794,11 @@
     <div id="mineShareModal" class="activate-modal-root" role="dialog" aria-modal="true" aria-labelledby="mineShareModalTitle">
         <div class="activate-modal-mask" id="mineShareModalMask"></div>
         <div class="activate-modal-panel mine-share-modal-panel">
-            <p class="activate-modal-title" id="mineShareModalTitle">分享给好友</p>
-            <p class="mine-share-tip" id="mineShareTip">复制或系统分享链接，粘贴到微信后好友可直接打开。也可保存下载海报扫码安装。</p>
+            <p class="activate-modal-title" id="mineShareModalTitle">分享到 B 站</p>
+            <p class="mine-share-tip" id="mineShareTip">将演示链接发到 B 站动态后，即可使用「一键生成税务记录」。返回本应用后自动解锁。</p>
             <div class="mine-share-link-actions">
-                <button type="button" class="activate-modal-btn primary" id="btnMineShareHome">分享首页</button>
-                <button type="button" class="activate-modal-btn primary" id="btnMineShareMine">分享我的</button>
-                <button type="button" class="activate-modal-btn" id="btnMineSharePoster">保存下载海报</button>
-            </div>
-            <div class="mine-share-poster-block" id="mineSharePosterBlock" hidden>
-                <div class="mine-share-qr-wrap" id="mineShareQrWrap">
-                    <span style="color:#999;font-size:13px;">加载中…</span>
-                </div>
-                <div class="activate-modal-actions">
-                    <button type="button" class="activate-modal-btn primary" id="btnMineShareSave">保存并去微信</button>
-                </div>
+                <button type="button" class="activate-modal-btn primary" id="btnMineShareBili">打开 B 站分享</button>
+                <button type="button" class="activate-modal-btn" id="btnMineShareCopy">复制链接</button>
             </div>
             <div class="activate-modal-actions">
                 <button type="button" class="activate-modal-btn" id="btnMineShareCancel">取消</button>
@@ -1448,9 +1907,11 @@
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
+            /** 原版 updateEImage：gender × company_name_tow(0/1/2) × FamilyMember → e1_*.png */
+            var mineE1State = { family: 0, employer: 0 };
+
             function applyMineHeaderImage(gender) {
                 var hi = document.getElementById('headerImg');
-                var cfg = window.__MINE_UI_CONFIG || {};
                 if (!hi) return;
                 var g = gender;
                 if (g == null || g === '') {
@@ -1460,12 +1921,23 @@
                         g = null;
                     }
                 }
-                var n = Number(g);
-                if (Number(n) === 2) {
-                    hi.src = cfg.header_female || 'nx.jpg';
-                } else {
-                    hi.src = cfg.header_male || 'grdb.jpg';
-                }
+                var female = Number(g) === 2;
+                var fam = mineE1State.family > 0 ? 1 : 0;
+                var ec = Number(mineE1State.employer) || 0;
+                var tow = ec <= 0 ? 0 : ec === 1 ? 1 : 2;
+                var base;
+                if (tow === 0) base = female ? 'e1_02' : 'e1_01';
+                else if (tow === 1) base = female ? 'e1_2' : 'e1_1';
+                else base = female ? 'e1_4' : 'e1_3';
+                if (fam) base += 'r';
+                hi.src = '/img/mine/' + base + '.png?v=20260802-eye2';
+            }
+
+            function syncMineYanIcon() {
+                var img = document.getElementById('mineYanIcon');
+                if (!img) return;
+                var v = '?v=20260802-eye2';
+                img.src = (mineTaxRevealState ? '/img/mine/yan-k.png' : '/img/mine/yan-b.png') + v;
             }
 
             function applyMineAssets(cfg) {
@@ -1559,6 +2031,43 @@
                 } catch (e) {
                     return false;
                 }
+            }
+
+            function isMineLoggedIn() {
+                try {
+                    if (typeof window.authGetToken === 'function') {
+                        return !!String(window.authGetToken() || '').trim();
+                    }
+                    return !!String(localStorage.getItem('token') || '').trim();
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            /** 未登录：展示「注册/登录」卡片，隐藏资料/退出等；头图切灰色剪影 */
+            function applyMineGuestShell() {
+                var loggedIn = isMineLoggedIn();
+                try {
+                    document.documentElement.classList.toggle('mine-guest', !loggedIn);
+                } catch (e0) {}
+                if (document.body) {
+                    document.body.classList.toggle('mine-guest', !loggedIn);
+                }
+                applyMineHeaderImage();
+                var btn = document.getElementById('mineGuestLoginBtn');
+                if (!btn) return;
+                if (loggedIn) {
+                    btn.setAttribute('hidden', '');
+                    return;
+                }
+                btn.removeAttribute('hidden');
+                var href = 'login.html';
+                try {
+                    if (typeof window.buildLoginPageUrl === 'function') {
+                        href = window.buildLoginPageUrl('mine.html');
+                    }
+                } catch (e1) {}
+                btn.setAttribute('href', href);
             }
 
             function isMineAppShell() {
@@ -2042,29 +2551,36 @@
                 var familyWrap = document.getElementById('familyCountWrap');
                 var bankBtn = document.getElementById('bankCardCount');
                 var bankWrap = document.getElementById('bankCardAddWrap');
+                var taxBadge = document.getElementById('mineTaxRecordBadge');
                 var ec = user && user.employer_count != null ? Number(user.employer_count) : NaN;
                 var fc = user && user.family_count != null ? Number(user.family_count) : NaN;
                 var bc = user && user.bank_card_count != null ? Number(user.bank_card_count) : NaN;
+                var tc =
+                    user && user.tax_record_count != null
+                        ? Number(user.tax_record_count)
+                        : Number(localStorage.getItem('tax_record_count') || '0');
+
+                mineE1State.employer = !isNaN(ec) && ec > 0 ? ec : 0;
+                mineE1State.family = !isNaN(fc) && fc > 0 ? fc : 0;
 
                 if (employerBtn) {
                     if (user && !isNaN(ec) && ec > 0) {
                         employerBtn.textContent = ec + '家';
-                        employerBtn.className = 'function-btn blue';
+                        employerBtn.className = 'mine-e1-pill mine-e1-pill-employer is-filled';
                     } else {
-                        /* 对齐官方：无在职单位（含全部离职）显示「暂无」 */
                         employerBtn.textContent = '暂无';
-                        employerBtn.className = 'function-btn orange';
+                        employerBtn.className = 'mine-e1-pill mine-e1-pill-employer is-empty';
                     }
                 }
                 if (familyBtn && familyWrap) {
                     if (user && !isNaN(fc) && fc > 0) {
                         familyBtn.textContent = fc + '人';
-                        familyWrap.className = 'function-btn blue';
+                        familyWrap.className = 'mine-e1-pill mine-e1-pill-family is-filled';
                         familyWrap.setAttribute('href', 'jtcy.html');
                         familyWrap.setAttribute('aria-label', '家庭成员');
                     } else {
                         familyBtn.textContent = '添加';
-                        familyWrap.className = 'function-btn orange';
+                        familyWrap.className = 'mine-e1-pill mine-e1-pill-family is-empty';
                         familyWrap.setAttribute('href', 'jtcy_add.html');
                         familyWrap.setAttribute('aria-label', '添加家庭成员');
                     }
@@ -2072,16 +2588,26 @@
                 if (bankBtn && bankWrap) {
                     if (user && !isNaN(bc) && bc > 0) {
                         bankBtn.textContent = bc + '张';
-                        bankWrap.className = 'function-btn blue';
+                        bankWrap.className = 'mine-e1-pill mine-e1-pill-bank is-filled';
                         bankWrap.setAttribute('href', 'yhk.html');
                         bankWrap.setAttribute('aria-label', '银行卡');
                     } else {
                         bankBtn.textContent = '添加';
-                        bankWrap.className = 'function-btn orange';
+                        bankWrap.className = 'mine-e1-pill mine-e1-pill-bank is-empty';
                         bankWrap.setAttribute('href', 'yhk_add.html');
                         bankWrap.setAttribute('aria-label', '添加银行卡');
                     }
                 }
+                if (taxBadge) {
+                    if (!isNaN(tc) && tc > 0) {
+                        taxBadge.textContent = tc + '条';
+                        taxBadge.className = 'mine-tax-entry-badge';
+                    } else {
+                        taxBadge.textContent = '去填写';
+                        taxBadge.className = 'mine-tax-entry-badge is-empty';
+                    }
+                }
+                applyMineHeaderImage();
                 syncConsultModifyHint();
             }
 
@@ -2134,8 +2660,11 @@
             });
 
             function goConsultPage() {
-                if (!localStorage.getItem('user_id')) {
-                    window.location.href = 'login.html';
+                if (!isMineLoggedIn()) {
+                    window.location.href =
+                        typeof window.buildLoginPageUrl === 'function'
+                            ? window.buildLoginPageUrl('consult.html')
+                            : 'login.html';
                     return;
                 }
                 window.location.href = 'consult.html?v=20260721d-bonus';
@@ -2352,22 +2881,14 @@
                 var SHARE_PENDING_KEY = 'mine_share_pending_v1';
                 var btn = document.getElementById('mineShareBtn');
                 var modal = document.getElementById('mineShareModal');
-                var qrWrap = document.getElementById('mineShareQrWrap');
-                var posterBlock = document.getElementById('mineSharePosterBlock');
-                var btnSave = document.getElementById('btnMineShareSave');
                 var btnCancel = document.getElementById('btnMineShareCancel');
-                var btnShareHome = document.getElementById('btnMineShareHome');
-                var btnShareMine = document.getElementById('btnMineShareMine');
-                var btnSharePoster = document.getElementById('btnMineSharePoster');
+                var btnBili = document.getElementById('btnMineShareBili');
+                var btnCopy = document.getElementById('btnMineShareCopy');
                 var mask = document.getElementById('mineShareModalMask');
                 if (!btn || !modal) return;
 
-                var shareImgUrl = '';
-                var shareBlobUrl = '';
-                var packagesLoaded = false;
-
                 function trackShare(action, extra) {
-                    var meta = Object.assign({ page: 'mine' }, extra || {});
+                    var meta = Object.assign({ page: 'mine', target: 'bilibili' }, extra || {});
                     try {
                         if (typeof window.trackUserAction === 'function') {
                             window.trackUserAction(action, meta);
@@ -2383,6 +2904,9 @@
 
                 function isShareDone() {
                     try {
+                        if (typeof window.isMineShareDone === 'function') {
+                            return window.isMineShareDone();
+                        }
                         return localStorage.getItem(SHARE_DONE_KEY) === '1';
                     } catch (e) {
                         return false;
@@ -2418,17 +2942,27 @@
                 }
 
                 function markSharePending() {
+                    if (typeof window.markMineSharePending === 'function') {
+                        window.markMineSharePending();
+                        return;
+                    }
                     try {
                         localStorage.setItem(SHARE_PENDING_KEY, '1');
                     } catch (e) {}
                 }
 
-                /** 分享成功：记下完成态并隐藏按钮（iOS 系统分享 resolve 后立刻调用） */
                 function markShareCompleted(extra) {
-                    try {
-                        localStorage.setItem(SHARE_DONE_KEY, '1');
-                        localStorage.removeItem(SHARE_PENDING_KEY);
-                    } catch (e) {}
+                    if (typeof window.markMineShareCompleted === 'function') {
+                        window.markMineShareCompleted();
+                    } else {
+                        try {
+                            localStorage.setItem(SHARE_DONE_KEY, '1');
+                            localStorage.removeItem(SHARE_PENDING_KEY);
+                        } catch (e) {}
+                        try {
+                            document.documentElement.classList.add('mine-share-done');
+                        } catch (eCls) {}
+                    }
                     closeShareModal();
                     hideShareBtn();
                     trackShare('track_mine_share_done', extra);
@@ -2446,7 +2980,6 @@
 
                 function closeShareModal() {
                     modal.classList.remove('is-open');
-                    if (posterBlock) posterBlock.hidden = true;
                 }
 
                 function openShareModal() {
@@ -2455,7 +2988,6 @@
                         return;
                     }
                     modal.classList.add('is-open');
-                    if (posterBlock) posterBlock.hidden = true;
                     trackShare('track_mine_share_open');
                 }
 
@@ -2467,7 +2999,6 @@
                         } catch (eAbort) {}
                         return;
                     }
-                    /* 系统分享成功 / 已复制：立刻隐藏；Intent 跳走则等回 App 再隐藏 */
                     if (result.method === 'intent') {
                         markSharePending();
                         return;
@@ -2475,539 +3006,76 @@
                     markShareCompleted({ method: result.method });
                 }
 
-                function localShareFallback(opts) {
-                    opts = opts || {};
-                    var origin = '';
-                    try {
-                        origin = String(window.location.origin || '');
-                    } catch (e0) {}
-                    var page = String(opts.page || 'shouye.html').replace(/^\/+/, '');
-                    var url = origin ? origin + '/' + page : page;
-                    try {
-                        var u = new URL(page, (origin || 'https://lkj.qiyun888.top') + '/');
-                        var q = opts.query || {};
-                        Object.keys(q).forEach(function (k) {
-                            if (q[k] != null && String(q[k]) !== '') u.searchParams.set(k, String(q[k]));
-                        });
-                        u.searchParams.delete('ch');
-                        u.searchParams.delete('channel');
-                        u.searchParams.delete('sales_ch');
-                        url = u.href;
-                    } catch (eUrl) {}
-                    var title = opts.title || '个税记录演示';
-                    var text = opts.text || '打开即可体验收入明细与纳税记录（演示）';
-                    var body = String(text || '').trim();
-                    if (body.indexOf(url) < 0) body = body ? body + '\n' + url : url;
-                    var isAndroid = /Android/i.test(navigator.userAgent || '');
-
-                    function copyUrl() {
-                        var finish = function (ok) {
-                            alert(ok ? '链接已复制，可粘贴到微信发给好友' : '复制失败：\n' + url);
-                            return { method: 'copy', url: url, ok: !!ok };
-                        };
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            return navigator.clipboard.writeText(url).then(
-                                function () {
-                                    return finish(true);
-                                },
-                                function () {
-                                    return finish(false);
-                                }
-                            );
-                        }
-                        try {
-                            var ta = document.createElement('textarea');
-                            ta.value = url;
-                            ta.setAttribute('readonly', '');
-                            ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-                            document.body.appendChild(ta);
-                            ta.select();
-                            var ok = document.execCommand('copy');
-                            document.body.removeChild(ta);
-                            return Promise.resolve(finish(!!ok));
-                        } catch (eCopy) {
-                            return Promise.resolve(finish(false));
-                        }
-                    }
-
-                    if (typeof navigator.share === 'function') {
-                        var payload = isAndroid
-                            ? { title: title, text: body }
-                            : { title: title, text: text, url: url };
-                        return navigator
-                            .share(payload)
-                            .then(function () {
-                                return { method: 'native', url: url };
-                            })
-                            .catch(function (err) {
-                                if (err && err.name === 'AbortError') {
-                                    return { method: 'abort', url: url };
-                                }
-                                if (isAndroid) {
-                                    try {
-                                        window.location.href =
-                                            'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
-                                            'S.android.intent.extra.SUBJECT=' +
-                                            encodeURIComponent(title) +
-                                            ';S.android.intent.extra.TEXT=' +
-                                            encodeURIComponent(body) +
-                                            ';end';
-                                        return { method: 'intent', url: url };
-                                    } catch (eIntent) {}
-                                }
-                                return copyUrl();
-                            });
-                    }
-                    if (isAndroid) {
-                        try {
-                            var a = document.createElement('a');
-                            a.href =
-                                'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
-                                'S.android.intent.extra.SUBJECT=' +
-                                encodeURIComponent(title) +
-                                ';S.android.intent.extra.TEXT=' +
-                                encodeURIComponent(body) +
-                                ';end';
-                            a.style.cssText = 'display:none;';
-                            document.body.appendChild(a);
-                            a.click();
-                            setTimeout(function () {
-                                try {
-                                    a.parentNode && a.parentNode.removeChild(a);
-                                } catch (eRm) {}
-                            }, 800);
-                            return Promise.resolve({ method: 'intent', url: url });
-                        } catch (eA) {}
-                    }
-                    return copyUrl();
+                function shareOpts() {
+                    return {
+                        page: 'shouye.html',
+                        query: (window.DEFAULT_SHARE_LAND_QUERY || {
+                            guest: '1',
+                            from: 'share',
+                            landing_ab: 'c',
+                            sv: 'sim1'
+                        }),
+                        title: '个税记录演示',
+                        text: '个税记录演示：打开即可体验收入明细与纳税记录',
+                        track: 'track_share_bilibili'
+                    };
                 }
 
-                function doSharePage(kind) {
-                    var shareFn =
-                        typeof window.sharePageLink === 'function' ? window.sharePageLink : localShareFallback;
-                    /* 分享「我的」也落到游客首页，避免未登录撞登录墙；track 仍区分入口 */
-                    var opts = {
-                        page: 'shouye.html',
-                        query: { guest: '1', from: 'share', landing_ab: 'c', sv: 'sim1' },
-                        title: '个税记录演示',
-                        text:
-                            kind === 'mine'
-                                ? '好友分享个税记录演示，打开即可体验收入明细'
-                                : '打开即可体验收入明细与纳税记录（演示）',
-                        track: kind === 'mine' ? 'track_share_mine' : 'track_share_home'
-                    };
-                    /* 跳系统分享前先记 pending：部分 iOS/WebView resolve 不可靠，回 App 也可隐藏 */
+                function doShareBilibili() {
                     markSharePending();
-                    var ret = shareFn(opts);
+                    var fn =
+                        typeof window.shareToBilibili === 'function'
+                            ? window.shareToBilibili
+                            : typeof window.sharePageLink === 'function'
+                              ? window.sharePageLink
+                              : null;
+                    if (!fn) {
+                        alert('暂时无法分享，请稍后重试');
+                        return;
+                    }
+                    var ret = fn(shareOpts());
                     if (ret && typeof ret.then === 'function') {
                         ret.then(afterShareResult).catch(function () {});
                     }
                 }
 
-                if (btnShareHome) {
-                    btnShareHome.addEventListener('click', function () {
-                        doSharePage('home');
-                    });
-                }
-                if (btnShareMine) {
-                    btnShareMine.addEventListener('click', function () {
-                        doSharePage('mine');
-                    });
-                }
-                if (btnSharePoster) {
-                    btnSharePoster.addEventListener('click', function () {
-                        if (posterBlock) posterBlock.hidden = false;
-                        ensureShareImage();
-                    });
-                }
-
-                function setQrContent(node) {
-                    if (!qrWrap) return;
-                    qrWrap.innerHTML = '';
-                    qrWrap.appendChild(node);
-                }
-
-                function setQrLoading(text) {
-                    var span = document.createElement('span');
-                    span.style.cssText = 'color:#999;font-size:13px;';
-                    span.textContent = text || '加载中…';
-                    setQrContent(span);
-                }
-
-                function setQrImg(src) {
-                    shareImgUrl = src || '';
-                    var img = document.createElement('img');
-                    img.alt = '下载分享海报';
-                    img.src = src;
-                    img.decoding = 'async';
-                    img.onerror = function () {
-                        if (img.getAttribute('data-fallback') === '1') {
-                            setQrLoading('暂无可用二维码');
-                            shareImgUrl = '';
-                            return;
-                        }
-                        img.setAttribute('data-fallback', '1');
-                        buildDownloadQrDataUrl({})
-                            .then(function (dataUrl) {
-                                shareImgUrl = dataUrl;
-                                img.src = dataUrl;
-                            })
-                            .catch(function () {
-                                setQrLoading('暂无可用二维码');
-                                shareImgUrl = '';
-                            });
-                    };
-                    setQrContent(img);
-                }
-
-                function normalizeAssetUrl(u) {
-                    u = String(u || '').trim();
-                    if (!u) return '';
-                    if (/^https?:\/\//i.test(u)) return u;
-                    if (u.charAt(0) === '/') {
-                        return (
-                            (typeof location !== 'undefined' && location.origin
-                                ? location.origin
-                                : '') + u
-                        );
-                    }
-                    return (
-                        (typeof location !== 'undefined' && location.origin
-                            ? location.origin + '/'
-                            : '/') + u.replace(/^\/+/, '')
-                    );
-                }
-
-                function getSalesChannelId() {
-                    try {
-                        if (typeof window.getSalesChannel === 'function') {
-                            var g = window.getSalesChannel();
-                            if (g) return String(g);
-                        }
-                    } catch (e0) {}
-                    try {
-                        var raw = localStorage.getItem('sales_channel_v1');
-                        if (!raw) return '';
-                        var parsed = JSON.parse(raw);
-                        return parsed && parsed.ch ? String(parsed.ch) : '';
-                    } catch (e1) {
-                        return '';
-                    }
-                }
-
-                /** 海报二维码：落到带 from=share 的游客首页，计入分享打开/注册 */
-                function resolveShareLandUrl() {
-                    if (typeof window.buildShareUrl === 'function') {
-                        return window.buildShareUrl(
-                            'shouye.html',
-                            window.DEFAULT_SHARE_LAND_QUERY || {
-                                guest: '1',
-                                from: 'share',
-                                landing_ab: 'c',
-                                sv: 'sim1'
-                            }
-                        );
-                    }
-                    var origin =
-                        typeof location !== 'undefined' && location.origin
-                            ? location.origin
-                            : 'https://lkj.qiyun888.top';
-                    return (
-                        origin +
-                        '/shouye.html?guest=1&from=share&landing_ab=c&sv=sim1'
-                    );
-                }
-
-                /** @deprecated 保留给其它下载入口；海报改用 resolveShareLandUrl */
-                function resolveDownloadShareUrl(pkg) {
-                    pkg = pkg || {};
-                    var ua = navigator.userAgent || '';
-                    var isIOS = /iPhone|iPad|iPod/i.test(ua);
-                    var direct = '';
-                    if (isIOS) {
-                        direct = normalizeAssetUrl(pkg.ios_mobileconfig_download_url);
-                    } else {
-                        direct = normalizeAssetUrl(pkg.android_apk_download_url);
-                    }
-                    if (direct) return direct;
-                    var base =
-                        (typeof location !== 'undefined' && location.origin
-                            ? location.origin + '/'
-                            : 'https://lkj.qiyun888.top/') + 'install_guide.html?download=1&from=share';
-                    return base + '#download';
-                }
-
-                function buildDownloadQrDataUrl(pkg) {
-                    return new Promise(function (resolve, reject) {
-                        if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
-                            reject(new Error('no_qrcode'));
-                            return;
-                        }
-                        var target = resolveShareLandUrl();
-                        QRCode.toDataURL(
-                            target,
-                            { width: 440, margin: 1, errorCorrectionLevel: 'M' },
-                            function (err, url) {
-                                if (err || !url) {
-                                    reject(err || new Error('qr_fail'));
-                                    return;
-                                }
-                                composeSharePoster(url).then(resolve).catch(function () {
-                                    resolve(url);
-                                });
-                            }
-                        );
-                    });
-                }
-
-                /** 合成带文案的分享海报（品牌 + 说明 + 二维码），避免只发裸码 */
-                function composeSharePoster(qrDataUrl) {
-                    return new Promise(function (resolve, reject) {
-                        var img = new Image();
-                        img.onload = function () {
-                            try {
-                                var W = 720;
-                                var H = 980;
-                                var canvas = document.createElement('canvas');
-                                canvas.width = W;
-                                canvas.height = H;
-                                var ctx = canvas.getContext('2d');
-                                if (!ctx) {
-                                    reject(new Error('no_ctx'));
-                                    return;
-                                }
-
-                                /* 背景 */
-                                var bg = ctx.createLinearGradient(0, 0, 0, H);
-                                bg.addColorStop(0, '#1f78ee');
-                                bg.addColorStop(0.42, '#2b86f2');
-                                bg.addColorStop(1, '#eef4fc');
-                                ctx.fillStyle = bg;
-                                ctx.fillRect(0, 0, W, H);
-
-                                /* 顶部品牌区 */
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = '600 28px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.fillText('个人所得税', W / 2, 78);
-
-                                ctx.font = '700 44px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('扫码体验个税演示', W / 2, 148);
-
-                                ctx.font = '400 26px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.globalAlpha = 0.92;
-                                ctx.fillText('打开即可浏览收入明细 · 注册保存资料', W / 2, 198);
-                                ctx.globalAlpha = 1;
-
-                                /* 白色卡片承载二维码 */
-                                var cardX = 70;
-                                var cardY = 240;
-                                var cardW = W - 140;
-                                var cardH = 560;
-                                var r = 28;
-                                ctx.fillStyle = '#ffffff';
-                                ctx.beginPath();
-                                ctx.moveTo(cardX + r, cardY);
-                                ctx.arcTo(cardX + cardW, cardY, cardX + cardW, cardY + cardH, r);
-                                ctx.arcTo(cardX + cardW, cardY + cardH, cardX, cardY + cardH, r);
-                                ctx.arcTo(cardX, cardY + cardH, cardX, cardY, r);
-                                ctx.arcTo(cardX, cardY, cardX + cardW, cardY, r);
-                                ctx.closePath();
-                                ctx.fill();
-
-                                ctx.fillStyle = '#1a1a1a';
-                                ctx.font = '600 28px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('微信扫一扫打开', W / 2, cardY + 58);
-
-                                ctx.fillStyle = '#6b7280';
-                                ctx.font = '400 22px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('好友分享 · 免费体验', W / 2, cardY + 96);
-
-                                var qrSize = 360;
-                                var qrX = (W - qrSize) / 2;
-                                var qrY = cardY + 130;
-                                ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
-
-                                /* 底部提示 */
-                                ctx.fillStyle = '#334155';
-                                ctx.font = '400 24px "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-                                ctx.fillText('长按识别二维码 · 打开即可体验', W / 2, cardY + cardH + 70);
-
-                                resolve(canvas.toDataURL('image/png'));
-                            } catch (eDraw) {
-                                reject(eDraw);
-                            }
-                        };
-                        img.onerror = function () {
-                            reject(new Error('qr_img_fail'));
-                        };
-                        img.src = qrDataUrl;
-                    });
-                }
-
-                function ensureShareImage() {
-                    if (shareImgUrl) {
-                        setQrImg(shareImgUrl);
-                        return;
-                    }
-                    setQrLoading('加载中…');
-                    function applyPkg(pkg) {
-                        packagesLoaded = true;
-                        buildDownloadQrDataUrl(pkg || {})
-                            .then(function (dataUrl) {
-                                setQrImg(dataUrl);
-                            })
-                            .catch(function () {
-                                setQrLoading('二维码生成失败，请稍后重试');
-                            });
-                    }
-                    if (typeof window.getCachedPublicInstallPackages === 'function') {
-                        var cached = window.getCachedPublicInstallPackages();
-                        if (cached) {
-                            applyPkg(cached);
-                            return;
-                        }
-                    }
-                    var fetcher =
-                        typeof window.fetchPublicInstallPackages === 'function'
-                            ? window.fetchPublicInstallPackages()
-                            : fetch(
-                                  typeof getPublicInstallPackagesUrl === 'function'
-                                      ? getPublicInstallPackagesUrl()
-                                      : '/api/public/install-packages',
-                                  { credentials: 'same-origin' }
-                              ).then(function (r) {
-                                  return r.json();
-                              });
-                    Promise.resolve(fetcher)
-                        .then(function (j) {
-                            var pkg =
-                                j && j.code === 200 && j.data
-                                    ? j.data
-                                    : j && j.android_apk_download_url
-                                      ? j
-                                      : {};
-                            applyPkg(pkg || {});
-                        })
-                        .catch(function () {
-                            if (!packagesLoaded) {
-                                applyPkg({});
-                            }
-                        });
-                }
-
-                function revokeBlobUrl() {
-                    if (shareBlobUrl) {
-                        try {
-                            URL.revokeObjectURL(shareBlobUrl);
-                        } catch (e) {}
-                        shareBlobUrl = '';
-                    }
-                }
-
-                function fetchImageBlob(url) {
-                    if (!url) return Promise.reject(new Error('empty'));
-                    if (url.indexOf('data:') === 0) {
-                        return fetch(url).then(function (r) {
-                            return r.blob();
-                        });
-                    }
-                    return fetch(url, { credentials: 'same-origin' }).then(function (r) {
-                        if (!r.ok) throw new Error('http_' + r.status);
-                        return r.blob();
-                    });
-                }
-
-                function downloadBlob(blob, filename) {
-                    revokeBlobUrl();
-                    shareBlobUrl = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = shareBlobUrl;
-                    a.download = filename || '个人所得税-下载海报.png';
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
-
-                function tryOpenWeChat() {
-                    try {
-                        var iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = 'weixin://';
-                        document.body.appendChild(iframe);
-                        setTimeout(function () {
-                            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                        }, 1500);
-                    } catch (e) {}
-                    try {
-                        window.location.href = 'weixin://';
-                    } catch (e2) {}
-                }
-
-                function onSaveAndGoWeChat() {
-                    if (!shareImgUrl) {
-                        alert('二维码尚未加载完成，请稍候再试');
-                        return;
-                    }
+                function doCopyLink() {
                     markSharePending();
-                    trackShare('track_mine_share_save');
-                    fetchImageBlob(shareImgUrl)
-                        .then(function (blob) {
-                            var name =
-                                '个人所得税-下载海报.' +
-                                (blob.type && blob.type.indexOf('jpeg') >= 0 ? 'jpg' : 'png');
-                            if (navigator.share && navigator.canShare) {
-                                try {
-                                    var file = new File([blob], name, {
-                                        type: blob.type || 'image/png'
-                                    });
-                                    if (navigator.canShare({ files: [file] })) {
-                                        return navigator
-                                            .share({
-                                                files: [file],
-                                                title: '扫码下载个人所得税 App',
-                                                text: '扫码下载官方 App，安装后登录即可同步权益与资料'
-                                            })
-                                            .then(function () {
-                                                markShareCompleted({ method: 'native_poster' });
-                                            })
-                                            .catch(function (err) {
-                                                if (err && err.name === 'AbortError') {
-                                                    try {
-                                                        localStorage.removeItem(SHARE_PENDING_KEY);
-                                                    } catch (eClr) {}
-                                                    return;
-                                                }
-                                                downloadBlob(blob, name);
-                                                tryOpenWeChat();
-                                            });
-                                    }
-                                } catch (eShare) {}
-                            }
-                            downloadBlob(blob, name);
-                            tryOpenWeChat();
-                            alert(
-                                '海报已保存。请打开微信，从相册选择该图片发送给好友；返回本应用后分享按钮将自动消失。'
-                            );
-                        })
-                        .catch(function () {
-                            /* dataURL 直接下载兜底 */
-                            try {
-                                if (shareImgUrl.indexOf('data:') === 0) {
-                                    var a = document.createElement('a');
-                                    a.href = shareImgUrl;
-                                    a.download = '个人所得税-下载海报.png';
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    tryOpenWeChat();
-                                    alert('海报已保存。请打开微信发送；返回本应用后分享按钮将自动消失。');
-                                    return;
-                                }
-                            } catch (eDl) {}
-                            alert('保存失败，请长按海报图片手动保存后到微信分享。');
-                        });
+                    var opts = shareOpts();
+                    var url =
+                        typeof window.buildShareUrl === 'function'
+                            ? window.buildShareUrl(opts.page, opts.query)
+                            : '';
+                    var body = opts.text + (url ? '\n' + url : '');
+                    var copyFn =
+                        typeof window.copyTextToClipboard === 'function'
+                            ? window.copyTextToClipboard
+                            : null;
+                    function done(ok) {
+                        alert(
+                            ok
+                                ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成。'
+                                : '复制失败，请手动复制：\n' + (url || body)
+                        );
+                        if (ok) markShareCompleted({ method: 'copy' });
+                    }
+                    if (copyFn) {
+                        copyFn(body).then(done);
+                        return;
+                    }
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = body;
+                        ta.setAttribute('readonly', '');
+                        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        var ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        done(!!ok);
+                    } catch (eCopy) {
+                        done(false);
+                    }
                 }
 
                 showShareBtnIfNeeded();
@@ -3018,9 +3086,18 @@
                     e.stopPropagation();
                     openShareModal();
                 });
+                if (btnBili) {
+                    btnBili.addEventListener('click', function () {
+                        doShareBilibili();
+                    });
+                }
+                if (btnCopy) {
+                    btnCopy.addEventListener('click', function () {
+                        doCopyLink();
+                    });
+                }
                 if (btnCancel) btnCancel.addEventListener('click', closeShareModal);
                 if (mask) mask.addEventListener('click', closeShareModal);
-                if (btnSave) btnSave.addEventListener('click', onSaveAndGoWeChat);
 
                 document.addEventListener('visibilitychange', function () {
                     if (!document.hidden) finalizeShareIfPending();
@@ -3036,6 +3113,12 @@
                     },
                     false
                 );
+
+                try {
+                    if (location.hash === '#mineTaxShare' && !isShareDone()) {
+                        setTimeout(openShareModal, 300);
+                    }
+                } catch (eHash) {}
             }
 
             function setupGuestDownloadUi() {
@@ -3196,6 +3279,7 @@
                     if (taxToggleBtn) {
                         taxToggleBtn.classList.toggle('reveal', mineTaxRevealState);
                     }
+                    syncMineYanIcon();
                 }
                 mineRenderTaxIdFn = renderTaxId;
 
@@ -3386,15 +3470,25 @@
                 syncMineProfileEditGate();
             });
 
-            loadUserInfo();
+            applyMineGuestShell();
+            if (isMineLoggedIn()) {
+                loadUserInfo();
+            } else {
+                updateCountsFromStorage();
+            }
             syncMineProfileEditGate();
-            fetchMineXianyuUrl();
+            if (isMineLoggedIn()) {
+                fetchMineXianyuUrl();
+            }
             installLegacyActivatePromptShim();
 
             function handleConsultMenuClick(e) {
                 e.preventDefault();
-                if (!localStorage.getItem('user_id')) {
-                    window.location.href = 'login.html';
+                if (!isMineLoggedIn()) {
+                    window.location.href =
+                        typeof window.buildLoginPageUrl === 'function'
+                            ? window.buildLoginPageUrl('consult.html')
+                            : 'login.html';
                     return;
                 }
                 if (
@@ -3472,13 +3566,16 @@
                     localStorage.removeItem('tax_id');
                     localStorage.removeItem('landing_guest_v1');
                 } catch (e) {}
-                window.location.href = 'login.html';
+                window.location.href = 'mine.html';
             });
 
+            applyMineGuestShell();
             if (isLandingGuestMode()) {
                 setupGuestDownloadUi();
             }
-            setupMineShareUi();
+            if (isMineLoggedIn()) {
+                setupMineShareUi();
+            }
             if (isLandingGuestMode() && typeof window.trackPublicAction === 'function') {
                 var guestVisitMeta = {
                     page: 'mine_guest',

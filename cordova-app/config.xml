@@ -23,12 +23,15 @@
     <preference name="ShowTitle" value="false" />
     <!-- 关闭 WebView 远程调试（避免 Debug 包默认开启调试相关行为） -->
     <preference name="InspectableWebview" value="false" />
-    <!-- 启动屏：cordova-android 11+ 使用 Android 12+ SplashScreen API（见下方 Android 专用 preference） -->
-    <!-- 系统闪屏尽快结束，全屏启动图由 www/index.html + start.png 展示 -->
+    <!-- 启动屏：Android 12+ SplashScreen API + iOS Launch Storyboard；WebView 就绪后由 www/index.html + start.png 接续 -->
     <preference name="AutoHideSplashScreen" value="true" />
     <preference name="SplashScreenDelay" value="0" />
     <preference name="FadeSplashScreen" value="false" />
     <preference name="FadeSplashScreenDuration" value="0" />
+    <!-- iOS 冷启动底色（与 start.png 白底一致，避免白屏闪一下） -->
+    <preference name="BackgroundColor" value="0xffffffff" />
+    <preference name="SplashScreenBackgroundColor" value="#FFFFFF" />
+
     <!-- 透明状态栏叠在 WebView 上；H5 用固定兜底变量给顶部内容让位，避免 Android env() 取 0 -->
     <preference name="StatusBarBackgroundColor" value="#00000000" />
     <!-- 与壳内 H5 白底顶栏一致；浅色内容会在白底状态栏区域看不清 -->
@@ -96,5 +99,12 @@
         <icon height="152" src="res/icon/ios/icon-76@2x.png" width="152" />
         <icon height="167" src="res/icon/ios/icon-83.5@2x.png" width="167" />
         <icon height="1024" src="res/icon/ios/icon-1024.png" width="1024" />
+        <!-- iOS Launch Storyboard：与 www/start.png 同源 cover 裁剪（由 npm run generate-assets 生成） -->
+        <splash src="res/screen/ios/Default@2x~universal~anyany.png" />
+        <splash src="res/screen/ios/Default@2x~universal~comany.png" />
+        <splash src="res/screen/ios/Default@2x~universal~comcom.png" />
+        <splash src="res/screen/ios/Default@3x~universal~anyany.png" />
+        <splash src="res/screen/ios/Default@3x~universal~anycom.png" />
+        <splash src="res/screen/ios/Default@3x~universal~comany.png" />
     </platform>
 </widget>

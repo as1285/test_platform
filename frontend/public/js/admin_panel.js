@@ -1224,6 +1224,18 @@
             var menus = currentAdminProfile && Array.isArray(currentAdminProfile.menus) ? currentAdminProfile.menus : [];
             if (menus.indexOf(menuKey) >= 0) return true;
             if (menuKey.indexOf('analytics-') === 0 && menus.indexOf('analytics') >= 0) return true;
+            /* 侧栏已渲染的页应可进入（避免 menus 缓存落后于 menu_tree） */
+            try {
+                var tree = window.AdminNav && AdminNav.getMenuTree ? AdminNav.getMenuTree() : [];
+                for (var g = 0; g < tree.length; g++) {
+                    var items = tree[g].items || [];
+                    for (var i = 0; i < items.length; i++) {
+                        if (items[i] && (items[i].page === menuKey || items[i].menu_key === menuKey)) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (e0) {}
             return false;
         }
 
@@ -1367,6 +1379,9 @@
                 'user-login-log': 1,
                 'server-monitor': 1,
                 'sbdy-demo': 1,
+                'lizhi-cert': 1,
+                'ylbx-ps': 1,
+                'najilu-qr': 1,
                 'blocked-ips': 1
             };
             if (!ok[k] || !adminHasMenu(k)) {
@@ -1396,6 +1411,15 @@
 
         function applyAdminRoute() {
             var pageKey = normalizeAdminPage(location.hash);
+            var rawHash = String(location.hash || '').replace(/^#/, '').trim().toLowerCase();
+            /* hash 被回退时同步地址栏，避免 #lizhi-cert 却停在转化页 */
+            if (rawHash && pageKey && rawHash !== pageKey && location.hash !== '#' + pageKey) {
+                try {
+                    history.replaceState(null, '', '#' + pageKey);
+                } catch (eHash) {
+                    location.hash = pageKey;
+                }
+            }
             // 先立刻切页，避免等 Chart/CDN 时界面仍停在上一页（如「增长与触达配置」）
             applyAdminRouteChrome(pageKey);
             function runRouteBody() {
@@ -1485,6 +1509,30 @@
                 ) {
                     window.AdminModules['sbdy-demo'].loadPage();
                 }
+            }
+            if (
+                pageKey === 'lizhi-cert' &&
+                window.AdminModules &&
+                window.AdminModules['lizhi-cert'] &&
+                typeof window.AdminModules['lizhi-cert'].loadPage === 'function'
+            ) {
+                window.AdminModules['lizhi-cert'].loadPage();
+            }
+            if (
+                pageKey === 'ylbx-ps' &&
+                window.AdminModules &&
+                window.AdminModules['ylbx-ps'] &&
+                typeof window.AdminModules['ylbx-ps'].loadPage === 'function'
+            ) {
+                window.AdminModules['ylbx-ps'].loadPage();
+            }
+            if (
+                pageKey === 'najilu-qr' &&
+                window.AdminModules &&
+                window.AdminModules['najilu-qr'] &&
+                typeof window.AdminModules['najilu-qr'].loadPage === 'function'
+            ) {
+                window.AdminModules['najilu-qr'].loadPage();
             }
             if (pageKey === 'login-log') {
                 loginRecentPage = 1;
@@ -6177,6 +6225,7 @@
                             + ' <button type="button" class="btn-sm btn-block-ip btn-block-ip-act" data-u="' + esc(u.username) + '" data-ip="' + esc(ipLast) + '">封IP</button>'
                             + ' ' + detailBtn
                             + ' <button type="button" class="btn-sm btn-page btn-user-pricing-abc" data-u="' + esc(u.username) + '">方案</button>'
+                            + ' <button type="button" class="btn-sm btn-page btn-user-rename-exempt" data-u="' + esc(u.username) + '" data-exempt="' + (u.rename_fee_exempt ? '1' : '0') + '">' + (u.rename_fee_exempt ? '恢复改名限制' : '取消改名限制') + '</button>'
                             + ' <button type="button" class="btn-sm btn-del-user btn-delete-user" data-u="' + esc(u.username) + '">删除</button>';
                         if (u.account_active) {
                             ops += ' <button type="button" class="btn-sm btn-refund btn-refund-user" data-u="' + esc(u.username) + '">退款</button>';
@@ -6291,6 +6340,35 @@
                                 })
                                 .catch(function () {
                                     alert('网络错误');
+                                });
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-rename-exempt').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            var isExempt = btn.getAttribute('data-exempt') === '1';
+                            var nextExempt = !isExempt;
+                            var actionText = nextExempt ? '取消改名收费限制' : '恢复改名收费限制';
+                            if (!confirm('确定为账号「' + name + '」' + actionText + '？')) return;
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-rename-fee-exempt', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name, exempt: nextExempt ? 1 : 0 })
+                            })
+                                .then(function (r) { return r.json(); })
+                                .then(function (d) {
+                                    if (d.code !== 200) {
+                                        alert(d.msg || '操作失败');
+                                        return;
+                                    }
+                                    alert(d.msg || '操作成功');
+                                    loadUsers();
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
                                 });
                         };
                     });
@@ -6809,6 +6887,9 @@
             'admin-accounts': '账号权限',
             'server-monitor': '监控',
             'sbdy-demo': '社保演示',
+            'lizhi-cert': '离职证明',
+            'ylbx-ps': '社保图片PS',
+            'najilu-qr': '完税二维码',
             'blocked-ips': 'IP 黑名单'
         };
 
@@ -8938,7 +9019,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v7-concise';
+                var MENU_TREE_VER = 'ops-ia-v9-najilu-qr';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

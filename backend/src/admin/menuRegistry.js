@@ -145,6 +145,30 @@ const ADMIN_PAGE_DEFS = [
     module: 'sbdy-demo',
     order: 10
   },
+  {
+    page: 'lizhi-cert',
+    menu_key: 'lizhi-cert',
+    label: '离职证明',
+    group: 'cert-tools',
+    module: 'lizhi-cert',
+    order: 20
+  },
+  {
+    page: 'ylbx-ps',
+    menu_key: 'ylbx-ps',
+    label: '社保图片PS',
+    group: 'cert-tools',
+    module: 'ylbx-ps',
+    order: 30
+  },
+  {
+    page: 'najilu-qr',
+    menu_key: 'najilu-qr',
+    label: '完税二维码',
+    group: 'cert-tools',
+    module: 'najilu-qr',
+    order: 40
+  },
 
   /* —— 数据 —— */
   {

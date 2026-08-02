@@ -21,6 +21,7 @@ RUN set -eux; \
     'qrcode[pil]' \
     fonttools \
     pillow \
+    numpy \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./

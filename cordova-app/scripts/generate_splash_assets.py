@@ -2,6 +2,7 @@
 """
 - res/icon/icon.png：APK 桌面图标（保持仓库内文件，不覆盖）
 - res/android/launch_bg.png + launch_splash.xml：Android 冷启动全屏启动图
+- res/screen/ios/Default@*~universal~*.png：iOS Launch Storyboard 启动图
 - www/start.png：WebView 全屏启动图（index.html）
 
 依赖：pip install Pillow
@@ -15,6 +16,17 @@ from PIL import Image
 
 BLUE = (30, 111, 255)
 WHITE = (255, 255, 255)
+
+# Cordova iOS Launch Storyboard（universal，覆盖各机型）
+# https://cordova.apache.org/docs/en/latest/core/features/splashscreen/
+IOS_STORYBOARD_SPLASHES = (
+    ("Default@2x~universal~anyany.png", 2732, 2732),
+    ("Default@2x~universal~comany.png", 1278, 2732),
+    ("Default@2x~universal~comcom.png", 1334, 750),
+    ("Default@3x~universal~anyany.png", 2208, 2208),
+    ("Default@3x~universal~anycom.png", 2208, 1242),
+    ("Default@3x~universal~comany.png", 1242, 2208),
+)
 
 
 def render_icon(size: int) -> Image.Image:
@@ -37,8 +49,8 @@ def render_icon(size: int) -> Image.Image:
     return img
 
 
-def write_fullscreen_launch_bg(src_path: str, out_path: str, width: int = 1080, height: int = 2340) -> None:
-    """竖屏全屏 cover 裁剪，与 WebView object-fit:cover 一致。"""
+def write_fullscreen_cover(src_path: str, out_path: str, width: int, height: int) -> None:
+    """竖/横屏全屏 cover 裁剪，与 WebView object-fit:cover 一致。"""
     img = Image.open(src_path).convert("RGB")
     scale = max(width / img.width, height / img.height)
     nw = max(1, int(round(img.width * scale)))
@@ -49,6 +61,10 @@ def write_fullscreen_launch_bg(src_path: str, out_path: str, width: int = 1080, 
     canvas = resized.crop((x, y, x + width, y + height))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     canvas.save(out_path, "PNG", optimize=True)
+
+
+def write_fullscreen_launch_bg(src_path: str, out_path: str, width: int = 1080, height: int = 2340) -> None:
+    write_fullscreen_cover(src_path, out_path, width, height)
 
 
 def main() -> int:
@@ -78,6 +94,13 @@ def main() -> int:
     empty = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
     empty.save(os.path.join(splash_dir, "splash.png"), "PNG", optimize=True)
     print("wrote", os.path.join(splash_dir, "splash.png"), "(transparent placeholder)")
+
+    ios_dir = os.path.join(root, "res", "screen", "ios")
+    os.makedirs(ios_dir, exist_ok=True)
+    for name, w, h in IOS_STORYBOARD_SPLASHES:
+        out = os.path.join(ios_dir, name)
+        write_fullscreen_cover(www_start, out, w, h)
+        print("wrote", out, f"({w}x{h})")
 
     return 0
 

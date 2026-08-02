@@ -1846,16 +1846,13 @@
                     } catch (eChIos) {}
                     var ia = document.createElement('a');
                     ia.className = 'btn btn-primary';
-                    /*
-                     * iOS：可选「分享到主屏幕」或「下载描述文件」。
-                     * 手机上两个入口都展示（有配置时）；非 iPhone 仍以下描述文件 / 打开说明为主。
-                     */
+                    /* iOS：仅描述文件安装（引导页 / 直接下载） */
                     if (onIosPhone) {
                         ia.href = iosGuideHref;
                         ia.removeAttribute('download');
                         ia.textContent = layout.inApp
                             ? '查看 iOS 安装步骤'
-                            : '分享网页到主屏幕（推荐）';
+                            : '描述文件安装';
                         bindDownloadClick(ia, ia.href, function () {
                             if (typeof window.trackPublicAction === 'function') {
                                 window.trackPublicAction('track_install_ios_click', {
@@ -1865,28 +1862,6 @@
                             }
                         });
                         row.appendChild(ia);
-                        if (iosUrl) {
-                            var ib = document.createElement('a');
-                            ib.className = 'btn btn-secondary-platform';
-                            var mcHref = toSameOriginDownloadUrl(iosUrl);
-                            ib.href = mcHref || iosUrl;
-                            if (mcHref && !/^https?:\/\//i.test(ib.href)) {
-                                ib.setAttribute('download', 'personal.mobileconfig');
-                            }
-                            ib.textContent = '下载描述文件';
-                            bindDownloadClick(ib, ib.href, function () {
-                                if (typeof window.trackPublicAction === 'function') {
-                                    window.trackPublicAction('track_install_ios_click', {
-                                        page: 'install_guide',
-                                        via: 'mobileconfig'
-                                    });
-                                }
-                                if (typeof window.persistSalesChannelAttribution === 'function') {
-                                    window.persistSalesChannelAttribution('install_guide_ios_mobileconfig');
-                                }
-                            });
-                            row.appendChild(ib);
-                        }
                     } else {
                         var href = toSameOriginDownloadUrl(iosUrl);
                         ia.href = href || iosUrl || iosGuideHref;
@@ -1912,7 +1887,7 @@
                     }
                     if (!primaryForSticky || preferIos) {
                         primaryForSticky = ia;
-                        primaryLabel = onIosPhone ? '安装到主屏幕' : '下载 App';
+                        primaryLabel = onIosPhone ? '描述文件安装' : '下载 App';
                     }
                 }
                 /* 下载意图：非主平台按钮弱化，避免双主 CTA */

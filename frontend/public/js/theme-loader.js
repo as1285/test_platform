@@ -154,6 +154,7 @@
       theme: theme,
       header_male: d.header_male || 'grdb.jpg',
       header_female: d.header_female || 'nx.jpg',
+      header_guest: d.header_guest || 'mine_guest_header.jpg',
       icon_family: d.icon_family || 'jtcy.jpg',
       icon_employer: d.icon_employer || 'rzsp.jpg',
       icon_bank: d.icon_bank || 'yhk.jpg',

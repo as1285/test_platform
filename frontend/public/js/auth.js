@@ -5,8 +5,8 @@
  * Cordova 壳在 UA 中追加 TaxPlatformCordovaApp（config AppendUserAgent），H5 可识别壳内环境。
  */
 (function () {
-  var LOGIN_PAGE = 'index.html';
-  var ACTIVATE_PAGE = 'index.html?need_activate=1';
+  var LOGIN_PAGE = 'login.html';
+  var ACTIVATE_PAGE = 'login.html?need_activate=1';
   var CLIENT_DEVICE_STORAGE_KEY = 'client_device_id';
   var INSTALL_GUIDE_REFERRAL_KEY = 'install_guide_referral';
   var SHARE_ATTR_KEY = 'share_attr_v1';
@@ -54,6 +54,9 @@
   } catch (eAuthStub) {}
   var PUBLIC_PAGES = {
     'index.html': true,
+    'mine.html': true,
+    'shouye.html': true,
+    'bancha.html': true,
     'register.html': true,
     'login.html': true,
     'install_guide.html': true,
@@ -62,6 +65,8 @@
     'zhzh_jhm.html': true
   };
   var APP_STATUS_BAR_COLOR = '#1e6fff';
+  /** 首页搜索顶栏蓝：同时用于 iOS standalone 状态栏安全区铺色 */
+  var APP_TOP_BAR_BLUE = '#2c80f4';
   /** Cordova 壳通过 config AppendUserAgent 追加；若 UA 未透传到 iframe，则用被嵌入状态兜底识别 */
   var CORDOVA_SHELL_UA_RE = /TaxPlatformCordovaApp\//i;
   /** Dynamic Island / 刘海机（16 Pro 等）安全区高度兜底；iframe 内 env 常为 0 */
@@ -97,6 +102,37 @@
       }
     } catch (e) {}
     return false;
+  }
+
+  /** iOS 主屏图标 / 描述文件 WebClip 的 standalone 运行态（状态栏由页面自己铺色） */
+  function isIosStandaloneApp() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    try {
+      if (window.navigator.standalone === true) {
+        return true;
+      }
+    } catch (e0) {}
+    try {
+      return !!(
+        window.matchMedia &&
+        (window.matchMedia('(display-mode: standalone)').matches ||
+          window.matchMedia('(display-mode: fullscreen)').matches)
+      );
+    } catch (e1) {
+      return false;
+    }
+  }
+
+  /** 入口 / 登录页（WebClip 的启动文档或登录表单） */
+  function isAppEntryLoginPage() {
+    try {
+      var p = String(window.location.pathname || '').split('/').pop() || '';
+      return p === '' || p === 'index.html' || p === 'login.html';
+    } catch (e) {
+      return false;
+    }
   }
 
   function isLikelyAndroidViewportClient() {
@@ -450,6 +486,24 @@
   }
 
   /**
+   * iPhone 14 Pro（393×852）。Safari UA 通常不暴露硬件型号，因此 iOS 26 以下
+   * 同逻辑屏机型共用此排版档；若 UA 带 iPhone15,2 则直接精确匹配。
+   */
+  function isIPhone14ProLikeClient() {
+    if (!isLikelyIOSViewportClient()) {
+      return false;
+    }
+    var ua = navigator.userAgent || '';
+    if (/iPhone\s*14\s*Pro\b|iPhone15,2\b/i.test(ua)) {
+      return true;
+    }
+    if (getIOSMajorVersion() >= 26) {
+      return false;
+    }
+    return isIPhone393x852Viewport();
+  }
+
+  /**
    * iPhone 14（6.1 寸，390×844）：收入纳税明细顶栏需铺满状态栏白底，避免列表文字透出；
    * 与 16 Pro 分档，避免误匹配 402×874。
    */
@@ -601,6 +655,23 @@
     } catch (e) {}
   }
 
+  /**
+   * 状态栏样式：iOS standalone 只认文档解析时的静态 meta，JS 改动常被忽略。
+   * black-translucent 会让 WebClip 全屏铺到状态栏下，但在 iPhone 16 Pro 等机型上
+   * 视图高度仍按「扣掉状态栏」算并顶格摆放，导致底部凭空少 62pt、底栏被裁。
+   * 因此 iOS standalone 统一强制 default（不透明），把顶部让给系统状态栏、底部还原正常；
+   * 顶部蓝色改由页面 CSS 绘制，配合头图顶部同色过渡消除接缝。
+   */
+  function setStatusBarStyleMeta(style) {
+    try {
+      if (isIosStandaloneApp()) {
+        upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
+        return;
+      }
+      upsertMeta('apple-mobile-web-app-status-bar-style', style);
+    } catch (e) {}
+  }
+
   function patchViewportFit() {
     try {
       var el = document.querySelector('meta[name="viewport"]');
@@ -614,21 +685,28 @@
     } catch (e) {}
   }
 
-  /** 蓝顶栏页顶色：我的 / 待办 / 办查 / 消息（按 body 或路径） */
+  /**
+   * 蓝顶栏页顶色：首页 / 我的 / 待办 / 办查 / 消息（按 body 或路径）。
+   * iOS standalone 下入口页同样按蓝顶处理：WebClip 启动文档决定整段会话的状态栏外观，
+   * 若启动文档是白色不透明状态栏，后续页面无论怎么改 meta 都会一直露白条。
+   */
   function getImmersiveBlueTopColor() {
     try {
       var body = document.body;
       if (body) {
-        if (body.classList.contains('page-mine')) return '#2286ee';
+        if (body.classList.contains('page-mine')) return '#1677ff';
         if (body.classList.contains('page-daiban') || body.classList.contains('page-bancha')) {
           return '#2b81f2';
         }
         if (body.classList.contains('page-message')) return '#1e8fff';
+        if (body.classList.contains('page-shouye')) return APP_TOP_BAR_BLUE;
       }
       var p = String(window.location.pathname || '').split('/').pop() || '';
-      if (p === 'mine.html') return '#2286ee';
+      if (p === 'mine.html') return '#1677ff';
       if (p === 'daiban.html' || p === 'bancha.html') return '#2b81f2';
       if (p === 'message.html') return '#1e8fff';
+      if (p === 'shouye.html') return APP_TOP_BAR_BLUE;
+      if (isAppEntryLoginPage() && isIosStandaloneApp()) return APP_TOP_BAR_BLUE;
     } catch (e) {}
     return '';
   }
@@ -655,6 +733,15 @@
         }
       } catch (eProbe) {}
       var inset = measured;
+      /*
+       * WebClip / 主屏图标运行态里 env 是可信的：
+       * translucent 时给出真实刘海高度，装机时被固化成不透明状态栏时则为 0。
+       * 后者页面无法铺色，若再兜底 47/59px 只会在白色状态栏下多出一条蓝带。
+       */
+      if (measured < 20 && isIosStandaloneApp() && !isCordovaTaxAppShell()) {
+        document.documentElement.style.setProperty('--app-shell-statusbar-top', '0px');
+        return;
+      }
       if (inset < 20) {
         /* Cordova iframe / 异常 env：刘海与 Dynamic Island 用 59px */
         if (isCordovaTaxAppShell() || isIPhone16ProLikeClient() || isIPhone16ProMaxClient() || isIPhone15PlusProMaxLikeClient() || isIPhone17ProLikeClient() || isIPhone17ProMaxClient()) {
@@ -687,6 +774,8 @@
       if (sb) {
         if (opts.overlays !== false && typeof sb.overlaysWebView === 'function') {
           sb.overlaysWebView(true);
+        } else if (opts.overlays === false && typeof sb.overlaysWebView === 'function') {
+          sb.overlaysWebView(false);
         }
         if (opts.style === 'default' && typeof sb.styleDefault === 'function') {
           sb.styleDefault();
@@ -696,7 +785,7 @@
         if (opts.color && typeof sb.backgroundColorByHexString === 'function') {
           sb.backgroundColorByHexString(opts.color);
         }
-        return;
+        /* 即便能直接碰 StatusBar，也同步通知父壳改 html/body 底色，避免 iframe 外露白 */
       }
     } catch (eSb) {}
     try {
@@ -707,7 +796,10 @@
             type: 'status-bar',
             style: opts.style === 'default' ? 'default' : 'light',
             overlays: opts.overlays !== false,
-            color: opts.color || '#00000000'
+            color: opts.color || '#00000000',
+            /* 原版 uni APK：statusbar.background 同步铺到壳层，消除刘海白条 */
+            paint_shell: opts.paint_shell !== false,
+            shell_bg: opts.shell_bg || opts.color || ''
           },
           '*'
         );
@@ -715,14 +807,22 @@
     } catch (eMsg) {}
   }
 
-  /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条 */
-  function applyImmersiveBlueStatusBar(topColor) {
+  /** Cordova / iOS：沉浸状态栏 + 浅色图标，避免白条（对齐原版 immersed + light）
+   * topColor：仅状态栏/theme-color；shellBg：壳层与 iframe 外底色（默认浅灰，勿用顶栏蓝铺满，否则 iOS 底栏下露蓝） */
+  function applyImmersiveBlueStatusBar(topColor, shellBg) {
     if (!topColor) return;
     try {
+      var pageBg = shellBg || '#f5f6fa';
       upsertMeta('theme-color', topColor);
       upsertMeta('msapplication-navbutton-color', topColor);
-      upsertMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
-      requestShellStatusBar({ style: 'light', overlays: true, color: topColor });
+      setStatusBarStyleMeta('black-translucent');
+      requestShellStatusBar({
+        style: 'light',
+        overlays: true,
+        color: topColor,
+        paint_shell: true,
+        shell_bg: pageBg
+      });
     } catch (e) {}
   }
 
@@ -732,7 +832,10 @@
       if (!document.body || !document.body.classList.contains('page-mine')) {
         return;
       }
-      var mineBlue = '#2286ee';
+      /* 原版 APK manifest：statusbar.background=#1677ff；头图顶行仍用横向渐变消除接缝 */
+      var mineBlue = '#1677ff';
+      var mineGrad =
+        'linear-gradient(90deg,#2d4cf2 0%,#094ee9 12%,#0b56ed 25%,#0972e8 38%,#0c8ef0 50%,#0e9fee 63%,#30b1f2 75%,#64c3f3 88%,#97caf5 100%)';
       /* 覆盖 setupMobileStatusBar 注入的 html 白底 */
       try {
         var old = document.querySelector('style[data-mine-chrome]');
@@ -740,21 +843,19 @@
         var st = document.createElement('style');
         st.setAttribute('data-mine-chrome', '1');
         st.textContent =
-          /* 顶蓝底灰：头图顶入安全区；禁止拼接伪元素（会白条/圆弧重影） */
-          'html{background-color:#f5f6fa !important;background-image:linear-gradient(' +
-          mineBlue +
-          ',' +
-          mineBlue +
-          ') !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
-          'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;}' +
+          /* 顶蓝底灰：html 底色浅灰，仅顶部 background-image 画状态栏高度蓝带，避免 iOS 底栏下露蓝 */
+          'html{background-color:#f5f6fa !important;background-image:' +
+          mineGrad +
+          ' !important;background-size:100% var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background-repeat:no-repeat !important;background-position:top center !important;}' +
+          'html body.page-mine{background-color:#f5f6fa !important;background-image:none !important;min-height:100% !important;}' +
           'html.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine::before,' +
           'html.app-ios-client.app-top-safe-shell body.page-mine .header-bg::after,' +
           'html.app-top-safe-shell body.page-mine .header-bg::after{display:none !important;content:none !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
-          mineBlue +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas,html.app-top-safe-shell body.page-mine .header-bg{padding-top:var(--app-shell-statusbar-top,env(safe-area-inset-top,59px)) !important;background:' +
+          mineGrad +
           ' !important;overflow:hidden !important;}' +
-          'html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,0px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
+          'html.app-top-safe-shell body.page-mine .mine-e1-canvas > img,html.app-top-safe-shell body.page-mine .header-bg > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,env(safe-area-inset-top,59px))) !important;display:block !important;width:100% !important;position:relative !important;z-index:1 !important;}' +
           'html body.page-mine{--bottom-nav-bottom:var(--bottom-nav-gap,16px)!important;}' +
           'html body.page-mine > .bottom-nav,html body.page-mine > .bottom-nav.ios-device,' +
           'html.app-ios-client body.page-mine > .bottom-nav,html.app-ios-client body.page-mine > .bottom-nav.ios-device{' +
@@ -847,7 +948,7 @@
     } catch (e) {}
   }
 
-  /** iOS 首页：状态栏与搜索顶栏同蓝（15/16 Pro Max 等易露白底） */
+  /** iOS 首页：状态栏与搜索顶栏同蓝（全机型统一，勿再按型号枚举） */
   function applyShouyePageChrome() {
     try {
       if (!document.body || !document.body.classList.contains('page-shouye')) {
@@ -856,7 +957,50 @@
       if (!isLikelyIOSViewportClient()) {
         return;
       }
-      applyImmersiveBlueStatusBar('#2c80f4');
+      try {
+        var old = document.querySelector('style[data-shouye-chrome]');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var st = document.createElement('style');
+        st.setAttribute('data-shouye-chrome', '1');
+        st.textContent =
+          'html.app-ios-client{background:' +
+          APP_TOP_BAR_BLUE +
+          ' !important;}' +
+          'html.app-ios-client body.page-shouye{background:#f6f7fb !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}';
+        document.head.appendChild(st);
+      } catch (eCss) {}
+      syncAppShellStatusbarTop();
+      applyImmersiveBlueStatusBar(APP_TOP_BAR_BLUE);
+    } catch (e) {}
+  }
+
+  /**
+   * iOS standalone（描述文件 WebClip / 添加到主屏）入口页：
+   * 安全区铺 App 顶栏蓝，状态栏文字用浅色，避免整段会话被锁成白色不透明状态栏。
+   * 浏览器内（非 standalone）不生效，登录页原样式不受影响。
+   */
+  function applyIosStandaloneEntryChrome() {
+    try {
+      if (!isIosStandaloneApp() || !isAppEntryLoginPage()) {
+        return;
+      }
+      document.documentElement.classList.add('app-ios-standalone-entry');
+      var old = document.querySelector('style[data-ios-standalone-entry]');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+      var st = document.createElement('style');
+      st.setAttribute('data-ios-standalone-entry', '1');
+      st.textContent =
+        'html.app-ios-standalone-entry{background:' +
+        APP_TOP_BAR_BLUE +
+        ' !important;}' +
+        'html.app-ios-standalone-entry body::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,0px)) !important;background:' +
+        APP_TOP_BAR_BLUE +
+        ' !important;z-index:1000 !important;pointer-events:none !important;}';
+      (document.head || document.documentElement).appendChild(st);
+      syncAppShellStatusbarTop();
+      applyImmersiveBlueStatusBar(APP_TOP_BAR_BLUE);
     } catch (e) {}
   }
 
@@ -883,7 +1027,7 @@
       }
       upsertMeta('theme-color', '#ffffff');
       upsertMeta('msapplication-navbutton-color', '#ffffff');
-      upsertMeta('apple-mobile-web-app-status-bar-style', 'default');
+      setStatusBarStyleMeta('default');
       /* Cordova iframe：白顶栏页使用深色状态栏文字，避免白底+浅色图标看不见时间/电量 */
       requestShellStatusBar({ style: 'default', overlays: true, color: '#00000000' });
     } catch (e) {}
@@ -1084,6 +1228,7 @@
       var iosIPhone17ProMax = iosClient && isIPhone17ProMaxClient();
       var iosIPhone16ProMax = iosClient && isIPhone16ProMaxClient();
       var iosIPhone16Pro = iosClient && isIPhone16ProLikeClient();
+      var iosIPhone14Pro = iosClient && isIPhone14ProLikeClient();
       var iosIPhone14 = iosClient && isIPhone14LikeClient();
       var iosIPhone15ProMax = iosClient && isIPhone15PlusProMaxLikeClient();
       var iosIPhone12ProMax = iosClient && isIPhone12ProMaxClient();
@@ -1116,8 +1261,7 @@
       upsertMeta('msapplication-navbutton-color', rootChromeBg);
       upsertMeta('apple-mobile-web-app-capable', 'yes');
       upsertMeta('mobile-web-app-capable', 'yes');
-      upsertMeta(
-        'apple-mobile-web-app-status-bar-style',
+      setStatusBarStyleMeta(
         immersiveBlueTop || !lightRootChrome ? 'black-translucent' : 'default'
       );
       (function ensureAppIconLinks() {
@@ -1141,54 +1285,64 @@
         upsertLink('apple-touch-icon', 'apple-touch-icon.png', { sizes: '180x180' });
         upsertLink('icon', 'icon-192.png', { type: 'image/png', sizes: '192x192' });
         upsertLink('icon', 'favicon-32.png', { type: 'image/png', sizes: '32x32' });
-        /* iOS「添加到主屏幕」启动图（Safari / PWA）；mobileconfig 网页剪辑本身无独立启动动画 API */
+        /* iOS「添加到主屏幕」/ 描述文件 WebClip 启动图（静态 link 优先；页内覆盖兜底） */
         var startups = [
           {
-            href: 'splash/startup-iphone-14-pro-max.png?v=20260729',
+            href: 'splash/startup-iphone-14-pro-max.png?v=20260731-webclip',
+            media:
+              '(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-14-pro-max.png?v=20260731-webclip',
             media:
               '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-14-pro.png?v=20260729',
+            href: 'splash/startup-iphone-14-pro.png?v=20260731-webclip',
+            media:
+              '(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)'
+          },
+          {
+            href: 'splash/startup-iphone-14-pro.png?v=20260731-webclip',
             media:
               '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-13-pro-max.png?v=20260729',
+            href: 'splash/startup-iphone-13-pro-max.png?v=20260731-webclip',
             media:
               '(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-12-13.png?v=20260729',
+            href: 'splash/startup-iphone-12-13.png?v=20260731-webclip',
             media:
               '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-x.png?v=20260729',
+            href: 'splash/startup-iphone-x.png?v=20260731-webclip',
             media:
               '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-xs-max.png?v=20260729',
+            href: 'splash/startup-iphone-xs-max.png?v=20260731-webclip',
             media:
               '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-xr.png?v=20260729',
+            href: 'splash/startup-iphone-xr.png?v=20260731-webclip',
             media:
               '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)'
           },
           {
-            href: 'splash/startup-iphone-8-plus.png?v=20260729',
+            href: 'splash/startup-iphone-8-plus.png?v=20260731-webclip',
             media:
               '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)'
           },
           {
-            href: 'splash/startup-iphone-8.png?v=20260729',
+            href: 'splash/startup-iphone-8.png?v=20260731-webclip',
             media:
               '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)'
           },
-          { href: 'splash_screen.png?v=20260729', media: '(orientation: portrait)' }
+          { href: 'splash_screen.png?v=20260731-webclip', media: '(orientation: portrait)' }
         ];
         startups.forEach(function (s) {
           upsertLink('apple-touch-startup-image', s.href, { media: s.media });
@@ -1305,6 +1459,9 @@
           upsertMeta('theme-color', '#2c80f4');
           upsertMeta('msapplication-navbutton-color', '#2c80f4');
         }
+      }
+      if (iosIPhone14Pro) {
+        document.documentElement.classList.add('app-ios-iphone14pro');
       }
       if (iosIPhone16ProMax) {
         document.documentElement.classList.add('app-ios-iphone16promax');
@@ -1522,15 +1679,12 @@
           'html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70){--app-shell-statusbar-top:32px !important;}' +
           'html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top)) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
           'html.app-huawei-pura70.app-top-safe-shell:not(.app-cordova-huawei-pura70) body.page-shouye .shouye-page{padding-top:calc(46px + var(--app-shell-statusbar-top,32px) + 6px) !important;}' +
-          /* iPhone 16 Pro：首页固定搜索条上方安全区铺蓝，消除状态栏下白边 */
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          'html.app-ios-iphone16pro.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          /* iPhone 15/16 Pro Max 首页：状态栏区强制铺蓝，避免白底接缝 */
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye::before,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;z-index:998 !important;pointer-events:none !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell:has(body.page-shouye),html.app-ios-iphone16promax.app-top-safe-shell:has(body.page-shouye){background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
-          'html.app-ios-iphone15promax.app-top-safe-shell body.page-shouye,html.app-ios-iphone16promax.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;}' +
+          /* iOS 全机型首页：状态栏安全区铺蓝 + 搜索条同色，消除白边接缝（勿按型号枚举） */
+          'html.app-ios-client.app-top-safe-shell body.page-shouye::before{content:"" !important;position:fixed !important;left:0 !important;right:0 !important;top:0 !important;height:var(--app-shell-statusbar-top,env(safe-area-inset-top,48px)) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;z-index:998 !important;pointer-events:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:calc(6px + var(--app-shell-statusbar-top,env(safe-area-inset-top,48px))) !important;background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;box-shadow:none !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper.scrolled{background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell:has(body.page-shouye){background:rgb(var(--shouye-top-bar-rgb,44,128,244)) !important;}' +
+          'html.app-ios-client.app-top-safe-shell body.page-shouye{background:#f6f7fb !important;}' +
           /* iPhone 16 Pro：收入纳税明细筛选页顶栏铺满安全区，避免状态栏下露灰/色差 */
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .header{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;z-index:120 !important;background:#fff !important;border-bottom:1px solid #eee !important;padding-top:calc(14px + var(--app-shell-statusbar-top)) !important;padding-bottom:15px !important;box-sizing:border-box !important;}' +
           'html.app-ios-iphone16pro.app-top-safe-shell body.page-shuiming > .content{padding-top:calc(46px + var(--app-shell-statusbar-top)) !important;}' +
@@ -1605,12 +1759,252 @@
     }
   }
 
+  /**
+   * 描述文件 WebClip /「添加到主屏幕」冷启动：系统常不展示 apple-touch-startup-image，
+   * 用 html::before 页内启动图兜底（与 splash_screen.png 一致）。站内跳转有同域 referrer 则跳过。
+   */
+  function showIosWebClipLaunchSplash() {
+    try {
+      if (isCordovaTaxAppShell()) return;
+      var ua = navigator.userAgent || '';
+      if (!/iPhone|iPad|iPod/i.test(ua)) return;
+      var standalone = false;
+      try {
+        standalone = window.navigator.standalone === true;
+      } catch (e0) {}
+      if (!standalone) {
+        try {
+          standalone =
+            window.matchMedia('(display-mode: standalone)').matches ||
+            window.matchMedia('(display-mode: fullscreen)').matches;
+        } catch (e1) {}
+      }
+      if (!standalone) return;
+      try {
+        if (sessionStorage.getItem('ios_webclip_splash_v1') === '1') return;
+      } catch (e2) {}
+      var ref = '';
+      try {
+        ref = String(document.referrer || '');
+      } catch (e3) {}
+      if (ref) {
+        try {
+          if (ref.indexOf(location.host) >= 0) return;
+        } catch (e4) {}
+      }
+      try {
+        sessionStorage.setItem('ios_webclip_splash_v1', '1');
+      } catch (e5) {}
+      var SPLASH_MS = 1800;
+      var src = '/splash_screen.png?v=20260731-webclip';
+      var style = document.createElement('style');
+      style.setAttribute('data-ios-webclip-splash', '1');
+      style.textContent =
+        'html.ios-webclip-launching,html.ios-webclip-launching body{background:#fff!important;}' +
+        'html.ios-webclip-launching::before{content:"";position:fixed;inset:0;z-index:2147483646;' +
+        'background:#fff url(' +
+        src +
+        ') center center / cover no-repeat;pointer-events:none;}';
+      (document.head || document.documentElement).appendChild(style);
+      document.documentElement.classList.add('ios-webclip-launching');
+      var link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = src;
+      (document.head || document.documentElement).appendChild(link);
+      function hide() {
+        try {
+          document.documentElement.classList.remove('ios-webclip-launching');
+        } catch (e6) {}
+        try {
+          if (style && style.parentNode) style.parentNode.removeChild(style);
+        } catch (e7) {}
+      }
+      setTimeout(hide, SPLASH_MS);
+    } catch (e) {}
+  }
+
+  /**
+   * iOS 顶栏排查：左上角连点 6 下弹出运行态信息（standalone 与否、真实安全区高度、
+   * 生效的状态栏 meta）。白条问题多半是 WebClip 装机时固化了不透明状态栏，
+   * 只有这些数值能区分「没生效」和「已生效但页面没铺色」。
+   */
+  function bindIosTopBarDiagnostics() {
+    try {
+      if (!isLikelyIOSViewportClient()) return;
+      var taps = [];
+      var onTap = function (x, y) {
+        /* 命中区放宽到左上角 1/4 屏，纯手势触发，普通用户不会连点到 */
+        if (x > 160 || y > 160) {
+          taps = [];
+          return;
+        }
+        var now = Date.now();
+        taps = taps.filter(function (v) {
+          return now - v < 3000;
+        });
+        taps.push(now);
+        if (taps.length < 5) return;
+        taps = [];
+        showIosTopBarDiagnostics();
+      };
+      document.addEventListener(
+        'touchend',
+        function (ev) {
+          try {
+            var t = ev.changedTouches && ev.changedTouches[0];
+            if (t) onTap(t.clientX, t.clientY);
+          } catch (e0) {}
+        },
+        true
+      );
+      document.addEventListener(
+        'click',
+        function (ev) {
+          try {
+            if (ev.pointerType === 'touch') return; /* 已由 touchend 记过一次 */
+            onTap(ev.clientX, ev.clientY);
+          } catch (e1) {}
+        },
+        true
+      );
+    } catch (e) {}
+  }
+
+  function showIosTopBarDiagnostics() {
+    var probe = document.createElement('div');
+    probe.style.cssText =
+      'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;' +
+      'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
+    document.body.appendChild(probe);
+    var probeCs = window.getComputedStyle(probe);
+    var safeTop = parseFloat(probeCs.paddingTop) || 0;
+    var safeBottom = parseFloat(probeCs.paddingBottom) || 0;
+    if (probe.parentNode) probe.parentNode.removeChild(probe);
+    /* 底栏定位诊断：fixed 元素贴的是布局视口，若被祖先 transform/filter 劫持会整体偏高 */
+    var navInfo = '(no .bottom-nav)';
+    try {
+      var navEl = document.querySelector('.bottom-nav');
+      if (navEl) {
+        var navCs = window.getComputedStyle(navEl);
+        var navRect = navEl.getBoundingClientRect();
+        navInfo =
+          navCs.position +
+          ' bottom=' +
+          navCs.bottom +
+          ' rect.bottom=' +
+          Math.round(navRect.bottom) +
+          ' parent=' +
+          (navEl.parentNode ? navEl.parentNode.nodeName.toLowerCase() : '?');
+      }
+    } catch (eNav) {}
+    /* 找出把 fixed 定位劫持掉的祖先（transform/filter/perspective/will-change/contain） */
+    var fixedBreaker = 'none';
+    try {
+      var node = document.querySelector('.bottom-nav');
+      while (node && node !== document.documentElement) {
+        node = node.parentElement;
+        if (!node) break;
+        var cs2 = window.getComputedStyle(node);
+        if (
+          (cs2.transform && cs2.transform !== 'none') ||
+          (cs2.filter && cs2.filter !== 'none') ||
+          (cs2.perspective && cs2.perspective !== 'none') ||
+          (cs2.backdropFilter && cs2.backdropFilter !== 'none') ||
+          (cs2.contain && cs2.contain !== 'none') ||
+          (cs2.willChange && cs2.willChange !== 'auto')
+        ) {
+          fixedBreaker =
+            node.nodeName.toLowerCase() +
+            '.' +
+            (node.className || '').toString().slice(0, 30) +
+            ' [' +
+            cs2.transform +
+            '|' +
+            cs2.filter +
+            '|' +
+            cs2.contain +
+            '|' +
+            cs2.willChange +
+            ']';
+          break;
+        }
+      }
+    } catch (eBreak) {}
+    function metaOf(name) {
+      var el = document.querySelector('meta[name="' + name + '"]');
+      return el ? el.getAttribute('content') : '(none)';
+    }
+    var standalone = false;
+    try {
+      standalone = window.navigator.standalone === true;
+    } catch (e1) {}
+    var vvNow = window.visualViewport;
+    var lines = [
+      '★ screen.height: ' + (screen && screen.height),
+      '★ innerHeight: ' + window.innerHeight,
+      '★ doc.clientHeight: ' + document.documentElement.clientHeight,
+      '★ visualViewport h: ' + (vvNow ? Math.round(vvNow.height) : '(none)'),
+      '★ safe top / bottom: ' + safeTop + ' / ' + safeBottom,
+      '★ bottom-nav: ' + navInfo,
+      '───────────────',
+      'page: ' + (String(location.pathname).split('/').pop() || 'index.html'),
+      'navigator.standalone: ' + standalone,
+      'display-mode standalone: ' +
+        !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches),
+      'safe-area-inset-top: ' + safeTop + 'px',
+      '--app-shell-statusbar-top: ' +
+        (getComputedStyle(document.documentElement).getPropertyValue('--app-shell-statusbar-top') ||
+          '(unset)'),
+      'status-bar-style: ' + metaOf('apple-mobile-web-app-status-bar-style'),
+      'theme-color: ' + metaOf('theme-color'),
+      'web-app-capable: ' + metaOf('apple-mobile-web-app-capable'),
+      'safe-area-inset-bottom: ' + safeBottom + 'px',
+      'innerHeight/screen: ' + window.innerHeight + ' / ' + (screen && screen.height),
+      'doc.clientHeight: ' + document.documentElement.clientHeight,
+      'visualViewport h/offsetTop: ' +
+        (window.visualViewport
+          ? Math.round(window.visualViewport.height) + ' / ' + Math.round(window.visualViewport.offsetTop)
+          : '(none)'),
+      'devicePixelRatio: ' + window.devicePixelRatio,
+      'bottom-nav: ' + navInfo,
+      'fixed-breaker ancestor: ' + fixedBreaker,
+      'screen.height: ' + (screen && screen.height),
+      '--bottom-nav-bottom: ' +
+        (getComputedStyle(document.documentElement).getPropertyValue('--bottom-nav-bottom') || '(unset)'),
+      'html.class: ' + document.documentElement.className,
+      'auth.js: 20260801-opaque'
+    ];
+    var box = document.createElement('div');
+    box.style.cssText =
+      'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.86);color:#fff;' +
+      'font:13px/1.7 -apple-system,monospace;padding:80px 18px 24px;overflow:auto;';
+    box.textContent = lines.join('\n');
+    box.style.whiteSpace = 'pre-wrap';
+    var btn = document.createElement('button');
+    btn.textContent = '关闭';
+    btn.style.cssText =
+      'margin-top:18px;padding:10px 22px;border:0;border-radius:8px;background:#2c80f4;color:#fff;font-size:15px;';
+    btn.addEventListener('click', function () {
+      if (box.parentNode) box.parentNode.removeChild(box);
+    });
+    box.appendChild(btn);
+    document.body.appendChild(box);
+  }
+
+  showIosWebClipLaunchSplash();
   setupMobileStatusBar();
   syncAppShellStatusbarTop();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindIosTopBarDiagnostics);
+  } else {
+    bindIosTopBarDiagnostics();
+  }
   applyMinePageChrome();
   applyDaibanBanchaPageChrome();
   applyMessagePageChrome();
   applyShouyePageChrome();
+  applyIosStandaloneEntryChrome();
   applyIPhone16ProPageChrome();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
@@ -1619,6 +2013,7 @@
       applyDaibanBanchaPageChrome();
       applyMessagePageChrome();
       applyShouyePageChrome();
+      applyIosStandaloneEntryChrome();
       applyIPhone16ProPageChrome();
     });
   } else {
@@ -1637,6 +2032,7 @@
     applyDaibanBanchaPageChrome();
     applyMessagePageChrome();
     applyShouyePageChrome();
+    applyIosStandaloneEntryChrome();
   }
   document.addEventListener('deviceready', refreshImmersiveBluePageChrome, false);
   try {
@@ -1678,18 +2074,7 @@
   }
 
   function isPublicPage() {
-    if (currentPageName() === 'shouye.html') {
-      try {
-        var guestQuery = new URLSearchParams(window.location.search);
-        /* 落地 C 游客；或分享入口 from=share（可带 guest=1） */
-        if (guestQuery.get('from') === 'share') {
-          return true;
-        }
-        if (guestQuery.get('guest') === '1' && guestQuery.get('landing_ab') === 'c') {
-          return true;
-        }
-      } catch (e0) {}
-    }
+    /* 首页 / 办&查 / 我的：未登录可浏览；其它业务页跳登录 */
     return !!PUBLIC_PAGES[currentPageName()] || isNajiluVerifyView() || isForgotPwdFromLoginPage();
   }
 
@@ -1733,7 +2118,7 @@
   }
 
   function isActivationPage() {
-    if (currentPageName() !== 'index.html') {
+    if (currentPageName() !== 'login.html' && currentPageName() !== 'index.html') {
       return false;
     }
     try {
@@ -2322,10 +2707,234 @@
     return copyFallback();
   }
 
+  var MINE_SHARE_DONE_KEY = 'mine_share_done_v1';
+  var MINE_SHARE_PENDING_KEY = 'mine_share_pending_v1';
+  var BILI_ANDROID_PACKAGES = ['tv.danmaku.bili', 'com.bilibili.app.in'];
+
+  function isMineShareDone() {
+    try {
+      return localStorage.getItem(MINE_SHARE_DONE_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markMineSharePending() {
+    try {
+      localStorage.setItem(MINE_SHARE_PENDING_KEY, '1');
+    } catch (e) {}
+  }
+
+  function markMineShareCompleted() {
+    try {
+      localStorage.setItem(MINE_SHARE_DONE_KEY, '1');
+      localStorage.removeItem(MINE_SHARE_PENDING_KEY);
+    } catch (e) {}
+    try {
+      document.documentElement.classList.add('mine-share-done');
+    } catch (eCls) {}
+  }
+
+  function finalizeMineShareIfPending() {
+    try {
+      if (localStorage.getItem(MINE_SHARE_PENDING_KEY) !== '1') return false;
+      localStorage.removeItem(MINE_SHARE_PENDING_KEY);
+    } catch (e) {
+      return false;
+    }
+    markMineShareCompleted();
+    return true;
+  }
+
+  try {
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) finalizeMineShareIfPending();
+    });
+    window.addEventListener('pageshow', function () {
+      finalizeMineShareIfPending();
+    });
+  } catch (eBindShare) {}
+
+  /**
+   * 分享到 B 站：安卓优先拉起 B 站 App；iOS/失败则复制链接并提示去 B 站发动态。
+   * opts 同 sharePageLink；额外可传 package（安卓包名）。
+   */
+  function shareToBilibili(opts) {
+    opts = opts || {};
+    var url =
+      opts.url ||
+      buildShareUrl(opts.page || 'shouye.html', opts.query || DEFAULT_SHARE_LAND_QUERY);
+    var title = opts.title || '个税记录演示';
+    var text = opts.text || '打开即可体验收入明细与纳税记录（演示）';
+    var shareBody = String(text || '').trim();
+    if (shareBody && shareBody.indexOf(url) < 0) {
+      shareBody = shareBody + '\n' + url;
+    } else if (!shareBody) {
+      shareBody = url;
+    }
+    var ua = navigator.userAgent || '';
+    var isAndroid = /Android/i.test(ua);
+    var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    function track(action, extra) {
+      var meta = Object.assign({ page: 'bilibili', url: url, method: action }, extra || {});
+      try {
+        if (typeof window.trackUserAction === 'function') {
+          window.trackUserAction(opts.track || action, meta);
+          return;
+        }
+      } catch (e0) {}
+      try {
+        if (typeof window.trackPublicAction === 'function') {
+          window.trackPublicAction(opts.track || action, meta);
+        }
+      } catch (e1) {}
+    }
+
+    function toast(msg) {
+      try {
+        if (typeof window.showToast === 'function') {
+          window.showToast(msg);
+          return;
+        }
+      } catch (eT) {}
+      try {
+        alert(msg);
+      } catch (eA) {}
+    }
+
+    function copyThenHint() {
+      return copyTextToClipboard(shareBody).then(function (ok) {
+        track('track_share_bilibili_copy');
+        toast(
+          ok
+            ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成个税记录。'
+            : '复制失败，请手动复制：\n' + url
+        );
+        return { method: 'copy', url: url, ok: !!ok, target: 'bilibili' };
+      });
+    }
+
+    function tryAndroidBiliIntent(pkg) {
+      if (!isAndroid || !pkg) return false;
+      var intent =
+        'intent:#Intent;action=android.intent.action.SEND;type=text/plain;' +
+        'package=' +
+        pkg +
+        ';' +
+        'S.android.intent.extra.SUBJECT=' +
+        encodeURIComponent(title) +
+        ';S.android.intent.extra.TEXT=' +
+        encodeURIComponent(shareBody) +
+        ';end';
+      try {
+        var a = document.createElement('a');
+        a.href = intent;
+        a.style.cssText = 'display:none;position:fixed;left:-9999px;';
+        a.setAttribute('rel', 'noopener');
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          try {
+            a.parentNode && a.parentNode.removeChild(a);
+          } catch (eRm) {}
+        }, 800);
+        track('track_share_bilibili_intent', { package: pkg });
+        return true;
+      } catch (eA) {
+        return false;
+      }
+    }
+
+    markMineSharePending();
+
+    if (isAndroid) {
+      var pkgs = opts.package ? [String(opts.package)] : BILI_ANDROID_PACKAGES.slice();
+      var i;
+      for (i = 0; i < pkgs.length; i++) {
+        if (tryAndroidBiliIntent(pkgs[i])) {
+          return Promise.resolve({ method: 'intent', url: url, target: 'bilibili', package: pkgs[i] });
+        }
+      }
+      return copyThenHint();
+    }
+
+    if (isIOS) {
+      return copyTextToClipboard(shareBody).then(function (ok) {
+        track('track_share_bilibili_copy');
+        try {
+          /* 尝试唤起 B 站；未安装时浏览器会忽略 */
+          var open = document.createElement('a');
+          open.href = 'bilibili://';
+          open.style.cssText = 'display:none;';
+          document.body.appendChild(open);
+          open.click();
+          setTimeout(function () {
+            try {
+              open.parentNode && open.parentNode.removeChild(open);
+            } catch (eRm2) {}
+          }, 600);
+        } catch (eOpen) {}
+        toast(
+          ok
+            ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成个税记录。'
+            : '请手动复制链接到 B 站：\n' + url
+        );
+        return { method: 'copy', url: url, ok: !!ok, target: 'bilibili' };
+      });
+    }
+
+    return copyThenHint().then(function (r) {
+      try {
+        window.open('https://t.bilibili.com/', '_blank', 'noopener');
+      } catch (eWeb) {}
+      return r;
+    });
+  }
+
+  /** 一键生成前：未分享且尚无个税记录则拦截 */
+  function ensureBilibiliShareBeforeTaxGenerate() {
+    finalizeMineShareIfPending();
+    if (isMineShareDone()) return true;
+    try {
+      var n = Number(localStorage.getItem('tax_record_count') || '0');
+      if (n > 0) return true;
+    } catch (eN) {}
+    var goShare = false;
+    try {
+      goShare = window.confirm(
+        '一键生成个税记录前，请先分享到 B 站。\n\n点「确定」立即分享。'
+      );
+    } catch (eC) {
+      goShare = true;
+    }
+    if (goShare) {
+      shareToBilibili({
+        page: 'shouye.html',
+        query: DEFAULT_SHARE_LAND_QUERY,
+        title: '个税记录演示',
+        text: '个税记录演示：打开即可体验收入明细与纳税记录',
+        track: 'track_share_bilibili_gate'
+      }).then(function (result) {
+        if (result && result.method && result.method !== 'abort') {
+          if (result.method === 'intent') return;
+          markMineShareCompleted();
+        }
+      });
+    }
+    return false;
+  }
+
   /* 尽早挂到 window：后半段若因 Map 等环境差异中断，分享仍可用 */
   try {
     window.buildShareUrl = buildShareUrl;
     window.sharePageLink = sharePageLink;
+    window.shareToBilibili = shareToBilibili;
+    window.isMineShareDone = isMineShareDone;
+    window.markMineShareCompleted = markMineShareCompleted;
+    window.markMineSharePending = markMineSharePending;
+    window.finalizeMineShareIfPending = finalizeMineShareIfPending;
+    window.ensureBilibiliShareBeforeTaxGenerate = ensureBilibiliShareBeforeTaxGenerate;
     window.DEFAULT_SHARE_LAND_QUERY = DEFAULT_SHARE_LAND_QUERY;
     window.copyTextToClipboard = copyTextToClipboard;
   } catch (eShareEarly) {}
@@ -3535,6 +4144,12 @@
   window.appendSalesChannelToUrl = appendSalesChannelToUrl;
   window.buildShareUrl = buildShareUrl;
   window.sharePageLink = sharePageLink;
+  window.shareToBilibili = shareToBilibili;
+  window.isMineShareDone = isMineShareDone;
+  window.markMineShareCompleted = markMineShareCompleted;
+  window.markMineSharePending = markMineSharePending;
+  window.finalizeMineShareIfPending = finalizeMineShareIfPending;
+  window.ensureBilibiliShareBeforeTaxGenerate = ensureBilibiliShareBeforeTaxGenerate;
   window.DEFAULT_SHARE_LAND_QUERY = DEFAULT_SHARE_LAND_QUERY;
   window.copyTextToClipboard = copyTextToClipboard;
   window.sanitizeLoginNext = sanitizeLoginNext;
@@ -3564,8 +4179,9 @@
   })();
 
   (function injectConversionGuide() {
-    if (isPublicPage()) return;
     if (currentPageName() === 'admin_panel.html') return;
+    /* 公开页未登录不注入；已登录即使在公开页也注入 */
+    if (isPublicPage() && !getToken()) return;
     /* 明细/计算等只读页不注入转化引导，减少约 60KB JS 解析与执行 */
     var skipCg = {
       'xiangqing.html': true,
@@ -3577,7 +4193,7 @@
     if (!getToken()) return;
     if (document.querySelector('script[data-conversion-guide]')) return;
     var s = document.createElement('script');
-    s.src = '/js/conversion-guide.js?v=20260730-value-dialog';
+    s.src = '/js/conversion-guide.js?v=20260731-shuiming-fill-cta';
     s.setAttribute('data-conversion-guide', '1');
     s.async = true;
     s.defer = true;
@@ -3585,7 +4201,7 @@
   })();
 
   (function injectPageLoadingAssets() {
-    if (isPublicPage()) {
+    if (isPublicPage() && !getToken()) {
       return;
     }
     var page = currentPageName();
@@ -3615,7 +4231,7 @@
   })();
 
   (function injectFastNav() {
-    if (isPublicPage()) return;
+    if (isPublicPage() && !getToken()) return;
     if (currentPageName() === 'admin_panel.html') return;
     if (document.querySelector('script[data-fast-nav-js]')) return;
     var s = document.createElement('script');
@@ -3655,9 +4271,19 @@
       if (isAccountActive()) {
         window.location.replace('mine.html');
       } else {
-        if (page === 'index.html' && isActivationPage()) {
+        if ((page === 'login.html' || page === 'index.html') && isActivationPage()) {
           return;
         }
+        window.location.replace('mine.html');
+      }
+    }
+    /* 未登录访问旧入口 index：交给 index.html 脚本跳到 mine；此处兜底 */
+    if (page === 'index.html' && !getToken() && !isActivationPage()) {
+      try {
+        var qs = window.location.search || '';
+        var hs = window.location.hash || '';
+        window.location.replace('mine.html' + qs + hs);
+      } catch (eIdx) {
         window.location.replace('mine.html');
       }
     }
@@ -3668,7 +4294,7 @@
       return;
     }
     if (currentPageName() === 'register.html') {
-      window.location.replace('index.html');
+      window.location.replace('login.html');
       return;
     }
     function hideRegisterEntry() {

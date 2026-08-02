@@ -2694,6 +2694,19 @@ async function createTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  for (const issueColSql of [
+    "ALTER TABLE tax_issue_applications ADD COLUMN qr_image_url VARCHAR(512) NULL COMMENT '自定义二维码图片'",
+    "ALTER TABLE tax_issue_applications ADD COLUMN qr_block_image_url VARCHAR(512) NULL COMMENT '二维码+验证码整块图'"
+  ]) {
+    try {
+      await conn.execute(issueColSql);
+    } catch (eIssueCol) {
+      if (!eIssueCol || !/Duplicate column/i.test(String(eIssueCol.message || eIssueCol))) {
+        console.warn('[schema] tax_issue_applications column', eIssueCol && eIssueCol.message);
+      }
+    }
+  }
+
   await conn.execute(`
     CREATE TABLE IF NOT EXISTS sbdy_demo_certs (
       id BIGINT NOT NULL AUTO_INCREMENT,
@@ -5448,6 +5461,9 @@ function plainPaymentOrder(row) {
     out_trade_no: String(row.out_trade_no || ''),
     subject: String(row.subject || ''),
     amount: row.amount != null ? String(row.amount) : '',
+    list_amount: row.list_amount != null ? String(row.list_amount) : '',
+    discount_amount: row.discount_amount != null ? String(row.discount_amount) : '0.00',
+    share_discount_count: Math.max(0, parseInt(row.share_discount_count, 10) || 0),
     status: String(row.status || ''),
     paid_at: paidAt,
     pricing_variant: row.pricing_variant != null ? String(row.pricing_variant) : '',
@@ -5463,15 +5479,24 @@ var RENAME_FEE_SUBJECT = '改名服务（单次）';
 var RENAME_FREE_LIMIT = 5;
 var RENAME_FREQ_WINDOW_DAYS = 30;
 var RENAME_FREQ_MIN_ACTIVE_DAYS = 2;
-/** 豁免改名收费的账号（不限次数） */
-var RENAME_FEE_EXEMPT_USERNAMES = {
-  jing00001: true,
-  '18355751265': true,
-  zqx5201314: true
-};
-
 function isRenameFeeSkuId(skuId) {
   return String(skuId || '') === RENAME_FEE_SKU_ID;
+}
+
+/** 离职证明：¥50 付一次终身无限次生成（不开通账号） */
+var LIZHI_CERT_SKU_ID = 'sku_lizhi_cert_50';
+var LIZHI_CERT_AMOUNT = '50.00';
+var LIZHI_CERT_SUBJECT = '离职证明生成（终身）';
+function isLizhiCertSkuId(skuId) {
+  return String(skuId || '') === LIZHI_CERT_SKU_ID;
+}
+function isNonActivationSkuId(skuId, grantKind) {
+  return (
+    isRenameFeeSkuId(skuId) ||
+    isLizhiCertSkuId(skuId) ||
+    String(grantKind || '') === 'rename_credit' ||
+    String(grantKind || '') === 'lizhi_cert'
+  );
 }
 
 /** 统计用户历史改名次数 */
@@ -5521,7 +5546,24 @@ async function getRenameFeePolicy(userId) {
   var unused = await countUnusedRenameCredits(userId);
   var isMidHigh = activeDays >= RENAME_FREQ_MIN_ACTIVE_DAYS;
   var uname = String(userId || '').trim().toLowerCase();
-  var exempt = !!(uname && RENAME_FEE_EXEMPT_USERNAMES[uname]);
+  var exempt = false;
+  if (uname) {
+    try {
+      const [exemptRows] = await pool.execute(
+        'SELECT rename_fee_exempt FROM users WHERE username = ? LIMIT 1',
+        [userId]
+      );
+      exempt =
+        exempt ||
+        !!(
+          exemptRows.length &&
+          (exemptRows[0].rename_fee_exempt === true ||
+            Number(exemptRows[0].rename_fee_exempt) === 1)
+        );
+    } catch (eExempt) {
+      /* 迁移完成前继续使用内置豁免名单 */
+    }
+  }
   var needFee = !exempt && isMidHigh && nameChanges >= RENAME_FREE_LIMIT;
   return {
     need_fee: needFee,
@@ -5567,6 +5609,184 @@ function readPreferredPurchaseAbc(req) {
     }
   } catch (e0) {}
   return '';
+}
+
+var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 5;
+var BILIBILI_SHARE_DISCOUNT_AMOUNT = '50.00';
+var BILIBILI_SHARE_SESSION_TTL_MINUTES = 30;
+var BILIBILI_SHARE_MIN_COMPLETE_SECONDS = 2;
+
+function buildBilibiliShareRewardStatus(row, pendingOrder) {
+  row = row || {};
+  var total = Math.max(0, parseInt(row.completed_count, 10) || 0);
+  var available = Math.max(0, parseInt(row.available_count, 10) || 0);
+  var reserved = Math.max(0, parseInt(row.reserved_count, 10) || 0);
+  var threshold = BILIBILI_SHARE_DISCOUNT_THRESHOLD;
+  var pendingDiscount = '0.00';
+  if (
+    pendingOrder &&
+    String(pendingOrder.status || '') === 'pending' &&
+    Number(pendingOrder.discount_amount) > 0 &&
+    Math.max(0, parseInt(pendingOrder.share_discount_count, 10) || 0) >= threshold
+  ) {
+    pendingDiscount = alipay.normalizeAmount(pendingOrder.discount_amount) || BILIBILI_SHARE_DISCOUNT_AMOUNT;
+  }
+  var pendingApplied = Number(pendingDiscount) > 0 || reserved >= threshold;
+  return {
+    completed_count: total,
+    available_count: available,
+    reserved_count: reserved,
+    threshold: threshold,
+    /* 预占待支付时进度仍展示满格，避免页面误显示「0/5 + 原价」 */
+    progress_count: pendingApplied
+      ? threshold
+      : Math.min(available, threshold),
+    remaining_count: pendingApplied
+      ? 0
+      : Math.max(0, threshold - available),
+    eligible: available >= threshold,
+    pending_discount_applied: pendingApplied,
+    pending_discount_amount: pendingApplied
+      ? pendingDiscount || BILIBILI_SHARE_DISCOUNT_AMOUNT
+      : '0.00',
+    discount_amount: BILIBILI_SHARE_DISCOUNT_AMOUNT
+  };
+}
+
+async function readBilibiliShareRewardStatus(username, conn) {
+  var db = conn || pool;
+  var user = String(username || '');
+  const [rows] = await db.execute(
+    `SELECT
+       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+       SUM(CASE
+         WHEN status = 'completed' AND consumed_at IS NULL AND reserved_order_no IS NULL THEN 1
+         ELSE 0
+       END) AS available_count,
+       SUM(CASE
+         WHEN status = 'completed' AND consumed_at IS NULL AND reserved_order_no IS NOT NULL THEN 1
+         ELSE 0
+       END) AS reserved_count
+     FROM user_bilibili_share_events
+     WHERE username = ?`,
+    [user]
+  );
+  const [pendingRows] = await db.execute(
+    `SELECT status, amount, list_amount, discount_amount, share_discount_count
+     FROM payment_orders
+     WHERE username = ? AND status = 'pending'
+       AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+     ORDER BY id DESC LIMIT 1`,
+    [user]
+  );
+  return buildBilibiliShareRewardStatus(rows[0], pendingRows[0] || null);
+}
+
+/** 支付页 B 站分享活动：开始一次服务端分享会话 */
+async function handleBilibiliShareStart(req, res) {
+  var username = String(req.authUserId || '');
+  var sessionId =
+    typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : crypto.randomBytes(16).toString('hex');
+  try {
+    await pool.execute(
+      `UPDATE user_bilibili_share_events
+       SET status = 'expired'
+       WHERE username = ? AND status = 'pending'
+         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ? MINUTE)`,
+      [username, BILIBILI_SHARE_SESSION_TTL_MINUTES]
+    );
+    await pool.execute(
+      `INSERT INTO user_bilibili_share_events
+       (username, share_session_id, status)
+       VALUES (?, ?, 'pending')`,
+      [username, sessionId]
+    );
+    var status = await readBilibiliShareRewardStatus(username);
+    return res.json({
+      code: 200,
+      data: Object.assign({ share_session_id: sessionId }, status)
+    });
+  } catch (e) {
+    console.error('start bilibili share reward', e);
+    return res.status(500).json({ code: 500, msg: '暂时无法开始分享活动，请稍后重试' });
+  }
+}
+
+/** 支付页 B 站分享活动：从 B 站/分享面板返回后确认本次分享 */
+async function handleBilibiliShareComplete(req, res) {
+  var username = String(req.authUserId || '');
+  var sessionId = String((req.body && req.body.share_session_id) || '').trim();
+  if (!/^[a-z0-9-]{16,64}$/i.test(sessionId)) {
+    return res.status(400).json({ code: 400, msg: '分享会话无效，请重新分享' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.execute(
+      `SELECT id, status, created_at
+       FROM user_bilibili_share_events
+       WHERE username = ? AND share_session_id = ?
+       LIMIT 1 FOR UPDATE`,
+      [username, sessionId]
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return res.status(404).json({ code: 404, msg: '分享会话不存在，请重新分享' });
+    }
+    if (String(rows[0].status) === 'completed') {
+      await conn.commit();
+      var existingStatus = await readBilibiliShareRewardStatus(username);
+      return res.json({ code: 200, data: existingStatus });
+    }
+    const [ageRows] = await conn.execute(
+      `SELECT TIMESTAMPDIFF(SECOND, created_at, CURRENT_TIMESTAMP) AS age_seconds
+       FROM user_bilibili_share_events WHERE id = ? LIMIT 1`,
+      [rows[0].id]
+    );
+    var age = Math.max(0, parseInt(ageRows[0] && ageRows[0].age_seconds, 10) || 0);
+    if (age < BILIBILI_SHARE_MIN_COMPLETE_SECONDS) {
+      await conn.rollback();
+      return res.status(409).json({ code: 409, msg: '请完成分享后再返回领取次数' });
+    }
+    if (age > BILIBILI_SHARE_SESSION_TTL_MINUTES * 60) {
+      await conn.execute(
+        `UPDATE user_bilibili_share_events SET status = 'expired' WHERE id = ?`,
+        [rows[0].id]
+      );
+      await conn.commit();
+      return res.status(410).json({ code: 410, msg: '分享会话已过期，请重新分享' });
+    }
+    await conn.execute(
+      `UPDATE user_bilibili_share_events
+       SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND status = 'pending'`,
+      [rows[0].id]
+    );
+    await conn.commit();
+    var status = await readBilibiliShareRewardStatus(username);
+    return res.json({ code: 200, data: status });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {}
+    console.error('complete bilibili share reward', e);
+    return res.status(500).json({ code: 500, msg: '分享次数领取失败，请稍后重试' });
+  } finally {
+    conn.release();
+  }
+}
+
+/** 支付页 B 站分享活动：查询进度和可用优惠 */
+async function handleBilibiliShareStatus(req, res) {
+  try {
+    var status = await readBilibiliShareRewardStatus(req.authUserId || '');
+    return res.json({ code: 200, data: status });
+  } catch (e) {
+    console.error('get bilibili share reward status', e);
+    return res.status(500).json({ code: 500, msg: '读取分享活动进度失败' });
+  }
 }
 
 /** 返回支付宝公开配置（含定价 A/B/C SKU 列表） */
@@ -5702,6 +5922,18 @@ async function handleAlipayCreateOrder(req, res) {
   var isRenameFee =
     product === 'rename_fee' || isRenameFeeSkuId(skuIdReq) || skuIdReq === 'rename_fee';
 
+  var isLizhiCert =
+    product === 'lizhi_cert' || isLizhiCertSkuId(skuIdReq) || skuIdReq === 'lizhi_cert';
+
+  /* —— 离职证明终身权益（不走开通激活逻辑） —— */
+  if (isLizhiCert) {
+    /* 测试期：屏蔽支付入口 */
+    return res.status(403).json({
+      code: 403,
+      msg: '离职证明支付已临时关闭，登录后可直接生成测试'
+    });
+  }
+
   /* —— 改名单次费用（不走开通激活逻辑） —— */
   if (isRenameFee) {
     if (!req.authUserId) {
@@ -5830,8 +6062,8 @@ async function handleAlipayCreateOrder(req, res) {
   if (!sku) {
     return res.status(400).json({ code: 400, msg: '请选择要购买的套餐' });
   }
-  var amount = alipay.normalizeAmount(sku.amount);
-  if (!amount) {
+  var listAmount = alipay.normalizeAmount(sku.amount);
+  if (!listAmount) {
     return res.status(503).json({ code: 503, msg: '商品金额无效' });
   }
   /* 覆盖规则：若当前试用剩余更长，拒绝购买更短档 */
@@ -5849,9 +6081,27 @@ async function handleAlipayCreateOrder(req, res) {
   var order = null;
   try {
     await conn.beginTransaction();
+    /* 释放已关闭/超时订单占用的分享次数，再关闭超时订单 */
+    await conn.execute(
+      `UPDATE user_bilibili_share_events se
+       INNER JOIN payment_orders po ON po.out_trade_no = se.reserved_order_no
+       SET se.reserved_order_no = NULL
+       WHERE se.username = ? AND se.consumed_at IS NULL
+         AND (po.status <> 'pending'
+           OR po.created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE))`,
+      [req.authUserId]
+    );
+    await conn.execute(
+      `UPDATE payment_orders
+       SET status = 'closed'
+       WHERE username = ? AND status = 'pending'
+         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)`,
+      [req.authUserId]
+    );
     const [existingRows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
-              grant_kind, grant_days, grant_hours, grant_minutes
+              grant_kind, grant_days, grant_hours, grant_minutes,
+              list_amount, discount_amount, share_discount_count
        FROM payment_orders
        WHERE username = ? AND status = 'pending'
          AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
@@ -5861,18 +6111,69 @@ async function handleAlipayCreateOrder(req, res) {
     if (existingRows.length) {
       var ex = existingRows[0];
       var sameSku = String(ex.sku_id || '') === String(sku.id);
-      var sameAmt = alipay.normalizeAmount(ex.amount) === amount;
-      if (sameSku && sameAmt) {
+      var existingHasShareDiscount =
+        Math.max(0, parseInt(ex.share_discount_count, 10) || 0) >=
+        BILIBILI_SHARE_DISCOUNT_THRESHOLD;
+      var availableForUpgrade = 0;
+      if (sameSku && !existingHasShareDiscount) {
+        const [upgradeRows] = await conn.execute(
+          `SELECT COUNT(*) AS c
+           FROM user_bilibili_share_events
+           WHERE username = ? AND status = 'completed'
+             AND consumed_at IS NULL AND reserved_order_no IS NULL`,
+          [req.authUserId]
+        );
+        availableForUpgrade = Number((upgradeRows[0] || {}).c) || 0;
+      }
+      if (
+        sameSku &&
+        (existingHasShareDiscount ||
+          availableForUpgrade < BILIBILI_SHARE_DISCOUNT_THRESHOLD)
+      ) {
         order = ex;
       } else {
         await conn.execute(`UPDATE payment_orders SET status = 'closed' WHERE id = ?`, [ex.id]);
+        await conn.execute(
+          `UPDATE user_bilibili_share_events
+           SET reserved_order_no = NULL
+           WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+          [req.authUserId, ex.out_trade_no]
+        );
       }
     }
     if (!order) {
+      const [shareRows] = await conn.execute(
+        `SELECT id
+         FROM user_bilibili_share_events
+         WHERE username = ? AND status = 'completed'
+           AND consumed_at IS NULL AND reserved_order_no IS NULL
+         ORDER BY completed_at ASC, id ASC
+         LIMIT 5 FOR UPDATE`,
+        [req.authUserId]
+      );
+      var shareDiscountCount =
+        shareRows.length >= BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          ? BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          : 0;
+      var discountAmount =
+        shareDiscountCount >= BILIBILI_SHARE_DISCOUNT_THRESHOLD
+          ? BILIBILI_SHARE_DISCOUNT_AMOUNT
+          : '0.00';
+      var payableCents = Math.round(Number(listAmount) * 100);
+      if (shareDiscountCount) {
+        payableCents = Math.max(
+          1,
+          payableCents - Math.round(Number(discountAmount) * 100)
+        );
+      }
+      var amount = alipay.normalizeAmount((payableCents / 100).toFixed(2));
       order = {
         out_trade_no: createAlipayOutTradeNo(),
         subject: String(sku.subject || envProduct.subject).slice(0, 128),
         amount: amount,
+        list_amount: listAmount,
+        discount_amount: discountAmount,
+        share_discount_count: shareDiscountCount,
         status: 'pending',
         pricing_variant: offer.variant,
         sku_id: sku.id,
@@ -5883,13 +6184,18 @@ async function handleAlipayCreateOrder(req, res) {
       };
       await conn.execute(
         `INSERT INTO payment_orders
-         (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
-         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+         (out_trade_no, username, subject, amount, list_amount, discount_amount,
+          share_discount_count, status, pricing_variant, sku_id, grant_kind,
+          grant_days, grant_hours, grant_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
         [
           order.out_trade_no,
           req.authUserId,
           order.subject,
           order.amount,
+          order.list_amount,
+          order.discount_amount,
+          order.share_discount_count,
           order.pricing_variant,
           order.sku_id,
           order.grant_kind,
@@ -5898,6 +6204,19 @@ async function handleAlipayCreateOrder(req, res) {
           order.grant_minutes
         ]
       );
+      if (shareDiscountCount) {
+        var shareIds = shareRows.slice(0, shareDiscountCount).map(function (row) {
+          return Number(row.id);
+        });
+        await conn.query(
+          `UPDATE user_bilibili_share_events
+           SET reserved_order_no = ?
+           WHERE username = ? AND id IN (` +
+            shareIds.map(function () { return '?'; }).join(',') +
+            `) AND consumed_at IS NULL AND reserved_order_no IS NULL`,
+          [order.out_trade_no, req.authUserId].concat(shareIds)
+        );
+      }
     }
     await conn.commit();
   } catch (e) {
@@ -5946,7 +6265,8 @@ async function handleAlipayLatestOrder(req, res) {
   try {
     const [rows] = await conn.execute(
       `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-              pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
+              pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes,
+              list_amount, discount_amount, share_discount_count
        FROM payment_orders WHERE username = ?
        ORDER BY id DESC LIMIT 1`,
       [req.authUserId]
@@ -5974,7 +6294,8 @@ async function handleAlipayLatestOrder(req, res) {
             });
             const [fresh] = await conn.execute(
               `SELECT id, out_trade_no, subject, amount, status, paid_at, alipay_trade_no,
-                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes
+                      pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes,
+                      list_amount, discount_amount, share_discount_count
                FROM payment_orders WHERE id = ? LIMIT 1`,
               [order.id]
             );
@@ -5985,11 +6306,10 @@ async function handleAlipayLatestOrder(req, res) {
         console.warn('alipay trade query sync', syncErr && syncErr.message);
       }
     }
-    var isRenameOrder =
-      order &&
-      (isRenameFeeSkuId(order.sku_id) || String(order.grant_kind || '') === 'rename_credit');
+    var isAddonOrder =
+      order && isNonActivationSkuId(order.sku_id, order.grant_kind);
     var paidActivation =
-      !!(order && String(order.status) === 'paid' && !isRenameOrder);
+      !!(order && String(order.status) === 'paid' && !isAddonOrder);
     var freshToken = null;
     if (paidActivation && req.authUserId) {
       /* 付款开通后签发新 JWT，避免客户端仍拿着 act=0 的旧令牌（改名费订单不发开通令牌） */
@@ -6039,7 +6359,7 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
   await conn.beginTransaction();
   try {
     const [rows] = await conn.execute(
-      `SELECT id, username, amount, status, alipay_trade_no
+      `SELECT id, username, out_trade_no, amount, status, alipay_trade_no
        FROM payment_orders WHERE id = ? FOR UPDATE`,
       [order.id]
     );
@@ -6106,6 +6426,24 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
       try {
         invalidateUserInfoApiCache(locked.username);
       } catch (eInv) {}
+      return true;
+    }
+
+    /* 离职证明：标记终身权益，不开通账号 */
+    if (isLizhiCertSkuId(meta.sku_id) || grantKind === 'lizhi_cert') {
+      await conn.execute('UPDATE users SET lizhi_cert_unlocked = 1 WHERE username = ?', [
+        locked.username
+      ]);
+      await conn.execute(
+        `UPDATE payment_orders
+         SET status = 'paid', alipay_trade_no = ?, buyer_logon_id = ?, paid_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [String(info.tradeNo), info.buyerLogonId ? String(info.buyerLogonId).slice(0, 128) : null, locked.id]
+      );
+      await conn.commit();
+      try {
+        invalidateUserInfoApiCache(locked.username);
+      } catch (eInv2) {}
       return true;
     }
 
@@ -6198,6 +6536,12 @@ async function fulfillAlipayPaidOrder(conn, order, info) {
         locked.id
       ]
     );
+    await conn.execute(
+      `UPDATE user_bilibili_share_events
+       SET consumed_at = CURRENT_TIMESTAMP
+       WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+      [locked.username, String(locked.out_trade_no || order.out_trade_no || '')]
+    );
     await conn.commit();
     invalidateUserAuthCache(locked.username);
     invalidateUserInfoApiCache(locked.username);
@@ -6260,6 +6604,12 @@ async function handleAlipayNotify(req, res) {
           await conn.execute(
             `UPDATE payment_orders SET status = 'closed', alipay_trade_no = ? WHERE id = ?`,
             [tradeNo, order.id]
+          );
+          await conn.execute(
+            `UPDATE user_bilibili_share_events
+             SET reserved_order_no = NULL
+             WHERE username = ? AND reserved_order_no = ? AND consumed_at IS NULL`,
+            [order.username, outTradeNo]
           );
         }
         await conn.commit();
@@ -10578,7 +10928,8 @@ async function handleTaxGet(req, res) {
       const connList = await pool.getConnection();
       try {
         const [issueRows] = await connList.execute(
-          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                  qr_image_url, qr_block_image_url, created_at
            FROM tax_issue_applications
            WHERE user_id = ?
            ORDER BY created_at DESC, apply_time DESC
@@ -10594,7 +10945,9 @@ async function handleTaxGet(req, res) {
             record_no: r.record_no != null ? String(r.record_no) : '',
             scope: r.scope != null ? String(r.scope) : '全国',
             status: r.status != null ? String(r.status) : '制作成功',
-            query_code: r.query_code != null ? String(r.query_code) : ''
+            query_code: r.query_code != null ? String(r.query_code) : '',
+            qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
+            qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : ''
           };
         });
         return res.json({ code: 200, data: { applications: issueOut } });
@@ -16562,7 +16915,7 @@ async function handleAdminUsers(req, res) {
 
     const [pageRows] = await conn.query(
       `
-      SELECT id, username, real_name, tax_id, account_active, banned,
+      SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
              last_login_city, created_at, hash, plain_password, register_source_channel,
              activation_source_channel, user_type, sales_promo_channel, invited_by,
              (SELECT ule.ip FROM user_login_events ule
@@ -17434,7 +17787,8 @@ async function handleAdminUserDataDetail(req, res) {
       var latestIssue = null;
       try {
         const [issueRows] = await conn.execute(
-          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at
+          `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                  qr_image_url, qr_block_image_url, created_at
            FROM tax_issue_applications WHERE user_id = ? ORDER BY created_at DESC, apply_time DESC LIMIT 1`,
           [username]
         );
@@ -17449,6 +17803,8 @@ async function handleAdminUserDataDetail(req, res) {
             scope: ir.scope != null ? String(ir.scope) : '',
             status: ir.status != null ? String(ir.status) : '',
             query_code: ir.query_code != null ? String(ir.query_code) : '',
+            qr_image_url: ir.qr_image_url != null ? String(ir.qr_image_url) : '',
+            qr_block_image_url: ir.qr_block_image_url != null ? String(ir.qr_block_image_url) : '',
             created_at: ir.created_at ? ir.created_at.toISOString() : ''
           };
         }
@@ -18185,6 +18541,47 @@ async function handleAdminUserPricingAbc(req, res) {
   } catch (e) {
     var code = e && e.statusCode ? e.statusCode : 500;
     return res.status(code).json({ code: code, msg: (e && e.message) || '分配失败' });
+  }
+}
+
+/** 管理端：取消或恢复指定账号的五次改名收费限制 */
+async function handleAdminUserRenameFeeExempt(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  var exempt =
+    body.exempt === true || body.exempt === 1 || String(body.exempt || '') === '1';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: '请填写账号' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    const [urows] = await conn.execute(
+      'SELECT id, username FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
+      [target]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ code: 404, msg: '用户不存在或已删除' });
+    }
+    var canonicalUsername = String(urows[0].username || target);
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, canonicalUsername);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    await conn.execute(
+      'UPDATE users SET rename_fee_exempt = ? WHERE username = ?',
+      [exempt ? 1 : 0, canonicalUsername]
+    );
+    invalidateUserInfoApiCache(canonicalUsername);
+    return res.json({
+      code: 200,
+      msg: exempt ? '已取消该账号的改名收费限制' : '已恢复该账号的改名收费限制',
+      data: { username: canonicalUsername, rename_fee_exempt: exempt }
+    });
+  } catch (e) {
+    console.error('admin user rename fee exempt', e);
+    return res.status(500).json({ code: 500, msg: '修改改名限制失败' });
+  } finally {
+    conn.release();
   }
 }
 
@@ -19054,7 +19451,8 @@ async function handleAdminUserTaxRecords(req, res) {
         [username, username]
       );
       const [issueRows] = await conn.execute(
-        `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code, created_at, updated_at
+        `SELECT id, apply_time, period_start, period_end, record_no, scope, status, query_code,
+                qr_image_url, qr_block_image_url, created_at, updated_at
          FROM tax_issue_applications
          WHERE user_id = ?
          ORDER BY created_at DESC
@@ -19109,6 +19507,8 @@ async function handleAdminUserTaxRecords(req, res) {
           scope: r.scope != null ? String(r.scope) : '',
           status: r.status != null ? String(r.status) : '',
           query_code: r.query_code != null ? String(r.query_code) : '',
+          qr_image_url: r.qr_image_url != null ? String(r.qr_image_url) : '',
+          qr_block_image_url: r.qr_block_image_url != null ? String(r.qr_block_image_url) : '',
           created_at: r.created_at ? r.created_at.toISOString() : '',
           updated_at: r.updated_at ? r.updated_at.toISOString() : ''
         };
@@ -23275,6 +23675,9 @@ function getHandlers() {
     handleAlipayCreateOrder,
     handleAlipayLatestOrder,
     handleAlipayNotify,
+    handleBilibiliShareStatus,
+    handleBilibiliShareStart,
+    handleBilibiliShareComplete,
     handlePublicMineUi,
     handlePublicInstallPackages,
     handlePublicAssetGet,
@@ -23323,6 +23726,7 @@ function getHandlers() {
     handleAdminCodes,
     handleAdminUserActivate,
     handleAdminUserPricingAbc,
+    handleAdminUserRenameFeeExempt,
     handleAdminUserPassword,
     handleAdminBan,
     handleAdminBlockIp,

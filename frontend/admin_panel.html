@@ -1567,6 +1567,186 @@
                     </section>
                             </div>
 
+                <div id="page-lizhi-cert" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>离职证明生成</h2>
+                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式离职证明），带「演示样例」标注，不能用于入职/签证等正式用途。</p>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="lizhiPrefillUser">按用户名预填</label>
+                                <input type="text" id="lizhiPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="lizhiPrefillBtn">预填</button>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack" style="max-width:880px;">
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="lizhiName">姓名</label>
+                                    <input type="text" id="lizhiName" maxlength="64" placeholder="如：王嵩嵩">
+                                </div>
+                                <div>
+                                    <label for="lizhiIdNumber">身份证号</label>
+                                    <input type="text" id="lizhiIdNumber" maxlength="32" placeholder="身份证号">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="lizhiHireDate">入职日期</label>
+                                    <input type="text" id="lizhiHireDate" maxlength="32" placeholder="2025/12/15" value="2025/12/15">
+                                </div>
+                                <div>
+                                    <label for="lizhiLeaveDate">离职日期</label>
+                                    <input type="text" id="lizhiLeaveDate" maxlength="32" placeholder="2026/7/10" value="2026/7/10">
+                                </div>
+                                <div>
+                                    <label for="lizhiIssueDate">开具日期</label>
+                                    <input type="text" id="lizhiIssueDate" maxlength="48" placeholder="2026 年 7 月 13 日" value="2026 年 7 月 13 日">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="lizhiCompany">公司全称</label>
+                                <input type="text" id="lizhiCompany" maxlength="128" style="width:100%;max-width:640px;" value="北京外企市场营销顾问有限公司西安分公司">
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <button type="button" class="btn-primary" id="lizhiGenerateBtn">生成并下载 PDF</button>
+                                <button type="button" class="btn-page" id="lizhiSampleBtn">填入示例</button>
+                            </div>
+                            <p id="lizhiStatus" class="hint" aria-live="polite"></p>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-ylbx-ps" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>社保缴费证明图片 PS</h2>
+                        <p class="hint hint-warn mt-0">上传陕西省城镇职工基本养老保险参保缴费证明类<strong>原图</strong>，用原图像素拼接修改第 2 行缴费月份与个人缴费。演示用途，非正式证明。</p>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="ylbxPrefillUser">按用户名预填</label>
+                                <input type="text" id="ylbxPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="ylbxPrefillBtn">预填</button>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack" style="max-width:960px;">
+                            <div>
+                                <label for="ylbxImageFile">原图（PNG/JPG）</label>
+                                <input type="file" id="ylbxImageFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="ylbxMonthStart">缴费月份起</label>
+                                    <input type="text" id="ylbxMonthStart" maxlength="8" placeholder="202601" value="202601">
+                                </div>
+                                <div>
+                                    <label for="ylbxMonthEnd">缴费月份止</label>
+                                    <input type="text" id="ylbxMonthEnd" maxlength="8" placeholder="202606" value="202606">
+                                </div>
+                                <div>
+                                    <label for="ylbxAmount">个人缴费（第2行）</label>
+                                    <input type="text" id="ylbxAmount" maxlength="12" placeholder="2232" value="2232">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="ylbxName">姓名（预留）</label>
+                                    <input type="text" id="ylbxName" maxlength="64" placeholder="可选">
+                                </div>
+                                <div>
+                                    <label for="ylbxIdNumber">身份证号（预留）</label>
+                                    <input type="text" id="ylbxIdNumber" maxlength="32" placeholder="可选">
+                                </div>
+                                <div style="flex:1;min-width:220px;">
+                                    <label for="ylbxCompany">单位（预留）</label>
+                                    <input type="text" id="ylbxCompany" maxlength="128" placeholder="可选">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <button type="button" class="btn-primary" id="ylbxEditBtn">处理并下载 PNG</button>
+                            </div>
+                            <p id="ylbxStatus" class="hint" aria-live="polite"></p>
+                            <div class="form-row flex-wrap gap-16" id="ylbxPreviewWrap" style="display:none;">
+                                <div>
+                                    <div class="hint">原图</div>
+                                    <img id="ylbxPreviewSrc" alt="原图" style="max-width:420px;border:1px solid #ddd;">
+                                </div>
+                                <div>
+                                    <div class="hint">结果</div>
+                                    <img id="ylbxPreviewOut" alt="结果" style="max-width:420px;border:1px solid #ddd;">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="page-najilu-qr" class="page-panel" role="tabpanel">
+                    <section>
+                        <h2>完税证明 · 二维码替换</h2>
+                        <p class="hint hint-warn mt-0">先选择<strong>开具记录</strong>，再上传一张含目标二维码的<strong>完整完税证明图片</strong>；系统会按原始比例自动抠出右上角“二维码 + 16 位查询验证码”，替换到该记录生成图中，避免尺寸不一致和拉伸变形。</p>
+                        <div class="form-row form-stack" style="max-width:960px;">
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="najiluQrUser">用户名</label>
+                                    <input type="text" id="najiluQrUser" maxlength="64" placeholder="注册用户名">
+                                </div>
+                                <div style="align-self:flex-end;">
+                                    <button type="button" class="btn-page" id="najiluQrLoadBtn">加载开具记录</button>
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="najiluQrIssueId">开具记录</label>
+                                    <select id="najiluQrIssueId" style="min-width:360px;max-width:100%;">
+                                        <option value="">不绑定 / 请先加载</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="najiluQrQueryCode">查询验证码（16 位）</label>
+                                    <input type="text" id="najiluQrQueryCode" maxlength="32" placeholder="如 NSXJU5RLD55KET4M" style="min-width:260px;">
+                                </div>
+                                <div>
+                                    <label for="najiluQrMode">替换方式</label>
+                                    <select id="najiluQrMode">
+                                        <option value="block" selected>整块（二维码+验证码图）</option>
+                                        <option value="qr">仅二维码方块</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="najiluQrFullFile">上传含新二维码的完整图片（PNG/JPG）</label>
+                                <input type="file" id="najiluQrFullFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+                                <p class="hint">系统自动识别二维码位置并原比例提取「二维码 + 16 位验证码」；识别不准时可在下方源图上拖动框选。</p>
+                                <div id="najiluQrCropWrap" style="display:none;position:relative;max-width:520px;margin-top:8px;border:1px solid #ddd;background:#fff;">
+                                    <img id="najiluQrCropImg" alt="源图" style="display:block;width:100%;cursor:crosshair;user-select:none;">
+                                    <div id="najiluQrCropBox" style="display:none;position:absolute;border:2px solid #e11d48;background:rgba(225,29,72,0.12);pointer-events:none;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="najiluQrFile">直接上传裁切图（备用）</label>
+                                <input type="file" id="najiluQrFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+                                <p class="hint">通常不需要使用。只有已有尺寸正确的“二维码 + 验证码”裁切图时才选此项。</p>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <button type="button" class="btn-primary" id="najiluQrPreviewBtn">预览 / 生成结果图</button>
+                                <button type="button" class="btn-page" id="najiluQrDownloadBtn" style="display:none;">下载结果图</button>
+                                <button type="button" class="btn-primary" id="najiluQrSaveBtn">保存到开具记录</button>
+                                <button type="button" class="btn-page" id="najiluQrClearBtn">清除自定义图</button>
+                            </div>
+                            <p id="najiluQrStatus" class="hint" aria-live="polite"></p>
+                            <div class="form-row flex-wrap gap-16">
+                                <div>
+                                    <div class="hint">替换素材预览</div>
+                                    <img id="najiluQrAssetPreview" alt="素材" style="display:none;max-width:220px;border:1px solid #ddd;background:#fff;">
+                                </div>
+                            </div>
+                            <div id="najiluQrCertPreview" style="margin-top:12px;"></div>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">转化与触达</p></div>
                     <section>
@@ -2255,9 +2435,9 @@
     </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260731-p1-lazy"></script>
-    <script src="/js/admin/nav.js?v=20260731-concise"></script>
+    <script src="/js/admin/loader.js?v=20260801-prefill-fix"></script>
+    <script src="/js/admin/nav.js?v=20260731-najilu-qr"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260731-p1-lazy"></script>
+    <script src="/js/admin_panel.js?v=20260731-najilu-qr"></script>
 </body>
 </html>

@@ -312,11 +312,8 @@ async function main() {
   copyDir(path.join(ROOT, 'public', 'img'), path.join(SITE, 'img'));
   copyDir(path.join(ROOT, 'caidan'), path.join(SITE, 'caidan'));
   copyDir(path.join(ROOT, 'bank_icons'), path.join(SITE, 'bank_icons'));
-
-  const indexHtml = path.join(SITE, 'index.html');
-  if (fs.existsSync(indexHtml)) {
-    copyFile(indexHtml, path.join(SITE, 'login.html'));
-  }
+  /* iOS 主屏 / 描述文件 WebClip 启动图（apple-touch-startup-image） */
+  copyDir(path.join(ROOT, 'splash'), path.join(SITE, 'splash'));
 
   // 先压缩/混淆，再打 content-hash（hash 对已保护内容）
   await protectAssets();

@@ -17,7 +17,10 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator'
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator',
+    'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260801-prefill-fix',
+    'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260801-prefill-fix',
+    'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260801-prefill-fix'
   };
 
   var PAGE_MODULE = {
@@ -26,6 +29,9 @@
     appearance: 'settings',
     codes: 'codes',
     'sbdy-demo': 'sbdy-demo',
+    'lizhi-cert': 'lizhi-cert',
+    'ylbx-ps': 'ylbx-ps',
+    'najilu-qr': 'najilu-qr',
     'admin-accounts': 'accounts',
     users: 'users',
     'guest-users': 'users',
@@ -104,7 +110,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260721-stamp-single');
+    return loadScript('/js/najilu.js?v=20260731-najilu-qr');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */
@@ -140,8 +146,8 @@
     if (mod === 'codes') {
       chain = chain.then(ensureQrcode);
     }
-    if (mod === 'users' || mod === 'user-data') {
-      chain = chain.then(ensureNajilu);
+    if (mod === 'users' || mod === 'user-data' || mod === 'najilu-qr') {
+      chain = chain.then(ensureQrcode).then(ensureNajilu);
     }
     if (pageKey === 'tax-records-edit') {
       chain = chain.then(ensureTaxBatchScripts);

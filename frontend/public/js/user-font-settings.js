@@ -6,7 +6,7 @@
     var FAB_MANUAL_HIDDEN_KEY = 'h5_user_font_fab_manual_hidden';
     var FAB_CAPTURE_AUTO_KEY = 'h5_user_font_capture_auto_hide';
     var STYLE_ID = 'ufs-dynamic-rules';
-    var CONFIG_VERSION = 5;
+    var CONFIG_VERSION = 6;
 
     var PRESETS = {
         size: [
@@ -57,16 +57,21 @@
     var ROLES_RESULT = [
         { id: 'all', label: '全局', selectors: null },
         {
-            id: 'header',
-            label: '顶栏',
-            selectors:
-                '.top-fixed .header-title, .top-fixed .back-btn, .top-fixed .back-btn span, .top-fixed .header-right'
+            id: 'headerTitle',
+            label: '顶栏标题',
+            selectors: '.top-fixed .header-title'
+        },
+        {
+            id: 'headerActions',
+            label: '左右操作',
+            selectors: '.top-fixed .back-btn, .top-fixed .back-btn span, .top-fixed .header-right'
         },
         {
             id: 'summary',
             label: '汇总区',
+            /* 不选 .summary-label 本身，避免字号/字重继承到顶部「?」圆标导致变形 */
             selectors:
-                '.top-fixed .summary .summary-label, .top-fixed .summary .summary-value, ' +
+                '.top-fixed .summary .summary-value, ' +
                 '.top-fixed .summary .summary-label-text, .top-fixed .summary .summary-colon'
         },
         {
@@ -85,9 +90,14 @@
     var ROLES_DETAIL = [
         { id: 'all', label: '全局', selectors: null },
         {
-            id: 'header',
-            label: '顶栏',
-            selectors: '.header-title, .back-btn, .back-btn span, .header-right'
+            id: 'headerTitle',
+            label: '顶栏标题',
+            selectors: '.header-title'
+        },
+        {
+            id: 'headerActions',
+            label: '左右操作',
+            selectors: '.back-btn, .back-btn span, .header-right'
         },
         { id: 'section', label: '区块标题', selectors: '.section-title' },
         { id: 'infoLabel', label: '信息标签', selectors: '.info-label' },
@@ -136,13 +146,21 @@
             );
         }
         return (
-            '先点区域再调字号/字间距/行高等。仅改「汇总区」时只影响顶栏下汇总两行；「全局」为各区域默认，可被分区覆盖。'
+            '先点区域再调字号/字间距/行高等。「顶栏标题」只改中间文字，「左右操作」单独控制返回和批量申诉；「全局」为各区域默认。'
         );
     }
 
     function migrateLegacyTargets(targets) {
         if (!targets || typeof targets !== 'object') return targets || {};
         var next = Object.assign({}, targets);
+        /*
+         * v5 及以前「顶栏」同时控制标题和左右操作。升级后旧设置只迁到标题，
+         * 避免放大「收入纳税明细」时返回/批量申诉也一起变化。
+         */
+        if (next.header) {
+            if (!next.headerTitle) next.headerTitle = Object.assign({}, next.header);
+            delete next.header;
+        }
         if (next.info && !next.infoLabel && !next.infoValue) {
             next.infoLabel = Object.assign({}, next.info);
             next.infoValue = Object.assign({}, next.info);
@@ -158,6 +176,7 @@
     }
 
     function migrateLegacyActiveTarget(activeTarget) {
+        if (activeTarget === 'header') return 'headerTitle';
         if (activeTarget === 'info') return 'infoLabel';
         if (activeTarget === 'detail') return 'detailLabel';
         return activeTarget || 'all';
