@@ -172,7 +172,8 @@
                                 <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则购买页不显示该按钮">
                                 <p class="hint mt-6">用户在「我的」点「激活」进入购买页后，点击「闲鱼购买」会复制此处全文到剪贴板。</p>
                             </div>
-                            <div class="form-field mt-12">
+                            <!-- 已下线：代理推广渠道 / 下属代理专属渠道 -->
+                            <div class="form-field mt-12" id="xianyuHideSalesChannelsField" hidden>
                                 <label for="xianyuHideSalesChannels">代理推广渠道（隐藏闲鱼购买）</label>
                                 <textarea class="textarea-block" id="xianyuHideSalesChannels" rows="4" maxlength="2048" placeholder="每行一个渠道 ID，例如：&#10;agent_zhang&#10;agent_li"></textarea>
                                 <div class="flex-actions gap-10 mt-10 flex-align-center">
@@ -180,45 +181,17 @@
                                     <button type="button" class="btn-page" id="btnCopyAllAgentPromoLinks" style="display:none;">复制全部链接</button>
                                 </div>
                                 <div id="agentPromoLinksMount" class="agent-promo-links-mount mt-12" style="display:none;"></div>
-                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">给代理的推广链接带上 <code>?ch=渠道ID</code>（如 <code>install_guide.html?ch=agent_zhang</code> 或 <code>register.html?ch=agent_zhang</code>）。用户从该链接进入后，即使下载 App 再打开，系统也会按设备自动恢复渠道 ID（15 分钟内同 IP 有效）；你自己引流的普通链接不带 <code>ch</code>，仍显示闲鱼入口。</p></details>
                             </div>
-                            <div class="form-field mt-16">
-                                <label>下属代理专属渠道</label>
-                                <details class="page-hint-details"><summary>说明</summary><p class="hint mt-6">为下属代理绑定专属 <code>ch</code>：经该渠道注册/登录的用户账号自动挂到其名下，并<strong>强制支付方案（默认 C）</strong>；勾选「仅激活码」后用户端隐藏价格/支付宝/闲鱼等全部自助支付，接口也会拒绝下单。渠道 ID 仅支持字母数字下划线（如 <code>quan_c</code>），备注可写中文名。保存后会自动加入上方「隐藏闲鱼」列表。</p></details>
+                            <div class="form-field mt-16" id="agentExclusiveChannelsField" hidden>
                                 <div class="mine-ui-block max-w-760 mt-10" id="agentExclusiveChannelsBox">
-                                    <div class="flex-actions gap-10 flex-wrap flex-align-end">
-                                        <div class="form-field" style="min-width:140px;flex:1;">
-                                            <label for="agentExChannelId">渠道 ID</label>
-                                            <input class="input-block" type="text" id="agentExChannelId" maxlength="64" placeholder="如 quan_c">
-                                        </div>
-                                        <div class="form-field" style="min-width:160px;flex:1;">
-                                            <label for="agentExOwnerAdmin">下属代理账号（可空）</label>
-                                            <select class="input-block" id="agentExOwnerAdmin">
-                                                <option value="">加载中…</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-field" style="min-width:100px;">
-                                            <label for="agentExPricingAbc">默认支付</label>
-                                            <select class="input-block" id="agentExPricingAbc">
-                                                <option value="b" selected>B（默认）</option>
-                                                <option value="a">A</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-field" style="min-width:120px;flex:1;">
-                                            <label for="agentExNote">备注</label>
-                                            <input class="input-block" type="text" id="agentExNote" maxlength="255" placeholder="如 全C方案">
-                                        </div>
-                                        <label class="flex-align-center gap-6" style="margin-bottom:8px;" title="隐藏价格与全部自助支付，只留激活码">
-                                            <input type="checkbox" id="agentExHideSelfServePay" checked>
-                                            <span>仅激活码</span>
-                                        </label>
-                                        <label class="flex-align-center gap-6" style="margin-bottom:8px;">
-                                            <input type="checkbox" id="agentExEnabled" checked>
-                                            <span>启用</span>
-                                        </label>
-                                        <button type="button" class="btn-primary" id="btnSaveAgentExclusiveChannel">保存专属渠道</button>
-                                    </div>
                                     <div id="agentExclusiveChannelsList" class="mt-12"></div>
+                                    <input type="hidden" id="agentExChannelId" value="">
+                                    <select id="agentExOwnerAdmin" hidden><option value=""></option></select>
+                                    <select id="agentExPricingAbc" hidden><option value="b" selected>B</option></select>
+                                    <input type="hidden" id="agentExNote" value="">
+                                    <input type="checkbox" id="agentExHideSelfServePay" hidden checked>
+                                    <input type="checkbox" id="agentExEnabled" hidden checked>
+                                    <button type="button" id="btnSaveAgentExclusiveChannel" hidden>保存专属渠道</button>
                                 </div>
                             </div>
                         </div>
@@ -907,9 +880,9 @@
                     </section>
                 </div>
 
-                <div id="page-guest-users" class="page-panel" role="tabpanel">
+                <div id="page-guest-users" class="page-panel" role="tabpanel" hidden aria-hidden="true">
                     <section>
-                        <h2>游客用户</h2>
+                        <h2>游客用户（已下线）</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。统计区间按<strong>北京时间自然日</strong>：「近 1 天」= 当天 0 点起。仅超级管理员可见。</p></details>
                         <div class="user-filter-bar">
                             <div class="user-filter-fields">
@@ -1343,9 +1316,9 @@
                     </section>
                 </div>
 
-                <div id="page-activated-user-analysis" class="page-panel" role="tabpanel">
+                <div id="page-activated-user-analysis" class="page-panel" role="tabpanel" hidden aria-hidden="true">
                     <section>
-                        <h2>激活用户分析</h2>
+                        <h2>激活用户分析（已下线）</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint">聚焦<strong>已激活</strong>账号：个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p></details>
                         <div class="form-row flex-align-center mb-8">
                             <div>
@@ -1839,7 +1812,7 @@
                     </section>
                     <section>
                         <h2>注册转化率</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>代理推广</strong>：注册链接/表单显式带了「引导安装 → 代理推广渠道」中的 <code>ch</code>；<strong>闲鱼 / 支付宝 / 酷发卡激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按北京时间统计：转化率 = 当日激活数 ÷ 当日注册数（激活以激活码首次使用为准；<strong>不含已退款、已删除账号</strong>）。<strong>超级管理员</strong>仅统计主账号 <code>admin</code> 名下用户，不含其他子管理员；<strong>自有流量</strong>：注册时未带代理渠道，或渠道不在代理列表；<strong>闲鱼 / 支付宝激活</strong>：分别统计对应码/渠道激活的用户数。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsConversionDays">统计区间</label>
@@ -1849,29 +1822,18 @@
                         </div>
                         <div id="analyticsDailyConversion" class="analytics-conv-wrap" aria-live="polite">转化率加载中…</div>
                     </section>
-                    <section>
+                    <!-- 已下线：四段转化漏斗、运营 KPI -->
+                    <section hidden aria-hidden="true">
                         <h2>四段转化漏斗</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">按用户<strong>注册日</strong> cohort：<strong>注册 → 7 日内激活 → 7 日内有个税 → 7 日内看收入明细</strong>（<code>shuiming</code> / <code>xiangqing</code>；激活数不含已退款、已删除账号）。下方分<strong>自有流量</strong>与<strong>代理推广</strong>两套漏斗；按注册来源渠道拆分见侧栏「渠道分析」。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsFunnelDays">统计区间</label>
-                                <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshRegistrationFunnel">刷新漏斗</button>
-                        </div>
-                        <div id="analyticsRegistrationFunnel" class="analytics-conv-wrap" aria-live="polite">漏斗加载中…</div>
+                        <select id="analyticsFunnelDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom" hidden></select>
+                        <button type="button" id="btnRefreshRegistrationFunnel" hidden>刷新漏斗</button>
+                        <div id="analyticsRegistrationFunnel" hidden></div>
                     </section>
-                    <section>
+                    <section hidden aria-hidden="true">
                         <h2>运营 KPI</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0"><strong>激活后 1 日个税填写率</strong> = 统计窗口内激活的用户中，激活后 24 小时内有个税记录的比例（按<strong>激活日</strong>可下钻）。<strong>有个税后 1 日明细查看率</strong> = 窗口内首次有个税的用户中，24 小时内访问过收入明细相关页的比例（按<strong>首次有个税日</strong>可下钻）。</p></details>
-                        <div class="form-row flex-align-center mt-8">
-                            <div>
-                                <label for="analyticsConversionKpiDays">统计区间</label>
-                                <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshConversionKpis">刷新 KPI</button>
-                        </div>
-                        <div id="analyticsConversionKpis" class="analytics-conv-wrap" aria-live="polite">KPI 加载中…</div>
+                        <select id="analyticsConversionKpiDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom" hidden></select>
+                        <button type="button" id="btnRefreshConversionKpis" hidden>刷新 KPI</button>
+                        <div id="analyticsConversionKpis" hidden></div>
                     </section>
                     <section>
                         <h2>注册超 24h 未激活用户</h2>

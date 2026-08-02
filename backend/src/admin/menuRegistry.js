@@ -101,15 +101,6 @@ const ADMIN_PAGE_DEFS = [
   /* —— 用户 —— */
   { page: 'users', menu_key: 'users', label: '注册用户', group: 'users', module: 'users', order: 10 },
   {
-    page: 'guest-users',
-    menu_key: 'guest-users',
-    label: '游客',
-    group: 'users',
-    module: 'users',
-    order: 20,
-    super_only: true
-  },
-  {
     page: 'users-deleted',
     menu_key: 'users',
     label: '已删除',
@@ -126,14 +117,6 @@ const ADMIN_PAGE_DEFS = [
     group: 'users',
     module: 'user-data',
     order: 65
-  },
-  {
-    page: 'activated-user-analysis',
-    menu_key: 'activated-user-analysis',
-    label: '激活分析',
-    group: 'users',
-    module: 'user-data',
-    order: 80
   },
 
   /* —— 工具 —— */

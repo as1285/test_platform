@@ -50,13 +50,15 @@ describe('menuRegistry', () => {
     ).toBe(true);
   });
 
-  it('guest-users is super_only', () => {
-    expect(
-      adminProfileCanAccessPage({ is_super: false, menus: ['guest-users'] }, 'guest-users')
-    ).toBe(false);
+  it('guest-users and activated-user-analysis are removed from menu', () => {
+    expect(getPageDef('guest-users')).toBeNull();
+    expect(getPageDef('activated-user-analysis')).toBeNull();
     expect(
       adminProfileCanAccessPage({ is_super: true, menus: [] }, 'guest-users')
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: true, menus: [] }, 'activated-user-analysis')
+    ).toBe(false);
   });
 
   it('admin-accounts is super_only and not assignable', () => {

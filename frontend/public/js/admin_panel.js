@@ -1257,11 +1257,9 @@
                 'install-guide-stats',
                 'share-stats',
                 'users',
-                'guest-users',
                 'users-deleted',
                 'user-data',
                 'tax-records-edit',
-                'activated-user-analysis',
                 'analytics-register',
                 'analytics-activity',
                 'analytics-tracking',
@@ -1272,7 +1270,6 @@
                 'server-monitor'
             ];
             for (var i = 0; i < order.length; i++) {
-                if (order[i] === 'guest-users' && !(currentAdminProfile && currentAdminProfile.is_super)) continue;
                 if (adminHasMenu(order[i])) return order[i];
             }
             return 'analytics-conversion';
@@ -1305,8 +1302,8 @@
             document.querySelectorAll('.nav-item').forEach(function (btn) {
                 var key = btn.getAttribute('data-page');
                 var on = adminHasMenu(key);
-                if (key === 'guest-users') {
-                    on = on && currentAdminProfile && currentAdminProfile.is_super;
+                if (key === 'guest-users' || key === 'activated-user-analysis') {
+                    on = false;
                 }
                 btn.style.display = on ? '' : 'none';
             });
@@ -1356,6 +1353,9 @@
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
             if (k === 'analytics') k = 'analytics-conversion';
+            if (k === 'guest-users' || k === 'activated-user-analysis') {
+                return firstAllowedAdminPage();
+            }
             var ok = {
                 settings: 1,
                 'install-guide': 1,
@@ -1363,11 +1363,9 @@
                 codes: 1,
                 'admin-accounts': 1,
                 users: 1,
-                'guest-users': 1,
                 'users-deleted': 1,
                 'user-data': 1,
                 'tax-records-edit': 1,
-                'activated-user-analysis': 1,
                 'analytics-conversion': 1,
                 'analytics-register': 1,
                 'analytics-activity': 1,
@@ -1436,18 +1434,9 @@
                 _adminDeletedUsersLoaded = true;
                 loadDeletedUsers(1);
             }
-            if (pageKey === 'guest-users' && !_adminGuestUsersLoaded) {
-                _adminGuestUsersLoaded = true;
-                loadGuestUsers(1);
-            }
             if (pageKey === 'user-data' && !_adminUserDataLoaded) {
                 _adminUserDataLoaded = true;
                 loadUserDataList(1);
-            }
-            if (pageKey === 'activated-user-analysis' && !_adminActivatedUserAnalysisLoaded) {
-                _adminActivatedUserAnalysisLoaded = true;
-                loadActivatedUserAnalysisOverview();
-                loadActivatedUserAnalysisUsers(1);
             }
             if (pageKey === 'codes' && !_adminCodesLoaded) {
                 _adminCodesLoaded = true;
@@ -1807,8 +1796,6 @@
         function loadAnalyticsConversionPage() {
             loadAnalyticsPricingAb();
             loadAnalyticsDailyConversion();
-            loadRegistrationFunnel();
-            loadConversionKpis();
             loadPendingActivate24h(1);
         }
 
@@ -3175,16 +3162,12 @@
                 });
             }
             html += renderDailyConversionSegmentBlock('代理推广' + agentHint, data.segments.agent, data, { collapsed: true });
-            [
-                { key: 'xianyu', title: '闲鱼激活', label: '闲鱼' },
-                { key: 'kufaka', title: '酷发卡激活', label: '酷发卡' }
-            ].forEach(function (ch) {
-                if (!data.segments[ch.key]) return;
-                html += renderDailyConversionSegmentBlock(ch.title, data.segments[ch.key], data, {
+            if (data.segments.xianyu) {
+                html += renderDailyConversionSegmentBlock('闲鱼激活', data.segments.xianyu, data, {
                     activationOnly: true,
-                    channelLabel: ch.label
+                    channelLabel: '闲鱼'
                 });
-            });
+            }
             el.innerHTML = html;
         }
 
@@ -6875,10 +6858,8 @@
             appearance: '外观',
             codes: '激活码',
             users: '注册用户',
-            'guest-users': '游客',
             'user-data': '用户数据',
             'tax-records-edit': '个税维护',
-            'activated-user-analysis': '激活分析',
             'login-log': '管理登录',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
