@@ -12,6 +12,8 @@
   var ABOUT_NUDGE_DISMISS_KEY = 'cg_about_nudge_dismissed';
   var ACT_NUDGE_DAY_KEY = 'cg_act_nudge_day_v1';
   var ACT_NUDGE_COUNT_KEY = 'cg_act_nudge_count_v1';
+  var TAX_FILL_NUDGE_DAY_KEY = 'cg_tax_fill_nudge_day_v1';
+  var TAX_FILL_BANNER_DISMISS_KEY = 'cg_tax_fill_banner_dismiss_day_v1';
   var hoursSinceRegisterCached = 0;
   var DEMO_DISCLAIMER =
     '本应用为界面演示与学习参考，非官方申报渠道。请勿用于正式申报或对外证明。';
@@ -97,7 +99,7 @@
   }
 
   function bumpIncomeBrowseVisit() {
-    if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
+    if (!isLoggedIn() || hasTaxRecords()) return;
     var page = currentPage();
     if (page !== 'shuiming.html' && page !== 'shouye.html') return;
     var n = 0;
@@ -213,16 +215,13 @@
   }
 
   function removeActivationPromoUi() {
-    [
-      'cg-shouye-tax-entry',
-      'cg-shuiming-hint',
-      'cg-care-hint',
-      'cg-about-nudge',
-      'cg-detail-recovery-toast'
-    ].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el && el.parentNode) el.parentNode.removeChild(el);
-    });
+    /* 已激活用户仍需保留「添加个税」强提示；此处只清激活营销类 UI */
+    ['cg-shuiming-hint', 'cg-care-hint', 'cg-about-nudge', 'cg-detail-recovery-toast'].forEach(
+      function (id) {
+        var el = document.getElementById(id);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }
+    );
   }
 
   function goActivate() {
@@ -258,8 +257,22 @@
     window.location.href = 'purchase.html';
   }
 
+  function ensureTaxEditForFill() {
+    if (isTaxEditModeOn()) return true;
+    /* 尚未有个税时，引导填写应自动打开编辑，避免点了 CTA 又回到「我的」 */
+    if (!hasTaxRecords()) {
+      try {
+        localStorage.removeItem(TAX_EDIT_MODE_KEY);
+      } catch (e) {}
+      syncTaxEditModeClass();
+      return true;
+    }
+    notifyProfileEditLocked();
+    return false;
+  }
+
   function goFillTaxRecords() {
-    if (!isTaxEditModeOn()) {
+    if (!ensureTaxEditForFill()) {
       window.location.href = 'mine.html';
       return;
     }
@@ -267,7 +280,7 @@
   }
 
   function goManageTaxRecords() {
-    if (!isTaxEditModeOn()) {
+    if (!ensureTaxEditForFill()) {
       window.location.href = 'mine.html';
       return;
     }
@@ -409,11 +422,24 @@
       '.cg-about-qq-row:active{background:#f7f7f7}' +
       '.cg-about-qq-row .cg-sub{font-size:13px;color:#8e8e93;margin-top:2px}' +
       '.cg-shouye-card{margin:12px 16px 0;padding:12px 14px;background:linear-gradient(135deg,#e8f4ff,#f8fbff);border:1px solid #c5d9f5;border-radius:10px}' +
+      '.cg-shouye-card.is-tax-strong{margin:10px 12px 0;padding:14px 14px 12px;background:linear-gradient(135deg,#fff4e5,#fffaf2);border:2px solid #ff9500;box-shadow:0 4px 16px rgba(255,149,0,.18);position:relative}' +
+      '.cg-shouye-card.is-tax-strong h4{margin:0 0 6px;font-size:16px;font-weight:700;color:#c2410c}' +
+      '.cg-shouye-card.is-tax-strong p{margin:0 0 12px;font-size:13px;color:#9a3412;line-height:1.5}' +
       '.cg-shouye-card h4{margin:0 0 6px;font-size:15px;color:#333}' +
       '.cg-shouye-card p{margin:0 0 10px;font-size:13px;color:#666;line-height:1.45}' +
       '.cg-shouye-card .cg-btn{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}' +
       '.cg-shouye-card .cg-btn-primary{background:#1e6fff;color:#fff}' +
+      '.cg-shouye-card.is-tax-strong .cg-btn-primary{display:block;width:100%;padding:12px 14px;font-size:15px;font-weight:700;background:#ff9500;border-radius:10px;animation:cgTaxPulse 1.6s ease-in-out infinite}' +
       '.cg-shouye-card .cg-btn-outline{display:inline-block;padding:8px 14px;border-radius:8px;font-size:13px;text-decoration:none;border:1px solid #1e6fff;color:#1e6fff;background:#fff;margin-left:8px}' +
+      '.cg-mine-tax-banner{margin:0 0 10px;padding:14px 14px 12px;background:linear-gradient(135deg,#fff4e5,#fffaf2);border:2px solid #ff9500;border-radius:12px;box-shadow:0 4px 16px rgba(255,149,0,.16);position:relative;z-index:30}' +
+      '.cg-mine-tax-banner h4{margin:0 0 6px;font-size:16px;font-weight:700;color:#c2410c}' +
+      '.cg-mine-tax-banner p{margin:0 0 12px;font-size:13px;color:#9a3412;line-height:1.5}' +
+      '.cg-mine-tax-banner .cg-btn-primary{display:block;width:100%;padding:12px 14px;border:none;border-radius:10px;background:#ff9500;color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;animation:cgTaxPulse 1.6s ease-in-out infinite}' +
+      '.cg-mine-tax-banner .cg-dismiss{position:absolute;top:8px;right:10px;border:none;background:transparent;color:#c2410c;font-size:12px;padding:4px 6px;cursor:pointer;font-family:inherit;opacity:.75}' +
+      '@keyframes cgTaxPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,149,0,.35)}50%{transform:scale(1.02);box-shadow:0 0 0 6px rgba(255,149,0,0)}}' +
+      '.cg-consult-tax-banner{margin:0 0 12px;padding:12px 14px;background:linear-gradient(135deg,#fff4e5,#fffaf2);border:2px solid #ff9500;border-radius:10px}' +
+      '.cg-consult-tax-banner strong{display:block;font-size:15px;color:#c2410c;margin:0 0 4px}' +
+      '.cg-consult-tax-banner span{font-size:13px;color:#9a3412;line-height:1.45}' +
       '.cg-value-bar{position:fixed;left:0;right:0;bottom:0;z-index:850;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid #e8e8e8;box-shadow:0 -2px 12px rgba(0,0,0,.06)}' +
       '.cg-value-bar .cg-disclaimer{margin:0 0 8px;font-size:11px;color:#999;line-height:1.45}' +
       '.cg-value-bar .cg-edit-hint{margin:0 0 10px;font-size:12px;color:#666;line-height:1.45}' +
@@ -905,7 +931,14 @@
   function runMineOnboarding() {
     if (currentPage() !== 'mine.html') return;
     removeMineConversionUi();
-    if (!isLandingGuest()) return;
+    syncMineConsultEntryForTax();
+    /* 正式用户无个税：用顶部强提示条，不再走游客卡片 */
+    if (!isLandingGuest()) {
+      if (!hasTaxRecords()) {
+        renderMineTaxStrongPrompt();
+      }
+      return;
+    }
     /* 已自动示例个税：改为短提示 + 引导下载，不再挡「去填写」 */
     if (hasTaxRecords()) {
       if (document.getElementById('cg-guest-seeded-hint')) return;
@@ -1520,7 +1553,7 @@
 
   function renderShuimingHint() {
     if (currentPage() !== 'shuiming.html') return;
-    if (!isLoggedIn() || skipConversionPromo() || hasTaxRecords()) return;
+    if (!isLoggedIn() || hasTaxRecords()) return;
     if (document.getElementById('cg-shuiming-hint')) return;
     ensureGateStyles();
     var content = document.querySelector('body.page-shuiming > .content');
@@ -1550,8 +1583,223 @@
     if (card && card.parentNode) card.parentNode.removeChild(card);
   }
 
+  function removeMineTaxStrongPrompt() {
+    var el = document.getElementById('cg-mine-tax-banner');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function removeConsultTaxStrongPrompt() {
+    var el = document.getElementById('cg-consult-tax-banner');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function isTaxFillBannerDismissedToday() {
+    try {
+      return localStorage.getItem(TAX_FILL_BANNER_DISMISS_KEY) === beijingDayKey();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function markTaxFillBannerDismissedToday() {
+    try {
+      localStorage.setItem(TAX_FILL_BANNER_DISMISS_KEY, beijingDayKey());
+    } catch (e) {}
+  }
+
+  function canShowTaxFillNudgeToday() {
+    try {
+      return localStorage.getItem(TAX_FILL_NUDGE_DAY_KEY) !== beijingDayKey();
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function markTaxFillNudgeShownToday() {
+    try {
+      localStorage.setItem(TAX_FILL_NUDGE_DAY_KEY, beijingDayKey());
+    } catch (e) {}
+  }
+
+  function syncMineConsultEntryForTax() {
+    if (currentPage() !== 'mine.html') return;
+    var link = document.getElementById('consultModifyLink');
+    if (!link) return;
+    if (!hasTaxRecords()) {
+      link.setAttribute('href', 'consult.html?tab=records&onboarding=tax');
+      link.setAttribute('aria-label', '添加个税记录（我要咨询）');
+    } else {
+      link.setAttribute('href', 'consult.html?tab=records');
+      link.setAttribute('aria-label', '我要咨询');
+    }
+  }
+
   function renderShouyeTaxManageEntry() {
     removeShouyeTaxManageEntry();
+    if (currentPage() !== 'shouye.html') return;
+    if (!isLoggedIn() || hasTaxRecords()) return;
+    if (isTaxFillBannerDismissedToday()) return;
+    ensureGateStyles();
+    var card = document.createElement('div');
+    card.id = 'cg-shouye-tax-entry';
+    card.className = 'cg-shouye-card is-tax-strong cg-demo-only';
+    card.innerHTML =
+      '<button type="button" class="cg-dismiss" id="cgShouyeTaxDismiss" aria-label="今日不再显示" style="position:absolute;top:8px;right:10px;border:none;background:transparent;color:#c2410c;font-size:12px;padding:4px 6px;cursor:pointer;font-family:inherit;opacity:.75;">今日关闭</button>' +
+      '<h4>还差一步：添加个税记录</h4>' +
+      '<p>收入纳税明细目前是空的。点下面按钮，约 30 秒示例填写后即可查看完整明细。</p>' +
+      '<button type="button" class="cg-btn cg-btn-primary" id="cgShouyeGoTax">立即添加个税记录</button>';
+    var host =
+      document.getElementById('guestExperienceBar') ||
+      document.getElementById('syHScroll') ||
+      document.querySelector('.shouye-page') ||
+      document.getElementById('syApkStack');
+    if (!host) return;
+    if (host.id === 'guestExperienceBar' || host.id === 'syHScroll') {
+      host.parentNode.insertBefore(card, host);
+    } else {
+      host.insertBefore(card, host.firstChild);
+    }
+    track('track_tax_fill_banner_show', { page: 'shouye', source: 'home_strong' });
+    var btn = document.getElementById('cgShouyeGoTax');
+    if (btn) {
+      btn.onclick = function () {
+        track('track_tax_fill_banner_ok', { page: 'shouye', source: 'home_strong' });
+        goFillTaxRecords();
+      };
+    }
+    var dismiss = document.getElementById('cgShouyeTaxDismiss');
+    if (dismiss) {
+      dismiss.onclick = function () {
+        markTaxFillBannerDismissedToday();
+        track('track_tax_fill_banner_dismiss', { page: 'shouye', source: 'home_strong' });
+        removeShouyeTaxManageEntry();
+      };
+    }
+  }
+
+  function renderMineTaxStrongPrompt() {
+    removeMineTaxStrongPrompt();
+    if (currentPage() !== 'mine.html') return;
+    if (!isLoggedIn() || hasTaxRecords()) return;
+    if (isLandingGuest() && document.getElementById('cg-guest-fill-card')) return;
+    if (isTaxFillBannerDismissedToday()) return;
+    ensureGateStyles();
+    var banner = document.createElement('div');
+    banner.id = 'cg-mine-tax-banner';
+    banner.className = 'cg-mine-tax-banner cg-demo-only';
+    banner.innerHTML =
+      '<button type="button" class="cg-dismiss" id="cgMineTaxDismiss" aria-label="今日不再显示">今日关闭</button>' +
+      '<h4>请先添加个税记录</h4>' +
+      '<p>入口在下方「我要咨询」。也可直接点按钮，示例填写约 30 秒，生成后即可看收入纳税明细。</p>' +
+      '<button type="button" class="cg-btn-primary" id="cgMineGoTax">立即添加个税记录</button>';
+    var stack = document.querySelector('.mine-stack');
+    var canvas = document.getElementById('mineE1Canvas');
+    if (stack && canvas && canvas.parentNode === stack) {
+      stack.insertBefore(banner, canvas);
+    } else if (stack) {
+      stack.insertBefore(banner, stack.firstChild);
+    } else {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+    track('track_tax_fill_banner_show', { page: 'mine', source: 'mine_strong' });
+    var btn = document.getElementById('cgMineGoTax');
+    if (btn) {
+      btn.onclick = function () {
+        track('track_tax_fill_banner_ok', { page: 'mine', source: 'mine_strong' });
+        goFillTaxRecords();
+      };
+    }
+    var dismiss = document.getElementById('cgMineTaxDismiss');
+    if (dismiss) {
+      dismiss.onclick = function () {
+        markTaxFillBannerDismissedToday();
+        track('track_tax_fill_banner_dismiss', { page: 'mine', source: 'mine_strong' });
+        removeMineTaxStrongPrompt();
+      };
+    }
+  }
+
+  function renderConsultTaxStrongPrompt() {
+    removeConsultTaxStrongPrompt();
+    if (currentPage() !== 'consult.html') return;
+    if (!isLoggedIn() || hasTaxRecords()) return;
+    ensureGateStyles();
+    var panel = document.getElementById('panel-records') || document.getElementById('batchTaxCard');
+    if (!panel) return;
+    var banner = document.createElement('div');
+    banner.id = 'cg-consult-tax-banner';
+    banner.className = 'cg-consult-tax-banner cg-demo-only';
+    banner.innerHTML =
+      '<strong>在这里添加个税记录</strong>' +
+      '<span>可点「示例填写」快速生成，或填写工作经历后一键生成多月工资。</span>';
+    var head = panel.querySelector('.batch-tax-card-head') || panel.firstChild;
+    if (head && head.parentNode === panel) {
+      panel.insertBefore(banner, head.nextSibling);
+    } else {
+      panel.insertBefore(banner, panel.firstChild);
+    }
+    /* 空态时强化主按钮文案 */
+    var emptyBtn = document.getElementById('btnBatchTaxEmptyExample');
+    if (emptyBtn) emptyBtn.textContent = '立即示例填写';
+    var exBtn = document.getElementById('btnBatchTaxExample');
+    if (exBtn) exBtn.textContent = '示例填写（推荐）';
+    track('track_tax_fill_banner_show', { page: 'consult', source: 'consult_strong' });
+  }
+
+  function maybeShowTaxFillNudge() {
+    if (!isLoggedIn() || hasTaxRecords()) return;
+    if (isLightShellPage()) return;
+    var page = currentPage();
+    if (page !== 'mine.html' && page !== 'shouye.html') return;
+    if (document.getElementById('cg-act-nudge-root')) return;
+    if (document.getElementById('cg-tax-fill-nudge-root')) return;
+    if (document.querySelector('.activate-modal-root.is-open')) return;
+
+    var force = false;
+    try {
+      if (sessionStorage.getItem('tax_tutorial_post_login_pending') === '1') {
+        force = true;
+        sessionStorage.removeItem('tax_tutorial_post_login_pending');
+      }
+    } catch (e0) {}
+    if (!force && !canShowTaxFillNudgeToday()) return;
+
+    ensureGateStyles();
+    markTaxFillNudgeShownToday();
+
+    var root = document.createElement('div');
+    root.id = 'cg-tax-fill-nudge-root';
+    root.className = 'cg-act-nudge-root';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.innerHTML =
+      '<div class="cg-act-nudge-mask" data-tax="dismiss"></div>' +
+      '<div class="cg-act-nudge-panel" style="border:2px solid #ff9500;">' +
+      '<p class="cg-act-nudge-title" style="color:#c2410c;">请先添加个税记录</p>' +
+      '<p class="cg-act-nudge-body">收入纳税明细依赖个税数据。入口在「我的 → 我要咨询」，也可点下方按钮直接示例填写（约 30 秒）。</p>' +
+      '<div class="cg-act-nudge-actions">' +
+      '<button type="button" class="cg-act-nudge-btn primary" data-tax="cta" style="background:#ff9500;">立即去添加</button>' +
+      '<button type="button" class="cg-act-nudge-btn secondary" data-tax="dismiss">稍后提醒我</button>' +
+      '</div></div>';
+    document.body.appendChild(root);
+    track('track_tax_fill_nudge_show', { page: page, force: force ? 1 : 0 });
+
+    function close() {
+      if (root.parentNode) root.parentNode.removeChild(root);
+    }
+    root.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var act = t.getAttribute('data-tax');
+      if (act === 'cta') {
+        track('track_tax_fill_nudge_ok', { page: page });
+        close();
+        goFillTaxRecords();
+      } else if (act === 'dismiss') {
+        track('track_tax_fill_nudge_dismiss', { page: page });
+        close();
+      }
+    });
   }
 
   function renderShouyeRetentionCard() {
@@ -1582,14 +1830,23 @@
       patchShuimingResultEmpty();
       refreshShuimingResultEmptyCta();
       removeShuimingResultValueBar();
+      syncMineConsultEntryForTax();
       renderShouyeTaxManageEntry();
+      renderMineTaxStrongPrompt();
+      renderConsultTaxStrongPrompt();
       renderShouyeRetentionCard();
+      /* 无个税时对所有登录用户强提示（含已激活） */
+      setTimeout(maybeShowTaxFillNudge, 480);
+      bumpIncomeBrowseVisit();
+      renderShuimingHint();
       if (!skipConversionPromo()) {
-        bumpIncomeBrowseVisit();
-        renderShuimingHint();
         renderAboutUpdateNudge();
         renderCareVersionHint();
-        setTimeout(maybeShowActivationNudge, 600);
+        setTimeout(function () {
+          if (!document.getElementById('cg-tax-fill-nudge-root')) {
+            maybeShowActivationNudge();
+          }
+        }, 900);
       } else {
         renderAboutUpdateNudge();
       }
@@ -1598,6 +1855,7 @@
       mountShuimingResultManageEntry();
       /* 列表异步返回后可能再次变空：短延迟再补一次 */
       setTimeout(refreshShuimingResultEmptyCta, 400);
+      setTimeout(renderConsultTaxStrongPrompt, 450);
     }
 
     function runBoot() {
