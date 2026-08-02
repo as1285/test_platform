@@ -548,9 +548,34 @@ function createPricingAb(deps) {
    * preferredAbc: 客户端已 sticky 的 a|b|c，仅在服务端尚无记录时采纳。
    * 命中代理专属渠道时强制（空配置按 C）；无渠道强制时不接受客户端上报的 c。
    */
+  /** 后台把 A 占比设为 0 且 B 为 100 时，全站强制 B（覆盖 sticky / 渠道 / 客户端） */
+  function isGlobalForceB(cfg) {
+    return !!(
+      cfg &&
+      cfg.enabled !== false &&
+      Number(cfg.a_percent) === 0 &&
+      Number(cfg.b_percent) === 100
+    );
+  }
+
   async function resolveOfferForUser(username, envFallbackAmount, envSubject, preferredAbc) {
     var cfg = await loadPricingAbParsed();
     var seed = String(username || '').trim() || 'guest';
+    if (isGlobalForceB(cfg)) {
+      if (seed !== 'guest') {
+        await setStickyAbc(seed, 'b', 'global_b', true);
+      }
+      return {
+        enabled: true,
+        variant: 'treatment',
+        abc_variant: 'b',
+        abc_source: 'global_b',
+        skus: cfg.treatment_skus.map(cloneSku),
+        pricing_ab_enabled: true,
+        forced_by_channel: false,
+        force_client_abc: true
+      };
+    }
     var forcedAbc = null;
     if (seed !== 'guest' && typeof deps.getForcedAbcForUser === 'function') {
       try {
