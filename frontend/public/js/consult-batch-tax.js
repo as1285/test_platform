@@ -3261,9 +3261,8 @@ function applyProfilePasteImport() {
     var mask = document.getElementById('taxRecycleBinModalMask');
     var closeX = document.getElementById('taxRecycleBinModalCloseX');
     var closeBtn = document.getElementById('taxRecycleBinClose');
-    var restoreAllBtn = document.getElementById('taxRecycleBinRestoreAll');
-    var restoreCompanyBtn = document.getElementById('taxRecycleBinRestoreCompany');
-    var exportBtn = document.getElementById('taxRecycleBinExport');
+    var primaryBtn = document.getElementById('taxRecycleBinPrimaryAction');
+    var companySel = document.getElementById('taxRecycleBinCompanySelect');
     if (mask) {
         mask.addEventListener('click', closeTaxRecycleBin);
     }
@@ -3273,14 +3272,13 @@ function applyProfilePasteImport() {
     if (closeBtn) {
         closeBtn.addEventListener('click', closeTaxRecycleBin);
     }
-    if (restoreAllBtn && typeof restoreAllDeletedTaxRecords === 'function') {
-        restoreAllBtn.addEventListener('click', restoreAllDeletedTaxRecords);
+    if (primaryBtn && typeof handleTaxRecycleBinPrimaryAction === 'function') {
+        primaryBtn.addEventListener('click', handleTaxRecycleBinPrimaryAction);
     }
-    if (restoreCompanyBtn && typeof restoreDeletedTaxRecordsByCompany === 'function') {
-        restoreCompanyBtn.addEventListener('click', restoreDeletedTaxRecordsByCompany);
-    }
-    if (exportBtn && typeof exportDeletedTaxRecordsJson === 'function') {
-        exportBtn.addEventListener('click', exportDeletedTaxRecordsJson);
+    if (companySel) {
+        companySel.addEventListener('change', function () {
+            renderTaxRecycleBinList(taxRecycleBinCache || []);
+        });
     }
 })();
 

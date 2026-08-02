@@ -11,14 +11,14 @@ const {
 } = require('../../src/admin/menuRegistry');
 
 describe('menuRegistry', () => {
-  it('has concise group labels', () => {
+  it('has task-oriented group labels', () => {
     expect(ADMIN_MENU_GROUPS.map((g) => g.label)).toEqual([
       '工作台',
-      '配置',
-      '用户',
-      '工具',
-      '数据',
-      '系统'
+      '内容配置',
+      '用户管理',
+      '业务工具',
+      '数据分析',
+      '系统与安全'
     ]);
   });
 
@@ -59,6 +59,18 @@ describe('menuRegistry', () => {
     ).toBe(true);
   });
 
+  it('admin-accounts is super_only and not assignable', () => {
+    expect(
+      adminProfileCanAccessPage({ is_super: false, menus: ['admin-accounts'] }, 'admin-accounts')
+    ).toBe(false);
+    expect(
+      adminProfileCanAccessPage({ is_super: true, menus: [] }, 'admin-accounts')
+    ).toBe(true);
+    const def = getPageDef('admin-accounts');
+    expect(def.super_only).toBe(true);
+    expect(def.assignable).toBe(false);
+  });
+
   it('buildMenuTreeForAdmin returns ordered groups', () => {
     const payload = buildMenuTreeForAdmin({ is_super: true, username: 'admin', menus: [] });
     const tree = payload.menu_tree;
@@ -67,7 +79,10 @@ describe('menuRegistry', () => {
     const settings = tree
       .flatMap((g) => g.items || [])
       .find((i) => i.page === 'settings');
-    expect(settings.label).toBe('定价与弹窗');
+    expect(settings.label).toBe('定价与引导');
+    const dataGroup = tree.find((g) => g.id === 'insights');
+    expect(dataGroup.items.map((i) => i.page)).toContain('analytics-purchase');
+    expect(dataGroup.items.map((i) => i.page)).toContain('channel-analysis');
   });
 
   it('firstAllowedPage prefers conversion analytics', () => {

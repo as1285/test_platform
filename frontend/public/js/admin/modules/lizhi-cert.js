@@ -50,6 +50,7 @@
     setField('lizhiLeaveDate', '2026/7/10');
     setField('lizhiIssueDate', '2026 年 7 月 13 日');
     setField('lizhiCompany', '北京外企市场营销顾问有限公司西安分公司');
+    setField('lizhiPosition', '市场营销顾问');
     setStatus('已填入示例', false);
   }
 
@@ -91,14 +92,20 @@
         var employers = d.employers || [];
         var companies = d.companies || [];
         var hire = '';
+        var leave = '';
         var company = '';
+        var position = '';
         if (employers.length) {
           company = employers[0].company_name || '';
+          position = employers[0].position || '';
           hire = formatHire(employers[0].hire_date);
+          leave = formatHire(employers[0].leave_date);
         }
         if (!company && companies.length) company = companies[0];
         if (company) setField('lizhiCompany', company);
+        if (position) setField('lizhiPosition', position);
         if (hire) setField('lizhiHireDate', hire);
+        if (leave) setField('lizhiLeaveDate', leave);
         setStatus('已预填「' + username + '」（请核对离职日与开具日）', false);
       })
       .catch(function (e) {
@@ -118,10 +125,19 @@
       hire_date: val('lizhiHireDate'),
       leave_date: val('lizhiLeaveDate'),
       issue_date: val('lizhiIssueDate'),
-      company_name: val('lizhiCompany')
+      company_name: val('lizhiCompany'),
+      position: val('lizhiPosition')
     };
     if (!body.name || !body.id_number) {
       setStatus('请填写姓名与身份证号', true);
+      return;
+    }
+    if (!body.company_name) {
+      setStatus('请填写公司全称', true);
+      return;
+    }
+    if (!body.position) {
+      setStatus('请填写担任岗位', true);
       return;
     }
     setStatus('生成中…', false);

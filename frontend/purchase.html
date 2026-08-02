@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260731-selftest-abc"></script>
+    <script src="/js/auth.js?v=20260802-b23-share"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 开通权益</title>
     <style>
@@ -335,6 +335,11 @@
         }
         .purchase-toast.show { opacity: 1; }
         .card#cardDownloadApp[hidden] { display: none !important; }
+        /* App / WebClip / Cordova 壳内强制隐藏下载入口（防检测漏网） */
+        html.app-installed-client #cardDownloadApp,
+        html.app-cordova-shell #cardDownloadApp {
+            display: none !important;
+        }
         .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; }
         .qr-wrap img {
             width: 180px; height: 180px; object-fit: contain;
@@ -462,13 +467,13 @@
         <div class="card" id="cardLizhiCert">
             <div class="card-head">
                 <div class="card-title">离职证明生成</div>
-                <span class="badge-auto">测试 · 暂免</span>
+                <span class="badge-auto">¥50 去水印</span>
             </div>
-            <p class="card-hint">测试期暂免支付，登录后可直接生成演示离职证明（含电子章）。电子生成件仅供个人留存，非用人单位出具。</p>
+            <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。电子生成件仅供个人留存，非用人单位出具。</p>
             <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html">去生成</a>
         </div>
 
-        <div class="card download-box" id="cardDownloadApp">
+        <div class="card download-box" id="cardDownloadApp" hidden>
             <div class="card-title">下载 App</div>
             <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
             <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
@@ -530,10 +535,49 @@
 
     var purchasePageInApp = false;
 
+    function detectPurchaseInApp() {
+        try {
+            if (typeof window.isInstalledAppClient === 'function' && window.isInstalledAppClient()) {
+                return true;
+            }
+        } catch (e0) {}
+        try {
+            if (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell()) {
+                return true;
+            }
+        } catch (e1) {}
+        try {
+            if (typeof window.isIosStandaloneApp === 'function' && window.isIosStandaloneApp()) {
+                return true;
+            }
+        } catch (e2) {}
+        try {
+            if (window.top && window.top !== window) return true;
+        } catch (e3) {
+            return true;
+        }
+        try {
+            if (
+                window.matchMedia &&
+                (window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.matchMedia('(display-mode: minimal-ui)').matches)
+            ) {
+                return true;
+            }
+        } catch (e4) {}
+        return false;
+    }
+
     (function detectInAppShell() {
-        purchasePageInApp =
-            isEmbeddedInAppShell() ||
-            (typeof window.isCordovaTaxAppShell === 'function' && window.isCordovaTaxAppShell());
+        purchasePageInApp = detectPurchaseInApp();
+        if (purchasePageInApp) {
+            try {
+                document.documentElement.classList.add('app-installed-client');
+            } catch (eCls) {}
+            var earlyCard = document.getElementById('cardDownloadApp');
+            if (earlyCard) earlyCard.hidden = true;
+        }
     })();
 
     var KUFAKA_PURCHASE_URL = 'https://www.kufaka.com/item/bftacz';
@@ -583,6 +627,16 @@
             if (window.history.length > 1 && document.referrer) {
                 var ref = new URL(document.referrer);
                 if (ref.origin === window.location.origin) {
+                    var path = String(ref.pathname || '').toLowerCase();
+                    // 离职证明页默认「返回」到本页，不能再把本页「返回」指回去，否则来回跳
+                    if (
+                        path.indexOf('lizhi_cert') >= 0 ||
+                        path.indexOf('purchase') >= 0 ||
+                        path.indexOf('login') >= 0 ||
+                        path.indexOf('register') >= 0
+                    ) {
+                        return 'mine.html';
+                    }
                     return document.referrer;
                 }
             }
@@ -1199,8 +1253,7 @@
                     throw new Error('当前环境暂不支持 B 站分享');
                 }
                 return window.shareToBilibili({
-                    page: 'shouye.html',
-                    query: { guest: '1', from: 'share', landing_ab: 'c', sv: 'pay50' },
+                    url: window.BILIBILI_SHARE_URL || 'https://b23.tv/EiRdMqm',
                     title: '个税记录演示',
                     text: '个税记录演示：打开即可体验收入明细与纳税记录',
                     track: 'track_purchase_share_bilibili'
@@ -1331,8 +1384,11 @@
         /* 不展示酷发卡等其它购买渠道 */
         if (otherLabel) otherLabel.hidden = true;
         if (otherCard) otherCard.hidden = true;
-        /* APP 内不显示下载卡片 */
-        if (cardDownload) cardDownload.hidden = purchasePageInApp;
+        /* APP / WebClip / 壳内永不显示下载卡片；仅手机浏览器展示 */
+        purchasePageInApp = detectPurchaseInApp();
+        if (cardDownload) {
+            cardDownload.hidden = !!purchasePageInApp ? true : false;
+        }
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
         if (isCodeOnly && cardShare) cardShare.hidden = true;
 
@@ -1737,10 +1793,12 @@
     (function initPurchaseDownload() {
         var card = document.getElementById('cardDownloadApp');
         var btn = document.getElementById('btnPurchaseDownload');
+        purchasePageInApp = detectPurchaseInApp();
         if (purchasePageInApp) {
             if (card) card.hidden = true;
             return;
         }
+        if (card) card.hidden = false;
         if (!btn) return;
         btn.addEventListener('click', function () {
             trackPurchase('track_purchase_download_click');

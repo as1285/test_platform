@@ -1,4 +1,6 @@
-/** Admin module: 社保演示生成 */
+/** Admin module: 社保演示生成
+ * UX：预填 → 分步表单 → 生成结果可预览/复制（参考 QR 平台与参保证明字段口径）
+ */
 (function (global) {
   function esc(s) {
     return String(s == null ? '' : s)
@@ -26,6 +28,12 @@
     return isFinite(n) ? n : fallback;
   }
 
+  function setField(id, value) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.value = value == null ? '' : String(value);
+  }
+
   /** 兼容 type=month 与手填「2026年01月」 */
   function normalizeYm(raw) {
     var s = String(raw || '').trim();
@@ -45,6 +53,339 @@
       status.textContent = msg || '';
       status.style.color = isErr ? '#b91c1c' : '';
     }
+  }
+
+  function setBusy(busy) {
+    var btn = document.getElementById('btnSbdyDemoGenerate');
+    if (btn) {
+      btn.disabled = !!busy;
+      btn.textContent = busy ? '生成中…' : '生成演示样例';
+    }
+  }
+
+  function genderFromId(id) {
+    var s = String(id || '').trim();
+    if (s.length === 18 && /^\d{17}[\dXx]$/.test(s)) {
+      return Number(s.charAt(16)) % 2 === 0 ? '女' : '男';
+    }
+    if (s.length === 15 && /^\d{15}$/.test(s)) {
+      return Number(s.charAt(14)) % 2 === 0 ? '女' : '男';
+    }
+    return '';
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function ymToNum(ym) {
+    var m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+    if (!m) return null;
+    return Number(m[1]) * 12 + Number(m[2]);
+  }
+
+  function numToYm(n) {
+    var y = Math.floor((n - 1) / 12);
+    var mo = ((n - 1) % 12) + 1;
+    return y + '-' + pad2(mo);
+  }
+
+  function monthCountBetween(startYm, endYm) {
+    var a = ymToNum(startYm);
+    var b = ymToNum(endYm);
+    if (a == null || b == null || b < a) return 0;
+    return b - a + 1;
+  }
+
+  function shiftStartForCount(endYm, count) {
+    var end = ymToNum(endYm);
+    var n = Math.max(1, Math.min(48, Number(count) || 12));
+    if (end == null) return '';
+    return numToYm(end - n + 1);
+  }
+
+  function expandYear(y) {
+    var n = Number(y);
+    if (!isFinite(n)) return null;
+    if (n < 100) n += 2000;
+    if (n < 1990 || n > 2100) return null;
+    return n;
+  }
+
+  function parseOneYm(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    var m = s.match(/^(\d{2,4})\s*[.\-\/年]\s*(\d{1,2})\s*月?$/);
+    if (m) {
+      var y = expandYear(m[1]);
+      var mo = Number(m[2]);
+      if (y && mo >= 1 && mo <= 12) return y + '-' + pad2(mo);
+    }
+    return normalizeYm(s);
+  }
+
+  function parsePeriodText(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return null;
+    s = s.replace(/\s+/g, '');
+    var m = s.match(
+      /(\d{2,4})[.\-\/年]?(\d{1,2})月?(?:到|至|-|~|—|～)(\d{2,4})[.\-\/年]?(\d{1,2})月?/
+    );
+    if (!m) return null;
+    var y1 = expandYear(m[1]);
+    var mo1 = Number(m[2]);
+    var y2 = expandYear(m[3]);
+    var mo2 = Number(m[4]);
+    if (!y1 || !y2 || mo1 < 1 || mo1 > 12 || mo2 < 1 || mo2 > 12) return null;
+    return {
+      start: y1 + '-' + pad2(mo1),
+      end: y2 + '-' + pad2(mo2)
+    };
+  }
+
+  function pickLabeled(text, labels) {
+    var lines = String(text || '').split(/\r?\n/);
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = String(lines[i] || '').trim();
+      if (!line) continue;
+      var j;
+      for (j = 0; j < labels.length; j++) {
+        var lab = labels[j];
+        var re = new RegExp('^(?:' + lab + ')\\s*[:：]?\\s*(.*)$', 'i');
+        var m = line.match(re);
+        if (m) {
+          var v = String(m[1] || '').trim();
+          if (v) return v;
+        }
+      }
+    }
+    return '';
+  }
+
+  function extractIdNumber(text) {
+    var labeled = pickLabeled(text, ['身份证号', '证件号码', '身份证', '证件号']);
+    var m = String(labeled || text || '').match(/\b(\d{17}[\dXx]|\d{15})\b/);
+    return m ? m[1].toUpperCase() : '';
+  }
+
+  function extractCreditCode(text) {
+    var labeled = pickLabeled(text, [
+      '税号',
+      '统一社会信用代码',
+      '信用代码',
+      '社会信用代码',
+      '组织机构代码'
+    ]);
+    var src = labeled || text || '';
+    var m = String(src).match(/\b([0-9A-Z]{15,20})\b/i);
+    if (m && !/^\d{15}$/.test(m[1]) && !/^\d{17}[\dXx]$/i.test(m[1])) {
+      return m[1].toUpperCase();
+    }
+    if (labeled) {
+      m = String(labeled).match(/([0-9A-Za-z]{15,20})/);
+      return m ? m[1].toUpperCase() : labeled;
+    }
+    return '';
+  }
+
+  function extractMonthCount(text) {
+    var labeled = pickLabeled(text, ['参保数', '缴费月数', '月数', '参保月数']);
+    var src = labeled || '';
+    var m = String(src).match(/(\d{1,2})\s*个?月?/);
+    if (m) return Number(m[1]);
+    m = String(text || '').match(/参保数\s*[:：]?\s*(\d{1,2})\s*个?月/);
+    if (m) return Number(m[1]);
+    return 0;
+  }
+
+  function wantsActiveStatus(text) {
+    var s = String(text || '');
+    if (/不要停保|别停保|正常参保|参保缴费|正常缴费|在保/.test(s)) return true;
+    if (/暂停缴费|已停保|停保(?!不要)|中断缴费/.test(s)) return false;
+    return true;
+  }
+
+  function defaultPrintDateCn() {
+    var bj = new Date(Date.now() + 8 * 3600 * 1000);
+    return (
+      bj.getUTCFullYear() +
+      '年' +
+      pad2(bj.getUTCMonth() + 1) +
+      '月' +
+      pad2(bj.getUTCDate()) +
+      '日'
+    );
+  }
+
+  /**
+   * 解析粘贴模版 → 表单字段对象
+   * 支持刚才运营常用的「姓名/身份证/时间/参保数/区域/公司/税号」文本块
+   */
+  function parsePasteTemplate(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return { error: '请先粘贴模版文本' };
+
+    var name = pickLabeled(text, ['姓名', '名字', '参保人']);
+    var idNumber = extractIdNumber(text);
+    var gender =
+      pickLabeled(text, ['性别']) ||
+      genderFromId(idNumber) ||
+      '';
+    if (gender && !/[男女]/.test(gender)) {
+      gender = /女/.test(gender) ? '女' : /男/.test(gender) ? '男' : genderFromId(idNumber);
+    } else if (gender) {
+      gender = /女/.test(gender) ? '女' : '男';
+    }
+
+    var company = pickLabeled(text, ['公司名称', '参保单位', '单位名称', '单位', '公司']);
+    var credit = extractCreditCode(text);
+    var area = pickLabeled(text, ['区域', '参保地', '地区', '区县']);
+    if (area) area = area.replace(/[。.;；]+$/, '');
+
+    var periodRaw =
+      pickLabeled(text, ['时间', '缴费时间', '参保时间', '缴费区间', '期间', '起止']) || '';
+    var period = parsePeriodText(periodRaw);
+    if (!period) period = parsePeriodText(text);
+
+    var monthCnt = extractMonthCount(text);
+    if (period && monthCnt > 0) {
+      var actual = monthCountBetween(period.start, period.end);
+      if (actual !== monthCnt) {
+        /* 以止月为准，按参保数回推起月（运营常见：写 8-6 但要 12 个月） */
+        period.start = shiftStartForCount(period.end, monthCnt);
+      }
+    } else if (!period && monthCnt > 0) {
+      var endFallback = normalizeYm(val('sbdyPeriodEnd')) || parseOneYm(periodRaw);
+      if (!endFallback) {
+        var bj = new Date(Date.now() + 8 * 3600 * 1000);
+        var ey = bj.getUTCFullYear();
+        var em = bj.getUTCMonth(); /* 0-11 → 上月更贴近「已出账」 */
+        if (em === 0) {
+          ey -= 1;
+          em = 12;
+        }
+        endFallback = ey + '-' + pad2(em);
+      }
+      period = {
+        start: shiftStartForCount(endFallback, monthCnt),
+        end: endFallback
+      };
+    }
+
+    var baseRaw = pickLabeled(text, ['缴费基数', '基数']);
+    var base = baseRaw ? Number(String(baseRaw).replace(/[^\d.]/g, '')) : NaN;
+    if (!isFinite(base) || base <= 0) {
+      var fromForm = Number(val('sbdyBase'));
+      base = isFinite(fromForm) && fromForm > 0 ? fromForm : 4986;
+    }
+    var pension = Math.round(base * 0.08 * 100) / 100;
+    var unemp = Math.round(base * 0.005 * 100) / 100;
+
+    var active = wantsActiveStatus(text);
+    var status = active ? '正常参保' : '暂停缴费';
+
+    if (!name) return { error: '模版中未识别到姓名' };
+    if (!idNumber) return { error: '模版中未识别到身份证号' };
+    if (!period || !period.start || !period.end) {
+      return { error: '模版中未识别到缴费时间（如 2025.7-2026.6）' };
+    }
+
+    return {
+      name: name,
+      id_number: idNumber,
+      gender: gender || genderFromId(idNumber) || '女',
+      company_name: company,
+      credit_code: credit,
+      area: area || '余杭区',
+      period_start: period.start,
+      period_end: period.end,
+      month_count: monthCountBetween(period.start, period.end),
+      base_amount: base,
+      pension_pay: pension,
+      unemployment_pay: unemp,
+      status: status,
+      print_date: defaultPrintDateCn()
+    };
+  }
+
+  function applyParsedToForm(parsed) {
+    setField('sbdyName', parsed.name);
+    setField('sbdyIdNumber', parsed.id_number);
+    setField('sbdyGender', parsed.gender || '女');
+    setField('sbdyCompany', parsed.company_name || '');
+    setField('sbdyCredit', parsed.credit_code || '');
+    setField('sbdyArea', parsed.area || '余杭区');
+    setField('sbdyPeriodStart', parsed.period_start);
+    setField('sbdyPeriodEnd', parsed.period_end);
+    setField('sbdyBase', parsed.base_amount);
+    setField('sbdyPensionPay', parsed.pension_pay);
+    setField('sbdyUnempPay', parsed.unemployment_pay);
+    setField('sbdyStatusPension', parsed.status);
+    setField('sbdyStatusMedical', parsed.status);
+    setField('sbdyStatusInjury', parsed.status);
+    setField('sbdyStatusUnemp', parsed.status);
+    setField('sbdyPrintDate', parsed.print_date || '');
+  }
+
+  function pasteFillOnly() {
+    var ta = document.getElementById('sbdyPasteTemplate');
+    var parsed = parsePasteTemplate(ta ? ta.value : '');
+    if (parsed.error) {
+      setStatus(parsed.error, true);
+      return null;
+    }
+    applyParsedToForm(parsed);
+    setStatus(
+      '已解析：' +
+        parsed.name +
+        ' · ' +
+        parsed.period_start +
+        '～' +
+        parsed.period_end +
+        '（' +
+        parsed.month_count +
+        '个月）· ' +
+        parsed.status,
+      false
+    );
+    return parsed;
+  }
+
+  function pasteAndGenerate() {
+    var parsed = pasteFillOnly();
+    if (!parsed) return;
+    generate();
+  }
+
+  function clearPasteTemplate() {
+    var el = document.getElementById('sbdyPasteTemplate');
+    if (el) el.value = '';
+    setStatus('模版已清空', false);
+  }
+
+  function copyText(text) {
+    var t = String(text || '');
+    if (!t) return Promise.reject(new Error('empty'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = t;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ta.remove();
+      }
+    });
   }
 
   /** DB created_at 按 UTC 存，列表展示北京时间（+8） */
@@ -163,12 +504,74 @@
       });
   }
 
-  function generate() {
+  function renderResult(d) {
     var result = document.getElementById('sbdyDemoResult');
+    if (!result) return;
+    var links = d.links || {};
+    result.hidden = false;
+    result.innerHTML =
+      '<div class="admin-tool-result-head">' +
+      '<strong>已生成演示样例</strong>' +
+      '<span class="hint">非正式证明 · 带水印</span>' +
+      '</div>' +
+      '<p class="stat mb-8">授权码：<code id="sbdyResultAuth">' +
+      esc(d.auth_code || '') +
+      '</code></p>' +
+      '<div class="form-actions">' +
+      (links.show_url
+        ? '<a class="btn-primary" href="' +
+          esc(links.show_url) +
+          '" target="_blank" rel="noopener">打开 PDF 样例</a>'
+        : '') +
+      (links.verify_url
+        ? '<a class="btn-page" href="' +
+          esc(links.verify_url) +
+          '" target="_blank" rel="noopener">打开核验页</a>'
+        : '') +
+      '<button type="button" class="btn-page" id="sbdyCopyAuth">复制授权码</button>' +
+      (links.show_url
+        ? '<button type="button" class="btn-page" id="sbdyCopyShow" data-url="' +
+          esc(links.show_url) +
+          '">复制样例链接</button>'
+        : '') +
+      (links.verify_url
+        ? '<button type="button" class="btn-page" id="sbdyCopyVerify" data-url="' +
+          esc(links.verify_url) +
+          '">复制核验链接</button>'
+        : '') +
+      '</div>';
+    var copyAuth = document.getElementById('sbdyCopyAuth');
+    if (copyAuth) {
+      copyAuth.onclick = function () {
+        copyText(d.auth_code || '')
+          .then(function () {
+            setStatus('授权码已复制', false);
+          })
+          .catch(function () {
+            setStatus('复制失败', true);
+          });
+      };
+    }
+    ;['sbdyCopyShow', 'sbdyCopyVerify'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      btn.onclick = function () {
+        copyText(btn.getAttribute('data-url') || '')
+          .then(function () {
+            setStatus('链接已复制', false);
+          })
+          .catch(function () {
+            setStatus('复制失败', true);
+          });
+      };
+    });
+  }
+
+  function generate() {
     var body = {
       name: val('sbdyName'),
       id_number: val('sbdyIdNumber'),
-      gender: val('sbdyGender') || '女',
+      gender: val('sbdyGender') || genderFromId(val('sbdyIdNumber')) || '女',
       company_name: val('sbdyCompany'),
       credit_code: val('sbdyCredit'),
       area: val('sbdyArea') || '余杭区',
@@ -178,29 +581,28 @@
       pension_pay: num('sbdyPensionPay', 398.88),
       unemployment_pay: num('sbdyUnempPay', 24.93),
       status_pension: val('sbdyStatusPension') || '正常参保',
-      status_medical: val('sbdyStatusInjury') || '正常参保',
+      status_medical: val('sbdyStatusMedical') || val('sbdyStatusPension') || '正常参保',
       status_injury: val('sbdyStatusInjury') || '正常参保',
       status_unemployment: val('sbdyStatusUnemp') || '正常参保',
       print_date: val('sbdyPrintDate')
     };
     if (!body.name || !body.id_number) {
       setStatus('请填写上方「姓名」与「证件号码」', true);
-      try {
-        alert('请填写姓名与证件号码（在表单最上方）');
-      } catch (e0) {}
       var nameEl = document.getElementById('sbdyName');
       if (nameEl && nameEl.scrollIntoView) nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!body.period_start || !body.period_end) {
       setStatus('请选择缴费起止月份', true);
-      try {
-        alert('请选择缴费起止月份');
-      } catch (e1) {}
       return;
     }
+    setBusy(true);
     setStatus('生成中…', false);
-    if (result) result.innerHTML = '';
+    var result = document.getElementById('sbdyDemoResult');
+    if (result) {
+      result.hidden = true;
+      result.innerHTML = '';
+    }
     fetchAdmin('api/admin/sbdy-demo/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -214,55 +616,26 @@
       .then(function (pack) {
         var j = pack.j;
         if (!j || j.code !== 200 || !j.data) {
-          var msg = (j && j.msg) || '生成失败（HTTP ' + pack.http + '）';
-          setStatus(msg, true);
-          try {
-            alert(msg);
-          } catch (e2) {}
+          setStatus((j && j.msg) || '生成失败（HTTP ' + pack.http + '）', true);
           return;
         }
-        var d = j.data;
-        var links = d.links || {};
         setStatus('已生成演示样例（非正式证明）', false);
-        if (result) {
-          result.innerHTML =
-            '<p class="stat">授权码：<code>' +
-            esc(d.auth_code) +
-            '</code></p>' +
-            '<p class="hint">样例页：<a href="' +
-            esc(links.show_url || '') +
-            '" target="_blank" rel="noopener">' +
-            esc(links.show_url || '') +
-            '</a></p>' +
-            '<p class="hint">核验页：<a href="' +
-            esc(links.verify_url || '') +
-            '" target="_blank" rel="noopener">' +
-            esc(links.verify_url || '') +
-            '</a></p>' +
-            '<p class="hint" style="color:#b45309;">页面带「演示样例」水印；扫码仅核验本站演示记录。</p>';
-        }
+        renderResult(j.data);
         loadList();
       })
       .catch(function (e) {
-        var msg = '生成失败：' + (e && e.message ? e.message : '网络错误');
-        setStatus(msg, true);
-        try {
-          alert(msg);
-        } catch (e3) {}
+        setStatus('生成失败：' + (e && e.message ? e.message : '网络错误'), true);
+      })
+      .then(function () {
+        setBusy(false);
       });
-  }
-
-  function setField(id, value) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.value = value == null ? '' : String(value);
   }
 
   function fillSample() {
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
     var endY = bj.getUTCFullYear();
-    var endM = bj.getUTCMonth() + 1; // 1-12, use previous month as end of 12m window
+    var endM = bj.getUTCMonth() + 1;
     endM -= 1;
     if (endM <= 0) {
       endM += 12;
@@ -316,11 +689,8 @@
         unemp: 29
       }
     ];
-    /* 优先李晓晴（与 /root/show.pdf 一致），约一半概率；其余随机 */
     var sample =
-      Math.random() < 0.55
-        ? samples[0]
-        : samples[Math.floor(Math.random() * samples.length)];
+      Math.random() < 0.55 ? samples[0] : samples[Math.floor(Math.random() * samples.length)];
     if (sample.name === '李晓晴') {
       startY = 2025;
       startM = 6;
@@ -338,38 +708,90 @@
     setField('sbdyBase', sample.base);
     setField('sbdyPensionPay', sample.pension);
     setField('sbdyUnempPay', sample.unemp);
-    /* 与 show.pdf 样例一致时用暂停缴费；其它样例默认正常参保 */
     var st = sample.name === '李晓晴' ? '暂停缴费' : '正常参保';
     setField('sbdyStatusPension', st);
+    setField('sbdyStatusMedical', st);
     setField('sbdyStatusInjury', st);
     setField('sbdyStatusUnemp', st);
     setField('sbdyPrintDate', sample.name === '李晓晴' ? '2026年06月25日' : printDate);
     setStatus('已填充示例：' + sample.name + '（可再点生成）', false);
   }
 
+  function prefill() {
+    var username = val('sbdyPrefillUser');
+    if (!username) {
+      setStatus('请输入用户名', true);
+      return;
+    }
+    setStatus('加载用户数据…', false);
+    fetchAdmin('/api/admin/sbdy-demo/prefill?username=' + encodeURIComponent(username))
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { http: r.status, j: j };
+        });
+      })
+      .then(function (pack) {
+        var j = pack.j;
+        if (!j || j.code !== 200 || !j.data) {
+          setStatus((j && j.msg) || '用户数据加载失败（HTTP ' + pack.http + '）', true);
+          return;
+        }
+        var d = j.data;
+        var u = d.user || {};
+        var id = u.user_tax_id || u.id_card || u.tax_id || '';
+        setField('sbdyName', u.real_name || '');
+        setField('sbdyIdNumber', id);
+        var g = genderFromId(id);
+        if (g) setField('sbdyGender', g);
+        var employers = d.employers || [];
+        var companies = d.companies || [];
+        var company = '';
+        if (employers.length) company = employers[0].company_name || '';
+        if (!company && companies.length) company = companies[0];
+        if (company) setField('sbdyCompany', company);
+        setStatus('已预填「' + username + '」（请核对单位与缴费月份）', false);
+      })
+      .catch(function (e) {
+        var msg = e && e.message ? e.message : '网络错误';
+        if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+          msg = '网络请求被拦截或中断（可关闭广告拦截后重试）';
+        }
+        setStatus('预填失败：' + msg, true);
+      });
+  }
+
+  function bindGenderAuto() {
+    var idEl = document.getElementById('sbdyIdNumber');
+    if (!idEl || idEl.__sbdyGenderBound) return;
+    idEl.__sbdyGenderBound = true;
+    idEl.addEventListener('blur', function () {
+      var g = genderFromId(idEl.value);
+      if (g) setField('sbdyGender', g);
+    });
+  }
+
   function bind() {
     fillDefaults();
+    bindGenderAuto();
     var fillBtn = document.getElementById('btnSbdyDemoFillSample');
-    if (fillBtn) {
-      fillBtn.onclick = function (ev) {
-        if (ev && ev.preventDefault) ev.preventDefault();
-        fillSample();
-      };
-    }
+    if (fillBtn) fillBtn.onclick = fillSample;
     var btn = document.getElementById('btnSbdyDemoGenerate');
-    if (btn) {
-      btn.onclick = function (ev) {
-        if (ev && ev.preventDefault) ev.preventDefault();
-        generate();
-      };
-    }
+    if (btn) btn.onclick = generate;
     var refresh = document.getElementById('btnSbdyDemoRefresh');
     if (refresh) {
-      refresh.onclick = function (ev) {
-        if (ev && ev.preventDefault) ev.preventDefault();
+      refresh.onclick = function () {
         loadList();
+        setStatus('列表已刷新', false);
       };
     }
+    var prefillBtn = document.getElementById('sbdyPrefillBtn');
+    if (prefillBtn) prefillBtn.onclick = prefill;
+    var pasteFill = document.getElementById('btnSbdyPasteFill');
+    if (pasteFill) pasteFill.onclick = pasteFillOnly;
+    var pasteGen = document.getElementById('btnSbdyPasteGenerate');
+    if (pasteGen) pasteGen.onclick = pasteAndGenerate;
+    var pasteClear = document.getElementById('btnSbdyPasteClear');
+    if (pasteClear) pasteClear.onclick = clearPasteTemplate;
   }
 
   function loadPage() {
@@ -382,9 +804,13 @@
     ready: true,
     loadPage: loadPage,
     generate: generate,
-    fillSample: fillSample
+    fillSample: fillSample,
+    parsePasteTemplate: parsePasteTemplate,
+    pasteFillOnly: pasteFillOnly,
+    pasteAndGenerate: pasteAndGenerate
   };
   global.loadSbdyDemoPage = loadPage;
   global.sbdyDemoGenerate = generate;
   global.sbdyDemoFillSample = fillSample;
+  global.sbdyDemoPasteGenerate = pasteAndGenerate;
 })(window);

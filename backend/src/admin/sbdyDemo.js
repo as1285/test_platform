@@ -201,6 +201,9 @@ function normalizePayload(body) {
   if (!isFinite(unempPay)) unempPay = Math.round(baseAmt * 0.005 * 100) / 100;
   var printDate = String(b.print_date || b.printDate || '').trim() || defaultPrintDateCn();
   var statusPension = String(b.status_pension || '正常参保').trim().substring(0, 32);
+  var statusMedical = String(
+    b.status_medical || b.status_injury || '正常参保'
+  ).trim().substring(0, 32);
   var statusInjury = String(
     b.status_injury || b.status_medical || '正常参保'
   ).trim().substring(0, 32);
@@ -253,7 +256,7 @@ function normalizePayload(body) {
     print_date: printDate,
     status_pension: statusPension,
     status_injury: statusInjury,
-    status_medical: statusInjury,
+    status_medical: statusMedical,
     status_unemployment: statusUnemp,
     months: months,
     layout: 'zj_official_v2'

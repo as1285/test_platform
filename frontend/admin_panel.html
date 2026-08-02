@@ -5,24 +5,43 @@
     <script src="/js/admin_auth.js?v=20260731-concise"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260731-concise">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260802-paste-tpl">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260731-concise">
 </head>
 <body>
     <div class="layout">
         <aside class="sidebar" aria-label="功能导航">
             <div class="sidebar-brand">
-                <span class="sidebar-brand-title">运营台</span>
+                <div class="sidebar-brand-row">
+                    <span class="sidebar-brand-title">运营台</span>
+                    <button type="button" class="sidebar-close" id="adminSidebarClose" aria-label="关闭导航">×</button>
+                </div>
+                <button type="button" class="sidebar-search-trigger" id="adminNavSearchTrigger">
+                    <span>搜索功能</span><kbd>Ctrl K</kbd>
+                </button>
             </div>
             <nav id="adminSidebarNav" class="sidebar-nav" aria-live="polite">
                 <!-- 侧栏由 /api/admin/me 的 menu_tree 渲染（阶段 2） -->
             </nav>
         </aside>
+        <button type="button" class="sidebar-backdrop" id="adminSidebarBackdrop" aria-label="关闭导航"></button>
         <div class="main-area">
             <div class="top">
                 <div class="top-inner">
-                    <h1 id="pageTitle">转化与触达</h1>
-                    <button type="button" class="btn-logout" id="btnAdminLogout">退出</button>
+                    <div class="top-page">
+                        <button type="button" class="sidebar-toggle" id="adminSidebarToggle" aria-label="打开功能导航" aria-expanded="false">☰</button>
+                        <div>
+                            <span class="page-group-label" id="pageGroupLabel">工作台</span>
+                            <h1 id="pageTitle">转化概览</h1>
+                        </div>
+                    </div>
+                    <div class="top-actions">
+                        <button type="button" class="top-search-trigger" id="adminTopSearchTrigger">
+                            搜索功能 <kbd>Ctrl K</kbd>
+                        </button>
+                        <span class="admin-identity" id="adminIdentity" hidden></span>
+                        <button type="button" class="btn-logout" id="btnAdminLogout">退出</button>
+                    </div>
                 </div>
             </div>
             <div class="wrap">
@@ -117,7 +136,7 @@
                     <div class="page-lede"><p class="page-lede-text">安装包、代理渠道与引导视频</p></div>
                     <section>
                         <h2>落地页说明</h2>
-                        <p class="hint">分流见「定价与弹窗」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
+                        <p class="hint">分流见「定价与引导」。A/B 走迷你产品首页；落地页相关设置仍单独保留。</p>
                     </section>
                     <section>
                         <h2>安装包下载</h2>
@@ -493,6 +512,7 @@
                 </div>
 
                 <div id="page-codes" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">生成、查询与追踪激活码</p></div>
                     <section>
                         <h2>生成激活码</h2>
                         <div class="form-row flex-wrap gap-10" style="align-items:flex-end;margin-bottom:10px;">
@@ -699,6 +719,7 @@
                 </div>
 
                 <div id="page-users" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">账号查询、状态管理与风险处置</p></div>
                     <section>
                         <h2>注册用户</h2>
                         <div class="user-filter-bar">
@@ -781,7 +802,7 @@
                         <p class="stat" id="purgeBotsStat" style="display:none;"></p>
                         <details class="page-hint-details">
                             <summary>筛选与字段说明</summary>
-                            <details class="page-hint-details"><summary>说明</summary><p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p></details>
+                            <p class="hint">登录风控：累计 ≥2 个不同登录 IP 或关联设备 ≥3 台时标记风险。账号类型默认正式用户；游客为 C 方案沙盒账号。超级管理员可见全部注册用户。运营账号 <code>admin</code> 在本页可见<strong>本人激活码开通用户</strong>以及<strong>策略生效后的新注册用户</strong>（其它数据页仍按激活码归属）。其余子管理员仅见自己激活码关联账号。激活列：绿色「已激活」为 <code>admin</code> 名下；橙色「已激活（姓名）」为其它管理员名下（无姓名时显示账号）。当日修改按北京时间当日个税变更。修改天数：统计存在个税记录变更（新增/修改/删除）的不同日历天数；选「≥5天」即至少有5个不同日期改过个税。30 天未登录按最近成功登录判断。删除为软删除，可在「已删除账号」恢复；退款仅已激活账号，可恢复。</p>
                         </details>
                         <div class="scroll-x">
                             <table class="users-registry-table">
@@ -790,7 +811,7 @@
                                         <th class="col-w-120">账号</th>
                                         <th class="col-tax-mod">当日修改</th>
                                         <th class="col-w-88">姓名</th>
-                                        <th class="col-w-120">渠道分析</th>
+                                        <th class="col-w-120">注册/激活渠道</th>
                                         <th class="col-w-72">密码</th>
                                         <th class="col-w-72">激活</th>
                                         <th class="col-w-72">封禁</th>
@@ -856,7 +877,7 @@
                                     <tr>
                                         <th class="col-w-120">账号</th>
                                         <th class="col-w-88">姓名</th>
-                                        <th class="col-w-120">渠道分析</th>
+                                        <th class="col-w-120">注册/激活渠道</th>
                                         <th class="col-w-72">激活</th>
                                         <th class="col-w-72">封禁</th>
                                         <th class="col-w-150">注册时间</th>
@@ -951,6 +972,7 @@
                 </div>
 
                 <div id="page-user-data" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">查看用户档案、个税记录与使用情况</p></div>
                     <section>
                         <h2>用户数据</h2>
                         <p class="hint">汇总各注册用户的<strong>扣缴义务人（公司）</strong>、<strong>身份证号</strong>（C 端个人信息中的纳税人识别号）、<strong>税务机关</strong>、<strong>家人信息</strong>与<strong>银行卡</strong>；支持筛选与档案查看。非超级管理员仅能看到自己激活码关联的账号。</p>
@@ -997,7 +1019,7 @@
                                     <tr>
                                         <th class="col-w-110">账号</th>
                                         <th class="col-w-72">姓名</th>
-                                        <th class="col-w-120">渠道分析</th>
+                                        <th class="col-w-120">注册/激活渠道</th>
                                         <th class="input-w-160">公司（扣缴义务人）</th>
                                         <th class="col-w-130">身份证号</th>
                                         <th class="col-w-130">税务机关</th>
@@ -1384,7 +1406,7 @@
                             </div>
                             <div>
                                 <label>个税记录</label>
-                                <select id="auaFilterTax" class="filter-text-wide">
+                                <select id="auaFilterTax" class="filter-select">
                                     <option value="">全部</option>
                                     <option value="with_tax">已填写</option>
                                     <option value="without_tax">未填写</option>
@@ -1392,7 +1414,7 @@
                             </div>
                             <div>
                                 <label>近周期活跃</label>
-                                <select id="auaFilterActivity" class="filter-text-wide">
+                                <select id="auaFilterActivity" class="filter-select">
                                     <option value="">全部</option>
                                     <option value="active_7d">有活跃</option>
                                     <option value="inactive_7d">无活跃</option>
@@ -1465,10 +1487,40 @@
                 </div>
 
                 <div id="page-sbdy-demo" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">生成带核验码的社会保险参保证明演示 PDF（非正式）</p></div>
                     <section>
                         <h2>社保演示生成</h2>
-                        <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式社会保险参保证明），带水印与本站核验码，不能用于贷款/入职/签证等正式用途。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">演示样例带水印与本站核验码，不能用于贷款/入职/签证。字段口径参考参保单位、统一社会信用代码、参保地、缴费基数等常见参保证明要素；生成后可在线预览 PDF、复制授权码与核验链接。</p></details>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="sbdyPrefillUser">按用户名预填</label>
+                                <input type="text" id="sbdyPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="sbdyPrefillBtn">预填</button>
+                            </div>
+                        </div>
                         <div class="form-row form-stack" style="max-width:880px;">
+                            <div class="admin-tool-step">⓪ 粘贴模版一键生成</div>
+                            <div>
+                                <label for="sbdyPasteTemplate">粘贴客户信息（姓名/身份证/时间/公司/税号等）</label>
+                                <textarea id="sbdyPasteTemplate" rows="8" maxlength="4000" placeholder="姓名:潘心茹
+身份证号411524200204011126
+性别:女
+时间:2025.7-2026.6
+参保数:12个月
+区域:滨江区
+公司名称：杭州千雨千寻文化科技有限公司
+税号：91330102MA7E2YNM2R
+写参保缴费 不要停保"></textarea>
+                                <p class="hint mt-4 mb-0">支持「2025.7-2026.6」「25年7月到26年6月」等写法；若写了参保月数会按止月自动对齐起月。默认<strong>正常参保</strong>并自动生成缴费记录。</p>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="btnSbdyPasteFill">解析填入</button>
+                                <button type="button" class="btn-primary" id="btnSbdyPasteGenerate">解析并生成</button>
+                                <button type="button" class="btn-page" id="btnSbdyPasteClear">清空模版</button>
+                            </div>
+                            <div class="admin-tool-step">① 身份与单位</div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
                                     <label for="sbdyName">姓名</label>
@@ -1500,6 +1552,7 @@
                                     <input type="text" id="sbdyArea" maxlength="32" value="余杭区">
                                 </div>
                             </div>
+                            <div class="admin-tool-step">② 缴费区间与金额</div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
                                     <label for="sbdyPeriodStart">缴费起月</label>
@@ -1522,33 +1575,42 @@
                                     <input type="number" id="sbdyUnempPay" value="24.93" step="0.01">
                                 </div>
                             </div>
-                            <div class="form-row flex-wrap gap-10">
-                                <div>
-                                    <label for="sbdyStatusPension">养老保险状态</label>
-                                    <input type="text" id="sbdyStatusPension" value="正常参保">
+                            <details class="page-hint-details admin-tool-advanced">
+                                <summary>参保状态与打印日期（可选）</summary>
+                                <div class="form-row flex-wrap gap-10 mt-8">
+                                    <div>
+                                        <label for="sbdyStatusPension">养老保险状态</label>
+                                        <input type="text" id="sbdyStatusPension" value="正常参保">
+                                    </div>
+                                    <div>
+                                        <label for="sbdyStatusMedical">医疗保险状态</label>
+                                        <input type="text" id="sbdyStatusMedical" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
+                                    </div>
+                                    <div>
+                                        <label for="sbdyStatusInjury">工伤保险状态</label>
+                                        <input type="text" id="sbdyStatusInjury" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
+                                    </div>
+                                    <div>
+                                        <label for="sbdyStatusUnemp">失业保险状态</label>
+                                        <input type="text" id="sbdyStatusUnemp" value="正常参保">
+                                    </div>
+                                    <div>
+                                        <label for="sbdyPrintDate">打印时间文案</label>
+                                        <input type="text" id="sbdyPrintDate" placeholder="默认今天，如 2026年07月22日">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="sbdyStatusInjury">工伤保险状态</label>
-                                    <input type="text" id="sbdyStatusInjury" value="正常参保" placeholder="如：正常参保 / 暂停缴费">
-                                </div>
-                                <div>
-                                    <label for="sbdyStatusUnemp">失业保险状态</label>
-                                    <input type="text" id="sbdyStatusUnemp" value="正常参保">
-                                </div>
-                                <div>
-                                    <label for="sbdyPrintDate">打印时间文案</label>
-                                    <input type="text" id="sbdyPrintDate" placeholder="默认今天，如 2026年07月22日">
-                                </div>
-                            </div>
+                            </details>
                             <div class="form-actions">
-                                <button type="button" class="btn-page" id="btnSbdyDemoFillSample" onclick="if(window.sbdyDemoFillSample){window.sbdyDemoFillSample();}">填充示例数据</button>
-                                <button type="button" class="btn-primary" id="btnSbdyDemoGenerate" onclick="if(window.sbdyDemoGenerate){window.sbdyDemoGenerate();}else if(window.loadSbdyDemoPage){window.loadSbdyDemoPage();window.sbdyDemoGenerate&&window.sbdyDemoGenerate();}">生成演示样例</button>
-                                <button type="button" class="btn-page" id="btnSbdyDemoRefresh" onclick="if(window.loadSbdyDemoPage){window.loadSbdyDemoPage();}">刷新列表</button>
+                                <button type="button" class="btn-page" id="btnSbdyDemoFillSample">填充示例</button>
+                                <button type="button" class="btn-primary" id="btnSbdyDemoGenerate">生成演示样例</button>
+                                <button type="button" class="btn-page" id="btnSbdyDemoRefresh">刷新列表</button>
                                 <span class="hint" id="sbdyDemoStatus" aria-live="polite"></span>
                             </div>
-                            <div id="sbdyDemoResult" class="code-result"></div>
+                            <div id="sbdyDemoResult" class="admin-tool-result" hidden></div>
                         </div>
-                        <h3 class="mt-16">最近生成</h3>
+                    </section>
+                    <section>
+                        <h2>最近生成</h2>
                         <div class="scroll-x">
                             <table>
                                 <thead>
@@ -1565,7 +1627,7 @@
                             </table>
                         </div>
                     </section>
-                            </div>
+                </div>
 
                 <div id="page-lizhi-cert" class="page-panel" role="tabpanel">
                     <section>
@@ -1609,6 +1671,10 @@
                                 <label for="lizhiCompany">公司全称</label>
                                 <input type="text" id="lizhiCompany" maxlength="128" style="width:100%;max-width:640px;" value="北京外企市场营销顾问有限公司西安分公司">
                             </div>
+                            <div class="form-row" style="margin-top:10px;">
+                                <label for="lizhiPosition">担任岗位</label>
+                                <input type="text" id="lizhiPosition" maxlength="64" style="width:100%;max-width:640px;" value="市场营销顾问" placeholder="如：销售经理">
+                            </div>
                             <div class="form-row flex-wrap gap-10">
                                 <button type="button" class="btn-primary" id="lizhiGenerateBtn">生成并下载 PDF</button>
                                 <button type="button" class="btn-page" id="lizhiSampleBtn">填入示例</button>
@@ -1619,9 +1685,10 @@
                 </div>
 
                 <div id="page-ylbx-ps" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">上传陕西养老缴费证明原图，像素级改第 2 行月份与金额</p></div>
                     <section>
                         <h2>社保缴费证明图片 PS</h2>
-                        <p class="hint hint-warn mt-0">上传陕西省城镇职工基本养老保险参保缴费证明类<strong>原图</strong>，用原图像素拼接修改第 2 行缴费月份与个人缴费。演示用途，非正式证明。</p>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">参考印章/票据工具的「上传 → 预览 → 导出」流程：先拖拽或选择原图，填写月份与金额后预览结果，再单独下载。仅适用于陕西省城镇职工基本养老保险参保缴费证明类表格图，演示用途，非正式证明。</p></details>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
                             <div>
                                 <label for="ylbxPrefillUser">按用户名预填</label>
@@ -1632,50 +1699,59 @@
                             </div>
                         </div>
                         <div class="form-row form-stack" style="max-width:960px;">
-                            <div>
-                                <label for="ylbxImageFile">原图（PNG/JPG）</label>
-                                <input type="file" id="ylbxImageFile" accept="image/png,image/jpeg,image/jpg,image/webp">
+                            <div class="admin-tool-step">① 上传原图</div>
+                            <div class="admin-dropzone" id="ylbxDropzone" tabindex="0" role="button" aria-label="拖拽或点击上传原图">
+                                <input type="file" id="ylbxImageFile" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                <div class="admin-dropzone-title">拖拽图片到此处，或点击选择</div>
+                                <p class="hint mt-0 mb-0">支持 PNG / JPG / WebP，建议清晰表格原图</p>
+                                <p class="hint mt-6 mb-0" id="ylbxFileName">尚未选择文件</p>
                             </div>
+                            <div class="admin-tool-step">② 修改字段</div>
                             <div class="form-row flex-wrap gap-10">
                                 <div>
-                                    <label for="ylbxMonthStart">缴费月份起</label>
-                                    <input type="text" id="ylbxMonthStart" maxlength="8" placeholder="202601" value="202601">
+                                    <label for="ylbxMonthStart">缴费月份起（YYYYMM）</label>
+                                    <input type="text" id="ylbxMonthStart" maxlength="8" placeholder="202601" value="202601" inputmode="numeric">
                                 </div>
                                 <div>
-                                    <label for="ylbxMonthEnd">缴费月份止</label>
-                                    <input type="text" id="ylbxMonthEnd" maxlength="8" placeholder="202606" value="202606">
+                                    <label for="ylbxMonthEnd">缴费月份止（YYYYMM）</label>
+                                    <input type="text" id="ylbxMonthEnd" maxlength="8" placeholder="202606" value="202606" inputmode="numeric">
                                 </div>
                                 <div>
                                     <label for="ylbxAmount">个人缴费（第2行）</label>
-                                    <input type="text" id="ylbxAmount" maxlength="12" placeholder="2232" value="2232">
+                                    <input type="text" id="ylbxAmount" maxlength="12" placeholder="2232" value="2232" inputmode="numeric">
                                 </div>
                             </div>
-                            <div class="form-row flex-wrap gap-10">
-                                <div>
-                                    <label for="ylbxName">姓名（预留）</label>
-                                    <input type="text" id="ylbxName" maxlength="64" placeholder="可选">
+                            <details class="page-hint-details admin-tool-advanced">
+                                <summary>姓名 / 证件号 / 单位（备注预留，当前不写入图）</summary>
+                                <div class="form-row flex-wrap gap-10 mt-8">
+                                    <div>
+                                        <label for="ylbxName">姓名</label>
+                                        <input type="text" id="ylbxName" maxlength="64" placeholder="可选">
+                                    </div>
+                                    <div>
+                                        <label for="ylbxIdNumber">身份证号</label>
+                                        <input type="text" id="ylbxIdNumber" maxlength="32" placeholder="可选">
+                                    </div>
+                                    <div style="flex:1;min-width:220px;">
+                                        <label for="ylbxCompany">单位</label>
+                                        <input type="text" id="ylbxCompany" maxlength="128" placeholder="可选">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="ylbxIdNumber">身份证号（预留）</label>
-                                    <input type="text" id="ylbxIdNumber" maxlength="32" placeholder="可选">
-                                </div>
-                                <div style="flex:1;min-width:220px;">
-                                    <label for="ylbxCompany">单位（预留）</label>
-                                    <input type="text" id="ylbxCompany" maxlength="128" placeholder="可选">
-                                </div>
+                            </details>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="ylbxSampleBtn">填入示例月份</button>
+                                <button type="button" class="btn-primary" id="ylbxEditBtn">生成预览</button>
+                                <button type="button" class="btn-page" id="ylbxDownloadBtn" hidden>下载 PNG</button>
+                                <span class="hint" id="ylbxStatus" aria-live="polite"></span>
                             </div>
-                            <div class="form-row flex-wrap gap-10">
-                                <button type="button" class="btn-primary" id="ylbxEditBtn">处理并下载 PNG</button>
-                            </div>
-                            <p id="ylbxStatus" class="hint" aria-live="polite"></p>
-                            <div class="form-row flex-wrap gap-16" id="ylbxPreviewWrap" style="display:none;">
+                            <div class="admin-tool-preview-grid" id="ylbxPreviewWrap" hidden>
                                 <div>
                                     <div class="hint">原图</div>
-                                    <img id="ylbxPreviewSrc" alt="原图" style="max-width:420px;border:1px solid #ddd;">
+                                    <img id="ylbxPreviewSrc" alt="原图" class="admin-tool-preview-img">
                                 </div>
                                 <div>
                                     <div class="hint">结果</div>
-                                    <img id="ylbxPreviewOut" alt="结果" style="max-width:420px;border:1px solid #ddd;">
+                                    <img id="ylbxPreviewOut" alt="结果" class="admin-tool-preview-img">
                                 </div>
                             </div>
                         </div>
@@ -1748,7 +1824,7 @@
                 </div>
 
                 <div id="page-analytics-conversion" class="page-panel" role="tabpanel">
-                    <div class="page-lede"><p class="page-lede-text">转化与触达</p></div>
+                    <div class="page-lede"><p class="page-lede-text">核心转化指标、待激活跟进与用户触达</p></div>
                     <section>
                         <h2>支付页 A/B</h2>
                             <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">主指标：<strong>购买区曝光用户人均支付金额（ARPU）</strong>。A=398 永久仅支付宝；B=298 日 / 398 周 / 498 月 / 698 年 / 998 永久。曝光来自 <code>track_pricing_ab_expose_*</code>；收入来自支付宝已支付订单。</p></details>
@@ -1836,8 +1912,9 @@
                 </div>
 
                 <div id="page-analytics-purchase" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">购买链路、支付宝漏斗与收入表现</p></div>
                     <section>
-                        <h2>支付页埋点</h2>
+                        <h2>支付分析</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计激活弹窗/引导（跨页）→ <code>purchase.html</code> 浏览 → 定价曝光 → 支付宝下单/打开/成功 → 激活码结果，以及酷发卡 / 微信 / 闲鱼 / 客服等入口。按<strong>北京时间</strong>；漏斗为去重用户数（UV）。订单 GMV 来自 <code>payment_orders</code>（已支付）。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
@@ -1909,14 +1986,14 @@
                 <div id="page-analytics-activity" class="page-panel" role="tabpanel">
                     <section>
                         <h2>用户日活与登录趋势</h2>
-                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。登录流水详见侧栏「登录流水」。</p>
+                        <p class="hint mt-0"><strong>用户日活</strong>：统计当日至少发起过一次<strong>需登录接口</strong>的去重账号数；点击「查看账号」可展开当日活跃用户列表。账号旁标记：<span class="dau-tax-badge modified-today">当日修改个税</span>、<span class="dau-tax-badge has-records">有个税记录</span>。完整记录详见侧栏「用户登录」。</p>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="analyticsOverviewDays">统计区间</label>
                                 <select id="analyticsOverviewDays" class="js-analytics-period-select filter-select" data-day-options="1,7,14,30,90" data-default="custom"></select>
                             </div>
                             <button type="button" class="btn-page btn-page-primary" id="btnRefreshAnalytics">刷新统计</button>
-                            <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开侧栏「登录流水」完整分页列表">登录流水</button>
+                            <button type="button" class="btn-page" id="btnGotoLoginLog" title="打开「用户登录」完整分页列表">用户登录</button>
                         </div>
                         <div class="analytics-grid">
                             <div class="scroll-x">
@@ -2089,6 +2166,7 @@
                 </div>
 
                 <div id="page-channel-analysis" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">对比注册来源、激活来源与渠道趋势</p></div>
                     <section>
                         <h2>注册渠道分析</h2>
                         <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">仅统计注册时<strong>已选择来源渠道</strong>的用户（<code>users.register_source_channel</code> 非空）；未选择渠道的不计入占比与图表。「其他」为自定义填写。另统计<strong>激活来源</strong>（如闲鱼激活码）。折线图展示<strong>每日各渠道注册人数</strong>（全部注册用户模式下趋势图为近 90 日）。非超级管理员仅统计自己激活码关联的用户。</p></details>
@@ -2097,7 +2175,7 @@
                                 <label for="channelAnalysisDays">统计范围</label>
                                 <select id="channelAnalysisDays" class="js-analytics-period-select filter-select" data-prepend-options="&lt;option value=&quot;0&quot;&gt;全部注册用户&lt;/option&gt;" data-day-options="1,7,30,90,365" data-default="custom"></select>
                             </div>
-                            <button type="button" class="btn-primary" id="btnRefreshChannelAnalysis">刷新分析</button>
+                            <button type="button" class="btn-page" id="btnRefreshChannelAnalysis">刷新分析</button>
                         </div>
                         <div id="channelLinksSection" class="channel-links-section mt-14">
                             <p class="stat mb-6">渠道连接</p>
@@ -2435,9 +2513,23 @@
     </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260801-prefill-fix"></script>
-    <script src="/js/admin/nav.js?v=20260731-najilu-qr"></script>
+    <div class="admin-command" id="adminCommand" hidden>
+        <button type="button" class="admin-command-backdrop" data-command-close aria-label="关闭搜索"></button>
+        <div class="admin-command-panel" role="dialog" aria-modal="true" aria-labelledby="adminCommandTitle">
+            <div class="admin-command-head">
+                <span class="sr-only" id="adminCommandTitle">搜索管理功能</span>
+                <span class="admin-command-icon" aria-hidden="true">⌕</span>
+                <input type="search" id="adminCommandInput" autocomplete="off" placeholder="输入功能名称，如“用户”“离职证明”">
+                <kbd>Esc</kbd>
+            </div>
+            <div class="admin-command-results" id="adminCommandResults"></div>
+            <p class="admin-command-empty" id="adminCommandEmpty" hidden>没有匹配的功能</p>
+        </div>
+    </div>
+
+    <script src="/js/admin/loader.js?v=20260802-tool-ux"></script>
+    <script src="/js/admin/nav.js?v=20260802-simple-shell"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260731-najilu-qr"></script>
+    <script src="/js/admin_panel.js?v=20260802-simple-shell"></script>
 </body>
 </html>

@@ -38,13 +38,28 @@ if [[ "${ENABLE_ORIGIN_HTTPS:-1}" != "0" ]]; then
   fi
 fi
 
-# 通知后端监控当前正在部署，避免容器重建的短暂不可用触发告警邮件。
+# 通知监控当前正在部署，避免容器重建的短暂不可用触发告警邮件。
+# - 容器内 marker：给 backend serverMonitor 用（uploads 卷）
+# - 宿主机 marker：给 health-guard cron 用（部署中 / 结束后静默窗）
 DEPLOY_MARKER="/data/uploads/.deployment-in-progress"
+DR_STATE_DIR="${DR_STATE_DIR:-/var/tmp/test_platform-dr}"
+HOST_DEPLOY_IN_PROGRESS="${DR_STATE_DIR}/deploy-in-progress"
+HOST_DEPLOY_QUIET_UNTIL="${DR_STATE_DIR}/deploy-quiet-until"
+# 部署结束后继续静默秒数（覆盖 compose recreate 收尾）
+DEPLOY_POST_QUIET_SEC="${DEPLOY_POST_QUIET_SEC:-300}"
+# 部署开始时预留的最长静默（防止长构建中途 marker 过期）
+DEPLOY_BUILD_QUIET_SEC="${DEPLOY_BUILD_QUIET_SEC:-900}"
+
 mark_deploy_start() {
+  mkdir -p "$DR_STATE_DIR"
+  date +%s >"$HOST_DEPLOY_IN_PROGRESS"
+  echo $(($(date +%s) + DEPLOY_BUILD_QUIET_SEC)) >"$HOST_DEPLOY_QUIET_UNTIL"
   docker compose exec -T backend sh -c \
     "date -u +%Y-%m-%dT%H:%M:%SZ > '$DEPLOY_MARKER'" >/dev/null 2>&1 || true
 }
 mark_deploy_end() {
+  rm -f "$HOST_DEPLOY_IN_PROGRESS"
+  echo $(($(date +%s) + DEPLOY_POST_QUIET_SEC)) >"$HOST_DEPLOY_QUIET_UNTIL"
   docker compose exec -T backend rm -f "$DEPLOY_MARKER" >/dev/null 2>&1 || true
 }
 mark_deploy_start

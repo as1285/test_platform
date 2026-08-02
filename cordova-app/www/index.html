@@ -126,17 +126,17 @@
                 var base = APP_ORIGIN.replace(/\/?$/, '/');
                 var cfg = window.__TAX_DISTRIBUTION__ || {};
                 var ch = cfg.agentSalesChannel != null ? String(cfg.agentSalesChannel).trim() : '';
+                var q = 'mine.html?in_app=1';
                 if (ch && /^[a-z0-9_-]{1,64}$/i.test(ch)) {
-                    var q =
-                        'mine.html?ch=' +
+                    q =
+                        'mine.html?in_app=1&ch=' +
                         encodeURIComponent(ch.toLowerCase());
                     /* 仅当明确禁用 App 内注册时才打 distributor_app 标记 */
                     if (cfg.disableInAppRegister === true) {
                         q += '&distributor_app=1';
                     }
-                    return base + q;
                 }
-                return base + 'mine.html';
+                return base + q;
             }
 
             var lastGoodAppUrl = buildAppStartUrl();

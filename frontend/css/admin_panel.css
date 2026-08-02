@@ -140,6 +140,55 @@ body {
     flex-direction: column;
     gap: 0;
 }
+.sidebar-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 24px;
+}
+.sidebar-close {
+    display: none;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--admin-nav-text);
+    background: transparent;
+    font: 22px/1 sans-serif;
+    cursor: pointer;
+}
+.sidebar-close:hover {
+    color: #fff;
+    background: var(--admin-nav-hover-bg);
+}
+.sidebar-search-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 12px;
+    padding: 7px 8px;
+    border: 1px solid var(--admin-nav-divider);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--admin-nav-text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.sidebar-search-trigger:hover {
+    color: #fff;
+    background: var(--admin-nav-hover-bg);
+}
+.sidebar-search-trigger kbd,
+.top-search-trigger kbd,
+.admin-command-head kbd {
+    border: 1px solid currentColor;
+    border-radius: 5px;
+    padding: 1px 5px;
+    font: 10px/1.5 inherit;
+    opacity: 0.62;
+}
 .sidebar-brand-title {
     font-size: 15px;
     font-weight: 650;
@@ -214,6 +263,60 @@ body {
     flex-wrap: wrap;
     gap: 12px;
 }
+.top-page,
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.page-group-label {
+    display: block;
+    margin-bottom: 1px;
+    color: var(--admin-text-muted);
+    font-size: 10px;
+    line-height: 1.2;
+}
+.sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-surface);
+    color: var(--admin-text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+}
+.top-search-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 9px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-surface-muted);
+    color: var(--admin-text-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.top-search-trigger:hover {
+    color: var(--admin-primary);
+    border-color: var(--admin-primary-border);
+}
+.admin-identity {
+    max-width: 160px;
+    overflow: hidden;
+    color: var(--admin-text-secondary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sidebar-backdrop {
+    display: none;
+}
 .top h1 {
     font-size: 16px;
     font-weight: 600;
@@ -256,6 +359,113 @@ body {
     padding: 4px 22px 18px;
     animation: adminPageIn 0.2s ease;
 }
+
+/* 全局功能搜索：不改变业务页结构，只缩短后台导航路径 */
+.admin-command[hidden] {
+    display: none;
+}
+body.admin-command-open {
+    overflow: hidden;
+}
+.admin-command {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: min(14vh, 120px) 16px 24px;
+}
+.admin-command-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(2px);
+}
+.admin-command-panel {
+    position: relative;
+    width: min(620px, 100%);
+    max-height: min(620px, 72vh);
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: var(--admin-surface);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+.admin-command-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--admin-border);
+}
+.admin-command-icon {
+    color: var(--admin-text-muted);
+    font-size: 22px;
+}
+.admin-command-head input {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--admin-text);
+    font: inherit;
+    font-size: 15px;
+}
+.admin-command-results {
+    max-height: calc(min(620px, 72vh) - 60px);
+    overflow-y: auto;
+    padding: 8px;
+}
+.admin-command-group {
+    padding: 8px 10px 4px;
+    color: var(--admin-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+.admin-command-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--admin-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.admin-command-item:hover,
+.admin-command-item.is-selected {
+    background: var(--admin-primary-soft);
+    color: var(--admin-primary);
+}
+.admin-command-item small {
+    color: var(--admin-text-muted);
+}
+.admin-command-empty {
+    margin: 0;
+    padding: 30px 16px;
+    color: var(--admin-text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 @keyframes adminPageIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -270,6 +480,158 @@ body {
     font-size: 13px;
     color: var(--admin-text-muted);
     line-height: 1.45;
+}
+.page-outline {
+    position: sticky;
+    top: 57px;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 -10px 4px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--admin-border-light);
+    background: rgba(255, 255, 255, 0.96);
+    scrollbar-width: none;
+}
+.page-outline::-webkit-scrollbar {
+    display: none;
+}
+.page-outline-label {
+    flex: none;
+    margin-right: 4px;
+    color: var(--admin-text-muted);
+    font-size: 11px;
+}
+.page-outline button {
+    flex: none;
+    padding: 5px 9px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--admin-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.page-outline button:hover {
+    background: var(--admin-primary-soft);
+    color: var(--admin-primary);
+}
+.page-panel > section {
+    scroll-margin-top: 112px;
+}
+
+/* 业务工具：拖拽上传 / 分步 / 结果卡（社保图片·演示） */
+.admin-tool-step {
+    margin: 4px 0 2px;
+    color: var(--admin-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+.admin-tool-advanced {
+    margin-top: 4px;
+}
+.admin-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    max-width: 640px;
+    padding: 18px 16px;
+    border: 1.5px dashed var(--admin-border-strong);
+    border-radius: 12px;
+    background: var(--admin-surface-muted);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.admin-dropzone:hover,
+.admin-dropzone:focus {
+    border-color: var(--admin-primary-border);
+    background: var(--admin-primary-soft-2);
+    outline: none;
+}
+.admin-dropzone.is-dragover {
+    border-color: var(--admin-primary);
+    background: var(--admin-primary-soft);
+}
+.admin-dropzone-title {
+    color: var(--admin-heading);
+    font-size: 14px;
+    font-weight: 600;
+}
+.admin-tool-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+.admin-tool-preview-img {
+    display: block;
+    max-width: 100%;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: #fff;
+}
+.admin-tool-result {
+    margin-top: 8px;
+    padding: 14px 16px;
+    border: 1px solid var(--admin-primary-border);
+    border-radius: 12px;
+    background: var(--admin-primary-soft-2);
+}
+.admin-tool-result-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.admin-tool-result-head strong {
+    color: var(--admin-heading);
+    font-size: 14px;
+}
+#sbdyPasteTemplate {
+    width: 100%;
+    max-width: 880px;
+    min-height: 140px;
+    padding: 10px 12px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    resize: vertical;
+}
+.admin-section-collapsible > h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.section-collapse-toggle {
+    flex: none;
+    padding: 4px 8px;
+    border: 1px solid var(--admin-border);
+    border-radius: 7px;
+    background: var(--admin-surface-muted);
+    color: var(--admin-text-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.section-collapse-toggle:hover {
+    color: var(--admin-primary);
+    border-color: var(--admin-primary-border);
+}
+.admin-section-collapsible.is-section-collapsed {
+    padding-bottom: 12px;
+}
+.admin-section-collapsible.is-section-collapsed > :not(h2) {
+    display: none !important;
 }
 .page-panel > section {
     background: transparent;
@@ -1752,56 +2114,82 @@ tr.ud-salary-bucket-high td {
 }
 
 
+@media (min-width: 901px) {
+    body.admin-sidebar-collapsed .sidebar {
+        width: 0;
+        overflow: hidden;
+        border-right: 0;
+    }
+}
+
 @media (max-width: 900px) {
     .device-stats-grid { grid-template-columns: 1fr; }
     .register-time-charts-grid { grid-template-columns: 1fr; }
-    .layout { flex-direction: column; }
+    .layout { display: block; }
     .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 50;
+        width: min(82vw, 300px);
+        height: 100dvh;
+        padding: 0 0 16px;
+        transform: translateX(-102%);
+        transition: transform 0.2s ease;
+        box-shadow: 12px 0 30px rgba(15, 23, 42, 0.2);
+    }
+    body.admin-sidebar-open {
+        overflow: hidden;
+    }
+    body.admin-sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+    body.admin-sidebar-open .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 45;
         width: 100%;
-        height: auto;
-        position: relative;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        padding: 12px 12px 14px;
-        box-shadow: 0 2px 12px rgba(20, 24, 32, 0.12);
+        height: 100%;
+        border: 0;
+        background: rgba(15, 23, 42, 0.42);
     }
     .sidebar-brand {
         width: 100%;
-        padding: 8px 8px 12px;
-        margin-bottom: 8px;
+        padding: 16px 14px 12px;
+        margin-bottom: 6px;
         border-bottom: 1px solid var(--admin-nav-divider);
     }
+    .sidebar-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
     .sidebar-nav {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 0 4px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 0 10px;
         width: 100%;
-        max-height: none;
-        overflow-y: visible;
-        flex: none;
+        overflow-y: auto;
+        flex: 1;
         min-height: 0;
     }
     .nav-item {
-        width: auto;
-        flex: 1 1 auto;
-        min-width: calc(50% - 6px);
-        border-left: none;
-        border-bottom: 3px solid transparent;
+        width: 100%;
+        min-width: 0;
+        border-left: 2px solid transparent;
         border-radius: 8px;
-        text-align: center;
-        padding: 10px 8px;
+        text-align: left;
+        padding: 9px 12px;
         font-size: 13px;
     }
     .nav-item.active {
-        border-left-color: transparent;
-        border-bottom-color: var(--admin-nav-accent);
+        border-left-color: var(--admin-nav-accent);
     }
     .nav-group-items {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        gap: 2px;
         width: 100%;
     }
     .analytics-grid,
@@ -1814,8 +2202,15 @@ tr.ud-salary-bucket-high td {
     }
     .nav-group-label {
         width: 100%;
-        padding: 6px 8px 2px;
+        padding: 8px 12px 4px;
         text-align: left;
+    }
+    .sidebar-toggle {
+        display: inline-flex;
+    }
+    .top-search-trigger,
+    .admin-identity {
+        display: none;
     }
     .user-filter-bar {
         padding: 12px;
@@ -1824,9 +2219,14 @@ tr.ud-salary-bucket-high td {
         padding: 14px 12px 28px;
     }
     .top {
-        padding: 12px 16px;
+        padding: 9px 12px;
         position: sticky;
         top: 0;
+    }
+    .page-panel.active {
+        padding-right: 14px;
+        padding-left: 14px;
+        border-radius: 10px;
     }
 }
 

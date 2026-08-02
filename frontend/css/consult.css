@@ -576,9 +576,71 @@ body {
 #taxRecycleBinModal .recycle-bin-item:last-child { border-bottom: none; }
 #taxRecycleBinModal .recycle-bin-item-title { font-size: 13px; font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
 #taxRecycleBinModal .recycle-bin-item-meta { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-bottom: 6px; }
-#taxRecycleBinModal .recycle-bin-item-actions { display: flex; gap: 6px; }
-#taxRecycleBinModal .recycle-bin-company-row { display: flex; gap: 8px; align-items: center; padding: 0 16px 10px; }
-#taxRecycleBinModal .recycle-bin-company-row select { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; background: var(--color-surface); }
+#taxRecycleBinModal .recycle-bin-item-actions { display: flex; gap: 6px; justify-content: flex-end; }
+#taxRecycleBinModal .recycle-bin-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 16px 4px;
+}
+#taxRecycleBinModal .recycle-bin-filter-label {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+#taxRecycleBinModal .recycle-bin-toolbar select {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--color-surface);
+}
+#taxRecycleBinModal .recycle-bin-count {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+#taxRecycleBinModal .recycle-bin-group {
+    margin: 0 0 8px;
+}
+#taxRecycleBinModal .recycle-bin-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 4px;
+    position: sticky;
+    top: 0;
+    background: var(--color-surface);
+    z-index: 1;
+}
+#taxRecycleBinModal .recycle-bin-group-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#taxRecycleBinModal .recycle-bin-group-count {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+#taxRecycleBinModal .recycle-bin-group-head .btn {
+    flex: 0 0 auto;
+}
+#taxRecycleBinModal .batch-ms-modal-footer {
+    justify-content: space-between;
+}
+#taxRecycleBinModal .batch-ms-modal-footer .btn-primary {
+    margin-right: auto;
+}
 
 /* 强提示弹窗 */
 .consult-strong-alert-root { position: fixed; inset: 0; z-index: 10060; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }

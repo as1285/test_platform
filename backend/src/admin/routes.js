@@ -92,6 +92,12 @@ app.get(
   h.handleAdminUserDataDetail
 );
 app.get(
+  '/api/admin/sbdy-demo/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['sbdy-demo', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.get(
   '/api/admin/analytics/pricing-ab',
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['analytics-conversion', 'analytics']),
@@ -253,9 +259,24 @@ app.post(
 );
 app.post('/api/admin/user-password', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPassword);
 app.post('/api/admin/ban', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBan);
-app.post('/api/admin/block-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockIp);
-app.post('/api/admin/unblock-ip', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUnblockIp);
-app.get('/api/admin/blocked-ips', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminBlockedIpsList);
+app.post(
+  '/api/admin/block-ip',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['users', 'blocked-ips']),
+  h.handleAdminBlockIp
+);
+app.post(
+  '/api/admin/unblock-ip',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['users', 'blocked-ips']),
+  h.handleAdminUnblockIp
+);
+app.get(
+  '/api/admin/blocked-ips',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['users', 'blocked-ips']),
+  h.handleAdminBlockedIpsList
+);
 app.post('/api/admin/user-delete', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeleteUser);
 app.post('/api/admin/user-refund', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRefund);
 app.post('/api/admin/user-restore', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserRestore);
@@ -288,11 +309,31 @@ app.post(
 app.get('/api/admin/analytics/login-recent', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminAnalyticsLoginRecent);
 app.get('/api/admin/admin-login-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminLoginLogs);
 app.get('/api/admin/admin-operation-logs', mw.requireAdminAuth, mw.requireAdminMenu('login-log'), h.handleAdminOperationLogs);
-app.get('/api/admin/accounts', mw.requireAdminAuth, h.handleAdminAccountsList);
-app.get('/api/admin/accounts/activated-users', mw.requireAdminAuth, h.handleAdminAccountActivatedUsers);
-app.post('/api/admin/accounts/create', mw.requireAdminAuth, h.handleAdminAccountsCreate);
-app.post('/api/admin/accounts/update', mw.requireAdminAuth, h.handleAdminAccountsUpdate);
-app.post('/api/admin/accounts/delete', mw.requireAdminAuth, h.handleAdminAccountsDelete);
+app.get('/api/admin/accounts', mw.requireAdminAuth, mw.requireAdminMenu('admin-accounts'), h.handleAdminAccountsList);
+app.get(
+  '/api/admin/accounts/activated-users',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('admin-accounts'),
+  h.handleAdminAccountActivatedUsers
+);
+app.post(
+  '/api/admin/accounts/create',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('admin-accounts'),
+  h.handleAdminAccountsCreate
+);
+app.post(
+  '/api/admin/accounts/update',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('admin-accounts'),
+  h.handleAdminAccountsUpdate
+);
+app.post(
+  '/api/admin/accounts/delete',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('admin-accounts'),
+  h.handleAdminAccountsDelete
+);
 app.get('/api/admin/monitor/overview', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorOverview);
 app.post('/api/admin/monitor/test-email', mw.requireAdminAuth, mw.requireAdminMenu('server-monitor'), h.handleAdminMonitorTestEmail);
 app.post(

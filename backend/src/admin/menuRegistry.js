@@ -4,15 +4,15 @@
  * - page：前端 hash / data-page（可与 menu_key 不同，如 users-deleted）
  * - module：前端懒加载模块名
  *
- * 信息架构：工作台 → 配置 → 用户 → 工具 → 数据 → 系统
+ * 信息架构：工作台 → 内容配置 → 用户管理 → 业务工具 → 数据分析 → 系统与安全
  */
 const ADMIN_MENU_GROUPS = [
   { id: 'ops-desk', label: '工作台', order: 10 },
-  { id: 'ops-config', label: '配置', order: 20 },
-  { id: 'users', label: '用户', order: 30 },
-  { id: 'cert-tools', label: '工具', order: 35 },
-  { id: 'insights', label: '数据', order: 40 },
-  { id: 'system', label: '系统', order: 50 }
+  { id: 'ops-config', label: '内容配置', order: 20 },
+  { id: 'users', label: '用户管理', order: 30 },
+  { id: 'cert-tools', label: '业务工具', order: 35 },
+  { id: 'insights', label: '数据分析', order: 40 },
+  { id: 'system', label: '系统与安全', order: 50 }
 ];
 
 /**
@@ -33,7 +33,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'analytics-conversion',
     menu_key: 'analytics-conversion',
-    label: '转化与触达',
+    label: '转化概览',
     group: 'ops-desk',
     module: 'analytics',
     order: 10
@@ -41,18 +41,18 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'analytics-purchase',
     menu_key: 'analytics-purchase',
-    label: '支付页埋点',
-    group: 'ops-desk',
+    label: '支付分析',
+    group: 'insights',
     module: 'analytics',
-    order: 15
+    order: 40
   },
   {
     page: 'channel-analysis',
     menu_key: 'channel-analysis',
     label: '渠道分析',
-    group: 'ops-desk',
+    group: 'insights',
     module: 'analytics',
-    order: 20
+    order: 50
   },
   { page: 'codes', menu_key: 'codes', label: '激活码', group: 'ops-desk', module: 'codes', order: 30 },
 
@@ -60,7 +60,7 @@ const ADMIN_PAGE_DEFS = [
   {
     page: 'settings',
     menu_key: 'settings',
-    label: '定价与弹窗',
+    label: '定价与引导',
     group: 'ops-config',
     module: 'settings',
     order: 10
@@ -85,17 +85,17 @@ const ADMIN_PAGE_DEFS = [
     page: 'install-guide-stats',
     menu_key: 'install-guide-stats',
     label: '安装统计',
-    group: 'ops-config',
+    group: 'insights',
     module: 'analytics',
-    order: 30
+    order: 60
   },
   {
     page: 'share-stats',
     menu_key: 'share-stats',
     label: '分享统计',
-    group: 'ops-config',
+    group: 'insights',
     module: 'analytics',
-    order: 35
+    order: 70
   },
 
   /* —— 用户 —— */
@@ -203,7 +203,9 @@ const ADMIN_PAGE_DEFS = [
     label: '账号权限',
     group: 'system',
     module: 'accounts',
-    order: 20
+    order: 20,
+    super_only: true,
+    assignable: false
   },
   {
     page: 'login-log',

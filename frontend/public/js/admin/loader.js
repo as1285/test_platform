@@ -7,9 +7,7 @@
 
   var MODULE_SRC = {
     charts: '/js/admin/modules/charts.js?v=20260728-channel-analysis-fix',
-    chat: '/js/admin/modules/chat.js?v=20260722-chat-window-fix',
     analytics: '/js/admin/modules/analytics.js?v=20260721-p2',
-    feedback: '/js/admin/modules/feedback.js?v=20260721-p2',
     users: '/js/admin/modules/users.js?v=20260721-p2',
     'user-data': '/js/admin/modules/user-data.js?v=20260721-p2',
     codes: '/js/admin/modules/codes.js?v=20260721-p2',
@@ -17,9 +15,9 @@
     accounts: '/js/admin/modules/accounts.js?v=20260721-p2',
     logs: '/js/admin/modules/logs.js?v=20260721-p2',
     monitor: '/js/admin/modules/monitor.js?v=20260721-p2',
-    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260724-no-operator',
+    'sbdy-demo': '/js/admin/modules/sbdy-demo.js?v=20260802-paste-tpl',
     'lizhi-cert': '/js/admin/modules/lizhi-cert.js?v=20260801-prefill-fix',
-    'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260801-prefill-fix',
+    'ylbx-ps': '/js/admin/modules/ylbx-ps.js?v=20260802-tool-ux',
     'najilu-qr': '/js/admin/modules/najilu-qr.js?v=20260801-prefill-fix'
   };
 
@@ -38,10 +36,7 @@
     'users-deleted': 'users',
     'user-data': 'user-data',
     'tax-records-edit': 'user-data',
-    'user-behavior': 'user-data',
     'activated-user-analysis': 'user-data',
-    feedback: 'feedback',
-    chat: 'chat',
     'login-log': 'logs',
     'user-login-log': 'logs',
     'server-monitor': 'monitor',
@@ -50,11 +45,9 @@
     'analytics-register': 'analytics',
     'analytics-purchase': 'analytics',
     'analytics-tracking': 'analytics',
-    'analytics-devices': 'analytics',
     'install-guide-stats': 'analytics',
     'share-stats': 'analytics',
-    'channel-analysis': 'analytics',
-    'api-analytics': 'analytics'
+    'channel-analysis': 'analytics'
   };
 
   var SCRIPT_LOAD_TIMEOUT_MS = 12000;

@@ -577,7 +577,7 @@ function confirmDeleteTaxRecordsByCompany() {
         return;
     }
     closeDeleteTaxRecordsByCompanyModal();
-    if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复或导出。')) {
+    if (!confirm('确定删除扣缴单位「' + company + '」下的全部税务记录？删除后可在回收站恢复。')) {
         return;
     }
     window.authFetch('api/tax', {
@@ -623,24 +623,105 @@ function formatDeletedAtLabel(raw) {
     return s;
 }
 
+function getTaxRecycleBinFilterCompany() {
+    var sel = document.getElementById('taxRecycleBinCompanySelect');
+    return sel ? String(sel.value || '').trim() : '';
+}
+
+function getTaxRecycleBinVisibleRecords(list) {
+    var company = getTaxRecycleBinFilterCompany();
+    var all = list || [];
+    if (!company) {
+        return all.slice();
+    }
+    return all.filter(function (r) {
+        return String(r.company_name || '').trim() === company;
+    });
+}
+
+function groupDeletedRecordsByCompany(list) {
+    var order = [];
+    var map = {};
+    (list || []).forEach(function (r) {
+        var name = String(r.company_name || '').trim();
+        var key = name || '__empty__';
+        if (!map[key]) {
+            map[key] = {
+                company: name,
+                label: name || '未填写扣缴单位',
+                records: []
+            };
+            order.push(key);
+        }
+        map[key].records.push(r);
+    });
+    return order.map(function (key) {
+        return map[key];
+    });
+}
 
 function updateTaxRecycleBinCompanySelect(list) {
     var sel = document.getElementById('taxRecycleBinCompanySelect');
     if (!sel) {
         return;
     }
+    var prev = String(sel.value || '').trim();
     var names = collectDistinctRecordCompanies(list);
     sel.innerHTML = '';
-    var placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = names.length ? '选择扣缴单位…' : '暂无扣缴单位';
-    sel.appendChild(placeholder);
+    var allOpt = document.createElement('option');
+    allOpt.value = '';
+    allOpt.textContent = '全部单位';
+    sel.appendChild(allOpt);
     names.forEach(function (name) {
         var opt = document.createElement('option');
         opt.value = name;
         opt.textContent = name;
         sel.appendChild(opt);
     });
+    if (prev && names.indexOf(prev) >= 0) {
+        sel.value = prev;
+    } else {
+        sel.value = '';
+    }
+}
+
+function updateTaxRecycleBinChrome(list) {
+    var visible = getTaxRecycleBinVisibleRecords(list);
+    var total = (list || []).length;
+    var toolbar = document.getElementById('taxRecycleBinToolbar');
+    var countEl = document.getElementById('taxRecycleBinCount');
+    var primary = document.getElementById('taxRecycleBinPrimaryAction');
+    var company = getTaxRecycleBinFilterCompany();
+
+    if (toolbar) {
+        toolbar.hidden = total === 0;
+    }
+    if (countEl) {
+        if (!total) {
+            countEl.textContent = '';
+        } else if (company) {
+            countEl.textContent = '显示 ' + visible.length + ' / ' + total + ' 条';
+        } else {
+            countEl.textContent = '共 ' + total + ' 条';
+        }
+    }
+    if (!primary) {
+        return;
+    }
+    if (!visible.length) {
+        primary.hidden = true;
+        primary.disabled = true;
+        return;
+    }
+    primary.hidden = false;
+    primary.disabled = false;
+    if (company) {
+        primary.textContent = '恢复该公司（' + visible.length + '）';
+        primary.setAttribute('data-mode', 'company');
+    } else {
+        primary.textContent = '全部恢复（' + visible.length + '）';
+        primary.setAttribute('data-mode', 'all');
+    }
 }
 
 function countDeletedRecordsByCompany(list, company) {
@@ -653,30 +734,73 @@ function countDeletedRecordsByCompany(list, company) {
     return n;
 }
 
+function renderTaxRecycleBinItemHtml(r) {
+    var idEsc = String(r.id).replace(/'/g, "\\'");
+    var html = '';
+    html += '<div class="recycle-bin-item">';
+    html += '<div class="recycle-bin-item-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
+    html += '<div class="recycle-bin-item-meta">';
+    html += '删除于 ' + formatDeletedAtLabel(r.deleted_at) + '<br>';
+    if (!getTaxRecycleBinFilterCompany()) {
+        html += '扣缴单位：' + (r.company_name || '') + '<br>';
+    }
+    html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
+    html += '</div>';
+    html += '<div class="recycle-bin-item-actions">';
+    html += '<button type="button" class="btn btn-primary btn-sm" onclick="restoreDeletedTaxRecord(\'' + idEsc + '\')">恢复</button>';
+    html += '</div></div>';
+    return html;
+}
+
 function renderTaxRecycleBinList(list) {
     updateTaxRecycleBinCompanySelect(list);
+    updateTaxRecycleBinChrome(list);
     var body = document.getElementById('taxRecycleBinBody');
     if (!body) {
         return;
     }
-    if (!list.length) {
+    var visible = getTaxRecycleBinVisibleRecords(list);
+    if (!(list || []).length) {
         body.innerHTML = '<div class="empty" style="padding:16px;">回收站为空</div>';
         return;
     }
+    if (!visible.length) {
+        body.innerHTML = '<div class="empty" style="padding:16px;">该单位暂无已删除记录</div>';
+        return;
+    }
+
+    var filterCompany = getTaxRecycleBinFilterCompany();
     var html = '';
-    list.forEach(function (r) {
-        var idEsc = String(r.id).replace(/'/g, "\\'");
-        html += '<div class="recycle-bin-item">';
-        html += '<div class="recycle-bin-item-title">' + r.year + '年' + r.month + '月 - ' + (r.income_type || '') + '</div>';
-        html += '<div class="recycle-bin-item-meta">';
-        html += '删除于 ' + formatDeletedAtLabel(r.deleted_at) + '<br>';
-        html += '扣缴单位：' + (r.company_name || '') + '<br>';
-        html += '收入：' + (r.income || '0') + '元 | 已申报税额：' + (r.tax_reported || '0') + '元';
-        html += '</div>';
-        html += '<div class="recycle-bin-item-actions">';
-        html += '<button type="button" class="btn btn-primary btn-sm" onclick="restoreDeletedTaxRecord(\'' + idEsc + '\')">恢复</button>';
-        html += '</div></div>';
-    });
+    if (filterCompany) {
+        visible.forEach(function (r) {
+            html += renderTaxRecycleBinItemHtml(r);
+        });
+    } else {
+        var groups = groupDeletedRecordsByCompany(visible);
+        groups.forEach(function (g) {
+            var companyEsc = String(g.company).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            html += '<div class="recycle-bin-group">';
+            html += '<div class="recycle-bin-group-head">';
+            html +=
+                '<div class="recycle-bin-group-title" title="' +
+                String(g.label).replace(/"/g, '&quot;') +
+                '">' +
+                g.label +
+                '</div>';
+            html += '<span class="recycle-bin-group-count">' + g.records.length + ' 条</span>';
+            if (g.company) {
+                html +=
+                    '<button type="button" class="btn btn-default btn-sm" onclick="restoreDeletedTaxRecordsByCompanyName(\'' +
+                    companyEsc +
+                    '\')">恢复该公司</button>';
+            }
+            html += '</div>';
+            g.records.forEach(function (r) {
+                html += renderTaxRecycleBinItemHtml(r);
+            });
+            html += '</div>';
+        });
+    }
     body.innerHTML = html;
 }
 
@@ -714,6 +838,16 @@ function restoreAllDeletedTaxRecords() {
         .catch(function (err) {
             showMsg('恢复失败：' + (err.message || ''), false);
         });
+}
+
+function handleTaxRecycleBinPrimaryAction() {
+    var primary = document.getElementById('taxRecycleBinPrimaryAction');
+    var mode = primary ? primary.getAttribute('data-mode') : 'all';
+    if (mode === 'company') {
+        restoreDeletedTaxRecordsByCompany();
+        return;
+    }
+    restoreAllDeletedTaxRecords();
 }
 
 

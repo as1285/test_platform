@@ -1204,6 +1204,7 @@
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
+        var _adminAnalyticsConversionSeen = false;
         var _adminAnalyticsRegisterSeen = false;
         var _adminAnalyticsPurchaseSeen = false;
         var _adminAnalyticsTrackingSeen = false;
@@ -1400,6 +1401,9 @@
             document.querySelectorAll('.nav-item').forEach(function (btn) {
                 btn.classList.toggle('active', btn.getAttribute('data-page') === pageKey);
             });
+            if (window.AdminNav && typeof AdminNav.setActivePage === 'function') {
+                AdminNav.setActivePage(pageKey);
+            }
             var navBtn = document.querySelector('.nav-item[data-page="' + pageKey + '"]');
             var titleEl = document.getElementById('pageTitle');
             if (titleEl && navBtn) {
@@ -1456,7 +1460,8 @@
                 _adminAccountsLoaded = true;
                 loadAdminAccounts();
             }
-            if (pageKey === 'analytics-conversion') {
+            if (pageKey === 'analytics-conversion' && !_adminAnalyticsConversionSeen) {
+                _adminAnalyticsConversionSeen = true;
                 loadAnalyticsConversionPage();
             }
             if (pageKey === 'analytics-register' && !_adminAnalyticsRegisterSeen) {
@@ -1467,7 +1472,8 @@
                 _adminAnalyticsActivitySeen = true;
                 loadAnalyticsActivityPage();
             }
-            if (pageKey === 'analytics-purchase') {
+            if (pageKey === 'analytics-purchase' && !_adminAnalyticsPurchaseSeen) {
+                _adminAnalyticsPurchaseSeen = true;
                 loadAnalyticsPurchasePage();
             }
             if (pageKey === 'analytics-tracking' && !_adminAnalyticsTrackingSeen) {
@@ -6864,7 +6870,7 @@
         }
 
         var ADMIN_MENU_LABELS = {
-            settings: '定价与弹窗',
+            settings: '定价与引导',
             'install-guide': '安装分发',
             appearance: '外观',
             codes: '激活码',
@@ -6876,8 +6882,8 @@
             'login-log': '管理登录',
             'user-login-log': '用户登录',
             analytics: '数据统计（旧）',
-            'analytics-conversion': '转化与触达',
-            'analytics-purchase': '支付页埋点',
+            'analytics-conversion': '转化概览',
+            'analytics-purchase': '支付分析',
             'analytics-register': '注册分析',
             'analytics-activity': '用户活跃',
             'analytics-tracking': '埋点分析',
@@ -9001,6 +9007,9 @@
                 is_super: !!a.is_super,
                 menus: Array.isArray(a.menus) ? a.menus.map(function (m) { return String(m); }) : []
             };
+            if (window.AdminNav && typeof AdminNav.applyAdminIdentity === 'function') {
+                AdminNav.applyAdminIdentity(currentAdminProfile);
+            }
             localStorage.setItem('admin_profile', JSON.stringify(currentAdminProfile));
             if (Array.isArray(data.menu_tree)) {
                 try { localStorage.setItem('admin_menu_tree', JSON.stringify(data.menu_tree)); } catch (e0) {}
@@ -9019,7 +9028,7 @@
         function initAdminSession() {
             readAdminProfileCache();
             try {
-                var MENU_TREE_VER = 'ops-ia-v9-najilu-qr';
+                var MENU_TREE_VER = 'ops-ia-v11-perm-fix';
                 if (localStorage.getItem('admin_menu_tree_ver') !== MENU_TREE_VER) {
                     localStorage.removeItem('admin_menu_tree');
                     localStorage.setItem('admin_menu_tree_ver', MENU_TREE_VER);

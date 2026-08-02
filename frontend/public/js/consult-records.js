@@ -308,7 +308,7 @@ function editRecord(id) {
 }
 
 function deleteRecord(id) {
-    if (!confirm('确定删除？删除后可在回收站恢复或导出。')) return;
+    if (!confirm('确定删除？删除后可在回收站恢复。')) return;
     window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -334,7 +334,7 @@ function deleteRecord(id) {
 }
 
 function deleteAllTaxRecords() {
-    if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复或导出。')) return;
+    if (!confirm('确定删除当前账号下全部税务记录？删除后可在回收站恢复。')) return;
     window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -370,7 +370,7 @@ function deleteTaxRecordsByYear() {
         showConsultStrongAlert('请输入合法年份（1–9999）');
         return;
     }
-    if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复或导出。')) return;
+    if (!confirm('确定删除 ' + year + ' 年的全部税务记录？删除后可在回收站恢复。')) return;
     window.authFetch('api/tax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -525,9 +525,8 @@ function restoreDeletedTaxRecord(id) {
         });
 }
 
-function restoreDeletedTaxRecordsByCompany() {
-    var sel = document.getElementById('taxRecycleBinCompanySelect');
-    var company = sel ? String(sel.value || '').trim() : '';
+function restoreDeletedTaxRecordsByCompanyName(companyName) {
+    var company = String(companyName || '').trim();
     if (!company) {
         showConsultStrongAlert('请选择扣缴单位');
         return;
@@ -568,48 +567,8 @@ function restoreDeletedTaxRecordsByCompany() {
         });
 }
 
-
-function exportDeletedTaxRecordsJson() {
-    var doExport = function (list) {
-        if (!list.length) {
-            showConsultStrongAlert('回收站为空，无可导出记录');
-            return;
-        }
-        var payload = {
-            exported_at: new Date().toISOString(),
-            user_id: currentUserId(),
-            count: list.length,
-            records: list
-        };
-        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        var d = new Date();
-        var fname =
-            'tax-records-deleted-' +
-            d.getFullYear() +
-            pad2(d.getMonth() + 1) +
-            pad2(d.getDate()) +
-            '.json';
-        a.href = url;
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showMsg('已导出 ' + list.length + ' 条记录', true);
-    };
-    if (taxRecycleBinCache.length) {
-        doExport(taxRecycleBinCache);
-        return;
-    }
-    apiFetchDeletedRecords()
-        .then(function (list) {
-            doExport(list);
-        })
-        .catch(function (err) {
-            showMsg('导出失败：' + (err.message || ''), false);
-        });
+function restoreDeletedTaxRecordsByCompany() {
+    restoreDeletedTaxRecordsByCompanyName(getTaxRecycleBinFilterCompany());
 }
 
 

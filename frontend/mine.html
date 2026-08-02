@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260801-mine-e1b"></script>
+    <script src="/js/auth.js?v=20260802-hide-dl"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -1467,26 +1467,6 @@
         }
 
         /* 退出登录：官方为菜单下方独立白底圆角条 */
-        .mine-lizhi-entry {
-            display: block;
-            margin: 12px 16px 0;
-            padding: 14px 20px;
-            border-radius: 12px;
-            background: #fff;
-            border: 1px solid #cfe2ff;
-            color: #1d6fd8;
-            font-size: 16px;
-            font-weight: 500;
-            text-align: center;
-            text-decoration: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .mine-lizhi-entry:active { opacity: 0.9; }
-        html.mine-guest body.page-mine .mine-lizhi-entry {
-            display: none !important;
-        }
 
         .logout-section {
             background: #fff;
@@ -1718,7 +1698,7 @@
             <img
                 id="headerImg"
                 class="mine-e1-img"
-                src="/img/mine/e1_01.png?v=20260802-eye2"
+                src="/img/mine/e1_01.png?v=20260802-e1fix"
                 alt="个人中心"
                 width="1284"
                 height="2127"
@@ -1727,7 +1707,7 @@
                 (function () {
                     var hi = document.getElementById('headerImg');
                     if (!hi) return;
-                    var v = '?v=20260802-eye2';
+                    var v = '?v=20260802-e1fix';
                     try {
                         if (!String(localStorage.getItem('token') || '').trim()) {
                             hi.src = '/img/mine/e1_01.png' + v;
@@ -1752,7 +1732,7 @@
                     <span class="user-tax-label">纳税人识别号</span>
                     <span class="user-tax-value" id="userTaxIdText">--</span>
                     <button type="button" class="mine-ov-eye tax-eye-btn" id="toggleTaxIdBtn" aria-label="显示或隐藏纳税人识别号">
-                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260802-eye2" alt="">
+                        <img id="mineYanIcon" src="/img/mine/yan-b.png?v=20260802-e1fix" alt="">
                     </button>
                 </div>
                 <div id="mineProfileEditHit" hidden aria-hidden="true"></div>
@@ -1784,7 +1764,6 @@
         </div>
 
         <div class="mine-e1-footer">
-            <a href="lizhi_cert.html" class="mine-lizhi-entry" id="mineLizhiEntry">离职证明生成（测试免支付）</a>
             <div class="logout-section">
                 <button type="button" class="logout-btn" id="mineLogout">退出登录</button>
             </div>
@@ -1930,13 +1909,13 @@
                 else if (tow === 1) base = female ? 'e1_2' : 'e1_1';
                 else base = female ? 'e1_4' : 'e1_3';
                 if (fam) base += 'r';
-                hi.src = '/img/mine/' + base + '.png?v=20260802-eye2';
+                hi.src = '/img/mine/' + base + '.png?v=20260802-e1fix';
             }
 
             function syncMineYanIcon() {
                 var img = document.getElementById('mineYanIcon');
                 if (!img) return;
-                var v = '?v=20260802-eye2';
+                var v = '?v=20260802-e1fix';
                 img.src = (mineTaxRevealState ? '/img/mine/yan-k.png' : '/img/mine/yan-b.png') + v;
             }
 
@@ -3008,13 +2987,9 @@
 
                 function shareOpts() {
                     return {
-                        page: 'shouye.html',
-                        query: (window.DEFAULT_SHARE_LAND_QUERY || {
-                            guest: '1',
-                            from: 'share',
-                            landing_ab: 'c',
-                            sv: 'sim1'
-                        }),
+                        url:
+                            window.BILIBILI_SHARE_URL ||
+                            'https://b23.tv/EiRdMqm',
                         title: '个税记录演示',
                         text: '个税记录演示：打开即可体验收入明细与纳税记录',
                         track: 'track_share_bilibili'

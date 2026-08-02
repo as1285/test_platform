@@ -80,10 +80,18 @@ async function handleAdminLizhiCertGenerate(req, res) {
       leave_date: clean(b.leave_date),
       issue_date: clean(b.issue_date),
       company_name: clean(b.company_name),
-      note: clean(b.note)
+      position: clean(b.position),
+      note: clean(b.note),
+      demo: true
     };
     if (!payload.name || !payload.id_number) {
       return res.status(400).json({ code: 400, msg: '请填写姓名与身份证号' });
+    }
+    if (!payload.company_name) {
+      return res.status(400).json({ code: 400, msg: '请填写公司全称' });
+    }
+    if (!payload.position) {
+      return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
     var buf = await renderLizhiPdfBuffer(payload);
     var fname =

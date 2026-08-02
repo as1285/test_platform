@@ -19,6 +19,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # 限制上限，降低 3.6G 小机 OOM 时被内核优先杀业务进程的概率
+    mem_limit: 1g
     # 主机重启后必须自动拉起；否则 API 会因连不上 db 起不来
     restart: unless-stopped
 
@@ -36,6 +38,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    mem_limit: 192m
     restart: unless-stopped
 
   backend:
@@ -144,6 +147,7 @@ services:
       - uploads_static:/data/uploads
     networks:
       - test_platform_default
+    mem_limit: 768m
     restart: unless-stopped
 
   frontend:
@@ -166,6 +170,7 @@ services:
       - ./deploy/runtime/site-config.js:/usr/share/nginx/html/js/site-config.js:ro
     networks:
       - test_platform_default
+    mem_limit: 128m
     restart: unless-stopped
 
 volumes:

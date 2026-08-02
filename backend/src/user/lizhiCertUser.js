@@ -42,8 +42,7 @@ async function handleLizhiCertStatus(req, res) {
     if (!req.authUserId) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
-    /* 测试期：屏蔽支付，登录即可无限次生成 */
-    var unlocked = true;
+    var unlocked = await userHasLizhiUnlocked(req.authUserId);
     return res.json({
       code: 200,
       data: {
@@ -53,7 +52,7 @@ async function handleLizhiCertStatus(req, res) {
         sku_id: LIZHI_CERT_SKU_ID,
         product: 'lizhi_cert',
         note: LIZHI_MANDATORY_NOTE,
-        pay_disabled: true
+        pay_disabled: false
       }
     });
   } catch (e) {
@@ -78,16 +77,18 @@ async function handleLizhiCertPrefill(req, res) {
     }
     var u = urows[0];
     var company = '';
+    var position = '';
     var hire = '';
     var leave = '';
     try {
       const [erows] = await pool.execute(
-        `SELECT company_name, hire_date, leave_date
+        `SELECT company_name, position, hire_date, leave_date
          FROM employers WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1`,
         [uname]
       );
       if (erows.length) {
         company = clean(erows[0].company_name);
+        position = clean(erows[0].position);
         hire = clean(erows[0].hire_date);
         leave = clean(erows[0].leave_date);
       }
@@ -100,6 +101,7 @@ async function handleLizhiCertPrefill(req, res) {
         name: clean(u.real_name),
         id_number: clean(u.tax_id),
         company_name: company,
+        position: position,
         hire_date: hire,
         leave_date: leave,
         note: LIZHI_MANDATORY_NOTE
@@ -116,19 +118,7 @@ async function handleLizhiCertGenerate(req, res) {
     if (!req.authUserId) {
       return res.status(401).json({ code: 401, msg: '请先登录' });
     }
-    var unlocked = true; /* 测试期：屏蔽支付 */
-    if (!unlocked) {
-      return res.status(402).json({
-        code: 402,
-        msg: '请先支付 ¥' + LIZHI_CERT_AMOUNT + ' 开通离职证明生成权益',
-        data: {
-          need_pay: true,
-          fee_amount: LIZHI_CERT_AMOUNT,
-          sku_id: LIZHI_CERT_SKU_ID,
-          product: 'lizhi_cert'
-        }
-      });
-    }
+    var unlocked = await userHasLizhiUnlocked(req.authUserId);
     var b = req.body || {};
     var payload = {
       name: clean(b.name),
@@ -137,13 +127,18 @@ async function handleLizhiCertGenerate(req, res) {
       leave_date: clean(b.leave_date),
       issue_date: clean(b.issue_date),
       company_name: clean(b.company_name),
-      note: LIZHI_MANDATORY_NOTE
+      position: clean(b.position),
+      note: LIZHI_MANDATORY_NOTE,
+      demo: !unlocked
     };
     if (!payload.name || !payload.id_number) {
       return res.status(400).json({ code: 400, msg: '请填写姓名与身份证号' });
     }
     if (!payload.company_name) {
       return res.status(400).json({ code: 400, msg: '请填写公司全称' });
+    }
+    if (!payload.position) {
+      return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
     var buf = await renderLizhiPdfBuffer(payload);
     var fname =
@@ -155,7 +150,9 @@ async function handleLizhiCertGenerate(req, res) {
         filename: fname,
         mime: 'application/pdf',
         pdf_base64: buf.toString('base64'),
-        note: LIZHI_MANDATORY_NOTE
+        note: LIZHI_MANDATORY_NOTE,
+        demo: !unlocked,
+        unlocked: unlocked
       }
     });
   } catch (e) {

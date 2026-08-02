@@ -5927,11 +5927,106 @@ async function handleAlipayCreateOrder(req, res) {
 
   /* —— 离职证明终身权益（不走开通激活逻辑） —— */
   if (isLizhiCert) {
-    /* 测试期：屏蔽支付入口 */
-    return res.status(403).json({
-      code: 403,
-      msg: '离职证明支付已临时关闭，登录后可直接生成测试'
-    });
+    if (!req.authUserId) {
+      return res.status(401).json({ code: 401, msg: '请先登录' });
+    }
+    const [lizhiUsers] = await pool.execute(
+      'SELECT lizhi_cert_unlocked FROM users WHERE username = ? LIMIT 1',
+      [req.authUserId]
+    );
+    if (
+      lizhiUsers.length &&
+      (lizhiUsers[0].lizhi_cert_unlocked === true ||
+        Number(lizhiUsers[0].lizhi_cert_unlocked) === 1)
+    ) {
+      return res.status(409).json({ code: 409, msg: '离职证明无水印权益已开通，无需重复购买' });
+    }
+    var lizhiAmount = alipay.normalizeAmount(LIZHI_CERT_AMOUNT);
+    if (!lizhiAmount) {
+      return res.status(503).json({ code: 503, msg: '离职证明费用配置无效' });
+    }
+    const connLizhi = await pool.getConnection();
+    var lizhiOrder = null;
+    try {
+      await connLizhi.beginTransaction();
+      const [existingLizhi] = await connLizhi.execute(
+        `SELECT id, out_trade_no, subject, amount, status, paid_at, pricing_variant, sku_id,
+                grant_kind, grant_days, grant_hours, grant_minutes
+         FROM payment_orders
+         WHERE username = ? AND status = 'pending' AND sku_id = ?
+           AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [req.authUserId, LIZHI_CERT_SKU_ID]
+      );
+      if (existingLizhi.length) {
+        lizhiOrder = existingLizhi[0];
+      } else {
+        lizhiOrder = {
+          out_trade_no: createAlipayOutTradeNo(),
+          subject: LIZHI_CERT_SUBJECT,
+          amount: lizhiAmount,
+          status: 'pending',
+          pricing_variant: 'lizhi_cert',
+          sku_id: LIZHI_CERT_SKU_ID,
+          grant_kind: 'lizhi_cert',
+          grant_days: 0,
+          grant_hours: 0,
+          grant_minutes: 0
+        };
+        await connLizhi.execute(
+          `INSERT INTO payment_orders
+           (out_trade_no, username, subject, amount, status, pricing_variant, sku_id, grant_kind, grant_days, grant_hours, grant_minutes)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
+          [
+            lizhiOrder.out_trade_no,
+            req.authUserId,
+            lizhiOrder.subject,
+            lizhiOrder.amount,
+            lizhiOrder.pricing_variant,
+            lizhiOrder.sku_id,
+            lizhiOrder.grant_kind,
+            lizhiOrder.grant_days,
+            lizhiOrder.grant_hours,
+            lizhiOrder.grant_minutes
+          ]
+        );
+      }
+      await connLizhi.commit();
+    } catch (eLizhiDb) {
+      try {
+        await connLizhi.rollback();
+      } catch (eRb) {}
+      console.error('create lizhi cert order db', eLizhiDb);
+      try {
+        connLizhi.release();
+      } catch (eRel) {}
+      return res.status(500).json({ code: 500, msg: '创建离职证明订单失败' });
+    }
+    try {
+      var lizhiPre = await alipay.createFaceToFaceQr({
+        outTradeNo: String(lizhiOrder.out_trade_no),
+        subject: String(lizhiOrder.subject),
+        amount: alipay.normalizeAmount(lizhiOrder.amount)
+      });
+      return res.json({
+        code: 200,
+        data: {
+          order: plainPaymentOrder(lizhiOrder),
+          qr_code: lizhiPre.qrCode,
+          payment_url: lizhiPre.qrCode,
+          pricing_variant: 'lizhi_cert',
+          sku_id: LIZHI_CERT_SKU_ID,
+          product: 'lizhi_cert'
+        }
+      });
+    } catch (eLizhiPay) {
+      console.error('create lizhi cert precreate', eLizhiPay);
+      return res.status(500).json({ code: 500, msg: '创建支付宝离职证明订单失败' });
+    } finally {
+      try {
+        connLizhi.release();
+      } catch (eRel2) {}
+    }
   }
 
   /* —— 改名单次费用（不走开通激活逻辑） —— */

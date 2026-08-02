@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260801-bili-share"></script>
+    <script src="/js/auth.js?v=20260802-hide-dl"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260724-no-chat-tab">
+    <link rel="stylesheet" href="/css/consult.css?v=20260802-recycle">
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
@@ -54,17 +54,17 @@
                 <span id="taxRecycleBinModalTitle">回收站</span>
                 <button type="button" id="taxRecycleBinModalCloseX" aria-label="关闭">&times;</button>
             </div>
-            <p class="batch-ms-modal-hint">已删除的税务记录暂存于此，可恢复至列表或导出 JSON 备份。</p>
-            <div class="recycle-bin-company-row">
-                <select id="taxRecycleBinCompanySelect" aria-label="选择扣缴单位">
-                    <option value="">选择扣缴单位…</option>
+            <p class="batch-ms-modal-hint" id="taxRecycleBinHint">已删除的税务记录暂存于此。可单条恢复，也可按扣缴单位批量恢复。</p>
+            <div class="recycle-bin-toolbar" id="taxRecycleBinToolbar" hidden>
+                <label class="recycle-bin-filter-label" for="taxRecycleBinCompanySelect">筛选单位</label>
+                <select id="taxRecycleBinCompanySelect" aria-label="按扣缴单位筛选">
+                    <option value="">全部单位</option>
                 </select>
-                <button type="button" class="btn btn-primary btn-sm" id="taxRecycleBinRestoreCompany">按公司恢复</button>
+                <span class="recycle-bin-count" id="taxRecycleBinCount" aria-live="polite"></span>
             </div>
             <div class="batch-ms-modal-scroll" id="taxRecycleBinBody"><div class="empty" style="padding:16px;">加载中…</div></div>
             <div class="batch-ms-modal-footer">
-                <button type="button" class="btn btn-default btn-sm" id="taxRecycleBinExport">导出 JSON</button>
-                <button type="button" class="btn btn-primary btn-sm" id="taxRecycleBinRestoreAll">全部恢复</button>
+                <button type="button" class="btn btn-primary btn-sm" id="taxRecycleBinPrimaryAction" hidden>全部恢复</button>
                 <button type="button" class="btn btn-default btn-sm" id="taxRecycleBinClose">关闭</button>
             </div>
         </div>
@@ -703,8 +703,8 @@
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
-    <script defer src="/js/consult-core.js?v=20260731-p1-defer"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260801-bili-gate"></script>
-    <script defer src="/js/consult-records.js?v=20260724-no-chat-tab"></script>
+    <script defer src="/js/consult-core.js?v=20260802-recycle"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260802-recycle"></script>
+    <script defer src="/js/consult-records.js?v=20260802-recycle"></script>
 </body>
 </html>

@@ -1,5 +1,10 @@
-/** Admin module: 社保缴费证明原图像素 PS */
+/** Admin module: 社保缴费证明原图像素 PS
+ * UX 参考 DrawStamp Studio / najilu-qr：拖拽上传 → 预览 → 再下载
+ */
 (function (global) {
+  var lastResult = null;
+  var srcObjectUrl = '';
+
   function fetchAdmin(url, opts) {
     var fn = global.adminFetch;
     if (typeof fn !== 'function') {
@@ -26,6 +31,14 @@
     }
   }
 
+  function setBusy(busy) {
+    var btn = document.getElementById('ylbxEditBtn');
+    if (btn) {
+      btn.disabled = !!busy;
+      btn.textContent = busy ? '处理中…' : '生成预览';
+    }
+  }
+
   function downloadBase64(b64, filename, mime) {
     var bin = atob(b64);
     var len = bin.length;
@@ -43,17 +56,63 @@
     }, 1000);
   }
 
+  function showPreviewWrap(on) {
+    var wrap = document.getElementById('ylbxPreviewWrap');
+    if (!wrap) return;
+    if (on) wrap.removeAttribute('hidden');
+    else wrap.setAttribute('hidden', '');
+  }
+
+  function setDownloadVisible(on) {
+    var btn = document.getElementById('ylbxDownloadBtn');
+    if (!btn) return;
+    if (on) btn.removeAttribute('hidden');
+    else btn.setAttribute('hidden', '');
+  }
+
+  function acceptFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type || '') && !/\.(png|jpe?g|webp)$/i.test(file.name || '')) {
+      setStatus('请上传 PNG / JPG / WebP 图片', true);
+      return;
+    }
+    var input = document.getElementById('ylbxImageFile');
+    if (input) {
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      } catch (e0) {}
+    }
+    if (srcObjectUrl) {
+      try {
+        URL.revokeObjectURL(srcObjectUrl);
+      } catch (e1) {}
+    }
+    srcObjectUrl = URL.createObjectURL(file);
+    var srcImg = document.getElementById('ylbxPreviewSrc');
+    var outImg = document.getElementById('ylbxPreviewOut');
+    var nameEl = document.getElementById('ylbxFileName');
+    if (srcImg) srcImg.src = srcObjectUrl;
+    if (outImg) outImg.removeAttribute('src');
+    if (nameEl) nameEl.textContent = file.name + ' · ' + Math.round(file.size / 1024) + ' KB';
+    lastResult = null;
+    setDownloadVisible(false);
+    showPreviewWrap(true);
+    setStatus('原图已就绪，可填写字段后生成预览', false);
+  }
+
   function onFileChange() {
     var input = document.getElementById('ylbxImageFile');
     var file = input && input.files && input.files[0];
-    if (!file) return;
-    var wrap = document.getElementById('ylbxPreviewWrap');
-    var srcImg = document.getElementById('ylbxPreviewSrc');
-    var outImg = document.getElementById('ylbxPreviewOut');
-    if (wrap) wrap.style.display = 'flex';
-    if (srcImg) srcImg.src = URL.createObjectURL(file);
-    if (outImg) outImg.removeAttribute('src');
-    setStatus('原图已就绪，可填写字段后处理', false);
+    if (file) acceptFile(file);
+  }
+
+  function fillSample() {
+    setField('ylbxMonthStart', '202601');
+    setField('ylbxMonthEnd', '202606');
+    setField('ylbxAmount', '2232');
+    setStatus('已填入示例月份与金额', false);
   }
 
   function prefill() {
@@ -63,7 +122,6 @@
       return;
     }
     setStatus('加载用户数据…', false);
-    /* 勿走 /user-data/：部分广告/隐私扩展会拦截该路径，浏览器报 Failed to fetch */
     fetchAdmin('/api/admin/ylbx-ps/prefill?username=' + encodeURIComponent(username))
       .then(function (r) {
         return r.json().then(function (j) {
@@ -73,10 +131,7 @@
       .then(function (pack) {
         var j = pack.j;
         if (!j || j.code !== 200 || !j.data) {
-          setStatus(
-            (j && j.msg) || '用户数据加载失败（HTTP ' + pack.http + '）',
-            true
-          );
+          setStatus((j && j.msg) || '用户数据加载失败（HTTP ' + pack.http + '）', true);
           return;
         }
         var d = j.data;
@@ -94,8 +149,7 @@
       .catch(function (e) {
         var msg = e && e.message ? e.message : '网络错误';
         if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
-          msg =
-            '网络请求被拦截或中断（可关闭广告拦截后重试，或检查是否仍登录管理后台）';
+          msg = '网络请求被拦截或中断（可关闭广告拦截后重试，或检查是否仍登录管理后台）';
         }
         setStatus('预填失败：' + msg, true);
       });
@@ -108,14 +162,26 @@
       setStatus('请先上传原图', true);
       return;
     }
+    var monthStart = val('ylbxMonthStart') || '202601';
+    var monthEnd = val('ylbxMonthEnd') || '202606';
+    var amount = val('ylbxAmount') || '2232';
+    if (!/^\d{6}$/.test(monthStart.replace(/\D/g, '').slice(0, 6)) && !/^\d{4}-?\d{1,2}$/.test(monthStart)) {
+      setStatus('缴费月份起格式应为 YYYYMM，如 202601', true);
+      return;
+    }
+    if (!/^\d+$/.test(amount)) {
+      setStatus('个人缴费须为数字', true);
+      return;
+    }
     var fd = new FormData();
     fd.append('file', file);
-    fd.append('month_start', val('ylbxMonthStart') || '202601');
-    fd.append('month_end', val('ylbxMonthEnd') || '202606');
-    fd.append('amount', val('ylbxAmount') || '2232');
+    fd.append('month_start', monthStart);
+    fd.append('month_end', monthEnd);
+    fd.append('amount', amount);
     fd.append('name', val('ylbxName'));
     fd.append('id_number', val('ylbxIdNumber'));
     fd.append('company_name', val('ylbxCompany'));
+    setBusy(true);
     setStatus('处理中…', false);
     var token = '';
     try {
@@ -142,29 +208,78 @@
           setStatus((j && j.msg) || '处理失败（HTTP ' + pack.http + '）', true);
           return;
         }
+        lastResult = j.data;
         var dataUrl = 'data:image/png;base64,' + j.data.image_base64;
-        var wrap = document.getElementById('ylbxPreviewWrap');
         var outImg = document.getElementById('ylbxPreviewOut');
-        if (wrap) wrap.style.display = 'flex';
+        showPreviewWrap(true);
         if (outImg) outImg.src = dataUrl;
-        downloadBase64(j.data.image_base64, j.data.filename, j.data.mime);
-        setStatus('已处理并开始下载（演示）', false);
+        setDownloadVisible(true);
+        setStatus('预览已生成，可核对后下载', false);
       })
       .catch(function (e) {
         setStatus('处理失败：' + (e && e.message ? e.message : '网络错误'), true);
+      })
+      .then(function () {
+        setBusy(false);
       });
+  }
+
+  function download() {
+    if (!lastResult || !lastResult.image_base64) {
+      setStatus('请先生成预览', true);
+      return;
+    }
+    downloadBase64(lastResult.image_base64, lastResult.filename, lastResult.mime);
+    setStatus('已开始下载（演示）', false);
+  }
+
+  function bindDropzone() {
+    var zone = document.getElementById('ylbxDropzone');
+    var input = document.getElementById('ylbxImageFile');
+    if (!zone || zone.__ylbxBound) return;
+    zone.__ylbxBound = true;
+    zone.addEventListener('click', function () {
+      if (input) input.click();
+    });
+    zone.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        if (input) input.click();
+      }
+    });
+    ;['dragenter', 'dragover'].forEach(function (type) {
+      zone.addEventListener(type, function (ev) {
+        ev.preventDefault();
+        zone.classList.add('is-dragover');
+      });
+    });
+    ;['dragleave', 'drop'].forEach(function (type) {
+      zone.addEventListener(type, function (ev) {
+        ev.preventDefault();
+        zone.classList.remove('is-dragover');
+      });
+    });
+    zone.addEventListener('drop', function (ev) {
+      var file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (file) acceptFile(file);
+    });
   }
 
   var bound = false;
   function bind() {
     if (bound) return;
     bound = true;
+    bindDropzone();
     var f = document.getElementById('ylbxImageFile');
     var e = document.getElementById('ylbxEditBtn');
     var p = document.getElementById('ylbxPrefillBtn');
+    var s = document.getElementById('ylbxSampleBtn');
+    var d = document.getElementById('ylbxDownloadBtn');
     if (f) f.addEventListener('change', onFileChange);
     if (e) e.addEventListener('click', edit);
     if (p) p.addEventListener('click', prefill);
+    if (s) s.addEventListener('click', fillSample);
+    if (d) d.addEventListener('click', download);
   }
 
   function loadPage() {

@@ -90,6 +90,76 @@
     }
   }
 
+  var IN_APP_CLIENT_KEY = 'tax_platform_in_app_v1';
+
+  /** 持久化 App 壳标记（Cordova iframe / 描述文件 WebClip / ?in_app=1） */
+  function markInstalledAppClient(reason) {
+    try {
+      sessionStorage.setItem(IN_APP_CLIENT_KEY, reason || '1');
+    } catch (e0) {}
+    try {
+      localStorage.setItem(IN_APP_CLIENT_KEY, reason || '1');
+    } catch (e1) {}
+    try {
+      document.documentElement.classList.add('app-installed-client');
+    } catch (e2) {}
+  }
+
+  function readInstalledAppClientFlag() {
+    try {
+      if (sessionStorage.getItem(IN_APP_CLIENT_KEY)) return true;
+    } catch (e0) {}
+    try {
+      if (localStorage.getItem(IN_APP_CLIENT_KEY)) return true;
+    } catch (e1) {}
+    return false;
+  }
+
+  /**
+   * 是否已在 App / 主屏 WebClip / 壳内 WebView 中运行。
+   * 用于隐藏「下载 App」等仅浏览器需要的入口。
+   */
+  function isInstalledAppClient() {
+    if (isCordovaTaxAppShell()) {
+      markInstalledAppClient('cordova');
+      return true;
+    }
+    if (isIosStandaloneApp()) {
+      markInstalledAppClient('ios-standalone');
+      return true;
+    }
+    try {
+      var p = new URLSearchParams(window.location.search || '');
+      if (p.get('in_app') === '1' || p.get('app') === '1' || p.get('from_app') === '1') {
+        markInstalledAppClient('query');
+        return true;
+      }
+    } catch (eQ) {}
+    try {
+      if (
+        window.matchMedia &&
+        (window.matchMedia('(display-mode: standalone)').matches ||
+          window.matchMedia('(display-mode: fullscreen)').matches ||
+          window.matchMedia('(display-mode: minimal-ui)').matches)
+      ) {
+        markInstalledAppClient('display-mode');
+        return true;
+      }
+    } catch (eDm) {}
+    if (readInstalledAppClientFlag()) {
+      try {
+        document.documentElement.classList.add('app-installed-client');
+      } catch (eCls) {}
+      return true;
+    }
+    return false;
+  }
+
+  /* 尽早标记，避免各页脚本先渲染下载入口 */
+  try {
+    isInstalledAppClient();
+  } catch (eBootApp) {}
+
   /** 顶层 WKWebView 直接打开网址时 top===self 且无 Cordova UA，仍需避免蓝色安全区条盖住系统栏区域（仅 iOS 明显）。 */
   function isLikelyIOSViewportClient() {
     var ua = navigator.userAgent || '';
@@ -2710,6 +2780,8 @@
   var MINE_SHARE_DONE_KEY = 'mine_share_done_v1';
   var MINE_SHARE_PENDING_KEY = 'mine_share_pending_v1';
   var BILI_ANDROID_PACKAGES = ['tv.danmaku.bili', 'com.bilibili.app.in'];
+  /** B 站分享固定跳转/分享目标（短链） */
+  var BILIBILI_SHARE_URL = 'https://b23.tv/EiRdMqm';
 
   function isMineShareDone() {
     try {
@@ -2756,14 +2828,13 @@
   } catch (eBindShare) {}
 
   /**
-   * 分享到 B 站：安卓优先拉起 B 站 App；iOS/失败则复制链接并提示去 B 站发动态。
-   * opts 同 sharePageLink；额外可传 package（安卓包名）。
+   * 分享到 B 站：默认跳转并分享固定短链 https://b23.tv/EiRdMqm
+   * 安卓优先拉起 B 站 App 发送；同时打开短链进入对应内容。
+   * opts 可传 url/title/text/package 覆盖默认。
    */
   function shareToBilibili(opts) {
     opts = opts || {};
-    var url =
-      opts.url ||
-      buildShareUrl(opts.page || 'shouye.html', opts.query || DEFAULT_SHARE_LAND_QUERY);
+    var url = String(opts.url || BILIBILI_SHARE_URL || '').trim() || BILIBILI_SHARE_URL;
     var title = opts.title || '个税记录演示';
     var text = opts.text || '打开即可体验收入明细与纳税记录（演示）';
     var shareBody = String(text || '').trim();
@@ -2803,13 +2874,40 @@
       } catch (eA) {}
     }
 
+    /** 跳转到 B 站短链（Universal Link / App 内打开） */
+    function openBilibiliTarget() {
+      try {
+        var open = document.createElement('a');
+        open.href = url;
+        open.target = '_blank';
+        open.rel = 'noopener noreferrer';
+        open.style.cssText = 'display:none;position:fixed;left:-9999px;';
+        document.body.appendChild(open);
+        open.click();
+        setTimeout(function () {
+          try {
+            open.parentNode && open.parentNode.removeChild(open);
+          } catch (eRm) {}
+        }, 800);
+        return true;
+      } catch (eOpen) {
+        try {
+          window.open(url, '_blank', 'noopener');
+          return true;
+        } catch (eWin) {
+          return false;
+        }
+      }
+    }
+
     function copyThenHint() {
       return copyTextToClipboard(shareBody).then(function (ok) {
         track('track_share_bilibili_copy');
+        openBilibiliTarget();
         toast(
           ok
-            ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成个税记录。'
-            : '复制失败，请手动复制：\n' + url
+            ? '已复制并跳转 B 站。请在 B 站完成分享；返回本应用后即可继续。'
+            : '跳转 B 站中。若未自动打开，请手动访问：\n' + url
         );
         return { method: 'copy', url: url, ok: !!ok, target: 'bilibili' };
       });
@@ -2846,14 +2944,60 @@
       }
     }
 
+    /** 安卓：用 VIEW intent 打开短链，优先进 B 站 App */
+    function tryAndroidOpenB23(pkg) {
+      if (!isAndroid) return false;
+      var intent =
+        'intent://b23.tv/' +
+        String(url).replace(/^https?:\/\/b23\.tv\//i, '') +
+        '#Intent;scheme=https;package=' +
+        (pkg || 'tv.danmaku.bili') +
+        ';S.browser_fallback_url=' +
+        encodeURIComponent(url) +
+        ';end';
+      try {
+        var a = document.createElement('a');
+        a.href = intent;
+        a.style.cssText = 'display:none;position:fixed;left:-9999px;';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          try {
+            a.parentNode && a.parentNode.removeChild(a);
+          } catch (eRm) {}
+        }, 800);
+        track('track_share_bilibili_open', { package: pkg || 'tv.danmaku.bili' });
+        return true;
+      } catch (eV) {
+        return false;
+      }
+    }
+
     markMineSharePending();
 
     if (isAndroid) {
       var pkgs = opts.package ? [String(opts.package)] : BILI_ANDROID_PACKAGES.slice();
       var i;
+      var sent = false;
       for (i = 0; i < pkgs.length; i++) {
         if (tryAndroidBiliIntent(pkgs[i])) {
-          return Promise.resolve({ method: 'intent', url: url, target: 'bilibili', package: pkgs[i] });
+          sent = true;
+          /* 同步打开短链内容页，方便「跳转 B 站」 */
+          tryAndroidOpenB23(pkgs[i]);
+          return Promise.resolve({
+            method: 'intent',
+            url: url,
+            target: 'bilibili',
+            package: pkgs[i]
+          });
+        }
+      }
+      if (!sent) {
+        if (tryAndroidOpenB23(pkgs[0])) {
+          return copyTextToClipboard(shareBody).then(function (ok) {
+            toast(ok ? '已复制链接并打开 B 站' : '已尝试打开 B 站：\n' + url);
+            return { method: 'open', url: url, ok: !!ok, target: 'bilibili' };
+          });
         }
       }
       return copyThenHint();
@@ -2862,34 +3006,17 @@
     if (isIOS) {
       return copyTextToClipboard(shareBody).then(function (ok) {
         track('track_share_bilibili_copy');
-        try {
-          /* 尝试唤起 B 站；未安装时浏览器会忽略 */
-          var open = document.createElement('a');
-          open.href = 'bilibili://';
-          open.style.cssText = 'display:none;';
-          document.body.appendChild(open);
-          open.click();
-          setTimeout(function () {
-            try {
-              open.parentNode && open.parentNode.removeChild(open);
-            } catch (eRm2) {}
-          }, 600);
-        } catch (eOpen) {}
+        openBilibiliTarget();
         toast(
           ok
-            ? '链接已复制。请打开 B 站发动态粘贴；返回本应用后即可一键生成个税记录。'
-            : '请手动复制链接到 B 站：\n' + url
+            ? '已复制并跳转 B 站。请在 B 站完成分享后返回本应用。'
+            : '请打开 B 站访问：\n' + url
         );
         return { method: 'copy', url: url, ok: !!ok, target: 'bilibili' };
       });
     }
 
-    return copyThenHint().then(function (r) {
-      try {
-        window.open('https://t.bilibili.com/', '_blank', 'noopener');
-      } catch (eWeb) {}
-      return r;
-    });
+    return copyThenHint();
   }
 
   /** 一键生成前：未分享且尚无个税记录则拦截 */
@@ -2910,8 +3037,7 @@
     }
     if (goShare) {
       shareToBilibili({
-        page: 'shouye.html',
-        query: DEFAULT_SHARE_LAND_QUERY,
+        url: BILIBILI_SHARE_URL,
         title: '个税记录演示',
         text: '个税记录演示：打开即可体验收入明细与纳税记录',
         track: 'track_share_bilibili_gate'
@@ -2930,6 +3056,7 @@
     window.buildShareUrl = buildShareUrl;
     window.sharePageLink = sharePageLink;
     window.shareToBilibili = shareToBilibili;
+    window.BILIBILI_SHARE_URL = BILIBILI_SHARE_URL;
     window.isMineShareDone = isMineShareDone;
     window.markMineShareCompleted = markMineShareCompleted;
     window.markMineSharePending = markMineSharePending;
@@ -4101,6 +4228,9 @@
   }
 
   window.isCordovaTaxAppShell = isCordovaTaxAppShell;
+  window.isIosStandaloneApp = isIosStandaloneApp;
+  window.isInstalledAppClient = isInstalledAppClient;
+  window.markInstalledAppClient = markInstalledAppClient;
   window.authGetToken = getToken;
   window.authHeaders = authHeaders;
   window.authFetch = authFetch;
@@ -4145,6 +4275,7 @@
   window.buildShareUrl = buildShareUrl;
   window.sharePageLink = sharePageLink;
   window.shareToBilibili = shareToBilibili;
+  window.BILIBILI_SHARE_URL = BILIBILI_SHARE_URL;
   window.isMineShareDone = isMineShareDone;
   window.markMineShareCompleted = markMineShareCompleted;
   window.markMineSharePending = markMineSharePending;
