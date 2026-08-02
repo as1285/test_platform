@@ -475,7 +475,7 @@
         <div class="hero">
             <div class="brand-line">个人所得税</div>
             <h1>开通权益</h1>
-            <p>支付宝付款自动开通，也可填写已有激活码。</p>
+            <p>选套餐付款即可开通；已有激活码可向下填写。</p>
         </div>
 
         <div class="card" id="cardAlipay" hidden>
@@ -1429,8 +1429,10 @@
         var cardAlipay = document.getElementById('cardAlipay');
         var cardShare = document.getElementById('cardShareActivity');
         var cardDownload = document.getElementById('cardDownloadApp');
-
+        var cardLizhi = document.getElementById('cardLizhiCert');
+        var cardShebao = document.getElementById('cardShebaoPhoto');
         var page = document.querySelector('.page');
+        var hero = document.querySelector('.hero');
 
         /* A/B 均保留激活码入口 */
         if (activateBox) activateBox.hidden = false;
@@ -1445,14 +1447,13 @@
         if (isCodeOnly && cardAlipay) cardAlipay.hidden = true;
         if (isCodeOnly && cardShare) cardShare.hidden = true;
 
-
         if (heroP) {
             if (isCodeOnly) {
                 heroP.textContent = '下载 App 后填写激活码即可开通。';
             } else if (isNew) {
-                heroP.textContent = '选择套餐付款，或填写已有激活码开通。';
+                heroP.textContent = '选套餐付款即可开通；已有激活码可向下填写。';
             } else {
-                heroP.textContent = '支付宝付款自动开通，也可填写已有激活码。';
+                heroP.textContent = '选套餐付款即可开通；已有激活码可向下填写。';
             }
         }
         if (steps) {
@@ -1461,41 +1462,47 @@
                     '<li>下载并安装 App</li>' +
                     '<li>填写激活码开通</li>' +
                     '<li>权益同步到当前账号</li>';
-            } else if (isNew) {
-                steps.innerHTML =
-                    '<li>选择套餐付款，或填写激活码</li>' +
-                    '<li>完成付款 / 确认激活</li>' +
-                    '<li>权益同步到当前账号</li>';
             } else {
                 steps.innerHTML =
-                    '<li>打开支付宝完成付款</li>' +
+                    '<li>选择套餐并打开支付宝付款</li>' +
                     '<li>付款成功后自动开通</li>' +
-                    '<li>也可填写激活码开通</li>';
+                    '<li>已有激活码可向下填写</li>';
             }
         }
 
-        /* B 方案：支付宝置顶，激活码紧随其后 */
-        if (isNew && page && cardAlipay && heroP && heroP.parentNode === page) {
-            var hero = document.querySelector('.hero');
-            if (hero && cardShare && hero.nextSibling !== cardShare) {
-                page.insertBefore(cardShare, hero.nextSibling);
-            }
-            if (cardShare && cardShare.nextSibling !== cardAlipay) {
-                page.insertBefore(cardAlipay, cardShare.nextSibling);
-            }
-            if (activateBox && activateBox.parentNode === page && cardAlipay) {
-                page.insertBefore(activateBox, cardAlipay.nextSibling);
-            }
+        /* 首屏转化：支付宝紧贴 Hero；其余模块统一下移 */
+        function orderAfterHero(nodes) {
+            if (!page || !hero) return;
+            var anchor = hero;
+            nodes.forEach(function (el) {
+                if (!el || !el.parentNode) return;
+                if (anchor.nextSibling !== el) {
+                    page.insertBefore(el, anchor.nextSibling);
+                }
+                anchor = el;
+            });
         }
-        if (isCodeOnly && page) {
-            var heroEl = document.querySelector('.hero');
-            if (heroEl && cardDownload && cardDownload.parentNode === page) {
-                page.insertBefore(cardDownload, heroEl.nextSibling);
-            }
-            if (activateBox && activateBox.parentNode === page && cardDownload) {
-                page.insertBefore(activateBox, cardDownload.nextSibling);
-            }
 
+        if (isCodeOnly) {
+            orderAfterHero([
+                cardDownload,
+                activateBox,
+                cardLizhi,
+                cardShebao,
+                otherLabel,
+                otherCard
+            ]);
+        } else {
+            orderAfterHero([
+                cardAlipay,
+                activateBox,
+                cardShare,
+                cardDownload,
+                cardLizhi,
+                cardShebao,
+                otherLabel,
+                otherCard
+            ]);
         }
     }
 
@@ -1718,10 +1725,18 @@
         if (purchasePageViewTracked) return;
         purchasePageViewTracked = true;
         var cardAlipay = document.getElementById('cardAlipay');
+        var from = '';
+        try {
+            from = String(new URLSearchParams(window.location.search).get('from') || '').trim();
+        } catch (eFrom) {
+            from = '';
+        }
         trackPurchase('track_purchase_page_view', {
             alipay: !!(cardAlipay && !cardAlipay.hidden),
             kufaka: !!(document.getElementById('rowKufaka') && purchaseUiMode === 'legacy'),
-            code_only: purchaseUiMode === 'code_only'
+            code_only: purchaseUiMode === 'code_only',
+            layout: purchaseUiMode === 'code_only' ? 'code_first' : 'pay_first',
+            from: from || undefined
         });
     }
 
