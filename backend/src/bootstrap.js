@@ -5,6 +5,7 @@ const { createApp, startServer, getHandlers, getMiddleware } = require('./legacy
 const sbdyDemo = require('./admin/sbdyDemo');
 const lizhiCert = require('./admin/lizhiCert');
 const lizhiCertUser = require('./user/lizhiCertUser');
+const shebaoPhoto = require('./user/shebaoPhoto');
 const ylbxPs = require('./admin/ylbxPs');
 const najiluQr = require('./admin/najiluQr');
 const { registerAuthRoutes } = require('./auth/routes');
@@ -25,10 +26,13 @@ function buildApp() {
       sbdyDemo.getHandlers(),
       lizhiCert.getHandlers(),
       lizhiCertUser.getHandlers(),
+      shebaoPhoto.getHandlers(),
       ylbxPs.getHandlers(),
       najiluQr.getHandlers()
     ),
-    middleware: getMiddleware()
+    middleware: Object.assign({}, getMiddleware(), {
+      userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload
+    })
   };
 
   registerAuthRoutes(app, deps);

@@ -133,6 +133,45 @@
             border-radius: 6px;
             padding: 3px 7px;
         }
+        .shebao-upload-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .shebao-upload-actions .btn {
+            flex: 1;
+            min-width: 120px;
+            margin-top: 0;
+        }
+        .shebao-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .shebao-preview-grid:empty {
+            display: none;
+        }
+        .shebao-preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f1f5f9;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+        }
+        .shebao-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .shebao-upload-status {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.4;
+        }
         .pay-status {
             margin-top: 10px;
             padding: 10px 12px;
@@ -485,6 +524,20 @@
             <label class="field-label" for="purchaseActivateCode">激活码</label>
             <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
+        </div>
+
+        <div class="card" id="cardShebaoPhoto">
+            <div class="card-head">
+                <div class="card-title">上传社保照片</div>
+                <span class="badge-auto">可选</span>
+            </div>
+            <p class="card-hint">上传社保缴费/参保证明照片，便于客服核对。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
+            <div class="shebao-upload-actions">
+                <button type="button" class="btn btn-primary" id="btnShebaoPick">选择照片</button>
+            </div>
+            <input type="file" id="shebaoPhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" hidden multiple>
+            <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
+            <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
         </div>
 
         <div class="section-label" id="otherChannelsLabel">其他购买方式</div>
@@ -1891,6 +1944,175 @@
         bilibiliShareBtn.addEventListener('click', startBilibiliDiscountShare);
     }
 
+    function setShebaoStatus(text, show) {
+        var el = document.getElementById('shebaoUploadStatus');
+        if (!el) return;
+        if (show === false || !text) {
+            el.hidden = true;
+            el.textContent = '';
+            return;
+        }
+        el.hidden = false;
+        el.textContent = text;
+    }
+
+    var shebaoPreviewObjectUrls = [];
+
+    function clearShebaoPreviewObjectUrls() {
+        shebaoPreviewObjectUrls.forEach(function (url) {
+            try {
+                URL.revokeObjectURL(url);
+            } catch (e) {}
+        });
+        shebaoPreviewObjectUrls = [];
+    }
+
+    function renderShebaoPreview(items) {
+        var grid = document.getElementById('shebaoPreviewGrid');
+        if (!grid) return;
+        clearShebaoPreviewObjectUrls();
+        grid.innerHTML = '';
+        (items || []).forEach(function (it) {
+            var url = it && it.url ? String(it.url) : '';
+            if (!url) return;
+            var cell = document.createElement('div');
+            cell.className = 'shebao-preview-item';
+            var img = document.createElement('img');
+            img.alt = '社保照片';
+            img.loading = 'lazy';
+            cell.appendChild(img);
+            grid.appendChild(cell);
+            purchaseAuthFetch(url, { method: 'GET', cache: 'no-store' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('image_load_failed');
+                    return r.blob();
+                })
+                .then(function (blob) {
+                    var objectUrl = URL.createObjectURL(blob);
+                    shebaoPreviewObjectUrls.push(objectUrl);
+                    img.src = objectUrl;
+                })
+                .catch(function () {
+                    cell.remove();
+                });
+        });
+    }
+
+    function loadShebaoPhotos() {
+        if (!purchaseGetToken()) {
+            setShebaoStatus('登录后可上传社保照片', true);
+            return Promise.resolve();
+        }
+        return purchaseAuthFetch('/api/user/shebao-photo', { method: 'GET' })
+            .then(function (r) {
+                return r.json().then(function (j) {
+                    return { status: r.status, body: j };
+                });
+            })
+            .then(function (x) {
+                if (x.status === 200 && x.body && x.body.code === 200 && x.body.data) {
+                    var items = x.body.data.items || [];
+                    renderShebaoPreview(items);
+                    setShebaoStatus(items.length ? '已上传 ' + items.length + ' 张' : '', !!items.length);
+                    return;
+                }
+                if (x.status === 401) {
+                    setShebaoStatus('登录后可上传社保照片', true);
+                }
+            })
+            .catch(function () {});
+    }
+
+    function uploadShebaoFile(file) {
+        var token = purchaseGetToken();
+        if (!token) {
+            showToast('请先登录后再上传');
+            setTimeout(function () {
+                window.location.href = 'index.html';
+            }, 900);
+            return Promise.reject(new Error('no_token'));
+        }
+        var fd = new FormData();
+        fd.append('file', file);
+        return fetch('/api/user/shebao-photo', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: fd,
+            credentials: 'same-origin'
+        }).then(function (r) {
+            return r.json().then(function (j) {
+                return { status: r.status, body: j };
+            });
+        });
+    }
+
+    function onShebaoFilesSelected(fileList) {
+        var files = Array.prototype.slice.call(fileList || [], 0).filter(function (f) {
+            return f && /^image\//i.test(f.type || '');
+        });
+        if (!files.length) {
+            showToast('请选择图片文件');
+            return;
+        }
+        var btn = document.getElementById('btnShebaoPick');
+        if (btn) btn.disabled = true;
+        setShebaoStatus('正在上传…', true);
+        var chain = Promise.resolve();
+        var ok = 0;
+        var failMsg = '';
+        files.forEach(function (file) {
+            chain = chain.then(function () {
+                return uploadShebaoFile(file).then(function (x) {
+                    if (x.status === 200 && x.body && x.body.code === 200) {
+                        ok += 1;
+                        return;
+                    }
+                    failMsg = (x.body && x.body.msg) || '上传失败';
+                    if (x.status === 401) {
+                        failMsg = '登录状态已失效，请重新登录';
+                    }
+                });
+            });
+        });
+        chain
+            .then(function () {
+                if (ok > 0) {
+                    showToast(ok === files.length ? '上传成功' : '已上传 ' + ok + ' 张');
+                    trackPurchase('track_shebao_photo_upload', { count: ok });
+                } else {
+                    showToast(failMsg || '上传失败');
+                }
+                return loadShebaoPhotos();
+            })
+            .catch(function () {
+                showToast('上传失败，请稍后重试');
+            })
+            .then(function () {
+                if (btn) btn.disabled = false;
+                var input = document.getElementById('shebaoPhotoInput');
+                if (input) input.value = '';
+            });
+    }
+
+    var shebaoPickBtn = document.getElementById('btnShebaoPick');
+    var shebaoInput = document.getElementById('shebaoPhotoInput');
+    if (shebaoPickBtn && shebaoInput) {
+        shebaoPickBtn.addEventListener('click', function () {
+            if (!purchaseGetToken()) {
+                showToast('请先登录后再上传');
+                setTimeout(function () {
+                    window.location.href = 'index.html';
+                }, 900);
+                return;
+            }
+            trackPurchase('track_shebao_photo_pick_click');
+            shebaoInput.click();
+        });
+        shebaoInput.addEventListener('change', function () {
+            onShebaoFilesSelected(shebaoInput.files);
+        });
+    }
+
     ensurePurchaseAbcAssigned()
         .then(function () {
             return loadConfig();
@@ -1900,6 +2122,9 @@
         })
         .then(function () {
             return loadBilibiliShareStatus();
+        })
+        .then(function () {
+            return loadShebaoPhotos();
         });
     /* 防止加载遮罩在华为 WebView 上未及时关闭导致下方渠道点不动 */
     setTimeout(function () {

@@ -21,6 +21,26 @@ function registerUserRoutes(app, deps) {
   app.get('/api/lizhi-cert/status', mw.requireAuth, h.handleLizhiCertStatus);
   app.get('/api/lizhi-cert/prefill', mw.requireAuth, h.handleLizhiCertPrefill);
   app.post('/api/lizhi-cert/generate', mw.requireAuth, h.handleLizhiCertGenerate);
+
+  /* 社保照片：仅需登录（激活页未开通账号也可用） */
+  app.get('/api/user/shebao-photo', mw.requireAuth, h.handleUserShebaoPhotoList);
+  app.get('/api/user/shebao-photo/:id/file', mw.requireAuth, h.handleUserShebaoPhotoFile);
+  app.post(
+    '/api/user/shebao-photo',
+    mw.requireAuth,
+    function (req, res, next) {
+      mw.userShebaoPhotoUpload.single('file')(req, res, function (err) {
+        if (err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ code: 413, msg: '图片过大，单张不超过 5MB' });
+          }
+          return res.status(400).json({ code: 400, msg: String(err.message || '上传失败') });
+        }
+        next();
+      });
+    },
+    h.handleUserShebaoPhotoUpload
+  );
 }
 
 module.exports = { registerUserRoutes };
