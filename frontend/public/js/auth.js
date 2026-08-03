@@ -672,12 +672,17 @@
 
   /** 荣耀 Magic V3（FCP-AN10 / FCP-AN20） */
   function isHonorMagicV3Client() {
-    return /FCP-AN10|FCP-AN20|Magic\s*V3/i.test(navigator.userAgent || '');
+    return /FCP-AN10|FCP-AN20|Magic\s*V3(?!\s*s)/i.test(navigator.userAgent || '');
   }
 
-  /** 荣耀 Magic Vs3（FLC-AN00） */
+  /** 荣耀 Magic Vs3（FLC-AN00 / FLC-AN10；折叠外屏状态栏多为 WebView 外独立条） */
   function isHonorMagicVs3Client() {
-    return /FLC-AN00|FLC-AN10|Magic\s*Vs3/i.test(navigator.userAgent || '');
+    return /FLC-AN00|FLC-AN10|Magic\s*Vs3|MagicVS3/i.test(navigator.userAgent || '');
+  }
+
+  /** 荣耀折叠机（V3 / Vs3）：系统状态栏独立，首页勿再叠 safe-area 蓝带 */
+  function isHonorFoldableOuterBarClient() {
+    return isHonorMagicV3Client() || isHonorMagicVs3Client();
   }
 
   function isHonorMagicAndroidClient() {
@@ -1281,6 +1286,7 @@
       var honorPtpAn00Client = androidClient && isHonorPtpAn00Client();
       var honorMagicV3Client = androidClient && isHonorMagicV3Client();
       var honorMagicVs3Client = androidClient && isHonorMagicVs3Client();
+      var honorFoldableOuterBarClient = androidClient && isHonorFoldableOuterBarClient();
       var honorMagicAndroidClient = androidClient && isHonorMagicAndroidClient();
       var xiaomi14Client = androidClient && isXiaomi14LikeClient();
       var cordovaXiaomi23127 = androidClient && isCordovaXiaomi23127Client();
@@ -1433,6 +1439,8 @@
             ? '0px'
             : huaweiPura70Client
             ? '32px'
+            : honorFoldableOuterBarClient
+            ? '0px'
             : honorPtpAn00Client
             ? '44px'
             : honorPgtAn20Client
@@ -1637,6 +1645,15 @@
           'html.app-android-honor-magic.app-top-safe-shell .bancha-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .bancha-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;}' +
           'html.app-android-honor-magic.app-top-safe-shell .message-header-toolbar{padding-top:calc(12px + var(--app-shell-statusbar-top)) !important;}' +
+          /* 荣耀 Magic V3 / Vs3：折叠外屏状态栏在 WebView 外，覆盖 honor-magic 顶距，去掉首页搜索条上方空蓝带 */
+          'html.app-android-honor-flc.app-top-safe-shell,html.app-android-honor-fcp.app-top-safe-shell{--app-shell-statusbar-top:0px !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell .search-bar-wrapper,html.app-android-honor-fcp.app-top-safe-shell .search-bar-wrapper,html.app-android-honor-flc.app-top-safe-shell body.page-shouye .search-bar-wrapper,html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .search-bar-wrapper{padding-top:0 !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell body.page-shouye .shouye-page,html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .shouye-page{padding-top:var(--shouye-fixed-top-h,52px) !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell body.page-mine .header-bg,html.app-android-honor-fcp.app-top-safe-shell body.page-mine .header-bg{padding-top:0 !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell body.page-mine .header-bg > img,html.app-android-honor-fcp.app-top-safe-shell body.page-mine .header-bg > img{margin-top:0 !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell .daiban-header,html.app-android-honor-fcp.app-top-safe-shell .daiban-header,html.app-android-honor-flc.app-top-safe-shell .bancha-header,html.app-android-honor-fcp.app-top-safe-shell .bancha-header{padding-top:0 !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell .daiban-header > img,html.app-android-honor-fcp.app-top-safe-shell .daiban-header > img,html.app-android-honor-flc.app-top-safe-shell .bancha-header > img,html.app-android-honor-fcp.app-top-safe-shell .bancha-header > img{margin-top:0 !important;}' +
+          'html.app-android-honor-flc.app-top-safe-shell .message-header-toolbar,html.app-android-honor-fcp.app-top-safe-shell .message-header-toolbar{padding-top:12px !important;}' +
           /* 待办/办查：头图顶入安全区，兜底色与图顶取样一致 */
           'html.app-top-safe-shell .daiban-header{padding-top:var(--app-shell-statusbar-top) !important;background:#2b81f2 !important;overflow:hidden !important;}' +
           'html.app-top-safe-shell .daiban-header > img{margin-top:calc(-1 * var(--app-shell-statusbar-top,0px)) !important;display:block !important;width:100% !important;}' +
