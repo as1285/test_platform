@@ -93,30 +93,30 @@ https://www.installguide1.top/
 
 | 项 | 数量 / 说明 |
 |----|-------------|
-| **源码规模** | **257** 个源文件、约 **9.7 万** 行代码（`cloc`，不含 `node_modules`、Cordova 编译产物、`package-lock.json`、JSON/SVG） |
-| **前端页面** | **61** 个 HTML 页面（`frontend/*.html`） |
+| **源码规模** | **256** 个源文件、约 **10.1 万** 行代码（`cloc`，不含 `node_modules`、`.venv`、Cordova 编译产物、`package-lock.json`、JSON/SVG、`.mobileconfig`） |
+| **前端页面** | **62** 个 HTML 页面（`frontend/*.html`） |
 | **后端** | 薄入口 `backend/server.js` → `src/bootstrap.js`；域路由见 `src/{auth,user,tax,payments,admin,...}/` |
 | **数据库** | `backend/schema.sql` + `backend/migrations/`（启动时由 migrate 运行） |
 | **GitHub Actions** | 3 个工作流：单元测试、Android APK、iOS 打包 |
 | **运维脚本** | `deploy.sh`、`backup-mysql.sh`、`import-mysql-dump.sh` 等 |
 
-### 代码规模（按语言，2026-08-01）
+### 代码规模（按语言，2026-08-03）
 
 | 语言 | 文件 | 代码行 |
 |------|------|--------|
-| JavaScript | 110 | 58,276 |
-| HTML | 62 | 29,839 |
-| CSS | 10 | 4,120 |
-| Shell | 18 | 1,399 |
-| Markdown | 20 | 1,365 |
-| Python | 3 | 712 |
-| SQL | 18 | 491 |
-| 其它（YAML/Vue/XML/Dockerfile/TS/Text） | 16 | 711 |
-| **合计** | **257** | **96,913** |
+| JavaScript | 115 | 61,096 |
+| HTML | 62 | 30,852 |
+| CSS | 10 | 4,577 |
+| Shell | 17 | 1,516 |
+| Python | 4 | 1,279 |
+| Markdown | 18 | 1,106 |
+| SQL | 23 | 532 |
+| 其它（YAML/Dockerfile/Text） | 7 | 260 |
+| **合计** | **256** | **101,218** |
 
-按目录（含空白/注释外的 code）：`frontend/` ≈ 6.4 万 · `backend/` ≈ 2.9 万 · `docs/` / `scripts/` / 其它约占余量。
+按目录（`cloc` code）：`frontend/` ≈ 6.9 万 · `backend/` ≈ 3.0 万 · `scripts/` / `docs/` / 其它约占余量。
 
-核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（样式/逻辑已拆至 `css/consult.css`、`js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`。
+核心路径：`backend/src/legacy/monolith.js`、`frontend/public/js/admin_panel.js`、`frontend/consult.html`（样式/逻辑已拆至 `css/consult.css`、`js/consult-*.js`）、`frontend/public/js/auth.js`、`frontend/purchase.html`、`frontend/lizhi_cert.html`、`backend/scripts/lizhi_render_pdf.py`。
 
 ### 技术栈
 
@@ -164,15 +164,18 @@ https://www.installguide1.top/
 - [阶段 1 后端切块](docs/architecture-phase1/README.md)（已完成）
 - [阶段 2 管理端解耦](docs/architecture-phase2/README.md)（已完成；可选 DNS：`admin.geshui.vip`）
 
-### 近期产品要点（2026-07）
+### 近期产品要点（2026-07 ~ 2026-08）
 
 - **安装引导页**：首屏精简；`?download=1` 聚焦下载
 - **咨询 · 税务记录**：工具栏降噪、空状态 / 折叠、成功后滚到列表；样式与脚本拆分为 `consult.css` + `consult-core/batch-tax/records.js`
+- **咨询 · 回收站**：按公司筛选与分组；支持全部恢复 / 按公司恢复（已去掉导出 JSON）
+- **离职证明**：C 端 `lizhi_cert.html` 生成 PDF（圆形公章、演示样例水印）；付费去水印；表单含「担任岗位」
 - **咨询页入口精简**：去掉「在线客服」Tab；登录成功后不再弹操作教程引导
 - **批量激活码多渠道**：闲鱼 / 酷发卡 / 自定义；备注「渠道名+批量」
 - **游客 / 落地漏斗**：落地 A/B、游客样例数据（见 `docs/user-conversion-plan.md`）
 - **支付宝当面付**：购买页扫码；付款成功自动开通；自动发卡归属 **admin（上线）**；酷发卡渠道激活码同样归属 admin
 - **C 端跳转加速**：`/js/` 强缓存（`?v=` 换版本）、HTML 短缓存 + SWR、底栏预取 / Speculation Rules、`fast-nav.js`
+- **机型适配**：荣耀 Magic V3 / Vs3 折叠外屏去掉首页多余安全区蓝带；「我的」页女版头图修复；多款小米 / 华为 / iPhone 顶栏单独适配
 - **Cordova 支付兼容**：禁止用 `location.href` 打开支付宝页（防回 App 白屏）；华为等机型用 Intent + 包名唤起；QQ / 酷发卡等外链经壳打开，失败则复制链接提示
 
 ### 数据库备份
