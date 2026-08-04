@@ -21010,14 +21010,49 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
       var paidSummary = {
         paid_orders: 0,
         paid_users: 0,
-        gmv: 0
+        gmv: 0,
+        activation_orders: 0,
+        activation_gmv: 0,
+        lizhi_orders: 0,
+        lizhi_users: 0,
+        lizhi_gmv: 0,
+        rename_orders: 0,
+        rename_gmv: 0
       };
+      /* NULL sku/grant 的历史订单归开通；CASE WHEN NULL 视为否，勿用 NOT (a OR b) */
+      var lizhiSkuSql =
+        "(sku_id = '" +
+        LIZHI_CERT_SKU_ID +
+        "' OR grant_kind = 'lizhi_cert')";
+      var renameSkuSql =
+        "(sku_id = '" +
+        RENAME_FEE_SKU_ID +
+        "' OR grant_kind = 'rename_credit')";
+      var activationOrderCase =
+        'CASE WHEN ' +
+        lizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        renameSkuSql +
+        ' THEN 0 ELSE 1 END';
+      var activationAmountCase =
+        'CASE WHEN ' +
+        lizhiSkuSql +
+        ' THEN 0 WHEN ' +
+        renameSkuSql +
+        ' THEN 0 ELSE amount END';
       try {
         const [paidDaily] = await conn.execute(
           `SELECT ${cnPaidDay} AS d,
                   COUNT(*) AS paid_orders,
                   COUNT(DISTINCT username) AS paid_users,
-                  ROUND(SUM(amount), 2) AS gmv
+                  ROUND(COALESCE(SUM(amount), 0), 2) AS gmv,
+                  SUM(${activationOrderCase}) AS activation_orders,
+                  ROUND(COALESCE(SUM(${activationAmountCase}), 0), 2) AS activation_gmv,
+                  SUM(CASE WHEN ${lizhiSkuSql} THEN 1 ELSE 0 END) AS lizhi_orders,
+                  COUNT(DISTINCT CASE WHEN ${lizhiSkuSql} THEN username ELSE NULL END) AS lizhi_users,
+                  ROUND(COALESCE(SUM(CASE WHEN ${lizhiSkuSql} THEN amount ELSE 0 END), 0), 2) AS lizhi_gmv,
+                  SUM(CASE WHEN ${renameSkuSql} THEN 1 ELSE 0 END) AS rename_orders,
+                  ROUND(COALESCE(SUM(CASE WHEN ${renameSkuSql} THEN amount ELSE 0 END), 0), 2) AS rename_gmv
            FROM payment_orders
            WHERE status = 'paid' AND ${paidPf.sql}
            GROUP BY ${cnPaidDay}
@@ -21030,19 +21065,37 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           paidDailyMap[dk] = {
             paid_orders: Number(r.paid_orders) || 0,
             paid_users: Number(r.paid_users) || 0,
-            gmv: Number(r.gmv) || 0
+            gmv: Number(r.gmv) || 0,
+            activation_orders: Number(r.activation_orders) || 0,
+            activation_gmv: Number(r.activation_gmv) || 0,
+            lizhi_orders: Number(r.lizhi_orders) || 0,
+            lizhi_users: Number(r.lizhi_users) || 0,
+            lizhi_gmv: Number(r.lizhi_gmv) || 0,
+            rename_orders: Number(r.rename_orders) || 0,
+            rename_gmv: Number(r.rename_gmv) || 0
           };
           paidSummary.paid_orders += Number(r.paid_orders) || 0;
           paidSummary.gmv += Number(r.gmv) || 0;
+          paidSummary.activation_orders += Number(r.activation_orders) || 0;
+          paidSummary.activation_gmv += Number(r.activation_gmv) || 0;
+          paidSummary.lizhi_orders += Number(r.lizhi_orders) || 0;
+          paidSummary.lizhi_gmv += Number(r.lizhi_gmv) || 0;
+          paidSummary.rename_orders += Number(r.rename_orders) || 0;
+          paidSummary.rename_gmv += Number(r.rename_gmv) || 0;
         });
         const [paidUsersRow] = await conn.execute(
-          `SELECT COUNT(DISTINCT username) AS paid_users
+          `SELECT COUNT(DISTINCT username) AS paid_users,
+                  COUNT(DISTINCT CASE WHEN ${lizhiSkuSql} THEN username ELSE NULL END) AS lizhi_users
            FROM payment_orders
            WHERE status = 'paid' AND ${paidPf.sql}`,
           paidPf.params
         );
         paidSummary.paid_users = Number((paidUsersRow[0] || {}).paid_users) || 0;
+        paidSummary.lizhi_users = Number((paidUsersRow[0] || {}).lizhi_users) || 0;
         paidSummary.gmv = Math.round(paidSummary.gmv * 100) / 100;
+        paidSummary.activation_gmv = Math.round(paidSummary.activation_gmv * 100) / 100;
+        paidSummary.lizhi_gmv = Math.round(paidSummary.lizhi_gmv * 100) / 100;
+        paidSummary.rename_gmv = Math.round(paidSummary.rename_gmv * 100) / 100;
       } catch (ePay) {
         console.error('[admin purchase-events] payment_orders', ePay && ePay.message);
       }
@@ -21082,7 +21135,18 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
           });
           var f = o.funnel;
           var dayView = countSet(f.view);
-          var pay = paidDailyMap[d] || { paid_orders: 0, paid_users: 0, gmv: 0 };
+          var pay = paidDailyMap[d] || {
+            paid_orders: 0,
+            paid_users: 0,
+            gmv: 0,
+            activation_orders: 0,
+            activation_gmv: 0,
+            lizhi_orders: 0,
+            lizhi_users: 0,
+            lizhi_gmv: 0,
+            rename_orders: 0,
+            rename_gmv: 0
+          };
           return {
             date: d,
             events: o.events,
@@ -21100,7 +21164,14 @@ async function handleAdminAnalyticsPurchaseEvents(req, res) {
             view_to_pay_pct: pctRate(countSet(f.alipay_success), dayView),
             paid_orders: pay.paid_orders,
             paid_users: pay.paid_users,
-            gmv: pay.gmv
+            gmv: pay.gmv,
+            activation_orders: pay.activation_orders,
+            activation_gmv: pay.activation_gmv,
+            lizhi_orders: pay.lizhi_orders,
+            lizhi_users: pay.lizhi_users,
+            lizhi_gmv: pay.lizhi_gmv,
+            rename_orders: pay.rename_orders,
+            rename_gmv: pay.rename_gmv
           };
         });
 

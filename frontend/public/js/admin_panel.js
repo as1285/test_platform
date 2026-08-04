@@ -2371,14 +2371,16 @@
             var summaryEl = document.getElementById('analyticsPurchaseSummary');
             var cardsEl = document.getElementById('analyticsPurchaseFunnelCards');
             var funnelTbody = document.getElementById('analyticsPurchaseFunnelTbody');
+            var productTbody = document.getElementById('analyticsPurchaseProductTbody');
             var summaryTbody = document.getElementById('analyticsPurchaseSummaryTbody');
             var dailyTbody = document.getElementById('analyticsPurchaseDailyTbody');
             var dailyHint = document.getElementById('analyticsPurchaseDailyHint');
             if (summaryEl) summaryEl.textContent = '加载中…';
             if (cardsEl) cardsEl.innerHTML = '';
             if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">加载中…</td></tr>';
+            if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">加载中…</td></tr>';
             if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">加载中…</td></tr>';
-            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="11">加载中…</td></tr>';
+            if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">加载中…</td></tr>';
             adminFetch('api/admin/analytics/purchase-events?days=' + encodeURIComponent(days))
                 .then(function (r) {
                     return r.json();
@@ -2390,11 +2392,14 @@
                         if (funnelTbody) {
                             funnelTbody.innerHTML = '<tr><td colspan="7">' + esc(msg) + '</td></tr>';
                         }
+                        if (productTbody) {
+                            productTbody.innerHTML = '<tr><td colspan="4">' + esc(msg) + '</td></tr>';
+                        }
                         if (summaryTbody) {
                             summaryTbody.innerHTML = '<tr><td colspan="3">' + esc(msg) + '</td></tr>';
                         }
                         if (dailyTbody) {
-                            dailyTbody.innerHTML = '<tr><td colspan="11">' + esc(msg) + '</td></tr>';
+                            dailyTbody.innerHTML = '<tr><td colspan="14">' + esc(msg) + '</td></tr>';
                         }
                         return;
                     }
@@ -2416,9 +2421,15 @@
                             esc(String(funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0)) +
                             '%）；已付订单 <strong>' +
                             esc(String(pay.paid_orders || 0)) +
-                            '</strong>，GMV ¥' +
+                            '</strong>，总 GMV ¥' +
                             esc(String(pay.gmv != null ? pay.gmv : 0)) +
-                            '。';
+                            '（开通 ¥' +
+                            esc(String(pay.activation_gmv != null ? pay.activation_gmv : 0)) +
+                            ' + 离职证明 ¥' +
+                            esc(String(pay.lizhi_gmv != null ? pay.lizhi_gmv : 0)) +
+                            ' + 改名 ¥' +
+                            esc(String(pay.rename_gmv != null ? pay.rename_gmv : 0)) +
+                            '）。';
                     }
                     if (cardsEl) {
                         var cards = [
@@ -2432,7 +2443,9 @@
                             ['浏览→支付', (funnel.view_to_pay_pct != null ? funnel.view_to_pay_pct : 0) + '%'],
                             ['激活成功 UV', funnel.activate_ok_uv || 0],
                             ['已付订单', pay.paid_orders || 0],
-                            ['GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)]
+                            ['总 GMV', '¥' + (pay.gmv != null ? pay.gmv : 0)],
+                            ['离职证明订单', pay.lizhi_orders || 0],
+                            ['离职证明 GMV', '¥' + (pay.lizhi_gmv != null ? pay.lizhi_gmv : 0)]
                         ];
                         var ch = '';
                         cards.forEach(function (c) {
@@ -2444,6 +2457,48 @@
                                 '</div></div>';
                         });
                         cardsEl.innerHTML = ch;
+                    }
+                    if (productTbody) {
+                        var productRows = [
+                            [
+                                '开通套餐',
+                                pay.activation_orders || 0,
+                                '—',
+                                pay.activation_gmv != null ? pay.activation_gmv : 0
+                            ],
+                            [
+                                '离职证明',
+                                pay.lizhi_orders || 0,
+                                pay.lizhi_users != null ? pay.lizhi_users : 0,
+                                pay.lizhi_gmv != null ? pay.lizhi_gmv : 0
+                            ],
+                            [
+                                '改名费',
+                                pay.rename_orders || 0,
+                                '—',
+                                pay.rename_gmv != null ? pay.rename_gmv : 0
+                            ],
+                            [
+                                '合计',
+                                pay.paid_orders || 0,
+                                pay.paid_users != null ? pay.paid_users : 0,
+                                pay.gmv != null ? pay.gmv : 0
+                            ]
+                        ];
+                        var ph = '';
+                        productRows.forEach(function (row) {
+                            ph +=
+                                '<tr><td>' +
+                                esc(String(row[0])) +
+                                '</td><td><strong>' +
+                                esc(String(row[1])) +
+                                '</strong></td><td>' +
+                                esc(String(row[2])) +
+                                '</td><td>¥' +
+                                esc(String(row[3])) +
+                                '</td></tr>';
+                        });
+                        productTbody.innerHTML = ph;
                     }
                     if (funnelTbody) {
                         funnelTbody.innerHTML =
@@ -2504,7 +2559,7 @@
                     }
                     if (dailyTbody) {
                         if (!byDay.length) {
-                            dailyTbody.innerHTML = '<tr><td colspan="11">暂无每日数据</td></tr>';
+                            dailyTbody.innerHTML = '<tr><td colspan="14">暂无每日数据</td></tr>';
                         } else {
                             var dh = '';
                             byDay.forEach(function (row) {
@@ -2524,6 +2579,15 @@
                                 dh += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
                                 dh += '<td>¥' + esc(String(row.gmv != null ? row.gmv : 0)) + '</td>';
                                 dh +=
+                                    '<td>¥' +
+                                    esc(String(row.activation_gmv != null ? row.activation_gmv : 0)) +
+                                    '</td>';
+                                dh += '<td>' + esc(String(row.lizhi_orders || 0)) + '</td>';
+                                dh +=
+                                    '<td>¥' +
+                                    esc(String(row.lizhi_gmv != null ? row.lizhi_gmv : 0)) +
+                                    '</td>';
+                                dh +=
                                     '<td><button type="button" class="btn-sm btn-detail btn-purchase-users-toggle" data-date="' +
                                     esc(row.date) +
                                     '">查看用户</button></td>';
@@ -2531,7 +2595,7 @@
                                 dh +=
                                     '<tr id="purchase_users_row_' +
                                     dk +
-                                    '" class="purchase-users-detail-row" style="display:none;"><td colspan="11"><div id="purchase_users_box_' +
+                                    '" class="purchase-users-detail-row" style="display:none;"><td colspan="14"><div id="purchase_users_box_' +
                                     dk +
                                     '" class="activate-users-box">点击「查看用户」加载列表…</div></td></tr>';
                             });
@@ -2542,8 +2606,9 @@
                 .catch(function () {
                     if (summaryEl) summaryEl.textContent = '网络错误';
                     if (funnelTbody) funnelTbody.innerHTML = '<tr><td colspan="7">网络错误</td></tr>';
+                    if (productTbody) productTbody.innerHTML = '<tr><td colspan="4">网络错误</td></tr>';
                     if (summaryTbody) summaryTbody.innerHTML = '<tr><td colspan="3">网络错误</td></tr>';
-                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="11">网络错误</td></tr>';
+                    if (dailyTbody) dailyTbody.innerHTML = '<tr><td colspan="14">网络错误</td></tr>';
                 });
         }
 
