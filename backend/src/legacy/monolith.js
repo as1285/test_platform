@@ -6140,13 +6140,18 @@ async function handleAlipayCreateOrder(req, res) {
       }
     }
     if (!order) {
+      /* mysql2 execute 不支持 LIMIT ?，需内联安全整数 */
+      var shareLimit = Math.max(
+        1,
+        Math.min(50, parseInt(BILIBILI_SHARE_DISCOUNT_THRESHOLD, 10) || 2)
+      );
       const [shareRows] = await conn.execute(
         `SELECT id
          FROM user_bilibili_share_events
          WHERE username = ? AND status = 'completed'
            AND consumed_at IS NULL AND reserved_order_no IS NULL
          ORDER BY completed_at ASC, id ASC
-         LIMIT 5 FOR UPDATE`,
+         LIMIT ${shareLimit} FOR UPDATE`,
         [req.authUserId]
       );
       var shareDiscountCount =
