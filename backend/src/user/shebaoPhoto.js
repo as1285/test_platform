@@ -54,6 +54,54 @@ function toPublicItem(row) {
   };
 }
 
+function toAdminItem(row, username) {
+  var id = row.id != null ? Number(row.id) : 0;
+  var u = clean(username);
+  return {
+    id: id,
+    url:
+      id && u
+        ? '/api/admin/user-shebao-photos/' + id + '/file?username=' + encodeURIComponent(u)
+        : '',
+    original_name: row.original_name != null ? String(row.original_name) : '',
+    file_size: row.file_size != null ? Number(row.file_size) : 0,
+    created_at: row.created_at ? new Date(row.created_at).toISOString() : ''
+  };
+}
+
+async function listShebaoPhotosForUsername(username) {
+  var uname = clean(username);
+  if (!uname) return [];
+  var pool = getPool();
+  const [rows] = await pool.execute(
+    `SELECT id, image_path, original_name, file_size, created_at
+     FROM user_shebao_photos
+     WHERE username = ?
+     ORDER BY id DESC
+     LIMIT 50`,
+    [uname]
+  );
+  return (rows || []).map(function (row) {
+    return toAdminItem(row, uname);
+  });
+}
+
+async function assertAdminCanViewShebaoUser(req, username) {
+  var uname = clean(username);
+  if (!uname || !req.admin) return false;
+  var mono = require('../legacy/monolith');
+  if (typeof mono.adminCanAccessTargetUser !== 'function') {
+    return !!(req.admin && req.admin.is_super);
+  }
+  var pool = getPool();
+  const conn = await pool.getConnection();
+  try {
+    return await mono.adminCanAccessTargetUser(conn, req.admin, uname);
+  } finally {
+    conn.release();
+  }
+}
+
 function safeDeleteUploadedFile(file) {
   if (!file || !file.path) return;
   fs.unlink(file.path, function () {});
@@ -175,16 +223,90 @@ async function handleUserShebaoPhotoUpload(req, res) {
   }
 }
 
+async function handleAdminShebaoPhotoList(req, res) {
+  try {
+    var username = req.query && req.query.username != null ? clean(req.query.username) : '';
+    if (!username) {
+      return res.status(400).json({ code: 400, msg: 'username required' });
+    }
+    var allowed = await assertAdminCanViewShebaoUser(req, username);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
+    }
+    var items = await listShebaoPhotosForUsername(username);
+    return res.json({
+      code: 200,
+      data: {
+        username: username,
+        items: items,
+        max_count: SHEBAO_MAX_PER_USER,
+        max_bytes: SHEBAO_MAX_BYTES
+      }
+    });
+  } catch (e) {
+    console.error('[shebao-photo] admin list', e);
+    return res.status(500).json({ code: 500, msg: '读取失败' });
+  }
+}
+
+async function handleAdminShebaoPhotoFile(req, res) {
+  try {
+    var username = req.query && req.query.username != null ? clean(req.query.username) : '';
+    if (!username) {
+      return res.status(400).json({ code: 400, msg: 'username required' });
+    }
+    var allowed = await assertAdminCanViewShebaoUser(req, username);
+    if (!allowed) {
+      return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
+    }
+    var id = Number(req.params && req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ code: 400, msg: '照片参数错误' });
+    }
+    var pool = getPool();
+    const [rows] = await pool.execute(
+      `SELECT image_path
+       FROM user_shebao_photos
+       WHERE id = ? AND username = ?
+       LIMIT 1`,
+      [id, username]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ code: 404, msg: '照片不存在' });
+    }
+    var filename = path.basename(clean(rows[0].image_path));
+    if (!filename || !/^shebao_[a-f0-9]{32}\.(?:jpe?g|png|gif|webp)$/i.test(filename)) {
+      return res.status(404).json({ code: 404, msg: '照片不存在' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.sendFile(filename, { root: SHEBAO_PRIVATE_DIR }, function (err) {
+      if (err && !res.headersSent) {
+        res.status(err.statusCode === 404 ? 404 : 500).json({
+          code: err.statusCode === 404 ? 404 : 500,
+          msg: err.statusCode === 404 ? '照片不存在' : '读取照片失败'
+        });
+      }
+    });
+  } catch (e) {
+    console.error('[shebao-photo] admin file', e);
+    return res.status(500).json({ code: 500, msg: '读取照片失败' });
+  }
+}
+
 function getHandlers() {
   return {
     handleUserShebaoPhotoList: handleUserShebaoPhotoList,
     handleUserShebaoPhotoFile: handleUserShebaoPhotoFile,
-    handleUserShebaoPhotoUpload: handleUserShebaoPhotoUpload
+    handleUserShebaoPhotoUpload: handleUserShebaoPhotoUpload,
+    handleAdminShebaoPhotoList: handleAdminShebaoPhotoList,
+    handleAdminShebaoPhotoFile: handleAdminShebaoPhotoFile
   };
 }
 
 module.exports = {
   getHandlers: getHandlers,
   userShebaoPhotoUpload: userShebaoPhotoUpload,
+  listShebaoPhotosForUsername: listShebaoPhotosForUsername,
   SHEBAO_MAX_BYTES: SHEBAO_MAX_BYTES
 };

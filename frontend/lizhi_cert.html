@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260802-lizhi"></script>
+    <script src="/js/auth.js?v=20260804-pay-fail-qq"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>离职证明生成</title>
     <style>
@@ -177,7 +177,7 @@
 </head>
 <body>
     <div class="header">
-        <a class="back-btn" href="purchase.html" id="lizhiBack">‹ 返回</a>
+        <a class="back-btn" href="consult.html?tab=products" id="lizhiBack">‹ 返回</a>
         <div class="header-title">离职证明</div>
     </div>
     <div class="page">
@@ -399,11 +399,19 @@
         var ref = document.referrer || '';
         var back = document.getElementById('lizhiBack');
         if (back) {
-            if (/mine\.html/i.test(ref)) {
-                back.setAttribute('href', 'mine.html');
-            } else if (/purchase\.html/i.test(ref)) {
-                // 从开通页进来时回到开通页，并带上 from=mine，避免开通页再跳回本页
+            var fromQ = '';
+            try {
+                fromQ = String(new URLSearchParams(location.search || '').get('from') || '').toLowerCase();
+            } catch (eFrom) {}
+            if (fromQ === 'consult' || /consult\.html/i.test(ref)) {
+                back.setAttribute('href', 'consult.html?tab=products');
+            } else if (fromQ === 'purchase' || /purchase\.html/i.test(ref)) {
                 back.setAttribute('href', 'purchase.html?from=mine');
+            } else if (/mine\.html/i.test(ref)) {
+                back.setAttribute('href', 'mine.html');
+            } else {
+                // 已激活用户常从「我要咨询」进入；默认回咨询页税务记录
+                back.setAttribute('href', 'consult.html?tab=products');
             }
         }
     } catch (e0) {}
@@ -539,8 +547,12 @@
             .then(function (r) { return r.json(); })
             .then(function (j) {
                 if (!j || j.code !== 200 || !j.data) {
-                    setStatus(payStatus, (j && j.msg) || '创建订单失败', true);
+                    var failMsg = (j && j.msg) || '创建订单失败';
+                    setStatus(payStatus, failMsg, true);
                     qrWrap.innerHTML = '';
+                    if (typeof showPaymentCreateFailDialog === 'function') {
+                        showPaymentCreateFailDialog({ message: failMsg, source: 'lizhi_cert' });
+                    }
                     return;
                 }
                 var qr = j.data.qr_code || j.data.payment_url || '';
@@ -562,6 +574,12 @@
             })
             .catch(function () {
                 setStatus(payStatus, '网络错误', true);
+                if (typeof showPaymentCreateFailDialog === 'function') {
+                    showPaymentCreateFailDialog({
+                        message: '创建支付订单失败，网络异常',
+                        source: 'lizhi_cert'
+                    });
+                }
             });
     }
 

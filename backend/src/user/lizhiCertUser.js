@@ -141,6 +141,20 @@ async function handleLizhiCertGenerate(req, res) {
       return res.status(400).json({ code: 400, msg: '请填写担任岗位' });
     }
     var buf = await renderLizhiPdfBuffer(payload);
+    try {
+      var pool = getPool();
+      await pool.execute(
+        `INSERT INTO lizhi_cert_generations (username, demo, company_name)
+         VALUES (?, ?, ?)`,
+        [
+          String(req.authUserId),
+          unlocked ? 0 : 1,
+          payload.company_name ? payload.company_name.slice(0, 128) : null
+        ]
+      );
+    } catch (logErr) {
+      console.error('[lizhi-cert] log generation', logErr);
+    }
     var fname =
       '离职证明-' + payload.name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf';
     return res.json({

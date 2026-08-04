@@ -1467,35 +1467,10 @@
     };
   }
 
-  /** 收入纳税明细列表：有数据时提供管理入口（截图模式隐藏） */
+  /** 收入纳税明细列表底部「去修改」文案已下线，不再展示 */
   function mountShuimingResultManageEntry() {
-    if (currentPage() !== 'shuiming_result.html') return;
-    if (!isLoggedIn() || !hasTaxRecords()) return;
-    if (document.getElementById('cg-shuiming-result-edit-entry')) return;
-    if (document.getElementById('cg-post-tax-banner')) return;
-    ensureGateStyles();
-    var el = document.createElement('div');
-    el.id = 'cg-shuiming-result-edit-entry';
-    el.className = 'cg-detail-edit-entry cg-demo-only cg-demo-edit-entry';
-    el.style.margin = '8px 16px 4px';
-    el.setAttribute('role', 'note');
-    el.innerHTML =
-      '需要调整演示数据？<a href="javascript:void(0)" id="cgShuimingResultGoEdit">去修改</a>';
-    var list = document.getElementById('recordList') || document.querySelector('.list');
-    if (list && list.parentNode) {
-      list.parentNode.insertBefore(el, list);
-    } else {
-      document.body.appendChild(el);
-    }
-    document.getElementById('cgShuimingResultGoEdit').onclick = function (e) {
-      e.preventDefault();
-      if (!isTaxEditModeOn()) {
-        notifyProfileEditLocked();
-        return;
-      }
-      track('track_tax_edit_entry', { page: 'shuiming_result', source: 'list_footer' });
-      goManageTaxRecords();
-    };
+    var old = document.getElementById('cg-shuiming-result-edit-entry');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
   function afterEmployerSaved(meta) {

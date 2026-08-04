@@ -5,7 +5,7 @@
     <script src="/js/admin_auth.js?v=20260731-concise"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>运营台</title>
-    <link rel="stylesheet" href="/css/admin_panel.css?v=20260802-paste-tpl">
+    <link rel="stylesheet" href="/css/admin_panel.css?v=20260804-lizhi-stats">
     <link rel="stylesheet" href="/css/admin-tax-batch.css?v=20260731-concise">
 </head>
 <body>
@@ -171,6 +171,16 @@
                                 <label for="xianyuPurchaseUrl">闲鱼购买文案（用户端购买页）</label>
                                 <input class="input-block" type="text" id="xianyuPurchaseUrl" maxlength="2048" placeholder="填写闲鱼分享文案（可含链接与说明文字），留空则购买页不显示该按钮">
                                 <p class="hint mt-6">用户在「我的」点「激活」进入购买页后，点击「闲鱼购买」会复制此处全文到剪贴板。</p>
+                            </div>
+                            <div class="form-field mt-12">
+                                <label for="qqAddUrl">添加客服 QQ 链接</label>
+                                <input class="input-block" type="text" id="qqAddUrl" maxlength="2048" placeholder="https://wpa.qq.com/msgrd?v=3&uin=你的QQ号&site=qq&menu=yes">
+                                <p class="hint mt-6">创单失败时弹框「添加客服QQ」跳转此链接。须为完整 https URL（推荐 wpa.qq.com）；留空则无跳转按钮。</p>
+                            </div>
+                            <div class="form-field mt-12">
+                                <label for="qqGroupUrl">QQ 群链接（可选）</label>
+                                <input class="input-block" type="text" id="qqGroupUrl" maxlength="2048" placeholder="https://qm.qq.com/cgi-bin/qm/qr?k=…">
+                                <p class="hint mt-6">可选；用于安装页等「加入 QQ 群」入口。留空则不展示。</p>
                             </div>
                             <!-- 已下线：代理推广渠道 / 下属代理专属渠道 -->
                             <div class="form-field mt-12" id="xianyuHideSalesChannelsField" hidden>
@@ -497,9 +507,13 @@
                                 <label for="issueGrantHours">时效小时（可选）</label>
                                 <input class="filter-select input-w-100 mt-6" type="number" id="issueGrantHours" min="0" max="720" step="1" value="0" inputmode="numeric" placeholder="0=不按小时">
                             </div>
+                            <div>
+                                <label for="issueGrantMinutes">时效分钟（可选）</label>
+                                <input class="filter-select input-w-100 mt-6" type="number" id="issueGrantMinutes" min="0" max="525600" step="1" value="0" inputmode="numeric" placeholder="最低 1 分钟">
+                            </div>
                             <button type="button" class="btn-primary mb-1" id="btnIssue">生成 1 个</button>
                         </div>
-                        <p class="hint" style="margin-top:0;">天数与小时都填 0（或不填）时生成<strong>永久</strong>激活码；任一项大于 0 则为时效码（可叠加，如 0 天 + 2 小时）。</p>
+                        <p class="hint" style="margin-top:0;">天/时/分都填 0（或不填）时生成<strong>永久</strong>激活码；任一项大于 0 则为时效码（可叠加，最低可只填 <strong>1 分钟</strong>）。</p>
                         <div class="form-row flex-wrap gap-10 admin-soft-box is-hidden" id="batchIssueWrap">
                             <div>
                                 <label for="batchIssueChannel">批量渠道</label>
@@ -880,70 +894,6 @@
                     </section>
                 </div>
 
-                <div id="page-guest-users" class="page-panel" role="tabpanel" hidden aria-hidden="true">
-                    <section>
-                        <h2>游客用户（已下线）</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint">落地页 C 方案产生的沙盒游客（<code>__guest_*</code>）。统计<strong>游客→注册</strong>转化率；同一设备注册后，游客模式下填写的个税/资料等会自动合并至新账号（见 <code>merged_from_guest</code>）。统计区间按<strong>北京时间自然日</strong>：「近 1 天」= 当天 0 点起。仅超级管理员可见。</p></details>
-                        <div class="user-filter-bar">
-                            <div class="user-filter-fields">
-                            <div>
-                                <label>统计区间</label>
-                                <select id="guestUsersDays" class="filter-select">
-                                    <option value="1" selected>近 1 天（当天 0 点起）</option>
-                                    <option value="7">近 7 天</option>
-                                    <option value="30">近 30 天</option>
-                                    <option value="90">近 90 天</option>
-                                    <option value="0">全部</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>状态</label>
-                                <select id="guestUsersStatus" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="active">未注册（仍游客）</option>
-                                    <option value="converted">已注册合并</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>账号</label>
-                                <input type="text" id="guestUsersUsername" class="filter-text-wide" placeholder="游客账号或合并后账号">
-                            </div>
-                            <div class="flex-actions">
-                                <button type="button" class="btn-primary" id="btnSearchGuestUsers">查询</button>
-                                <button type="button" class="btn-page" id="btnResetGuestUsers">重置</button>
-                            </div>
-                            </div>
-                        </div>
-                        <div id="guestUsersStatsMount"><p class="stat">加载中…</p></div>
-                        <p class="stat" id="guestUsersListStat"></p>
-                        <div class="scroll-x">
-                            <table class="users-registry-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-w-140">游客账号</th>
-                                        <th class="col-w-88">姓名</th>
-                                        <th class="col-w-120">渠道</th>
-                                        <th class="col-w-88">状态</th>
-                                        <th class="col-w-120">合并至账号</th>
-                                        <th class="col-w-72">个税</th>
-                                        <th class="col-w-72">页面</th>
-                                        <th class="col-w-72">设备</th>
-                                        <th class="col-w-150">创建时间</th>
-                                        <th class="col-w-150">合并时间</th>
-                                        <th class="col-ops">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="guestUsersTbody"></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="guestUsersPagination">
-                            <button type="button" class="btn-page" id="guestUsersPrev">上一页</button>
-                            <span id="guestUsersPageInfo">第 1 页</span>
-                            <button type="button" class="btn-page" id="guestUsersNext">下一页</button>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-user-data" class="page-panel" role="tabpanel">
                     <div class="page-lede"><p class="page-lede-text">查看用户档案、个税记录与使用情况</p></div>
                     <section>
@@ -1316,127 +1266,14 @@
                     </section>
                 </div>
 
-                <div id="page-activated-user-analysis" class="page-panel" role="tabpanel" hidden aria-hidden="true">
-                    <section>
-                        <h2>激活用户分析（已下线）</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint">聚焦<strong>已激活</strong>账号：个税记录填写、日活与使用频率；并统计<strong>改名次数</strong>与<strong>修改个税记录次数</strong>（改名自本次上线后开始累计；个税修改含新增/修改/删除审计）。日活来自 <code>user_daily_activity</code>（已登录接口调用）；使用频率为近 <span id="auaActivityDaysHint">30</span> 天内页面行为次数与活跃天。非超级管理员仅能看到自己激活码关联的账号。</p></details>
-                        <div class="form-row flex-align-center mb-8">
-                            <div>
-                                <label for="auaOverviewDays">日活趋势天数</label>
-                                <select class="filter-select" id="auaOverviewDays">
-                                    <option value="7">最近 7 天</option>
-                                    <option value="14" selected>最近 14 天</option>
-                                    <option value="30">最近 30 天</option>
-                                    <option value="90">最近 90 天</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="auaActivityDays">使用频率统计</label>
-                                <select class="filter-select" id="auaActivityDays">
-                                    <option value="7">最近 7 天</option>
-                                    <option value="14">最近 14 天</option>
-                                    <option value="30" selected>最近 30 天</option>
-                                    <option value="90">最近 90 天</option>
-                                </select>
-                            </div>
-                            <button type="button" class="btn-page" id="btnRefreshAuaOverview">刷新概览</button>
-                        </div>
-                        <div id="auaSummary" class="user-data-stats" aria-live="polite">进入本页后加载…</div>
-                        <div class="user-data-analytics-grid mt-12" id="auaAnalyticsTables" style="display:none;">
-                            <div class="scroll-x">
-                                <p class="stat">个税记录条数分布</p>
-                                <table>
-                                    <thead><tr><th>区间</th><th>用户数</th></tr></thead>
-                                    <tbody id="auaTaxBucketsTbody"></tbody>
-                                </table>
-                            </div>
-                            <div class="scroll-x">
-                                <p class="stat">使用频率（活跃天）</p>
-                                <table>
-                                    <thead><tr><th>分层</th><th>用户数</th></tr></thead>
-                                    <tbody id="auaActivityFreqTbody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="device-stats-charts-wrap mt-16" id="auaDauChartWrap" style="display:none;">
-                            <div class="device-stats-chart-card chart-card-wide">
-                                <h4>激活用户日活趋势</h4>
-                                <div class="chart-canvas-wrap"><canvas id="auaDauChart" aria-label="激活用户日活折线图"></canvas></div>
-                            </div>
-                        </div>
-                        <div class="scroll-x mt-12">
-                            <p class="stat mb-8">热门页面 TOP（激活用户 · 近统计周期）</p>
-                            <table class="user-detail-table">
-                                <thead><tr><th>中文标题</th><th>访问次数</th></tr></thead>
-                                <tbody id="auaTopPagesTbody"><tr><td colspan="2">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="user-filter-bar mt-20">
-                            <div class="user-filter-fields">
-                            <div>
-                                <label>账号</label>
-                                <input type="text" id="auaFilterUsername" class="filter-text-wide" placeholder="搜索账号">
-                            </div>
-                            <div>
-                                <label>个税记录</label>
-                                <select id="auaFilterTax" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="with_tax">已填写</option>
-                                    <option value="without_tax">未填写</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>近周期活跃</label>
-                                <select id="auaFilterActivity" class="filter-select">
-                                    <option value="">全部</option>
-                                    <option value="active_7d">有活跃</option>
-                                    <option value="inactive_7d">无活跃</option>
-                                </select>
-                            </div>
-                            <div class="flex-row-end">
-                                <button type="button" class="btn-primary" id="btnSearchAuaUsers">查询</button>
-                                <button type="button" class="btn-page" id="btnResetAuaUsers">重置</button>
-                            </div>
-                            </div>
-                        </div>
-                        <p class="stat mt-12" id="auaUserListStat">用户列表进入本页后加载…</p>
-                        <div class="scroll-x">
-                            <table class="users-data-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-w-110">账号</th>
-                                        <th class="col-w-72">姓名</th>
-                                        <th class="col-w-72">个税条数</th>
-                                        <th class="col-w-56">改名</th>
-                                        <th class="col-w-72">改个税</th>
-                                        <th class="col-w-56">活跃天</th>
-                                        <th class="col-w-56">行为数</th>
-                                        <th class="col-w-72">次/活跃天</th>
-                                        <th class="col-w-88">APP停留</th>
-                                        <th class="col-w-100">最近活跃</th>
-                                        <th class="input-w-180">行为路径摘要</th>
-                                        <th class="col-ops">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="auaUsersTbody"><tr><td colspan="12">进入本页后加载…</td></tr></tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="auaUsersPagination">
-                            <button type="button" class="btn-page" id="auaUsersPrev">上一页</button>
-                            <span id="auaUsersPageInfo">第 1 页</span>
-                            <button type="button" class="btn-page" id="auaUsersNext">下一页</button>
-                        </div>
-                    </section>
-                </div>
-
                 <div id="page-share-stats" class="page-panel" role="tabpanel">
                     <section>
                         <h2>分享统计</h2>
-                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计分享发出 → <code>from=share</code> 打开 → 注册 / 登录 / 下载。不含代理 ch，主站流量；归因 7 天。漏斗展示发出→打开率、打开→注册/登录率；注册以用户数（<code>registered_from_share</code>）为准。</p></details>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">漏斗统计 <code>from=share</code> 主站链（含税模拟分享）发出 → 打开 → 注册 / 登录 / 下载。当前「我的」页多为 B 站外链，另有 B 站分享单独计数，不进打开/注册漏斗。归因 7 天；注册以用户数（<code>registered_from_share</code>）为准。默认最近 7 天。</p></details>
                         <div class="form-row flex-align-center mt-8">
                             <div>
                                 <label for="shareStatsDays">统计区间</label>
-                                <select id="shareStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="custom"></select>
+                                <select id="shareStatsDays" class="js-analytics-period-select filter-select" data-day-options="1,7,30,90" data-default="7"></select>
                             </div>
                             <button type="button" class="btn-page btn-page-primary" id="btnRefreshShareStats">刷新统计</button>
                         </div>
@@ -1604,6 +1441,23 @@
 
                 <div id="page-lizhi-cert" class="page-panel" role="tabpanel">
                     <section>
+                        <h2>离职证明使用统计</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">统计 C 端离职证明：¥50 付费解锁、已解锁用户数、生成次数（含水印演示 / 去水印）。生成次数自统计上线后开始累计；历史区间仅能看付费与解锁。后台本页「演示生成」不计入用户使用。</p></details>
+                        <div class="form-row flex-align-center mt-8">
+                            <div>
+                                <label for="lizhiStatsDays">统计区间</label>
+                                <select id="lizhiStatsDays" class="filter-select">
+                                    <option value="1">今天</option>
+                                    <option value="7" selected>最近 7 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="90">最近 90 天</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-page btn-page-primary" id="btnRefreshLizhiStats">刷新统计</button>
+                        </div>
+                        <div id="lizhiStatsMount" class="analytics-conv-wrap share-stats-mount" aria-live="polite">加载中…</div>
+                    </section>
+                    <section style="margin-top:28px;">
                         <h2>离职证明生成</h2>
                         <p class="hint hint-warn mt-0">生成的是<strong>演示样例</strong>（非正式离职证明），带「演示样例」标注，不能用于入职/签证等正式用途。</p>
                         <div class="form-row flex-wrap gap-10" style="max-width:880px;">
@@ -1731,6 +1585,81 @@
                     </section>
                 </div>
 
+                <div id="page-ccb-flow" class="page-panel" role="tabpanel">
+                    <div class="page-lede"><p class="page-lede-text">基于建行工资流水原图，修改姓名、公司名/户名、交易金额与余额</p></div>
+                    <section>
+                        <h2>工资流水修改</h2>
+                        <details class="page-hint-details"><summary>说明</summary><p class="hint mt-0">默认使用内置「中国建设银行个人活期账户工资交易明细」原图。可改客户姓名、对方账号与户名（公司名）、12 行交易金额与账户余额（按起始余额累加），并同步总收入。演示用途，非正式银行单据。</p></details>
+                        <div class="form-row flex-wrap gap-10" style="max-width:880px;">
+                            <div>
+                                <label for="ccbFlowPrefillUser">按用户名预填</label>
+                                <input type="text" id="ccbFlowPrefillUser" maxlength="64" placeholder="注册用户名">
+                            </div>
+                            <div style="align-self:flex-end;">
+                                <button type="button" class="btn-page" id="ccbFlowPrefillBtn">预填</button>
+                            </div>
+                        </div>
+                        <div class="form-row form-stack" style="max-width:960px;">
+                            <div class="admin-tool-step">① 原图（默认内置模板）</div>
+                            <div class="admin-dropzone" id="ccbFlowDropzone" tabindex="0" role="button" aria-label="拖拽或点击上传原图">
+                                <input type="file" id="ccbFlowImageFile" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+                                <div class="admin-dropzone-title">拖拽替换原图，或点击选择（可选）</div>
+                                <p class="hint mt-0 mb-0">可不上传，直接用内置建行流水模板</p>
+                                <p class="hint mt-6 mb-0" id="ccbFlowFileName">尚未加载</p>
+                            </div>
+                            <div class="form-actions" style="margin-top:0;">
+                                <button type="button" class="btn-page" id="ccbFlowTemplateBtn">加载内置模板</button>
+                            </div>
+                            <div class="admin-tool-step">② 修改字段</div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="ccbFlowName">姓名（客户名称）</label>
+                                    <input type="text" id="ccbFlowName" maxlength="32" placeholder="如：陈祥涛">
+                                </div>
+                                <div style="flex:1;min-width:220px;">
+                                    <label for="ccbFlowCompany">公司名</label>
+                                    <input type="text" id="ccbFlowCompany" maxlength="64" placeholder="如：北京瑞祥茂和科技有限公司">
+                                </div>
+                                <div style="flex:1;min-width:220px;">
+                                    <label for="ccbFlowAccountName">户名（对方账号后）</label>
+                                    <input type="text" id="ccbFlowAccountName" maxlength="64" placeholder="空则同公司名">
+                                </div>
+                            </div>
+                            <div class="form-row flex-wrap gap-10">
+                                <div>
+                                    <label for="ccbFlowCounterparty">对方账号</label>
+                                    <input type="text" id="ccbFlowCounterparty" maxlength="32" value="140500616296" inputmode="numeric">
+                                </div>
+                                <div>
+                                    <label for="ccbFlowAmount">交易金额（12 行同额）</label>
+                                    <input type="text" id="ccbFlowAmount" maxlength="16" placeholder="15002.70" value="15002.70" inputmode="decimal">
+                                </div>
+                                <div>
+                                    <label for="ccbFlowOpening">入账前余额</label>
+                                    <input type="text" id="ccbFlowOpening" maxlength="16" placeholder="7415.60" value="7415.60" inputmode="decimal">
+                                </div>
+                            </div>
+                            <p class="hint mt-0">余额按「入账前余额 + 累计交易金额」自动推算；总收入=12 笔金额合计。金额也可填逗号分隔的 12 个值。</p>
+                            <div class="form-actions">
+                                <button type="button" class="btn-page" id="ccbFlowSampleBtn">填入示例</button>
+                                <button type="button" class="btn-primary" id="ccbFlowEditBtn">生成预览</button>
+                                <button type="button" class="btn-page" id="ccbFlowDownloadBtn" hidden>下载 PNG</button>
+                                <span class="hint" id="ccbFlowStatus" aria-live="polite"></span>
+                            </div>
+                            <div class="admin-tool-preview-grid" id="ccbFlowPreviewWrap" hidden>
+                                <div>
+                                    <div class="hint">原图</div>
+                                    <img id="ccbFlowPreviewSrc" alt="原图" class="admin-tool-preview-img">
+                                </div>
+                                <div>
+                                    <div class="hint">结果</div>
+                                    <img id="ccbFlowPreviewOut" alt="结果" class="admin-tool-preview-img">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
                 <div id="page-najilu-qr" class="page-panel" role="tabpanel">
                     <section>
                         <h2>完税证明 · 二维码替换</h2>
@@ -1843,7 +1772,7 @@
                     </section>
                     <section>
                         <h2>未激活用户站内信群发</h2>
-                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。</p>
+                        <p class="hint mt-0">向未激活账号写入站内信（用户在「消息」中查看）。可跳转购买页；单次最多 5000 人。发送前可先预览匹配人数。<br>系统也会<strong>每 6 小时自动</strong>向「注册超 24h 未激活」且尚未收过自动推广信的用户发送一封（与下方模板一致，自动去重）。</p>
                         <div class="form-row form-stack">
                             <div class="form-field">
                                 <label for="bulkMsgAudience">发送对象</label>
@@ -1863,6 +1792,12 @@
                             <div class="form-field form-field-narrow">
                                 <label for="bulkMsgLink">跳转页面</label>
                                 <input type="text" id="bulkMsgLink" maxlength="200" value="purchase.html">
+                            </div>
+                            <div class="form-field">
+                                <label class="checkbox-inline">
+                                    <input type="checkbox" id="bulkMsgSkipSent" checked>
+                                    跳过已收过自动推广信的用户（推荐）
+                                </label>
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnBulkMsgPreview">预览人数</button>
@@ -2489,9 +2424,9 @@
         </div>
     </div>
 
-    <script src="/js/admin/loader.js?v=20260802-tool-ux"></script>
+    <script src="/js/admin/loader.js?v=20260803-ccb-flow"></script>
     <script src="/js/admin/nav.js?v=20260802-simple-shell"></script>
     <script src="/js/admin-analytics-period.js?v=20260728-purchase-users-fix"></script>
-    <script src="/js/admin_panel.js?v=20260802-simple-shell"></script>
+    <script src="/js/admin_panel.js?v=20260804-pay-fail-qq"></script>
 </body>
 </html>

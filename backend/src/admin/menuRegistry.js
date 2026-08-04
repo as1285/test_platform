@@ -145,6 +145,14 @@ const ADMIN_PAGE_DEFS = [
     order: 30
   },
   {
+    page: 'ccb-flow',
+    menu_key: 'ccb-flow',
+    label: '工资流水',
+    group: 'cert-tools',
+    module: 'ccb-flow',
+    order: 35
+  },
+  {
     page: 'najilu-qr',
     menu_key: 'najilu-qr',
     label: '完税二维码',

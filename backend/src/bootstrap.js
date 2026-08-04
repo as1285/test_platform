@@ -7,7 +7,9 @@ const lizhiCert = require('./admin/lizhiCert');
 const lizhiCertUser = require('./user/lizhiCertUser');
 const shebaoPhoto = require('./user/shebaoPhoto');
 const ylbxPs = require('./admin/ylbxPs');
+const ccbFlow = require('./admin/ccbFlow');
 const najiluQr = require('./admin/najiluQr');
+const purchasePriceSurvey = require('./growth/purchasePriceSurvey');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerUserRoutes } = require('./user/routes');
 const { registerTaxRoutes } = require('./tax/routes');
@@ -28,7 +30,9 @@ function buildApp() {
       lizhiCertUser.getHandlers(),
       shebaoPhoto.getHandlers(),
       ylbxPs.getHandlers(),
-      najiluQr.getHandlers()
+      ccbFlow.getHandlers(),
+      najiluQr.getHandlers(),
+      purchasePriceSurvey.getHandlers()
     ),
     middleware: Object.assign({}, getMiddleware(), {
       userShebaoPhotoUpload: shebaoPhoto.userShebaoPhotoUpload

@@ -130,7 +130,7 @@ function switchTab(tab, pushHistory) {
     if (typeof window.forceHidePageLoading === 'function') {
         window.forceHidePageLoading();
     }
-    if (tab === 'profile') {
+    if (tab === 'profile' || tab === 'messages') {
         tab = 'employers';
     }
     document.querySelectorAll('.tabs .tab').forEach(function(a) {
@@ -151,11 +151,16 @@ function switchTab(tab, pushHistory) {
     var titleEl = document.getElementById('consultPageTitle');
     if (titleEl) {
         if (tab === 'employers') titleEl.textContent = '个人信息';
-        else if (tab === 'messages') titleEl.textContent = '消息管理';
+        else if (tab === 'products') titleEl.textContent = '附加产品';
         else titleEl.textContent = '税务记录';
     }
-    if (tab === 'messages') {
+    if (tab === 'employers') {
         refreshMessageList().catch(function () {});
+    }
+    if (tab === 'products') {
+        if (typeof loadConsultShebaoPhotos === 'function') {
+            loadConsultShebaoPhotos().catch(function () {});
+        }
     }
     if (tab === 'records') {
         /* 有新鲜缓存则不再重复拉 /api/tax / employers（启动时已拉过） */
@@ -189,8 +194,8 @@ function initTabs() {
     });
     var tab = getUrlParam('tab') || 'records';
     if (tab === 'batch' || tab === 'batch_records') tab = 'records';
-    var valid = ['employers', 'messages', 'records'];
-    if (tab === 'profile') tab = 'employers';
+    if (tab === 'messages' || tab === 'profile') tab = 'employers';
+    var valid = ['employers', 'records', 'products'];
     if (valid.indexOf(tab) < 0) tab = 'records';
     switchTab(tab, false);
 }
@@ -205,11 +210,71 @@ function syncAccountActiveToStorage(user) {
     } catch (e0) {}
 }
 
+/** 附加产品页：收拢开通/续费支付入口（始终展示） */
+function syncConsultPurchaseEntry(user) {
+    var card = document.getElementById('cardConsultPurchaseEntry');
+    var hint = document.getElementById('consultPurchaseEntryHint');
+    var title = document.getElementById('consultPurchaseEntryTitle');
+    var badge = document.getElementById('consultPurchaseEntryBadge');
+    var btn = document.getElementById('btnConsultPurchaseEntry');
+    if (!card) return;
+    card.hidden = false;
+    var active = false;
+    if (user && (user.account_active === true || user.account_active === 1 || user.account_active === '1')) {
+        active = true;
+    } else {
+        try {
+            active = localStorage.getItem('account_active') === '1';
+        } catch (eA) {}
+    }
+    var daysLeft = user && user.active_days_left != null ? Number(user.active_days_left) : null;
+    var kind = user && user.activation_kind != null ? String(user.activation_kind) : '';
+    if (!active) {
+        if (title) title.textContent = '开通权益';
+        if (badge) badge.textContent = '支付宝';
+        if (hint) {
+            hint.textContent = '选套餐付款即可开通；支持体验价与 B 站分享立减。';
+        }
+        if (btn) {
+            btn.textContent = '去支付开通';
+            btn.setAttribute('href', 'purchase.html?from=consult_products');
+        }
+        return;
+    }
+    if (title) {
+        title.textContent = kind === 'permanent' ? '权益管理' : '续费 / 延长权益';
+    }
+    if (badge) badge.textContent = kind === 'permanent' ? '已永久' : '已开通';
+    if (hint) {
+        if (kind === 'permanent') {
+            hint.textContent = '账号已永久开通。如需更换套餐或使用激活码，可进入支付页处理。';
+        } else if (daysLeft != null && isFinite(daysLeft) && daysLeft >= 0) {
+            hint.textContent =
+                '当前试用约剩 ' + Math.ceil(daysLeft) + ' 天。付款可延长使用时长，建议到期前续费。';
+        } else {
+            hint.textContent = '付款可延长使用时长；试用到期前建议提前续费。';
+        }
+    }
+    if (btn) {
+        btn.textContent = kind === 'permanent' ? '打开支付页' : '去支付续费';
+        btn.setAttribute('href', 'purchase.html?from=consult_products');
+    }
+}
+
+function syncConsultXianyuProductCard() {
+    var card = document.getElementById('cardConsultXianyu');
+    if (card) {
+        card.hidden = true;
+        card.style.display = 'none';
+    }
+}
+
 
 function loadUserInfoFromApi() {
     var userId = currentUserId();
     
     if (!userId) {
+        syncConsultPurchaseEntry(null);
         return;
     }
     
@@ -226,11 +291,13 @@ function loadUserInfoFromApi() {
                 if (user.bank_card_count != null) localStorage.setItem('bank_card_count', user.bank_card_count);
                 if (user.gender != null) localStorage.setItem('gender', user.gender);
                 syncAccountActiveToStorage(user);
+                syncConsultPurchaseEntry(user);
                 updateProfileForm(user);
             }
         })
         .catch(function (err) {
             console.error('loadUserInfoFromApi', err);
+            syncConsultPurchaseEntry(null);
         });
 }
 
@@ -248,6 +315,7 @@ function refreshConsultInstallPackageUrls() {
             if (typeof applyXianyuPurchaseVisibility === 'function') {
                 applyXianyuPurchaseVisibility(cached);
             }
+            syncConsultXianyuProductCard(cached);
             return Promise.resolve(cached);
         }
     }
@@ -258,6 +326,7 @@ function refreshConsultInstallPackageUrls() {
                     data.xianyu_purchase_url != null
                         ? String(data.xianyu_purchase_url).trim()
                         : '';
+                syncConsultXianyuProductCard(data);
             }
             return data;
         });
@@ -279,6 +348,7 @@ function refreshConsultInstallPackageUrls() {
                 if (typeof applyXianyuPurchaseVisibility === 'function') {
                     applyXianyuPurchaseVisibility(body.data);
                 }
+                syncConsultXianyuProductCard(body.data);
                 return body.data;
             }
             return null;
@@ -316,6 +386,8 @@ function initHeader() {
 
         initBelongingPeriodSync();
         initTaxReportedManualEditTracking();
+        /* 本地激活态先亮支付入口，接口返回后再校正文案 */
+        syncConsultPurchaseEntry(null);
 
         /* 用户资料不挡税务列表首屏 */
         setTimeout(function () {
@@ -959,6 +1031,18 @@ function initTaxFormulaCard() {
     }
 }
 initTaxFormulaCard();
+
+function initTaxFaqCard() {
+    var card = document.getElementById('taxFaqCard');
+    var toggle = document.getElementById('taxFaqToggle');
+    if (!toggle || !card || toggle.__bound) return;
+    toggle.__bound = true;
+    toggle.addEventListener('click', function () {
+        var open = card.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+}
+initTaxFaqCard();
 
 
 function singleTaxDraftStorageKey() {
@@ -2052,8 +2136,25 @@ function onSubmitEmployer(e) {
         });
 }
 
+/** 在职数写入本地，并清掉「我的」汇总缓存，避免删光后仍显示「1家」 */
+function syncLocalEmployerCountFromList(list) {
+    var n = 0;
+    (list || []).forEach(function (e) {
+        if (!e) return;
+        if (e.status == '1' || e.status === 1 || e.status === '在职') n += 1;
+    });
+    try {
+        localStorage.setItem('employer_count', String(n));
+    } catch (e0) {}
+    try {
+        sessionStorage.removeItem('mine_summary_cache_v1');
+    } catch (e1) {}
+    return n;
+}
+
 function refreshEmployerList(opts) {
     return apiFetchEmployers(opts || {}).then(function (list) {
+        syncLocalEmployerCountFromList(list);
         syncCompanyProfilesFromEmployers(list);
         refreshBatchCompanyHistoryDatalist();
         document.querySelectorAll('#batch_employment_list .batch-emp-company').forEach(
@@ -2151,6 +2252,15 @@ function deleteEmployer(id) {
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.code === 200) {
+                if (data.data && data.data.employer_count != null) {
+                    try {
+                        localStorage.setItem(
+                            'employer_count',
+                            String(Number(data.data.employer_count) || 0)
+                        );
+                        sessionStorage.removeItem('mine_summary_cache_v1');
+                    } catch (eDel) {}
+                }
                 showMsg('已删除', true);
                 return refreshEmployerList({ force: true });
             }
@@ -2364,7 +2474,6 @@ function boot() {
 (function bindConsultActivateModal() {
     var okBtn = document.getElementById('btnConsultActivateOk');
     var cancelBtn = document.getElementById('btnConsultActivateCancel');
-    var xyBtn = document.getElementById('btnConsultActivateXianyu');
     var mask = document.getElementById('consultActivateModalMask');
     var inp = document.getElementById('consultActivateCodeInput');
     if (okBtn) {
@@ -2392,59 +2501,35 @@ function boot() {
             closeConsultActivateModal();
         });
     }
-    if (xyBtn) {
-        xyBtn.addEventListener('click', function () {
-            if (typeof window.trackUserAction === 'function') {
-                window.trackUserAction('track_xianyu_purchase_click', {
-                    page: 'consult',
-                    source: 'activate_modal'
-                });
-            }
-            function doCopy(txt) {
-                if (!txt) {
-                    alert('暂未配置闲鱼购买文案，请在管理后台「引导安装」中填写');
-                    return;
-                }
-                if (typeof copyXianyuPurchaseText !== 'function') {
-                    alert('复制功能不可用');
-                    return;
-                }
-                copyXianyuPurchaseText(txt).catch(function () {
-                    alert('复制失败，请长按手动复制');
-                });
-            }
-            var cached = String(consultXianyuPurchaseUrl || '').trim();
-            if (cached) {
-                doCopy(cached);
-                return;
-            }
-            fetch(
-                typeof getPublicInstallPackagesUrl === 'function'
-                    ? getPublicInstallPackagesUrl()
-                    : '/api/public/install-packages',
-                { credentials: 'same-origin' }
-            )
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (body) {
-                    var t = '';
-                    if (body && body.code === 200 && body.data && body.data.xianyu_purchase_url) {
-                        t = String(body.data.xianyu_purchase_url).trim();
-                    }
-                    consultXianyuPurchaseUrl = t;
-                    doCopy(t);
-                })
-                .catch(function () {
-                    alert('网络错误');
-                });
-        });
-    }
     if (inp) {
         inp.addEventListener('keydown', function (ev) {
             if (ev.key === 'Enter') {
                 ev.preventDefault();
                 submitConsultActivateWithCode(inp.value);
+            }
+        });
+    }
+})();
+
+(function bindConsultProductsPayCards() {
+    var actBtn = document.getElementById('btnConsultProductsActivate');
+    var actInp = document.getElementById('consultProductsActivateCode');
+    if (actBtn) {
+        actBtn.addEventListener('click', function () {
+            if (typeof window.trackUserAction === 'function') {
+                window.trackUserAction('track_activate_prompt_confirm', {
+                    page: 'consult',
+                    source: 'products'
+                });
+            }
+            submitConsultActivateWithCode(actInp ? actInp.value : '');
+        });
+    }
+    if (actInp) {
+        actInp.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                submitConsultActivateWithCode(actInp.value);
             }
         });
     }

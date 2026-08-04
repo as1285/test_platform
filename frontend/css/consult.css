@@ -367,55 +367,55 @@ body {
 #panel-records #recordListMount .empty { padding: 28px 16px; font-size: 13px; color: var(--color-text-muted); }
 
 /* ===== 任职受雇 / 消息管理面板 ===== */
-#panel-employers .card, #panel-messages .card {
+#panel-employers .card {
     padding: 14px; margin-bottom: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
 }
-#panel-employers .card-title, #panel-messages .card-title {
+#panel-employers .card-title {
     font-size: 15px; font-weight: 700; margin-bottom: 0; padding-bottom: 0; border-bottom: none; color: var(--color-text);
 }
-#panel-employers .card-title-row, #panel-messages .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-#panel-employers .form-group, #panel-messages .form-group { margin-bottom: 10px; }
-#panel-employers .form-group label, #panel-messages .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
+#panel-employers .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+#panel-employers .form-group { margin-bottom: 10px; }
+#panel-employers .form-group label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; font-weight: 500; }
 #panel-employers .form-group input, #panel-employers .form-group select, #panel-employers .form-group textarea,
-#panel-messages .form-group input, #panel-messages .form-group select, #panel-messages .form-group textarea {
+#panel-employers .form-group input, #panel-employers .form-group select, #panel-employers .form-group textarea {
     padding: 10px 12px; font-size: 14px; border-radius: 10px; border-color: var(--color-border); background: var(--color-surface-alt); min-height: 42px; line-height: 1.25;
 }
-#panel-employers .form-group input[type="date"], #panel-messages .form-group input[type="date"] {
+#panel-employers .form-group input[type="date"] {
     -webkit-appearance: none; appearance: none; color: var(--color-text);
     background: var(--color-surface-alt) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
     padding-right: 36px;
 }
-#panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator, #panel-messages .form-group input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
-#panel-employers .form-row, #panel-messages .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-#panel-employers .form-row .form-group, #panel-messages .form-row .form-group { min-width: 0; }
-#panel-employers .btn-block, #panel-messages .btn-block { padding: 12px 16px; border-radius: 10px; font-weight: 600; margin-top: 4px; }
+#panel-employers .form-group input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+#panel-employers .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#panel-employers .form-row .form-group { min-width: 0; }
+#panel-employers .btn-block { padding: 12px 16px; border-radius: 10px; font-weight: 600; margin-top: 4px; }
 
 /* 折叠表单卡片 */
-#panel-employers .consult-form-card, #panel-messages .consult-form-card { overflow: hidden; transition: box-shadow var(--transition-fast); }
-#panel-employers .consult-form-card.is-collapsed, #panel-messages .consult-form-card.is-collapsed { display: none; }
-#panel-employers .consult-form-toggle, #panel-messages .consult-form-toggle {
+#panel-employers .consult-form-card { overflow: hidden; transition: box-shadow var(--transition-fast); }
+#panel-employers .consult-form-card.is-collapsed { display: none; }
+#panel-employers .consult-form-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
     border: none; background: transparent; padding: 0 0 10px; margin-bottom: 12px;
     border-bottom: 1px solid var(--color-border-light); font-family: inherit; cursor: pointer;
     -webkit-tap-highlight-color: transparent; text-align: left;
 }
-#panel-employers .consult-form-toggle-title, #panel-messages .consult-form-toggle-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
-#panel-employers .consult-form-toggle-hint, #panel-messages .consult-form-toggle-hint {
+#panel-employers .consult-form-toggle-title { font-size: 15px; font-weight: 700; color: var(--color-text); }
+#panel-employers .consult-form-toggle-hint {
     flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--color-text-secondary);
     background: var(--color-surface-alt); border-radius: var(--radius-full); padding: 5px 10px;
 }
-#panel-employers .consult-form-body, #panel-messages .consult-form-body { padding-top: 2px; }
+#panel-employers .consult-form-body { padding-top: 2px; }
 
 /* 消息卡片 */
-#panel-messages .msg-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-#panel-messages .msg-card:last-child { margin-bottom: 0; }
-#panel-messages .msg-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-#panel-messages .msg-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); line-height: 1.35; }
-#panel-messages .msg-card-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 6px; }
-#panel-messages .msg-card .btn-sm { flex-shrink: 0; padding: 6px 10px; border-radius: 8px; }
+#panel-employers .msg-card { background: var(--color-surface-alt); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+#panel-employers .msg-card:last-child { margin-bottom: 0; }
+#panel-employers .msg-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+#panel-employers .msg-card-title { font-size: 14px; font-weight: 600; color: var(--color-text); line-height: 1.35; }
+#panel-employers .msg-card-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 6px; }
+#panel-employers .msg-card .btn-sm { flex-shrink: 0; padding: 6px 10px; border-radius: 8px; }
 
 /* 状态标签 */
-#panel-employers .status-pill, #panel-messages .status-pill {
+#panel-employers .status-pill {
     display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); line-height: 1.4;
 }
 #panel-employers .status-pill.is-on { background: var(--color-success-bg); color: #065f46; }
@@ -430,15 +430,114 @@ body {
 #panel-employers .record-card .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
 
 /* 消息列表项 */
-#panel-messages .list-item { align-items: flex-start; gap: 10px; padding: 12px 0; }
-#panel-messages .list-item-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
-#panel-messages .list-item-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 3px; }
+#panel-employers .list-item { align-items: flex-start; gap: 10px; padding: 12px 0; }
+#panel-employers .list-item-title { font-size: 14px; font-weight: 600; color: var(--color-text); }
+#panel-employers .list-item-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 3px; }
 
-#panel-employers #employerListMount .empty, #panel-messages #messageListMount .empty { padding: 28px 12px; font-size: 13px; color: var(--color-text-muted); }
+#panel-employers #employerListMount .empty, #panel-employers #messageListMount .empty { padding: 28px 12px; font-size: 13px; color: var(--color-text-muted); }
 #employerFormCard, #messageFormCard { scroll-margin-top: 56px; }
+
+/* ===== 税务记录流程步骤 ===== */
+#panel-records .tax-flow-steps {
+    display: flex; align-items: center; justify-content: space-between; gap: 4px;
+    margin: 0 0 12px; padding: 12px 14px; background: var(--color-surface);
+    border: 1px solid var(--color-border-light); border-radius: 12px; box-shadow: var(--shadow-xs);
+}
+#panel-records .tax-flow-step { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#panel-records .tax-flow-num {
+    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-primary); color: #fff; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+#panel-records .tax-flow-label { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; white-space: nowrap; }
+#panel-records .tax-flow-sep {
+    flex: 1 1 auto; height: 1px; min-width: 12px; background: linear-gradient(90deg, var(--color-border), var(--color-primary-border));
+}
+
+/* ===== 个税 FAQ ===== */
+#taxFaqCard { padding: 0; overflow: hidden; }
+#taxFaqCard .tax-faq-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 16px; border: none; background: transparent; font-size: 15px; font-weight: 600;
+    color: var(--color-text); cursor: pointer; font-family: inherit; text-align: left;
+}
+#taxFaqCard .tax-faq-toggle-icon { font-size: 11px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#taxFaqCard.is-open .tax-faq-toggle-icon { transform: rotate(180deg); }
+#taxFaqCard .tax-faq-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--color-border-light); }
+#taxFaqCard.is-open .tax-faq-body { display: block; }
+#taxFaqCard .tax-faq-item {
+    border: 1px solid var(--color-border-light); border-radius: 10px; margin-top: 8px;
+    background: var(--color-surface-alt); overflow: hidden;
+}
+#taxFaqCard .tax-faq-item summary {
+    list-style: none; cursor: pointer; padding: 11px 12px; font-size: 13px; font-weight: 600;
+    color: var(--color-text); line-height: 1.4; -webkit-tap-highlight-color: transparent;
+}
+#taxFaqCard .tax-faq-item summary::-webkit-details-marker { display: none; }
+#taxFaqCard .tax-faq-item summary::after {
+    content: '▼'; float: right; font-size: 10px; color: var(--color-text-muted);
+    margin-left: 8px; transition: transform var(--transition-normal);
+}
+#taxFaqCard .tax-faq-item[open] summary::after { transform: rotate(180deg); }
+#taxFaqCard .tax-faq-item p {
+    margin: 0; padding: 0 12px 12px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6;
+}
 
 /* ===== 批量添加工具栏 ===== */
 #panel-records .batch-hint { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 12px; }
+#panel-products .consult-products-section-label {
+    margin: 4px 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.02em;
+}
+#panel-products .consult-products-section-label:not(:first-child) {
+    margin-top: 16px;
+}
+#panel-products .consult-purchase-entry {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff, #f8fbff);
+}
+#panel-products .consult-purchase-badge,
+#panel-products .consult-product-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #dbeafe;
+}
+#panel-products .consult-activate-label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 0 0 6px;
+}
+#panel-products .consult-activate-input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    font-family: inherit;
+}
+#panel-products .consult-xianyu-btn {
+    background: #ff6a00;
+    color: #fff;
+    border: none;
+}
+#panel-products .consult-xianyu-btn:active {
+    opacity: 0.92;
+}
+#panel-products .consult-purchase-entry[hidden],
+#panel-products #cardConsultXianyu[hidden] {
+    display: none !important;
+}
 #panel-records .batch-tax-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: stretch; }
 #panel-records .batch-tax-toolbar .btn { flex: 1 1 calc(33.33% - 6px); min-width: 0; font-size: 12px; padding: 8px 6px; border-radius: 8px; font-weight: 500; }
 #panel-records .batch-tax-toolbar .btn-default { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text-secondary); }
@@ -497,17 +596,23 @@ body {
 #panel-records .batch-emp-title { font-size: 14px; font-weight: 600; color: var(--color-text-secondary); }
 #panel-records .batch-emp-remove-btn { background: transparent !important; color: var(--color-danger) !important; border: none !important; padding: 4px 8px !important; font-size: 13px !important; font-weight: 500; box-shadow: none !important; }
 #panel-records .batch-emp-remove-btn:active { opacity: 0.7; }
-#panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta { margin-bottom: 6px; }
-#panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle {
+#panel-records .batch-emp-optional-meta, #panel-records .batch-emp-deduct-meta, #panel-records .batch-emp-bonus-meta { margin-bottom: 6px; }
+#panel-records .batch-emp-optional-toggle, #panel-records .batch-emp-deduct-toggle, #panel-records .batch-emp-bonus-toggle {
     display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 8px; padding: 9px 12px;
     font-size: 12px; color: var(--color-text-secondary); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 8px;
     cursor: pointer; -webkit-tap-highlight-color: transparent; font-weight: 500;
 }
-#panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active { opacity: 0.92; }
-#panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
-#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon { transform: rotate(180deg); }
-#panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body { display: none; }
-#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body, #panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body { display: block; }
+#panel-records .batch-emp-optional-toggle:active, #panel-records .batch-emp-deduct-toggle:active, #panel-records .batch-emp-bonus-toggle:active { opacity: 0.92; }
+#panel-records .batch-emp-optional-toggle-icon, #panel-records .batch-emp-deduct-toggle-icon, #panel-records .batch-emp-bonus-toggle-icon { font-size: 10px; color: var(--color-text-muted); transition: transform var(--transition-normal); }
+#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-toggle-icon,
+#panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-toggle-icon,
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-toggle-icon { transform: rotate(180deg); }
+#panel-records .batch-emp-optional-body, #panel-records .batch-emp-deduct-body, #panel-records .batch-emp-bonus-body { display: none; }
+#panel-records .batch-emp-optional-meta.is-open .batch-emp-optional-body,
+#panel-records .batch-emp-deduct-meta.is-open .batch-emp-deduct-body,
+#panel-records .batch-emp-bonus-meta.is-open .batch-emp-bonus-body { display: block; }
+#panel-records .batch-emp-bonus-hint { font-size: 11px; color: var(--color-text-muted); line-height: 1.45; margin: 0 0 8px; }
+#panel-records .batch-emp-bonus-meta { margin-top: 4px; }
 
 /* 年月输入 */
 #panel-records .batch-ym-inline { display: flex; gap: 8px; align-items: stretch; }
@@ -656,3 +761,64 @@ body {
 
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+
+/* ===== 个人信息内分区 ===== */
+#panel-employers .consult-section-divider {
+    height: 1px;
+    margin: 4px 0 14px;
+    background: var(--color-border-light, #e8ecf1);
+}
+
+/* ===== 附加产品 ===== */
+#panel-products .consult-product-card {
+    padding: 14px 16px;
+}
+#panel-products .consult-product-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e6fff;
+    background: rgba(30, 111, 255, 0.1);
+}
+#panel-products .shebao-upload-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+#panel-products .shebao-upload-actions .btn {
+    flex: 1;
+    min-width: 120px;
+}
+#panel-products .shebao-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+#panel-products .shebao-preview-grid:empty {
+    display: none;
+}
+#panel-products .shebao-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--color-surface-alt, #f1f5f9);
+    border: 1px solid var(--color-border-light, #e2e8f0);
+}
+#panel-products .shebao-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+#panel-products .shebao-upload-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--color-text-secondary, #64748b);
+    line-height: 1.4;
+}

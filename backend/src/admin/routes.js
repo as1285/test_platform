@@ -7,7 +7,6 @@ function registerAdminRoutes(app, deps) {
 
 app.use('/api/admin/analytics', mw.heavyAdminApiRateLimit);
 app.use('/api/admin/user-data', mw.heavyAdminApiRateLimit);
-app.use('/api/admin/activated-user-analysis', mw.heavyAdminApiRateLimit);
 app.use('/api/admin', mw.adminApiRateLimit);
 
 app.post('/api/admin/login', h.handleAdminLogin);
@@ -63,14 +62,25 @@ app.post(
   h.handleAdminSettingsPost
 );
 app.get('/api/admin/users/deleted', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminDeletedUsers);
-app.get('/api/admin/guest-users', mw.requireAdminAuth, mw.requireAdminMenu('guest-users'), h.handleAdminGuestUsers);
 app.get('/api/admin/users', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUsers);
 app.get('/api/admin/user-data', mw.requireAdminAuth, mw.requireAdminMenu('user-data'), h.handleAdminUserDataList);
 app.get(
   '/api/admin/user-data/detail',
   mw.requireAdminAuth,
-  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'ylbx-ps', 'najilu-qr']),
+  mw.requireAdminAnyMenu(['user-data', 'lizhi-cert', 'ylbx-ps', 'ccb-flow', 'najilu-qr']),
   h.handleAdminUserDataDetail
+);
+app.get(
+  '/api/admin/user-shebao-photos',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-data', 'users']),
+  h.handleAdminShebaoPhotoList
+);
+app.get(
+  '/api/admin/user-shebao-photos/:id/file',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['user-data', 'users']),
+  h.handleAdminShebaoPhotoFile
 );
 /* 工具页预填：独立路径，避免部分浏览器扩展把 /user-data/ 当成追踪接口拦截（表现为 Failed to fetch） */
 app.get(
@@ -84,6 +94,18 @@ app.get(
   mw.requireAdminAuth,
   mw.requireAdminAnyMenu(['ylbx-ps', 'user-data']),
   h.handleAdminUserDataDetail
+);
+app.get(
+  '/api/admin/ccb-flow/prefill',
+  mw.requireAdminAuth,
+  mw.requireAdminAnyMenu(['ccb-flow', 'user-data']),
+  h.handleAdminUserDataDetail
+);
+app.get(
+  '/api/admin/ccb-flow/template',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('ccb-flow'),
+  h.handleAdminCcbFlowTemplate
 );
 app.get(
   '/api/admin/najilu-qr/prefill',
@@ -199,25 +221,7 @@ app.get(
   mw.requireAdminAnyMenu(['analytics-activity', 'analytics']),
   h.handleAdminAnalyticsDauUsers
 );
-app.get(
-  '/api/admin/activated-user-analysis/overview',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('activated-user-analysis'),
-  h.handleAdminActivatedUserAnalysisOverview
-);
-app.get(
-  '/api/admin/activated-user-analysis/users',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('activated-user-analysis'),
-  h.handleAdminActivatedUserAnalysisUsers
-);
-app.get(
-  '/api/admin/activated-user-analysis/behavior-path',
-  mw.requireAdminAuth,
-  mw.requireAdminMenu('activated-user-analysis'),
-  h.handleAdminActivatedUserAnalysisBehaviorPath
-);
-app.get('/api/admin/user-tax-records', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'guest-users', 'tax-records-edit']), h.handleAdminUserTaxRecords);
+app.get('/api/admin/user-tax-records', mw.requireAdminAuth, mw.requireAdminAnyMenu(['users', 'tax-records-edit']), h.handleAdminUserTaxRecords);
 app.post(
   '/api/admin/user-tax-records',
   mw.requireAdminAuth,
@@ -354,6 +358,12 @@ app.post(
   mw.requireAdminMenu('lizhi-cert'),
   h.handleAdminLizhiCertGenerate
 );
+app.get(
+  '/api/admin/lizhi-cert/stats',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('lizhi-cert'),
+  h.handleAdminLizhiCertStats
+);
 app.post(
   '/api/admin/ylbx-ps/edit',
   mw.requireAdminAuth,
@@ -367,6 +377,22 @@ app.post(
         return res.status(400).json({ code: 400, msg: (err && err.message) || '上传失败' });
       }
       return h.handleAdminYlbxPsEdit(req, res);
+    });
+  }
+);
+app.post(
+  '/api/admin/ccb-flow/edit',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('ccb-flow'),
+  function (req, res, next) {
+    mw.adminUpload.single('file')(req, res, function (err) {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ code: 413, msg: '图片过大' });
+        }
+        return res.status(400).json({ code: 400, msg: (err && err.message) || '上传失败' });
+      }
+      return h.handleAdminCcbFlowEdit(req, res);
     });
   }
 );

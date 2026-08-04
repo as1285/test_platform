@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260802-b23-share"></script>
+    <script src="/js/auth.js?v=20260804-pay-fail-qq"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>个人所得税 · 开通权益</title>
+    <title>个人所得税 · 开通演示</title>
     <style>
         :root {
             --ink: #0f172a;
@@ -273,6 +273,69 @@
             font-size: 12px;
             color: var(--muted);
         }
+        .pricing-sku-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #fff;
+            background: #e5484d;
+            vertical-align: middle;
+        }
+        .pricing-sku-badge.is-rec {
+            background: var(--accent);
+        }
+        .purchase-benefits {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin: 0 0 12px;
+            padding: 12px 14px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+        }
+        .purchase-benefits li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--ink-soft);
+        }
+        .purchase-benefits li::before {
+            content: '';
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            margin-top: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+        .purchase-benefits strong {
+            color: var(--ink);
+            font-weight: 600;
+        }
+        .purchase-offer-banner {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fff7e8, #fffaf2);
+            border: 1px solid #fde68a;
+            color: #9a3412;
+            font-size: 12px;
+            line-height: 1.45;
+            font-weight: 500;
+        }
+        .cheaper-channels-hint {
+            margin: 0 0 10px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.45;
+        }
         .activate-box .field-label {
             display: block;
             font-size: 13px;
@@ -373,6 +436,116 @@
             transition: opacity 0.2s ease;
         }
         .purchase-toast.show { opacity: 1; }
+        .price-survey-root {
+            position: fixed;
+            inset: 0;
+            z-index: 10050;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .price-survey-root.is-open { display: flex; }
+        .price-survey-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+        }
+        .price-survey-panel {
+            position: relative;
+            width: 100%;
+            max-width: var(--wrap);
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 18px 18px 0 0;
+            padding: 20px 18px calc(18px + var(--safe-b));
+            box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.12);
+        }
+        .price-survey-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+        .price-survey-sub {
+            font-size: 13px;
+            color: var(--ink-soft);
+            line-height: 1.45;
+            margin-bottom: 16px;
+        }
+        .price-survey-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            margin: 0 0 8px;
+        }
+        .price-survey-opts {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .price-survey-opt {
+            flex: 1;
+            height: 40px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--ink-soft);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .price-survey-opt.is-selected {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+        }
+        .price-survey-input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 0 12px;
+            font-size: 15px;
+            font-family: inherit;
+            margin-bottom: 8px;
+        }
+        .price-survey-hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0 0 12px;
+            line-height: 1.4;
+        }
+        .price-survey-err {
+            color: #b91c1c;
+            font-size: 12px;
+            margin: 0 0 12px;
+            min-height: 18px;
+        }
+        .price-survey-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .price-survey-actions .btn {
+            flex: 1;
+            height: 44px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .price-survey-actions .btn-skip {
+            background: #f1f5f9;
+            color: var(--ink-soft);
+        }
+        .price-survey-actions .btn-submit {
+            background: var(--accent);
+            color: #fff;
+        }
+        .price-survey-actions .btn-submit:disabled { opacity: 0.6; }
         .card#cardDownloadApp[hidden] { display: none !important; }
         /* App / WebClip / Cordova 壳内强制隐藏下载入口（防检测漏网） */
         html.app-installed-client #cardDownloadApp,
@@ -469,13 +642,22 @@
             <img src="/jt.png" alt="" width="9" decoding="async">
             <span>返回</span>
         </a>
-        <div class="header-title">开通权益</div>
+        <div class="header-title" id="purchaseHeaderTitle">开通演示</div>
     </div>
     <div class="page">
         <div class="hero">
             <div class="brand-line">个人所得税</div>
-            <h1>开通权益</h1>
-            <p>选套餐付款即可开通；已有激活码可向下填写。</p>
+            <h1 id="purchaseHeroTitle">开通完整演示</h1>
+            <p id="purchaseHeroDesc">付款后去除水印，完整查看收入与纳税明细；已有激活码可下滑填写开通。</p>
+        </div>
+
+        <ul class="purchase-benefits" aria-label="开通后可获得">
+            <li><span><strong>去除水印</strong>：收入明细、纳税记录可完整展示</span></li>
+            <li><span><strong>完整明细</strong>：按月查看收入与纳税演示数据</span></li>
+            <li><span><strong>演示数据</strong>：支持按需编辑，便于对照体验</span></li>
+        </ul>
+        <div class="purchase-offer-banner" id="purchaseOfferBanner">
+            新用户 24 小时内可享体验价（下方划线为对照原价）。也可先分享 B 站再减 ¥50。
         </div>
 
         <div class="card" id="cardAlipay" hidden>
@@ -483,7 +665,7 @@
                 <div class="card-title">支付宝购买</div>
                 <span class="badge-auto">付款后自动开通</span>
             </div>
-            <p class="card-hint" id="alipayPurchaseHint">选择套餐后打开支付宝付款。</p>
+            <p class="card-hint" id="alipayPurchaseHint">默认已选最低档体验价，可点其他套餐。</p>
             <div class="pricing-sku-list" id="alipaySkuList" hidden></div>
             <button type="button" class="btn btn-alipay" id="btnPurchaseAlipay">打开支付宝付款</button>
             <div class="pay-status" id="alipayPayStatus" hidden></div>
@@ -493,14 +675,22 @@
             <div class="share-activity-head">
                 <div>
                     <div class="share-activity-title">分享到 B 站，立减 50 元</div>
-                    <div class="share-activity-sub">每完成一次分享，活动进度加 1</div>
+                    <div class="share-activity-sub">完成 2 次分享即可解锁优惠</div>
                 </div>
-                <span class="share-discount-badge">5 次减 ¥50</span>
+                <span class="share-discount-badge">2 次减 ¥50</span>
             </div>
             <div class="share-progress" id="bilibiliShareProgress" aria-label="分享进度"></div>
             <p class="share-activity-status" id="bilibiliShareStatus">正在读取活动进度…</p>
             <button type="button" class="btn btn-bilibili-share" id="btnBilibiliShare">立即分享到 B 站</button>
-            <p class="share-rules">分享完成后返回本页自动计数；满 5 次后，创建支付宝订单时由服务器自动减 50 元。每 5 次仅可抵扣 1 笔订单。</p>
+            <p class="share-rules">分享完成后返回本页自动计数；满 2 次后，创建支付宝订单时由服务器自动减 50 元。每 2 次仅可抵扣 1 笔订单。</p>
+        </div>
+
+        <div class="card activate-box" id="cardActivate">
+            <div class="card-title">已有激活码？直接开通</div>
+            <p class="card-hint cheaper-channels-hint">填写激活码即可开通，无需再走支付宝标价。</p>
+            <label class="field-label" for="purchaseActivateCode">激活码</label>
+            <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+            <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
         </div>
 
         <div class="card" id="cardLizhiCert">
@@ -509,21 +699,13 @@
                 <span class="badge-auto">¥50 去水印</span>
             </div>
             <p class="card-hint">未付款也可生成（带「演示样例」水印）；付 ¥50 后生成无演示水印版本。App 内请用系统分享「存储到文件」。电子生成件仅供个人留存，非用人单位出具。</p>
-            <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html">去生成</a>
+            <a class="btn btn-primary" id="btnLizhiCertEntry" href="lizhi_cert.html?from=purchase">去生成</a>
         </div>
 
         <div class="card download-box" id="cardDownloadApp" hidden>
             <div class="card-title">下载 App</div>
             <p class="card-hint">安装后使用更流畅，权益同步到当前账号。</p>
             <a class="btn btn-download" id="btnPurchaseDownload" href="install_guide.html?download=1#download">立即下载</a>
-        </div>
-
-        <div class="card activate-box">
-            <div class="card-title">激活码开通</div>
-            <p class="card-hint">已有激活码可直接填写开通。</p>
-            <label class="field-label" for="purchaseActivateCode">激活码</label>
-            <input type="text" id="purchaseActivateCode" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
-            <button type="button" class="btn btn-primary" id="btnPurchaseActivate">确认激活</button>
         </div>
 
         <div class="card" id="cardShebaoPhoto">
@@ -559,15 +741,35 @@
 
     <div class="purchase-toast" id="purchaseToast" role="status" aria-live="polite"></div>
 
+    <div id="priceSurveyModal" class="price-survey-root" role="dialog" aria-modal="true" aria-labelledby="priceSurveyTitle" hidden>
+        <div class="price-survey-mask" id="priceSurveyMask"></div>
+        <div class="price-survey-panel">
+            <div class="price-survey-title" id="priceSurveyTitle">离开前想听您一句</div>
+            <p class="price-survey-sub">当前套餐约 ¥298 起。您觉得价格如何？您的反馈会帮助我们调整定价。</p>
+            <label class="price-survey-label">您觉得现在的价格</label>
+            <div class="price-survey-opts" id="priceSurveySentimentOpts">
+                <button type="button" class="price-survey-opt" data-sentiment="expensive">偏贵</button>
+                <button type="button" class="price-survey-opt" data-sentiment="fair">合适</button>
+                <button type="button" class="price-survey-opt" data-sentiment="cheap">偏便宜</button>
+            </div>
+            <label class="price-survey-label" for="priceSurveyExpected">您的心理价位（元）</label>
+            <input type="number" id="priceSurveyExpected" class="price-survey-input" inputmode="decimal" min="1" max="999999" step="1" placeholder="例如：98">
+            <p class="price-survey-hint">可按「体验一天」或您最常会买的档位来估。</p>
+            <p class="price-survey-err" id="priceSurveyErr" aria-live="polite"></p>
+            <div class="price-survey-actions">
+                <button type="button" class="btn btn-skip" id="priceSurveySkip">跳过</button>
+                <button type="button" class="btn btn-submit" id="priceSurveySubmit">提交并离开</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
 (function () {
+    /* 已激活：允许进入支付页续费/延长；入口在「附加产品」，不再踢回「我的」 */
+    var purchaseUserActive = false;
     try {
-        if (localStorage.getItem('account_active') === '1') {
-            window.location.replace('mine.html');
-            return;
-        }
+        purchaseUserActive = localStorage.getItem('account_active') === '1';
     } catch (e0) {}
 
     /*
@@ -670,7 +872,11 @@
         from = String(from || '').trim().toLowerCase();
         var map = {
             mine: 'mine.html',
-            consult: 'consult.html?tab=records',
+            consult: 'consult.html?tab=products',
+            consult_records: 'consult.html?tab=products',
+            consult_products: 'consult.html?tab=products',
+            records: 'consult.html?tab=products',
+            products: 'consult.html?tab=products',
             shouye: 'shouye.html',
             guide: 'install_guide.html',
             register: 'register.html'
@@ -688,14 +894,37 @@
                         path.indexOf('login') >= 0 ||
                         path.indexOf('register') >= 0
                     ) {
-                        return 'mine.html';
+                        return purchaseUserActive ? 'consult.html?tab=products' : 'mine.html';
                     }
                     return document.referrer;
                 }
             }
         } catch (e3) {}
-        return 'mine.html';
+        return purchaseUserActive ? 'consult.html?tab=products' : 'mine.html';
     }
+
+    function applyActiveRenewalUi() {
+        if (!purchaseUserActive) return;
+        var headerTitle = document.getElementById('purchaseHeaderTitle');
+        var heroTitle = document.getElementById('purchaseHeroTitle');
+        var heroDesc = document.getElementById('purchaseHeroDesc');
+        var offerBanner = document.getElementById('purchaseOfferBanner');
+        if (headerTitle) headerTitle.textContent = '续费演示';
+        if (heroTitle) heroTitle.textContent = '续费 / 延长演示';
+        if (heroDesc) {
+            heroDesc.textContent =
+                '付款可叠加使用时长，继续使用去水印的完整个税演示；也可填写新激活码。';
+        }
+        if (offerBanner) {
+            offerBanner.textContent =
+                '已开通账号可在此续费。付款成功后时效自动叠加；也可先分享 B 站再减 ¥50。';
+        }
+        try {
+            document.title = '个人所得税 · 续费演示';
+        } catch (eT) {}
+    }
+
+    applyActiveRenewalUi();
 
     (function initBackLink() {
         var back = document.getElementById('purchaseBackBtn');
@@ -1091,8 +1320,8 @@
         available_count: 0,
         reserved_count: 0,
         progress_count: 0,
-        remaining_count: 5,
-        threshold: 5,
+        remaining_count: 2,
+        threshold: 2,
         discount_amount: '50.00',
         pending_discount_amount: '0.00',
         pending_discount_applied: false,
@@ -1119,25 +1348,82 @@
         return (Math.max(1, original - discount) / 100).toFixed(2);
     }
 
-    function refreshShareDiscountPricingUi() {
-        if (typeof renderAlipaySkus === 'function' && alipayPricing && alipayPricing.skus) {
-            renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
+    /** 划线对照原价：优先用更贵的永久档；否则上浮约 35% 取整 */
+    function skuListAnchorAmount(sku, allSkus) {
+        var amt = Number(sku && sku.amount) || 0;
+        if (amt <= 0) return '';
+        var permMax = 0;
+        (allSkus || []).forEach(function (s) {
+            if (s && s.grant_kind === 'permanent') {
+                var a = Number(s.amount) || 0;
+                if (a > permMax) permMax = a;
+            }
+        });
+        if (sku.grant_kind !== 'permanent' && permMax > amt) {
+            return permMax.toFixed(0);
         }
+        var inflated = Math.ceil((amt * 1.35) / 10) * 10;
+        if (inflated <= amt) inflated = Math.ceil(amt + 100);
+        return String(inflated);
+    }
+
+    function pickCheapestSkuId(skus) {
+        var bestId = '';
+        var bestAmt = Infinity;
+        (skus || []).forEach(function (s) {
+            if (!s || !s.id) return;
+            var a = Number(s.amount);
+            if (!isFinite(a)) return;
+            if (a < bestAmt) {
+                bestAmt = a;
+                bestId = s.id;
+            }
+        });
+        return bestId || ((skus[0] && skus[0].id) || '');
+    }
+
+    function updatePayCtaFromSelection() {
         var selected = typeof getSelectedAlipaySku === 'function' ? getSelectedAlipaySku() : null;
         var hint = document.getElementById('alipayPurchaseHint');
         var payBtn = document.getElementById('btnPurchaseAlipay');
         var discounted = selected ? discountedSkuAmount(selected.amount) : '';
-        if (discounted && hint) {
-            hint.textContent =
-                '分享优惠已解锁：原价 ' +
-                selected.amount +
-                ' 元，本次实付 ' +
-                discounted +
-                ' 元。';
+        var anchor = selected ? skuListAnchorAmount(selected, alipayPricing.skus) : '';
+        if (hint && selected) {
+            if (discounted) {
+                hint.textContent =
+                    '分享优惠已解锁：对照价 ¥' +
+                    (anchor || selected.amount) +
+                    '，套餐价 ¥' +
+                    selected.amount +
+                    '，本次实付 ¥' +
+                    discounted +
+                    '。';
+            } else {
+                hint.textContent =
+                    '已选「' +
+                    (selected.label || selected.subject || '套餐') +
+                    '」体验价 ¥' +
+                    selected.amount +
+                    (anchor ? '（对照原价 ¥' + anchor + '）' : '') +
+                    '，付款后自动开通。';
+            }
         }
         if (payBtn) {
-            payBtn.textContent = discounted ? '优惠价 ¥' + discounted + ' · 打开支付宝付款' : '打开支付宝付款';
+            if (discounted) {
+                payBtn.textContent = '优惠价 ¥' + discounted + ' · 打开支付宝付款';
+            } else if (selected) {
+                payBtn.textContent = '体验价 ¥' + selected.amount + ' · 打开支付宝付款';
+            } else {
+                payBtn.textContent = '打开支付宝付款';
+            }
         }
+    }
+
+    function refreshShareDiscountPricingUi() {
+        if (typeof renderAlipaySkus === 'function' && alipayPricing && alipayPricing.skus) {
+            renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
+        }
+        updatePayCtaFromSelection();
     }
 
     function renderBilibiliShareActivity(data) {
@@ -1145,7 +1431,7 @@
         Object.keys(shareActivityState).forEach(function (key) {
             if (data[key] != null) shareActivityState[key] = data[key];
         });
-        shareActivityState.threshold = Math.max(1, Number(shareActivityState.threshold) || 5);
+        shareActivityState.threshold = Math.max(1, Number(shareActivityState.threshold) || 2);
         shareActivityState.progress_count = Math.max(
             0,
             Math.min(
@@ -1434,9 +1720,9 @@
         var page = document.querySelector('.page');
         var hero = document.querySelector('.hero');
 
-        /* A/B 均保留激活码入口 */
+        /* A/B 均保留激活码出口 */
         if (activateBox) activateBox.hidden = false;
-        /* 不展示酷发卡等其它购买渠道 */
+        /* 酷发卡等旧渠道仍隐藏 */
         if (otherLabel) otherLabel.hidden = true;
         if (otherCard) otherCard.hidden = true;
         /* APP / WebClip / 壳内永不显示下载卡片；仅手机浏览器展示 */
@@ -1449,11 +1735,14 @@
 
         if (heroP) {
             if (isCodeOnly) {
-                heroP.textContent = '下载 App 后填写激活码即可开通。';
-            } else if (isNew) {
-                heroP.textContent = '选套餐付款即可开通；已有激活码可向下填写。';
+                heroP.textContent =
+                    '下载 App 后填写激活码，即可开通去水印的完整个税演示。';
+            } else if (purchaseUserActive) {
+                heroP.textContent =
+                    '付款可叠加使用时长，继续使用去水印的完整个税演示；也可填写新激活码。';
             } else {
-                heroP.textContent = '选套餐付款即可开通；已有激活码可向下填写。';
+                heroP.textContent =
+                    '付款后去除水印，完整查看收入与纳税明细；已有激活码可下滑填写开通。';
             }
         }
         if (steps) {
@@ -1483,6 +1772,8 @@
             });
         }
 
+        var benefits = document.querySelector('.purchase-benefits');
+        var offerBanner = document.getElementById('purchaseOfferBanner');
         if (isCodeOnly) {
             orderAfterHero([
                 cardDownload,
@@ -1494,9 +1785,11 @@
             ]);
         } else {
             orderAfterHero([
+                benefits,
+                offerBanner,
                 cardAlipay,
-                activateBox,
                 cardShare,
+                activateBox,
                 cardDownload,
                 cardLizhi,
                 cardShebao,
@@ -1527,6 +1820,7 @@
             alipayPricing.selectedSkuId = '';
             return;
         }
+        var cheapestId = pickCheapestSkuId(alipayPricing.skus);
         if (alipayPricing.skus.length === 1) {
             list.hidden = true;
             list.innerHTML = '';
@@ -1539,16 +1833,38 @@
                 return s.id === alipayPricing.selectedSkuId;
             })
         ) {
-            alipayPricing.selectedSkuId = alipayPricing.skus[alipayPricing.skus.length - 1].id;
+            alipayPricing.selectedSkuId = cheapestId;
         }
         list.hidden = false;
         list.innerHTML = alipayPricing.skus
             .map(function (s) {
                 var selected = s.id === alipayPricing.selectedSkuId ? ' is-selected' : '';
                 var discounted = discountedSkuAmount(s.amount);
-                var priceHtml = discounted
-                    ? '<del>¥' + String(s.amount || '') + '</del><span class="discount-price">¥' + discounted + '</span>'
-                    : '¥' + String(s.amount || '');
+                var anchor = skuListAnchorAmount(s, alipayPricing.skus);
+                var priceHtml;
+                if (discounted) {
+                    priceHtml =
+                        '<del>¥' +
+                        String(anchor || s.amount || '') +
+                        '</del><span class="discount-price">¥' +
+                        discounted +
+                        '</span>';
+                } else if (anchor && String(anchor) !== String(Math.round(Number(s.amount) || 0))) {
+                    priceHtml =
+                        '<del>¥' +
+                        String(anchor) +
+                        '</del><span class="discount-price">¥' +
+                        String(s.amount || '') +
+                        '</span>';
+                } else {
+                    priceHtml = '¥' + String(s.amount || '');
+                }
+                var badge = '';
+                if (s.id === cheapestId) {
+                    badge = '<span class="pricing-sku-badge">体验价</span>';
+                } else if (s.grant_kind === 'permanent') {
+                    badge = '<span class="pricing-sku-badge is-rec">更划算</span>';
+                }
                 return (
                     '<button type="button" class="pricing-sku-item' +
                     selected +
@@ -1560,6 +1876,7 @@
                     '</span>' +
                     '<span class="pricing-sku-label">' +
                     String(s.label || s.subject || '') +
+                    badge +
                     '</span>' +
                     '<span class="pricing-sku-tag">' +
                     formatSkuDuration(s) +
@@ -1654,18 +1971,12 @@
                         ];
                     }
                     renderAlipaySkus(skus, variant);
-                    var selected = getSelectedAlipaySku();
-                    var hint = document.getElementById('alipayPurchaseHint');
                     if (variant === 'treatment' && skus.length > 1) {
-                        hint.textContent = '选择套餐付款，更长档会覆盖更短时效。';
                         purchaseUiMode = 'treatment';
                     } else {
-                        hint.textContent =
-                            '支付 ' +
-                            (selected ? selected.amount : data.amount || '') +
-                            ' 元后自动开通。';
                         purchaseUiMode = 'legacy';
                     }
+                    updatePayCtaFromSelection();
                     if (card) card.hidden = false;
                     applyPurchaseUiMode();
                     trackPurchase(
@@ -1880,7 +2191,7 @@
             alipayPricing.selectedSkuId = btn.getAttribute('data-sku-id') || '';
             alipayPendingPayUrl = '';
             renderAlipaySkus(alipayPricing.skus, alipayPricing.variant);
-            refreshShareDiscountPricingUi();
+            updatePayCtaFromSelection();
         });
     }
     document.getElementById('btnPurchaseAlipay').addEventListener('click', function () {
@@ -1940,7 +2251,12 @@
             })
             .catch(function (e) {
                 setAlipayStatus('', false);
-                showToast(e && e.message ? e.message : '创建支付订单失败，请稍后重试');
+                var failMsg = e && e.message ? e.message : '创建支付订单失败，请稍后重试';
+                if (typeof showPaymentCreateFailDialog === 'function') {
+                    showPaymentCreateFailDialog({ message: failMsg, source: 'purchase_alipay' });
+                } else {
+                    showToast(failMsg);
+                }
                 btn.disabled = false;
             });
     });
@@ -1951,13 +2267,225 @@
         }
     });
 
-    document.getElementById('purchaseBackBtn').addEventListener('click', function () {
-        trackPurchase('track_purchase_back_click');
-    });
     var bilibiliShareBtn = document.getElementById('btnBilibiliShare');
     if (bilibiliShareBtn) {
         bilibiliShareBtn.addEventListener('click', startBilibiliDiscountShare);
     }
+
+    /* ========== 首次退出价格调研 ========== */
+    var PRICE_SURVEY_LS_KEY = 'purchase_price_survey_done_v1';
+    var priceSurveyPendingLeaveHref = '';
+    var priceSurveyOpen = false;
+    var priceSurveyDone = false;
+    var priceSurveySentiment = '';
+    var priceSurveyHistoryPushed = false;
+
+    function priceSurveyMarkedLocal() {
+        try {
+            return localStorage.getItem(PRICE_SURVEY_LS_KEY) === '1';
+        } catch (eLs) {
+            return false;
+        }
+    }
+
+    function markPriceSurveyDoneLocal() {
+        priceSurveyDone = true;
+        try {
+            localStorage.setItem(PRICE_SURVEY_LS_KEY, '1');
+        } catch (eSet) {}
+    }
+
+    function shouldShowPriceSurvey() {
+        if (priceSurveyDone || priceSurveyMarkedLocal()) return false;
+        if (!purchaseGetToken()) return false;
+        return true;
+    }
+
+    function getSeenSkuPriceRange() {
+        var min = null;
+        var max = null;
+        (alipayPricing.skus || []).forEach(function (sku) {
+            var n = Number(sku && sku.amount);
+            if (!isFinite(n) || n <= 0) return;
+            if (min == null || n < min) min = n;
+            if (max == null || n > max) max = n;
+        });
+        return { min: min, max: max };
+    }
+
+    function syncPriceSurveyCopy() {
+        var range = getSeenSkuPriceRange();
+        var sub = document.querySelector('#priceSurveyModal .price-survey-sub');
+        if (!sub) return;
+        if (range.min != null) {
+            sub.textContent =
+                '当前套餐约 ¥' +
+                String(range.min) +
+                ' 起。您觉得价格如何？您的反馈会帮助我们调整定价。';
+        }
+    }
+
+    function setPriceSurveyErr(msg) {
+        var el = document.getElementById('priceSurveyErr');
+        if (el) el.textContent = msg || '';
+    }
+
+    function closePriceSurveyModal() {
+        var root = document.getElementById('priceSurveyModal');
+        if (root) {
+            root.classList.remove('is-open');
+            root.hidden = true;
+        }
+        priceSurveyOpen = false;
+    }
+
+    function openPriceSurveyModal(leaveHref) {
+        priceSurveyPendingLeaveHref = leaveHref || resolveBackHref();
+        syncPriceSurveyCopy();
+        setPriceSurveyErr('');
+        var root = document.getElementById('priceSurveyModal');
+        if (root) {
+            root.hidden = false;
+            root.classList.add('is-open');
+        }
+        priceSurveyOpen = true;
+        trackPurchase('track_purchase_price_survey_open');
+    }
+
+    function leavePurchasePage(href) {
+        var target = href || priceSurveyPendingLeaveHref || resolveBackHref();
+        closePriceSurveyModal();
+        window.location.href = target;
+    }
+
+    function submitPriceSurvey(opts) {
+        opts = opts || {};
+        var skipped = opts.skipped === true;
+        var expectedEl = document.getElementById('priceSurveyExpected');
+        var expectedRaw = expectedEl ? String(expectedEl.value || '').trim() : '';
+        var expectedNum = expectedRaw === '' ? null : Number(expectedRaw);
+        if (!skipped) {
+            if (!priceSurveySentiment) {
+                setPriceSurveyErr('请选择觉得偏贵、合适还是偏便宜');
+                return;
+            }
+            if (expectedNum == null || !isFinite(expectedNum) || expectedNum <= 0) {
+                setPriceSurveyErr('请填写您的心理价位');
+                return;
+            }
+        }
+        var range = getSeenSkuPriceRange();
+        var submitBtn = document.getElementById('priceSurveySubmit');
+        var skipBtn = document.getElementById('priceSurveySkip');
+        if (submitBtn) submitBtn.disabled = true;
+        if (skipBtn) skipBtn.disabled = true;
+        var clientId = '';
+        try {
+            if (typeof window.getClientDevicePayload === 'function') {
+                var payload = window.getClientDevicePayload() || {};
+                clientId = payload.client_id ? String(payload.client_id) : '';
+            }
+        } catch (eCid) {}
+        var body = {
+            sentiment: priceSurveySentiment || 'fair',
+            expected_price: expectedNum,
+            seen_sku_min: range.min,
+            seen_sku_max: range.max,
+            skipped: skipped,
+            client_id: clientId || undefined
+        };
+        trackPurchase(skipped ? 'track_purchase_price_survey_skip' : 'track_purchase_price_survey_submit', {
+            sentiment: body.sentiment,
+            expected_price: body.expected_price
+        });
+        markPriceSurveyDoneLocal();
+        purchaseAuthFetch('/api/growth/purchase-price-survey', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+            .then(function () {
+                leavePurchasePage();
+            })
+            .catch(function () {
+                leavePurchasePage();
+            });
+    }
+
+    function initPriceSurveyExitGate() {
+        if (priceSurveyMarkedLocal()) {
+            priceSurveyDone = true;
+        }
+        purchaseAuthFetch('/api/growth/purchase-price-survey/status')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (j) {
+                if (j && j.code === 200 && j.data && j.data.done) {
+                    markPriceSurveyDoneLocal();
+                }
+            })
+            .catch(function () {});
+
+        try {
+            if (!priceSurveyHistoryPushed && shouldShowPriceSurvey()) {
+                history.pushState({ purchase_price_survey: 1 }, '');
+                priceSurveyHistoryPushed = true;
+            }
+        } catch (ePush) {}
+
+        window.addEventListener('popstate', function () {
+            if (!shouldShowPriceSurvey()) return;
+            if (priceSurveyOpen) return;
+            try {
+                history.pushState({ purchase_price_survey: 1 }, '');
+            } catch (eRe) {}
+            openPriceSurveyModal(resolveBackHref());
+        });
+
+        var back = document.getElementById('purchaseBackBtn');
+        if (back) {
+            back.addEventListener('click', function (ev) {
+                trackPurchase('track_purchase_back_click');
+                if (!shouldShowPriceSurvey()) return;
+                ev.preventDefault();
+                openPriceSurveyModal(back.getAttribute('href') || resolveBackHref());
+            });
+        }
+
+        var opts = document.getElementById('priceSurveySentimentOpts');
+        if (opts) {
+            opts.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('[data-sentiment]');
+                if (!btn) return;
+                priceSurveySentiment = btn.getAttribute('data-sentiment') || '';
+                opts.querySelectorAll('.price-survey-opt').forEach(function (el) {
+                    el.classList.toggle('is-selected', el === btn);
+                });
+                setPriceSurveyErr('');
+            });
+        }
+        var submitBtn = document.getElementById('priceSurveySubmit');
+        var skipBtn = document.getElementById('priceSurveySkip');
+        var mask = document.getElementById('priceSurveyMask');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function () {
+                submitPriceSurvey({ skipped: false });
+            });
+        }
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function () {
+                submitPriceSurvey({ skipped: true });
+            });
+        }
+        if (mask) {
+            mask.addEventListener('click', function () {
+                submitPriceSurvey({ skipped: true });
+            });
+        }
+    }
+
+    initPriceSurveyExitGate();
 
     function setShebaoStatus(text, show) {
         var el = document.getElementById('shebaoUploadStatus');

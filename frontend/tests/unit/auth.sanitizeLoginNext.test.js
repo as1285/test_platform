@@ -14,8 +14,12 @@ beforeAll(() => {
 describe('auth.sanitizeLoginNext', () => {
   it('accepts safe html next pages', () => {
     expect(window.sanitizeLoginNext('mine.html')).toBe('mine.html');
-    expect(window.sanitizeLoginNext('/purchase.html')).toBe('purchase.html');
     expect(window.sanitizeLoginNext('shuiming_result.html?x=1')).toBe('shuiming_result.html?x=1');
+  });
+
+  it('rejects payment page as login next', () => {
+    expect(window.sanitizeLoginNext('/purchase.html')).toBe('');
+    expect(window.sanitizeLoginNext('purchase.html?from=login')).toBe('');
   });
 
   it('rejects open redirects', () => {

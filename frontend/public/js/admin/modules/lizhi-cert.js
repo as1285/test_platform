@@ -165,6 +165,172 @@
       });
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatDt(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var pad = function (n) {
+        return n < 10 ? '0' + n : String(n);
+      };
+      return (
+        d.getFullYear() +
+        '-' +
+        pad(d.getMonth() + 1) +
+        '-' +
+        pad(d.getDate()) +
+        ' ' +
+        pad(d.getHours()) +
+        ':' +
+        pad(d.getMinutes())
+      );
+    } catch (e0) {
+      return String(iso);
+    }
+  }
+
+  function renderStats(data) {
+    var el = document.getElementById('lizhiStatsMount');
+    if (!el) return;
+    if (!data || !data.summary) {
+      el.innerHTML = '<div class="share-stats-empty">暂无统计数据</div>';
+      return;
+    }
+    var s = data.summary;
+    var html = '';
+    if (data.period && data.period.label) {
+      html +=
+        '<p class="hint" style="margin:0 0 10px;">统计区间：' +
+        esc(data.period.label) +
+        '</p>';
+    }
+    if (data.note) {
+      html +=
+        '<p class="hint share-stats-note">' + esc(String(data.note)) + '</p>';
+    }
+    html += '<div class="share-kpi-grid">';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">已解锁用户（累计）</div><div class="ud-val">' +
+      esc(String(s.unlocked_users || 0)) +
+      '</div><div class="share-kpi-sub">lizhi_cert_unlocked=1</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">付费订单</div><div class="ud-val">' +
+      esc(String(s.paid_orders || 0)) +
+      '</div><div class="share-kpi-sub">付费用户 ' +
+      esc(String(s.paid_users || 0)) +
+      ' · 待支付 ' +
+      esc(String(s.pending_orders || 0)) +
+      '</div></div>';
+    html +=
+      '<div class="share-kpi-card is-convert"><div class="ud-label">GMV</div><div class="ud-val">¥' +
+      esc(String(s.gmv || '0.00')) +
+      '</div><div class="share-kpi-sub">sku_lizhi_cert_50</div></div>';
+    html +=
+      '<div class="share-kpi-card"><div class="ud-label">生成次数</div><div class="ud-val">' +
+      esc(String(s.generates || 0)) +
+      '</div><div class="share-kpi-sub">用户数 ' +
+      esc(String(s.generate_users || 0)) +
+      ' · 演示 ' +
+      esc(String(s.generates_demo || 0)) +
+      ' · 去水印 ' +
+      esc(String(s.generates_unlocked || 0)) +
+      '</div></div>';
+    html += '</div>';
+
+    var daily = data.daily || [];
+    html += '<div class="share-kpi-section-label">按日明细</div>';
+    if (!daily.length) {
+      html += '<div class="share-stats-empty">该区间暂无按日数据</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>日期</th><th>付费单</th><th>付费用户</th><th>GMV</th><th>生成</th><th>生成用户</th><th>演示</th><th>去水印</th></tr></thead><tbody>';
+      daily.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(row.day || '—') + '</td>';
+        html += '<td>' + esc(String(row.paid_orders || 0)) + '</td>';
+        html += '<td>' + esc(String(row.paid_users || 0)) + '</td>';
+        html += '<td>¥' + esc(String(row.gmv || '0.00')) + '</td>';
+        html += '<td>' + esc(String(row.generates || 0)) + '</td>';
+        html += '<td>' + esc(String(row.generate_users || 0)) + '</td>';
+        html += '<td>' + esc(String(row.generates_demo || 0)) + '</td>';
+        html += '<td>' + esc(String(row.generates_unlocked || 0)) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var paid = data.recent_paid || [];
+    html += '<div class="share-kpi-section-label">最近付费（最多 50）</div>';
+    if (!paid.length) {
+      html += '<div class="share-stats-empty">该区间暂无付费记录</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>金额</th><th>订单号</th></tr></thead><tbody>';
+      paid.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.paid_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>¥' + esc(String(row.amount || '0.00')) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.out_trade_no || '—') + '</code></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    var gens = data.recent_generations || [];
+    html += '<div class="share-kpi-section-label">最近生成（最多 50）</div>';
+    if (!gens.length) {
+      html +=
+        '<div class="share-stats-empty">该区间暂无生成记录（统计上线前无历史）</div>';
+    } else {
+      html +=
+        '<div class="scroll-x"><table class="user-detail-table"><thead><tr><th>时间</th><th>用户</th><th>姓名</th><th>类型</th><th>公司</th></tr></thead><tbody>';
+      gens.forEach(function (row) {
+        html += '<tr>';
+        html += '<td>' + esc(formatDt(row.created_at)) + '</td>';
+        html += '<td class="cell-break"><code>' + esc(row.username || '—') + '</code></td>';
+        html += '<td>' + esc(row.real_name || '—') + '</td>';
+        html += '<td>' + (row.demo ? '演示水印' : '去水印') + '</td>';
+        html += '<td class="cell-break">' + esc(row.company_name || '—') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function loadStats() {
+    var el = document.getElementById('lizhiStatsMount');
+    if (!el) return;
+    var daysEl = document.getElementById('lizhiStatsDays');
+    var days = daysEl ? String(daysEl.value || '7') : '7';
+    el.textContent = '加载中…';
+    fetchAdmin('/api/admin/lizhi-cert/stats?days=' + encodeURIComponent(days))
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.code !== 200 || !j.data) {
+          el.textContent = (j && j.msg) || '加载失败';
+          return;
+        }
+        renderStats(j.data);
+      })
+      .catch(function () {
+        el.textContent = '网络错误';
+      });
+  }
+
   var bound = false;
   function bind() {
     if (bound) return;
@@ -172,13 +338,18 @@
     var g = document.getElementById('lizhiGenerateBtn');
     var s = document.getElementById('lizhiSampleBtn');
     var p = document.getElementById('lizhiPrefillBtn');
+    var refresh = document.getElementById('btnRefreshLizhiStats');
+    var daysEl = document.getElementById('lizhiStatsDays');
     if (g) g.addEventListener('click', generate);
     if (s) s.addEventListener('click', fillSample);
     if (p) p.addEventListener('click', prefill);
+    if (refresh) refresh.addEventListener('click', loadStats);
+    if (daysEl) daysEl.addEventListener('change', loadStats);
   }
 
   function loadPage() {
     bind();
+    loadStats();
   }
 
   global.AdminModules = global.AdminModules || {};
@@ -186,6 +357,7 @@
     ready: true,
     loadPage: loadPage,
     generate: generate,
-    fillSample: fillSample
+    fillSample: fillSample,
+    loadStats: loadStats
   };
 })(window);

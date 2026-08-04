@@ -18,7 +18,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260731-iphone14pro-spacing"></script>
+    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
     <link rel="stylesheet" href="/css/user-font-settings.css?v=20260731-help-icon-lock">
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
     <script src="/js/user-font-settings.js?v=20260731-split-header-font" data-scope=".page-root"></script>
@@ -70,8 +70,13 @@
             isolation: isolate;
         }
 
+        /* 子项均为 fixed：自身不占文档流，避免 Android WebView 把空容器撑出大块空白 */
         .top-fixed {
             position: static;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            overflow: visible;
         }
 
         .header {
@@ -340,16 +345,16 @@
 
         /*
          * Android：汇总与列表缝隙（见 syncTopFixedHeight）。
-         * 底部分隔约 10px，避免贴太紧或空太大。
+         * 默认偏紧，由 JS 按末行内容底边实测写入，避免白底空一大截。
          */
         html.platform-android body.page-shuiming-result .page-root {
-            --list-summary-pad: 72px;
+            --list-summary-pad: 68px;
         }
 
         html.platform-android body.page-shuiming-result .summary {
             padding: 6px 16px 0;
             border-top: 10px solid #f5f6fa;
-            border-bottom: 10px solid #f5f6fa;
+            border-bottom: 8px solid #f5f6fa;
         }
 
         html.platform-android body.page-shuiming-result .summary-item {
@@ -1156,6 +1161,31 @@
             var summary = document.querySelector('.summary');
             var list = document.getElementById('recordList');
             var root = document.querySelector('.page-root');
+            function summaryContentBottom(summaryEl, summaryRect) {
+                var contentBottom = 0;
+                var items = summaryEl.querySelectorAll('.summary-item');
+                var i;
+                for (i = 0; i < items.length; i++) {
+                    var ir = items[i].getBoundingClientRect();
+                    if (ir.height > 0) contentBottom = Math.max(contentBottom, ir.bottom);
+                }
+                var activate = summaryEl.querySelector('.sm-activate-card');
+                if (
+                    activate &&
+                    !activate.hasAttribute('hidden') &&
+                    activate.getAttribute('aria-hidden') !== 'true'
+                ) {
+                    var cs = window.getComputedStyle(activate);
+                    if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+                        var ar = activate.getBoundingClientRect();
+                        if (ar.height > 0) contentBottom = Math.max(contentBottom, ar.bottom);
+                    }
+                }
+                if (contentBottom <= 0) {
+                    contentBottom = summaryRect.bottom;
+                }
+                return contentBottom;
+            }
             function measureAndApply() {
                 var isAndroid = false;
                 try {
@@ -1167,47 +1197,51 @@
                 if (summary && list) {
                     var summaryRect = summary.getBoundingClientRect();
                     var listRect = list.getBoundingClientRect();
-                    /*
-                     * 以汇总区盒子底边对齐列表内容顶：
-                     * list.top 不受 padding-top 影响，pad = summary.bottom - list.top 即可贴齐，
-                     * 避免「内容高 + 经验加成」把灰缝撑大。
-                     */
-                    if (summaryRect.height > 0 && listRect.top > 0) {
-                        var aligned = Math.ceil(summaryRect.bottom - listRect.top);
+                    if (summaryRect.height > 0 && listRect.top > -1) {
+                        var contentBottom = summaryContentBottom(summary, summaryRect);
+                        /*
+                         * 列表内容顶应对齐「汇总可见内容底 + 灰缝」，不要用整盒 bottom 再加呼吸缝，
+                         * 否则 Android 上白底汇总区下方容易空出一大截。
+                         */
+                        var gap = isAndroid ? 8 : 2;
+                        var aligned = Math.ceil(contentBottom - listRect.top + gap);
                         if (aligned > 0) {
-                            /* Android：贴齐底边后再加一点呼吸缝；iOS 略留缓冲 */
-                            pad = isAndroid
-                                ? Math.max(48, aligned + 6)
-                                : Math.max(48, aligned + 2);
+                            pad = Math.max(isAndroid ? 52 : 48, aligned);
                         }
-                    } else if (summaryRect.height > 0) {
-                        var contentBottom = 0;
-                        var items = summary.querySelectorAll('.summary-item');
-                        var i;
-                        for (i = 0; i < items.length; i++) {
-                            var ir = items[i].getBoundingClientRect();
-                            if (ir.height > 0) contentBottom = Math.max(contentBottom, ir.bottom);
-                        }
-                        var activate = summary.querySelector('.sm-activate-card');
-                        if (activate && !activate.hasAttribute('hidden')) {
-                            var ar = activate.getBoundingClientRect();
-                            if (ar.height > 0) contentBottom = Math.max(contentBottom, ar.bottom);
-                        }
-                        var h = 0;
-                        if (contentBottom > 0) {
-                            h = Math.max(0, contentBottom - summaryRect.top);
-                        } else {
-                            h = summaryRect.height || summary.offsetHeight || 0;
-                        }
-                        if (h > 0) {
-                            pad = isAndroid
-                                ? Math.max(48, Math.ceil(h) + 10)
-                                : Math.ceil(h) + 10;
+                        /* 列表被其它节点顶下去时，aligned 会偏小却仍留出大缝：改用汇总自身高度 */
+                        var boxH = Math.ceil(summaryRect.height || 0);
+                        if (isAndroid && boxH > 0) {
+                            var maxPad = boxH + 4;
+                            if (pad > maxPad) pad = maxPad;
+                            /* list.top 明显低于 summary.top：说明上方被撑高，用盒子高度兜底 */
+                            if (listRect.top > summaryRect.top + 8) {
+                                pad = Math.min(pad, Math.max(52, boxH));
+                            }
                         }
                     }
                 }
                 if (root) {
                     root.style.setProperty('--list-summary-pad', pad + 'px');
+                }
+                /* 二次校正：实测首条卡片与汇总末行的视觉缝，过大则收回 */
+                if (isAndroid && summary && list && root) {
+                    var firstItem =
+                        list.querySelector('.list-item') ||
+                        list.querySelector('.list-empty') ||
+                        list.querySelector('.list-empty-state');
+                    if (firstItem) {
+                        var sr = summary.getBoundingClientRect();
+                        var cb = summaryContentBottom(summary, sr);
+                        var fr = firstItem.getBoundingClientRect();
+                        var visualGap = fr.top - cb;
+                        if (visualGap > 18) {
+                            var curPad = parseFloat(root.style.getPropertyValue('--list-summary-pad')) || pad;
+                            var nextPad = Math.max(52, Math.ceil(curPad - (visualGap - 10)));
+                            if (nextPad < curPad) {
+                                root.style.setProperty('--list-summary-pad', nextPad + 'px');
+                            }
+                        }
+                    }
                 }
             }
             measureAndApply();

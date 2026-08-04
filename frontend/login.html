@@ -29,7 +29,7 @@
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8-plus.png?v=20260731-webclip" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
     <link rel="apple-touch-startup-image" href="splash/startup-iphone-8.png?v=20260731-webclip" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
     <link rel="apple-touch-startup-image" href="splash_screen.png?v=20260731-webclip" media="(orientation: portrait)">
-    <script src="/js/auth.js?v=20260801-guest-browse"></script>
+    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
     <script src="/js/browser-install-prompt.js?v=20260724-app-shell" defer></script>
     <title>登录</title>
     <style>
@@ -658,7 +658,6 @@
         <p class="activate-msg" id="activateMsg"></p>
         <input type="text" id="activateCodeInput" class="activate-code-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
         <div class="activate-btn-row">
-            <button type="button" class="activate-btn activate-btn-secondary" id="btnXianyuPurchase">闲鱼购买</button>
             <button type="button" class="activate-btn" id="btnDoActivate">立即激活</button>
         </div>
         <button type="button" class="activate-btn activate-btn-secondary" id="btnActivateLogout">退出并换账号</button>
@@ -675,9 +674,7 @@
         </div>
     </div>
 
-    <script src="/js/tutorial-video-prompt.js?v=20260726-disabled"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
         function isNeedActivateMode() {
             try {
@@ -728,76 +725,9 @@
                 }
             } catch (e2) {}
             showActivateMode();
-            prefetchXianyuPurchaseUrl();
         }
 
         initActivateFromUrl();
-
-        function prefetchXianyuPurchaseUrl() {
-            var url =
-                typeof getPublicInstallPackagesUrl === 'function'
-                    ? getPublicInstallPackagesUrl()
-                    : '/api/public/install-packages';
-            fetch(url, { credentials: 'same-origin' })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (body) {
-                    var data = body && body.code === 200 && body.data ? body.data : null;
-                    window.__xianyuPurchaseUrl =
-                        data && data.xianyu_purchase_url ? String(data.xianyu_purchase_url).trim() : '';
-                    if (typeof applyXianyuPurchaseVisibility === 'function') {
-                        applyXianyuPurchaseVisibility(data);
-                    }
-                })
-                .catch(function () {
-                    window.__xianyuPurchaseUrl = '';
-                    if (typeof applyXianyuPurchaseVisibility === 'function') {
-                        applyXianyuPurchaseVisibility(null);
-                    }
-                });
-        }
-        prefetchXianyuPurchaseUrl();
-
-        document.getElementById('btnXianyuPurchase').addEventListener('click', function () {
-            function doCopy(txt) {
-                if (!txt) {
-                    setActivateMsg('暂未配置购买文案，请在管理后台「引导安装」中填写', true);
-                    return;
-                }
-                if (typeof copyXianyuPurchaseText !== 'function') {
-                    setActivateMsg('复制功能不可用', true);
-                    return;
-                }
-                copyXianyuPurchaseText(txt).catch(function () {
-                    setActivateMsg('复制失败，请长按手动复制', true);
-                });
-            }
-            var cached = String(window.__xianyuPurchaseUrl || '').trim();
-            if (cached) {
-                doCopy(cached);
-                return;
-            }
-            var pkgUrl =
-                typeof getPublicInstallPackagesUrl === 'function'
-                    ? getPublicInstallPackagesUrl()
-                    : '/api/public/install-packages';
-            fetch(pkgUrl, { credentials: 'same-origin' })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (body) {
-                    var t =
-                        body && body.code === 200 && body.data && body.data.xianyu_purchase_url
-                            ? String(body.data.xianyu_purchase_url).trim()
-                            : '';
-                    window.__xianyuPurchaseUrl = t;
-                    doCopy(t);
-                })
-                .catch(function () {
-                    setActivateMsg('网络错误', true);
-                });
-        });
 
         document.getElementById('btnDoActivate').addEventListener('click', function () {
             var code = document.getElementById('activateCodeInput').value.trim();
@@ -1129,6 +1059,11 @@
                             loginNext = '';
                         }
                         if (loginNext && /^[a-z0-9_\-]+\.html/i.test(loginNext)) {
+                            /* 登录成功不进支付页；激活入口由「我的」主动进入 */
+                            var nextPageOnly = String(loginNext).split('?')[0].split('#')[0].toLowerCase();
+                            if (nextPageOnly === 'purchase.html') {
+                                loginNext = 'mine.html';
+                            }
                             var nextHref = loginNext;
                             try {
                                 if (typeof window.appendSalesChannelToUrl === 'function') {

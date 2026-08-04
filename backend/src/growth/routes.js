@@ -8,6 +8,16 @@ function registerGrowthRoutes(app, deps) {
   app.get('/api/growth/bilibili-share/status', mw.requireAuth, h.handleBilibiliShareStatus);
   app.post('/api/growth/bilibili-share/start', mw.requireAuth, h.handleBilibiliShareStart);
   app.post('/api/growth/bilibili-share/complete', mw.requireAuth, h.handleBilibiliShareComplete);
+  app.get(
+    '/api/growth/purchase-price-survey/status',
+    mw.requireAuth,
+    h.handlePurchasePriceSurveyStatus
+  );
+  app.post(
+    '/api/growth/purchase-price-survey',
+    mw.requireAuth,
+    h.handlePurchasePriceSurveySubmit
+  );
   app.get('/api/public/mine-ui', h.handlePublicMineUi);
   app.get('/api/public/install-packages', h.handlePublicInstallPackages);
   app.get('/api/public/asset', h.handlePublicAssetGet);

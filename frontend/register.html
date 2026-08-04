@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260730-ui-clean"></script>
+    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>个人所得税 · 创建账号</title>
     <style>
@@ -797,12 +797,13 @@
                         } catch (eGo) {
                             goDownload = false;
                         }
-                        showToast(goDownload ? '注册成功，马上带你去下载' : '注册成功，去开通权益');
+                        showToast(goDownload ? '注册成功，马上带你去下载' : '注册成功');
                         setTimeout(function () {
                             if (goDownload) {
                                 window.location.href = 'install_guide.html?download=1#download';
                             } else {
-                                window.location.href = 'purchase.html?from=register';
+                                /* 注册成功进「我的」，不强制跳转支付页 */
+                                window.location.href = 'mine.html';
                             }
                         }, 450);
                         return;

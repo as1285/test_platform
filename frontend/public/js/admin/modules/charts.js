@@ -82,9 +82,7 @@
         var _registerGenderChartInstances = [];
         var _udGenderChartInstances = [];
         var _udFemaleAgeChartInstances = [];
-        var _auaDauChartInstances = [];
         var _installGuideChartInstances = [];
-        var _guestUsersChartInstances = [];
         var FEMALE_AGE_CHART_COLORS = {
             u18: '#c4b5fd',
             '18_22': '#f9a8d4',
@@ -176,14 +174,6 @@
             _installGuideChartInstances = [];
         }
 
-        function destroyGuestUsersCharts() {
-            _guestUsersChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e0) {}
-            });
-            _guestUsersChartInstances = [];
-        }
 
         function renderRegisterGenderAnalysis(data) {
             var summaryEl = document.getElementById('registerGenderSummary');
@@ -1337,7 +1327,6 @@
         window.destroyRegisterTimeCharts = destroyRegisterTimeCharts;
         window.destroyRegisterGenderCharts = destroyRegisterGenderCharts;
         window.destroyInstallGuideCharts = destroyInstallGuideCharts;
-        window.destroyGuestUsersCharts = destroyGuestUsersCharts;
         window.destroyChannelAnalysisCharts = destroyChannelAnalysisCharts;
         window.loadChannelAnalysis = loadChannelAnalysis;
         window.loadAnalyticsRegisterGender = loadAnalyticsRegisterGender;

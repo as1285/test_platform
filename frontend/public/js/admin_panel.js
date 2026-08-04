@@ -18,12 +18,10 @@
         var _registerTimeChartInstances = [];
         var _registerGenderChartInstances = [];
         var _installGuideChartInstances = [];
-        var _guestUsersChartInstances = [];
         window.destroyDeviceStatsCharts = function () {};
         window.destroyRegisterTimeCharts = function () {};
         window.destroyRegisterGenderCharts = function () {};
         window.destroyInstallGuideCharts = function () {};
-        window.destroyGuestUsersCharts = function () {};
         window.destroyChannelAnalysisCharts = function () {};
         window.loadChannelAnalysis = function () {};
         window.loadAnalyticsRegisterGender = function () {};
@@ -51,9 +49,6 @@
         }
         function destroyInstallGuideCharts() {
             return window.destroyInstallGuideCharts.apply(this, arguments);
-        }
-        function destroyGuestUsersCharts() {
-            return window.destroyGuestUsersCharts.apply(this, arguments);
         }
         function destroyChannelAnalysisCharts() {
             return window.destroyChannelAnalysisCharts.apply(this, arguments);
@@ -1150,10 +1145,160 @@
 
             html += buildTodayTaxChangesHtml(payload);
 
+            html += buildAdminShebaoPhotosSectionHtml(username, null, 'user');
+
             html += '<div style="margin:10px 0 8px 0;color:#666;">个税记录（' + records.length + ' 条）</div>';
             html += renderAdminTaxRecordsTable(records);
             html += '</div>';
             return html;
+        }
+
+        function adminShebaoSafeKey(username) {
+            return String(username || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        }
+
+        function formatAdminShebaoBytes(n) {
+            var b = Number(n) || 0;
+            if (b < 1024) return b + ' B';
+            if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+            return (b / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        /** items=null 表示稍后异步拉取；数组则同步渲染占位 */
+        function buildAdminShebaoPhotosSectionHtml(username, items, prefix) {
+            prefix = prefix || 'ud';
+            var safeKey = adminShebaoSafeKey(username);
+            var countLabel =
+                items == null ? '…' : String((items || []).length);
+            var html = '';
+            html +=
+                '<div style="margin:10px 0 6px;color:#666;">社保照片（' +
+                countLabel +
+                '）</div>';
+            html +=
+                '<div class="ud-shebao-wrap" id="' +
+                prefix +
+                '_shebao_' +
+                safeKey +
+                '" data-username="' +
+                esc(username) +
+                '">';
+            if (items == null) {
+                html += '<div class="ud-shebao-empty">加载中…</div>';
+            } else if (!(items || []).length) {
+                html += '<div class="ud-shebao-empty">用户未上传社保截图</div>';
+            } else {
+                html += '<div class="ud-shebao-grid"></div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function revokeAdminShebaoObjectUrls(container) {
+            if (!container || !container.__shebaoObjectUrls) return;
+            (container.__shebaoObjectUrls || []).forEach(function (u) {
+                try {
+                    URL.revokeObjectURL(u);
+                } catch (e0) {}
+            });
+            container.__shebaoObjectUrls = [];
+        }
+
+        function renderAdminShebaoPhotoItems(container, items) {
+            if (!container) return;
+            revokeAdminShebaoObjectUrls(container);
+            container.__shebaoObjectUrls = [];
+            items = items || [];
+            if (!items.length) {
+                container.innerHTML = '<div class="ud-shebao-empty">用户未上传社保截图</div>';
+                return;
+            }
+            var grid = document.createElement('div');
+            grid.className = 'ud-shebao-grid';
+            container.innerHTML = '';
+            container.appendChild(grid);
+            items.forEach(function (it) {
+                var url = it && it.url ? String(it.url) : '';
+                if (!url) return;
+                var card = document.createElement('div');
+                card.className = 'ud-shebao-item';
+                var img = document.createElement('img');
+                img.alt = (it.original_name || '社保照片') + '';
+                img.loading = 'lazy';
+                var meta = document.createElement('div');
+                meta.className = 'ud-shebao-meta';
+                var name = it.original_name ? String(it.original_name) : '照片 #' + (it.id || '');
+                var when = it.created_at ? formatDt(it.created_at) : '';
+                meta.textContent =
+                    name +
+                    (when ? ' · ' + when : '') +
+                    (it.file_size ? ' · ' + formatAdminShebaoBytes(it.file_size) : '');
+                var openBtn = document.createElement('a');
+                openBtn.className = 'ud-shebao-open';
+                openBtn.href = '#';
+                openBtn.textContent = '新窗口查看';
+                openBtn.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    if (img.src) window.open(img.src, '_blank', 'noopener');
+                });
+                card.appendChild(img);
+                card.appendChild(meta);
+                card.appendChild(openBtn);
+                grid.appendChild(card);
+                adminFetch(url, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/octet-stream' }
+                })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('load_failed');
+                        return r.blob();
+                    })
+                    .then(function (blob) {
+                        var obj = URL.createObjectURL(blob);
+                        container.__shebaoObjectUrls.push(obj);
+                        img.src = obj;
+                    })
+                    .catch(function () {
+                        card.classList.add('is-error');
+                        meta.textContent = (meta.textContent || '') + '（加载失败）';
+                    });
+            });
+        }
+
+        function mountAdminShebaoPhotos(username, items, prefix) {
+            prefix = prefix || 'ud';
+            var el = document.getElementById(prefix + '_shebao_' + adminShebaoSafeKey(username));
+            if (!el) return;
+            if (items != null) {
+                renderAdminShebaoPhotoItems(el, items);
+                return;
+            }
+            el.innerHTML = '<div class="ud-shebao-empty">加载中…</div>';
+            adminFetch(
+                'api/admin/user-shebao-photos?username=' + encodeURIComponent(username)
+            )
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (d) {
+                    if (d.code !== 200 || !d.data) {
+                        el.innerHTML =
+                            '<div class="ud-shebao-empty">' +
+                            esc(d.msg || '加载失败') +
+                            '</div>';
+                        return;
+                    }
+                    renderAdminShebaoPhotoItems(el, d.data.items || []);
+                    var head = el.previousElementSibling;
+                    if (head && /社保照片/.test(head.textContent || '')) {
+                        head.textContent =
+                            '社保照片（' + ((d.data.items || []).length) + '）';
+                    }
+                })
+                .catch(function () {
+                    el.innerHTML = '<div class="ud-shebao-empty">网络错误</div>';
+                });
         }
 
         var userPage = 1;
@@ -1196,11 +1341,7 @@
 
         var _adminUsersLoaded = false;
         var _adminDeletedUsersLoaded = false;
-        var _adminGuestUsersLoaded = false;
-        var guestUsersPage = 1;
-        var guestUsersLimit = 20;
         var _adminUserDataLoaded = false;
-        var _adminActivatedUserAnalysisLoaded = false;
         var userDataPage = 1;
         var userDataLimit = 15;
         var _adminCodesLoaded = false;
@@ -1302,9 +1443,6 @@
             document.querySelectorAll('.nav-item').forEach(function (btn) {
                 var key = btn.getAttribute('data-page');
                 var on = adminHasMenu(key);
-                if (key === 'guest-users' || key === 'activated-user-analysis') {
-                    on = false;
-                }
                 btn.style.display = on ? '' : 'none';
             });
             document.querySelectorAll('.nav-group').forEach(function (group) {
@@ -1353,9 +1491,6 @@
             if (k === 'system' || k === 'setting') k = 'settings';
             if (k === 'install' || k === 'guide') k = 'install-guide';
             if (k === 'analytics') k = 'analytics-conversion';
-            if (k === 'guest-users' || k === 'activated-user-analysis') {
-                return firstAllowedAdminPage();
-            }
             var ok = {
                 settings: 1,
                 'install-guide': 1,
@@ -1380,6 +1515,7 @@
                 'sbdy-demo': 1,
                 'lizhi-cert': 1,
                 'ylbx-ps': 1,
+                'ccb-flow': 1,
                 'najilu-qr': 1,
                 'blocked-ips': 1
             };
@@ -1520,6 +1656,14 @@
                 typeof window.AdminModules['ylbx-ps'].loadPage === 'function'
             ) {
                 window.AdminModules['ylbx-ps'].loadPage();
+            }
+            if (
+                pageKey === 'ccb-flow' &&
+                window.AdminModules &&
+                window.AdminModules['ccb-flow'] &&
+                typeof window.AdminModules['ccb-flow'].loadPage === 'function'
+            ) {
+                window.AdminModules['ccb-flow'].loadPage();
             }
             if (
                 pageKey === 'najilu-qr' &&
@@ -4094,7 +4238,7 @@
                 '</span></div>';
             html += '</div>';
 
-            html += '<div class="share-kpi-section-label">发出</div>';
+            html += '<div class="share-kpi-section-label">发出（from=share 主站链）</div>';
             html += '<div class="share-kpi-grid">';
             html +=
                 '<div class="share-kpi-card is-emit"><div class="ud-label">分享发出</div><div class="ud-val">' +
@@ -4107,6 +4251,8 @@
                 esc(String(s.share_native || 0)) +
                 ' · 复制 ' +
                 esc(String(s.share_copy || 0)) +
+                ' · 税模拟 ' +
+                esc(String((s.share_tax || 0) + (s.share_tax_native || 0))) +
                 '</div></div>';
             html +=
                 '<div class="share-kpi-card is-emit"><div class="ud-label">面板打开</div><div class="ud-val">' +
@@ -4115,6 +4261,24 @@
                 esc(String(s.share_done || 0)) +
                 ' · 海报 ' +
                 esc(String(s.share_poster_save || 0)) +
+                '</div></div>';
+            html += '</div>';
+
+            html += '<div class="share-kpi-section-label">B 站分享（外链，不进上方漏斗）</div>';
+            html += '<div class="share-kpi-grid">';
+            html +=
+                '<div class="share-kpi-card is-emit"><div class="ud-label">B 站分享次数</div><div class="ud-val">' +
+                esc(String(s.bili_out || 0)) +
+                '</div><div class="share-kpi-sub">入口 ' +
+                esc(String(s.bili_gate || 0)) +
+                ' · 分享 ' +
+                esc(String(s.bili_share || 0)) +
+                ' · 复制 ' +
+                esc(String(s.bili_copy || 0)) +
+                ' · Intent ' +
+                esc(String(s.bili_intent || 0)) +
+                ' · 打开 ' +
+                esc(String(s.bili_open || 0)) +
                 '</div></div>';
             html += '</div>';
 
@@ -4177,13 +4341,13 @@
             var daily = Array.isArray(data.daily) ? data.daily.slice().reverse() : [];
             html += '<div class="share-daily">';
             html +=
-                '<p class="share-daily-title">分日明细（北京时间；「注册」列为事件次数）</p>';
+                '<p class="share-daily-title">分日明细（北京时间；「发出」含税模拟；「B站」为外链；「注册」为事件次数）</p>';
             html += '<div class="scroll-x"><table><thead><tr>';
             html +=
-                '<th>日期</th><th class="num">发出</th><th class="num">打开 PV</th><th class="num">打开 UV</th><th class="num">注册</th><th class="num">登录</th><th class="num">下载</th></tr></thead><tbody>';
+                '<th>日期</th><th class="num">发出</th><th class="num">B站</th><th class="num">打开 PV</th><th class="num">打开 UV</th><th class="num">注册</th><th class="num">登录</th><th class="num">下载</th></tr></thead><tbody>';
             if (!daily.length) {
                 html +=
-                    '<tr><td colspan="7" class="share-daily-empty">暂无分日数据；产生分享/打开后开始累计</td></tr>';
+                    '<tr><td colspan="8" class="share-daily-empty">暂无分日数据；产生分享/打开后开始累计</td></tr>';
             } else {
                 daily.forEach(function (row) {
                     var day = row.day || '—';
@@ -4196,6 +4360,8 @@
                         (isToday ? ' <span class="share-today-tag">今日</span>' : '') +
                         '</td><td class="num">' +
                         esc(String(row.share_out || 0)) +
+                        '</td><td class="num">' +
+                        esc(String(row.bili_out || 0)) +
                         '</td><td class="num">' +
                         esc(String(row.land_pv || 0)) +
                         '</td><td class="num">' +
@@ -4933,296 +5099,6 @@
             return html;
         }
 
-        var auaUsersPage = 1;
-        var auaUsersLimit = 20;
-
-        function destroyAuaDauCharts() {
-            _auaDauChartInstances.forEach(function (c) {
-                try {
-                    c.destroy();
-                } catch (e) {}
-            });
-            _auaDauChartInstances = [];
-        }
-
-        /* ========== Activated User Analysis ========== */
-        function renderActivatedUserAnalysisOverview(data) {
-            var wrap = document.getElementById('auaSummary');
-            var tablesWrap = document.getElementById('auaAnalyticsTables');
-            if (!wrap || !data) return;
-            var actDays = data.activity_days != null ? data.activity_days : 30;
-            var actHint = document.getElementById('auaActivityDaysHint');
-            if (actHint) actHint.textContent = String(actDays);
-            var cards = [
-                { label: '已激活用户', val: data.total_activated },
-                { label: '已填写个税', val: data.with_tax_records },
-                { label: '未填写个税', val: data.without_tax_records },
-                { label: '今日日活', val: data.dau_today },
-                { label: '个税总条数', val: data.total_tax_records },
-                {
-                    label: '改名总次数',
-                    val: data.total_name_changes,
-                    hint: data.users_renamed != null ? '涉及 ' + data.users_renamed + ' 人' : ''
-                },
-                {
-                    label: '改个税总次数',
-                    val: data.total_tax_edits,
-                    hint: data.users_tax_edited != null ? '涉及 ' + data.users_tax_edited + ' 人' : ''
-                }
-            ];
-            var html = '';
-            cards.forEach(function (c) {
-                html +=
-                    '<div class="user-data-stat-card"><div class="ud-label">' +
-                    esc(c.label) +
-                    '</div><div class="ud-val">' +
-                    esc(String(c.val != null ? c.val : '—')) +
-                    '</div>' +
-                    (c.hint
-                        ? '<div class="hint" style="margin-top:4px;font-size:12px;">' + esc(c.hint) + '</div>'
-                        : '') +
-                    '</div>';
-            });
-            wrap.innerHTML = html;
-            if (tablesWrap) tablesWrap.style.display = '';
-
-            var taxTb = document.getElementById('auaTaxBucketsTbody');
-            if (taxTb) {
-                var thtml = '';
-                (data.tax_record_buckets || []).forEach(function (b) {
-                    thtml += '<tr><td>' + esc(b.label) + '</td><td>' + esc(b.count) + '</td></tr>';
-                });
-                taxTb.innerHTML = thtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-            var freqTb = document.getElementById('auaActivityFreqTbody');
-            if (freqTb) {
-                var freq = data.activity_frequency || {};
-                var freqRows = [
-                    { label: '无活跃（0天）', val: freq.none },
-                    { label: '低频（1天）', val: freq.low },
-                    { label: '中频（2–4天）', val: freq.medium },
-                    { label: '高频（5天+）', val: freq.high }
-                ];
-                var fhtml = '';
-                freqRows.forEach(function (fr) {
-                    fhtml += '<tr><td>' + esc(fr.label) + '</td><td>' + esc(fr.val != null ? fr.val : 0) + '</td></tr>';
-                });
-                freqTb.innerHTML = fhtml;
-            }
-
-            var topTb = document.getElementById('auaTopPagesTbody');
-            if (topTb) {
-                var phtml = '';
-                (data.top_pages || []).forEach(function (p) {
-                    phtml += '<tr><td>' + esc(p.title || '—') + '</td><td>' + esc(p.hit_count) + '</td></tr>';
-                });
-                topTb.innerHTML = phtml || '<tr><td colspan="2">暂无</td></tr>';
-            }
-
-            destroyAuaDauCharts();
-            var chartWrap = document.getElementById('auaDauChartWrap');
-            var canvas = document.getElementById('auaDauChart');
-            var series = data.dau_series || [];
-            if (!series.length || typeof Chart === 'undefined' || !canvas) {
-                if (chartWrap) chartWrap.style.display = 'none';
-                return;
-            }
-            if (chartWrap) chartWrap.style.display = '';
-            var labels = series.map(function (r) {
-                return r.date;
-            });
-            var values = series.map(function (r) {
-                return Number(r.active_users) || 0;
-            });
-            _auaDauChartInstances.push(
-                new Chart(canvas, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: '激活用户日活',
-                                data: values,
-                                borderColor: '#2563eb',
-                                backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                                fill: true,
-                                tension: 0.25,
-                                pointRadius: 3
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, ticks: { precision: 0 } }
-                        }
-                    }
-                })
-            );
-        }
-
-        function loadActivatedUserAnalysisOverview() {
-            var wrap = document.getElementById('auaSummary');
-            if (wrap) wrap.textContent = '加载中…';
-            var daysEl = document.getElementById('auaOverviewDays');
-            var actEl = document.getElementById('auaActivityDays');
-            var days = daysEl ? parseInt(daysEl.value, 10) || 14 : 14;
-            var actDays = actEl ? parseInt(actEl.value, 10) || 30 : 30;
-            adminFetch(
-                'api/admin/activated-user-analysis/overview?days=' +
-                    encodeURIComponent(days) +
-                    '&activity_days=' +
-                    encodeURIComponent(actDays)
-            )
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        if (wrap) wrap.textContent = j.msg || '加载失败';
-                        return;
-                    }
-                    renderActivatedUserAnalysisOverview(j.data);
-                })
-                .catch(function () {
-                    if (wrap) wrap.textContent = '加载失败';
-                });
-        }
-
-        /* ========== User Data ========== */
-        function loadActivatedUserAnalysisUsers(p) {
-            if (p != null) auaUsersPage = p;
-            var stat = document.getElementById('auaUserListStat');
-            var tbody = document.getElementById('auaUsersTbody');
-            if (stat) stat.textContent = '加载中…';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="12">加载中…</td></tr>';
-            var username = document.getElementById('auaFilterUsername');
-            var taxF = document.getElementById('auaFilterTax');
-            var actF = document.getElementById('auaFilterActivity');
-            var actDaysEl = document.getElementById('auaActivityDays');
-            var actDays = actDaysEl ? parseInt(actDaysEl.value, 10) || 30 : 30;
-            var q =
-                'api/admin/activated-user-analysis/users?page=' +
-                encodeURIComponent(auaUsersPage) +
-                '&limit=' +
-                encodeURIComponent(auaUsersLimit) +
-                '&activity_days=' +
-                encodeURIComponent(actDays);
-            if (username && username.value.trim()) {
-                q += '&username=' + encodeURIComponent(username.value.trim());
-            }
-            if (taxF && taxF.value) {
-                q += '&tax_status=' + encodeURIComponent(taxF.value);
-            }
-            if (actF && actF.value) {
-                q += '&activity=' + encodeURIComponent(actF.value);
-            }
-            adminFetch(q)
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (j) {
-                    if (j.code !== 200 || !j.data) {
-                        if (stat) stat.textContent = j.msg || '加载失败';
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="12">' + esc(j.msg || '加载失败') + '</td></tr>';
-                        return;
-                    }
-                    var d = j.data;
-                    var total = d.total || 0;
-                    if (stat) {
-                        stat.textContent =
-                            '已激活用户 ' +
-                            total +
-                            ' 人（本页 ' +
-                            (d.items || []).length +
-                            ' 人 · 近 ' +
-                            (d.activity_days || actDays) +
-                            ' 天统计）';
-                    }
-                    var totalPages = Math.ceil(total / auaUsersLimit) || 1;
-                    var pageInfo = document.getElementById('auaUsersPageInfo');
-                    if (pageInfo) {
-                        pageInfo.textContent = '第 ' + auaUsersPage + ' 页 / 共 ' + totalPages + ' 页';
-                    }
-                    var prevBtn = document.getElementById('auaUsersPrev');
-                    var nextBtn = document.getElementById('auaUsersNext');
-                    if (prevBtn) prevBtn.disabled = auaUsersPage <= 1;
-                    if (nextBtn) nextBtn.disabled = auaUsersPage >= totalPages;
-                    var html = '';
-                    (d.items || []).forEach(function (row) {
-                        var key = keyForUser(row.username);
-                        html += '<tr>';
-                        html += '<td class="cell-break"><code>' + esc(row.username) + '</code></td>';
-                        html += '<td>' + esc(row.real_name || '—') + '</td>';
-                        html += '<td>' + esc(row.has_tax_records ? row.tax_record_count : '未填') + '</td>';
-                        html += '<td>' + esc(row.name_change_count != null ? row.name_change_count : 0) + '</td>';
-                        html += '<td>' + esc(row.tax_edit_count != null ? row.tax_edit_count : 0) + '</td>';
-                        html += '<td>' + esc(row.active_days != null ? row.active_days : 0) + '</td>';
-                        html += '<td>' + esc(row.event_count != null ? row.event_count : 0) + '</td>';
-                        html += '<td>' + esc(row.events_per_active_day != null ? row.events_per_active_day : 0) + '</td>';
-                        html += '<td>' + esc(row.stay_label || '—') + '</td>';
-                        html += '<td>' + esc(row.last_active || '—') + '</td>';
-                        html += '<td class="cell-break" style="font-size:12px;color:#555;">' + esc(row.path_summary || '—') + '</td>';
-                        html +=
-                            '<td class="col-ops"><button type="button" class="btn-sm btn-detail btn-aua-path" data-u="' +
-                            esc(row.username) +
-                            '" data-k="' +
-                            key +
-                            '">路径</button></td>';
-                        html += '</tr>';
-                        html += '<tr id="aua_path_row_' + key + '" class="users-detail-row" style="display:none;">';
-                        html +=
-                            '<td colspan="12"><div id="aua_path_box_' +
-                            key +
-                            '">加载中…</div></td></tr>';
-                    });
-                    if (tbody) {
-                        tbody.innerHTML = html || '<tr><td colspan="12">暂无已激活用户</td></tr>';
-                        tbody.querySelectorAll('.btn-aua-path').forEach(function (btn) {
-                            btn.onclick = function () {
-                                var name = btn.getAttribute('data-u');
-                                var key = btn.getAttribute('data-k');
-                                var row = document.getElementById('aua_path_row_' + key);
-                                var box = document.getElementById('aua_path_box_' + key);
-                                if (!row || !box) return;
-                                var opening = row.style.display === 'none';
-                                if (!opening) {
-                                    row.style.display = 'none';
-                                    btn.textContent = '路径';
-                                    return;
-                                }
-                                row.style.display = '';
-                                btn.textContent = '收起';
-                                box.textContent = '加载中…';
-                                adminFetch(
-                                    'api/admin/activated-user-analysis/behavior-path?username=' +
-                                        encodeURIComponent(name)
-                                )
-                                    .then(function (r) {
-                                        return r.json();
-                                    })
-                                    .then(function (resp) {
-                                        if (resp.code !== 200 || !resp.data) {
-                                            box.textContent = resp.msg || '加载失败';
-                                            return;
-                                        }
-                                        box.innerHTML = buildNoTaxPathDetailHtml(name, resp.data);
-                                    })
-                                    .catch(function () {
-                                        box.textContent = '网络错误';
-                                    });
-                            };
-                        });
-                    }
-                })
-                .catch(function () {
-                    if (stat) stat.textContent = '加载失败';
-                    if (tbody) tbody.innerHTML = '<tr><td colspan="12">加载失败</td></tr>';
-                });
-        }
-
         function buildUserDataDetailHtml(username, data) {
             var html = '<div class="user-detail-wrap">';
             html += '<div class="user-detail-title">账号「' + esc(username) + '」数据档案</div>';
@@ -5316,6 +5192,8 @@
                 });
                 html += '</tbody></table></div>';
             }
+
+            html += buildAdminShebaoPhotosSectionHtml(username, data.shebao_photos || [], 'ud');
 
             var safeKey = userDataCertSafeKey(username);
             var latestIssue = data.latest_issue_application || null;
@@ -5653,6 +5531,7 @@
                                         }
                                         box.innerHTML = buildUserDataDetailHtml(name, d.data);
                                         mountUserDataCertificate(name, d.data);
+                                        mountAdminShebaoPhotos(name, d.data.shebao_photos || [], 'ud');
                                     })
                                     .catch(function () {
                                         box.textContent = '网络错误';
@@ -5842,258 +5721,7 @@
                 });
         }
 
-        /* ========== User Management — Guest Users ========== */
-        function renderGuestUsersStats(data) {
-            var mount = document.getElementById('guestUsersStatsMount');
-            if (!mount) return;
-            destroyGuestUsersCharts();
-            var s = (data && data.summary) || {};
-            var days = s.period_days != null ? Number(s.period_days) : 1;
-            var daysLabel =
-                days <= 0 ? '全部' : days === 1 ? '当天' : '近 ' + days + ' 天';
-            var byHour = Array.isArray(data && data.by_hour) ? data.by_hour : [];
-            var hourTotal = byHour.reduce(function (sum, row) {
-                return sum + (Number(row.count) || 0);
-            }, 0);
-            var peakHour = null;
-            byHour.forEach(function (row) {
-                var c = Number(row.count) || 0;
-                if (!peakHour || c > peakHour.count) {
-                    peakHour = { label: row.label || '', count: c };
-                }
-            });
-            if (peakHour && peakHour.count <= 0) peakHour = null;
-
-            var html = '<div class="user-data-stats" style="margin-bottom:14px;">';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">' +
-                esc(daysLabel) +
-                '游客</div><div class="ud-val">' +
-                esc(String(s.period_guests != null ? s.period_guests : 0)) +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">' +
-                esc(daysLabel) +
-                '已注册合并</div><div class="ud-val">' +
-                esc(String(s.period_converted != null ? s.period_converted : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">仍游客 ' +
-                esc(String(s.period_active != null ? s.period_active : 0)) +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">' +
-                esc(daysLabel) +
-                '注册率</div><div class="ud-val">' +
-                esc(s.period_register_rate_pct || '—') +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">已注册÷游客</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">' +
-                esc(daysLabel) +
-                '个税记录</div><div class="ud-val">' +
-                esc(String(s.period_tax_records != null ? s.period_tax_records : 0)) +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                esc(String(s.period_guests_with_tax != null ? s.period_guests_with_tax : 0)) +
-                ' 人填写 · 填写率 ' +
-                esc(s.period_tax_fill_rate_pct || '—') +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">累计注册率</div><div class="ud-val">' +
-                esc(s.all_time_register_rate_pct || '—') +
-                '</div><div class="hint" style="margin-top:4px;font-size:12px;">' +
-                esc(String(s.all_time_converted != null ? s.all_time_converted : 0)) +
-                ' / ' +
-                esc(String(s.all_time_guests != null ? s.all_time_guests : 0)) +
-                '</div></div>';
-            html +=
-                '<div class="user-data-stat-card"><div class="ud-label">带游客数据的正式账号</div><div class="ud-val">' +
-                esc(String(s.registered_with_guest_data != null ? s.registered_with_guest_data : 0)) +
-                '</div></div>';
-            html += '</div>';
-
-            html += '<p class="stat" style="margin:0 0 8px;">游客创建时段（北京时间）</p>';
-            if (peakHour) {
-                html +=
-                    '<p class="hint" style="margin:0 0 10px;">统计区间内按创建小时汇总；当前高峰在「' +
-                    esc(peakHour.label) +
-                    '」（' +
-                    esc(String(peakHour.count)) +
-                    ' 人）。「近 1 天」为当天 0 点起（北京时间）。</p>';
-            } else {
-                html +=
-                    '<p class="hint" style="margin:0 0 10px;">按北京时间统计游客账号创建小时（0–23 时）。「近 1 天」为当天 0 点起，非整日滚动 24 小时。</p>';
-            }
-            html +=
-                '<div class="device-stats-charts-wrap" style="margin-bottom:16px;"><div class="chart-canvas-wrap chart-canvas-wrap-trend"><canvas id="guestUsersHourlyChart" aria-label="游客用户24小时分布"></canvas></div></div>';
-
-            mount.innerHTML = html;
-
-            if (typeof Chart !== 'undefined' && byHour.length) {
-                var hourCanvas = document.getElementById('guestUsersHourlyChart');
-                if (hourCanvas) {
-                    _guestUsersChartInstances.push(
-                        new Chart(hourCanvas, {
-                            type: 'bar',
-                            data: {
-                                labels: byHour.map(function (row) {
-                                    return row.label || '';
-                                }),
-                                datasets: [
-                                    {
-                                        label: '游客数',
-                                        data: byHour.map(function (row) {
-                                            return Number(row.count) || 0;
-                                        }),
-                                        backgroundColor: 'rgba(30, 111, 255, 0.7)',
-                                        borderColor: '#1e6fff',
-                                        borderWidth: 0,
-                                        borderRadius: 3
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: { display: false },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function (ctx) {
-                                                var v = ctx.parsed.y || 0;
-                                                var pct = hourTotal ? ((v / hourTotal) * 100).toFixed(1) : '0';
-                                                return ' ' + v + ' 人 (' + pct + '%)';
-                                            }
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
-                                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                                }
-                            }
-                        })
-                    );
-                }
-            }
-        }
-
         /* ========== User Management — Registered Users ========== */
-        function loadGuestUsers(p) {
-            ensureUserDetailPagesToggleDelegation();
-            if (p != null) guestUsersPage = p;
-            var daysEl = document.getElementById('guestUsersDays');
-            var statusEl = document.getElementById('guestUsersStatus');
-            var usernameEl = document.getElementById('guestUsersUsername');
-            var days = daysEl ? daysEl.value : '1';
-            var status = statusEl ? statusEl.value : '';
-            var username = usernameEl ? usernameEl.value.trim() : '';
-            var url =
-                'api/admin/guest-users?page=' +
-                guestUsersPage +
-                '&limit=' +
-                guestUsersLimit +
-                '&days=' +
-                encodeURIComponent(days);
-            if (status) url += '&status=' + encodeURIComponent(status);
-            if (username) url += '&username=' + encodeURIComponent(username);
-
-            adminFetch(url)
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.code === 403) {
-                        var mount = document.getElementById('guestUsersStatsMount');
-                        if (mount) mount.textContent = data.msg || '仅超级管理员可查看';
-                        document.getElementById('guestUsersTbody').innerHTML =
-                            '<tr><td colspan="12">' + esc(data.msg || '无权查看') + '</td></tr>';
-                        return;
-                    }
-                    if (data.code !== 200 || !data.data) return;
-                    renderGuestUsersStats(data.data);
-                    var list = data.data.users || [];
-                    var total = data.data.total || 0;
-                    var statEl = document.getElementById('guestUsersListStat');
-                    if (statEl) {
-                        statEl.textContent = '共 ' + total + ' 个游客账号';
-                    }
-                    var totalPages = Math.ceil(total / guestUsersLimit) || 1;
-                    document.getElementById('guestUsersPageInfo').textContent =
-                        '第 ' + guestUsersPage + ' 页 / 共 ' + totalPages + ' 页';
-                    document.getElementById('guestUsersPrev').disabled = guestUsersPage <= 1;
-                    document.getElementById('guestUsersNext').disabled = guestUsersPage >= totalPages;
-
-                    var html = '';
-                    list.forEach(function (u) {
-                        var statusBadge = u.is_converted
-                            ? '<span class="badge badge-yes">已注册</span>'
-                            : '<span class="badge badge-guest">游客中</span>';
-                        var mergedCell = u.guest_merged_to
-                            ? '<span class="cell-break">' + esc(u.guest_merged_to) + '</span>'
-                            : '<span style="color:#bbb;">—</span>';
-                        var detailBtn =
-                            '<button type="button" class="btn-sm btn-detail btn-user-detail" data-u="' +
-                            esc(u.username) +
-                            '" data-k="' +
-                            keyForUser(u.username) +
-                            '">详情</button>';
-                        var detailKey = keyForUser(u.username);
-                        html += '<tr>';
-                        html +=
-                            '<td class="cell-break"><code title="' +
-                            esc(u.username) +
-                            '">' +
-                            esc(u.username.length > 18 ? u.username.slice(0, 16) + '…' : u.username) +
-                            '</code></td>';
-                        html += '<td class="cell-break">' + esc(u.real_name || '—') + '</td>';
-                        html += '<td class="cell-break">' + esc(u.register_source_channel_label || '—') + '</td>';
-                        html += '<td>' + statusBadge + '</td>';
-                        html += '<td class="cell-break">' + mergedCell + '</td>';
-                        html += '<td>' + esc(String(u.tax_count != null ? u.tax_count : 0)) + '</td>';
-                        html += '<td>' + esc(String(u.page_event_count != null ? u.page_event_count : 0)) + '</td>';
-                        html += '<td title="' + esc(u.device_label || '') + '">' + esc(String(u.device_count != null ? u.device_count : 0)) + '</td>';
-                        html += '<td>' + formatDt(u.created_at) + '</td>';
-                        html += '<td>' + (u.guest_merged_at ? formatDt(u.guest_merged_at) : '—') + '</td>';
-                        html += '<td class="col-ops">' + detailBtn + '</td>';
-                        html += '</tr>';
-                        html += '<tr id="user_detail_row_' + detailKey + '" class="users-detail-row" style="display:none;">';
-                        html +=
-                            '<td colspan="11"><div id="user_detail_box_' +
-                            detailKey +
-                            '" style="padding:4px 0;color:#888;">点击详情加载设备与页面记录…</div></td>';
-                        html += '</tr>';
-                    });
-                    document.getElementById('guestUsersTbody').innerHTML =
-                        html || '<tr><td colspan="11">暂无游客账号</td></tr>';
-                    document.getElementById('guestUsersTbody').querySelectorAll('.btn-user-detail').forEach(function (btn) {
-                        btn.onclick = function () {
-                            var name = btn.getAttribute('data-u');
-                            var key = btn.getAttribute('data-k');
-                            var row = document.getElementById('user_detail_row_' + key);
-                            var box = document.getElementById('user_detail_box_' + key);
-                            if (!row || !box) return;
-                            var opening = row.style.display === 'none';
-                            if (!opening) {
-                                row.style.display = 'none';
-                                return;
-                            }
-                            row.style.display = 'table-row';
-                            box.innerHTML = '加载中…';
-                            adminFetch('api/admin/user-tax-records?username=' + encodeURIComponent(name))
-                                .then(function (r) { return r.json(); })
-                                .then(function (d) {
-                                    if (d.code !== 200 || !d.data) {
-                                        box.innerHTML = '加载失败';
-                                        return;
-                                    }
-                                    box.innerHTML = buildTaxRecordsHtml(name, d.data || {});
-                                })
-                                .catch(function () {
-                                    box.innerHTML = '网络错误';
-                                });
-                        };
-                    });
-                })
-                .catch(function () {});
-        }
-
-        /* ========== User Management — Deleted Users ========== */
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -6481,6 +6109,7 @@
                                     }
                                     box.innerHTML = buildTaxRecordsHtml(name, d.data || {});
                                     box.setAttribute('data-loaded', '1');
+                                    mountAdminShebaoPhotos(name, null, 'user');
                                 })
                                 .catch(function () {
                                     box.textContent = '网络错误，加载失败';
@@ -6876,6 +6505,7 @@
             'sbdy-demo': '社保演示',
             'lizhi-cert': '离职证明',
             'ylbx-ps': '社保图片PS',
+            'ccb-flow': '工资流水',
             'najilu-qr': '完税二维码',
             'blocked-ips': 'IP 黑名单'
         };
@@ -7186,94 +6816,6 @@
                 loadUserDataList(userDataPage + 1);
             };
         }
-        var btnRefreshAuaOverview = document.getElementById('btnRefreshAuaOverview');
-        if (btnRefreshAuaOverview) {
-            btnRefreshAuaOverview.onclick = function () {
-                loadActivatedUserAnalysisOverview();
-                loadActivatedUserAnalysisUsers(auaUsersPage);
-            };
-        }
-        var btnSearchAuaUsers = document.getElementById('btnSearchAuaUsers');
-        if (btnSearchAuaUsers) {
-            btnSearchAuaUsers.onclick = function () {
-                loadActivatedUserAnalysisUsers(1);
-            };
-        }
-        var btnResetAuaUsers = document.getElementById('btnResetAuaUsers');
-        if (btnResetAuaUsers) {
-            btnResetAuaUsers.onclick = function () {
-                var u = document.getElementById('auaFilterUsername');
-                var t = document.getElementById('auaFilterTax');
-                var a = document.getElementById('auaFilterActivity');
-                if (u) u.value = '';
-                if (t) t.value = '';
-                if (a) a.value = '';
-                loadActivatedUserAnalysisUsers(1);
-            };
-        }
-        var auaUsersPrev = document.getElementById('auaUsersPrev');
-        if (auaUsersPrev) {
-            auaUsersPrev.onclick = function () {
-                if (auaUsersPage > 1) loadActivatedUserAnalysisUsers(auaUsersPage - 1);
-            };
-        }
-        var auaUsersNext = document.getElementById('auaUsersNext');
-        if (auaUsersNext) {
-            auaUsersNext.onclick = function () {
-                loadActivatedUserAnalysisUsers(auaUsersPage + 1);
-            };
-        }
-        document.getElementById('btnResetUsers').onclick = function() {
-            document.getElementById('filterUsername').value = '';
-            document.getElementById('filterRealName').value = '';
-            document.getElementById('filterActive').value = '';
-            document.getElementById('filterBanned').value = '';
-            var exactEl = document.getElementById('filterExact');
-            if (exactEl) exactEl.checked = false;
-            var riskEl = document.getElementById('filterRisk');
-            if (riskEl) riskEl.value = '';
-            var taxModReset = document.getElementById('filterTaxModifiedToday');
-            if (taxModReset) taxModReset.value = '';
-            var loginInactiveReset = document.getElementById('filterLoginInactive');
-            if (loginInactiveReset) loginInactiveReset.value = '';
-            var nameChangesGtReset = document.getElementById('filterNameChangesGt');
-            if (nameChangesGtReset) nameChangesGtReset.value = '';
-            var taxModDaysGtReset = document.getElementById('filterTaxModDaysGt');
-            if (taxModDaysGtReset) taxModDaysGtReset.value = '';
-            loadUsers(1);
-        };
-
-        var btnSearchGuestUsers = document.getElementById('btnSearchGuestUsers');
-        if (btnSearchGuestUsers) {
-            btnSearchGuestUsers.onclick = function () {
-                loadGuestUsers(1);
-            };
-        }
-        var btnResetGuestUsers = document.getElementById('btnResetGuestUsers');
-        if (btnResetGuestUsers) {
-            btnResetGuestUsers.onclick = function () {
-                var daysEl = document.getElementById('guestUsersDays');
-                var statusEl = document.getElementById('guestUsersStatus');
-                var usernameEl = document.getElementById('guestUsersUsername');
-                if (daysEl) daysEl.value = '1';
-                if (statusEl) statusEl.value = '';
-                if (usernameEl) usernameEl.value = '';
-                loadGuestUsers(1);
-            };
-        }
-        var guestUsersPrev = document.getElementById('guestUsersPrev');
-        if (guestUsersPrev) {
-            guestUsersPrev.onclick = function () {
-                if (guestUsersPage > 1) loadGuestUsers(guestUsersPage - 1);
-            };
-        }
-        var guestUsersNext = document.getElementById('guestUsersNext');
-        if (guestUsersNext) {
-            guestUsersNext.onclick = function () {
-                loadGuestUsers(guestUsersPage + 1);
-            };
-        }
-
         function purgeBotsPayload(dryRun) {
             return {
                 dry_run: !!dryRun,
@@ -7401,10 +6943,13 @@
             var btn = document.getElementById('btnIssue');
             var daysEl = document.getElementById('issueGrantDays');
             var hoursEl = document.getElementById('issueGrantHours');
+            var minutesEl = document.getElementById('issueGrantMinutes');
             var days = daysEl ? parseInt(daysEl.value, 10) : 0;
             var hours = hoursEl ? parseInt(hoursEl.value, 10) : 0;
+            var minutes = minutesEl ? parseInt(minutesEl.value, 10) : 0;
             if (!isFinite(days) || days < 0) days = 0;
             if (!isFinite(hours) || hours < 0) hours = 0;
+            if (!isFinite(minutes) || minutes < 0) minutes = 0;
             if (days > 365) {
                 alert('时效天数不能超过 365');
                 return;
@@ -7413,9 +6958,14 @@
                 alert('时效小时不能超过 720');
                 return;
             }
+            if (minutes > 525600) {
+                alert('时效分钟不能超过 525600（365 天）');
+                return;
+            }
             var payload = {};
             if (days > 0) payload.grant_days = days;
             if (hours > 0) payload.grant_hours = hours;
+            if (minutes > 0) payload.grant_minutes = minutes;
             btn.disabled = true;
             adminFetch('api/admin/issue-code', {
                 method: 'POST',
@@ -7428,10 +6978,12 @@
                         var tip = '永久、仅可激活一个账号';
                         var gd = data.data.grant_days;
                         var gh = data.data.grant_hours;
-                        if (gd || gh) {
+                        var gm = data.data.grant_minutes;
+                        if (gd || gh || gm) {
                             var bits = [];
                             if (gd) bits.push(gd + '天');
                             if (gh) bits.push(gh + '小时');
+                            if (gm) bits.push(gm + '分钟');
                             tip = '时效 ' + bits.join('') + '、仅可激活一个账号';
                         }
                         el.textContent = '激活码：' + data.data.code + '（' + tip + '）';
@@ -7906,6 +7458,14 @@
                         if (xyEl && data.data.xianyu_purchase_url != null) {
                             xyEl.value = String(data.data.xianyu_purchase_url);
                         }
+                        var qqAddEl = document.getElementById('qqAddUrl');
+                        if (qqAddEl && data.data.qq_add_url != null) {
+                            qqAddEl.value = String(data.data.qq_add_url);
+                        }
+                        var qqGroupEl = document.getElementById('qqGroupUrl');
+                        if (qqGroupEl && data.data.qq_group_url != null) {
+                            qqGroupEl.value = String(data.data.qq_group_url);
+                        }
                         var xyHideEl = document.getElementById('xianyuHideSalesChannels');
                         if (xyHideEl && data.data.xianyu_hide_sales_channels != null) {
                             xyHideEl.value = String(data.data.xianyu_hide_sales_channels);
@@ -8149,6 +7709,8 @@
                     agent_android_apk_download_url: document.getElementById('agentAndroidApkDownloadUrl').value.trim(),
                     ios_mobileconfig_download_url: document.getElementById('iosMobileconfigDownloadUrl').value.trim(),
                     xianyu_purchase_url: document.getElementById('xianyuPurchaseUrl').value.trim(),
+                    qq_add_url: (document.getElementById('qqAddUrl') && document.getElementById('qqAddUrl').value.trim()) || '',
+                    qq_group_url: (document.getElementById('qqGroupUrl') && document.getElementById('qqGroupUrl').value.trim()) || '',
                     xianyu_hide_sales_channels: document.getElementById('xianyuHideSalesChannels').value.trim(),
                     mine_ui: (function () {
                         var ui = {
@@ -8583,6 +8145,7 @@
         }
 
         function bulkMsgPayload(dryRun) {
+            var skipEl = document.getElementById('bulkMsgSkipSent');
             return {
                 audience: String(
                     (document.getElementById('bulkMsgAudience') || {}).value || 'pending_activate_24h'
@@ -8590,6 +8153,7 @@
                 title: String((document.getElementById('bulkMsgTitle') || {}).value || '').trim(),
                 content: String((document.getElementById('bulkMsgContent') || {}).value || '').trim(),
                 link_url: String((document.getElementById('bulkMsgLink') || {}).value || '').trim() || 'purchase.html',
+                skip_already_sent: !!(skipEl && skipEl.checked),
                 dry_run: !!dryRun
             };
         }

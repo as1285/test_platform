@@ -160,6 +160,7 @@ function batchEmpRowInputVal(row, sel) {
 function serializeBatchEmpRow(row) {
     var optionalMeta = row.querySelector('.batch-emp-optional-meta');
     var deductMeta = row.querySelector('.batch-emp-deduct-meta');
+    var bonusMeta = row.querySelector('.batch-emp-bonus-meta');
     return {
         company: batchEmpRowInputVal(row, '.batch-emp-company'),
         company_tax_id: batchEmpRowInputVal(row, '.batch-emp-company-tax-id'),
@@ -187,7 +188,8 @@ function serializeBatchEmpRow(row) {
         monthSalaryMap: row._monthSalaryMap ? JSON.parse(JSON.stringify(row._monthSalaryMap)) : {},
         monthTaxMap: row._monthTaxMap ? JSON.parse(JSON.stringify(row._monthTaxMap)) : {},
         optionalOpen: !!(optionalMeta && optionalMeta.classList.contains('is-open')),
-        deductOpen: !!(deductMeta && deductMeta.classList.contains('is-open'))
+        deductOpen: !!(deductMeta && deductMeta.classList.contains('is-open')),
+        bonusOpen: !!(bonusMeta && bonusMeta.classList.contains('is-open'))
     };
 }
 
@@ -530,6 +532,40 @@ function bindBatchEmpDeductMetaToggle(row) {
     });
 }
 
+function setBatchEmpBonusMetaExpanded(row, expanded) {
+    if (!row) return;
+    var wrap = row.querySelector('.batch-emp-bonus-meta');
+    var btn = row.querySelector('.batch-emp-bonus-toggle');
+    if (!wrap) return;
+    wrap.classList.toggle('is-open', !!expanded);
+    if (btn) btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function syncBatchEmpBonusMetaExpanded(row) {
+    if (!row) return;
+    var bonusEl = row.querySelector('.batch-emp-bonus');
+    var amount = bonusEl ? parseFloat(bonusEl.value) : 0;
+    if (isFinite(amount) && amount > 0) {
+        setBatchEmpBonusMetaExpanded(row, true);
+    }
+}
+
+function bindBatchEmpBonusMetaToggle(row) {
+    if (!row) return;
+    var btn = row.querySelector('.batch-emp-bonus-toggle');
+    var wrap = row.querySelector('.batch-emp-bonus-meta');
+    if (!btn || !wrap || btn.getAttribute('data-batch-bonus-bound') === '1') return;
+    btn.setAttribute('data-batch-bonus-bound', '1');
+    if (!wrap.classList.contains('is-open')) {
+        setBatchEmpBonusMetaExpanded(row, false);
+    }
+    btn.addEventListener('click', function () {
+        var open = !wrap.classList.contains('is-open');
+        setBatchEmpBonusMetaExpanded(row, open);
+        scheduleBatchTaxDraftSave();
+    });
+}
+
 function tryApplyBatchCompanyProfileFromInput(inputEl) {
     if (!inputEl) return;
     var row = inputEl.closest('.batch-emp-row');
@@ -743,6 +779,8 @@ function bindBatchEmpRow(node) {
     syncBatchEmpOptionalMetaExpanded(node);
     bindBatchEmpDeductMetaToggle(node);
     syncBatchEmpDeductMetaExpanded(node);
+    bindBatchEmpBonusMetaToggle(node);
+    syncBatchEmpBonusMetaExpanded(node);
     bindBatchEmpDeductionCalc(node);
     syncBatchEmpDeductionsFromBase(node);
     bindBatchMonthInput(node.querySelector('.batch-emp-sm'));
@@ -903,6 +941,11 @@ function setBatchEmpRowValues(row, data) {
     ) {
         /* 回填/导入带专项金额时展开，便于核对；新建默认仍折叠 */
         setBatchEmpDeductMetaExpanded(row, true);
+    }
+    if (typeof data.bonusOpen === 'boolean') {
+        setBatchEmpBonusMetaExpanded(row, data.bonusOpen);
+    } else if (has('yearEndBonus') || has('bonus') || has('bonusYear') || has('bonusMonth')) {
+        syncBatchEmpBonusMetaExpanded(row);
     }
     updateBatchEmpMonthSalaryBadge(row);
 }
@@ -3391,6 +3434,9 @@ function setBatchSubmitBtnLoading(loading) {
 }
 
 function batchAddYearEndBonusOnly() {
+    document.querySelectorAll('#batch_employment_list .batch-emp-row').forEach(function (row) {
+        setBatchEmpBonusMetaExpanded(row, true);
+    });
     var parsed = parseBatchEmploymentsFromDom();
     if (!parsed.ok) {
         showConsultStrongAlert(parsed.error || '请检查工作经历');
@@ -3400,7 +3446,7 @@ function batchAddYearEndBonusOnly() {
         return emp.yearEndBonus > 0;
     });
     if (!employments.length) {
-        showConsultStrongAlert('请至少在某段工作经历中填写年终奖金额（大于 0）');
+        showConsultStrongAlert('请先展开「年终奖」并填写金额（大于 0）');
         return;
     }
     var uid = currentUserId();

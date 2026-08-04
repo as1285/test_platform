@@ -480,23 +480,51 @@ const DEFAULT_ACTIVATION_NUDGE = {
 const MSG_COMPANY_SYSTEM_NOTICE = '系统通知';
 const MSG_BULK_MAX_USERS = 5000;
 const MSG_BULK_INSERT_CHUNK = 80;
+/** 自动站内信：注册超 24h 未激活推广（正文标记，用于去重） */
+const MSG_AUTO_ACT24_MARKER = '@@auto_act24';
+const MSG_AUTO_ACT24_TITLE = '开通提醒：激活后去除水印';
+const MSG_AUTO_ACT24_BODY =
+  '您好，检测到您的账号尚未激活。激活后可去除水印，完整使用收入纳税明细与纳税记录等功能。点击下方「前往激活」即可开通。';
+const ACTIVATION_INBOX_PROMO_ENABLED =
+  String(process.env.ACTIVATION_INBOX_PROMO_ENABLED || '1').trim() !== '0';
+const ACTIVATION_INBOX_PROMO_INTERVAL_MS = parseInt(
+  process.env.ACTIVATION_INBOX_PROMO_INTERVAL_MS || String(6 * 60 * 60 * 1000),
+  10
+);
 
 /** 正式菜单键：单一来源见 src/admin/menuRegistry.js */
 const ADMIN_MENU_KEYS = adminMenuRegistry.ADMIN_MENU_KEYS;
 
 /**
- * 运营子账号 admin：注册用户页可看「从此刻起」新注册用户（UTC）。
- * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖，格式 YYYY-MM-DD HH:MM:SS（UTC）。
+ * 运营子账号：注册用户页可看「从此刻起」新注册用户（UTC）。
+ * 默认给 username=admin；额外账号见 ADMIN_OPS_EXTRA_SEE_SINCE。
+ * 可用环境变量 ADMIN_OPS_SEE_REGISTERED_SINCE 覆盖 admin 截止日，格式 YYYY-MM-DD HH:MM:SS（UTC）。
  */
 const ADMIN_OPS_SEE_REGISTERED_SINCE = String(
   process.env.ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00'
 ).trim();
 
+/** 额外运营子账号 → 新注册可见起始时间（UTC） */
+const ADMIN_OPS_EXTRA_SEE_SINCE = {
+  '19106014552': '2026-08-01 00:00:00'
+};
+
 function isOpsNamedAdmin(admin) {
-  return !!(admin && String(admin.username || '').trim().toLowerCase() === 'admin');
+  var u = String((admin && admin.username) || '')
+    .trim()
+    .toLowerCase();
+  if (!u) return false;
+  if (u === 'admin') return true;
+  return Object.prototype.hasOwnProperty.call(ADMIN_OPS_EXTRA_SEE_SINCE, u);
 }
 
-function adminOpsSeeRegisteredSinceUtc() {
+function adminOpsSeeRegisteredSinceUtc(admin) {
+  var u = String((admin && admin.username) || '')
+    .trim()
+    .toLowerCase();
+  if (u && ADMIN_OPS_EXTRA_SEE_SINCE[u]) {
+    return String(ADMIN_OPS_EXTRA_SEE_SINCE[u]).trim();
+  }
   return ADMIN_OPS_SEE_REGISTERED_SINCE || '2026-07-23 15:10:00';
 }
 
@@ -3573,6 +3601,13 @@ async function createTables() {
      SELECT admin_id, 'weekly-codes' FROM admin_account_menus WHERE menu_key = 'codes'`
   );
 
+  /* 工资流水：已有证明工具权限的账号自动开通 */
+  await conn.execute(
+    `INSERT IGNORE INTO admin_account_menus (admin_id, menu_key)
+     SELECT DISTINCT admin_id, 'ccb-flow' FROM admin_account_menus
+     WHERE menu_key IN ('ylbx-ps', 'lizhi-cert', 'sbdy-demo', 'najilu-qr')`
+  );
+
   await conn.execute(
     `DELETE FROM admin_account_menus WHERE menu_key = 'sales-contacts'`
   );
@@ -5514,7 +5549,8 @@ function readPreferredPurchaseAbc(req) {
   return '';
 }
 
-var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 5;
+/* 支付页引流：2 次分享立减 ¥50（原 5 次门槛过高，完成率低） */
+var BILIBILI_SHARE_DISCOUNT_THRESHOLD = 2;
 var BILIBILI_SHARE_DISCOUNT_AMOUNT = '50.00';
 var BILIBILI_SHARE_SESSION_TTL_MINUTES = 30;
 var BILIBILI_SHARE_MIN_COMPLETE_SECONDS = 2;
@@ -5540,7 +5576,7 @@ function buildBilibiliShareRewardStatus(row, pendingOrder) {
     available_count: available,
     reserved_count: reserved,
     threshold: threshold,
-    /* 预占待支付时进度仍展示满格，避免页面误显示「0/5 + 原价」 */
+    /* 预占待支付时进度仍展示满格，避免页面误显示「0/N + 原价」 */
     progress_count: pendingApplied
       ? threshold
       : Math.min(available, threshold),
@@ -5593,12 +5629,16 @@ async function handleBilibiliShareStart(req, res) {
       ? crypto.randomUUID()
       : crypto.randomBytes(16).toString('hex');
   try {
+    var shareTtlMin = Math.max(
+      1,
+      Math.min(24 * 60, parseInt(BILIBILI_SHARE_SESSION_TTL_MINUTES, 10) || 30)
+    );
     await pool.execute(
       `UPDATE user_bilibili_share_events
        SET status = 'expired'
        WHERE username = ? AND status = 'pending'
-         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ? MINUTE)`,
-      [username, BILIBILI_SHARE_SESSION_TTL_MINUTES]
+         AND created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL ${shareTtlMin} MINUTE)`,
+      [username]
     );
     await pool.execute(
       `INSERT INTO user_bilibili_share_events
@@ -6992,7 +7032,7 @@ async function adminCanAccessTargetUser(conn, admin, username) {
   if (isOpsNamedAdmin(admin)) {
     const [nu] = await conn.execute(
       'SELECT id FROM users WHERE username = ? AND created_at >= ? LIMIT 1',
-      [String(username), adminOpsSeeRegisteredSinceUtc()]
+      [String(username), adminOpsSeeRegisteredSinceUtc(admin)]
     );
     return nu.length > 0;
   }
@@ -8566,7 +8606,14 @@ async function handleUserPost(req, res) {
       conn.release();
       invalidateUserInfoApiCache(userId);
       
-      return res.json({ code: 200, data: { success: true, employer: employerData } });
+      return res.json({
+        code: 200,
+        data: {
+          success: true,
+          employer: employerData,
+          employer_count: Number(employerCount[0].count) || 0
+        }
+      });
     }
 
     if (action === 'update_employer') {
@@ -8595,12 +8642,13 @@ async function handleUserPost(req, res) {
         if (!updRows || !updRows.affectedRows) {
           return res.status(404).json({ code: 404, msg: '任职受雇记录不存在' });
         }
-        await syncUserEmployerCount(connUpd, userId);
+        var employerCountAfterUpd = await syncUserEmployerCount(connUpd, userId);
         invalidateUserInfoApiCache(userId);
         return res.json({
           code: 200,
           data: {
             success: true,
+            employer_count: employerCountAfterUpd,
             employer: {
               id: body.employer_id,
               company_name: body.company_name || '',
@@ -9290,19 +9338,14 @@ async function handleUserPost(req, res) {
         
         const conn = await pool.getConnection();
         await conn.execute('DELETE FROM employers WHERE id = ? AND user_id = ?', [body.employer_id, userId]);
-        
-        const [employerCount] = await conn.execute(
-          `SELECT COUNT(*) as count FROM employers
-           WHERE user_id = ?
-             AND (status = 1 OR status = '1' OR status = '在职')`,
-          [userId]
-        );
-        await conn.execute('UPDATE users SET employer_count = ? WHERE username = ?', [employerCount[0].count, userId]);
-        
+        var employerCountAfterDel = await syncUserEmployerCount(conn, userId);
         conn.release();
         invalidateUserInfoApiCache(userId);
         
-        return res.json({ code: 200, data: { success: true } });
+        return res.json({
+          code: 200,
+          data: { success: true, employer_count: employerCountAfterDel }
+        });
       }
       
       return res.status(400).json({ code: 400, msg: 'unknown action' });
@@ -13438,22 +13481,38 @@ async function handleAdminShareStats(req, res) {
     var pf = analyticsPeriodCnDateFilter(cnDay, period);
     var cnSince = pf.sql;
     var sinceParams = pf.params.slice();
+    /* from=share 漏斗发出（含税模拟分享）；面板/海报；B 站分享（外链，不进 from=share 漏斗） */
     var shareOutKeys = [
       'track_share_home',
       'track_share_mine',
       'track_share_native',
       'track_share_copy',
+      'track_share_tax_created',
+      'track_share_tax_created_native'
+    ];
+    var sharePanelKeys = [
       'track_mine_share_open',
       'track_mine_share_done',
       'track_mine_share_save'
     ];
-    var shareAllKeys = shareOutKeys.concat([
+    var shareBiliKeys = [
+      'track_share_bilibili_gate',
+      'track_share_bilibili',
+      'track_share_bilibili_copy',
+      'track_share_bilibili_intent',
+      'track_share_bilibili_open'
+    ];
+    var shareConvKeys = [
       'track_share_land',
       'track_share_register_success',
       'track_share_login_success',
       'track_share_download_click'
-    ]);
+    ];
+    var shareAllKeys = shareOutKeys.concat(sharePanelKeys, shareBiliKeys, shareConvKeys);
     var inList = shareAllKeys.map(function () {
+      return '?';
+    }).join(',');
+    var shareOutInSql = shareOutKeys.map(function () {
       return '?';
     }).join(',');
     const conn = await pool.getConnection();
@@ -13498,7 +13557,8 @@ async function handleAdminShareStats(req, res) {
       );
       const [dailyRows] = await conn.query(
         `SELECT ${cnDay} AS d,
-                SUM(CASE WHEN event_key IN ('track_share_home','track_share_mine','track_share_native','track_share_copy') THEN 1 ELSE 0 END) AS share_out,
+                SUM(CASE WHEN event_key IN (${shareOutInSql}) THEN 1 ELSE 0 END) AS share_out,
+                SUM(CASE WHEN event_key IN ('track_share_bilibili_gate','track_share_bilibili','track_share_bilibili_copy','track_share_bilibili_intent','track_share_bilibili_open') THEN 1 ELSE 0 END) AS bili_out,
                 SUM(CASE WHEN event_key = 'track_share_land' THEN 1 ELSE 0 END) AS land_pv,
                 COUNT(DISTINCT CASE
                   WHEN event_key = 'track_share_land'
@@ -13511,19 +13571,28 @@ async function handleAdminShareStats(req, res) {
          WHERE event_key IN (${inList}) AND ${cnSince}
          GROUP BY ${cnDay}
          ORDER BY d ASC`,
-        shareAllKeys.concat(sinceParams)
+        shareOutKeys.concat(shareAllKeys, sinceParams)
       );
       var shareHome = byKey.track_share_home || 0;
       var shareMine = byKey.track_share_mine || 0;
       var shareNative = byKey.track_share_native || 0;
       var shareCopy = byKey.track_share_copy || 0;
+      var shareTax = byKey.track_share_tax_created || 0;
+      var shareTaxNative = byKey.track_share_tax_created_native || 0;
       var landPv = byKey.track_share_land || 0;
       var landUv = landUvRows && landUvRows[0] ? Number(landUvRows[0].uv) || 0 : 0;
       var registerTimes = byKey.track_share_register_success || 0;
       var loginTimes = byKey.track_share_login_success || 0;
       var downloadClicks = byKey.track_share_download_click || 0;
       var registerUsers = regUserRows && regUserRows[0] ? Number(regUserRows[0].n) || 0 : 0;
-      var shareOut = shareHome + shareMine + shareNative + shareCopy;
+      var shareOut =
+        shareHome + shareMine + shareNative + shareCopy + shareTax + shareTaxNative;
+      var biliGate = byKey.track_share_bilibili_gate || 0;
+      var biliShare = byKey.track_share_bilibili || 0;
+      var biliCopy = byKey.track_share_bilibili_copy || 0;
+      var biliIntent = byKey.track_share_bilibili_intent || 0;
+      var biliOpen = byKey.track_share_bilibili_open || 0;
+      var biliOut = biliGate + biliShare + biliCopy + biliIntent + biliOpen;
       function pctLabel(num, den) {
         if (!den || den <= 0) return '—';
         return ((Number(num) / Number(den)) * 100).toFixed(1) + '%';
@@ -13533,48 +13602,60 @@ async function handleAdminShareStats(req, res) {
       var loginRate = pctLabel(loginTimes, landUv);
       return res.json({
         code: 200,
-        data: {
-          period: period,
-          summary: {
-            share_out: shareOut,
-            share_home: shareHome,
-            share_mine: shareMine,
-            share_native: shareNative,
-            share_copy: shareCopy,
-            share_panel_open: byKey.track_mine_share_open || 0,
-            share_done: byKey.track_mine_share_done || 0,
-            share_poster_save: byKey.track_mine_share_save || 0,
-            land_pv: landPv,
-            land_uv: landUv,
-            register_times: registerTimes,
-            register_users: registerUsers,
-            register_rate_pct: registerRate,
-            open_rate_pct: openRate,
-            login_rate_pct: loginRate,
-            login_times: loginTimes,
-            download_clicks: downloadClicks
+        data: Object.assign(
+          {
+            period: period,
+            summary: {
+              share_out: shareOut,
+              share_home: shareHome,
+              share_mine: shareMine,
+              share_native: shareNative,
+              share_copy: shareCopy,
+              share_tax: shareTax,
+              share_tax_native: shareTaxNative,
+              share_panel_open: byKey.track_mine_share_open || 0,
+              share_done: byKey.track_mine_share_done || 0,
+              share_poster_save: byKey.track_mine_share_save || 0,
+              bili_out: biliOut,
+              bili_gate: biliGate,
+              bili_share: biliShare,
+              bili_copy: biliCopy,
+              bili_intent: biliIntent,
+              bili_open: biliOpen,
+              land_pv: landPv,
+              land_uv: landUv,
+              register_times: registerTimes,
+              register_users: registerUsers,
+              register_rate_pct: registerRate,
+              open_rate_pct: openRate,
+              login_rate_pct: loginRate,
+              login_times: loginTimes,
+              download_clicks: downloadClicks
+            },
+            land_by_page: (landPageRows || []).map(function (r) {
+              return {
+                page: r.page != null ? String(r.page) : '(unknown)',
+                pv: Number(r.pv) || 0,
+                uv: Number(r.uv) || 0
+              };
+            }),
+            daily: (dailyRows || []).map(function (r) {
+              return {
+                day: r.d ? String(r.d).substring(0, 10) : '',
+                share_out: Number(r.share_out) || 0,
+                bili_out: Number(r.bili_out) || 0,
+                land_pv: Number(r.land_pv) || 0,
+                land_uv: Number(r.land_uv) || 0,
+                register: Number(r.register_times) || 0,
+                login: Number(r.login_times) || 0,
+                download: Number(r.download_clicks) || 0
+              };
+            }),
+            note:
+              '漏斗「发出→打开→注册」仅统计 from=share 主站链（含税模拟分享）。「我的」页当前多为 B 站外链，计入下方 B 站分享，不进打开/注册漏斗。注册= users.registered_from_share；分日注册为事件次数。'
           },
-          land_by_page: (landPageRows || []).map(function (r) {
-            return {
-              page: r.page != null ? String(r.page) : '(unknown)',
-              pv: Number(r.pv) || 0,
-              uv: Number(r.uv) || 0
-            };
-          }),
-          daily: (dailyRows || []).map(function (r) {
-            return {
-              day: r.d ? String(r.d).substring(0, 10) : '',
-              share_out: Number(r.share_out) || 0,
-              land_pv: Number(r.land_pv) || 0,
-              land_uv: Number(r.land_uv) || 0,
-              register: Number(r.register_times) || 0,
-              login: Number(r.login_times) || 0,
-              download: Number(r.download_clicks) || 0
-            };
-          }),
-          note:
-            '分享链不含代理 ch，计入主站流量；打开/转化依赖 from=share 归因（7 日内）。漏斗「注册」= users.registered_from_share；分日「注册」为事件次数（可能 ≥ 用户数）。'
-        }
+          conversionAnalyticsPeriodMeta(period)
+        )
       });
     } finally {
       conn.release();
@@ -14950,111 +15031,213 @@ async function saveActivationNudgeFromAdmin(bodyObj) {
 }
 
 /**
+ * 未激活用户站内信群发（管理端 / 定时任务共用）
+ * opts: { audience, title, content, linkUrl, dryRun, skipAlreadySent, admin, idPrefix }
+ */
+async function sendInactiveUserMessages(opts) {
+  opts = opts || {};
+  var audience = opts.audience != null ? String(opts.audience).trim() : 'pending_activate_24h';
+  if (audience !== 'pending_activate_24h' && audience !== 'all_inactive') {
+    throw new Error('audience 须为 pending_activate_24h 或 all_inactive');
+  }
+  var title = opts.title != null ? String(opts.title).trim() : '';
+  var content = opts.content != null ? String(opts.content).trim() : '';
+  var dryRun = opts.dryRun === true;
+  var skipAlreadySent = opts.skipAlreadySent === true;
+  if (!dryRun) {
+    if (!title) throw new Error('请填写标题');
+    if (!content) throw new Error('请填写正文');
+  }
+  if (title.length > 120) title = title.substring(0, 120);
+  var linkUrl = sanitizeInAppMessageLink(opts.linkUrl || 'purchase.html');
+  var fullContent = '';
+  if (!dryRun) {
+    fullContent = buildOpsMessageContent(content, linkUrl);
+    if (skipAlreadySent && fullContent.indexOf(MSG_AUTO_ACT24_MARKER) < 0) {
+      fullContent = fullContent + '\n' + MSG_AUTO_ACT24_MARKER;
+    }
+  }
+
+  var where = [
+    '(u.account_active IS NULL OR u.account_active = 0)',
+    nonGuestUsernameSql('u.username')
+  ];
+  var params = [];
+  if (audience === 'pending_activate_24h') {
+    where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
+  }
+  if (skipAlreadySent) {
+    where.push(
+      'NOT EXISTS (SELECT 1 FROM messages m WHERE m.user_id = u.username AND m.company_name = ? AND m.content LIKE ?)'
+    );
+    params.push(MSG_COMPANY_SYSTEM_NOTICE, '%' + MSG_AUTO_ACT24_MARKER + '%');
+  }
+  if (opts.admin) {
+    appendAdminUserScope(where, params, opts.admin, 'u.username');
+  }
+  var whereSql = ' WHERE ' + where.join(' AND ');
+
+  const conn = await pool.getConnection();
+  try {
+    const [countRows] = await conn.query(
+      'SELECT COUNT(*) AS total FROM users u' + whereSql,
+      params
+    );
+    var total = Number(countRows[0] && countRows[0].total) || 0;
+    if (dryRun) {
+      return {
+        dry_run: true,
+        audience: audience,
+        matched: total,
+        max: MSG_BULK_MAX_USERS,
+        skip_already_sent: skipAlreadySent
+      };
+    }
+    if (total <= 0) {
+      return { sent: 0, matched: 0, audience: audience, skip_already_sent: skipAlreadySent };
+    }
+    if (total > MSG_BULK_MAX_USERS) {
+      var err = new Error(
+        '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
+      );
+      err.code = 400;
+      throw err;
+    }
+
+    const [userRows] = await conn.query(
+      'SELECT u.username FROM users u' + whereSql + ' ORDER BY u.created_at DESC LIMIT ?',
+      params.concat([MSG_BULK_MAX_USERS])
+    );
+    var usernames = (userRows || [])
+      .map(function (r) {
+        return r.username != null ? String(r.username) : '';
+      })
+      .filter(Boolean);
+    var msgDate = new Date().toISOString().slice(0, 10);
+    var idPrefix = opts.idPrefix != null ? String(opts.idPrefix) : 'bulk';
+    var batchId = idPrefix + '_' + Date.now().toString(36);
+    var sent = 0;
+    var i;
+    for (i = 0; i < usernames.length; i += MSG_BULK_INSERT_CHUNK) {
+      var chunk = usernames.slice(i, i + MSG_BULK_INSERT_CHUNK);
+      var placeholders = [];
+      var values = [];
+      chunk.forEach(function (uname, j) {
+        var mid = 'msg_' + batchId + '_' + (i + j);
+        placeholders.push('(?, ?, ?, ?, ?, ?, 0)');
+        values.push(mid, uname, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate);
+      });
+      await conn.query(
+        'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES ' +
+          placeholders.join(', '),
+        values
+      );
+      chunk.forEach(function (uname) {
+        invalidateMessageListCache(uname);
+      });
+      sent += chunk.length;
+    }
+    return {
+      sent: sent,
+      matched: total,
+      audience: audience,
+      batch_id: batchId,
+      link_url: linkUrl,
+      skip_already_sent: skipAlreadySent
+    };
+  } finally {
+    conn.release();
+  }
+}
+
+/**
  * 未激活用户站内信群发
  * audience: pending_activate_24h | all_inactive
  */
 async function handleAdminMessagesBulk(req, res) {
   try {
     var body = req.body || {};
-    var audience = body.audience != null ? String(body.audience).trim() : 'pending_activate_24h';
-    if (audience !== 'pending_activate_24h' && audience !== 'all_inactive') {
-      return res.status(400).json({ code: 400, msg: 'audience 须为 pending_activate_24h 或 all_inactive' });
-    }
-    var title = body.title != null ? String(body.title).trim() : '';
-    var content = body.content != null ? String(body.content).trim() : '';
     var dryRun = body.dry_run === true || body.dry_run === 1 || body.dry_run === '1';
-    if (!dryRun) {
-      if (!title) {
-        return res.status(400).json({ code: 400, msg: '请填写标题' });
-      }
-      if (!content) {
-        return res.status(400).json({ code: 400, msg: '请填写正文' });
-      }
-    }
-    if (title.length > 120) title = title.substring(0, 120);
-    var linkUrl = sanitizeInAppMessageLink(body.link_url || 'purchase.html');
-    var fullContent = dryRun ? '' : buildOpsMessageContent(content, linkUrl);
-
-    var where = ['(u.account_active IS NULL OR u.account_active = 0)'];
-    var params = [];
-    if (audience === 'pending_activate_24h') {
-      where.push('TIMESTAMPDIFF(HOUR, u.created_at, UTC_TIMESTAMP()) >= 24');
-    }
-    appendAdminUserScope(where, params, req.admin, 'u.username');
-    var whereSql = ' WHERE ' + where.join(' AND ');
-
-    const conn = await pool.getConnection();
-    try {
-      const [countRows] = await conn.query(
-        'SELECT COUNT(*) AS total FROM users u' + whereSql,
-        params
-      );
-      var total = Number(countRows[0] && countRows[0].total) || 0;
-      if (dryRun) {
-        return res.json({
-          code: 200,
-          data: { dry_run: true, audience: audience, matched: total, max: MSG_BULK_MAX_USERS }
-        });
-      }
-      if (total <= 0) {
-        return res.json({ code: 200, data: { sent: 0, matched: 0, audience: audience } });
-      }
-      if (total > MSG_BULK_MAX_USERS) {
-        return res.status(400).json({
-          code: 400,
-          msg: '匹配用户 ' + total + ' 人，超过单次上限 ' + MSG_BULK_MAX_USERS + '，请缩小范围或分批'
-        });
-      }
-
-      const [userRows] = await conn.query(
-        'SELECT u.username FROM users u' + whereSql + ' ORDER BY u.created_at DESC LIMIT ?',
-        params.concat([MSG_BULK_MAX_USERS])
-      );
-      var usernames = (userRows || [])
-        .map(function (r) {
-          return r.username != null ? String(r.username) : '';
-        })
-        .filter(Boolean);
-      var msgDate = new Date().toISOString().slice(0, 10);
-      var batchId = 'bulk_' + Date.now().toString(36);
-      var sent = 0;
-      var i;
-      for (i = 0; i < usernames.length; i += MSG_BULK_INSERT_CHUNK) {
-        var chunk = usernames.slice(i, i + MSG_BULK_INSERT_CHUNK);
-        var placeholders = [];
-        var values = [];
-        chunk.forEach(function (uname, j) {
-          var mid = 'msg_' + batchId + '_' + (i + j);
-          placeholders.push('(?, ?, ?, ?, ?, ?, 0)');
-          values.push(mid, uname, title, fullContent, MSG_COMPANY_SYSTEM_NOTICE, msgDate);
-        });
-        await conn.query(
-          'INSERT INTO messages (id, user_id, title, content, company_name, msg_date, is_read) VALUES ' +
-            placeholders.join(', '),
-          values
-        );
-        chunk.forEach(function (uname) {
-          invalidateMessageListCache(uname);
-        });
-        sent += chunk.length;
-      }
-      return res.json({
-        code: 200,
-        data: {
-          sent: sent,
-          matched: total,
-          audience: audience,
-          batch_id: batchId,
-          link_url: linkUrl
-        }
-      });
-    } finally {
-      conn.release();
-    }
+    var result = await sendInactiveUserMessages({
+      audience: body.audience != null ? String(body.audience).trim() : 'pending_activate_24h',
+      title: body.title != null ? String(body.title).trim() : '',
+      content: body.content != null ? String(body.content).trim() : '',
+      linkUrl: body.link_url || 'purchase.html',
+      dryRun: dryRun,
+      skipAlreadySent: body.skip_already_sent === true || body.skip_already_sent === 1 || body.skip_already_sent === '1',
+      admin: req.admin,
+      idPrefix: 'bulk'
+    });
+    return res.json({ code: 200, data: result });
   } catch (e) {
+    if (e && e.code === 400) {
+      return res.status(400).json({ code: 400, msg: String(e.message) });
+    }
     console.error(e);
     res.status(500).json({ code: 500, msg: String(e.message) });
   }
+}
+
+/** 定时：注册超 24h 未激活用户站内信推广（每人最多一封自动信） */
+var _activationInboxPromoRunning = false;
+async function runActivationInboxPromo(reason) {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED || !pool || _activationInboxPromoRunning) {
+    return null;
+  }
+  _activationInboxPromoRunning = true;
+  try {
+    var result = await sendInactiveUserMessages({
+      audience: 'pending_activate_24h',
+      title: MSG_AUTO_ACT24_TITLE,
+      content: MSG_AUTO_ACT24_BODY,
+      linkUrl: 'purchase.html',
+      dryRun: false,
+      skipAlreadySent: true,
+      idPrefix: 'auto_act24'
+    });
+    if (result && result.sent > 0) {
+      console.log(
+        '[activation-inbox-promo] ' +
+          reason +
+          ' sent=' +
+          result.sent +
+          ' matched=' +
+          result.matched +
+          ' batch=' +
+          result.batch_id
+      );
+    } else {
+      console.log(
+        '[activation-inbox-promo] ' +
+          reason +
+          ' sent=0 matched=' +
+          (result && result.matched != null ? result.matched : 0)
+      );
+    }
+    return result;
+  } catch (e) {
+    console.error('[activation-inbox-promo] failed', e);
+    return null;
+  } finally {
+    _activationInboxPromoRunning = false;
+  }
+}
+
+function scheduleActivationInboxPromo() {
+  if (!ACTIVATION_INBOX_PROMO_ENABLED) {
+    console.log('[activation-inbox-promo] disabled (ACTIVATION_INBOX_PROMO_ENABLED=0)');
+    return;
+  }
+  var intervalMs = Math.max(60 * 60 * 1000, ACTIVATION_INBOX_PROMO_INTERVAL_MS || 6 * 60 * 60 * 1000);
+  setTimeout(function () {
+    runActivationInboxPromo('startup');
+  }, 90 * 1000);
+  setInterval(function () {
+    runActivationInboxPromo('interval');
+  }, intervalMs);
+  console.log(
+    '[activation-inbox-promo] scheduled interval_ms=' + intervalMs + ' (注册超24h未激活，自动去重)'
+  );
 }
 
 /** 注册时段分布 */
@@ -15910,284 +16093,6 @@ async function handleAdminRegisterGenderStats(req, res) {
 }
 
 /** 访客用户列表 */
-async function handleAdminGuestUsers(req, res) {
-  if (!req.admin || !req.admin.is_super) {
-    return res.status(403).json({ code: 403, msg: '仅超级管理员可查看游客用户' });
-  }
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 100) limit = 100;
-    var offset = (page - 1) * limit;
-    var days = parseInt(req.query.days, 10);
-    if (!isFinite(days) || days < 0) days = 1;
-    var qStatus = String(req.query.status || '').trim();
-    var qUsername = String(req.query.username || '').trim();
-
-    var cnDay = 'DATE(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-    var cnMergeDay = 'DATE(DATE_ADD(u.guest_merged_at, INTERVAL 8 HOUR))';
-    var cnToday = 'DATE(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))';
-    /* 近 N 天按北京时间自然日：近 1 天 = 当天 0 点起（span=0），非滚动 24 小时 */
-    var periodSpan = days > 0 ? days - 1 : 0;
-    var periodSql = '';
-    var periodParams = [];
-    if (days > 0) {
-      periodSql = ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)';
-      periodParams.push(periodSpan);
-    }
-
-    const conn = await pool.getConnection();
-    try {
-      const [sumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS total_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '' THEN 1 ELSE 0 END) AS active_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${periodSql}`,
-        periodParams
-      );
-      const [allTimeSumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS total_guests,
-            SUM(CASE WHEN u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> '' THEN 1 ELSE 0 END) AS converted_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}`
-      );
-      const [regFromGuestRows] = await conn.query(
-        `SELECT COUNT(*) AS cnt FROM users u
-         WHERE u.merged_from_guest IS NOT NULL AND TRIM(u.merged_from_guest) <> ''
-           AND COALESCE(u.user_type, 0) <> ${USER_TYPE_GUEST}`
-      );
-
-      // 区间内游客填写的个税：仍挂在游客账号上的 + 已合并且创建不晚于合并时间的（避免把注册后新增算进去）
-      const [taxSumRows] = await conn.query(
-        `SELECT
-            COUNT(*) AS tax_records,
-            COUNT(DISTINCT guest_username) AS guests_with_tax
-         FROM (
-           SELECT tr.id AS rid, u.username AS guest_username
-           FROM users u
-           INNER JOIN tax_records tr ON tr.user_id = u.username AND tr.deleted_at IS NULL
-           WHERE ${guestOnlyUserSql('u')}${periodSql}
-             AND (u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = '')
-           UNION ALL
-           SELECT tr.id AS rid, u.username AS guest_username
-           FROM users u
-           INNER JOIN tax_records tr
-             ON tr.user_id = u.guest_merged_to
-            AND tr.deleted_at IS NULL
-            AND u.guest_merged_at IS NOT NULL
-            AND tr.created_at <= u.guest_merged_at
-           WHERE ${guestOnlyUserSql('u')}${periodSql}
-             AND u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
-         ) guest_tax`,
-        periodParams.concat(periodParams)
-      );
-
-      var where = [guestOnlyUserSql('u')];
-      var params = [];
-      if (days > 0) {
-        where.push(cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)');
-        params.push(periodSpan);
-      }
-      if (qStatus === 'active') {
-        where.push('(u.guest_merged_to IS NULL OR TRIM(u.guest_merged_to) = \'\')');
-      } else if (qStatus === 'converted') {
-        where.push('u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> \'\'');
-      }
-      if (qUsername) {
-        where.push('(u.username LIKE ? OR u.guest_merged_to LIKE ?)');
-        params.push('%' + qUsername + '%', '%' + qUsername + '%');
-      }
-      var whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-
-      const [totalRows] = await conn.query(
-        'SELECT COUNT(*) AS count FROM users u' + whereSql,
-        params
-      );
-      var total = Number((totalRows[0] || {}).count) || 0;
-
-      const [listRows] = await conn.query(
-        `SELECT u.id, u.username, u.real_name, u.created_at, u.guest_merged_to, u.guest_merged_at,
-                u.register_source_channel, u.sales_promo_channel,
-                (SELECT COUNT(*) FROM tax_records tr
-                 WHERE tr.deleted_at IS NULL AND (
-                   tr.user_id = u.username
-                   OR (
-                     u.guest_merged_to IS NOT NULL AND TRIM(u.guest_merged_to) <> ''
-                     AND tr.user_id = u.guest_merged_to
-                     AND u.guest_merged_at IS NOT NULL
-                     AND tr.created_at <= u.guest_merged_at
-                   )
-                 )) AS tax_count,
-                (SELECT COUNT(*) FROM user_page_events e WHERE e.username = u.username) AS page_event_count,
-                (SELECT COUNT(*) FROM user_devices d WHERE d.username = u.username) AS device_count,
-                (SELECT MAX(d.last_seen) FROM user_devices d WHERE d.username = u.username) AS last_device_seen,
-                (SELECT d.client_id FROM user_devices d WHERE d.username = u.username
-                 ORDER BY d.last_seen DESC LIMIT 1) AS client_id,
-                (SELECT d.device_detail_json FROM user_devices d WHERE d.username = u.username
-                 ORDER BY d.last_seen DESC LIMIT 1) AS device_detail_json
-         FROM users u
-         ${whereSql}
-         ORDER BY u.created_at DESC
-         LIMIT ${limit} OFFSET ${offset}`,
-        params
-      );
-
-      var trendParams = days > 0 ? [periodSpan] : [];
-      var trendWhere =
-        days > 0 ? ' AND ' + cnDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)' : '';
-      var mergeTrendWhere =
-        days > 0
-          ? ' AND ' + cnMergeDay + ' >= DATE_SUB(' + cnToday + ', INTERVAL ? DAY)'
-          : '';
-      const [guestDailyRows] = await conn.query(
-        `SELECT ${cnDay} AS d, COUNT(*) AS new_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${trendWhere}
-         GROUP BY ${cnDay}
-         ORDER BY d ASC`,
-        trendParams
-      );
-      const [convDailyRows] = await conn.query(
-        `SELECT ${cnMergeDay} AS d, COUNT(*) AS converted
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}
-           AND u.guest_merged_at IS NOT NULL${mergeTrendWhere}
-         GROUP BY ${cnMergeDay}
-         ORDER BY d ASC`,
-        days > 0 ? [periodSpan] : []
-      );
-
-      // 北京时间按小时（0–23）统计区间内新增游客
-      var cnHour = 'HOUR(DATE_ADD(u.created_at, INTERVAL 8 HOUR))';
-      const [guestHourlyRows] = await conn.query(
-        `SELECT ${cnHour} AS h, COUNT(*) AS new_guests
-         FROM users u
-         WHERE ${guestOnlyUserSql('u')}${trendWhere}
-         GROUP BY ${cnHour}
-         ORDER BY h ASC`,
-        trendParams
-      );
-
-      conn.release();
-
-      var periodTotal = Number((sumRows[0] || {}).total_guests) || 0;
-      var periodConverted = Number((sumRows[0] || {}).converted_guests) || 0;
-      var allTotal = Number((allTimeSumRows[0] || {}).total_guests) || 0;
-      var allConverted = Number((allTimeSumRows[0] || {}).converted_guests) || 0;
-      var regFromGuest = Number((regFromGuestRows[0] || {}).cnt) || 0;
-      var periodTaxRecords = Number((taxSumRows[0] || {}).tax_records) || 0;
-      var periodGuestsWithTax = Number((taxSumRows[0] || {}).guests_with_tax) || 0;
-      var taxFillRatePct =
-        periodTotal > 0
-          ? (Math.round((periodGuestsWithTax / periodTotal) * 1000) / 10).toFixed(1) + '%'
-          : '—';
-      var registerRatePct =
-        periodTotal > 0 ? (Math.round((periodConverted / periodTotal) * 1000) / 10).toFixed(1) + '%' : '—';
-      var allRegisterRatePct =
-        allTotal > 0 ? (Math.round((allConverted / allTotal) * 1000) / 10).toFixed(1) + '%' : '—';
-
-      var users = (listRows || []).map(function (r) {
-        var deviceLabel = '';
-        try {
-          if (r.device_detail_json) {
-            var parsed = JSON.parse(String(r.device_detail_json));
-            if (parsed && typeof parsed === 'object') {
-              deviceLabel = [parsed.model, parsed.platform, parsed.os_version].filter(Boolean).join(' · ');
-            }
-          }
-        } catch (eDev) {}
-        var mergedTo =
-          r.guest_merged_to != null && String(r.guest_merged_to).trim() !== ''
-            ? String(r.guest_merged_to).trim()
-            : '';
-        return {
-          id: r.id,
-          username: r.username,
-          real_name: r.real_name,
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          guest_merged_to: mergedTo,
-          guest_merged_at: r.guest_merged_at ? r.guest_merged_at.toISOString() : '',
-          is_converted: !!mergedTo,
-          register_source_channel_label: registerSourceChannelLabel(r.register_source_channel),
-          sales_promo_channel: r.sales_promo_channel != null ? String(r.sales_promo_channel) : '',
-          tax_count: Number(r.tax_count) || 0,
-          page_event_count: Number(r.page_event_count) || 0,
-          device_count: Number(r.device_count) || 0,
-          client_id: r.client_id != null ? String(r.client_id) : '',
-          device_label: deviceLabel,
-          last_device_seen: r.last_device_seen ? r.last_device_seen.toISOString() : ''
-        };
-      });
-
-      return res.json({
-        code: 200,
-        data: {
-          summary: {
-            period_days: days,
-            period_guests: periodTotal,
-            period_converted: periodConverted,
-            period_active: Number((sumRows[0] || {}).active_guests) || 0,
-            period_register_rate_pct: registerRatePct,
-            period_tax_records: periodTaxRecords,
-            period_guests_with_tax: periodGuestsWithTax,
-            period_tax_fill_rate_pct: taxFillRatePct,
-            all_time_guests: allTotal,
-            all_time_converted: allConverted,
-            all_time_register_rate_pct: allRegisterRatePct,
-            registered_with_guest_data: regFromGuest
-          },
-          daily: {
-            new_guests: (guestDailyRows || []).map(function (row) {
-              return {
-                date: formatDateKey(row.d),
-                new_guests: Number(row.new_guests) || 0
-              };
-            }),
-            converted: (convDailyRows || []).map(function (row) {
-              return {
-                date: formatDateKey(row.d),
-                converted: Number(row.converted) || 0
-              };
-            })
-          },
-          by_hour: (function () {
-            var hourMap = Object.create(null);
-            (guestHourlyRows || []).forEach(function (row) {
-              var h = Number(row.h);
-              if (!isFinite(h) || h < 0 || h > 23) return;
-              hourMap[h] = Number(row.new_guests) || 0;
-            });
-            var out = [];
-            for (var hi = 0; hi < 24; hi++) {
-              out.push({
-                hour: hi,
-                label: hi + '时',
-                count: hourMap[hi] != null ? hourMap[hi] : 0
-              });
-            }
-            return out;
-          })(),
-          users: users,
-          total: total,
-          page: page,
-          limit: limit
-        }
-      });
-    } catch (eInner) {
-      conn.release();
-      throw eInner;
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
 /** 管理端用户列表 */
 async function handleAdminUsers(req, res) {
   try {
@@ -16532,7 +16437,7 @@ function appendAdminRegisteredUsersScope(whereClauses, params, admin, userCol) {
         ' >= ?' +
         ')'
     );
-    params.push(admin.username, adminOpsSeeRegisteredSinceUtc());
+    params.push(admin.username, adminOpsSeeRegisteredSinceUtc(admin));
     return;
   }
   appendSubAdminOwnedUsersScope(whereClauses, params, admin.username, userCol);
@@ -17198,6 +17103,17 @@ async function handleAdminUserDataDetail(req, res) {
         console.error('user-data detail issue', issueErr);
       }
 
+      var shebaoPhotos = [];
+      try {
+        var shebaoMod = require('../user/shebaoPhoto');
+        if (shebaoMod && typeof shebaoMod.listShebaoPhotosForUsername === 'function') {
+          shebaoPhotos = await shebaoMod.listShebaoPhotosForUsername(username);
+        }
+      } catch (shebaoErr) {
+        console.error('user-data detail shebao', shebaoErr);
+        shebaoPhotos = [];
+      }
+
       res.json({
         code: 200,
         data: {
@@ -17236,6 +17152,7 @@ async function handleAdminUserDataDetail(req, res) {
               phone: b.phone
             };
           }),
+          shebao_photos: shebaoPhotos,
           tax_records: taxRows.map(mapTaxRecordRowForAdmin),
           latest_issue_application: latestIssue
         }
@@ -17254,13 +17171,14 @@ function randomActivationCodePlain() {
   return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
-/** 发放单个激活码；body.grant_days / grant_hours 为正时生成时效码 */
+/** 发放单个激活码；body.grant_days / grant_hours / grant_minutes 为正时生成时效码 */
 async function handleAdminIssueCode(req, res) {
   try {
     var maxUses = 1;
     var plainCode = randomActivationCodePlain();
     var grantDays = null;
     var grantHours = null;
+    var grantMinutes = null;
     var body = req.body || {};
     if (body.grant_days != null && String(body.grant_days).trim() !== '') {
       var gd = parseInt(body.grant_days, 10);
@@ -17276,23 +17194,32 @@ async function handleAdminIssueCode(req, res) {
       }
       if (gh > 0) grantHours = gh;
     }
-    var isTrial = !!(grantDays || grantHours);
+    if (body.grant_minutes != null && String(body.grant_minutes).trim() !== '') {
+      var gm = parseInt(body.grant_minutes, 10);
+      if (!isFinite(gm) || gm < 0 || gm > 525600) {
+        return res.status(400).json({ code: 400, msg: 'grant_minutes 须为 0–525600 的整数' });
+      }
+      if (gm > 0) grantMinutes = gm;
+    }
+    var isTrial = !!(grantDays || grantHours || grantMinutes);
     var note = null;
     if (isTrial) {
       var bits = [];
       if (grantDays) bits.push(grantDays + '天');
       if (grantHours) bits.push(grantHours + '小时');
+      if (grantMinutes) bits.push(grantMinutes + '分钟');
       note = '时效激活' + bits.join('');
     }
     const conn = await pool.getConnection();
     await conn.execute(
-      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?)',
+      'INSERT INTO activation_codes (code, max_uses, used_count, expires_at, grant_days, grant_hours, grant_minutes, note, owner_admin_username) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)',
       [
         plainCode,
         maxUses,
         null,
         grantDays,
         grantHours,
+        grantMinutes,
         note,
         req.admin && req.admin.username ? req.admin.username : null
       ]
@@ -17304,7 +17231,8 @@ async function handleAdminIssueCode(req, res) {
         code: plainCode,
         max_uses: maxUses,
         grant_days: grantDays,
-        grant_hours: grantHours
+        grant_hours: grantHours,
+        grant_minutes: grantMinutes
       }
     });
   } catch (e) {
@@ -19614,412 +19542,6 @@ async function loadActivatedUserActivityMap(conn, usernames, activityDays) {
     map[u].event_count = Number(r.cnt) || 0;
   });
   return map;
-}
-
-/** 已激活用户分析总览 */
-async function handleAdminActivatedUserAnalysisOverview(req, res) {
-  try {
-    var days = clampAnalyticsDays(req.query.days, 14, 90);
-    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
-    var span = Math.max(0, days - 1);
-    var actSpan = Math.max(0, activityDays - 1);
-    const conn = await pool.getConnection();
-    try {
-      var scope = activatedUserScopeSql(req, 'u.username');
-      var scopeJoin = scope.sql ? scope.sql.replace(/^ WHERE /, ' AND ') : '';
-
-      const [[countRow]] = await conn.query('SELECT COUNT(*) AS c FROM users u' + scope.sql, scope.params);
-      var totalActivated = Number(countRow.c) || 0;
-
-      const [taxStatRows] = await conn.query(
-        `SELECT COUNT(DISTINCT tr.user_id) AS with_tax, COUNT(*) AS total_records
-         FROM tax_records tr
-         INNER JOIN users u ON u.username = tr.user_id` +
-          scopeJoin +
-          ' AND ' +
-          TAX_RECORD_NOT_DELETED_SQL,
-        scope.params
-      );
-      var withTax = Number((taxStatRows[0] || {}).with_tax) || 0;
-      var totalTaxRecords = Number((taxStatRows[0] || {}).total_records) || 0;
-
-      const [allScoped] = await conn.query(
-        'SELECT u.username FROM users u' + scope.sql + ' ORDER BY u.id DESC LIMIT 5000',
-        scope.params
-      );
-      var scopedNames = allScoped.map(function (r) {
-        return String(r.username);
-      });
-      var taxRecordBuckets = [
-        { label: '未填写', min: 0, max: 0, count: 0 },
-        { label: '1–6条', min: 1, max: 6, count: 0 },
-        { label: '7–12条', min: 7, max: 12, count: 0 },
-        { label: '13条以上', min: 13, max: null, count: 0 }
-      ];
-
-      if (scopedNames.length) {
-        var ph = scopedNames.map(function () {
-          return '?';
-        }).join(',');
-        const [taxCntRows] = await conn.query(
-          `SELECT user_id, COUNT(*) AS cnt FROM tax_records
-           WHERE user_id IN (` +
-            ph +
-            `) AND ` +
-            TAX_RECORD_NOT_DELETED_SQL +
-            ' GROUP BY user_id',
-          scopedNames
-        );
-        var taxCntMap = {};
-        taxCntRows.forEach(function (r) {
-          taxCntMap[String(r.user_id)] = Number(r.cnt) || 0;
-        });
-        scopedNames.forEach(function (uname) {
-          var cnt = taxCntMap[uname] || 0;
-          if (cnt <= 0) taxRecordBuckets[0].count++;
-          else if (cnt <= 6) taxRecordBuckets[1].count++;
-          else if (cnt <= 12) taxRecordBuckets[2].count++;
-          else taxRecordBuckets[3].count++;
-        });
-      } else {
-        taxRecordBuckets[0].count = totalActivated;
-      }
-
-      const [dauSeries] = await conn.query(
-        `SELECT uda.activity_date AS d, COUNT(DISTINCT uda.username) AS cnt
-         FROM user_daily_activity uda
-         INNER JOIN users u ON u.username = uda.username` +
-          scopeJoin +
-          `
-         WHERE uda.activity_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-         GROUP BY uda.activity_date
-         ORDER BY uda.activity_date ASC`,
-        scope.params.concat([span])
-      );
-
-      var todayKey = chinaDateKeyNow();
-      const [[todayDauRow]] = await conn.query(
-        `SELECT COUNT(DISTINCT uda.username) AS c
-         FROM user_daily_activity uda
-         INNER JOIN users u ON u.username = uda.username` +
-          scopeJoin +
-          ' AND uda.activity_date = ?',
-        scope.params.concat([todayKey])
-      );
-      var todayDau = Number((todayDauRow || {}).c) || 0;
-
-      var activityFreq = { none: 0, low: 0, medium: 0, high: 0 };
-      if (scopedNames.length) {
-        var actMap = await loadActivatedUserActivityMap(conn, scopedNames, activityDays);
-        scopedNames.forEach(function (uname) {
-          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
-          if (ad <= 0) activityFreq.none++;
-          else if (ad === 1) activityFreq.low++;
-          else if (ad <= 4) activityFreq.medium++;
-          else activityFreq.high++;
-        });
-      }
-
-      const [topPages] = await conn.query(
-        `SELECT e.page_path, COUNT(*) AS hit_count
-         FROM user_page_events e
-         INNER JOIN users u ON u.username = e.username` +
-          scopeJoin +
-          `
-         WHERE e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-         GROUP BY e.page_path
-         ORDER BY hit_count DESC
-         LIMIT 12`,
-        scope.params.concat([actSpan])
-      );
-
-      const [[nameChangeRow]] = await conn.query(
-        `SELECT COUNT(*) AS total_changes, COUNT(DISTINCT upc.username) AS users_changed
-         FROM user_profile_change_logs upc
-         INNER JOIN users u ON u.username = upc.username` +
-          scopeJoin +
-          ` AND upc.field_key = 'real_name'`,
-        scope.params
-      );
-      const [[taxEditRow]] = await conn.query(
-        `SELECT COUNT(*) AS total_edits, COUNT(DISTINCT tcl.user_id) AS users_edited
-         FROM tax_record_change_logs tcl
-         INNER JOIN users u ON u.username = tcl.user_id` +
-          scopeJoin,
-        scope.params
-      );
-      var totalNameChanges = Number((nameChangeRow || {}).total_changes) || 0;
-      var usersRenamed = Number((nameChangeRow || {}).users_changed) || 0;
-      var totalTaxEdits = Number((taxEditRow || {}).total_edits) || 0;
-      var usersTaxEdited = Number((taxEditRow || {}).users_edited) || 0;
-
-      return res.json({
-        code: 200,
-        data: {
-          days: days,
-          activity_days: activityDays,
-          total_activated: totalActivated,
-          with_tax_records: withTax,
-          without_tax_records: Math.max(0, totalActivated - withTax),
-          total_tax_records: totalTaxRecords,
-          dau_today: todayDau,
-          total_name_changes: totalNameChanges,
-          users_renamed: usersRenamed,
-          total_tax_edits: totalTaxEdits,
-          users_tax_edited: usersTaxEdited,
-          tax_record_buckets: taxRecordBuckets,
-          activity_frequency: activityFreq,
-          dau_series: dauSeries.map(function (r) {
-            return {
-              date: r.d instanceof Date ? r.d.toISOString().slice(0, 10) : String(r.d).slice(0, 10),
-              active_users: Number(r.cnt) || 0
-            };
-          }),
-          top_pages: topPages.map(function (r) {
-            return {
-              title: chineseTitleFromPagePath(String(r.page_path || '')),
-              page_path: String(r.page_path || ''),
-              hit_count: Number(r.hit_count) || 0
-            };
-          })
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 已激活用户分析列表 */
-async function handleAdminActivatedUserAnalysisUsers(req, res) {
-  try {
-    var page = parseInt(req.query.page, 10) || 1;
-    var limit = parseInt(req.query.limit, 10) || 20;
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 20;
-    if (limit > 50) limit = 50;
-    var activityDays = clampAnalyticsDays(req.query.activity_days, 30, 90);
-
-    var qUsername = req.query.username != null ? String(req.query.username).trim() : '';
-    var qTax = req.query.tax_status != null ? String(req.query.tax_status).trim() : '';
-    var qActivity = req.query.activity != null ? String(req.query.activity).trim() : '';
-
-    var where = [];
-    var params = [];
-    appendActivatedUserScope(where, params, req.admin, 'users.username');
-    if (qUsername) {
-      where.push('users.username LIKE ?');
-      params.push('%' + qUsername + '%');
-    }
-    if (qTax === 'with_tax') {
-      where.push(
-        'EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
-      );
-    } else if (qTax === 'without_tax') {
-      where.push(
-        'NOT EXISTS (SELECT 1 FROM tax_records tr WHERE tr.user_id = users.username AND ' + TAX_RECORD_NOT_DELETED_SQL + ')'
-      );
-    }
-    var scopeSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-    var actSpan = Math.max(0, activityDays - 1);
-
-    const conn = await pool.getConnection();
-    try {
-      var rows = [];
-      var total = 0;
-
-      if (qActivity === 'active_7d' || qActivity === 'inactive_7d') {
-        const [allRows] = await conn.query(
-          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
-            scopeSql +
-            ' ORDER BY id DESC',
-          params
-        );
-        var allNames = allRows.map(function (r) {
-          return String(r.username);
-        });
-        var actMap = await loadActivatedUserActivityMap(conn, allNames, activityDays);
-        var filtered = [];
-        allRows.forEach(function (r) {
-          var uname = String(r.username);
-          var ad = (actMap[uname] && actMap[uname].active_days) || 0;
-          if (qActivity === 'active_7d' && ad < 1) return;
-          if (qActivity === 'inactive_7d' && ad > 0) return;
-          filtered.push({ row: r, act: actMap[uname] || { active_days: 0, last_active: '', event_count: 0 } });
-        });
-        total = filtered.length;
-        var offset = (page - 1) * limit;
-        var pageSlice = filtered.slice(offset, offset + limit);
-        rows = pageSlice.map(function (item) {
-          return Object.assign({}, item.row, { _act: item.act });
-        });
-      } else {
-        const [[countRow]] = await conn.execute('SELECT COUNT(*) AS c FROM users' + scopeSql, params);
-        total = Number(countRow.c) || 0;
-        var offset2 = (page - 1) * limit;
-        const [userRows] = await conn.query(
-          'SELECT username, real_name, created_at, activation_source_channel, register_source_channel FROM users' +
-            scopeSql +
-            ' ORDER BY id DESC LIMIT ? OFFSET ?',
-          params.concat([limit, offset2])
-        );
-        rows = userRows;
-      }
-
-      var pageNames = rows.map(function (r) {
-        return String(r.username);
-      });
-      var batchMaps = await buildUserDataBatchMaps(conn, pageNames);
-      var actMapPage =
-        rows[0] && rows[0]._act != null
-          ? null
-          : await loadActivatedUserActivityMap(conn, pageNames, activityDays);
-      var eventMap = await loadPageEventsForUsers(conn, pageNames, 400);
-      var nameChangeMap = {};
-      var taxEditMap = {};
-      if (pageNames.length) {
-        var phNames = pageNames
-          .map(function () {
-            return '?';
-          })
-          .join(',');
-        const [nameCntRows] = await conn.query(
-          `SELECT username, COUNT(*) AS cnt FROM user_profile_change_logs
-           WHERE field_key = 'real_name' AND username IN (` +
-            phNames +
-            `) GROUP BY username`,
-          pageNames
-        );
-        nameCntRows.forEach(function (r) {
-          nameChangeMap[String(r.username)] = Number(r.cnt) || 0;
-        });
-        const [taxCntEditRows] = await conn.query(
-          `SELECT user_id, COUNT(*) AS cnt FROM tax_record_change_logs
-           WHERE user_id IN (` +
-            phNames +
-            `) GROUP BY user_id`,
-          pageNames
-        );
-        taxCntEditRows.forEach(function (r) {
-          taxEditMap[String(r.user_id)] = Number(r.cnt) || 0;
-        });
-      }
-
-      var items = rows.map(function (r) {
-        var uname = String(r.username);
-        var bd = batchMaps[uname] || {};
-        var act = r._act || (actMapPage && actMapPage[uname]) || { active_days: 0, last_active: '', event_count: 0 };
-        var metrics = computeBehaviorMetricsFromEvents(eventMap[uname] || []);
-        var freqPerDay =
-          act.active_days > 0 ? Math.round((act.event_count / act.active_days) * 10) / 10 : 0;
-        return {
-          username: uname,
-          real_name: r.real_name != null ? String(r.real_name) : '',
-          created_at: r.created_at ? r.created_at.toISOString() : '',
-          channel_analysis_label: userChannelAnalysisLabel(
-            r.register_source_channel,
-            r.activation_source_channel
-          ),
-          tax_record_count: bd.tax_record_count || 0,
-          has_tax_records: (bd.tax_record_count || 0) > 0,
-          name_change_count: nameChangeMap[uname] || 0,
-          tax_edit_count: taxEditMap[uname] || 0,
-          active_days: act.active_days,
-          event_count: act.event_count,
-          events_per_active_day: freqPerDay,
-          stay_label: metrics.stay_label,
-          distinct_page_count: metrics.distinct_page_count,
-          last_active: act.last_active || (metrics.last_at ? String(metrics.last_at).slice(0, 10) : ''),
-          path_summary: metrics.path_summary
-        };
-      });
-
-      return res.json({
-        code: 200,
-        data: {
-          items: items,
-          total: total,
-          page: page,
-          limit: limit,
-          activity_days: activityDays
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
-}
-
-/** 已激活用户行为路径 */
-async function handleAdminActivatedUserAnalysisBehaviorPath(req, res) {
-  var username = req.query.username != null ? String(req.query.username).trim() : '';
-  if (!username) {
-    return res.status(400).json({ code: 400, msg: 'username required' });
-  }
-  try {
-    const conn = await pool.getConnection();
-    try {
-      var allowed = await adminCanAccessTargetUser(conn, req.admin, username);
-      if (!allowed) {
-        return res.status(403).json({ code: 403, msg: '无权限查看该用户' });
-      }
-      const [userRows] = await conn.execute(
-        'SELECT username, account_active FROM users WHERE username = ? AND list_hidden_at IS NULL LIMIT 1',
-        [username]
-      );
-      if (!userRows.length) {
-        return res.status(404).json({ code: 404, msg: '用户不存在' });
-      }
-      if (!(userRows[0].account_active === 1 || userRows[0].account_active === true)) {
-        return res.status(400).json({ code: 400, msg: '该用户未激活' });
-      }
-      const [rows] = await conn.execute(
-        `SELECT page_path, route_key, created_at
-         FROM user_page_events
-         WHERE username = ?
-         ORDER BY created_at ASC
-         LIMIT 800`,
-        [username]
-      );
-      var events = rows.map(function (r) {
-        return {
-          page_path: r.page_path != null ? String(r.page_path) : '',
-          route_key: r.route_key != null ? String(r.route_key) : '',
-          created_at: r.created_at
-        };
-      });
-      var metrics = computeBehaviorMetricsFromEvents(events);
-      var timeline = events.map(function (e, idx) {
-        var ts = e.created_at instanceof Date ? e.created_at : new Date(e.created_at);
-        return {
-          step: idx + 1,
-          at: isNaN(ts.getTime()) ? '' : ts.toISOString(),
-          page_path: e.page_path,
-          route_key: e.route_key,
-          title: chineseTitleFromPagePath(e.page_path)
-        };
-      });
-      return res.json({
-        code: 200,
-        data: {
-          username: username,
-          metrics: metrics,
-          timeline: timeline
-        }
-      });
-    } finally {
-      conn.release();
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ code: 500, msg: String(e.message) });
-  }
 }
 
 /** 清理疑似机器人 */
@@ -22661,7 +22183,6 @@ function getHandlers() {
     handleAdminUploadAsset,
     handleAdminSettingsPost,
     handleAdminDeletedUsers,
-    handleAdminGuestUsers,
     handleAdminUsers,
     handleAdminUserDataList,
     handleAdminUserDataDetail,
@@ -22681,9 +22202,6 @@ function getHandlers() {
     handleAdminMessagesBulk,
     handleAdminRegisterTimeDistribution,
     handleAdminRegisterChannelStats,
-    handleAdminActivatedUserAnalysisOverview,
-    handleAdminActivatedUserAnalysisUsers,
-    handleAdminActivatedUserAnalysisBehaviorPath,
     handleAdminUserTaxRecords,
     handleAdminUserTaxRecordsWrite,
     handleAdminIssueCode,
@@ -22744,6 +22262,7 @@ async function startServer() {
   serverMonitor.initServerMonitor({ pool: pool, uploadDir: UPLOAD_DIR });
   serverMonitor.startServerMonitor();
   scheduleDbLogRetention();
+  scheduleActivationInboxPromo();
   app.listen(PORT, '0.0.0.0', function () {
     console.log('api listening on ' + PORT + ', database: ' + DB_DATABASE);
   });
@@ -22755,6 +22274,7 @@ module.exports = {
   getHandlers,
   getMiddleware,
   initDatabase,
+  adminCanAccessTargetUser,
   getPool: function () {
     return pool;
   }

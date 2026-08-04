@@ -5,7 +5,7 @@
  */
 (function () {
   var ROOT_ID = 'appPageLoadingRoot';
-  var CSS_HREF = '/css/page-loading.css?v=20260721-query-spin';
+  var CSS_HREF = '/css/page-loading.css?v=20260803-nav-cover';
   var MIN_DISPLAY_MS = 40;
   var ABSOLUTE_MAX_MS = 6000;
   var ABSOLUTE_MAX_DATA_PAGE_MS = 15000;
@@ -23,6 +23,15 @@
     'admin_panel.html': true
   };
 
+  /* 底栏五页互切可不盖转圈；从「我要咨询」等深层页切走必须立刻遮住，避免安卓慢切时闪编辑页 */
+  var PRIMARY_TAB_PAGES = {
+    'shouye.html': true,
+    'daiban.html': true,
+    'bancha.html': true,
+    'message.html': true,
+    'mine.html': true
+  };
+
   function currentPage() {
     var p = (window.location && window.location.pathname) || '';
     var parts = p.split('/');
@@ -31,6 +40,10 @@
 
   function isSkipPageLoading() {
     return !!SKIP_PAGES[currentPage()];
+  }
+
+  function isPrimaryTabPage(page) {
+    return !!PRIMARY_TAB_PAGES[page || currentPage()];
   }
 
   function buildSpinnerHtml() {
@@ -84,20 +97,34 @@
     }
   }
 
-  function showPageLoading() {
+  function showPageLoading(opts) {
     count += 1;
     setVisible(true);
+    if (opts && opts.cover) {
+      var root = document.getElementById(ROOT_ID);
+      if (root) root.classList.add('is-cover');
+    }
   }
 
   function hidePageLoading() {
     count = Math.max(0, count - 1);
     if (count === 0) {
       setVisible(false);
+      var root = document.getElementById(ROOT_ID);
+      if (root) root.classList.remove('is-cover');
+      try {
+        document.documentElement.classList.remove('app-nav-leaving');
+      } catch (e0) {}
     }
   }
 
   function forceHidePageLoading() {
     count = 0;
+    var rootHide = document.getElementById(ROOT_ID);
+    if (rootHide) rootHide.classList.remove('is-cover');
+    try {
+      document.documentElement.classList.remove('app-nav-leaving');
+    } catch (e1) {}
     setVisible(false);
   }
 
@@ -263,8 +290,15 @@
           if (el.target === '_blank' || el.hasAttribute('download')) {
             return;
           }
-          /* 底栏 TAB 切换不盖转圈，减少「假卡顿」感知；页面仍会完整加载 */
+          /* 底栏：主 Tab 互切不盖转圈；从咨询编辑等深层页切走则立刻遮罩 */
           if (el.closest('.bottom-nav')) {
+            if (isPrimaryTabPage()) {
+              return;
+            }
+            try {
+              document.documentElement.classList.add('app-nav-leaving');
+            } catch (eLeave) {}
+            showPageLoading({ cover: true });
             return;
           }
           var href = el.getAttribute('href');
@@ -276,6 +310,14 @@
           if (!isInternalNavHref(jump)) {
             return;
           }
+        }
+        /* 深层页（含咨询编辑）任意站内跳转：白底遮罩，避免安卓慢切闪旧页 */
+        if (!isPrimaryTabPage()) {
+          try {
+            document.documentElement.classList.add('app-nav-leaving');
+          } catch (eLeave2) {}
+          showPageLoading({ cover: true });
+          return;
         }
         showPageLoading();
       },

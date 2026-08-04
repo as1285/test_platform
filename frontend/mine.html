@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    <script src="/js/auth.js?v=20260803-honor-vs3"></script>
+    <script src="/js/auth.js?v=20260804-pay-fail-qq"></script>
     <!-- CARD_STYLE: e6bf8de 2026-07-25 00:59 margin:-70px 16px #f8ead8 -->
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
@@ -406,31 +406,6 @@
             font-weight: 600;
             text-decoration: none;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-        }
-
-        .mine-consult-dot {
-            position: absolute;
-            top: calc(1030 * var(--mine-rpx));
-            left: calc(182 * var(--mine-rpx));
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff4d4f;
-            z-index: 120;
-            pointer-events: none;
-            box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.55);
-            animation: mineConsultDotPulse 1.4s ease-out infinite;
-        }
-
-        .mine-consult-dot[hidden] {
-            display: none !important;
-            animation: none;
-        }
-
-        @keyframes mineConsultDotPulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.55); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
         }
 
         /*
@@ -1430,20 +1405,6 @@
             display: none !important;
         }
 
-        .menu-item-dot {
-            flex-shrink: 0;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ff3b30;
-            margin-right: 6px;
-            box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.18);
-        }
-
-        .menu-item-dot[hidden] {
-            display: none !important;
-        }
-
         /* 与官方一致：右箭头浅灰 */
         .menu-arrow {
             display: inline-flex;
@@ -1761,7 +1722,6 @@
                 <a class="mine-hit mine-hit-aqzx" href="aqzx.html" aria-label="安全中心"></a>
                 <a class="mine-hit mine-hit-help" href="help_center.html" id="mineHelpCenterLink" aria-label="帮助中心"></a>
                 <a class="mine-hit mine-hit-consult" href="consult.html?v=20260721d-bonus" id="consultModifyLink" aria-label="我要咨询"></a>
-                <span class="mine-consult-dot" id="consultTaxDot" hidden aria-label="待添加个税记录"></span>
                 <a class="mine-hit mine-hit-about" href="about_update.html" aria-label="关于与更新"></a>
 
                 <!-- 兼容旧 JS 引用的隐藏图标节点 -->
@@ -1801,7 +1761,6 @@
             <p class="activate-modal-hint" id="mineActivateModalSubtitle" style="display:none;margin:0 0 12px;font-size:13px;color:#666;line-height:1.45;"></p>
             <input type="text" id="mineActivateCodeInput" class="activate-modal-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <div class="activate-modal-actions">
-                <button type="button" class="activate-modal-btn xianyu" id="btnMineActivateXianyu">闲鱼购买</button>
                 <button type="button" class="activate-modal-btn" id="btnMineActivateCancel">取消</button>
                 <button type="button" class="activate-modal-btn primary" id="btnMineActivateOk">确定</button>
             </div>
@@ -1892,7 +1851,6 @@
     <script src="/js/vendor/qrcode.min.js"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
     <script>
         (function () {
             /** 原版 updateEImage：gender × company_name_tow(0/1/2) × FamilyMember → e1_*.png */
@@ -2411,12 +2369,16 @@
                     })
                     .then(function (j) {
                         if (!j || j.code !== 200 || !j.data) {
-                            setMineRenamePayStatus((j && j.msg) || '创建订单失败');
+                            var failMsg = (j && j.msg) || '创建订单失败';
+                            setMineRenamePayStatus(failMsg);
                             if (qrWrap) {
                                 qrWrap.innerHTML =
                                     '<p style="color:#b91c1c;font-size:13px;">' +
-                                    ((j && j.msg) || '创建订单失败') +
+                                    failMsg +
                                     '</p>';
+                            }
+                            if (typeof showPaymentCreateFailDialog === 'function') {
+                                showPaymentCreateFailDialog({ message: failMsg, source: 'mine_rename' });
                             }
                             return;
                         }
@@ -2456,6 +2418,12 @@
                     })
                     .catch(function () {
                         setMineRenamePayStatus('网络错误');
+                        if (typeof showPaymentCreateFailDialog === 'function') {
+                            showPaymentCreateFailDialog({
+                                message: '创建支付订单失败，网络异常',
+                                source: 'mine_rename'
+                            });
+                        }
                     });
             }
 
@@ -2603,20 +2571,6 @@
                 /* 对齐官方：咨询行不展示「我要咨询修改」旁注 */
                 var hint = document.getElementById('consultModifyHint');
                 if (hint) hint.setAttribute('hidden', '');
-                syncConsultTaxDot();
-            }
-
-            /** 无个税记录时，「我要咨询」旁显示红点提示 */
-            function syncConsultTaxDot() {
-                var dot = document.getElementById('consultTaxDot');
-                if (!dot) return;
-                if (hasTaxRecords()) {
-                    dot.setAttribute('hidden', '');
-                    dot.setAttribute('aria-hidden', 'true');
-                } else {
-                    dot.removeAttribute('hidden');
-                    dot.setAttribute('aria-hidden', 'false');
-                }
             }
 
             function updateCountsFromStorage() {
@@ -2630,7 +2584,6 @@
                     bank_card_count: bc != null ? bc : null,
                     tax_record_count: tc != null ? tc : null
                 });
-                syncConsultTaxDot();
             }
 
             function isInactiveAccount() {
@@ -2642,9 +2595,20 @@
                 return !isNaN(n) && n > 0;
             }
 
+            var __minePageshowReady = false;
             window.addEventListener('pageshow', function (ev) {
                 updateCountsFromStorage();
-                syncConsultTaxDot();
+                /* 首次进入由底部 loadUserInfo 负责；返回本页时强制刷新角标 */
+                if (!__minePageshowReady) {
+                    __minePageshowReady = true;
+                    return;
+                }
+                try {
+                    sessionStorage.removeItem('mine_summary_cache_v1');
+                } catch (ePs) {}
+                if (typeof loadUserInfo === 'function') {
+                    loadUserInfo({ force: true });
+                }
             });
 
             function goConsultPage() {
@@ -3508,7 +3472,6 @@
 
             var mineOkBtn = document.getElementById('btnMineActivateOk');
             var mineCancelBtn = document.getElementById('btnMineActivateCancel');
-            var mineXyBtn = document.getElementById('btnMineActivateXianyu');
             var mineMask = document.getElementById('mineActivateModalMask');
             var mineInput = document.getElementById('mineActivateCodeInput');
             if (mineOkBtn) {
@@ -3542,17 +3505,6 @@
                         e.preventDefault();
                         if (mineOkBtn) mineOkBtn.click();
                     }
-                });
-            }
-            if (mineXyBtn) {
-                mineXyBtn.addEventListener('click', function () {
-                    if (typeof window.trackUserAction === 'function') {
-                        window.trackUserAction('track_xianyu_purchase_click', {
-                            page: 'mine',
-                            source: 'activate_modal'
-                        });
-                    }
-                    copyMineXianyuPurchase();
                 });
             }
 

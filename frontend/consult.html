@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260803-honor-vs3"></script>
+    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -11,7 +11,7 @@
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>个人中心</title>
-    <link rel="stylesheet" href="/css/consult.css?v=20260802-recycle">
+    <link rel="stylesheet" href="/css/consult.css?v=20260804-products-pay">
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260720-nav-speed" defer></script>
 </head>
@@ -27,7 +27,6 @@
             <p class="activate-modal-title" id="consultActivateModalTitle">请输入激活码</p>
             <input type="text" id="consultActivateCodeInput" class="activate-modal-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
             <div class="activate-modal-actions">
-                <button type="button" class="btn btn-secondary btn-sm" id="btnConsultActivateXianyu">闲鱼购买</button>
                 <button type="button" class="btn btn-default btn-sm" id="btnConsultActivateCancel">取消</button>
                 <button type="button" class="btn btn-primary btn-sm" id="btnConsultActivateOk">确定</button>
             </div>
@@ -137,8 +136,8 @@
 
     <div class="tabs" id="topTabs">
         <a href="#" class="tab" data-tab="employers">个人信息</a>
-        <a href="#" class="tab" data-tab="messages">消息管理</a>
         <a href="#" class="tab active" data-tab="records">税务记录</a>
+        <a href="#" class="tab" data-tab="products">附加产品</a>
     </div>
 
     <div class="container">
@@ -202,9 +201,8 @@
                     </form>
                 </div>
             </div>
-        </div>
 
-        <div id="panel-messages" class="tab-panel">
+            <div class="consult-section-divider" aria-hidden="true"></div>
             <div class="card">
                 <div class="card-title-row">
                     <div class="card-title">消息列表</div>
@@ -241,93 +239,16 @@
                     </form>
                 </div>
             </div>
+
         </div>
 
         <div id="panel-records" class="tab-panel active">
-            <div class="card" id="taxFormulaCard">
-                <button type="button" class="tax-formula-toggle" id="taxFormulaToggle" aria-expanded="false">
-                    <span>个税计算表与公式</span>
-                    <span class="tax-formula-toggle-icon" aria-hidden="true">▼</span>
-                </button>
-                <div class="tax-formula-body" id="taxFormulaBody">
-                    <div class="tax-formula-sec">
-                        <div class="tax-formula-sec-title">工资薪金 · 累计预扣法</div>
-                        <div class="tax-formula-box">
-                            本页「一键生成」按自然年度、同一扣缴单位累计预扣计税（与个税 APP 口径一致）：
-                            <span class="eq">本期应纳税所得额 = 本期收入 − 5000 − 专项扣除 − 专项附加 − 其他扣除</span>
-                            <span class="eq">本期应预扣税额 = 累计应纳税额 − 已预扣税额</span>
-                            <span class="eq">累计应纳税额 = 累计应纳税所得额 × 税率 − 速算扣除数</span>
-                            <p class="tax-formula-note">专项扣除含三险一金；减除费用按月 5000 元累计。年终奖可选单独计税。</p>
-                        </div>
-                    </div>
-                    <div class="tax-formula-sec">
-                        <div class="tax-formula-sec-title">综合所得预扣税率表（七级）</div>
-                        <div class="tax-rate-table-wrap">
-                            <table class="tax-rate-table" aria-label="综合所得预扣税率表">
-                                <thead>
-                                    <tr>
-                                        <th>级数</th>
-                                        <th>累计应纳税所得额</th>
-                                        <th>税率</th>
-                                        <th>速算扣除数</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td>1</td><td>不超过 36,000 元</td><td>3%</td><td>0</td></tr>
-                                    <tr><td>2</td><td>超 36,000～144,000</td><td>10%</td><td>2,520</td></tr>
-                                    <tr><td>3</td><td>超 144,000～300,000</td><td>20%</td><td>16,920</td></tr>
-                                    <tr><td>4</td><td>超 300,000～420,000</td><td>25%</td><td>31,920</td></tr>
-                                    <tr><td>5</td><td>超 420,000～660,000</td><td>30%</td><td>52,920</td></tr>
-                                    <tr><td>6</td><td>超 660,000～960,000</td><td>35%</td><td>85,920</td></tr>
-                                    <tr><td>7</td><td>超过 960,000 元</td><td>45%</td><td>181,920</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p class="tax-formula-note" style="margin-top:8px;">依据国税函〔2018〕164 号附件 · 综合所得预扣预缴。</p>
-                    </div>
-                    <div class="tax-formula-sec">
-                        <div class="tax-formula-sec-title">年终奖 · 单独计税</div>
-                        <div class="tax-formula-box">
-                            <span class="eq">应纳税额 = 全年一次性奖金 × 税率 − 速算扣除数</span>
-                            税率、速算扣除数按「奖金 ÷ 12」对照下表（月度换算）：
-                        </div>
-                        <div class="tax-rate-table-wrap">
-                            <table class="tax-rate-table" aria-label="年终奖单独计税税率表">
-                                <thead>
-                                    <tr>
-                                        <th>级数</th>
-                                        <th>月度换算应纳税所得额</th>
-                                        <th>税率</th>
-                                        <th>速算扣除数</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td>1</td><td>不超过 3,000 元</td><td>3%</td><td>0</td></tr>
-                                    <tr><td>2</td><td>超 3,000～12,000</td><td>10%</td><td>210</td></tr>
-                                    <tr><td>3</td><td>超 12,000～25,000</td><td>20%</td><td>1,410</td></tr>
-                                    <tr><td>4</td><td>超 25,000～35,000</td><td>25%</td><td>2,660</td></tr>
-                                    <tr><td>5</td><td>超 35,000～55,000</td><td>30%</td><td>4,410</td></tr>
-                                    <tr><td>6</td><td>超 55,000～80,000</td><td>35%</td><td>7,160</td></tr>
-                                    <tr><td>7</td><td>超过 80,000 元</td><td>45%</td><td>15,160</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="tax-formula-sec">
-                        <div class="tax-formula-sec-title">快速试算</div>
-                        <div class="tax-try-row">
-                            <div>
-                                <label for="taxTryCumulative">累计应纳税所得额（元）</label>
-                                <input type="number" id="taxTryCumulative" min="0" step="100" placeholder="如 72000" inputmode="decimal">
-                            </div>
-                            <div>
-                                <label for="taxTryBonus">年终奖（元，可选）</label>
-                                <input type="number" id="taxTryBonus" min="0" step="100" placeholder="如 30000" inputmode="decimal">
-                            </div>
-                        </div>
-                        <div class="tax-try-result" id="taxTryResult">输入金额后自动计算累计预扣税额 / 年终奖税额。</div>
-                    </div>
-                </div>
+            <div class="tax-flow-steps" id="taxFlowSteps" aria-label="税务记录流程">
+                <div class="tax-flow-step"><span class="tax-flow-num">1</span><span class="tax-flow-label">填工作经历</span></div>
+                <div class="tax-flow-sep" aria-hidden="true"></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">2</span><span class="tax-flow-label">一键生成</span></div>
+                <div class="tax-flow-sep" aria-hidden="true"></div>
+                <div class="tax-flow-step"><span class="tax-flow-num">3</span><span class="tax-flow-label">核对列表</span></div>
             </div>
 
             <div class="card" id="batchTaxCard">
@@ -336,10 +257,10 @@
                     <button type="button" class="batch-tax-collapse-btn" id="batchTaxCollapseBtn" aria-expanded="true" hidden>收起</button>
                 </div>
                 <div id="batchTaxCardBody">
-                <p class="batch-hint" id="batchTaxCardHint">填写工作经历后一键生成多月工资薪金；首次生成前需先分享到 B 站。也可从个税 APP 粘贴导入。</p>
+                <p class="batch-hint" id="batchTaxCardHint">三步完成：填公司与月薪 → 点「一键生成」→ 在下方列表核对。可选粘贴导入或示例填写。</p>
                 <div class="batch-tax-empty" id="batchTaxEmptyState" hidden>
                     <p class="batch-tax-empty-title">还没有个税记录</p>
-                    <p class="batch-tax-empty-desc">点「立即示例填写」约 30 秒生成演示数据；也可粘贴导入或自行填写工作经历。</p>
+                    <p class="batch-tax-empty-desc">先点「立即示例填写」快速体验，或粘贴个税 APP 文本导入。</p>
                     <div class="batch-tax-empty-actions">
                         <button type="button" class="btn btn-primary btn-sm" id="btnBatchTaxEmptyExample" onclick="fillBatchTaxExample()">立即示例填写</button>
                         <button type="button" class="btn btn-default btn-sm" id="btnBatchTaxEmptyPaste" onclick="openTaxPasteImportModal()">粘贴导入</button>
@@ -483,19 +404,26 @@
                             <button type="button" class="btn btn-default btn-sm batch-emp-month-salary-btn">按月自定义工资…</button>
                             <span class="batch-emp-month-salary-badge" hidden></span>
                         </div>
-                        <div class="batch-emp-bonus-block" style="margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;">
-                            <div class="form-group">
-                                <label>年终奖（元，可选；单独计税并生成独立记录）</label>
-                                <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
-                            </div>
-                            <div class="form-row">
+                        <div class="batch-emp-bonus-meta">
+                            <button type="button" class="batch-emp-bonus-toggle" aria-expanded="false">
+                                <span>年终奖（可选）</span>
+                                <span class="batch-emp-bonus-toggle-icon" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="batch-emp-bonus-body">
+                                <p class="batch-emp-bonus-hint">单独计税并生成独立记录；无年终奖可忽略本项。</p>
                                 <div class="form-group">
-                                    <label>年终奖归属年度</label>
-                                    <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
+                                    <label>年终奖（元）</label>
+                                    <input type="number" class="batch-emp-bonus" step="0.01" min="0" value="0" placeholder="无则填 0">
                                 </div>
-                                <div class="form-group">
-                                    <label>归属月份（1–12 月）</label>
-                                    <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>年终奖归属年度</label>
+                                        <input type="text" class="batch-emp-bonus-year batch-ym-field" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4" placeholder="年">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>归属月份（1–12 月）</label>
+                                        <input type="text" class="batch-emp-bonus-month batch-ym-field" value="12" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="2" placeholder="月">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -507,6 +435,152 @@
                     <button type="button" class="btn btn-primary btn-block" id="batch_update_employments_btn" style="display:none;margin-top:8px;" onclick="batchUpdateEmploymentTaxRecords()">保存覆盖</button>
                     <button type="button" class="btn btn-block batch-bonus-only-btn" onclick="batchAddYearEndBonusOnly()">仅添加年终奖</button>
                 </div>
+                </div>
+            </div>
+
+            <div class="card" id="taxRecordsListCard">
+                <div class="card-title card-title-row">
+                    <span>税务记录列表</span>
+                    <div class="card-title-actions">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
+                        <div class="batch-tax-more-wrap">
+                            <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false">管理</button>
+                            <div class="batch-tax-more-menu" id="taxRecordsManageMenu" hidden>
+                                <button type="button" class="batch-tax-more-item" onclick="openTaxRecycleBin(); closeTaxRecordsManageMenu();">回收站</button>
+                                <button type="button" class="batch-tax-more-item" onclick="dedupeTaxRecords(); closeTaxRecordsManageMenu();">一键去重</button>
+                                <button type="button" class="batch-tax-more-item" onclick="deleteTaxRecordsByYear(); closeTaxRecordsManageMenu();">按年删除</button>
+                                <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
+                                <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+            </div>
+
+            <div class="card" id="taxFaqCard">
+                <button type="button" class="tax-faq-toggle" id="taxFaqToggle" aria-expanded="false">
+                    <span>个税常见问题 FAQ</span>
+                    <span class="tax-faq-toggle-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="tax-faq-body" id="taxFaqBody">
+                    <details class="tax-faq-item">
+                        <summary>累计预扣法是什么？和年终汇算有何区别？</summary>
+                        <p>工资薪金按自然年度、同一扣缴单位累计预扣：每月先算累计应纳税所得额，再算累计应纳税额，本期应补/退 = 累计应纳税额 − 已预扣税额。年终汇算是次年对综合所得的年度清算，可多退少补。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>5000 元减除费用怎么算？</summary>
+                        <p>居民个人工资薪金预扣时，每月减除费用 5000 元，并按任职月份累计（如任职 3 个月累计减除 15000）。本页「一键生成」按此口径累计。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>专项扣除和专项附加扣除有什么区别？</summary>
+                        <p>专项扣除一般指三险一金等法定社保公积金个人缴费；专项附加扣除包括子女教育、继续教育、大病医疗、住房贷款利息/租金、赡养老人、婴幼儿照护等，需在个税 APP 申报后按月享受。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>年终奖应该单独计税还是并入综合所得？</summary>
+                        <p>政策允许对全年一次性奖金选择单独计税（奖金÷12 对照月度税率表）或并入综合所得。单独计税可能在部分收入区间更省税，也可能更贵，可对照公式区试算。本页填写年终奖时按单独计税生成独立记录。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>换工作后个税如何累计？</summary>
+                        <p>累计预扣通常按「同一扣缴义务人」分别累计。换单位后新单位一般从入职当月重新起算累计；原单位已预扣税款在汇算时一并纳入年度综合所得。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>本页记录和官方个税 APP 是什么关系？</summary>
+                        <p>本页用于本地演练与留存对照，计税口径对齐常见累计预扣规则，但不是税务机关申报通道。正式申报、更正与汇算请以个人所得税 APP / 电子税务局为准。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>粘贴导入怎么用？</summary>
+                        <p>在个税 APP 打开相关收入明细，复制文本后点「粘贴导入」粘贴即可尝试解析。字段不全时可再手动补公司、月薪或扣除项后生成。</p>
+                    </details>
+                    <details class="tax-faq-item">
+                        <summary>为什么生成前要分享到 B 站？</summary>
+                        <p>首次一键生成前需完成分享校验（产品使用门槛）。完成一次后即可正常批量生成与修改记录。</p>
+                    </details>
+                </div>
+            </div>
+            <div class="card" id="taxFormulaCard">
+                <button type="button" class="tax-formula-toggle" id="taxFormulaToggle" aria-expanded="false">
+                    <span>个税计算表与公式</span>
+                    <span class="tax-formula-toggle-icon" aria-hidden="true">▼</span>
+                </button>
+                <div class="tax-formula-body" id="taxFormulaBody">
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">工资薪金 · 累计预扣法</div>
+                        <div class="tax-formula-box">
+                            本页「一键生成」按自然年度、同一扣缴单位累计预扣计税（与个税 APP 口径一致）：
+                            <span class="eq">本期应纳税所得额 = 本期收入 − 5000 − 专项扣除 − 专项附加 − 其他扣除</span>
+                            <span class="eq">本期应预扣税额 = 累计应纳税额 − 已预扣税额</span>
+                            <span class="eq">累计应纳税额 = 累计应纳税所得额 × 税率 − 速算扣除数</span>
+                            <p class="tax-formula-note">专项扣除含三险一金；减除费用按月 5000 元累计。年终奖可选单独计税。</p>
+                        </div>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">综合所得预扣税率表（七级）</div>
+                        <div class="tax-rate-table-wrap">
+                            <table class="tax-rate-table" aria-label="综合所得预扣税率表">
+                                <thead>
+                                    <tr>
+                                        <th>级数</th>
+                                        <th>累计应纳税所得额</th>
+                                        <th>税率</th>
+                                        <th>速算扣除数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>1</td><td>不超过 36,000 元</td><td>3%</td><td>0</td></tr>
+                                    <tr><td>2</td><td>超 36,000～144,000</td><td>10%</td><td>2,520</td></tr>
+                                    <tr><td>3</td><td>超 144,000～300,000</td><td>20%</td><td>16,920</td></tr>
+                                    <tr><td>4</td><td>超 300,000～420,000</td><td>25%</td><td>31,920</td></tr>
+                                    <tr><td>5</td><td>超 420,000～660,000</td><td>30%</td><td>52,920</td></tr>
+                                    <tr><td>6</td><td>超 660,000～960,000</td><td>35%</td><td>85,920</td></tr>
+                                    <tr><td>7</td><td>超过 960,000 元</td><td>45%</td><td>181,920</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="tax-formula-note" style="margin-top:8px;">依据国税函〔2018〕164 号附件 · 综合所得预扣预缴。</p>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">年终奖 · 单独计税</div>
+                        <div class="tax-formula-box">
+                            <span class="eq">应纳税额 = 全年一次性奖金 × 税率 − 速算扣除数</span>
+                            税率、速算扣除数按「奖金 ÷ 12」对照下表（月度换算）：
+                        </div>
+                        <div class="tax-rate-table-wrap">
+                            <table class="tax-rate-table" aria-label="年终奖单独计税税率表">
+                                <thead>
+                                    <tr>
+                                        <th>级数</th>
+                                        <th>月度换算应纳税所得额</th>
+                                        <th>税率</th>
+                                        <th>速算扣除数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>1</td><td>不超过 3,000 元</td><td>3%</td><td>0</td></tr>
+                                    <tr><td>2</td><td>超 3,000～12,000</td><td>10%</td><td>210</td></tr>
+                                    <tr><td>3</td><td>超 12,000～25,000</td><td>20%</td><td>1,410</td></tr>
+                                    <tr><td>4</td><td>超 25,000～35,000</td><td>25%</td><td>2,660</td></tr>
+                                    <tr><td>5</td><td>超 35,000～55,000</td><td>30%</td><td>4,410</td></tr>
+                                    <tr><td>6</td><td>超 55,000～80,000</td><td>35%</td><td>7,160</td></tr>
+                                    <tr><td>7</td><td>超过 80,000 元</td><td>45%</td><td>15,160</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tax-formula-sec">
+                        <div class="tax-formula-sec-title">快速试算</div>
+                        <div class="tax-try-row">
+                            <div>
+                                <label for="taxTryCumulative">累计应纳税所得额（元）</label>
+                                <input type="number" id="taxTryCumulative" min="0" step="100" placeholder="如 72000" inputmode="decimal">
+                            </div>
+                            <div>
+                                <label for="taxTryBonus">年终奖（元，可选）</label>
+                                <input type="number" id="taxTryBonus" min="0" step="100" placeholder="如 30000" inputmode="decimal">
+                            </div>
+                        </div>
+                        <div class="tax-try-result" id="taxTryResult">输入金额后自动计算累计预扣税额 / 年终奖税额。</div>
+                    </div>
                 </div>
             </div>
 
@@ -654,29 +728,54 @@
                 </div>
             </div>
 
-            <div class="card" id="taxRecordsListCard">
-                <div class="card-title card-title-row">
-                    <span>税务记录列表</span>
-                    <div class="card-title-actions">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="loadBatchEmploymentsFromExistingRecords(true)">回填修改</button>
-                        <div class="batch-tax-more-wrap">
-                            <button type="button" class="btn btn-default btn-sm" id="btnTaxRecordsManage" aria-expanded="false">管理</button>
-                            <div class="batch-tax-more-menu" id="taxRecordsManageMenu" hidden>
-                                <button type="button" class="batch-tax-more-item" onclick="openTaxRecycleBin(); closeTaxRecordsManageMenu();">回收站</button>
-                                <button type="button" class="batch-tax-more-item" onclick="dedupeTaxRecords(); closeTaxRecordsManageMenu();">一键去重</button>
-                                <button type="button" class="batch-tax-more-item" onclick="deleteTaxRecordsByYear(); closeTaxRecordsManageMenu();">按年删除</button>
-                                <button type="button" class="batch-tax-more-item" onclick="openDeleteTaxRecordsByCompanyModal(); closeTaxRecordsManageMenu();">删除公司数据</button>
-                                <button type="button" class="batch-tax-more-item is-danger" onclick="deleteAllTaxRecords(); closeTaxRecordsManageMenu();">一键删除全部</button>
-                            </div>
-                        </div>
-                    </div>
+        </div>
+
+        <div id="panel-products" class="tab-panel">
+            <p class="consult-products-section-label">账号权益</p>
+            <div class="card consult-product-card consult-purchase-entry" id="cardConsultPurchaseEntry">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;" id="consultPurchaseEntryTitle">开通权益</div>
+                    <span class="consult-purchase-badge" id="consultPurchaseEntryBadge">支付宝</span>
                 </div>
-                <div id="recordListMount"><div class="empty" style="padding:24px;">加载中…</div></div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;" id="consultPurchaseEntryHint">选套餐付款即可开通；支持体验价与 B 站分享立减。</p>
+                <a class="btn btn-primary btn-block" id="btnConsultPurchaseEntry" href="purchase.html?from=consult_products">去支付开通</a>
+            </div>
+            <div class="card consult-product-card" id="cardConsultActivateCode">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">激活码开通</div>
+                    <span class="consult-product-badge">已有码</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">已有激活码可直接填写开通，无需再走支付宝标价。</p>
+                <label class="consult-activate-label" for="consultProductsActivateCode">激活码</label>
+                <input type="text" id="consultProductsActivateCode" class="consult-activate-input" placeholder="粘贴或输入激活码" autocomplete="off" autocapitalize="characters">
+                <button type="button" class="btn btn-primary btn-block" id="btnConsultProductsActivate">确认激活</button>
+            </div>
+            <p class="consult-products-section-label">增值服务</p>
+            <div class="card consult-product-card" id="lizhiCertEntryCard">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">离职证明生成</div>
+                    <span class="consult-product-badge">¥50</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">未付款可生成带「演示样例」水印；付 ¥50 后去水印。电子件仅供个人留存，非用人单位出具。</p>
+                <a class="btn btn-primary btn-block" href="lizhi_cert.html?from=consult" id="btnConsultLizhiCert">去生成</a>
+            </div>
+            <div class="card consult-product-card" id="cardShebaoPhoto">
+                <div class="card-title-row" style="margin-bottom:6px;padding-bottom:0;border-bottom:none;">
+                    <div class="card-title" style="margin:0;padding:0;border:none;font-size:15px;">社保截图上传</div>
+                    <span class="consult-product-badge">可选</span>
+                </div>
+                <p class="hint" style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.45;">上传社保缴费/参保证明照片。支持 jpg / png / gif / webp，单张不超过 5MB。</p>
+                <div class="shebao-upload-actions">
+                    <button type="button" class="btn btn-primary" id="btnShebaoPick">选择照片</button>
+                </div>
+                <input type="file" id="shebaoPhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" capture="environment" hidden multiple>
+                <div class="shebao-preview-grid" id="shebaoPreviewGrid" aria-live="polite"></div>
+                <p class="shebao-upload-status" id="shebaoUploadStatus" hidden></p>
             </div>
         </div>
     </div>
 
-    <div class="bottom-nav">
+<div class="bottom-nav">
         <a href="shouye.html" class="nav-item">
             <div class="nav-icon"><img src="caidan/sy2.png" width="19" height="19" alt="首页"></div>
             <span class="nav-text">首页</span>
@@ -702,9 +801,8 @@
     <script src="/js/bank_card_bins.js?v=20260525-boc-621785"></script>
     <script src="/js/watermark.js?v=20260722-wm-redder"></script>
     <script src="/js/toast-duration.js?v=20260529-toast-3s"></script>
-    <script src="/js/xianyu-copy.js?v=20260529-toast-3s"></script>
-    <script defer src="/js/consult-core.js?v=20260802-recycle"></script>
-    <script defer src="/js/consult-batch-tax.js?v=20260802-recycle"></script>
-    <script defer src="/js/consult-records.js?v=20260802-recycle"></script>
+    <script defer src="/js/consult-core.js?v=20260804-no-xianyu"></script>
+    <script defer src="/js/consult-batch-tax.js?v=20260803-tax-faq"></script>
+    <script defer src="/js/consult-records.js?v=20260804-no-xianyu"></script>
 </body>
 </html>

@@ -61,6 +61,8 @@ function submitConsultActivateWithCode(code) {
                     window.refreshWatermarkFromApi();
                 }
                 closeConsultActivateModal();
+                var productsInp = document.getElementById('consultProductsActivateCode');
+                if (productsInp) productsInp.value = '';
                 var gate = document.getElementById('cg-consult-records-gate');
                 if (gate) gate.remove();
                 var submitBtn = document.getElementById('batch_submit_employments_btn');
@@ -69,6 +71,13 @@ function submitConsultActivateWithCode(code) {
                 if (toolbar) {
                     toolbar.querySelectorAll('button, input, select, textarea').forEach(function (el) {
                         el.disabled = false;
+                    });
+                }
+                if (typeof syncConsultPurchaseEntry === 'function') {
+                    syncConsultPurchaseEntry({
+                        account_active: 1,
+                        activation_kind: d.activation_kind,
+                        active_days_left: d.active_days_left
                     });
                 }
                 if (window.ConversionGuide && typeof window.ConversionGuide.afterActivateSuccess === 'function') {

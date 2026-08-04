@@ -10,7 +10,7 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/js/auth.js?v=20260729-splash"></script>
+    <script src="/js/auth.js?v=20260804-android-oppo-safe"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>任职受雇</title>
     <style>
@@ -180,20 +180,35 @@
                     if (data.code === 200 && data.data && data.data.employers) {
                         renderList(data.data.employers);
                     } else {
-                        showEmpty();
+                        showEmpty(false);
                     }
                 })
                 .catch(function (error) {
                     console.error('加载失败:', error);
-                    showEmpty();
+                    showEmpty(false);
                 });
+        }
+
+        function syncMineEmployerCount(list) {
+            var n = 0;
+            (list || []).forEach(function (e) {
+                if (!e) return;
+                if (e.status == '1' || e.status === 1 || e.status === '在职') n += 1;
+            });
+            try {
+                localStorage.setItem('employer_count', String(n));
+            } catch (e0) {}
+            try {
+                sessionStorage.removeItem('mine_summary_cache_v1');
+            } catch (e1) {}
         }
 
         function renderList(list) {
             var container = document.getElementById('listContainer');
+            syncMineEmployerCount(list);
 
             if (!list || list.length === 0) {
-                showEmpty();
+                showEmpty(true);
                 return;
             }
 
@@ -221,7 +236,9 @@
             window.location.href = 'renzhi_detail.html?id=' + encodeURIComponent(id);
         }
 
-        function showEmpty() {
+        function showEmpty(syncedEmpty) {
+            /* 仅在接口确认列表为空时写回 0；加载失败勿清本地角标 */
+            if (syncedEmpty) syncMineEmployerCount([]);
             var container = document.getElementById('listContainer');
             container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>暂无任职受雇信息</div></div>';
         }
