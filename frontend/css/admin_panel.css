@@ -672,6 +672,20 @@ section h2 {
 .btn-ban { background: var(--admin-danger-solid); color: var(--admin-on-primary); }
 .btn-unban { background: var(--admin-success); color: var(--admin-on-primary); }
 .btn-copy { background: var(--admin-copy); color: var(--admin-on-primary); white-space: nowrap; }
+.code-used-by-wrap {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.code-used-by-wrap .btn-goto-user {
+    padding: 2px 8px;
+    font-size: 12px;
+}
+tr.users-row-highlight > td {
+    background: #fff8e1 !important;
+    box-shadow: inset 0 0 0 1px #ffe082;
+}
 .btn-del-user { background: var(--admin-del-user); color: var(--admin-on-primary); white-space: nowrap; }
 .btn-refund { background: var(--admin-warning); color: var(--admin-on-primary); white-space: nowrap; }
 .btn-activate { background: var(--admin-primary); color: var(--admin-on-primary); white-space: nowrap; }

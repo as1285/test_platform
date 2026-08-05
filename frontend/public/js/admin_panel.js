@@ -5758,6 +5758,71 @@
         }
 
         /* ========== User Management — Registered Users ========== */
+        var pendingHighlightUsername = '';
+
+        /** 从激活码等入口跳到注册用户列表并定位账号 */
+        function jumpToRegisteredUser(username) {
+            var name = String(username || '').trim();
+            if (!name) return;
+            var usernameEl = document.getElementById('filterUsername');
+            var realNameEl = document.getElementById('filterRealName');
+            var exactEl = document.getElementById('filterExact');
+            var riskEl = document.getElementById('filterRisk');
+            var activeEl = document.getElementById('filterActive');
+            var bannedEl = document.getElementById('filterBanned');
+            var taxModEl = document.getElementById('filterTaxModifiedToday');
+            var loginInactiveEl = document.getElementById('filterLoginInactive');
+            var nameChangesGtEl = document.getElementById('filterNameChangesGt');
+            var taxModDaysGtEl = document.getElementById('filterTaxModDaysGt');
+            if (usernameEl) usernameEl.value = name;
+            if (realNameEl) realNameEl.value = '';
+            if (exactEl) exactEl.checked = true;
+            if (riskEl) riskEl.value = '';
+            if (activeEl) activeEl.value = '';
+            if (bannedEl) bannedEl.value = '';
+            if (taxModEl) taxModEl.value = '';
+            if (loginInactiveEl) loginInactiveEl.value = '';
+            if (nameChangesGtEl) nameChangesGtEl.value = '';
+            if (taxModDaysGtEl) taxModDaysGtEl.value = '';
+            pendingHighlightUsername = name;
+            var alreadyUsers = normalizeAdminPage(location.hash) === 'users';
+            _adminUsersLoaded = false;
+            if (alreadyUsers) {
+                applyAdminRouteChrome('users');
+                _adminUsersLoaded = true;
+                loadUsers(1);
+            } else {
+                location.hash = 'users';
+            }
+        }
+
+        function highlightPendingUserRow() {
+            var target = String(pendingHighlightUsername || '').trim();
+            if (!target) return;
+            pendingHighlightUsername = '';
+            var tbody = document.getElementById('userTbody');
+            if (!tbody) return;
+            var rows = tbody.querySelectorAll('tr[data-username]');
+            var hit = null;
+            rows.forEach(function (tr) {
+                if (String(tr.getAttribute('data-username') || '') === target) {
+                    hit = tr;
+                }
+            });
+            if (!hit) return;
+            hit.classList.add('users-row-highlight');
+            try {
+                hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (eScroll) {
+                try {
+                    hit.scrollIntoView(true);
+                } catch (e2) {}
+            }
+            setTimeout(function () {
+                hit.classList.remove('users-row-highlight');
+            }, 3200);
+        }
+
         function loadUsers(p) {
             ensureUserDetailPagesToggleDelegation();
             if (p != null) userPage = p;
@@ -5927,7 +5992,7 @@
                         }
                         
                         var detailKey = keyForUser(u.username);
-                        html += '<tr>';
+                        html += '<tr data-username="' + esc(u.username) + '">';
                         var taxModBadge = u.tax_modified_today
                             ? '<span class="dau-tax-badge modified-today">有</span>'
                             : '<span style="color:#bbb;">—</span>';
@@ -5984,7 +6049,8 @@
                         html += '</tr>';
                     });
                     document.getElementById('userTbody').innerHTML = html || '<tr><td colspan="10">暂无数据</td></tr>';
-                    
+                    highlightPendingUserRow();
+
                     // 重新绑定事件
                     document.getElementById('userTbody').querySelectorAll('.btn-user-password').forEach(function (btn) {
                         btn.onclick = function () {
@@ -6381,10 +6447,20 @@
                     c.last_used_at && (Number(c.used_count) > 0)
                         ? formatDt(c.last_used_at)
                         : '—';
-                var usedBy =
+                var usedName =
                     c.used_by_username && String(c.used_by_username).trim() !== ''
-                        ? esc(String(c.used_by_username).trim())
-                        : '—';
+                        ? String(c.used_by_username).trim()
+                        : '';
+                var usedBy = usedName
+                    ? '<span class="code-used-by-wrap">' +
+                      '<span class="cell-break">' +
+                      esc(usedName) +
+                      '</span> ' +
+                      '<button type="button" class="btn-sm btn-detail btn-goto-user" data-u="' +
+                      esc(usedName) +
+                      '" title="跳转到注册用户列表并定位该账号">定位</button>' +
+                      '</span>'
+                    : '—';
                 html += '<tr>';
                 html += '<td>' + esc(c.code) + '</td>';
                 html += '<td><button type="button" class="btn-sm btn-copy btn-copy-code" data-code="' + esc(c.code) + '">复制</button></td>';
@@ -7058,13 +7134,19 @@
             };
         }
 
-        function bindCodeCopyDelegation(tbodyId) {
+        function bindCodeTableDelegation(tbodyId) {
             var el = document.getElementById(tbodyId);
             if (!el || el.getAttribute('data-copy-bound') === '1') {
                 return;
             }
             el.setAttribute('data-copy-bound', '1');
             el.addEventListener('click', function (e) {
+                var gotoBtn = e.target.closest('.btn-goto-user');
+                if (gotoBtn) {
+                    e.preventDefault();
+                    jumpToRegisteredUser(gotoBtn.getAttribute('data-u'));
+                    return;
+                }
                 var btn = e.target.closest('.btn-copy-code');
                 if (!btn) {
                     return;
@@ -7075,8 +7157,8 @@
                 }
             });
         }
-        bindCodeCopyDelegation('codeTbody');
-        bindCodeCopyDelegation('xianyuCodeTbody');
+        bindCodeTableDelegation('codeTbody');
+        bindCodeTableDelegation('xianyuCodeTbody');
         document.getElementById('btnIssue').addEventListener('click', function () {
             var btn = document.getElementById('btnIssue');
             var daysEl = document.getElementById('issueGrantDays');
