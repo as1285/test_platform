@@ -1626,6 +1626,16 @@
                             <div class="form-actions" style="margin-top:8px;">
                                 <button type="button" class="btn-page" id="btnSbdyAddSegment" onclick="if(window.sbdyDemoAddExperience){window.sbdyDemoAddExperience();}">＋ 添加参保经历</button>
                             </div>
+                            <details class="sbdy-info-tpl mt-8" id="sbdyInfoTplBox" open>
+                                <summary style="cursor:pointer;font-weight:600;">复制社保信息 / 粘贴模板填充</summary>
+                                <p class="hint mt-8 mb-4">把社保信息粘贴到下方后，点<strong>从模板填充</strong>写入表单，再点<strong>生成演示样例</strong>（若上方姓名/证件号为空，点生成也会自动先填充）。演示默认<strong>正常参保、连续缴费（不停保）</strong>。模板需含「姓名」「身份证号」等字段。</p>
+                                <textarea id="sbdyInfoTplText" rows="10" style="width:100%;max-width:880px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.45;" placeholder="粘贴社保信息模板…"></textarea>
+                                <div class="form-actions" style="margin-top:8px;">
+                                    <button type="button" class="btn-page" id="btnSbdyCopyBlankTpl">复制空白模板</button>
+                                    <button type="button" class="btn-page" id="btnSbdyCopyFormTpl">从当前表单复制</button>
+                                    <button type="button" class="btn-page" id="btnSbdyApplyTpl">从模板填充</button>
+                                </div>
+                            </details>
                             <div class="form-actions">
                                 <button type="button" class="btn-page" id="btnSbdyDemoFillSample" onclick="if(window.sbdyDemoFillSample){window.sbdyDemoFillSample();}">填充示例数据</button>
                                 <button type="button" class="btn-primary" id="btnSbdyDemoGenerate" onclick="if(window.sbdyDemoGenerate){window.sbdyDemoGenerate();}else if(window.loadSbdyDemoPage){window.loadSbdyDemoPage();window.sbdyDemoGenerate&&window.sbdyDemoGenerate();}">生成演示样例</button>
@@ -2455,7 +2465,7 @@
             </div>
         </div>
     </div>
-    <script src="/js/admin/loader.js?v=20260728-legacy-redirect-stats"></script>
+    <script src="/js/admin/loader.js?v=20260802-info-tpl-auto2"></script>
     <script src="/js/admin/nav.js?v=20260722-ops"></script>
     <script src="/js/admin-analytics-period.js?v=20260722-custom-today-apr2026"></script>
     <script src="/js/admin-panel-utils.js?v=20260728-legacy-redirect-stats"></script>

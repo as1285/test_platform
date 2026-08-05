@@ -31,17 +31,32 @@ NOTO_BOLD_CACHE = os.path.join(tempfile.gettempdir(), 'sbdy_NotoSerifCJKsc-Bold.
 
 PAGE_W, PAGE_H = 595.0, 842.0
 X0, X1 = 34.3, 560.2
-# 明细表列宽（对齐参考 PDF 竖线）
-COL_X = [34.5, 62.4, 79.5, 167.8, 234.6, 274.2, 318.1, 371.6, 416.5, 454.5, 511.2, 542.3, 560.5]
+# 明细表列宽：年/月/单位编号/备注 + 养老·失业对称各 4 子列（对齐官方等宽）
+# 宽：年28 月18 单位88 | 参保地50 基数45 个人46 状况46 | ×2 | 备注18
+COL_X = [
+    34.5,
+    62.4,
+    79.5,
+    181.1,
+    234.6,
+    274.2,
+    318.1,
+    362.0,
+    415.5,
+    454.5,
+    493.6,
+    536.9,
+    560.5,
+]
 
-# 字号层级（对齐官方：加粗略大，正文更细）
-SIZE_DOC_TITLE = 22.8
-SIZE_LABEL = 10.8
-SIZE_SUBLABEL = 9.5
-SIZE_BODY = 8.7
-SIZE_FOOTER = 7.8
-SIZE_PAGE_NO = 10.2
-SIZE_SECTION = 11.0
+# 字号层级（对齐官方 NSimSun 9.63pt 等宽正文）
+SIZE_DOC_TITLE = 21.4
+SIZE_LABEL = 9.63
+SIZE_SUBLABEL = 9.63
+SIZE_BODY = 9.63
+SIZE_FOOTER = 8.56
+SIZE_PAGE_NO = 10.7
+SIZE_SECTION = 9.63
 
 _FULL_FONT_PATH = None
 _BOLD_FONT_PATH = None
@@ -134,35 +149,106 @@ def _strip_trailing_credit(company):
     s = str(company or '').strip()
     if not s:
         return ''
-    return re.sub(r'[（(]\s*[0-9A-Za-z]{15,20}\s*[）)]\s*$', '', s).strip()
+    prev = None
+    while prev != s:
+        prev = s
+        s = re.sub(r'[（(]\s*[0-9A-Za-z]{15,20}\s*[）)]?\s*$', '', s).strip()
+        s = re.sub(r'^(.*?)[（(]\s*\1\s*$', r'\1', s).strip()
+    return s
 
 
-def _extract_credit(company):
-    s = str(company or '').strip()
-    m = re.search(r'[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*$', s)
-    return m.group(1) if m else ''
+def _extract_unit_code(raw, exclude=''):
+    s = str(raw or '').strip()
+    if not s:
+        return ''
+    exclude = str(exclude or '').strip()
+    candidates = []
+    seen = set()
+
+    def push(c):
+        if not c or c in seen:
+            return
+        if exclude and c == exclude:
+            return
+        seen.add(c)
+        candidates.append(c)
+
+    paren = re.search(r'[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]', s)
+    if paren:
+        push(paren.group(1))
+    for m in re.finditer(r'[0-9A-Za-z]{15,20}', s):
+        push(m.group(0))
+    if not candidates:
+        return ''
+
+    def score(c):
+        if re.search(r'[A-Za-z]', c):
+            return 100
+        if re.match(r'^30\d{13,16}$', c):
+            return 90
+        if re.match(r'^\d{15,17}$', c):
+            return 80
+        if re.match(r'^\d{18}$', c):
+            return 10
+        return 50
+
+    candidates.sort(key=score, reverse=True)
+    return candidates[0]
 
 
-def _dedupe_company_display(text):
+def _extract_credit(company, exclude=''):
+    return _extract_unit_code(company, exclude=exclude)
+
+
+def _format_company_display(company, credit, exclude=''):
+    company_raw = str(company or '').strip()
+    credit_raw = str(credit or '').strip()
+    code = (
+        _extract_unit_code(company_raw, exclude=exclude)
+        or _extract_unit_code(credit_raw, exclude=exclude)
+        or ''
+    )
+    name = _strip_trailing_credit(company_raw)
+    if not name and credit_raw:
+        name = _strip_trailing_credit(credit_raw)
+    if code and name and code in name:
+        name = _strip_trailing_credit(name)
+    if name and code:
+        return '%s（%s）' % (name, code)
+    return name or code or ''
+
+
+def _dedupe_company_display(text, exclude=''):
     s = str(text or '').strip()
+    if not s:
+        return ''
+    m = re.match(
+        r'^(.*?)[（(]\s*\1\s*[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]?\s*[）)]\s*$',
+        s,
+    )
+    if m:
+        return '%s（%s）' % (m.group(1).strip(), m.group(2))
     m = re.match(
         r'^(.*?)[（(]\s*([0-9A-Za-z]{15,20})\s*[）)]\s*[（(]\s*\2\s*[）)]\s*$',
         s,
     )
     if m:
         return '%s（%s）' % (m.group(1).strip(), m.group(2))
-    return s
+    return _format_company_display(s, '', exclude=exclude) or s
 
 
 def company_display(p):
+    exclude = str(p.get('id_number') or '')
     if p.get('company_display'):
-        return _dedupe_company_display(p['company_display'])
-    c = str(p.get('company_name') or '')
-    code = str(p.get('credit_code') or '') or _extract_credit(c)
-    c = _strip_trailing_credit(c)
-    if c and code:
-        return '%s（%s）' % (c, code)
-    return c or code or ''
+        deduped = _dedupe_company_display(p['company_display'], exclude=exclude)
+        if exclude and exclude in deduped:
+            return _format_company_display(
+                p.get('company_name') or deduped, p.get('credit_code') or '', exclude=exclude
+            )
+        return _format_company_display(deduped, '', exclude=exclude) or deduped
+    return _format_company_display(
+        p.get('company_name') or '', p.get('credit_code') or '', exclude=exclude
+    )
 
 
 ROWS_PER_PAGE = 24
@@ -172,7 +258,12 @@ MAX_MONTHS = 48
 def ensure_months(p):
     months = list(p.get('months') or [])
     area = str(p.get('area') or '')
-    code = str(p.get('credit_code') or '')
+    exclude = str(p.get('id_number') or '')
+    code = (
+        _extract_unit_code(p.get('credit_code') or '', exclude=exclude)
+        or _extract_unit_code(p.get('company_name') or '', exclude=exclude)
+        or ''
+    )
     base = p.get('base_amount')
     pension = p.get('pension_pay')
     unemp = p.get('unemployment_pay')
@@ -180,11 +271,17 @@ def ensure_months(p):
     for r in months:
         if not isinstance(r, dict):
             continue
+        unit = (
+            _extract_unit_code(r.get('unit_code'), exclude=exclude)
+            or _extract_unit_code(r.get('credit_code'), exclude=exclude)
+            or _extract_unit_code(r.get('unit_name'), exclude=exclude)
+            or code
+        )
         out.append(
             {
                 'year': str(r.get('year') or ''),
                 'month': str(r.get('month') or '').zfill(2)[-2:],
-                'unit_code': str(r.get('unit_code') or code),
+                'unit_code': unit,
                 'area': str(r.get('area') or area),
                 'pension_base': r.get('pension_base', base),
                 'pension_pay': r.get('pension_pay', pension),
@@ -242,7 +339,7 @@ def text_width(font_path, text, size):
 
 
 def make_qr_png(url, path):
-    img = qrcode.make(url or 'https://geshui.vip/', border=1, box_size=6)
+    img = qrcode.make(url or 'https://geshui.vip/', border=1, box_size=10)
     img.save(path)
 
 
@@ -279,8 +376,10 @@ def cell_box(
     align='center',
     pad=1.8,
     min_size=5.5,
+    emph=False,
 ):
-    """溢出框：缩字号使文本落入单元格；极端超宽则 textbox 限制在格内。"""
+    """溢出框：缩字号使文本落入单元格；极端超宽则 textbox 限制在格内。
+    emph=True：分节标题用极轻横向叠字微加粗（不用描边，避免糊成一团）。"""
     if size is None:
         size = SIZE_BODY
     text = norm_text(text)
@@ -297,6 +396,11 @@ def cell_box(
         else:
             x = x0 + (x1 - x0 - tw) / 2.0
         y = (y0 + y1) / 2.0 + s * 0.35
+        # 0.15pt 微偏移叠字，比描边更自然
+        if emph:
+            page.insert_text(
+                (x + 0.15, y), text, fontname=fontname, fontsize=s, color=color
+            )
         page.insert_text((x, y), text, fontname=fontname, fontsize=s, color=color)
         return
     align_code = {'left': 0, 'center': 1, 'right': 2}.get(align, 1)
@@ -309,12 +413,37 @@ def cell_box(
         color=color,
         align=align_code,
     )
+    if emph:
+        # textbox 路径再叠一层极轻偏移
+        page.insert_textbox(
+            fitz.Rect(rect.x0 + 0.15, rect.y0, rect.x1 + 0.15, rect.y1),
+            text,
+            fontname=fontname,
+            fontsize=max(min_size, s - 0.5),
+            color=color,
+            align=align_code,
+        )
 
 
-def cell_center(page, font_path, fontname, text, x0, x1, y0, y1, size=None, color=(0, 0, 0)):
+def cell_center(
+    page, font_path, fontname, text, x0, x1, y0, y1, size=None, color=(0, 0, 0), emph=False
+):
     if size is None:
         size = SIZE_BODY
-    cell_box(page, font_path, fontname, text, x0, x1, y0, y1, size=size, color=color, align='center')
+    cell_box(
+        page,
+        font_path,
+        fontname,
+        text,
+        x0,
+        x1,
+        y0,
+        y1,
+        size=size,
+        color=color,
+        align='center',
+        emph=emph,
+    )
 
 
 def cell_twoline(page, font_path, fontname, line1, line2, x0, x1, y0, y1, size=None):
@@ -334,6 +463,7 @@ BOLD_LABEL_CHARS = (
     '出具证明前个月缴费情况（续）'
     '年月单位编号备注参保地缴费基数(元)个人缴费状况'
     '共页第'
+    '（盖章）'
 )
 
 
@@ -414,75 +544,6 @@ def draw_title_chrome(page, font_body, body_name, font_title, title_name, qr_pat
     )
 
 
-def contiguous_spans(month_chunk, n_body, getter, split_by_year=False):
-    """连续相同值合并区间；split_by_year 时跨年拆开（对齐官方样张）。"""
-    spans = []
-    i = 0
-    while i < n_body:
-        r = month_chunk[i] if i < len(month_chunk) else None
-        if not r:
-            i += 1
-            continue
-        val = getter(r)
-        if val is None or str(val) == '':
-            i += 1
-            continue
-        val = str(val)
-        year = str(r.get('year') or '')
-        j = i + 1
-        while j < n_body:
-            rj = month_chunk[j] if j < len(month_chunk) else None
-            if not rj or str(getter(rj) or '') != val:
-                break
-            if split_by_year and str(rj.get('year') or '') != year:
-                break
-            j += 1
-        spans.append((i, j - 1, val))
-        i = j
-    return spans
-
-
-def paint_merged_cell(
-    page,
-    font_path,
-    fontname,
-    text,
-    col_i,
-    start,
-    end,
-    y3_h2,
-    row_h,
-    size=None,
-):
-    """盖掉合并区内横线，文字垂直居中（偏上一点）。"""
-    if size is None:
-        size = SIZE_BODY
-    y0 = y3_h2 + row_h * start
-    y1 = y3_h2 + row_h * (end + 1)
-    if end > start:
-        page.draw_rect(
-            fitz.Rect(COL_X[col_i] + 0.5, y0 + 0.5, COL_X[col_i + 1] - 0.5, y1 - 0.5),
-            color=(1, 1, 1),
-            fill=(1, 1, 1),
-            width=0,
-        )
-    # 偏上：取合并区顶部至最多 3 行高度作为文字盒
-    text_y1 = y0 + row_h * min(3, end - start + 1)
-    cell_box(
-        page,
-        font_path,
-        fontname,
-        text,
-        COL_X[col_i],
-        COL_X[col_i + 1],
-        y0,
-        text_y1,
-        size=size,
-        align='center',
-        min_size=5.5,
-    )
-
-
 def draw_payment_table(
     page,
     font_body,
@@ -499,7 +560,7 @@ def draw_payment_table(
     - 年 / 月 / 单位编号 / 备注：纵向跨两行表头（无中间横线）
     - 养老保险 / 失业保险：横向各合并 4 列（顶行无内部竖线）
     - 子列竖线仅从表头第二行起向下画
-    - 数据区：年、单位编号、参保地纵向合并（单位/参保地跨年拆分）
+    - 数据区不做任何纵向合并：年 / 月 / 单位编号 / 参保地逐行重复
     """
     y3_h1 = y3_0 + 14.7
     y3_h2 = y3_0 + 40.9
@@ -515,10 +576,8 @@ def draw_payment_table(
         color=(0, 0, 0),
         width=0.6,
     )
-    # 表头底线 + 数据行横线（合并区稍后再盖掉中间横线）
+    # 表头底线
     draw_hline(page, y3_h2)
-    for i in range(1, n_body):
-        draw_hline(page, y3_h2 + row_h * i)
 
     # 贯通全表高的竖线（合并表头的外框与年/月/单位编号/备注分隔）
     full_v = (0, 1, 2, 3, 7, 11, 12)
@@ -555,39 +614,16 @@ def draw_payment_table(
                 page, font_title, title_name, a, COL_X[ci], COL_X[ci + 1], y3_h1, y3_h2, SIZE_SUBLABEL
             )
 
-    year_spans = contiguous_spans(
-        month_chunk, n_body, lambda r: r.get('year'), split_by_year=False
-    )
-    unit_spans = contiguous_spans(
-        month_chunk, n_body, lambda r: r.get('unit_code'), split_by_year=True
-    )
-    area_spans = contiguous_spans(
-        month_chunk, n_body, lambda r: r.get('area'), split_by_year=True
-    )
-    unemp_area_spans = contiguous_spans(
-        month_chunk,
-        n_body,
-        lambda r: r.get('unemp_area') or r.get('area'),
-        split_by_year=True,
-    )
-
-    skip = {0: set(), 2: set(), 3: set(), 7: set()}
-    for start, end, val in year_spans:
-        for k in range(start, end + 1):
-            skip[0].add(k)
-        paint_merged_cell(page, font_body, body_name, val, 0, start, end, y3_h2, row_h)
-    for start, end, val in unit_spans:
-        for k in range(start, end + 1):
-            skip[2].add(k)
-        paint_merged_cell(page, font_body, body_name, val, 2, start, end, y3_h2, row_h)
-    for start, end, val in area_spans:
-        for k in range(start, end + 1):
-            skip[3].add(k)
-        paint_merged_cell(page, font_body, body_name, val, 3, start, end, y3_h2, row_h)
-    for start, end, val in unemp_area_spans:
-        for k in range(start, end + 1):
-            skip[7].add(k)
-        paint_merged_cell(page, font_body, body_name, val, 7, start, end, y3_h2, row_h)
+    # 数据区横线：每行边界贯通全部 12 列（官方样张无纵向合并）
+    for i in range(1, n_body):
+        y = y3_h2 + row_h * i
+        for ci in range(12):
+            page.draw_line(
+                fitz.Point(COL_X[ci], y),
+                fitz.Point(COL_X[ci + 1], y),
+                color=(0, 0, 0),
+                width=0.6,
+            )
 
     for i in range(n_body):
         y0 = y3_h2 + row_h * i
@@ -610,8 +646,6 @@ def draw_payment_table(
             (11, r.get('remark') or ''),
         ]
         for ci, val in vals:
-            if ci in skip and i in skip[ci]:
-                continue
             cell_box(
                 page,
                 font_body,
@@ -628,7 +662,9 @@ def draw_payment_table(
     return y3_end
 
 
-def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_date, y_top):
+def draw_cert_footer(
+    page, font_body, body_name, font_title, title_name, auth_code, verify_url, print_date, y_top
+):
     auth = str(auth_code or '')
     validate = 'https://mapi.zjzwfw.gov.cn/web/mgop/gov-open/zj/2002199511/reserved/index.html#/validate'
     notes = [
@@ -638,8 +674,8 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
         '3.本证明为打印时48个月内的参保情况，如需打印48个月以上的，请至人工窗口办理。',
         '4.本证明妥善保管，最终解释权由参保地社保经办机构所有。',
     ]
-    ny = y_top + 10.0
-    line_h = 13.0
+    ny = y_top + 18.8
+    line_h = 13.375
     fs = SIZE_FOOTER
     for i, line in enumerate(notes):
         x = 34.3 if i == 0 else 60.0
@@ -652,6 +688,12 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
             us = fit_fontsize(font_body, validate, url_max, fs, min_size=5.0)
             page.insert_text((px, y), validate, fontname=body_name, fontsize=us, color=(0, 0, 1))
             uw = min(text_width(font_body, validate, us), url_max)
+            page.draw_line(
+                fitz.Point(px, y + 1.2),
+                fitz.Point(px + uw, y + 1.2),
+                color=(0, 0, 1),
+                width=0.5,
+            )
             page.insert_link(
                 {
                     'kind': fitz.LINK_URI,
@@ -660,11 +702,21 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
                 }
             )
             page.insert_text((px + uw, y), '。', fontname=body_name, fontsize=fs, color=(0, 0, 0))
+        elif i == 0:
+            lab = '备注：'
+            page.insert_text((x, y), lab, fontname=title_name, fontsize=fs, color=(0, 0, 0))
+            page.insert_text(
+                (x + text_width(font_title, lab, fs), y),
+                line[len(lab) :],
+                fontname=body_name,
+                fontsize=fs,
+                color=(0, 0, 0),
+            )
         else:
             page.insert_text((x, y), line, fontname=body_name, fontsize=fs, color=(0, 0, 0))
 
     stamp_y = ny + 5 * line_h + 8
-    page.insert_text((492.2, stamp_y), '（盖章）', fontname=body_name, fontsize=fs, color=(0, 0, 0))
+    page.insert_text((492.2, stamp_y), '（盖章）', fontname=title_name, fontsize=fs, color=(0, 0, 0))
     pd = '打印时间：' + str(print_date or '')
     pdw = text_width(font_body, pd, fs)
     page.insert_text(
@@ -672,7 +724,7 @@ def draw_cert_footer(page, font_body, body_name, auth_code, verify_url, print_da
     )
     if os.path.isfile(SEAL_PNG):
         page.insert_image(
-            fitz.Rect(430, stamp_y - 55, 575, stamp_y + 90),
+            fitz.Rect(432.5, stamp_y - 55, 555.5, stamp_y + 68),
             filename=SEAL_PNG,
             keep_proportion=True,
             overlay=True,
@@ -728,7 +780,7 @@ def render(payload, auth_code, qr_url, out_path):
                 y_t1_0, y_t1_1, y_t1_2 = 120.8, 135.5, 149.7
                 draw_rect(page, y_t1_0, y_t1_2)
                 draw_hline(page, y_t1_1)
-                info_xs = [34.3, 62.4, 112.1, 181.1, 259.8, 305.3, 362.0, 415.5, 493.6, 536.9, 560.2]
+                info_xs = [34.5, 66.1, 112.1, 164.6, 259.8, 305.3, 371.6, 416.5, 511.2, 542.3, 560.5]
                 info_labels = ['姓名', '社会保障号', '证件类型', '证件号码', '性别']
                 info_vals = [
                     p.get('name') or '',
@@ -772,6 +824,7 @@ def render(payload, auth_code, qr_url, out_path):
                     y_t1_1,
                     y_t1_2,
                     SIZE_SECTION,
+                    emph=True,
                 )
 
                 # —— 参保基本情况 ——
@@ -779,7 +832,7 @@ def render(payload, auth_code, qr_url, out_path):
                 draw_rect(page, y2[0], y2[-1])
                 for y in y2[1:-1]:
                     draw_hline(page, y)
-                bx = [34.3, 112.1, 259.8, 415.5, 560.2]
+                bx = [34.5, 167.8, 298.8, 429.9, 560.5]
                 draw_vline(page, bx[0], y2[0], y2[3])
                 draw_vline(page, bx[1], y2[0], y2[3])
                 draw_vline(page, bx[2], y2[0], y2[2])
@@ -796,7 +849,7 @@ def render(payload, auth_code, qr_url, out_path):
                 ]
                 for ri, row in enumerate(rows2):
                     for ci, val in enumerate(row):
-                        # 第一行险种名与左侧标签均加粗；第二行仅左侧标签加粗
+                        # 第一行标签与险种名加粗；第二行仅左侧「参保状态」加粗
                         use_bold = ri == 0 or ci == 0
                         cell_center(
                             page,
@@ -827,11 +880,21 @@ def render(payload, auth_code, qr_url, out_path):
                     min_size=6.0,
                 )
                 cell_center(
-                    page, font_title, title_name, section_title, X0, X1, y2[3], y2[4], SIZE_SECTION
+                    page,
+                    font_title,
+                    title_name,
+                    section_title,
+                    X0,
+                    X1,
+                    y2[3],
+                    y2[4],
+                    SIZE_SECTION,
+                    emph=True,
                 )
                 y_table = 207.5
             else:
-                # 续页：表紧跟标题区
+                # 续页：标题带与首页缴费段起始位置对齐
+                draw_rect(page, 193.3, 207.5)
                 cell_center(
                     page,
                     font_title,
@@ -839,11 +902,12 @@ def render(payload, auth_code, qr_url, out_path):
                     section_title + '（续）',
                     X0,
                     X1,
-                    118.0,
-                    134.0,
+                    193.3,
+                    207.5,
                     SIZE_SECTION,
+                    emph=True,
                 )
-                y_table = 134.0
+                y_table = 207.5
 
             y3_end = draw_payment_table(
                 page,
@@ -860,6 +924,8 @@ def render(payload, auth_code, qr_url, out_path):
                 page,
                 font_body,
                 body_name,
+                font_title,
+                title_name,
                 auth_code,
                 '',  # 页脚验证链接用官方平台；二维码另见 qr_url
                 p.get('print_date') or '',

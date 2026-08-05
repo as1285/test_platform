@@ -267,7 +267,7 @@
             transform: translateY(-100%);
         }
 
-        /* 重点服务推荐：整图 zdfwdb（含专项附加扣除 + 下方三卡，无横滑） */
+        /* 重点服务推荐：整图 zdfwdb（专项附加扣除蓝卡旧图 + 下方四卡） */
         .svc-cards-wrap {
             position: relative;
             display: block;
@@ -278,6 +278,36 @@
             display: block;
             vertical-align: top;
         }
+        /* 专项附加扣除横幅 ·「相关政策」→ 政策介绍页 */
+        .svc-zxk-banner-policy {
+            position: absolute;
+            z-index: 6;
+            right: 0;
+            width: 32%;
+            top: 8%;
+            height: 8%;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+            background: transparent;
+        }
+        /* 专项附加扣除横幅 ·「我要填报」白底胶囊整钮 */
+        .svc-zxk-banner-fill {
+            position: absolute;
+            z-index: 6;
+            left: 8%;
+            width: 84%;
+            top: 28%;
+            height: 14%;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+            background: transparent;
+        }
+        /* 旧图无「我要查询」分钮，热区隐藏保留节点以免脚本报错 */
+        .svc-zxk-banner-query {
+            display: none;
+        }
         .svc-hot {
             position: absolute;
             z-index: 4;
@@ -285,65 +315,14 @@
             outline: none;
             touch-action: manipulation;
             background: transparent;
-            top: 52%;
+            top: 50%;
             bottom: 2%;
         }
-        .svc-hot-left { left: 0; width: 33.33%; }
-        .svc-hot-mid { left: 33.33%; width: 33.33%; }
-        .svc-hot-right { left: 66.66%; width: 33.34%; }
-        /* 重点服务推荐 · 专项附加扣除卡片中部文案：拦截点击 */
-        .svc-zxk-banner-noop {
-            position: absolute;
-            z-index: 5;
-            left: 12%;
-            width: 76%;
-            top: 21%;
-            height: 14%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-            cursor: default;
-        }
-        /* 专项附加扣除横幅 ·「相关政策」→ 政策介绍页 */
-        .svc-zxk-banner-policy {
-            position: absolute;
-            z-index: 6;
-            right: 0;
-            width: 38%;
-            top: 12%;
-            height: 9%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「填报」→ 专项附加扣除页 */
-        .svc-zxk-banner-fill {
-            position: absolute;
-            z-index: 6;
-            left: 5%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
-        /* 专项附加扣除横幅 ·「我要查询」→ 专项附加扣除页 */
-        .svc-zxk-banner-query {
-            position: absolute;
-            z-index: 6;
-            left: 52%;
-            width: 43%;
-            top: 40%;
-            height: 12%;
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            touch-action: manipulation;
-            background: transparent;
-        }
+        /* 旧图底栏四卡：汇算 / 明细 / 开具 / 更多 */
+        .svc-hot-left { left: 0; width: 25%; }
+        .svc-hot-mid { left: 25%; width: 25%; }
+        .svc-hot-right { left: 50%; width: 25%; }
+        .svc-hot-more { left: 75%; width: 25%; }
 
         /* 轮播图内「重点服务推荐」三卡热区（相对 lb 图比例，与常见稿式对齐；若与设计稿有偏差可微调 top/height） */
         .shouye-lb-wrap {
@@ -606,14 +585,14 @@
                 </div>
             </div>
             <div class="svc-cards-wrap">
-                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=9" alt="重点服务推荐" loading="lazy" decoding="async">
-                <span class="svc-zxk-banner-noop" role="presentation" aria-hidden="true"></span>
+                <img id="assetShouyeZdfwdb" src="zdfwdb.jpg?v=10" alt="重点服务推荐" loading="lazy" decoding="async">
                 <a href="zxk_zhengce.html" class="svc-zxk-banner-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="填报"></a>
+                <a href="zxkouchu.html" class="svc-zxk-banner-fill" aria-label="我要填报"></a>
                 <a href="zxkouchu.html" class="svc-zxk-banner-query" aria-label="我要查询"></a>
                 <a href="zonghe.html" class="svc-hot svc-hot-left" aria-label="综合所得年度汇算"></a>
                 <a href="shuiming.html?reset=1" class="svc-hot svc-hot-mid" aria-label="收入纳税明细"></a>
                 <a href="najilu.html" class="svc-hot svc-hot-right" aria-label="纳税记录开具"></a>
+                <a href="bancha.html" class="svc-hot svc-hot-more" aria-label="更多功能"></a>
             </div>
         </div>
         <div class="guest-experience-bar" id="guestExperienceBar">

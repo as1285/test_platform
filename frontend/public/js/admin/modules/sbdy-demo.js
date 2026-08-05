@@ -365,6 +365,13 @@
 
   function generate() {
     var result = document.getElementById('sbdyDemoResult');
+    /* 文本框有模板且上方姓名/证件号为空时，生成前自动「从模板填充」 */
+    var tplBox = document.getElementById('sbdyInfoTplText');
+    var tplText = tplBox ? String(tplBox.value || '').trim() : '';
+    if (tplText && (!val('sbdyName') || !val('sbdyIdNumber'))) {
+      var applied = applyInfoTemplate(tplText);
+      if (!applied) return;
+    }
     var segments = collectSegments();
     var body = {
       name: val('sbdyName'),
@@ -378,12 +385,15 @@
       segments: segments
     };
     if (!body.name || !body.id_number) {
-      setStatus('请填写上方「姓名」与「证件号码」', true);
+      var tip = tplText
+        ? '模板里缺少「姓名」或「身份证号」，请补全后再点生成'
+        : '请填写上方「姓名」与「证件号码」，或粘贴模板后点「从模板填充」';
+      setStatus(tip, true);
       try {
-        alert('请填写姓名与证件号码（在表单最上方）');
+        alert(tip);
       } catch (e0) {}
-      var nameEl = document.getElementById('sbdyName');
-      if (nameEl && nameEl.scrollIntoView) nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var focusEl = document.getElementById(tplText ? 'sbdyInfoTplText' : 'sbdyName');
+      if (focusEl && focusEl.scrollIntoView) focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!segments.length) {
@@ -485,6 +495,308 @@
     });
   }
 
+  /** 空白社保信息模板（与运营粘贴格式一致） */
+  function blankInfoTemplate() {
+    var range = defaultPeriodRange();
+    var startParts = String(range.start).split('-');
+    var endParts = String(range.end).split('-');
+    var timeStr =
+      startParts[0] +
+      '.' +
+      String(Number(startParts[1])) +
+      '-' +
+      endParts[0] +
+      '.' +
+      String(Number(endParts[1]));
+    return [
+      '姓名:',
+      '身份证号:',
+      '社保号:',
+      '性别:女',
+      '时间:' + timeStr,
+      '参保数:12个月',
+      '区域:滨江区',
+      '公司名称：',
+      '税号：'
+    ].join('\n');
+  }
+
+  function pickTplField(text, keys) {
+    var lines = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = String(lines[i] || '').trim();
+      if (!line) continue;
+      var ki;
+      for (ki = 0; ki < keys.length; ki++) {
+        var key = keys[ki];
+        if (line.indexOf(key) !== 0) continue;
+        var rest = line.slice(key.length);
+        rest = rest.replace(/^[\s:：]+/, '').trim();
+        return rest;
+      }
+    }
+    return '';
+  }
+
+  function parseTimeRange(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return null;
+    var m = s.match(
+      /^(\d{4})\s*[./年]\s*(\d{1,2})\s*(?:月)?\s*[-~～至到]\s*(\d{4})\s*[./年]\s*(\d{1,2})\s*(?:月)?$/
+    );
+    if (!m) {
+      m = s.match(/^(\d{4})-(\d{1,2})\s*[-~～至到]\s*(\d{4})-(\d{1,2})$/);
+    }
+    if (!m) return null;
+    return {
+      start: m[1] + '-' + String(Number(m[2])).padStart(2, '0'),
+      end: m[3] + '-' + String(Number(m[4])).padStart(2, '0')
+    };
+  }
+
+  function monthsBetweenInclusive(startYm, endYm) {
+    var a = String(startYm || '').match(/^(\d{4})-(\d{2})$/);
+    var b = String(endYm || '').match(/^(\d{4})-(\d{2})$/);
+    if (!a || !b) return 0;
+    return (Number(b[1]) - Number(a[1])) * 12 + (Number(b[2]) - Number(a[2])) + 1;
+  }
+
+  function formatTimeDot(startYm, endYm) {
+    var a = String(startYm || '').match(/^(\d{4})-(\d{1,2})$/);
+    var b = String(endYm || '').match(/^(\d{4})-(\d{1,2})$/);
+    if (!a || !b) return '';
+    return (
+      a[1] +
+      '.' +
+      String(Number(a[2])) +
+      '-' +
+      b[1] +
+      '.' +
+      String(Number(b[2]))
+    );
+  }
+
+  function buildInfoTemplateFromForm() {
+    var segs = collectSegments();
+    var seg = segs[0] || {};
+    var per = (seg.periods && seg.periods[0]) || {};
+    var start = per.period_start || '';
+    var end = per.period_end || '';
+    var months = monthsBetweenInclusive(start, end);
+    var idNo = val('sbdyIdNumber');
+    return [
+      '姓名:' + val('sbdyName'),
+      '身份证号:' + idNo,
+      '社保号:',
+      '性别:' + (val('sbdyGender') || '女'),
+      '时间:' + (formatTimeDot(start, end) || ''),
+      '参保数:' + (months > 0 ? months + '个月' : ''),
+      '区域:' + (seg.area || ''),
+      '公司名称：' + (seg.company_name || ''),
+      '税号：' + (seg.credit_code || '')
+    ].join('\n');
+  }
+
+  function parseInfoTemplate(text) {
+    var raw = String(text || '').trim();
+    if (!raw) return { error: '请先粘贴社保信息模板' };
+    var name = pickTplField(raw, ['姓名']);
+    var idNumber = pickTplField(raw, ['身份证号', '证件号码', '证件号']);
+    var socialNo = pickTplField(raw, ['社保号', '社会保障号']);
+    var gender = pickTplField(raw, ['性别']);
+    var timeRaw = pickTplField(raw, ['时间', '缴费时间', '参保时间']);
+    var monthsRaw = pickTplField(raw, ['参保数', '参保月数', '缴费月数']);
+    var area = pickTplField(raw, ['区域', '参保地', '地区']);
+    var company = pickTplField(raw, ['公司名称', '参保单位', '单位名称', '单位']);
+    var credit = pickTplField(raw, ['税号', '统一社会信用代码', '信用代码']);
+    if (!idNumber && socialNo) idNumber = socialNo;
+    /* 兼容「身份证号」后无冒号、或整段粘贴时证件号单独成行 */
+    if (!idNumber) {
+      var idLine = String(raw).match(/(?:身份证号|证件号码|证件号)\s*[:：]?\s*([0-9Xx]{15,18})/);
+      if (idLine) idNumber = idLine[1];
+    }
+    if (!idNumber) {
+      var bareId = String(raw).match(/(?:^|\n)\s*([0-9]{17}[0-9Xx])\s*(?:\n|$)/);
+      if (bareId) idNumber = bareId[1];
+    }
+    if (!name) {
+      var nameLine = String(raw).match(/(?:姓名)\s*[:：]?\s*([^\s\n:：]{1,32})/);
+      if (nameLine) name = nameLine[1].trim();
+    }
+    if (!name && !idNumber && !company) {
+      return { error: '未识别到姓名/身份证号/公司名称，请检查模板格式' };
+    }
+    if (!name || !idNumber) {
+      return {
+        error:
+          '模板缺少' +
+          (!name ? '「姓名」' : '') +
+          (!name && !idNumber ? '和' : '') +
+          (!idNumber ? '「身份证号」' : '') +
+          '，请按「姓名:xxx」与「身份证号:xxx」补全'
+      };
+    }
+    var range = parseTimeRange(timeRaw);
+    if (!range) {
+      var def = defaultPeriodRange();
+      range = { start: def.start, end: def.end };
+    }
+    var monthsHint = 0;
+    var mm = String(monthsRaw || '').match(/(\d{1,3})/);
+    if (mm) monthsHint = Number(mm[1]);
+    var actualMonths = monthsBetweenInclusive(range.start, range.end);
+    if (monthsHint > 0 && actualMonths > 0 && monthsHint !== actualMonths) {
+      /* 以时间区间为准，仅提示 */
+    }
+    var base = 4986;
+    return {
+      name: name,
+      id_number: idNumber,
+      gender: gender === '男' || gender === '女' ? gender : gender || '女',
+      area: area || '滨江区',
+      company_name: company,
+      credit_code: credit,
+      period_start: range.start,
+      period_end: range.end,
+      months: actualMonths || monthsHint || 12,
+      base_amount: base,
+      pension_pay: Math.round(base * 0.08 * 100) / 100,
+      unemployment_pay: Math.round(base * 0.005 * 100) / 100
+    };
+  }
+
+  function applyInfoTemplate(text) {
+    var parsed = parseInfoTemplate(text);
+    if (parsed.error) {
+      setStatus(parsed.error, true);
+      return false;
+    }
+    var now = new Date();
+    var bj = new Date(now.getTime() + 8 * 3600 * 1000);
+    var printDate =
+      bj.getUTCFullYear() +
+      '年' +
+      String(bj.getUTCMonth() + 1).padStart(2, '0') +
+      '月' +
+      String(bj.getUTCDate()).padStart(2, '0') +
+      '日';
+    /* 模板填充：演示默认正常参保、连续缴费，不停保 */
+    setField('sbdyName', parsed.name);
+    setField('sbdyIdNumber', parsed.id_number);
+    setField('sbdyGender', parsed.gender || '女');
+    setField('sbdyStatusPension', '正常参保');
+    setField('sbdyStatusInjury', '正常参保');
+    setField('sbdyStatusUnemp', '正常参保');
+    setField('sbdyPrintDate', printDate);
+    resetExperiences([
+      {
+        company_name: parsed.company_name,
+        credit_code: parsed.credit_code,
+        area: parsed.area || '滨江区',
+        periods: [
+          {
+            period_start: parsed.period_start,
+            period_end: parsed.period_end,
+            base_amount: parsed.base_amount,
+            pension_pay: parsed.pension_pay,
+            unemployment_pay: parsed.unemployment_pay
+          }
+        ]
+      }
+    ]);
+    setStatus(
+      '已从模板填充：' +
+        (parsed.name || '（无姓名）') +
+        '，' +
+        parsed.period_start +
+        '～' +
+        parsed.period_end +
+        '（' +
+        parsed.months +
+        '个月，正常参保/不停保）',
+      false
+    );
+    return true;
+  }
+
+  function copyText(text) {
+    var t = String(text || '');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function (resolve, reject) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = t;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) resolve();
+        else reject(new Error('copy failed'));
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function copyBlankTemplate() {
+    var tpl = blankInfoTemplate();
+    var box = document.getElementById('sbdyInfoTplText');
+    if (box) box.value = tpl;
+    copyText(tpl)
+      .then(function () {
+        setStatus('已复制空白社保信息模板', false);
+      })
+      .catch(function () {
+        setStatus('已填入空白模板（剪贴板不可用，请手动复制文本框内容）', false);
+      });
+  }
+
+  function copyFormTemplate() {
+    var tpl = buildInfoTemplateFromForm();
+    var box = document.getElementById('sbdyInfoTplText');
+    if (box) box.value = tpl;
+    copyText(tpl)
+      .then(function () {
+        setStatus('已从当前表单复制社保信息', false);
+      })
+      .catch(function () {
+        setStatus('已填入表单信息（剪贴板不可用，请手动复制文本框内容）', false);
+      });
+  }
+
+  function applyTemplateFromBox() {
+    var box = document.getElementById('sbdyInfoTplText');
+    var text = box ? String(box.value || '') : '';
+    var ok = applyInfoTemplate(text);
+    if (ok) {
+      try {
+        alert(
+          '已写入表单：' +
+            val('sbdyName') +
+            ' / ' +
+            val('sbdyIdNumber') +
+            '\n请确认上方姓名、证件号已填好，再点「生成演示样例」'
+        );
+      } catch (e1) {}
+      var nameEl = document.getElementById('sbdyName');
+      if (nameEl && nameEl.scrollIntoView) {
+        nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    } else {
+      try {
+        var st = document.getElementById('sbdyDemoStatus');
+        alert((st && st.textContent) || '模板解析失败，请检查姓名与身份证号格式');
+      } catch (e2) {}
+    }
+    return ok;
+  }
+
   function fillSample() {
     var now = new Date();
     var bj = new Date(now.getTime() + 8 * 3600 * 1000);
@@ -496,6 +808,71 @@
       String(bj.getUTCDate()).padStart(2, '0') +
       '日';
     var samples = [
+      {
+        name: '耿冯',
+        id_number: '370921199912203616',
+        gender: '男',
+        status: '暂停缴费',
+        print_date: '2026年04月28日',
+        segments: [
+          {
+            company_name: '杭州智控网络有限公司',
+            credit_code: '3011000010108876',
+            area: '滨江区',
+            periods: [
+              {
+                period_start: '2023-05',
+                period_end: '2023-12',
+                base_amount: 4462,
+                pension_pay: 356.96,
+                unemployment_pay: 22.31
+              },
+              {
+                period_start: '2024-01',
+                period_end: '2024-12',
+                base_amount: 4996.34,
+                pension_pay: 399.71,
+                unemployment_pay: 24.98
+              },
+              {
+                period_start: '2025-01',
+                period_end: '2025-02',
+                base_amount: 5167.5,
+                pension_pay: 413.4,
+                unemployment_pay: 25.84
+              }
+            ]
+          },
+          {
+            company_name: '杭州智控网络有限公司',
+            credit_code: '3011000010145742',
+            area: '滨江区',
+            periods: [
+              {
+                period_start: '2025-03',
+                period_end: '2025-11',
+                base_amount: 5167.5,
+                pension_pay: 413.4,
+                unemployment_pay: 25.84
+              }
+            ]
+          },
+          {
+            company_name: '杭州智控网络有限公司',
+            credit_code: '3011000106164173',
+            area: '钱塘区',
+            periods: [
+              {
+                period_start: '2025-12',
+                period_end: '2026-04',
+                base_amount: 5000,
+                pension_pay: 400,
+                unemployment_pay: 25
+              }
+            ]
+          }
+        ]
+      },
       {
         name: '李晓晴',
         id_number: '371323199904156523',
@@ -602,7 +979,7 @@
       }
     ];
     var sample =
-      Math.random() < 0.55
+      Math.random() < 0.5
         ? samples[0]
         : samples[Math.floor(Math.random() * samples.length)];
     setField('sbdyName', sample.name);
@@ -639,6 +1016,27 @@
         fillSample();
       };
     }
+    var copyBlankBtn = document.getElementById('btnSbdyCopyBlankTpl');
+    if (copyBlankBtn) {
+      copyBlankBtn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        copyBlankTemplate();
+      };
+    }
+    var copyFormBtn = document.getElementById('btnSbdyCopyFormTpl');
+    if (copyFormBtn) {
+      copyFormBtn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        copyFormTemplate();
+      };
+    }
+    var applyTplBtn = document.getElementById('btnSbdyApplyTpl');
+    if (applyTplBtn) {
+      applyTplBtn.onclick = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        applyTemplateFromBox();
+      };
+    }
     var btn = document.getElementById('btnSbdyDemoGenerate');
     if (btn) {
       btn.onclick = function (ev) {
@@ -665,11 +1063,17 @@
     ready: true,
     loadPage: loadPage,
     generate: generate,
-    fillSample: fillSample
+    fillSample: fillSample,
+    copyBlankTemplate: copyBlankTemplate,
+    copyFormTemplate: copyFormTemplate,
+    applyInfoTemplate: applyInfoTemplate
   };
   global.loadSbdyDemoPage = loadPage;
   global.sbdyDemoGenerate = generate;
   global.sbdyDemoFillSample = fillSample;
+  global.sbdyDemoCopyBlankTpl = copyBlankTemplate;
+  global.sbdyDemoCopyFormTpl = copyFormTemplate;
+  global.sbdyDemoApplyTpl = applyTemplateFromBox;
   global.sbdyDemoAddExperience = function () {
     addExperience({});
   };
