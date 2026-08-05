@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="/js/auth.js?v=20260805-shouye-bar-blue"></script>
+    <script src="/js/auth.js?v=20260805-shouye-real-ui"></script>
     <!-- TAX_APP_SHELL_START -->
     <link rel="stylesheet" href="/css/app-shell.css">
     <script src="/js/app/ui.js"></script>
@@ -10,7 +10,7 @@
     <script src="/js/app/core.js"></script>
     <!-- TAX_APP_SHELL_END -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#5c8eea">
+    <meta name="theme-color" content="#4a90f0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,34 +29,34 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f4f6f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+            background: #f5f6f8;
             min-height: 100vh;
+            color: #1a1a1a;
+            -webkit-font-smoothing: antialiased;
         }
 
         body.page-shouye {
-            --sy-rpx: calc(100vw / 750);
-            /* 与 ahead.png 顶缘取样一致，避免垫色/图片交界出现白缝；状态栏同色 */
-            --shouye-top-bar-rgb: 92, 142, 234;
-            background: #f4f6f9;
+            --sy-blue: #4a90f0;
+            --sy-blue-deep: #3b82f6;
+            --sy-blue-soft: #6ba8f5;
+            --shouye-top-bar-rgb: 74, 144, 240;
+            --shouye-fixed-top-h: 56px;
+            background: #f5f6f8;
         }
 
-        /* 固定顶栏：原版 ahead.png（搜索+扫码），安全区铺蓝 */
+        /* —— 固定顶栏：蓝渐变 + HTML 搜索 —— */
         .search-bar-wrapper {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 999;
-            padding: 0;
-            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234));
+            padding: 8px 14px 10px;
+            background: linear-gradient(180deg, #4a90f0 0%, #5b9cf5 100%);
             box-shadow: none !important;
             border: 0 !important;
             outline: none;
-            display: block;
-            line-height: 0;
-            /* 裁掉顶缘亚像素白缝；热区仍可用 absolute */
-            overflow: hidden;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-shouye::before {
@@ -66,14 +66,14 @@
             right: 0;
             top: 0;
             height: var(--app-shell-statusbar-top, env(safe-area-inset-top, 48px));
-            background: rgb(var(--shouye-top-bar-rgb, 92, 142, 234));
+            background: rgb(var(--shouye-top-bar-rgb, 74, 144, 240));
             z-index: 998;
             pointer-events: none;
         }
 
         html.app-ios-client.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px));
+            padding-top: calc(8px + var(--app-shell-statusbar-top, env(safe-area-inset-top, 0px)));
         }
 
         html.app-android-mi-family.app-top-safe-shell body.page-shouye .search-bar-wrapper,
@@ -84,138 +84,116 @@
         html.app-cordova-huawei-pura70.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-honor-flc.app-top-safe-shell body.page-shouye .search-bar-wrapper,
         html.app-android-honor-fcp.app-top-safe-shell body.page-shouye .search-bar-wrapper {
-            padding-top: 0 !important;
+            padding-top: 8px !important;
         }
 
-        /* 荣耀折叠外屏：状态栏在 WebView 外，勿按普通 Android 预留 78px 顶距 */
         html.app-android-honor-flc.app-top-safe-shell.app-android-client,
-        html.app-android-honor-fcp.app-top-safe-shell.app-android-client {
-            --shouye-fixed-top-h: 52px;
+        html.app-android-honor-fcp.app-top-safe-shell.app-android-client,
+        html.app-top-safe-shell.app-android-client {
+            --shouye-fixed-top-h: 56px;
         }
 
-        .sy-apk-ahead {
-            display: block;
-            width: 100%;
-            height: auto;
-            margin-top: -1px; /* 盖住顶栏与 WebView 交界的 1px 白线 */
-            vertical-align: top;
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-
-        /* Android：根底勿露灰白，否则顶栏上沿会闪一条白影 */
         html.app-android-client.app-top-safe-shell:has(body.page-shouye),
         html.app-android-client.app-top-safe-shell body.page-shouye {
-            background-color: #f4f6f9;
+            background-color: #f5f6f8;
             background-image: linear-gradient(
-                rgb(var(--shouye-top-bar-rgb, 92, 142, 234)),
-                rgb(var(--shouye-top-bar-rgb, 92, 142, 234))
+                rgb(var(--shouye-top-bar-rgb, 74, 144, 240)),
+                rgb(var(--shouye-top-bar-rgb, 74, 144, 240))
             );
-            background-size: 100% var(--shouye-fixed-top-h, 52px);
+            background-size: 100% var(--shouye-fixed-top-h, 56px);
             background-repeat: no-repeat;
             background-position: top center;
         }
 
-        .sy-ahead-hit {
-            position: absolute;
-            z-index: 2;
-            display: block;
-            background: transparent;
-            -webkit-tap-highlight-color: transparent;
-            border: none;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
+        .sy-search-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sy-search-pill {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.28);
+            color: rgba(255, 255, 255, 0.95);
             text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .search-bar-wrapper { position: fixed; }
-
-        .sy-hit-search {
-            top: calc(12 * var(--sy-rpx));
-            left: 0;
-            right: 40px;
-            bottom: 0;
+        .sy-search-pill svg {
+            flex-shrink: 0;
+            opacity: 0.95;
         }
 
-        .sy-hit-scan {
-            top: 13px;
-            right: 10px;
-            width: 30px;
-            height: 30px;
+        .sy-search-pill span {
+            font-size: 14px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0.92;
         }
 
+        .sy-scan-btn {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border: 0;
+            padding: 0;
+            background: transparent;
+            color: #fff;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* —— 页面主体 —— */
         .shouye-page {
             min-height: 100vh;
-            background: #f4f6f9;
-            padding-top: var(--shouye-fixed-top-h, 52px);
-            padding-bottom: var(--bottom-nav-clearance, 70px);
+            background: #f5f6f8;
+            padding-top: var(--shouye-fixed-top-h, 56px);
+            padding-bottom: var(--bottom-nav-clearance, 90px);
         }
 
-        /* Android：状态栏多在 WebView 外，首页顶高按搜索条实高（约 52），勿预留 78 */
-        html.app-top-safe-shell.app-android-client {
-            --shouye-fixed-top-h: 52px;
+        .sy-hero-band {
+            background: linear-gradient(180deg, #5b9cf5 0%, #7eb4f8 42%, #f5f6f8 100%);
+            padding: 0 14px 8px;
+            margin-top: -1px;
         }
 
-        /* 原版：整页 widthFix 切片 + 绝对热区 */
-        .sy-apk-stack {
-            position: relative;
-            width: 100%;
-            background: #f4f6f9;
-            line-height: 0;
+        /* 通知条 */
+        .sy-notice {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 36px;
+            padding: 0 12px;
+            border-radius: 10px;
+            background: #fdf6e9;
+            margin-bottom: 12px;
+            overflow: hidden;
         }
 
-        .sy-apk-slice {
-            display: block;
-            width: 100%;
-            height: auto;
-            vertical-align: top;
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-
-        .sy-apk-block {
-            position: relative;
-            width: 100%;
-            line-height: 0;
-        }
-
-        .sy-apk-hit {
-            position: absolute;
-            z-index: 10;
-            display: block;
-            background: transparent;
-            -webkit-tap-highlight-color: transparent;
-            text-decoration: none;
-            border: none;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-        }
-
-        /* a1 通知条叠字；上移 2px 盖住与固定顶栏交界的亚像素白缝 */
-        .sy-apk-a1 {
-            position: relative;
-            background: #2c80f4;
-            margin-top: -2px;
-            z-index: 1;
+        .sy-notice-bell {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            color: #e8a23a;
         }
 
         .sy-apk-marquee {
-            position: absolute;
-            top: 25px;
-            left: 50px;
-            width: calc(100% - 80px);
-            margin-right: 30px;
+            flex: 1;
             color: #b27a39;
-            font-size: 16px;
-            line-height: 1.2;
+            font-size: 13px;
+            line-height: 1.3;
             overflow: hidden;
             white-space: nowrap;
-            pointer-events: none;
-            z-index: 5;
         }
 
         .sy-apk-marquee span {
@@ -229,77 +207,258 @@
             100% { transform: translateX(-100%); }
         }
 
-        /* a32/a33 热区（相对卡片容器，rpx） */
-        .sy-hit-zonghe-tab {
-            top: 0;
-            right: calc(23 * var(--sy-rpx));
-            width: calc(250 * var(--sy-rpx));
-            height: calc(70 * var(--sy-rpx));
+        /* 汇算白卡 */
+        .sy-hero-card {
+            position: relative;
+            display: block;
+            padding: 20px 18px 18px;
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: 0 8px 28px rgba(59, 110, 180, 0.12);
+            text-decoration: none;
+            color: inherit;
+            overflow: hidden;
+            min-height: 168px;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .sy-hit-record {
-            top: calc(266 * var(--sy-rpx));
-            right: calc(363 * var(--sy-rpx));
-            width: calc(330 * var(--sy-rpx));
-            height: calc(90 * var(--sy-rpx));
+        .sy-hero-card::after {
+            content: "";
+            position: absolute;
+            right: -8px;
+            bottom: -4px;
+            width: 150px;
+            height: 150px;
+            border-radius: 40% 60% 50% 50%;
+            background:
+                radial-gradient(circle at 35% 40%, rgba(91, 156, 245, 0.22), transparent 55%),
+                radial-gradient(circle at 70% 70%, rgba(255, 180, 120, 0.2), transparent 50%),
+                radial-gradient(circle at 55% 55%, rgba(120, 200, 180, 0.18), transparent 45%);
+            pointer-events: none;
         }
 
-        /* a3：相关政策 / 我要填报（对齐原版 jumpToss / jumpTos 热区） */
-        .sy-hit-policy {
-            top: calc(120 * var(--sy-rpx));
-            left: calc(500 * var(--sy-rpx));
-            width: calc(200 * var(--sy-rpx));
-            height: calc(70 * var(--sy-rpx));
+        .sy-hero-card h2 {
+            position: relative;
+            z-index: 1;
+            margin: 0 0 10px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1a1a1a;
+            max-width: 70%;
+            line-height: 1.3;
         }
 
-        .sy-hit-fill {
-            top: calc(320 * var(--sy-rpx));
-            left: calc(100 * var(--sy-rpx));
-            width: calc(550 * var(--sy-rpx));
-            height: calc(90 * var(--sy-rpx));
+        .sy-hero-card p {
+            position: relative;
+            z-index: 1;
+            margin: 0 0 16px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: #8a93a3;
+            max-width: 62%;
         }
 
-        /* 横向 a6 */
-        .sy-apk-hscroll {
-            width: 100%;
-            overflow-x: auto;
-            overflow-y: hidden;
-            white-space: nowrap;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            background: #f4f6f9;
-            padding: 4px 0 8px;
+        .sy-hero-cta {
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 118px;
+            height: 36px;
+            padding: 0 18px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #5b9cf5, #3b82f6);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
         }
 
-        .sy-apk-hscroll::-webkit-scrollbar { display: none; }
+        /* 区块 */
+        .sy-section {
+            padding: 16px 14px 0;
+        }
 
-        .sy-apk-hitem {
-            display: inline-block;
-            width: 30%;
-            margin-left: 2.5%;
-            vertical-align: top;
+        .sy-section-title {
+            margin: 0 0 12px;
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* 重点服务蓝卡 */
+        .sy-feature-card {
+            border-radius: 16px;
+            background: linear-gradient(165deg, #4a90f0 0%, #3b7ef0 55%, #3570e0 100%);
+            color: #fff;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(59, 126, 240, 0.28);
+        }
+
+        .sy-feature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px 8px;
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .sy-feature-head-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .sy-feature-hot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            line-height: 0;
+        }
+
+        .sy-feature-policy {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 13px;
             text-decoration: none;
         }
 
-        .sy-apk-hitem:first-child { margin-left: 3%; }
-
-        .sy-apk-hitem img {
-            display: block;
-            width: 100%;
-            height: calc(300 * var(--sy-rpx));
-            object-fit: cover;
-            border-radius: 8px;
+        .sy-feature-body {
+            padding: 18px 16px 16px;
+            text-align: center;
         }
 
-        /* 轮播 */
+        .sy-feature-body p {
+            margin: 0 0 16px;
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .sy-feature-action {
+            display: flex;
+            align-items: stretch;
+            background: #fff;
+            border-radius: 22px;
+            overflow: hidden;
+            text-decoration: none;
+            color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .sy-feature-action-left {
+            flex: 1.15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 8px;
+            font-size: 12px;
+            color: #65758b;
+            border-right: 1px solid #e8edf5;
+        }
+
+        .sy-feature-avatars {
+            display: flex;
+            align-items: center;
+        }
+
+        .sy-feature-avatars i {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+            margin-left: -6px;
+            background: linear-gradient(135deg, #93c5fd, #60a5fa);
+            display: block;
+        }
+
+        .sy-feature-avatars i:first-child { margin-left: 0; background: linear-gradient(135deg, #fcd34d, #f59e0b); }
+        .sy-feature-avatars i:nth-child(2) { background: linear-gradient(135deg, #c4b5fd, #8b5cf6); }
+        .sy-feature-avatars i:nth-child(3) { background: linear-gradient(135deg, #6ee7b7, #10b981); }
+
+        .sy-feature-action-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        /* 横向快捷入口 */
+        .sy-quick-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 14px 14px 4px;
+        }
+
+        .sy-quick-scroll::-webkit-scrollbar { display: none; }
+
+        .sy-quick-card {
+            flex: 0 0 42%;
+            max-width: 168px;
+            padding: 14px 12px 16px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(20, 40, 80, 0.06);
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sy-quick-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .sy-quick-icon.is-blue { background: linear-gradient(145deg, #60a5fa, #3b82f6); }
+        .sy-quick-icon.is-purple { background: linear-gradient(145deg, #c4b5fd, #8b5cf6); }
+        .sy-quick-icon.is-teal { background: linear-gradient(145deg, #5eead4, #14b8a6); }
+        .sy-quick-icon.is-orange { background: linear-gradient(145deg, #fdba74, #f97316); }
+
+        .sy-quick-card strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #1a1a1a;
+        }
+
+        .sy-quick-card span {
+            display: block;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #8a93a3;
+        }
+
+        /* 轮播 / 资讯：统一间距 */
         .sy-apk-swiper-wrap {
-            width: 93%;
-            margin: 8px auto 12px;
+            width: auto;
+            margin: 14px 14px 12px;
             position: relative;
-            border-radius: 15px;
+            border-radius: 14px;
             overflow: hidden;
             background: #fff;
             line-height: 0;
+            box-shadow: 0 2px 10px rgba(20, 40, 80, 0.06);
         }
 
         .sy-apk-swiper-track {
@@ -313,7 +472,6 @@
             width: 100%;
             height: auto;
             display: block;
-            vertical-align: top;
         }
 
         .sy-apk-swiper-dots {
@@ -332,25 +490,41 @@
         .sy-apk-swiper-dots i {
             width: 6px;
             height: 6px;
-            border-radius: 1px;
+            border-radius: 3px;
             background: rgba(0, 0, 0, 0.2);
         }
 
         .sy-apk-swiper-dots i.is-on {
             width: 12px;
-            background: #2c80f4;
+            background: #3b82f6;
         }
 
-        .sy-hit-more {
-            left: 0;
-            right: 0;
-            top: 0;
-            height: calc(80 * var(--sy-rpx));
+        .sy-news-block {
+            position: relative;
+            margin: 0 14px 12px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+            line-height: 0;
+            box-shadow: 0 2px 10px rgba(20, 40, 80, 0.06);
+        }
+
+        .sy-news-block img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .sy-news-block a.sy-news-hit {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            text-decoration: none;
         }
 
         .guest-experience-bar {
             display: none;
-            margin: 10px 12px 12px;
+            margin: 12px 14px 0;
             padding: 12px 14px;
             border-radius: 12px;
             background: linear-gradient(135deg, #eaf3ff, #f7fbff);
@@ -375,7 +549,7 @@
             border: 0;
             border-radius: 10px;
             padding: 9px 12px;
-            background: #1e6fff;
+            background: #3b82f6;
             color: #fff;
             font-size: 13px;
             font-weight: 600;
@@ -385,7 +559,7 @@
         }
         .guest-experience-action.is-secondary {
             background: #fff;
-            color: #1e6fff;
+            color: #3b82f6;
             border: 1px solid #9ec0f5;
         }
         .guest-gate-mask {
@@ -423,95 +597,127 @@
             font-size: 14px;
             font-weight: 600;
         }
-        .guest-gate-download { color: #fff; background: #1e6fff; }
-        .guest-gate-register { color: #1e6fff; background: #edf4ff; }
+        .guest-gate-download { color: #fff; background: #3b82f6; }
+        .guest-gate-register { color: #3b82f6; background: #edf4ff; }
         .guest-gate-cancel { color: #7b8798; background: #f5f6f8; }
     </style>
     <link rel="stylesheet" href="css/nav.css?v=20260729-fixed-tab">
     <script src="/js/theme-loader.js?v=20260729-zdb" defer></script>
 </head>
 <body class="page-shouye tax-app-shell has-bottom-nav">
-    <!-- 原版 ahead：搜索条 + 扫码（固定顶栏） -->
     <div class="search-bar-wrapper" id="syAheadWrap">
-        <img class="sy-apk-ahead" src="/img/home/ahead.png?v=20260803-no-hairline" alt="搜索" width="1284" height="167">
-        <a href="help_center.html" class="sy-ahead-hit sy-hit-search" aria-label="搜索功能与服务"></a>
-        <button type="button" class="sy-ahead-hit sy-hit-scan" id="syScanBtn" aria-label="扫一扫"></button>
+        <div class="sy-search-row">
+            <a href="help_center.html" class="sy-search-pill" aria-label="搜索功能与服务">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                    <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>请输入想搜索的功能/服务</span>
+            </a>
+            <button type="button" class="sy-scan-btn" id="syScanBtn" aria-label="扫一扫">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <div class="shouye-page">
-        <div class="sy-apk-stack" id="syApkStack">
-            <!-- a1 通知条 -->
-            <div class="sy-apk-block sy-apk-a1">
-                <img class="sy-apk-slice" src="/img/home/a1.png?v=20260805-no-hairline" alt="" width="1284" height="223">
+        <div class="sy-hero-band">
+            <div class="sy-notice">
+                <svg class="sy-notice-bell" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22Zm7-6.2V11a7 7 0 1 0-14 0v4.8L3 17.8V19h18v-1.2l-2-1.8Z"/>
+                </svg>
                 <div class="sy-apk-marquee" aria-hidden="true">
                     <span>国家税务总局令第57号:《个人所得税综合所得汇算清缴管理办法》</span>
                 </div>
             </div>
 
-            <!-- 汇算卡片：未登录 a32 / 已登录 a33 -->
-            <div class="sy-apk-block" id="syDeclareBlock">
-                <a href="zonghe.html" id="syDeclareImgLink" aria-label="综合所得年度汇算">
-                    <img
-                        id="syDeclareImg"
-                        class="sy-apk-slice"
-                        src="/img/home/a32.png?v=20260802-home"
-                        alt="综合所得年度汇算"
-                        width="1179"
-                        height="610"
-                        style="pointer-events:auto"
-                    >
-                </a>
-                <a href="zonghe.html" class="sy-apk-hit sy-hit-zonghe-tab" aria-label="进入专题页"></a>
-                <a href="shenbao_jilu.html" class="sy-apk-hit sy-hit-record" id="syRecordHit" aria-label="查看记录"></a>
-            </div>
+            <a class="sy-hero-card" href="zonghe.html" id="syDeclareCard" aria-label="综合所得年度汇算">
+                <h2>2025综合所得年度汇算</h2>
+                <p id="syDeclareDesc">办理期已于6月30日结束，您仍可查看往年记录或了解相关政策。</p>
+                <span class="sy-hero-cta" id="syDeclareCta">进入专题页</span>
+            </a>
+        </div>
 
-            <!-- a3 重点服务推荐 -->
-            <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a3.png?v=20260802-home" alt="重点服务推荐" width="1284" height="805">
-                <a href="zxk_zhengce.html" class="sy-apk-hit sy-hit-policy" aria-label="相关政策"></a>
-                <a href="zxkouchu.html" class="sy-apk-hit sy-hit-fill" aria-label="我要填报"></a>
+        <div class="guest-experience-bar" id="guestExperienceBar">
+            <div class="guest-experience-copy">
+                <strong id="guestExperienceTitle">游客体验模式</strong>
+                <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
             </div>
+            <div class="guest-experience-actions">
+                <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
+                <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+            </div>
+        </div>
 
-            <div class="guest-experience-bar" id="guestExperienceBar">
-                <div class="guest-experience-copy">
-                    <strong id="guestExperienceTitle">游客体验模式</strong>
-                    <span id="guestExperienceDesc">先浏览产品首页，完整明细与证明需下载或注册</span>
+        <section class="sy-section">
+            <h3 class="sy-section-title">重点服务推荐</h3>
+            <div class="sy-feature-card">
+                <div class="sy-feature-head">
+                    <div class="sy-feature-head-left">
+                        <span class="sy-feature-hot" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ff6b4a"><path d="M12 2c.4 4.2-2.2 6.2-4.2 8.1C5.6 12.3 4 14.4 4 17a8 8 0 0 0 16 0c0-3.6-2.3-5.8-4.5-8C13.4 7 12.4 5.2 12 2z"/></svg>
+                        </span>
+                        <span>专项附加扣除</span>
+                    </div>
+                    <a class="sy-feature-policy" href="zxk_zhengce.html" aria-label="相关政策">相关政策 ›</a>
                 </div>
-                <div class="guest-experience-actions">
-                    <a class="guest-experience-action is-secondary" href="register.html?from=install_guide&landing_ab=c" id="guestExperienceRegister">立即注册</a>
-                    <button type="button" class="guest-experience-action" id="guestExperienceDownload">下载 App</button>
+                <div class="sy-feature-body">
+                    <p>若符合条件，您可点击下方填报</p>
+                    <a class="sy-feature-action" href="zxkouchu.html" aria-label="我要填报">
+                        <span class="sy-feature-action-left">
+                            <span class="sy-feature-avatars" aria-hidden="true"><i></i><i></i><i></i></span>
+                            超1亿人参与
+                        </span>
+                        <span class="sy-feature-action-right">我要填报</span>
+                    </a>
                 </div>
             </div>
+        </section>
 
-            <!-- a6 横向入口 -->
-            <div class="sy-apk-hscroll" id="syHScroll">
-                <a class="sy-apk-hitem" href="zonghe.html" aria-label="综合所得"><img src="/img/home/a6_01.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="shuiming.html?reset=1" aria-label="收入纳税明细"><img src="/img/home/a6_02.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="najilu.html" aria-label="纳税记录"><img src="/img/home/a6_03.jpg?v=20260802-home" alt=""></a>
-                <a class="sy-apk-hitem" href="help_center.html" aria-label="更多服务"><img src="/img/home/a6_04.jpg?v=20260802-home" alt=""></a>
-            </div>
+        <div class="sy-quick-scroll" id="syHScroll">
+            <a class="sy-quick-card" href="zonghe.html" aria-label="综合所得">
+                <div class="sy-quick-icon is-blue" aria-hidden="true">综</div>
+                <strong>综合所得</strong>
+                <span>年度汇算与专项附加扣除填报</span>
+            </a>
+            <a class="sy-quick-card" href="shuiming.html?reset=1" aria-label="收入纳税明细">
+                <div class="sy-quick-icon is-purple" aria-hidden="true">明</div>
+                <strong>收入纳税明细</strong>
+                <span>查看收入与已纳税额明细</span>
+            </a>
+            <a class="sy-quick-card" href="najilu.html" aria-label="纳税记录">
+                <div class="sy-quick-icon is-teal" aria-hidden="true">记</div>
+                <strong>纳税记录</strong>
+                <span>完税证明与纳税记录查询</span>
+            </a>
+            <a class="sy-quick-card" href="help_center.html" aria-label="更多服务">
+                <div class="sy-quick-icon is-orange" aria-hidden="true">更</div>
+                <strong>更多服务</strong>
+                <span>帮助中心与常用功能入口</span>
+            </a>
+        </div>
 
-            <!-- 轮播 a4_* -->
-            <div class="sy-apk-swiper-wrap" id="sySwiper" aria-label="首页轮播">
-                <div class="sy-apk-swiper-track" id="sySwiperTrack">
-                    <img src="/img/home/a4_1_2.png?v=20260802-home" alt="">
-                    <img src="/img/home/a4_4_2.png?v=20260802-home" alt="">
-                    <img src="/img/home/a4_2.png?v=20260802-home" alt="">
-                    <img src="/img/home/a4_3.png?v=20260802-home" alt="">
-                    <img src="/img/home/a4_4.png?v=20260802-home" alt="">
-                </div>
-                <div class="sy-apk-swiper-dots" id="sySwiperDots" aria-hidden="true"></div>
+        <div class="sy-apk-swiper-wrap" id="sySwiper" aria-label="首页轮播">
+            <div class="sy-apk-swiper-track" id="sySwiperTrack">
+                <img src="/img/home/a4_1_2.png?v=20260802-home" alt="">
+                <img src="/img/home/a4_4_2.png?v=20260802-home" alt="">
+                <img src="/img/home/a4_2.png?v=20260802-home" alt="">
+                <img src="/img/home/a4_3.png?v=20260802-home" alt="">
+                <img src="/img/home/a4_4.png?v=20260802-home" alt="">
             </div>
+            <div class="sy-apk-swiper-dots" id="sySwiperDots" aria-hidden="true"></div>
+        </div>
 
-            <!-- a4 / a5 资讯与查看更多 -->
-            <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a4.png?v=20260802-home" alt="资讯" width="1284" height="1814">
-                <a href="help_center.html" class="sy-apk-hit" style="inset:0;z-index:5" aria-label="查看资讯"></a>
-            </div>
-            <div class="sy-apk-block">
-                <img class="sy-apk-slice" src="/img/home/a5.png?v=20260802-home" alt="" width="1284" height="678">
-                <a href="help_center.html" class="sy-apk-hit sy-hit-more" aria-label="查看更多"></a>
-            </div>
+        <div class="sy-news-block">
+            <img src="/img/home/a4.png?v=20260802-home" alt="资讯" width="1284" height="1814">
+            <a href="help_center.html" class="sy-news-hit" aria-label="查看资讯"></a>
+        </div>
+        <div class="sy-news-block">
+            <img src="/img/home/a5.png?v=20260802-home" alt="" width="1284" height="678">
+            <a href="help_center.html" class="sy-news-hit" aria-label="查看更多"></a>
         </div>
     </div>
 
@@ -552,11 +758,11 @@
 
     <script>
         (function () {
-            var ASSET_V = '?v=20260802-home';
             var searchWrapper = document.getElementById('syAheadWrap') || document.querySelector('.search-bar-wrapper');
             var page = document.querySelector('.shouye-page');
-            var declareImg = document.getElementById('syDeclareImg');
-            var recordHit = document.getElementById('syRecordHit');
+            var declareCard = document.getElementById('syDeclareCard');
+            var declareCta = document.getElementById('syDeclareCta');
+            var declareDesc = document.getElementById('syDeclareDesc');
 
             function isLoggedIn() {
                 try {
@@ -567,15 +773,21 @@
             }
 
             function syncDeclareCard() {
-                if (!declareImg) return;
                 var logged = isLoggedIn();
-                declareImg.src = (logged ? '/img/home/a33.png' : '/img/home/a32.png') + ASSET_V;
-                declareImg.width = 1179;
-                declareImg.height = logged ? 613 : 610;
-                if (recordHit) {
-                    /* 未登录 a32 主按钮是「进入专题页」，热区仍指向专题；已登录绿框为「查看记录」 */
-                    recordHit.href = logged ? 'shenbao_jilu.html' : 'zonghe.html';
-                    recordHit.setAttribute('aria-label', logged ? '查看记录' : '进入专题页');
+                if (declareCta) {
+                    declareCta.textContent = logged ? '查看记录' : '进入专题页';
+                }
+                if (declareCard) {
+                    declareCard.href = logged ? 'shenbao_jilu.html' : 'zonghe.html';
+                    declareCard.setAttribute(
+                        'aria-label',
+                        logged ? '查看申报记录' : '综合所得年度汇算'
+                    );
+                }
+                if (declareDesc) {
+                    declareDesc.textContent = logged
+                        ? '办理期已于6月30日结束，您可查看申报记录或了解相关政策。'
+                        : '办理期已于6月30日结束，您仍可查看往年记录或了解相关政策。';
                 }
             }
             syncDeclareCard();
@@ -587,11 +799,10 @@
                     if (html.classList.contains('app-cordova-huawei-pura70')) {
                         var vv = window.visualViewport;
                         var topInset = vv && vv.offsetTop > 0 ? Math.ceil(vv.offsetTop) : 0;
-                        searchWrapper.style.paddingTop = topInset + 'px';
+                        searchWrapper.style.paddingTop = 8 + topInset + 'px';
                     }
                     var h = Math.ceil(searchWrapper.getBoundingClientRect().height || 0);
                     if (h > 0) {
-                        /* 内容区与顶栏重叠 1px，避免 ceil/亚像素露出灰白底 */
                         var pad = Math.max(0, h - 1);
                         html.style.setProperty('--shouye-fixed-top-h', pad + 'px');
                         page.style.paddingTop = pad + 'px';
@@ -622,7 +833,6 @@
                 });
             }
 
-            /* 简易轮播 */
             (function initSwiper() {
                 var track = document.getElementById('sySwiperTrack');
                 var dots = document.getElementById('sySwiperDots');
