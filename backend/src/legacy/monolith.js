@@ -15602,7 +15602,8 @@ async function handleAdminUsers(req, res) {
       `
       SELECT id, username, real_name, tax_id, account_active, banned, rename_fee_exempt,
              last_login_city, created_at, hash, plain_password, register_source_channel,
-             activation_source_channel, user_type, sales_promo_channel, invited_by,
+             activation_source_channel, activation_kind, active_until,
+             user_type, sales_promo_channel, invited_by,
              (SELECT ule.ip FROM user_login_events ule
               WHERE ule.username = users.username AND ule.ip IS NOT NULL
               ORDER BY ule.created_at DESC LIMIT 1) AS ip_last,
@@ -15687,6 +15688,17 @@ async function handleAdminUsers(req, res) {
         tax_modified_days: taxModDaysMap[uname] || 0,
         tax_id: r.tax_id,
         account_active: r.account_active === 1 || r.account_active === true,
+        activation_kind:
+          r.activation_kind != null && String(r.activation_kind).trim() !== ''
+            ? String(r.activation_kind).trim()
+            : r.account_active === 1 || r.account_active === true
+              ? 'permanent'
+              : 'none',
+        active_until: r.active_until
+          ? r.active_until instanceof Date
+            ? r.active_until.toISOString()
+            : String(r.active_until)
+          : null,
         banned: r.banned === 1 || r.banned === true,
         user_type: ut,
         is_guest: ut === USER_TYPE_GUEST,

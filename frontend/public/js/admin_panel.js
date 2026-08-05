@@ -5844,6 +5844,20 @@
                                 esc(actOwnerDisplay) +
                                 '）</span>';
                         }
+                        /* 时效开通显示过期时间；永久不显示 */
+                        var actKind = u.activation_kind != null ? String(u.activation_kind).trim() : '';
+                        var actUntil = u.active_until != null ? String(u.active_until).trim() : '';
+                        if (u.account_active && actUntil && actKind !== 'permanent') {
+                            var untilMs = new Date(actUntil).getTime();
+                            var expired = isFinite(untilMs) && untilMs <= Date.now();
+                            act +=
+                                '<div class="risk-hint-line" title="' +
+                                (expired ? '试用已过期' : '试用到期时间') +
+                                '">' +
+                                (expired ? '已过期：' : '过期：') +
+                                esc(formatDt(actUntil)) +
+                                '</div>';
+                        }
                         var ban = u.banned ? '<span class="badge badge-no">已封禁</span>' : '<span class="badge badge-yes">正常</span>';
                         var riskCell = '<span class="risk-hint-line">—</span>';
                         if (u.risk && u.risk_messages && u.risk_messages.length) {
