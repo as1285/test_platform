@@ -14,15 +14,16 @@ from PIL import Image, ImageDraw, ImageFont
 TEMPLATE_W = 1024
 TEMPLATE_H = 725
 
-# 基于 1024x725 模板标定
-NAME_BOX = (368, 84, 455, 108)
-INCOME_BOX = (788, 143, 895, 168)
+# 基于 1024x725 模板标定（竖线约在 191/270/397/536/721/945）
+NAME_BOX = (362, 84, 470, 110)
+INCOME_BOX = (786, 142, 900, 170)
 ROW0_Y = 212
 ROW_H = 34
 N_ROWS = 12
-COL_AMT = (278, 392)
-COL_BAL = (402, 528)
-COL_CO = (728, 978)
+# 单元格内容区：贴着表格竖线内侧，避免残留原字笔画
+COL_AMT = (271, 396)
+COL_BAL = (398, 535)
+COL_CO = (722, 944)
 
 DEFAULT_COUNTERPARTY_ACCOUNT = "140500616296"
 
@@ -30,9 +31,9 @@ DEFAULT_COUNTERPARTY_ACCOUNT = "140500616296"
 def find_font(size):
     candidates = [
         os.environ.get("CCB_FLOW_FONT") or "",
-        "/app/assets/sbdy/NotoSerifCJKsc-Regular.otf",
         "/app/assets/sbdy/SimSun_21.ttf",
         "/app/assets/sbdy/PD4MLNSimSun_16.ttf",
+        "/app/assets/sbdy/NotoSerifCJKsc-Regular.otf",
         "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
@@ -111,12 +112,7 @@ def parse_balance_list(raw, amounts, opening):
     return out
 
 
-def is_reddish(rgb):
-    r, g, b = [int(x) for x in rgb[:3]]
-    return r > 120 and r > g + 25 and r > b + 25 and (r - min(g, b)) > 30
-
-
-def clear_text_keep_seal(arr, box, inset=2):
+def clear_text_keep_seal(arr, box, inset=1):
     """清空单元格内容区为白底，保留红章像素；inset 避开表格线。"""
     x0, y0, x1, y1 = box
     H, W = arr.shape[:2]
@@ -129,56 +125,67 @@ def clear_text_keep_seal(arr, box, inset=2):
     region = arr[y0:y1, x0:x1]
     rgb = region.astype(np.int16)
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    # 红章：偏红；其余（含抗锯齿灰边）一律刷白，避免残留笔画
     red = (r > 110) & (r > g + 20) & (r > b + 20) & ((r - np.minimum(g, b)) > 25)
     region[~red] = np.array([255, 255, 255], dtype=np.uint8)
     arr[y0:y1, x0:x1] = region
 
 
-def draw_text_in_box(draw, box, text, font, fill=(20, 20, 20), align="left", valign="center", max_lines=2):
+def text_width(draw, text, font):
+    try:
+        return float(draw.textlength(text, font=font))
+    except Exception:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        return float(bbox[2] - bbox[0])
+
+
+def fit_font(draw, text, box, max_size, min_size=9):
+    """单行缩放到单元格宽度内。"""
+    x0, y0, x1, y1 = box
+    max_w = max(8, x1 - x0 - 6)
+    size = max_size
+    font = find_font(size)
+    while size > min_size and text_width(draw, text, font) > max_w:
+        size -= 1
+        font = find_font(size)
+    return font
+
+
+def draw_text_in_box(draw, box, text, font, fill=(20, 20, 20), align="left", valign="center"):
+    """单行绘制，超出以省略号截断（避免两行叠字）。"""
     x0, y0, x1, y1 = box
     text = str(text or "")
     if not text:
         return
-    max_w = max(8, x1 - x0 - 4)
-    # wrap
-    lines = []
-    cur = ""
-    for ch in text:
-        trial = cur + ch
-        if draw.textlength(trial, font=font) <= max_w:
-            cur = trial
-        else:
-            if cur:
-                lines.append(cur)
-            cur = ch
-            if len(lines) >= max_lines:
-                break
-    if cur and len(lines) < max_lines:
-        lines.append(cur)
-    if not lines:
-        return
-    # truncate last with …
-    if len(text) > sum(len(l) for l in lines):
-        last = lines[-1]
-        while last and draw.textlength(last + "…", font=font) > max_w:
-            last = last[:-1]
-        lines[-1] = (last + "…") if last else "…"
+    max_w = max(8, x1 - x0 - 6)
+    if text_width(draw, text, font) > max_w:
+        ell = "…"
+        while text and text_width(draw, text + ell, font) > max_w:
+            text = text[:-1]
+        text = (text + ell) if text else ell
 
-    line_h = font.size + 2
-    total_h = line_h * len(lines)
-    if valign == "center":
-        ty = y0 + max(0, (y1 - y0 - total_h) // 2)
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        top_bear = bbox[1]
+    except Exception:
+        tw = text_width(draw, text, font)
+        th = getattr(font, "size", 14)
+        top_bear = 0
+
+    if align == "right":
+        tx = x1 - 4 - tw
+    elif align == "center":
+        tx = x0 + (x1 - x0 - tw) / 2
     else:
-        ty = y0 + 2
-    for i, line in enumerate(lines):
-        lw = draw.textlength(line, font=font)
-        if align == "right":
-            tx = x1 - 4 - lw
-        elif align == "center":
-            tx = x0 + (x1 - x0 - lw) / 2
-        else:
-            tx = x0 + 3
-        draw.text((tx, ty + i * line_h), line, font=font, fill=fill)
+        tx = x0 + 3
+
+    if valign == "center":
+        ty = y0 + max(0, (y1 - y0 - th) // 2) - top_bear
+    else:
+        ty = y0 + 2 - top_bear
+    draw.text((tx, ty), text, font=font, fill=fill)
 
 
 def process(cfg):
@@ -209,25 +216,24 @@ def process(cfg):
 
     # clear regions
     if name:
-        clear_text_keep_seal(arr, NAME_BOX)
-    clear_text_keep_seal(arr, INCOME_BOX)
+        clear_text_keep_seal(arr, NAME_BOX, inset=1)
+    clear_text_keep_seal(arr, INCOME_BOX, inset=1)
     for i in range(N_ROWS):
         y0 = ROW0_Y + i * ROW_H
         y1 = y0 + ROW_H
-        clear_text_keep_seal(arr, (COL_AMT[0], y0 + 3, COL_AMT[1], y1 - 1))
-        clear_text_keep_seal(arr, (COL_BAL[0], y0 + 3, COL_BAL[1], y1 - 1))
+        clear_text_keep_seal(arr, (COL_AMT[0], y0 + 2, COL_AMT[1], y1 - 1), inset=1)
+        clear_text_keep_seal(arr, (COL_BAL[0], y0 + 2, COL_BAL[1], y1 - 1), inset=1)
         if account_name or company:
-            clear_text_keep_seal(arr, (COL_CO[0], y0 + 2, COL_CO[1], y1 - 1))
+            clear_text_keep_seal(arr, (COL_CO[0], y0 + 1, COL_CO[1], y1 - 1), inset=1)
 
     out = Image.fromarray(arr)
     draw = ImageDraw.Draw(out)
     font_name = find_font(14)
     font_num = find_font(13)
-    font_co = find_font(11)
 
     if name:
-        draw_text_in_box(draw, NAME_BOX, name, font_name, align="left", max_lines=1)
-    draw_text_in_box(draw, INCOME_BOX, fmt_money(total_income), font_num, align="left", max_lines=1)
+        draw_text_in_box(draw, NAME_BOX, name, font_name, align="left")
+    draw_text_in_box(draw, INCOME_BOX, fmt_money(total_income), font_num, align="left")
 
     co_text = ""
     if account_name or company:
@@ -236,30 +242,20 @@ def process(cfg):
     for i in range(N_ROWS):
         y0 = ROW0_Y + i * ROW_H
         y1 = y0 + ROW_H
-        draw_text_in_box(
-            draw,
-            (COL_AMT[0], y0 + 3, COL_AMT[1], y1 - 1),
-            fmt_money(amounts[i]),
-            font_num,
-            align="right",
-            max_lines=1,
-        )
-        draw_text_in_box(
-            draw,
-            (COL_BAL[0], y0 + 3, COL_BAL[1], y1 - 1),
-            fmt_money(balances[i]),
-            font_num,
-            align="right",
-            max_lines=1,
-        )
+        amt_box = (COL_AMT[0], y0 + 2, COL_AMT[1], y1 - 1)
+        bal_box = (COL_BAL[0], y0 + 2, COL_BAL[1], y1 - 1)
+        co_box = (COL_CO[0], y0 + 1, COL_CO[1], y1 - 1)
+        amt_s = fmt_money(amounts[i])
+        bal_s = fmt_money(balances[i])
+        draw_text_in_box(draw, amt_box, amt_s, fit_font(draw, amt_s, amt_box, 13), align="right")
+        draw_text_in_box(draw, bal_box, bal_s, fit_font(draw, bal_s, bal_box, 13), align="right")
         if co_text:
             draw_text_in_box(
                 draw,
-                (COL_CO[0], y0 + 1, COL_CO[1], y1 - 1),
+                co_box,
                 co_text,
-                font_co,
+                fit_font(draw, co_text, co_box, 12, min_size=8),
                 align="left",
-                max_lines=2,
             )
 
     out.save(out_path, format="PNG")
