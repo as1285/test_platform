@@ -5906,6 +5906,13 @@
                                 esc(u.username) +
                                 '">激活</button> ';
                         }
+                        /* 有过期时间的时效账号：可一键改为永久 */
+                        if (actUntil && actKind !== 'permanent') {
+                            ops +=
+                                '<button type="button" class="btn-sm btn-activate btn-user-make-permanent" data-u="' +
+                                esc(u.username) +
+                                '" title="清除过期时间，改为永久激活">永久</button> ';
+                        }
                         var ipLast = u.ip_last || '';
                         ops += (u.banned
                             ? '<button type="button" class="btn-sm btn-unban btn-ban-act" data-u="' + esc(u.username) + '" data-b="0">解封</button>'
@@ -5990,6 +5997,40 @@
                     document.getElementById('userTbody').querySelectorAll('.btn-user-activate').forEach(function (btn) {
                         btn.onclick = function () {
                             openUserActivateModal(btn.getAttribute('data-u'));
+                        };
+                    });
+                    document.getElementById('userTbody').querySelectorAll('.btn-user-make-permanent').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var name = btn.getAttribute('data-u') || '';
+                            if (
+                                !confirm(
+                                    '确定将「' + name + '」改为永久账号？\n将清除过期时间，开通状态变为永久激活。'
+                                )
+                            ) {
+                                return;
+                            }
+                            btn.disabled = true;
+                            adminFetch('api/admin/user-make-permanent', {
+                                method: 'POST',
+                                body: JSON.stringify({ username: name })
+                            })
+                                .then(function (r) {
+                                    return r.json();
+                                })
+                                .then(function (d) {
+                                    if (d.code === 200) {
+                                        alert(d.msg || '已改为永久账号');
+                                        loadUsers();
+                                    } else {
+                                        alert(d.msg || '操作失败');
+                                    }
+                                })
+                                .catch(function () {
+                                    alert('网络错误');
+                                })
+                                .then(function () {
+                                    btn.disabled = false;
+                                });
                         };
                     });
                     document.getElementById('userTbody').querySelectorAll('.btn-user-pricing-abc').forEach(function (btn) {

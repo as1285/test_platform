@@ -16853,6 +16853,78 @@ async function handleAdminUserActivate(req, res) {
   }
 }
 
+/** 管理端：将时效/试用账号改为永久激活（清除 active_until） */
+async function handleAdminUserMakePermanent(req, res) {
+  var body = req.body || {};
+  var target = body.username != null ? String(body.username).trim() : '';
+  if (!target) {
+    return res.status(400).json({ code: 400, msg: 'username required' });
+  }
+  if (target.toLowerCase() === String(ADMIN_PANEL_USER).toLowerCase()) {
+    return res.status(400).json({ code: 400, msg: '不能操作保留账号名' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [urows] = await conn.execute(
+      `SELECT id, account_active, activation_kind, active_until, list_hidden_at
+       FROM users WHERE username = ? FOR UPDATE`,
+      [target]
+    );
+    if (!urows.length) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ code: 404, msg: '用户不存在' });
+    }
+    if (urows[0].list_hidden_at) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '该账号已在已删除列表中' });
+    }
+    var allowed = await adminCanAccessTargetUser(conn, req.admin, target);
+    if (!allowed) {
+      await conn.rollback();
+      conn.release();
+      return res.status(403).json({ code: 403, msg: '无权限查看或操作该用户' });
+    }
+    var row = urows[0];
+    var kind = row.activation_kind != null ? String(row.activation_kind).trim() : '';
+    if (kind === 'permanent' || (isUserPermanentActive(row) && kind !== 'trial')) {
+      await conn.rollback();
+      conn.release();
+      return res.json({
+        code: 200,
+        data: { username: target, activation_kind: 'permanent', active_until: null },
+        msg: '账号已是永久激活'
+      });
+    }
+    var hasUntil = row.active_until != null && String(row.active_until).trim() !== '';
+    if (kind !== 'trial' && !hasUntil) {
+      await conn.rollback();
+      conn.release();
+      return res.status(400).json({ code: 400, msg: '仅带过期时间的时效账号可改为永久' });
+    }
+    await getInviteReward().setUserPermanentInConn(conn, target, null);
+    await conn.commit();
+    conn.release();
+    invalidateUserAuthCache(target);
+    invalidateUserInfoApiCache(target);
+    return res.json({
+      code: 200,
+      data: { username: target, activation_kind: 'permanent', active_until: null },
+      msg: '已改为永久账号'
+    });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (e2) {}
+    try {
+      conn.release();
+    } catch (e3) {}
+    return res.status(500).json({ code: 500, msg: e.message || String(e) });
+  }
+}
+
 /** 归一化支付方案 token：全角/大小写 → a|b|c */
 function normalizePricingAbcToken(raw) {
   var s = String(raw == null ? '' : raw).trim();
@@ -20652,6 +20724,7 @@ function getHandlers() {
     handleAdminActivationBatchChannels,
     handleAdminCodes,
     handleAdminUserActivate,
+    handleAdminUserMakePermanent,
     handleAdminUserPricingAbc,
     handleAdminUserRenameFeeExempt,
     handleAdminUserPassword,

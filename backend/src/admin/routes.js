@@ -254,6 +254,12 @@ app.get(
   h.handleAdminCodes
 );
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
+app.post(
+  '/api/admin/user-make-permanent',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('users'),
+  h.handleAdminUserMakePermanent
+);
 app.post('/api/admin/user-pricing-abc', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserPricingAbc);
 app.post(
   '/api/admin/user-rename-fee-exempt',
