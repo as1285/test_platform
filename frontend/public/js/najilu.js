@@ -1150,22 +1150,16 @@
     opt = opt || {};
     var sz = opt.size || 16;
     var font = opt.font || CERT_TITLE_FONT;
+    /* 官方：(YYYY)MMDD 记录 编号 — 前缀深灰，编号暗红，无多余括号 */
     var prefix = formatCertRecordIdDate(compactDate) + ' 记录 ';
     var no = String(recordNo || '');
-    var suffix = ')';
-    drawText(ctx, prefix, x, y, { size: sz, color: '#555', font: font });
+    drawText(ctx, prefix, x, y, { size: sz, color: '#444', font: font });
     ctx.save();
     ctx.font = sz + 'px ' + font;
     ctx.textAlign = 'left';
     var pw = ctx.measureText(prefix).width;
     ctx.restore();
-    drawText(ctx, no, x + pw, y, { size: sz, color: '#c62828', font: font });
-    ctx.save();
-    ctx.font = sz + 'px ' + font;
-    ctx.textAlign = 'left';
-    var nw = ctx.measureText(no).width;
-    ctx.restore();
-    drawText(ctx, suffix, x + pw + nw, y, { size: sz, color: '#555', font: font });
+    drawText(ctx, no, x + pw, y, { size: sz, color: '#b71c1c', font: font });
   }
 
   function wrapText(ctx, text, x, y, maxWidth, lineHeight, opt) {
@@ -1313,20 +1307,20 @@
     }
   }
 
-  /** 高清整页眉（回退）；优先：国徽图 + 矢量标题 */
-  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png?v=20260805-hd2';
-  var TAX_RECORD_STA_LOGO_SRC = '/tax_record_sta_logo.png?v=20260805-hd2';
-  /** 纳税记录页眉楷体（纳税人信息等正文） */
-  var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
-  /** 页眉标题字体（宋体系更接近官方） */
-  var CERT_HEADER_TITLE_FONT = 'SimSun, STSong, "Noto Serif CJK SC", "Songti SC", serif';
   /**
-   * 页眉显示宽度（逻辑像素）。高清原图约 1385px，2x 导出时物理宽约 1120，
-   * 属于缩小绘制，国徽与标题保持清晰。
+   * 页眉策略（对齐官方黑体版式）：
+   * 1) 优先：清晰税徽 PNG + 画布黑体矢量标题（2x 导出最锐）
+   * 2) 回退：预渲染整图页眉 / 纯文字
    */
-  var CERT_HEADER_DISPLAY_W = 560;
-  /** 矢量页眉（税徽+三行标题）固定高度，对齐官方截图比例 */
-  var CERT_HEADER_COMPOSED_H = 200;
+  var TAX_RECORD_HEADER_SRC = '/tax_record_header.png?v=20260805-hei2';
+  var TAX_RECORD_STA_LOGO_SRC = '/tax_record_sta_logo.png?v=20260805-hei2';
+  /** 纳税记录正文楷体 */
+  var CERT_TITLE_FONT = 'KaiTi, STKaiti, "AR PL UKai CN", 楷体, serif';
+  /** 页眉标题黑体（官方为黑体/雅黑系，不是宋体） */
+  var CERT_HEADER_TITLE_FONT =
+    '"Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", SimHei, "PingFang SC", sans-serif';
+  var CERT_HEADER_DISPLAY_W = 640;
+  var CERT_HEADER_COMPOSED_H = 205;
 
   function loadImageSrc(src) {
     return new Promise(function (resolve) {
@@ -1364,18 +1358,14 @@
     return headerImg.naturalHeight * (w / headerImg.naturalWidth);
   }
 
-  /** 优先国徽+矢量标题；否则回退整图页眉。返回占用高度 */
+  /** 税徽 + 黑体矢量标题；否则整图页眉。返回占用高度 */
   function drawTaxRecordHeader(ctx, headerPack, centerX, topY, targetW) {
     var logoImg = headerPack && headerPack.logoImg;
     var headerImg = headerPack && headerPack.headerImg ? headerPack.headerImg : headerPack;
     if (logoImg && logoImg.complete && logoImg.naturalWidth) {
-      /*
-       * 官方截图税徽约 50 逻辑像素高；过大只会放大源图像素显得发糊。
-       * 标题用矢量文字绘制，避免整图页眉里的模糊宋体。
-       */
-      var logoH = 50;
+      var logoH = 56;
       var logoW = (logoImg.naturalWidth / logoImg.naturalHeight) * logoH;
-      var y = topY + 6;
+      var y = topY + 8;
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       if (typeof ctx.imageSmoothingQuality === 'string') {
@@ -1383,35 +1373,36 @@
       }
       ctx.drawImage(logoImg, centerX - logoW / 2, y, logoW, logoH);
       ctx.restore();
-      y += logoH + 32;
+      y += logoH + 34;
       drawText(ctx, '中华人民共和国', centerX, y, {
-        size: 30,
-        align: 'center',
-        font: CERT_HEADER_TITLE_FONT,
-        color: '#141414'
-      });
-      y += 40;
-      drawText(ctx, '个人所得税纳税记录', centerX, y, {
-        size: 40,
+        size: 32,
         weight: 'bold',
         align: 'center',
         font: CERT_HEADER_TITLE_FONT,
         color: '#111'
       });
-      y += 32;
+      y += 42;
+      drawText(ctx, '个人所得税纳税记录', centerX, y, {
+        size: 44,
+        weight: 'bold',
+        align: 'center',
+        font: CERT_HEADER_TITLE_FONT,
+        color: '#0a0a0a'
+      });
+      y += 34;
       drawText(ctx, '（原《税收完税证明》）', centerX, y, {
         size: 18,
         align: 'center',
         font: CERT_HEADER_TITLE_FONT,
         color: '#333'
       });
-      return Math.max(CERT_HEADER_COMPOSED_H, y - topY + 14);
+      return Math.max(CERT_HEADER_COMPOSED_H, y - topY + 16);
     }
     if (!headerImg || !headerImg.complete || !headerImg.naturalWidth) return 0;
     var want = targetW || CERT_HEADER_DISPLAY_W;
-    var maxW = headerImg.naturalWidth / Math.max(1, CERT_RENDER_SCALE) * 1.15;
+    var maxW = (headerImg.naturalWidth / Math.max(1, CERT_RENDER_SCALE)) * 1.05;
     var w = Math.min(want, maxW);
-    if (w < 200) w = Math.min(want, headerImg.naturalWidth);
+    if (w < 280) w = Math.min(want, headerImg.naturalWidth);
     var h = headerImg.naturalHeight * (w / headerImg.naturalWidth);
     if (!h) return 0;
     ctx.save();
@@ -1424,24 +1415,26 @@
     return h;
   }
 
-  function drawCertificateTitleFallback(ctx, centerX, certTitleFont) {
-    drawText(ctx, '◉', centerX, 72, { size: 44, color: '#c62828', align: 'center' });
-    drawText(ctx, '中华人民共和国', centerX, 132, {
-      size: 28,
+  function drawCertificateTitleFallback(ctx, centerX) {
+    var font = CERT_HEADER_TITLE_FONT;
+    drawText(ctx, '中华人民共和国', centerX, 100, {
+      size: 32,
+      weight: 'bold',
       align: 'center',
-      font: certTitleFont
+      font: font
     });
-    drawText(ctx, '个人所得税纳税记录', centerX, 172, {
-      size: 36,
+    drawText(ctx, '个人所得税纳税记录', centerX, 148, {
+      size: 44,
+      weight: 'bold',
       align: 'center',
-      font: certTitleFont
+      font: font
     });
-    drawText(ctx, '（原《税收完税证明》）', centerX, 202, {
+    drawText(ctx, '（原《税收完税证明》）', centerX, 186, {
       size: 18,
       align: 'center',
-      font: certTitleFont
+      font: font
     });
-    return 210;
+    return 200;
   }
 
   /** 单页最多显示纳税明细条数（按月份计，超过则分页） */
