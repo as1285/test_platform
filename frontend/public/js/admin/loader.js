@@ -103,7 +103,7 @@
     if (global.Najilu || global.renderNajilu || document.querySelector('script[src*="najilu.js"]')) {
       return Promise.resolve();
     }
-    return loadScript('/js/najilu.js?v=20260805-header-hei2');
+    return loadScript('/js/najilu.js?v=20260731-najilu-qr');
   }
 
   /** 个税批量工具：仅 tax-records-edit 页按需加载（~240KB） */
