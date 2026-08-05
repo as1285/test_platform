@@ -253,6 +253,12 @@ app.get(
   mw.requireAdminMenu('codes'),
   h.handleAdminCodes
 );
+app.post(
+  '/api/admin/codes/delete-unused',
+  mw.requireAdminAuth,
+  mw.requireAdminMenu('codes'),
+  h.handleAdminDeleteUnusedCodes
+);
 app.post('/api/admin/user-activate', mw.requireAdminAuth, mw.requireAdminMenu('users'), h.handleAdminUserActivate);
 app.post(
   '/api/admin/user-make-permanent',

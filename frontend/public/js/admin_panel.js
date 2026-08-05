@@ -7396,6 +7396,40 @@
         document.getElementById('btnRefreshCodes').addEventListener('click', function() {
             loadCodes(1);
         });
+        var btnDeleteUnusedCodes = document.getElementById('btnDeleteUnusedCodes');
+        if (btnDeleteUnusedCodes) {
+            btnDeleteUnusedCodes.addEventListener('click', function () {
+                if (
+                    !confirm(
+                        '确定删除普通激活码列表中全部「未使用」的码？\n已使用的不会删除；渠道批量库存码不在此范围。\n此操作不可恢复。'
+                    )
+                ) {
+                    return;
+                }
+                btnDeleteUnusedCodes.disabled = true;
+                adminFetch('api/admin/codes/delete-unused', {
+                    method: 'POST',
+                    body: JSON.stringify({ scope: 'general' })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (d) {
+                        if (d.code === 200) {
+                            alert(d.msg || '已删除');
+                            loadCodes(1);
+                        } else {
+                            alert(d.msg || '删除失败');
+                        }
+                    })
+                    .catch(function () {
+                        alert('网络错误');
+                    })
+                    .finally(function () {
+                        btnDeleteUnusedCodes.disabled = false;
+                    });
+            });
+        }
         var btnRefreshXianyuCodes = document.getElementById('btnRefreshXianyuCodes');
         if (btnRefreshXianyuCodes) {
             btnRefreshXianyuCodes.addEventListener('click', function () {

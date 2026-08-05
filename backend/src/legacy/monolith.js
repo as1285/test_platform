@@ -16495,6 +16495,58 @@ async function handleAdminIssueCodeBatch(req, res) {
 }
 
 /** 删除未使用的周卡激活码 */
+/** 删除未使用激活码（默认非闲鱼/非批量/非周卡的普通码；已使用的不删） */
+async function handleAdminDeleteUnusedCodes(req, res) {
+  try {
+    if (!adminHasMenu(req.admin, 'codes')) {
+      return res.status(403).json({ code: 403, msg: '无激活码权限' });
+    }
+    var body = req.body || {};
+    var scope = body.scope != null ? String(body.scope).trim() : 'general';
+    if (scope !== 'general') {
+      return res.status(400).json({
+        code: 400,
+        msg: '当前仅支持删除普通激活码列表中的未使用码（不含渠道批量库存）'
+      });
+    }
+    const conn = await pool.getConnection();
+    try {
+      var conditions = ['used_count = 0'];
+      var params = [];
+      conditions.push("(note IS NULL OR (note NOT LIKE '%批量%' AND note NOT LIKE '%周卡%'))");
+      if (!(req.admin && req.admin.is_super)) {
+        var selfName = req.admin && req.admin.username ? String(req.admin.username) : '';
+        if (!selfName) {
+          return res.status(403).json({ code: 403, msg: '无权限' });
+        }
+        conditions.push('owner_admin_username = ?');
+        params.push(selfName);
+      }
+      var whereSql = ' WHERE ' + conditions.join(' AND ');
+      const [cntRows] = await conn.execute(
+        'SELECT COUNT(*) AS c FROM activation_codes' + whereSql,
+        params
+      );
+      var before = Number((cntRows[0] && cntRows[0].c) || 0);
+      if (before <= 0) {
+        return res.json({ code: 200, msg: '没有可删除的未使用激活码', data: { deleted: 0 } });
+      }
+      const [result] = await conn.execute('DELETE FROM activation_codes' + whereSql, params);
+      var deleted = result && result.affectedRows != null ? Number(result.affectedRows) : 0;
+      return res.json({
+        code: 200,
+        msg: '已删除 ' + deleted + ' 个未使用激活码',
+        data: { deleted: deleted, before: before }
+      });
+    } finally {
+      conn.release();
+    }
+  } catch (e) {
+    console.error('handleAdminDeleteUnusedCodes', e);
+    return res.status(500).json({ code: 500, msg: String(e.message) });
+  }
+}
+
 async function handleAdminDeleteWeeklyCode(req, res) {
   try {
     var body = req.body || {};
@@ -20728,6 +20780,7 @@ function getHandlers() {
     handleAdminUserTaxRecordsWrite,
     handleAdminIssueCode,
     handleAdminIssueCodeBatch,
+    handleAdminDeleteUnusedCodes,
     handleAdminActivationBatchChannels,
     handleAdminCodes,
     handleAdminUserActivate,
